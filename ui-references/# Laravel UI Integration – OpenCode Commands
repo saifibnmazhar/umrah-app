@@ -1,0 +1,251 @@
+# Laravel UI Integration – OpenCode Commands (WITH UI REFERENCE FOLDER)
+
+## Task 0: Setup UI Reference Folder (READ-ONLY)
+
+**Command:**
+
+* Place your original UI folder inside Laravel project:
+
+  /ui-reference/
+
+* This folder contains:
+
+  * .html files
+  * .js files
+
+**Rules:**
+
+* DO NOT modify anything inside `/ui-reference/`
+* Use it only as design reference
+* All work must be done inside Laravel structure
+
+---
+
+## Task 1: Move UI into Laravel (FROM REFERENCE)
+
+**Command:**
+
+* Copy necessary parts FROM `/ui-reference/` INTO:
+
+  * HTML → `resources/views/`
+  * CSS → `resources/css/`
+  * JS → `resources/js/`
+  * Images → `public/images/`
+
+* Do NOT copy everything blindly
+
+* Only extract required sections
+
+---
+
+## Task 2: Create Main Layout
+
+**Command:**
+Create `resources/views/layouts/app.blade.php`:
+
+* Extract layout structure from UI reference
+* Add:
+
+  * Head section
+  * Tailwind + Vite assets
+  * Navbar, sidebar, footer includes
+  * `@yield('content')`
+
+---
+
+## Task 3: Create Partials
+
+**Command:**
+Create:
+
+* `resources/views/partials/navbar.blade.php`
+* `resources/views/partials/sidebar.blade.php`
+* `resources/views/partials/footer.blade.php`
+
+Copy corresponding sections FROM `/ui-reference/`
+
+---
+
+## Task 4: Convert HTML Pages to Blade
+
+**Command:**
+For each page in `/ui-reference/`:
+
+* Create Blade version:
+
+  * dashboard → `dashboard/index.blade.php`
+  * bookings → `bookings/index.blade.php`
+
+* Wrap with:
+  @extends('layouts.app')
+
+  @section('content')
+
+  <!-- page content -->
+
+  @endsection
+
+---
+
+## Task 5: Setup Routes (MANDATORY)
+
+**Command:**
+Edit `routes/web.php`:
+
+Route::view('/', 'welcome');
+Route::view('/dashboard', 'dashboard.index');
+Route::view('/bookings', 'bookings.index');
+
+---
+
+## Task 6: Create Navigation Page
+
+**Command:**
+Create `resources/views/welcome.blade.php`:
+
+<h1>UI Pages</h1>
+<ul>
+  <li><a href="/dashboard">Dashboard</a></li>
+  <li><a href="/bookings">Bookings</a></li>
+</ul>
+
+---
+
+## Task 7: Setup Tailwind with Vite
+
+**Command:**
+
+* Ensure Tailwind is working
+* Update `resources/css/app.css`:
+
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+---
+
+## Task 8: Setup Alpine.js
+
+**Command:**
+
+* Initialize Alpine in `resources/js/app.js`
+* Import and start Alpine
+* Remove inline scripts copied from reference
+
+---
+
+## Task 9: Convert JS to Alpine
+
+**Command:**
+Refactor interactions FROM `/ui-reference/`:
+
+* dropdown
+* modal
+* toggle
+* tabs
+
+Use Alpine patterns instead of vanilla JS
+
+---
+
+## Task 10: Create Blade Components
+
+**Command:**
+Create in:
+`resources/views/components/`
+
+Components:
+
+* button
+* input
+* card
+* modal
+* table
+
+Replace repeated UI from reference with components
+
+---
+
+## Task 11: Add Dummy Data (MANDATORY)
+
+**Command:**
+Inside Blade views:
+
+@php
+$items = [
+['id' => 1, 'name' => 'Test Item 1'],
+['id' => 2, 'name' => 'Test Item 2']
+];
+@endphp
+
+Render:
+@foreach($items as $item)
+
+  <div>{{ $item['name'] }}</div>
+@endforeach
+
+---
+
+## Task 12: Prepare Forms
+
+**Command:**
+
+* Add `name` attributes
+* Follow structure from reference UI
+* Do NOT connect to backend
+
+---
+
+## Task 13: Add UI States
+
+**Command:**
+Implement:
+
+* Empty state
+* Loading state
+* Error UI
+
+---
+
+## Task 14: Cleanup Code
+
+**Command:**
+
+* Do NOT duplicate HTML from reference
+* Extract reusable parts into components/partials
+
+---
+
+## Task 15: Responsive Fixes
+
+**Command:**
+
+* Ensure UI matches reference on:
+
+  * mobile
+  * tablet
+
+---
+
+## Task 16: Documentation
+
+**Command:**
+Create README:
+
+* Explain:
+
+  * `/ui-reference/` usage
+  * Laravel structure
+  * Components
+
+---
+
+## Rules (STRICT)
+
+* DO NOT edit `/ui-reference/`
+* DO NOT copy full HTML blindly
+* DO NOT write backend logic
+* DO NOT create migrations
+* MUST use Blade layout and components
+* MUST use dummy data
+* MUST make pages accessible via routes

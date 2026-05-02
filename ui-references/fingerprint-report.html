@@ -1,0 +1,421 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Fingerprint Report - BM Umrah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .modal-overlay { transition: opacity 0.2s ease; }
+        .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
+        .toast { transition: transform 0.3s ease, opacity 0.3s ease; }
+        .nav-item { color: #94a3b8; transition: all 0.2s ease; }
+        .nav-item:hover { color: white; background-color: rgba(255,255,255,0.1); }
+        .nav-item.active { background-color: white; color: #1e293b; }
+        
+        .search-input {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
+        }
+        
+        .filter-btn {
+            background: linear-gradient(to bottom, #fff 0%, #e9ecef 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+        
+        .filter-btn:hover {
+            background: linear-gradient(to bottom, #f0f0f0 0%, #e2e6ea 100%);
+        }
+        
+        .date-input {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
+        }
+        
+        .table-header {
+            background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+            border: 1px solid #d4d4d4;
+        }
+        
+        .table-row-fp {
+            background-color: #ffffff;
+            border: 1px solid #d4d4d4;
+        }
+        
+        .table-row-fp:nth-child(even) {
+            background-color: #fafafa;
+        }
+        
+        .table-row-fp:hover {
+            background-color: #e8f4fc !important;
+        }
+        
+        .footer-box {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 2px solid #d4d4d4;
+        }
+        
+        .footer-box-header {
+            background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+            border-bottom: 1px solid #d4d4d4;
+        }
+        
+        .export-btn {
+            background: linear-gradient(to bottom, #fff 0%, #e9ecef 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+        
+        .export-btn:hover {
+            background: linear-gradient(to bottom, #f0f0f0 0%, #dee2e6 100%);
+        }
+        
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.5);
+            cursor: pointer;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 8px center;
+            background-repeat: no-repeat;
+            background-size: 16px 16px;
+            padding-right: 32px;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen px-4">
+    <!-- Dynamic Navigation Container -->
+    <div id="navContainer"></div>
+    
+    <!-- Navigation Scripts -->
+    <script src="nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadNavigation);
+    </script>
+    <!-- OLD NAVIGATION
+    <nav class="bg-slate-800 text-white sticky top-0 z-40 shadow-lg -mx-4 pb-8">
+        <div class="max-w-3xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold">BM Umrah Booking</h1>
+                </div>
+                <div class="hidden md:flex space-x-1" id="desktopNav">
+                    <button onclick="window.location.href='dashboard.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="dashboard">Dashboard</button>
+                    <button onclick="window.location.href='booking.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="bookingIndex">Booking</button>
+                    <button onclick="window.location.href='fare-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fareAdmin">Fare Admin</button>
+                    <button onclick="window.location.href='visa-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="visaAdmin">Visa Admin</button>
+                    <button onclick="window.location.href='settings.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="settings">Settings</button>
+                    <button onclick="window.location.href='fingerprint-staff.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fingerprintStaff">Fingerprint Staff</button>
+                    <div class="relative group">
+                        <button class="nav-item px-4 py-2 rounded-md font-medium text-sm">Report ▾</button>
+                        <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-1 py-1 shadow-lg z-50">
+                            <a href="statement.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Statement</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="fingerprint-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap active" data-tab="fingerprintReport">Fingerprint Report</a>
+                            <a href="visa-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>
+                            <a href="visa-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Report</a>
+                            <a href="ticket-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agent Report</a>
+                            <a href="due-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>
+                            <a href="payment-receiving-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payment Receiving Report</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="reissue-refund-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Reissue & Refund Report</a>
+                            <a href="user-wise-sales-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">User Wise Sales Report</a>
+                            <a href="pending-outbound-ticket-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Pending Outbound Ticket</a>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="hidden md:hidden bg-slate-700" id="mobileMenu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="window.location.href='dashboard.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Dashboard</button>
+                <button onclick="window.location.href='booking.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</button>
+                <button onclick="window.location.href='fare-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fare Admin</button>
+                <button onclick="window.location.href='visa-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</button>
+                <button onclick="window.location.href='settings.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Settings</button>
+                <button onclick="window.location.href='fingerprint-staff.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</button>
+                <div class="border-t border-slate-600 pt-2 mt-2">
+                    <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORT</span>
+                    <button onclick="window.location.href='statement.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Statement</button>
+                    <button onclick="window.location.href='profit-loss-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</button>
+                    <button onclick="window.location.href='fingerprint-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</button>
+                    <button onclick="window.location.href='visa-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Report</button>
+                    <button onclick="window.location.href='visa-agent-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Report</button>
+                    <button onclick="window.location.href='ticket-agent-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agent Report</button>
+                    <button onclick="window.location.href='due-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</button>
+                    <button onclick="window.location.href='payment-receiving-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payment Receiving Report</button>
+                    <button onclick="window.location.href='reissue-refund-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Reissue & Refund Report</button>
+                    <button onclick="window.location.href='user-wise-sales-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">User Wise Sales Report</button>
+                    <button onclick="window.location.href='pending-outbound-ticket-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Pending Outbound Ticket</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    END OLD NAVIGATION -->
+
+    <div class="max-w-[1600px] mx-auto p-4">
+        <div class="mb-3">
+            <span class="text-sm text-gray-500 font-medium">Report</span>
+            <span class="text-sm text-gray-400 mx-1">></span>
+            <span class="text-sm text-gray-700 font-semibold">Fingerprint Report</span>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-semibold text-gray-700">SEARCH BOX</label>
+                    <input type="text" placeholder="Search by Invoice No, Customer Name, PAX Name, Mobile" 
+                           class="search-input w-96 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-700">Booking Date</span>
+                    <label class="text-xs text-gray-500">From</label>
+                    <input type="date" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <label class="text-xs text-gray-500">To</label>
+                    <input type="date" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-700">Completion Date</span>
+                    <label class="text-xs text-gray-500">From</label>
+                    <input type="date" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <label class="text-xs text-gray-500">To</label>
+                    <input type="date" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+
+                <div class="flex items-center gap-2 ml-auto">
+                    <button class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                        Filter
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[1800px] table-fixed">
+                    <thead>
+                        <!-- Row 1: Section Headers -->
+                        <tr class="bg-gray-100">
+                            <th colspan="6" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Basic Information</th>
+                            <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Finger Charge Calculation</th>
+                            <!-- REMOVED: Location section -->
+                            <!-- <th colspan="1" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Location</th> -->
+                            <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Finger Status</th>
+                            <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Flight Status</th>
+                            <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Remarks</th>
+                            <th colspan="1" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Profit</th>
+                        </tr>
+                        <!-- Row 2: Column Headers -->
+                        <tr class="table-header">
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-center border-r border-b border-gray-300">Invoice No</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-b border-gray-300">Guardian Name</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-center border-r border-b border-gray-300">Booking Date</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-b border-gray-300">Passenger Name</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-center border-r border-b border-gray-300">Passport No</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-b border-gray-300">Mobile</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-b border-gray-300">Finger Charge</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-b border-gray-300">Costing</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-center border-r border-b border-gray-300">Finger Deadline</th>
+                            <!-- REMOVED: Location column -->
+                            <!-- <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-b border-gray-300">Location</th> -->
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-center border-r border-b border-gray-300">Completed Date</th>
+                            <!-- REMOVED: Finger Status column -->
+                            <!-- <th class="px-2 py-2 text-xs font-bold text-gray-700 text-center border-r border-b border-gray-300">Finger Status</th> -->
+                            <!-- REMOVED: Approved VISA/Ticket column -->
+                            <!-- <th class="px-2 py-2 text-xs font-bold text-gray-700 text-center border-r border-b border-gray-300">Approved VISA/Ticket</th> -->
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-b border-gray-300">Required Flight</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-b border-gray-300">Actual Flight</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-center border-r border-b border-gray-300">Status</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-b border-gray-300">Remarks</th>
+                            <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-b border-gray-300">Profit/Loss</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportTableBody"></tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mt-0">
+            <div class="flex flex-wrap gap-6">
+                <div class="footer-box rounded-lg overflow-hidden min-w-[320px]">
+                    <div class="footer-box-header px-4 py-2">
+                        <span class="text-sm font-bold text-gray-700">Fingerprint Report Summary</span>
+                    </div>
+                    <div class="p-4">
+                        <div class="grid grid-cols-2 gap-x-8 gap-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Invoices:</span>
+                                <span id="summaryTotalInvoices" class="text-xs font-bold text-gray-800">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total PAX:</span>
+                                <span id="summaryTotalPAX" class="text-xs font-bold text-gray-800">0</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Fingerprint Charge:</span>
+                                <span id="summaryTotalFingerCharge" class="text-xs font-bold text-green-700">0.00 SAR</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Costing:</span>
+                                <span id="summaryTotalCosting" class="text-xs font-bold text-gray-800">0.00 SAR</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Profit:</span>
+                                <span id="summaryTotalProfit" class="text-xs font-bold text-green-700">0.00 SAR</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Loss:</span>
+                                <span id="summaryTotalLoss" class="text-xs font-bold text-red-700">-</span>
+                            </div>
+                            <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
+                                <span class="text-xs font-bold text-gray-700">Net Profit/Loss:</span>
+                                <span id="summaryNetProfitLoss" class="text-xs font-bold text-green-700">0.00 SAR</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div class="px-4 pb-3">
+                        <p class="note-text">Click any row to view detailed passenger information and reschedule history.</p>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    <div class="footer-box rounded-lg overflow-hidden">
+                        <div class="footer-box-header px-4 py-2">
+                            <span class="text-sm font-bold text-gray-700">Export Options</span>
+                        </div>
+                        <div class="p-4 flex gap-3">
+                            <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
+                                <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                                    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                                </svg>
+                                PDF
+                            </button>
+                            <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
+                                <svg class="w-4 h-4 text-green-700" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                                    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                                </svg>
+                                Excel
+                            </button>
+                        </div>
+                    </div>
+
+                    <div class="footer-box rounded-lg overflow-hidden">
+                        <div class="footer-box-header px-4 py-2">
+                            <span class="text-sm font-bold text-gray-700">Report Info</span>
+                        </div>
+                        <div class="p-4">
+                            <p class="text-xs text-gray-600 leading-relaxed">
+                                • Click on any row to view passenger details and reschedule history<br>
+                                • Finger Charge, Costing, and Profit/Loss appear <strong>once per Invoice</strong><br>
+                                • Multiple PAX under same invoice are grouped<br>
+                                • Green = Profit | Red = Loss<br>
+                                • Orange/Blue borders indicate invoice groups
+                            </p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
+                <span class="text-xs text-gray-400">Last Updated: 15-Mar-2026 02:30 PM</span>
+                <span class="text-xs text-gray-400">Generated by BM Umrah System</span>
+            </div>
+        </div>
+    </div>
+
+    <!-- Details Modal -->
+    <div id="detailsModal" class="fixed inset-0 bg-black bg-opacity-50 z-50 hidden flex items-center justify-center p-4">
+        <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
+            <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50">
+                <h3 class="text-lg font-bold text-gray-800">Passenger Details</h3>
+                <button onclick="closeDetailsModal()" class="text-gray-500 hover:text-gray-700 transition-colors">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div id="detailsModalContent" class="p-6 overflow-y-auto max-h-[calc(90vh-80px)]">
+                <!-- Content will be injected by JavaScript -->
+            </div>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script src="fingerprint-report.js"></script>
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+        }
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector('.nav-item[data-tab="fingerprintReport"]')?.classList.add('active');
+    </script>
+</body>
+</html>

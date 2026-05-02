@@ -1,0 +1,399 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receiving Report - BM Umrah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .nav-item { color: #94a3b8; transition: all 0.2s ease; }
+        .nav-item:hover { color: white; background-color: rgba(255,255,255,0.1); }
+        .nav-item.active { background-color: white; color: #1e293b; }
+        
+        .search-input {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
+        }
+        
+        .filter-btn {
+            background: linear-gradient(to bottom, #fff 0%, #e9ecef 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+        
+        .filter-btn:hover {
+            background: linear-gradient(to bottom, #f0f0f0 0%, #e2e6ea 100%);
+        }
+        
+        .date-input {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
+        }
+        
+        .table-header {
+            background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+            border: 1px solid #d4d4d4;
+        }
+        
+        .table-row-payment {
+            background-color: #ffffff;
+            border: 1px solid #d4d4d4;
+        }
+        
+        .table-row-payment:nth-child(even) {
+            background-color: #fafafa;
+        }
+        
+        .table-row-payment:hover {
+            background-color: #e8f4fc !important;
+        }
+        
+        .footer-box {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 2px solid #d4d4d4;
+        }
+        
+        .footer-box-header {
+            background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+            border-bottom: 1px solid #d4d4d4;
+        }
+        
+        .export-btn {
+            background: linear-gradient(to bottom, #fff 0%, #e9ecef 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+        
+        .export-btn:hover {
+            background: linear-gradient(to bottom, #f0f0f0 0%, #dee2e6 100%);
+        }
+        
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.5);
+            cursor: pointer;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+
+        .amount-positive {
+            color: #166534;
+            font-weight: 600;
+        }
+
+        .amount-zero {
+            color: #9ca3af;
+        }
+
+        .summary-card {
+            background: linear-gradient(to bottom, #f0fdf4 0%, #dcfce7 100%);
+            border: 1px solid #22c55e;
+        }
+
+        .summary-card-header {
+            background: linear-gradient(to bottom, #22c55e 0%, #16a34a 100%);
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen px-4">
+    <!-- OLD NAVIGATION
+    <nav class="bg-slate-800 text-white sticky top-0 z-40 shadow-lg -mx-4 pb-8">
+        <div class="max-w-3xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold">BM Umrah Booking</h1>
+                </div>
+                <div class="hidden md:flex space-x-1" id="desktopNav">
+                    <button onclick="window.location.href='booking.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="bookingIndex">Booking</button>
+                    <button onclick="window.location.href='fare-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fareAdmin">Fare Admin</button>
+                    <button onclick="window.location.href='visa-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="visaAdmin">Visa Admin</button>
+                    <button onclick="window.location.href='settings.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="settings">Settings</button>
+                    <button onclick="window.location.href='fingerprint-staff.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fingerprintStaff">Fingerprint Staff</button>
+                    <div class="relative group">
+                        <button class="nav-item px-4 py-2 rounded-md font-medium text-sm">Report ▾</button>
+                        <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-1 py-1 shadow-lg z-50">
+                            <a href="statement.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Statement</a>
+                            <a href="fingerprint-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Fingerprint Report</a>
+                            <a href="visa-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>
+                            <a href="due-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>
+                            <a href="payment-receiving-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap bg-slate-600 text-white">Payment Receiving Report</a>
+                            <a href="pending-outbound-ticket-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Pending Outbound Ticket</a>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="hidden md:hidden bg-slate-700" id="mobileMenu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="window.location.href='booking.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</button>
+                <button onclick="window.location.href='fare-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fare Admin</button>
+                <button onclick="window.location.href='visa-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</button>
+                <button onclick="window.location.href='settings.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Settings</button>
+                <button onclick="window.location.href='fingerprint-staff.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</button>
+                <div class="border-t border-slate-600 pt-2 mt-2">
+                    <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORT</span>
+                    <a href="statement.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Statement</a>
+                    <a href="fingerprint-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</a>
+                    <a href="visa-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Report</a>
+                    <a href="due-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</a>
+                    <a href="payment-receiving-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium bg-slate-600 text-white">Payment Receiving Report</a>
+                    <a href="pending-outbound-ticket-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Pending Outbound Ticket</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    END OLD NAVIGATION -->
+
+    <!-- Dynamic Navigation Container -->
+    <div id="navContainer"></div>
+    
+    <!-- Navigation Scripts -->
+    <script src="nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadNavigation);
+    </script>
+
+    <div class="max-w-[1600px] mx-auto p-4">
+        <div class="mb-3">
+            <span class="text-sm text-gray-500 font-medium">Reports</span>
+            <span class="text-sm text-gray-400 mx-1">></span>
+            <span class="text-sm text-gray-700 font-semibold">Payment Receiving Report</span>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mb-4">
+            <div class="flex flex-wrap items-center justify-between gap-3">
+                <div class="flex items-center gap-3">
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-semibold text-gray-700">From:</label>
+                        <input type="date" id="fromDate" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" value="2026-03-01">
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-semibold text-gray-700">To:</label>
+                        <input type="date" id="toDate" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500" value="2026-04-30">
+                    </div>
+                    <button onclick="applyDateFilter()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                        Apply
+                    </button>
+                </div>
+                <div class="flex items-center gap-2">
+                    <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        PDF
+                    </button>
+                    <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                        Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin mb-4">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[900px] table-fixed">
+                    <thead>
+                        <tr class="table-header">
+                            <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Date</th>
+                            <th class="w-40 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Cash Received</th>
+                            <th class="w-40 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Bank Received</th>
+                            <th class="w-44 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">BD Office Collection</th>
+                            <th class="w-44 px-4 py-3 text-sm font-bold text-gray-700 text-right">KSA Office Collection</th>
+                        </tr>
+                    </thead>
+                    <tbody id="paymentTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
+            <div class="summary-card rounded-lg overflow-hidden border">
+                <div class="summary-card-header px-4 py-2">
+                    <h3 class="text-white text-sm font-bold">Total Cash Received</h3>
+                </div>
+                <div class="px-4 py-4">
+                    <p class="text-2xl font-bold text-green-700" id="totalCash">0 SAR</p>
+                </div>
+            </div>
+            <div class="summary-card rounded-lg overflow-hidden border">
+                <div class="summary-card-header px-4 py-2">
+                    <h3 class="text-white text-sm font-bold">Total Bank Received</h3>
+                </div>
+                <div class="px-4 py-4">
+                    <p class="text-2xl font-bold text-green-700" id="totalBank">0 SAR</p>
+                </div>
+            </div>
+            <div class="summary-card rounded-lg overflow-hidden border">
+                <div class="summary-card-header px-4 py-2">
+                    <h3 class="text-white text-sm font-bold">Total BD Office Collection</h3>
+                </div>
+                <div class="px-4 py-4">
+                    <p class="text-2xl font-bold text-green-700" id="totalBD">0 SAR</p>
+                </div>
+            </div>
+            <div class="summary-card rounded-lg overflow-hidden border">
+                <div class="summary-card-header px-4 py-2">
+                    <h3 class="text-white text-sm font-bold">Total KSA Office Collection</h3>
+                </div>
+                <div class="px-4 py-4">
+                    <p class="text-2xl font-bold text-green-700" id="totalKSA">0 SAR</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="text-center text-sm text-gray-500">
+            Last Updated: <span id="lastUpdated"></span>
+        </div>
+    </div>
+
+    <script>
+        const paymentData = [
+            { date: "2026-03-01", cash: 15250, bank: 28400, bdOffice: 8500, ksaOffice: 12300 },
+            { date: "2026-03-02", cash: 0, bank: 15600, bdOffice: 4200, ksaOffice: 0 },
+            { date: "2026-03-03", cash: 8500, bank: 0, bdOffice: 2100, ksaOffice: 6500 },
+            { date: "2026-03-04", cash: 12300, bank: 35000, bdOffice: 15000, ksaOffice: 8000 },
+            { date: "2026-03-05", cash: 5600, bank: 18500, bdOffice: 0, ksaOffice: 9200 },
+            { date: "2026-03-08", cash: 28000, bank: 45000, bdOffice: 22500, ksaOffice: 18000 },
+            { date: "2026-03-10", cash: 0, bank: 32000, bdOffice: 10000, ksaOffice: 0 },
+            { date: "2026-03-12", cash: 18500, bank: 0, bdOffice: 7500, ksaOffice: 14500 },
+            { date: "2026-03-15", cash: 45000, bank: 52000, bdOffice: 28000, ksaOffice: 22000 },
+            { date: "2026-03-18", cash: 8200, bank: 25600, bdOffice: 0, ksaOffice: 16800 }
+        ];
+
+        let filteredData = [...paymentData];
+
+        function formatCurrency(amount) {
+            return amount.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' SAR';
+        }
+
+        function formatDate(dateStr) {
+            const date = new Date(dateStr);
+            const day = String(date.getDate()).padStart(2, '0');
+            const month = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'][date.getMonth()];
+            const year = date.getFullYear();
+            return `${day}-${month}-${year}`;
+        }
+
+        function getAmountClass(amount) {
+            return amount > 0 ? 'amount-positive' : 'amount-zero';
+        }
+
+        function renderTable(data) {
+            const tbody = document.getElementById('paymentTableBody');
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="5" class="px-4 py-8 text-center text-gray-500">No records found</td></tr>';
+                return;
+            }
+            tbody.innerHTML = data.map(row => `
+                <tr class="table-row-payment">
+                    <td class="px-4 py-3 text-sm text-center border-r border-gray-200 font-medium text-gray-700">${formatDate(row.date)}</td>
+                    <td class="px-4 py-3 text-sm text-right border-r border-gray-200 ${getAmountClass(row.cash)}">${formatCurrency(row.cash)}</td>
+                    <td class="px-4 py-3 text-sm text-right border-r border-gray-200 ${getAmountClass(row.bank)}">${formatCurrency(row.bank)}</td>
+                    <td class="px-4 py-3 text-sm text-right border-r border-gray-200 ${getAmountClass(row.bdOffice)}">${formatCurrency(row.bdOffice)}</td>
+                    <td class="px-4 py-3 text-sm text-right ${getAmountClass(row.ksaOffice)}">${formatCurrency(row.ksaOffice)}</td>
+                </tr>
+            `).join('');
+        }
+
+        function calculateTotals(data) {
+            return data.reduce((acc, row) => ({
+                cash: acc.cash + row.cash,
+                bank: acc.bank + row.bank,
+                bdOffice: acc.bdOffice + row.bdOffice,
+                ksaOffice: acc.ksaOffice + row.ksaOffice
+            }), { cash: 0, bank: 0, bdOffice: 0, ksaOffice: 0 });
+        }
+
+        function updateTotals(data) {
+            const totals = calculateTotals(data);
+            document.getElementById('totalCash').textContent = formatCurrency(totals.cash);
+            document.getElementById('totalBank').textContent = formatCurrency(totals.bank);
+            document.getElementById('totalBD').textContent = formatCurrency(totals.bdOffice);
+            document.getElementById('totalKSA').textContent = formatCurrency(totals.ksaOffice);
+        }
+
+        function applyDateFilter() {
+            const fromDate = document.getElementById('fromDate').value;
+            const toDate = document.getElementById('toDate').value;
+            
+            filteredData = paymentData.filter(row => {
+                const rowDate = row.date;
+                return (!fromDate || rowDate >= fromDate) && (!toDate || rowDate <= toDate);
+            });
+            
+            renderTable(filteredData);
+            updateTotals(filteredData);
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        function updateLastUpdated() {
+            const now = new Date();
+            const options = { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit' };
+            document.getElementById('lastUpdated').textContent = now.toLocaleDateString('en-GB', options);
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            renderTable(filteredData);
+            updateTotals(filteredData);
+            updateLastUpdated();
+        });
+    </script>
+</body>
+</html>

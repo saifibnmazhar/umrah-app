@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Package Details - BM Umrah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .nav-item { color: #94a3b8; transition: all 0.2s ease; }
+        .nav-item:hover { color: white; background-color: rgba(255,255,255,0.1); }
+        .nav-item.active { background-color: white; color: #1e293b; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen px-4">
+    <!-- Dynamic Navigation Container -->
+    <div id="navContainer"></div>
+    
+    <!-- Navigation Scripts -->
+    <script src="nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadNavigation);
+    </script>
+
+    <!-- OLD NAVIGATION
+    <nav class="bg-slate-800 text-white sticky top-0 z-40 shadow-lg -mx-4 pb-8">
+        <div class="max-w-3xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold">BM Umrah Booking</h1>
+                </div>
+                <div class="hidden md:flex space-x-1" id="desktopNav">
+                    <button onclick="window.location.href='dashboard.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="dashboard">Dashboard</button>
+                    <button onclick="window.location.href='booking.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="bookingIndex">Booking</button>
+                    <button onclick="window.location.href='fare-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fareAdmin">Fare Admin</button>
+                    <button onclick="window.location.href='visa-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="visaAdmin">Visa Admin</button>
+                    <button onclick="window.location.href='settings.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="settings">Settings</button>
+                    <button onclick="window.location.href='fingerprint-staff.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fingerprintStaff">Fingerprint Staff</button>
+                    <button onclick="window.location.href='fingerprint-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fingerprintAdmin">Fingerprint Admin</button>
+                    <div class="relative group">
+                        <button class="nav-item px-4 py-2 rounded-md font-medium text-sm">Report ▾</button>
+                        <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50">
+                            <a href="statement.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Statement</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="fingerprint-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Fingerprint Report</a>
+                            <a href="visa-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>
+                            <a href="visa-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Report</a>
+                            <a href="ticket-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agent Report</a>
+                            <a href="due-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>
+                            <a href="payment-receiving-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payment Receiving Report</a>
+                            <a href="reissue-refund-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Reissue & Refund Report</a>
+                            <a href="user-wise-sales-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">User Wise Sales Report</a>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="hidden md:hidden bg-slate-700" id="mobileMenu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="window.location.href='dashboard.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Dashboard</button>
+                <button onclick="window.location.href='booking.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</button>
+                <button onclick="window.location.href='fare-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fare Admin</button>
+                <button onclick="window.location.href='visa-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</button>
+                <button onclick="window.location.href='settings.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Settings</button>
+                <button onclick="window.location.href='fingerprint-staff.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</button>
+                <button onclick="window.location.href='fingerprint-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Admin</button>
+                <div class="border-t border-slate-600 pt-2 mt-2">
+                    <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORT</span>
+                    <button onclick="window.location.href='statement.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Statement</button>
+                    <button onclick="window.location.href='profit-loss-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</button>
+                    <button onclick="window.location.href='fingerprint-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</button>
+                    <button onclick="window.location.href='visa-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Report</button>
+                    <button onclick="window.location.href='visa-agent-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Report</button>
+                    <button onclick="window.location.href='ticket-agent-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agent Report</button>
+                    <button onclick="window.location.href='due-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</button>
+                    <button onclick="window.location.href='payment-receiving-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payment Receiving Report</button>
+                    <button onclick="window.location.href='reissue-refund-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Reissue & Refund Report</button>
+                    <button onclick="window.location.href='user-wise-sales-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">User Wise Sales Report</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    END OLD NAVIGATION -->
+
+
+    <div class="max-w-3xl mx-auto pt-6">
+        <div class="mb-4">
+            <button onclick="window.location.href='dashboard.html'" class="flex items-center gap-2 text-slate-600 hover:text-slate-800 transition">
+                <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
+                </svg>
+                Back to Dashboard
+            </button>
+        </div>
+
+        <div id="packageDetailsSection" class="bg-white rounded-xl shadow-lg p-6">
+            <div class="flex items-start justify-between mb-6">
+                <div>
+                    <h2 id="packageName" class="text-2xl font-bold text-slate-800">Package Name</h2>
+                    <span id="packageTypeBadge" class="inline-flex items-center px-3 py-1 rounded-full text-sm font-medium mt-2">Type</span>
+                </div>
+                <button onclick="addBooking()" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2 shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Booking
+                </button>
+            </div>
+
+            <div class="border-t border-slate-200 pt-6">
+                <h3 class="text-lg font-semibold text-slate-700 mb-4">Package Information</h3>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <p class="text-sm text-slate-500 mb-1">Ticket Details</p>
+                        <p id="packageTicket" class="text-slate-800 font-medium">-</p>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <p class="text-sm text-slate-500 mb-1">Available Tickets</p>
+                        <p id="packageAvailable" class="text-slate-800 font-medium">-</p>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <p class="text-sm text-slate-500 mb-1">Effective From</p>
+                        <p id="packageEffectiveFrom" class="text-slate-800 font-medium">-</p>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <p class="text-sm text-slate-500 mb-1">Effective To</p>
+                        <p id="packageEffectiveTo" class="text-slate-800 font-medium">-</p>
+                    </div>
+                </div>
+            </div>
+
+            <div class="border-t border-slate-200 pt-6 mt-6">
+                <h3 class="text-lg font-semibold text-slate-700 mb-4">Pricing</h3>
+                <div class="bg-slate-50 rounded-lg p-6">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="text-sm text-slate-500 mb-1">Regular Price</p>
+                            <p id="packageRegularPrice" class="text-2xl font-bold text-slate-800">0 SAR</p>
+                        </div>
+                        <div id="offerPriceSection" class="hidden text-right">
+                            <p class="text-sm text-slate-500 mb-1">Offer Price</p>
+                            <p id="packageOfferPrice" class="text-2xl font-bold text-emerald-600">0 SAR</p>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div id="packageNotFound" class="hidden bg-white rounded-xl shadow-lg p-6 text-center">
+            <p class="text-slate-600">Package not found.</p>
+            <button onclick="window.location.href='dashboard.html'" class="mt-4 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition">
+                Back to Dashboard
+            </button>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+        let currentPackageIndex = null;
+        let currentPackage = null;
+
+        function loadAdminSettings() {
+            const saved = localStorage.getItem('adminSettings');
+            if (saved) {
+                return JSON.parse(saved);
+            }
+            return { packageConfigs: [] };
+        }
+
+        function parseTicketDetails(ticketString) {
+            if (!ticketString) return { route: '', airline: '', class: '' };
+            const parts = ticketString.split(' - ');
+            return {
+                route: parts[0] || '',
+                airline: parts[1] || '',
+                class: parts[2] || ''
+            };
+        }
+
+        function formatDate(dateStr) {
+            if (!dateStr || dateStr === '') return '-';
+            const date = new Date(dateStr);
+            return date.toLocaleDateString('en-US', { day: '2-digit', month: 'short', year: 'numeric' });
+        }
+
+        function renderPackageDetails() {
+            const params = new URLSearchParams(window.location.search);
+            const index = params.get('index');
+
+            if (index === null) {
+                document.getElementById('packageDetailsSection').classList.add('hidden');
+                document.getElementById('packageNotFound').classList.remove('hidden');
+                return;
+            }
+
+            const adminSettings = loadAdminSettings();
+            const packages = adminSettings.packageConfigs || [];
+            currentPackageIndex = parseInt(index);
+
+            if (!packages[currentPackageIndex]) {
+                document.getElementById('packageDetailsSection').classList.add('hidden');
+                document.getElementById('packageNotFound').classList.remove('hidden');
+                return;
+            }
+
+            currentPackage = packages[currentPackageIndex];
+            const ticketDetails = parseTicketDetails(currentPackage.ticket);
+
+            document.getElementById('packageName').textContent = currentPackage.packageName;
+
+            const typeBadge = document.getElementById('packageTypeBadge');
+            if (currentPackage.ticketType === 'Offer') {
+                typeBadge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-green-100 text-green-700';
+                typeBadge.textContent = 'Offer';
+            } else if (currentPackage.ticketType === 'Group') {
+                typeBadge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-purple-100 text-purple-700';
+                typeBadge.textContent = 'Group';
+            } else {
+                typeBadge.className = 'inline-flex items-center px-3 py-1 rounded-full text-sm font-medium bg-slate-100 text-slate-700';
+                typeBadge.textContent = 'Regular';
+            }
+
+            document.getElementById('packageTicket').textContent = currentPackage.ticket || '-';
+            document.getElementById('packageAvailable').textContent = currentPackage.ticketType === 'Group' ? (currentPackage.availableTicket || 0) + ' tickets' : '-';
+            document.getElementById('packageEffectiveFrom').textContent = formatDate(currentPackage.effectiveFrom);
+            document.getElementById('packageEffectiveTo').textContent = formatDate(currentPackage.effectiveTo);
+
+            document.getElementById('packageRegularPrice').textContent = (currentPackage.regularPrice || 0).toLocaleString() + ' SAR';
+
+            const offerSection = document.getElementById('offerPriceSection');
+            if (currentPackage.ticketType === 'Offer' && currentPackage.offerPrice > 0) {
+                offerSection.classList.remove('hidden');
+                document.getElementById('packageOfferPrice').textContent = currentPackage.offerPrice.toLocaleString() + ' SAR';
+            } else {
+                offerSection.classList.add('hidden');
+            }
+        }
+
+        function addBooking() {
+            if (currentPackageIndex !== null) {
+                window.location.href = 'booking.html?package=' + currentPackageIndex;
+            }
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            renderPackageDetails();
+        });
+    </script>
+</body>
+</html>

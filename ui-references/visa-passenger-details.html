@@ -1,0 +1,853 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Passenger Details - Visa Admin - BM Umrah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .modal-overlay { transition: opacity 0.2s ease; }
+        .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
+        .toast { transition: transform 0.3s ease, opacity 0.3s ease; }
+        .nav-item { color: #94a3b8; transition: all 0.2s ease; }
+        .nav-item:hover { color: white; background-color: rgba(255,255,255,0.1); }
+        .nav-item.active { background-color: white; color: #1e293b; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen px-4">
+    <!-- OLD NAVIGATION
+    <nav class="bg-slate-800 text-white sticky top-0 z-40 shadow-lg -mx-4 pb-8">
+        <div class="max-w-3xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0 flex items-center gap-3">
+                    <button onclick="window.location.href='visa-admin.html'" class="text-slate-300 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <h1 class="text-xl font-bold">BM Umrah Booking</h1>
+                </div>
+                <div class="hidden md:flex space-x-1" id="desktopNav">
+                    <button onclick="window.location.href='dashboard.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="dashboard">Dashboard</button>
+                    <button onclick="window.location.href='booking.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="bookingIndex">Booking</button>
+                    <button onclick="window.location.href='fare-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fareAdmin">Fare Admin</button>
+                    <button onclick="window.location.href='visa-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="visaAdmin">Visa Admin</button>
+                    <button onclick="window.location.href='settings.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="settings">Settings</button>
+                    <button onclick="window.location.href='fingerprint-staff.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fingerprintStaff">Fingerprint Staff</button>
+                    <div class="relative group">
+                        <button class="nav-item px-4 py-2 rounded-md font-medium text-sm">Report ▾</button>
+                        <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50">
+                            <a href="statement.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap" data-tab="statement">Statement</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="fingerprint-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Fingerprint Report</a>
+                            <a href="visa-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>
+                            <a href="visa-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Report</a>
+                            <a href="ticket-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agent Report</a>
+                            <a href="due-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>
+                            <a href="reissue-refund-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Reissue & Refund Report</a>
+                            <a href="pending-outbound-ticket-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Pending Outbound Ticket</a>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="hidden md:hidden bg-slate-700" id="mobileMenu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="window.location.href='dashboard.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Dashboard</button>
+                <button onclick="window.location.href='booking.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</button>
+                <button onclick="window.location.href='fare-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fare Admin</button>
+                <button onclick="window.location.href='visa-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</button>
+                <button onclick="window.location.href='settings.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Settings</button>
+                <button onclick="window.location.href='fingerprint-staff.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</button>
+                <div class="border-t border-slate-600 pt-2 mt-2">
+                    <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORT</span>
+                    <button onclick="window.location.href='statement.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Statement</button>
+                    <button onclick="window.location.href='profit-loss-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</button>
+                    <button onclick="window.location.href='fingerprint-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</button>
+                    <button onclick="window.location.href='visa-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Report</button>
+                    <button onclick="window.location.href='visa-agent-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Report</button>
+                    <button onclick="window.location.href='ticket-agent-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agent Report</button>
+                    <button onclick="window.location.href='due-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</button>
+                    <button onclick="window.location.href='reissue-refund-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Reissue & Refund Report</button>
+                    <button onclick="window.location.href='pending-outbound-ticket-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Pending Outbound Ticket</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    END OLD NAVIGATION -->
+
+    <!-- Dynamic Navigation Container -->
+    <div id="navContainer"></div>
+    
+    <!-- Navigation Scripts -->
+    <script src="nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadNavigation);
+    </script>
+
+    <div class="max-w-3xl mx-auto pt-6">
+        <div id="passengerDetailsContent" class="space-y-6">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
+                    <div>
+                        <h2 class="text-xl font-semibold text-slate-800" id="passengerName">Passenger Details</h2>
+                        <p class="text-slate-500 text-sm mt-1" id="passengerInvoiceInfo">Invoice: <span id="passengerInvoiceNo">-</span></p>
+                    </div>
+                    <button onclick="window.location.href='visa-admin.html'" class="text-slate-400 hover:text-slate-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <h3 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Basic Information</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <span class="text-xs text-slate-400">Full Name</span>
+                                <p class="text-slate-800 font-medium" id="detailsFullName">-</p>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <span class="text-xs text-slate-400">Passport No.</span>
+                                    <p class="text-slate-800" id="detailsPassport">-</p>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-slate-400">Passport Expiry</span>
+                                    <p class="text-slate-800" id="detailsPassportExpiry">-</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <span class="text-xs text-slate-400">Date of Birth</span>
+                                    <p class="text-slate-800" id="detailsDob">-</p>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-slate-400">Passenger Type</span>
+                                    <p class="text-slate-800" id="detailsPassengerType">-</p>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-400">Mobile No.</span>
+                                <p class="text-slate-800" id="detailsMobile">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <h3 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Service Information</h3>
+                        <div class="space-y-3">
+                            <div>
+                                <span class="text-xs text-slate-400">Package</span>
+                                <p class="text-slate-800" id="detailsPackage">-</p>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-400">Service Required</span>
+                                <p class="text-slate-800" id="detailsService">-</p>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-400">Status</span>
+                                <p class="text-slate-800" id="detailsStatus">-</p>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-400">Fingerprint Location</span>
+                                <p class="text-slate-800" id="detailsFingerprintLocation">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <h3 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Travel Details</h3>
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <span class="text-xs text-slate-400">Route</span>
+                                    <p class="text-slate-800" id="detailsRoute">-</p>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-slate-400">Airline</span>
+                                    <p class="text-slate-800" id="detailsAirline">-</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <span class="text-xs text-slate-400">Class</span>
+                                    <p class="text-slate-800" id="detailsClass">-</p>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-slate-400">Flight Date Range</span>
+                                    <p class="text-slate-800" id="detailsFlightDateRange">-</p>
+                                </div>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-400">Address</span>
+                                <p class="text-slate-800" id="detailsAddress">-</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                            <h3 class="text-sm font-medium text-slate-500">Documents</h3>
+                            <div class="flex gap-2">
+                                <button onclick="openDocUploadModalPassengerDetails()" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">Upload</button>
+                                <button onclick="downloadPassengerDocs()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
+                            </div>
+                        </div>
+                        <div id="documentsList" class="space-y-2">
+                            <p class="text-sm text-slate-400">No documents uploaded</p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-200">
+                    <div class="bg-white rounded-xl shadow-lg p-6">
+                        <div class="flex justify-between items-center mb-4">
+                            <h3 class="text-lg font-semibold text-slate-800">Visa Submission History</h3>
+                            <div class="flex gap-2">
+                                <button onclick="openCancellationModal()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium text-sm">Cancel</button>
+                                <button onclick="openVisaResubmitModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">Visa Re-Submit</button>
+                            </div>
+                        </div>
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[800px] text-sm">
+                                <thead class="bg-slate-50 text-slate-600">
+                                    <tr>
+                                        <th class="px-3 py-2 text-left font-medium">Date</th>
+                                        <th class="px-3 py-2 text-left font-medium">Agent</th>
+                                        <th class="px-3 py-2 text-right font-medium">Agent Cost</th>
+                                        <!-- <th class="px-3 py-2 text-right font-medium">Agent Payment</th> -->
+                                        <!-- <th class="px-3 py-2 text-right font-medium">Outstanding Payment</th> -->
+                                        <th class="px-3 py-2 text-left font-medium">Flight Date</th>
+                                        <th class="px-3 py-2 text-left font-medium">Status</th>
+                                        <th class="px-3 py-2 text-right font-medium">Cancellation Fee</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="visaSubmissionHistoryBody" class="divide-y divide-slate-200">
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mt-6 pt-4 border-t border-slate-200 flex gap-3">
+                    <button onclick="goBack()" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Back to List</button>
+                </div>
+            </div>
+        </div>
+
+        <div id="notFound" class="hidden bg-white rounded-xl shadow-lg p-12 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h2 class="text-xl font-semibold text-slate-800 mb-2">Passenger Not Found</h2>
+            <p class="text-slate-500 mb-6">The passenger details you're looking for could not be found.</p>
+            <button onclick="window.location.href='visa-admin.html'" class="px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Go to Visa Admin</button>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <input type="file" id="passengerDetailsDocInput" class="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple>
+
+    <div id="visaResubmitModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeVisaResubmitModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Visa Re-Submit</h3>
+            <form id="visaResubmitForm" onsubmit="handleVisaResubmit(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent *</label>
+                        <select id="visaResubmitAgent" required onchange="updateResubmitCommissionAgentOptions()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Agent</option>
+                            <option value="Visa Agent A">Visa Agent A</option>
+                            <option value="Visa Agent B">Visa Agent B</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Commission Agent *</label>
+                        <select id="visaResubmitCommissionAgent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Commission Agent</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Selling Price (SAR)</label>
+                        <input type="number" id="visaResubmitSellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
+                        <input type="number" id="visaResubmitAgentCommission" oninput="updateVisaResubmitFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
+                        <input type="number" id="visaResubmitNetVisaCost" oninput="updateVisaResubmitFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Final Visa Cost (SAR)</label>
+                        <input type="number" id="visaResubmitFinal" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold" value="0">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                    <button type="button" onclick="closeVisaResubmitModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="cancellationModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeCancellationModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Cancellation</h3>
+            <form id="cancellationForm" onsubmit="handleCancellation(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Name</label>
+                        <input type="text" id="cancelAgentName" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Cost (SAR)</label>
+                        <input type="number" id="cancelAgentCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <!-- <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Payment (SAR)</label>
+                        <input type="number" id="cancelAgentPayment" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Outstanding Payment (SAR)</label>
+                        <input type="number" id="cancelOutstandingPayment" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div> -->
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Cancellation Fee (SAR) *</label>
+                        <input type="number" id="cancellationFee" required min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter cancellation fee">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">Submit Cancellation</button>
+                    <button type="button" onclick="closeCancellationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script src="visa-admin.js"></script>
+    <script>
+        function loadPassengerDetails() {
+            const params = new URLSearchParams(window.location.search);
+            const index = params.get('index');
+            
+            if (index === null || index === '') {
+                showNotFound();
+                return;
+            }
+            
+            const rowIndex = parseInt(index);
+            const row = passengerIndexState.passengerIndexRows[rowIndex];
+            
+            if (!row) {
+                showNotFound();
+                return;
+            }
+            
+            renderPassengerDetails(row, rowIndex);
+        }
+        
+        function renderPassengerDetails(row, rowIndex) {
+            document.getElementById('passengerName').textContent = row.passengerName || 'Passenger Details';
+            document.getElementById('passengerInvoiceNo').textContent = row.invoiceNo || '-';
+            document.getElementById('detailsFullName').textContent = row.passengerName || '-';
+            document.getElementById('detailsPassport').textContent = row.passport || '-';
+            document.getElementById('detailsPassportExpiry').textContent = row.passportExpiry || '-';
+            document.getElementById('detailsDob').textContent = row.dateOfBirth || '-';
+            document.getElementById('detailsPassengerType').textContent = row.passengerData?.passengerType || row.ticketFare?.passengerType || '-';
+            document.getElementById('detailsMobile').textContent = row.mobileNo || '-';
+            document.getElementById('detailsPackage').textContent = row.package || '-';
+            document.getElementById('detailsService').textContent = row.passengerData?.service || '-';
+            document.getElementById('detailsStatus').textContent = row.status || '-';
+            document.getElementById('detailsFingerprintLocation').textContent = row.fingerprintLocation || '-';
+            document.getElementById('detailsRoute').textContent = row.route || '-';
+            document.getElementById('detailsAirline').textContent = row.ticketFare?.airline || row.passengerData?.airline || '-';
+            document.getElementById('detailsClass').textContent = row.ticketFare?.travelClass || row.passengerData?.travelClass || '-';
+            document.getElementById('detailsFlightDateRange').textContent = row.ticketFare?.flightDateRange || row.passengerData?.flightDateRange || '-';
+            document.getElementById('detailsAddress').textContent = row.passengerData?.address || '-';
+            
+            renderDocumentsList(rowIndex);
+        }
+        
+        function showNotFound() {
+            document.getElementById('passengerDetailsContent').classList.add('hidden');
+            document.getElementById('notFound').classList.remove('hidden');
+        }
+        
+        function goBack() {
+            window.location.href = 'visa-admin.html';
+        }
+
+        let currentPassengerDocFiles = [];
+
+        function openDocUploadModalPassengerDetails() {
+            document.getElementById('passengerDetailsDocInput').click();
+        }
+
+        function handlePassengerDetailsDocSelect(event) {
+            const files = event.target.files;
+            const maxSize = 5 * 1024 * 1024;
+            const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+            const urlParams = new URLSearchParams(window.location.search);
+            const rowIndex = parseInt(urlParams.get('index'));
+
+            Array.from(files).forEach(file => {
+                if (!allowedTypes.includes(file.type)) {
+                    showToast('Invalid file type: ' + file.name);
+                    return;
+                }
+                if (file.size > maxSize) {
+                    showToast('File too large: ' + file.name);
+                    return;
+                }
+
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const docData = {
+                        id: 'doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: e.target.result,
+                        uploadDate: new Date().toISOString().split('T')[0]
+                    };
+                    passengerIndexState.passengerIndexRows[rowIndex].documents.push(docData);
+                    saveDocumentsToStorage();
+                    renderDocumentsList(rowIndex);
+                    showToast('Document uploaded: ' + file.name);
+                };
+                reader.readAsDataURL(file);
+            });
+        }
+
+        function renderDocumentsList(rowIndex) {
+            const row = passengerIndexState.passengerIndexRows[rowIndex];
+            const container = document.getElementById('documentsList');
+            
+            if (!row.documents || row.documents.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-400">No documents uploaded</p>';
+                return;
+            }
+
+            container.innerHTML = row.documents.map((doc, i) => `
+                <div class="flex items-center justify-between bg-white rounded px-3 py-2 border border-slate-200">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span class="text-sm text-slate-700">${doc.name}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="downloadSinglePassengerDoc(${rowIndex}, ${i})" class="text-blue-500 hover:text-blue-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                        </button>
+                        <button onclick="deletePassengerDoc(${rowIndex}, ${i})" class="text-red-500 hover:text-red-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function deletePassengerDoc(rowIndex, docIndex) {
+            passengerIndexState.passengerIndexRows[rowIndex].documents.splice(docIndex, 1);
+            saveDocumentsToStorage();
+            renderDocumentsList(rowIndex);
+            showToast('Document deleted');
+        }
+
+        function downloadSinglePassengerDoc(rowIndex, docIndex) {
+            const row = passengerIndexState.passengerIndexRows[rowIndex];
+            const doc = row.documents[docIndex];
+            
+            if (!doc) {
+                showToast('No document to download');
+                return;
+            }
+            
+            if (doc.data) {
+                const link = document.createElement('a');
+                link.href = doc.data;
+                link.download = doc.name;
+                link.click();
+                showToast('Document downloaded');
+                return;
+            }
+            
+            if (doc.type.startsWith('image/')) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 400;
+                canvas.height = 300;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(0, 0, 400, 300);
+                ctx.fillStyle = '#666';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(doc.name, 200, 150);
+                const dataUrl = canvas.toDataURL(doc.type);
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = doc.name;
+                link.click();
+            } else {
+                const content = `Sample Document: ${doc.name}
+Type: ${doc.type}
+Upload Date: ${doc.uploadDate || 'N/A'}
+Size: ${doc.size || 'N/A'}
+
+(This is a sample document for demo purposes)`;
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = doc.name;
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
+            
+            showToast('Document downloaded');
+        }
+
+        function downloadPassengerDocs() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const rowIndex = parseInt(urlParams.get('index'));
+            const row = passengerIndexState.passengerIndexRows[rowIndex];
+
+            if (!row || !row.documents || row.documents.length === 0) {
+                showToast('No documents to download');
+                return;
+            }
+
+            if (typeof jspdf === 'undefined') {
+                showToast('PDF library not loaded');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            let hasContent = false;
+
+            row.documents.forEach((doc, i) => {
+                if (doc.data) {
+                    hasContent = true;
+                    if (i > 0) pdf.addPage();
+
+                    if (doc.type.startsWith('image/')) {
+                        try {
+                            pdf.addImage(doc.data, 'JPEG', 10, 10, 180, 250);
+                        } catch (e) {
+                            pdf.text(`Image: ${doc.name}`, 10, 20);
+                        }
+                    } else {
+                        pdf.text(`Document: ${doc.name}`, 10, 20);
+                        pdf.text('(PDF content cannot be previewed in demo)', 10, 30);
+                    }
+                } else {
+                    if (i > 0) pdf.addPage();
+                    pdf.setFontSize(12);
+                    pdf.text(`Sample Document: ${doc.name}`, 10, 20);
+                    pdf.setFontSize(10);
+                    pdf.text(`Type: ${doc.type}`, 10, 30);
+                    pdf.text(`Upload Date: ${doc.uploadDate || 'N/A'}`, 10, 40);
+                    pdf.text('(Sample document for demo)', 10, 50);
+                    hasContent = true;
+                }
+            });
+
+            if (hasContent) {
+                pdf.save(`${row.passengerName}_documents.pdf`);
+                showToast('Documents downloaded');
+            } else {
+                showToast('No downloadable content');
+            }
+        }
+
+        document.getElementById('passengerDetailsDocInput')?.addEventListener('change', handlePassengerDetailsDocSelect);
+
+        function openVisaResubmitModal() {
+            const params = new URLSearchParams(window.location.search);
+            const index = params.get('index');
+            const rowIndex = parseInt(index);
+            const row = passengerIndexState.passengerIndexRows[rowIndex];
+            
+            const latestVisa = visaAdminState.visaPriceRecords[0];
+            const defaultPrice = latestVisa?.price || 500;
+            
+            document.getElementById('visaResubmitModal')?.classList.remove('hidden');
+            
+            if (row && row.visa) {
+                document.getElementById('visaResubmitAgent').value = row.visa.agent || '';
+                document.getElementById('visaResubmitCommissionAgent').value = row.visa.commissionAgent || '';
+                document.getElementById('visaResubmitSellingPrice').value = row.visa.sellingPrice || defaultPrice;
+                document.getElementById('visaResubmitAgentCommission').value = row.visa.agentCommission || 0;
+                document.getElementById('visaResubmitNetVisaCost').value = row.visa.netVisaCost || 0;
+                document.getElementById('visaResubmitFinal').value = row.visa.finalCost || defaultPrice;
+            } else {
+                document.getElementById('visaResubmitAgent').value = '';
+                document.getElementById('visaResubmitCommissionAgent').value = '';
+                document.getElementById('visaResubmitSellingPrice').value = defaultPrice;
+                document.getElementById('visaResubmitAgentCommission').value = 0;
+                document.getElementById('visaResubmitNetVisaCost').value = 0;
+                document.getElementById('visaResubmitFinal').value = defaultPrice;
+            }
+            
+            updateResubmitCommissionAgentOptions();
+            updateVisaResubmitFinal();
+        }
+        
+        function closeVisaResubmitModal() {
+            document.getElementById('visaResubmitModal')?.classList.add('hidden');
+        }
+        
+        function updateResubmitCommissionAgentOptions() {
+            const agent = document.getElementById('visaResubmitAgent').value;
+            const commissionSelect = document.getElementById('visaResubmitCommissionAgent');
+            
+            const agents = {
+                "Visa Agent A": ["Commission Agent 1", "Commission Agent 2"],
+                "Visa Agent B": ["Commission Agent 3", "Commission Agent 4"]
+            };
+            
+            commissionSelect.innerHTML = '<option value="">Select Commission Agent</option>';
+            if (agents[agent]) {
+                agents[agent].forEach(a => {
+                    const option = document.createElement('option');
+                    option.value = a;
+                    option.textContent = a;
+                    commissionSelect.appendChild(option);
+                });
+            }
+        }
+        
+        function updateVisaResubmitFinal() {
+            const sellingPrice = parseFloat(document.getElementById('visaResubmitSellingPrice').value) || 0;
+            const commission = parseFloat(document.getElementById('visaResubmitAgentCommission').value) || 0;
+            const netCost = parseFloat(document.getElementById('visaResubmitNetVisaCost').value) || 0;
+            document.getElementById('visaResubmitFinal').value = sellingPrice + commission + netCost;
+        }
+        
+        function handleVisaResubmit(e) {
+            e.preventDefault();
+            
+            const params = new URLSearchParams(window.location.search);
+            const index = params.get('index');
+            const rowIndex = parseInt(index);
+            
+            const agentCommission = parseFloat(document.getElementById('visaResubmitAgentCommission').value) || 0;
+            const netVisaCost = parseFloat(document.getElementById('visaResubmitNetVisaCost').value) || 0;
+            
+            const visaData = {
+                agent: document.getElementById('visaResubmitAgent').value,
+                commissionAgent: document.getElementById('visaResubmitCommissionAgent').value,
+                sellingPrice: parseFloat(document.getElementById('visaResubmitSellingPrice').value) || 0,
+                agentCommission: agentCommission,
+                netVisaCost: netVisaCost,
+                finalCost: agentCommission + netVisaCost,
+                resubmittedAt: new Date().toISOString()
+            };
+            
+            passengerIndexState.passengerIndexRows[rowIndex].visa = visaData;
+            
+            closeVisaResubmitModal();
+            renderPassengerDetails(passengerIndexState.passengerIndexRows[rowIndex]);
+            renderVisaSubmissionHistory();
+            showToast('Visa re-submitted successfully');
+        }
+
+        let currentHistoryItem = null;
+
+        function openCancellationModal() {
+            const visaHistoryData = [
+                { date: '2026-02-01', agent: 'Visa Agent A', agentCost: 2500, flightDate: '2026-04-20', status: 'Submitted', cancellationFee: 0 },
+                { date: '2026-02-15', agent: 'Visa Agent A', agentCost: 1800, flightDate: '2026-04-05', status: 'Cancelled', cancellationFee: 500 },
+                { date: '2026-03-01', agent: 'Visa Agent B', agentCost: 2200, flightDate: '2026-04-15', status: 'Submitted', cancellationFee: 0 },
+                { date: '2026-03-10', agent: 'Visa Agent B', agentCost: 3000, flightDate: '2026-04-20', status: 'Issued', cancellationFee: 0 }
+            ];
+            
+            currentHistoryItem = visaHistoryData[0];
+            
+            document.getElementById('cancelAgentName').value = currentHistoryItem.agent;
+            document.getElementById('cancelAgentCost').value = currentHistoryItem.agentCost;
+            // document.getElementById('cancelAgentPayment').value = currentHistoryItem.agentPayment;
+            // document.getElementById('cancelOutstandingPayment').value = currentHistoryItem.outstandingPayment;
+            document.getElementById('cancellationFee').value = '';
+            
+            document.getElementById('cancellationModal')?.classList.remove('hidden');
+        }
+
+        function closeCancellationModal() {
+            document.getElementById('cancellationModal')?.classList.add('hidden');
+            currentHistoryItem = null;
+        }
+
+        function handleCancellation(e) {
+            e.preventDefault();
+            
+            const visaHistoryData = [
+                { date: '2026-02-01', agent: 'Visa Agent A', agentCost: 2500, flightDate: '2026-04-20', status: 'Submitted', cancellationFee: 0 },
+                { date: '2026-02-15', agent: 'Visa Agent A', agentCost: 1800, flightDate: '2026-04-05', status: 'Cancelled', cancellationFee: 500 },
+                { date: '2026-03-01', agent: 'Visa Agent B', agentCost: 2200, flightDate: '2026-04-15', status: 'Submitted', cancellationFee: 0 },
+                { date: '2026-03-10', agent: 'Visa Agent B', agentCost: 3000, flightDate: '2026-04-20', status: 'Issued', cancellationFee: 0 }
+            ];
+            
+            const cancellationFee = parseFloat(document.getElementById('cancellationFee').value) || 0;
+            
+            const newRow = {
+                date: new Date().toISOString().split('T')[0],
+                agent: currentHistoryItem.agent,
+                agentCost: currentHistoryItem.agentCost,
+                flightDate: currentHistoryItem.flightDate,
+                status: 'Cancelled',
+                cancellationFee: cancellationFee
+            };
+            
+            visaHistoryData.push(newRow);
+            
+            renderVisaSubmissionHistoryWithData(visaHistoryData);
+            closeCancellationModal();
+            showToast('Cancellation submitted successfully');
+        }
+
+        function renderVisaSubmissionHistoryWithData(data) {
+            const tbody = document.getElementById('visaSubmissionHistoryBody');
+            if (!tbody) return;
+            
+            tbody.innerHTML = '';
+            
+            data.forEach(item => {
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50';
+                
+                let statusBadge = '';
+                switch(item.status) {
+                    case 'Submitted':
+                        statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Submitted</span>';
+                        break;
+                    case 'Cancelled':
+                        statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>';
+                        break;
+                    case 'Issued':
+                        statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Issued</span>';
+                        break;
+                }
+                
+                tr.innerHTML = `
+                    <td class="px-3 py-2 text-slate-600">${item.date}</td>
+                    <td class="px-3 py-2 text-slate-800">${item.agent}</td>
+                    <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.agentCost.toLocaleString()} SAR</td>
+                    <td class="px-3 py-2 text-slate-600">${item.flightDate}</td>
+                    <td class="px-3 py-2">${statusBadge}</td>
+                    <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.cancellationFee ? item.cancellationFee.toLocaleString() + ' SAR' : '-'}</td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderVisaSubmissionHistory() {
+            try {
+                console.log('Rendering Visa Submission History...');
+                const tbody = document.getElementById('visaSubmissionHistoryBody');
+                if (!tbody) {
+                    console.error('visaSubmissionHistoryBody element not found');
+                    return;
+                }
+                
+                const visaHistoryData = [
+                    { date: '2026-02-01', agent: 'Visa Agent A', agentCost: 2500, flightDate: '2026-04-20', status: 'Submitted', cancellationFee: 0 },
+                    { date: '2026-02-15', agent: 'Visa Agent A', agentCost: 1800, flightDate: '2026-04-05', status: 'Cancelled', cancellationFee: 500 },
+                    { date: '2026-03-01', agent: 'Visa Agent B', agentCost: 2200, flightDate: '2026-04-15', status: 'Submitted', cancellationFee: 0 },
+                    { date: '2026-03-10', agent: 'Visa Agent B', agentCost: 3000, flightDate: '2026-04-20', status: 'Issued', cancellationFee: 0 }
+                ];
+                
+                console.log('Visa history data:', visaHistoryData);
+                
+                tbody.innerHTML = '';
+                
+                let selectedHistoryItem = null;
+                
+                visaHistoryData.forEach((item, idx) => {
+                    const tr = document.createElement('tr');
+                    tr.className = 'hover:bg-slate-50';
+                    
+                    let statusBadge = '';
+                    switch(item.status) {
+                        case 'Submitted':
+                            statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Submitted</span>';
+                            break;
+                        case 'Cancelled':
+                            statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>';
+                            break;
+                        case 'Issued':
+                            statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Issued</span>';
+                            break;
+                    }
+                    
+                    tr.innerHTML = `
+                        <td class="px-3 py-2 text-slate-600">${item.date}</td>
+                        <td class="px-3 py-2 text-slate-800">${item.agent}</td>
+                        <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.agentCost.toLocaleString()} SAR</td>
+                        <td class="px-3 py-2 text-slate-600">${item.flightDate}</td>
+                        <td class="px-3 py-2">${statusBadge}</td>
+                        <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.cancellationFee ? item.cancellationFee.toLocaleString() + ' SAR' : '-'}</td>
+                    `;
+                    tbody.appendChild(tr);
+                });
+                
+                console.log('Visa Submission History rendered successfully. Rows:', visaHistoryData.length);
+            } catch (error) {
+                console.error('Error rendering Visa Submission History:', error);
+            }
+        }
+        
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPassengerDetails();
+            renderVisaSubmissionHistory();
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector('.nav-item[data-tab="visaAdmin"]')?.classList.add('active');
+        });
+    </script>
+</body>
+</html>

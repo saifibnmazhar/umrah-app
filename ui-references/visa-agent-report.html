@@ -1,0 +1,846 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visa Agent Report - BM Umrah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .modal-overlay { transition: opacity 0.2s ease; }
+        .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
+        .toast { transition: transform 0.3s ease, opacity 0.3s ease; }
+        .nav-item { color: #94a3b8; transition: all 0.2s ease; }
+        .nav-item:hover { color: white; background-color: rgba(255,255,255,0.1); }
+        .nav-item.active { background-color: white; color: #1e293b; }
+        
+        .search-input {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
+        }
+        
+        .filter-btn {
+            background: linear-gradient(to bottom, #fff 0%, #e9ecef 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+        
+        .filter-btn:hover {
+            background: linear-gradient(to bottom, #f0f0f0 0%, #e2e6ea 100%);
+        }
+        
+        .table-header {
+            background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+            border: 1px solid #d4d4d4;
+        }
+        
+        .table-row-agent {
+            background-color: #ffffff;
+            border: 1px solid #d4d4d4;
+        }
+        
+        .table-row-agent:nth-child(even) {
+            background-color: #fafafa;
+        }
+        
+        .table-row-agent:hover {
+            background-color: #e8f4fc !important;
+        }
+        
+        .footer-box {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 2px solid #d4d4d4;
+        }
+        
+        .footer-box-header {
+            background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+            border-bottom: 1px solid #d4d4d4;
+        }
+        
+        .export-btn {
+            background: linear-gradient(to bottom, #fff 0%, #e9ecef 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+        
+        .export-btn:hover {
+            background: linear-gradient(to bottom, #f0f0f0 0%, #dee2e6 100%);
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.5);
+            cursor: pointer;
+        }
+
+        .view-btn {
+            background: linear-gradient(to bottom, #3b82f6 0%, #2563eb 100%);
+        }
+        
+        .view-btn:hover {
+            background: linear-gradient(to bottom, #2563eb 0%, #1d4ed8 100%);
+        }
+
+        .modal-row:hover {
+            background-color: #f3f4f6 !important;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen px-4">
+    <!-- OLD NAVIGATION
+    <nav class="bg-slate-800 text-white sticky top-0 z-40 shadow-lg -mx-4 pb-8">
+        <div class="max-w-3xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold">BM Umrah Booking</h1>
+                </div>
+                <div class="hidden md:flex space-x-1" id="desktopNav">
+                    <button onclick="window.location.href='dashboard.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="dashboard">Dashboard</button>
+                    <button onclick="window.location.href='booking.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="bookingIndex">Booking</button>
+                    <button onclick="window.location.href='fare-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fareAdmin">Fare Admin</button>
+                    <button onclick="window.location.href='visa-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="visaAdmin">Visa Admin</button>
+                    <button onclick="window.location.href='settings.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="settings">Settings</button>
+                    <button onclick="window.location.href='fingerprint-staff.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fingerprintStaff">Fingerprint Staff</button>
+                    <div class="relative group">
+                        <button class="nav-item px-4 py-2 rounded-md font-medium text-sm">Report ▾</button>
+                        <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-1 py-1 shadow-lg z-50">
+                            <a href="statement.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Statement</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="fingerprint-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Fingerprint Report</a>
+                            <a href="visa-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>
+                            <a href="visa-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap active">Visa Agent Report</a>
+                            <a href="ticket-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agent Report</a>
+                            <a href="due-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>
+                            <a href="payment-receiving-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payment Receiving Report</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="reissue-refund-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Reissue & Refund Report</a>
+                            <a href="user-wise-sales-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">User Wise Sales Report</a>
+                            <a href="pending-outbound-ticket-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Pending Outbound Ticket</a>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="hidden md:hidden bg-slate-700" id="mobileMenu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="window.location.href='dashboard.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Dashboard</button>
+                <button onclick="window.location.href='booking.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</button>
+                <button onclick="window.location.href='fare-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fare Admin</button>
+                <button onclick="window.location.href='visa-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</button>
+                <button onclick="window.location.href='settings.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Settings</button>
+                <button onclick="window.location.href='fingerprint-staff.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</button>
+                <div class="border-t border-slate-600 pt-2 mt-2">
+                    <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORT</span>
+                    <a href="statement.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Statement</a>
+                    <a href="profit-loss-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</a>
+                    <a href="fingerprint-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</a>
+                    <a href="visa-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Report</a>
+                    <a href="visa-agent-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium bg-slate-600">Visa Agent Report</a>
+                    <a href="ticket-agent-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agent Report</a>
+                    <a href="due-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</a>
+                    <a href="payment-receiving-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payment Receiving Report</a>
+                    <a href="reissue-refund-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Reissue & Refund Report</a>
+                    <a href="user-wise-sales-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">User Wise Sales Report</a>
+                    <a href="pending-outbound-ticket-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Pending Outbound Ticket</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    END OLD NAVIGATION -->
+
+    <!-- Dynamic Navigation Container -->
+    <div id="navContainer"></div>
+    
+    <!-- Navigation Scripts -->
+    <script src="nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadNavigation);
+    </script>
+
+    <div class="max-w-[1600px] mx-auto p-4">
+        <div class="mb-3">
+            <span class="text-sm text-gray-500 font-medium">Report</span>
+            <span class="text-sm text-gray-400 mx-1">></span>
+            <span class="text-sm text-gray-700 font-semibold">Visa Agent Report</span>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-semibold text-gray-700">SEARCH BOX</label>
+                    <input type="text" id="searchInput" placeholder="Search by Agent Name" 
+                           class="search-input w-80 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-semibold text-gray-700">Date</label>
+                    <label class="text-xs text-gray-500">From</label>
+                    <input type="date" id="dateFrom" class="search-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <label class="text-xs text-gray-500">To</label>
+                    <input type="date" id="dateTo" class="search-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <button onclick="filterAgents()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                        Filter
+                    </button>
+                </div>
+
+                <div class="flex items-center gap-2 ml-auto">
+                    <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
+                        <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                        </svg>
+                        PDF
+                    </button>
+                    <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
+                        <svg class="w-4 h-4 text-green-700" fill="currentColor" viewBox="0 0 24 24">
+                            <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                            <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                        </svg>
+                        Excel
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[1400px] table-fixed">
+<thead>
+                        <tr class="table-header">
+                            <th class="w-56 px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Agent Name</th>
+                            <th class="w-20 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Submitted</th>
+                            <th class="w-20 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Issued</th>
+                            <th class="w-20 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Pending</th>
+                            <th class="w-28 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Price<br>(Max/Min/Avg)</th>
+                            <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Receivable</th>
+                            <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
+                            <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
+                            <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
+                            <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Cancellation<br>Fee</th>
+                            <th class="w-20 px-4 py-3 text-xs font-bold text-gray-700 text-center">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="agentTableBody">
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mt-0">
+            <div class="flex flex-wrap gap-6">
+                <div class="footer-box rounded-lg overflow-hidden min-w-[320px]">
+                    <div class="footer-box-header px-4 py-2">
+                        <span class="text-sm font-bold text-gray-700">Visa Agent Report Summary</span>
+                    </div>
+                    <div class="p-4">
+                        <div class="grid grid-cols-2 gap-x-8 gap-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Agents:</span>
+                                <span class="text-xs font-bold text-gray-800" id="totalAgents">6</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Agents with Due:</span>
+                                <span class="text-xs font-bold text-red-700" id="agentsWithDue">3</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Payable:</span>
+                                <span class="text-xs font-bold text-gray-800" id="totalPayable">232,200 SAR</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Paid:</span>
+                                <span class="text-xs font-bold text-green-700" id="totalPaid">209,000 SAR</span>
+                            </div>
+                            <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
+                                <span class="text-xs font-bold text-gray-700">Total Balance:</span>
+                                <span class="text-xs font-bold text-red-700" id="totalDueSummary">23,200 SAR</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    <div class="footer-box rounded-lg overflow-hidden">
+                        <div class="footer-box-header px-4 py-2">
+                            <span class="text-sm font-bold text-gray-700">Export Options</span>
+                        </div>
+                        <div class="p-4 flex gap-3">
+                            <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
+                                <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                                    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                                </svg>
+                                PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
+                <span class="text-xs text-gray-400">Last Updated: 05-Apr-2026 09:45 AM</span>
+                <span class="text-xs text-gray-400">Generated by BM Umrah System</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="detailModal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay fixed inset-0 bg-black bg-opacity-50" onclick="closeModal()"></div>
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-white">Agent Details</h2>
+                    <button onclick="closeModal()" class="text-white hover:text-gray-300 transition-colors">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+
+                <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)] scrollbar-thin">
+                    <div class="mb-6">
+                        <h3 id="modalAgentName" class="text-2xl font-bold text-gray-800 mb-4">Agent Name</h3>
+                        <input type="hidden" id="modalAgentId" value="">
+                        
+                        <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
+                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Submitted</p>
+                                <p id="modalTotalSubmitted" class="text-xl font-bold text-blue-700 mt-1">0</p>
+                            </div>
+                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Issued</p>
+                                <p id="modalTotalIssued" class="text-xl font-bold text-green-700 mt-1">0</p>
+                            </div>
+                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Pending</p>
+                                <p id="modalTotalPending" class="text-xl font-bold text-orange-700 mt-1">0</p>
+                            </div>
+                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Receivable</p>
+                                <p id="modalReceivable" class="text-xl font-bold text-purple-700 mt-1">0 SAR</p>
+                            </div>
+                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Payable</p>
+                                <p id="modalPayable" class="text-xl font-bold text-gray-800 mt-1">0 SAR</p>
+                            </div>
+                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Paid</p>
+                                <p id="modalPaid" class="text-xl font-bold text-green-700 mt-1">0 SAR</p>
+                            </div>
+                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Balance</p>
+                                <p id="modalDue" class="text-xl font-bold text-gray-600 mt-1">0 SAR</p>
+                            </div>
+                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Cancellation Fee</p>
+                                <p id="modalCancellationFee" class="text-xl font-bold text-red-700 mt-1">0 SAR</p>
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
+                        <table class="w-full">
+                            <thead>
+                                <tr class="table-header">
+                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Date</th>
+                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Submitted</th>
+                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Issued</th>
+                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Pending</th>
+                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Total<br>Receivable</th>
+                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
+                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
+                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
+                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right">Cancellation<br>Fee</th>
+                                </tr>
+                            </thead>
+                            <tbody id="modalTransactionBody">
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between">
+                    <button onclick="openPaymentModal()" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md text-sm font-medium flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                        Pay
+                    </button>
+                    <button onclick="closeModal()" class="filter-btn px-6 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="paymentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closePaymentModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Payment Form</h3>
+            <form id="paymentForm" onsubmit="handlePaymentSubmit(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Name</label>
+                        <input type="text" id="paymentAgentName" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Pay To *</label>
+                        <select id="paymentPayTo" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="Visa Agent">Visa Agent</option>
+                            <option value="Commission Agent">Commission Agent</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method *</label>
+                        <select id="paymentMethod" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="Bank">Bank</option>
+                            <option value="Cash">Cash</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (SAR) *</label>
+                        <input type="number" id="paymentAmount" required min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">Save</button>
+                    <button type="button" onclick="closePaymentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+        const agentData = [
+            {
+                id: 1,
+                name: "Al Rajhi Travel",
+                totalSubmitted: 50,
+                totalIssued: 45,
+                totalPending: 5,
+                price: { max: 2500, min: 500, avg: 1200 },
+                receivable: 40000,
+                paid: 45000,
+                cancellationFee: 500,
+                payable: 45000,
+                due: 0,
+                transactions: [
+                    { date: "01-Mar-2026", payable: 8500, paid: 8500, due: 0 },
+                    { date: "05-Mar-2026", payable: 12000, paid: 12000, due: 0 },
+                    { date: "12-Mar-2026", payable: 9500, paid: 9500, due: 0 },
+                    { date: "18-Mar-2026", payable: 8500, paid: 8500, due: 0 },
+                    { date: "25-Mar-2026", payable: 6500, paid: 6500, due: 0 }
+                ]
+            },
+            {
+                id: 2,
+                name: "FlyBurj Agent",
+                totalSubmitted: 40,
+                totalIssued: 32,
+                totalPending: 8,
+                price: { max: 3000, min: 600, avg: 1500 },
+                receivable: 35000,
+                paid: 28000,
+                cancellationFee: 0,
+                payable: 30000,
+                due: 4500,
+                transactions: [
+                    { date: "02-Mar-2026", payable: 7500, paid: 7500, due: 0 },
+                    { date: "08-Mar-2026", payable: 9000, paid: 9000, due: 0 },
+                    { date: "15-Mar-2026", payable: 8000, paid: 6500, due: 1500 },
+                    { date: "22-Mar-2026", payable: 8000, paid: 5000, due: 3000 }
+                ]
+            },
+            {
+                id: 3,
+                name: "Shahadat Visa Services",
+                totalSubmitted: 35,
+                totalIssued: 35,
+                totalPending: 0,
+                price: { max: 2000, min: 400, avg: 1000 },
+                receivable: 28000,
+                paid: 28000,
+                cancellationFee: 0,
+                payable: 28000,
+                due: 0,
+                transactions: [
+                    { date: "03-Mar-2026", payable: 7000, paid: 7000, due: 0 },
+                    { date: "10-Mar-2026", payable: 8500, paid: 8500, due: 0 },
+                    { date: "17-Mar-2026", payable: 7500, paid: 7500, due: 0 },
+                    { date: "24-Mar-2026", payable: 5000, paid: 5000, due: 0 }
+                ]
+            },
+            {
+                id: 4,
+                name: "Gulf Visa",
+                totalSubmitted: 60,
+                totalIssued: 48,
+                totalPending: 12,
+                price: { max: 3500, min: 700, avg: 1800 },
+                receivable: 60000,
+                paid: 55000,
+                cancellationFee: 2500,
+                payable: 67500,
+                due: 12500,
+                transactions: [
+                    { date: "01-Mar-2026", payable: 15000, paid: 15000, due: 0 },
+                    { date: "06-Mar-2026", payable: 12000, paid: 12000, due: 0 },
+                    { date: "12-Mar-2026", payable: 14500, paid: 10000, due: 4500 },
+                    { date: "20-Mar-2026", payable: 13000, paid: 8000, due: 5000 },
+                    { date: "28-Mar-2026", payable: 13000, paid: 10000, due: 3000 }
+                ]
+            },
+            {
+                id: 5,
+                name: "Dreamland Tours",
+                totalSubmitted: 25,
+                totalIssued: 25,
+                totalPending: 0,
+                price: { max: 1800, min: 350, avg: 900 },
+                receivable: 20000,
+                paid: 18000,
+                cancellationFee: 0,
+                payable: 18000,
+                due: 0,
+                transactions: [
+                    { date: "04-Mar-2026", payable: 6000, paid: 6000, due: 0 },
+                    { date: "11-Mar-2026", payable: 5500, paid: 5500, due: 0 },
+                    { date: "21-Mar-2026", payable: 6500, paid: 6500, due: 0 }
+                ]
+            },
+            {
+                id: 6,
+                name: "Saudi Umrah Express",
+                totalSubmitted: 45,
+                totalIssued: 38,
+                totalPending: 7,
+                price: { max: 2800, min: 550, avg: 1350 },
+                receivable: 38000,
+                paid: 35000,
+                cancellationFee: 1200,
+                payable: 41200,
+                due: 6200,
+                transactions: [
+                    { date: "02-Mar-2026", payable: 9800, paid: 9800, due: 0 },
+                    { date: "09-Mar-2026", payable: 11200, paid: 9000, due: 2200 },
+                    { date: "16-Mar-2026", payable: 10200, paid: 8200, due: 2000 },
+                    { date: "25-Mar-2026", payable: 10000, paid: 8000, due: 2000 }
+                ]
+            }
+        ];
+
+        function formatCurrency(amount) {
+            return amount.toLocaleString('en-US') + ' SAR';
+        }
+
+        function renderTable(data) {
+            console.log('Rendering table with', data.length, 'agents');
+            const tbody = document.getElementById('agentTableBody');
+            tbody.innerHTML = '';
+            
+            if (data.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="10" class="px-4 py-4 text-center text-gray-500">No data found</td></tr>';
+                return;
+            }
+
+            data.forEach(agent => {
+                console.log('Rendering agent:', agent.name, 'totalSubmitted:', agent.totalSubmitted);
+                const row = document.createElement('tr');
+                row.className = 'table-row-agent';
+                
+                // Balance calculation: Payable - Receivable
+                const balance = agent.payable - agent.receivable;
+                let balanceColor = 'text-gray-600';
+                if (agent.payable > agent.receivable) {
+                    balanceColor = 'text-red-600'; // Payable > Receivable = RED
+                } else if (agent.receivable > agent.payable) {
+                    balanceColor = 'text-green-700'; // Receivable > Payable = GREEN
+                }
+                
+                const paidColor = agent.paid > 0 ? 'text-green-700' : 'text-gray-600';
+                const cancellationFeeColor = agent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600';
+
+                row.innerHTML = `
+                    <td class="px-2 py-3 text-sm text-left border-r border-gray-200 font-medium text-gray-800">${agent.name}</td>
+                    <td class="px-2 py-3 text-sm text-center border-r border-gray-200 font-medium">${agent.totalSubmitted}</td>
+                    <td class="px-2 py-3 text-sm text-center border-r border-gray-200 font-medium">${agent.totalIssued}</td>
+                    <td class="px-2 py-3 text-sm text-center border-r border-gray-200 font-medium">${agent.totalPending}</td>
+                    <td class="px-2 py-3 text-xs text-center border-r border-gray-200">
+                        <span class="text-red-600">${agent.price.max.toLocaleString()}</span> / 
+                        <span class="text-green-600">${agent.price.min.toLocaleString()}</span> / 
+                        <span class="text-blue-600">${agent.price.avg.toLocaleString()}</span>
+                    </td>
+                    <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-medium">${formatCurrency(agent.receivable)}</td>
+                    <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-medium">${formatCurrency(agent.payable)}</td>
+                    <td class="px-2 py-3 text-sm text-right border-r border-gray-200 ${paidColor}">${formatCurrency(agent.paid)}</td>
+                    <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-semibold ${balanceColor}">${formatCurrency(Math.abs(balance))}</td>
+                    <td class="px-2 py-3 text-sm text-right border-r border-gray-200 ${cancellationFeeColor}">${agent.cancellationFee > 0 ? formatCurrency(agent.cancellationFee) : '-'}</td>
+                    <td class="px-2 py-3 text-center border-r border-gray-200">
+                        <button onclick="openModal(${agent.id})" class="view-btn text-white px-3 py-1 rounded text-xs font-medium transition-all">
+                            View
+                        </button>
+                        <button onclick="openPaymentModal(${agent.id})" class="ml-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium transition-all">
+                            Pay
+                        </button>
+                    </td>
+                `;
+                tbody.appendChild(row);
+            });
+        }
+
+        function updateSummary(data) {
+            const totalAgents = data.length;
+            const agentsWithDue = data.filter(a => a.due > 0).length;
+            
+            const totalSubmitted = data.reduce((sum, a) => sum + a.totalSubmitted, 0);
+            const totalIssued = data.reduce((sum, a) => sum + a.totalIssued, 0);
+            const totalPending = data.reduce((sum, a) => sum + a.totalPending, 0);
+            
+            const totalReceivable = data.reduce((sum, a) => sum + a.receivable, 0);
+            const totalPaid = data.reduce((sum, a) => sum + a.paid, 0);
+            const totalCancellationFee = data.reduce((sum, a) => sum + a.cancellationFee, 0);
+            const totalBalance = totalPaid - totalReceivable;
+
+            document.getElementById('totalAgents').textContent = totalAgents;
+            document.getElementById('agentsWithDue').textContent = agentsWithDue;
+            document.getElementById('totalPayable').textContent = formatCurrency(totalReceivable);
+            document.getElementById('totalPaid').textContent = formatCurrency(totalPaid);
+            document.getElementById('totalDueSummary').textContent = formatCurrency(totalCancellationFee);
+        }
+
+        function filterAgents() {
+            const searchTerm = document.getElementById('searchInput').value.toLowerCase().trim();
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+
+            function parseDate(dateStr) {
+                const parts = dateStr.match(/(\d{2})-(\w{3})-(\d{4})/);
+                if (!parts) return null;
+                const months = { 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
+                return new Date(parts[3], months[parts[2]], parseInt(parts[1]));
+            }
+
+            const filtered = agentData.filter(agent => {
+                const matchesSearch = agent.name.toLowerCase().includes(searchTerm);
+                
+                let matchesDate = true;
+                if (dateFrom || dateTo) {
+                    matchesDate = agent.transactions.some(tx => {
+                        const txDate = parseDate(tx.date);
+                        if (!txDate) return false;
+                        const from = dateFrom ? new Date(dateFrom) : null;
+                        const to = dateTo ? new Date(dateTo) : null;
+                        if (from && txDate < from) return false;
+                        if (to && txDate > to) return false;
+                        return true;
+                    });
+                }
+                
+                return matchesSearch && matchesDate;
+            });
+            renderTable(filtered);
+            updateSummary(filtered);
+        }
+
+        function resetFilter() {
+            document.getElementById('searchInput').value = '';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            renderTable(agentData);
+            updateSummary(agentData);
+        }
+
+        function openModal(agentId) {
+            const agent = agentData.find(a => a.id === agentId);
+            if (!agent) return;
+
+            currentViewAgentId = agent.id;
+            document.getElementById('modalAgentId').value = agent.id;
+            document.getElementById('modalAgentName').textContent = agent.name;
+            
+            // Populate new summary cards
+            document.getElementById('modalTotalSubmitted').textContent = agent.totalSubmitted || 0;
+            document.getElementById('modalTotalIssued').textContent = agent.totalIssued || 0;
+            document.getElementById('modalTotalPending').textContent = agent.totalPending || 0;
+            document.getElementById('modalReceivable').textContent = formatCurrency(agent.receivable);
+            document.getElementById('modalPayable').textContent = formatCurrency(agent.payable);
+            document.getElementById('modalPaid').textContent = formatCurrency(agent.paid);
+            document.getElementById('modalCancellationFee').textContent = agent.cancellationFee > 0 ? formatCurrency(agent.cancellationFee) : '-';
+            
+            const dueEl = document.getElementById('modalDue');
+            const balance = agent.payable - agent.receivable;
+            dueEl.textContent = formatCurrency(Math.abs(balance));
+            if (agent.payable > agent.receivable) {
+                dueEl.className = 'text-xl font-bold text-red-600 mt-1';
+            } else if (agent.receivable > agent.payable) {
+                dueEl.className = 'text-xl font-bold text-green-700 mt-1';
+            } else {
+                dueEl.className = 'text-xl font-bold text-gray-600 mt-1';
+            }
+
+            const tbody = document.getElementById('modalTransactionBody');
+            tbody.innerHTML = '';
+
+            agent.transactions.forEach(tx => {
+                const row = document.createElement('tr');
+                row.className = 'modal-row border-b border-gray-100';
+                
+                // Apply same color logic as main table (compare agent payable vs receivable)
+                const balance = agent.payable - agent.receivable;
+                let balanceColor = 'text-gray-600';
+                if (agent.payable > agent.receivable) {
+                    balanceColor = 'text-red-600'; // Payable > Receivable = RED
+                } else if (agent.receivable > agent.payable) {
+                    balanceColor = 'text-green-700'; // Receivable > Payable = GREEN
+                }
+                
+                const paidColor = tx.paid > 0 ? 'text-green-700' : 'text-gray-600';
+
+                row.innerHTML = `
+                    <td class="px-4 py-3 text-sm text-left">${tx.date}</td>
+                    <td class="px-4 py-3 text-sm text-center font-medium">${agent.totalSubmitted}</td>
+                    <td class="px-4 py-3 text-sm text-center font-medium">${agent.totalIssued}</td>
+                    <td class="px-4 py-3 text-sm text-center font-medium">${agent.totalPending}</td>
+                    <td class="px-4 py-3 text-sm text-right font-medium">${formatCurrency(agent.receivable)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-medium">${formatCurrency(tx.payable)}</td>
+                    <td class="px-4 py-3 text-sm text-right ${paidColor}">${formatCurrency(tx.paid)}</td>
+                    <td class="px-4 py-3 text-sm text-right font-semibold ${balanceColor}">${formatCurrency(Math.abs(balance))}</td>
+                    <td class="px-4 py-3 text-sm text-right ${agent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'}">${agent.cancellationFee > 0 ? formatCurrency(agent.cancellationFee) : '-'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+
+            document.getElementById('detailModal').classList.remove('hidden');
+            document.body.style.overflow = 'hidden';
+        }
+
+        function closeModal() {
+            document.getElementById('detailModal').classList.add('hidden');
+            document.body.style.overflow = 'auto';
+        }
+
+        let editingAgentId = null;
+        let currentViewAgentId = null;
+
+        function openPaymentModal(agentId) {
+            const id = agentId || currentViewAgentId;
+            const agent = agentData.find(a => a.id === id);
+            if (!agent) return;
+            
+            editingAgentId = id;
+            document.getElementById('paymentAgentName').value = agent.name;
+            document.getElementById('paymentPayTo').value = '';
+            document.getElementById('paymentMethod').value = '';
+            document.getElementById('paymentAmount').value = '';
+            document.getElementById('paymentModal').classList.remove('hidden');
+        }
+
+        function closePaymentModal() {
+            editingAgentId = null;
+            document.getElementById('paymentModal').classList.add('hidden');
+        }
+
+        function handlePaymentSubmit(e) {
+            e.preventDefault();
+            
+            const agentId = editingAgentId;
+            const agent = agentData.find(a => a.id === agentId);
+            if (!agent) return;
+
+            const payment = {
+                date: new Date().toISOString().split('T')[0],
+                payTo: document.getElementById('paymentPayTo').value,
+                method: document.getElementById('paymentMethod').value,
+                amount: parseFloat(document.getElementById('paymentAmount').value) || 0
+            };
+
+            if (!agent.payments) {
+                agent.payments = [];
+            }
+            agent.payments.push(payment);
+            agent.paid += payment.amount;
+            agent.due = Math.max(0, agent.payable - agent.paid);
+
+            closePaymentModal();
+            renderTable(agentData);
+            updateSummary(agentData);
+            showToast('Payment saved successfully');
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            renderTable(agentData);
+            updateSummary(agentData);
+        });
+
+        document.getElementById('searchInput').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter') {
+                filterAgents();
+            }
+        });
+    </script>
+</body>
+</html>

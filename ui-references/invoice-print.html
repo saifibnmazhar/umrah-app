@@ -1,0 +1,318 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Print - BM Umrah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { margin: 0; padding: 0; }
+        }
+    </style>
+</head>
+<body class="bg-white">
+    <div id="invoiceContent" class="p-4" style="font-size: 11px; width: 7in; margin: 0 auto;">
+        <!-- Invoice content will be loaded here -->
+    </div>
+
+    <div class="no-print flex justify-center gap-4 py-4" style="width: 7in; margin: 0 auto;">
+        <button onclick="window.print()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Print</button>
+        <button onclick="window.close()" class="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Close</button>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+        const bookingIndexState = {
+            bookings: [
+                {
+                    id: 1,
+                    invoiceNo: 'INV-1001',
+                    bookingDate: '2026-03-15',
+                    customerName: 'Ahmed Al-Rashid',
+                    customerMobile: '0501234567',
+                    customerIqama: '123456789',
+                    customerAddress: 'Riyadh, Saudi Arabia',
+                    branch: 'RUH',
+                    representative: 'Saddam',
+                    offer: 'NO',
+                    fingerLocation: 'Home Address',
+                    fingerDeadline: '2026-04-01',
+                    passengers: [
+                        { name: 'Ahmed Al-Rashid', gender: 'Male', passport: 'P123456', package: 'VIP', duration: '7 Days', total: 3200 },
+                        { name: 'Sara Khan', gender: 'Female', passport: 'P654321', package: 'VIP', duration: '7 Days', total: 3200 }
+                    ],
+                    payments: [
+                        { amount: 5000 }
+                    ]
+                }
+            ],
+            selectedBookingId: null
+        };
+
+        const passengerIndexState = {
+            passengerIndexRows: [],
+            selectedPassengerId: null
+        };
+
+        let currentInvoiceBooking = null;
+
+        function getElement(id) {
+            return document.getElementById(id);
+        }
+
+        function showToast(msg) {
+            alert(msg);
+        }
+
+        function loadInvoicePrint() {
+            const params = new URLSearchParams(window.location.search);
+            const indexVal = params.get('index');
+            const index = indexVal ? parseInt(indexVal) : 0;
+            const booking = bookingIndexState.bookings[index];
+
+            if (!booking) {
+                showToast('Booking not found');
+                return;
+            }
+
+            const content = getElement('invoiceContent');
+            const total = booking.passengers.reduce((sum, p) => sum + (p.total || 0), 0);
+            const paid = booking.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const due = total - paid;
+            const fingerprintCost = booking.passengers[0]?.fingerprintCost || 200;
+            const packageValue = booking.passengers[0]?.packageValue || total - fingerprintCost;
+            const additionalFee = booking.additionalFee || 0;
+            const discount = booking.discountValue || 0;
+
+            content.innerHTML = `
+                <!-- Header -->
+                <div class="border-2 border-slate-800 mb-3">
+                    <div class="bg-yellow-300 px-3 py-2 border-b-2 border-slate-800">
+                        <h2 class="text-lg font-bold text-slate-800 text-center">BOOKING INVOICE UMH</h2>
+                    </div>
+                    <div class="flex">
+                        <div class="w-1/2 p-3 border-r-2 border-slate-800">
+                            <p class="font-semibold"><strong>Booking Date:</strong> ${booking.bookingDate || '-'}</p>
+                            <p class="font-semibold"><strong>Guardian Name:</strong> ${booking.customerName || '-'}</p>
+                            <p class="font-semibold"><strong>Iqama No:</strong> ${booking.customerIqama || '-'}</p>
+                            <p class="font-semibold"><strong>Phone Number:</strong> ${booking.customerMobile || '-'}</p>
+                            <p class="font-semibold"><strong>Address:</strong> ${booking.customerAddress || '-'}</p>
+                        </div>
+                        <div class="w-1/2 p-3">
+                            <p class="font-semibold"><strong>Invoice Date:</strong> ${booking.invoiceDate || booking.bookingDate || '-'}</p>
+                            <p class="font-semibold"><strong>Invoice Number:</strong> ${booking.invoiceNo || '-'}</p>
+                            <p class="font-semibold"><strong>Branch:</strong> ${booking.branch || 'RUH'}</p>
+                            <p class="font-semibold"><strong>Representative:</strong> ${booking.representative || '-'}</p>
+                            <p class="font-semibold"><strong>Offer:</strong> ${booking.offer || 'NO'}</p>
+                            <p class="font-semibold"><strong>Finger Location:</strong> ${booking.fingerLocation || '-'}</p>
+                            <p class="font-semibold"><strong>Finger Deadline:</strong> <span class="bg-red-600 text-white px-2 py-0.5">${booking.fingerDeadline || '-'}</span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Passenger & Package Details + Package Calculation -->
+                <div class="flex mb-3">
+                    <!-- Passenger & Package Details Table -->
+                    <div class="w-[65%] border-2 border-slate-800 mr-2">
+                        <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
+                            <h3 class="font-bold text-slate-800">PASSENGER & PACKAGE DETAILS</h3>
+                        </div>
+                        <table class="w-full text-sm border-collapse">
+                            <thead class="bg-yellow-200">
+                                <tr>
+                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Pax No</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Name of Passengers</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Gender</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Passport Number</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Package</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Duration</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-right text-xs">Package Value</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${booking.passengers.map((p, i) => `
+                                    <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+                                        <td class="border border-slate-300 px-1 py-1">${i + 1}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.name || '-'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.gender || '-'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.passport || '-'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.package || '-'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.duration || '-'}</td>
+                                        <td class="border border-slate-300 px-1 py-1 text-right">${p.total || 0}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Package Calculation -->
+                    <div class="w-[35%] border-2 border-slate-800">
+                        <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
+                            <h3 class="font-bold text-slate-800">PACKAGE CALCULATION</h3>
+                        </div>
+                        <div class="p-2">
+                            <div class="flex justify-between py-1">
+                                <span class="font-semibold">Sub Total:</span>
+                                <span>${packageValue}</span>
+                            </div>
+                            <div class="flex justify-between py-1">
+                                <span class="font-semibold">Total Package:</span>
+                                <span>${total}</span>
+                            </div>
+                            <div class="flex justify-between py-1">
+                                <span class="font-semibold">Finger Fee:</span>
+                                <span>${fingerprintCost}</span>
+                            </div>
+                            <div class="flex justify-between py-1">
+                                <span class="font-semibold">Additional Fee:</span>
+                                <span>${additionalFee}</span>
+                            </div>
+                            <div class="flex justify-between py-1">
+                                <span class="font-semibold">Discount:</span>
+                                <span>${discount}</span>
+                            </div>
+                            <div class="flex justify-between py-1 border-t-2 border-slate-800 mt-1 pt-1">
+                                <span class="font-bold text-lg">GRAND TOTAL:</span>
+                                <span class="font-bold text-lg">${total + additionalFee - discount}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Flight Details Table -->
+                <div class="border-2 border-slate-800 mb-3">
+                    <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
+                        <h3 class="font-bold text-slate-800">FLIGHT DETAILS</h3>
+                    </div>
+                    <table class="w-full text-sm border-collapse">
+                        <thead class="bg-yellow-200">
+                            <tr>
+                                <th class="border border-slate-300 px-1 py-1 text-xs">Pax</th>
+                                <th class="border border-slate-300 px-1 py-1 text-xs">Type</th>
+                                <th class="border border-slate-300 px-1 py-1 text-xs">Airlines</th>
+                                <th class="border border-slate-300 px-1 py-1 text-xs">Route</th>
+                                <th class="border border-slate-300 px-1 py-1 text-xs">Est. Flight Date</th>
+                                <th class="border border-slate-300 px-1 py-1 text-xs">Baggage</th>
+                                <th class="border border-slate-300 px-1 py-1 text-xs">Cabin</th>
+                                <th class="border border-slate-300 px-1 py-1 text-xs">Meal</th>
+                                <th class="border border-slate-300 px-1 py-1 text-xs">Flight Type</th>
+                                <th class="border border-slate-300 px-1 py-1 text-xs">Remarks</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            ${booking.passengers.map((p, i) => `
+                                <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+                                    <td class="border border-slate-300 px-1 py-1">${i + 1}</td>
+                                    <td class="border border-slate-300 px-1 py-1">${p.flightType || '-'}</td>
+                                    <td class="border border-slate-300 px-1 py-1">${p.airline || '-'}</td>
+                                    <td class="border border-slate-300 px-1 py-1">${p.route || '-'}</td>
+                                    <td class="border border-slate-300 px-1 py-1">${p.flightDate || '-'}</td>
+                                    <td class="border border-slate-300 px-1 py-1">${p.baggage || '20kg'}</td>
+                                    <td class="border border-slate-300 px-1 py-1">${p.cabin || '-'}</td>
+                                    <td class="border border-slate-300 px-1 py-1">${p.meal || 'Yes'}</td>
+                                    <td class="border border-slate-300 px-1 py-1">${p.tripType || '-'}</td>
+                                    <td class="border border-slate-300 px-1 py-1">${p.remarks || '-'}</td>
+                                </tr>
+                            `).join('')}
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Group Umrah Features -->
+                <div class="border-2 border-slate-800 mb-3">
+                    <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
+                        <h3 class="font-bold text-slate-800">GROUP UMRAH FEATURES</h3>
+                    </div>
+                    <table class="w-full text-sm border-collapse">
+                        <tbody>
+                            <tr class="bg-white">
+                                <td class="border border-slate-300 px-2 py-1 font-semibold w-1/4">Accommodation</td>
+                                <td class="border border-slate-300 px-2 py-1">N/A</td>
+                                <td class="border border-slate-300 px-2 py-1 font-semibold w-1/4">Meal Facilities</td>
+                                <td class="border border-slate-300 px-2 py-1">N/A</td>
+                            </tr>
+                            <tr class="bg-gray-50">
+                                <td class="border border-slate-300 px-2 py-1 font-semibold">Transport</td>
+                                <td class="border border-slate-300 px-2 py-1">N/A</td>
+                                <td class="border border-slate-300 px-2 py-1 font-semibold">Site Visit</td>
+                                <td class="border border-slate-300 px-2 py-1">N/A</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+
+                <!-- Payment Summary -->
+                <div class="border-2 border-slate-800 mb-3">
+                    <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
+                        <h3 class="font-bold text-slate-800">PAYMENT SUMMARY</h3>
+                    </div>
+                    <div class="flex">
+                        <div class="w-1/2 p-2 border-r-2 border-slate-800">
+                            <div class="flex justify-between py-1">
+                                <span class="font-semibold">Total Amount:</span>
+                                <span class="font-bold">${total + additionalFee - discount}</span>
+                            </div>
+                            <div class="flex justify-between py-1">
+                                <span class="font-semibold">Previous Paid Amount:</span>
+                                <span>${paid}</span>
+                            </div>
+                            <div class="flex justify-between py-1">
+                                <span class="font-semibold">Current Paid Amount:</span>
+                                <span>0</span>
+                            </div>
+                        </div>
+                        <div class="w-1/2 p-2">
+                            <div class="flex justify-between py-1 bg-red-100 px-2 -mx-2">
+                                <span class="font-bold text-red-700">Due Amount:</span>
+                                <span class="font-bold text-red-700">${due}</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Footer -->
+                <div class="border-2 border-slate-800">
+                    <div class="flex">
+                        <div class="w-1/2 p-2 border-r-2 border-slate-800">
+                            <p class="font-semibold">Offer: N/A</p>
+                        </div>
+                        <div class="w-1/2 p-2">
+                            <p class="font-semibold">Conditions: ________________________</p>
+                        </div>
+                    </div>
+                </div>
+            `;
+
+            document.title = 'Invoice - ' + (booking.invoiceNo || 'Print');
+        }
+
+        // Load on page load
+        window.onload = loadInvoicePrint;
+    </script>
+</body>
+</html>

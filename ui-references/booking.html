@@ -1,0 +1,1319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking - BM Umrah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .modal-overlay { transition: opacity 0.2s ease; }
+        .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
+        .toast { transition: transform 0.3s ease, opacity 0.3s ease; }
+        .nav-item { color: #94a3b8; transition: all 0.2s ease; }
+        .nav-item:hover { color: white; background-color: rgba(255,255,255,0.1); }
+        .nav-item.active { background-color: white; color: #1e293b; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen px-4">
+    <!-- Dynamic Navigation Container -->
+    <div id="navContainer"></div>
+    
+    <!-- Navigation Scripts -->
+    <script src="nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadNavigation);
+    </script>    
+    <!-- OLD NAVIGATION
+    <nav class="bg-slate-800 text-white sticky top-0 z-40 shadow-lg -mx-4 pb-8">
+        <div class="max-w-3xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold">BM Umrah Booking</h1>
+                </div>
+                <div class="hidden md:flex space-x-1" id="desktopNav">
+                    <button onclick="window.location.href='dashboard.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="dashboard">Dashboard</button>
+                    <button onclick="window.location.href='booking.html'" class="nav-item active px-4 py-2 rounded-md font-medium text-sm" data-tab="bookingIndex">Booking</button>
+                    <button onclick="window.location.href='fare-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fareAdmin">Fare Admin</button>
+                    <button onclick="window.location.href='visa-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="visaAdmin">Visa Admin</button>
+                    <button onclick="window.location.href='settings.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="settings">Settings</button>
+                    <button onclick="window.location.href='fingerprint-staff.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fingerprintStaff">Fingerprint Staff</button>
+                    <button onclick="window.location.href='fingerprint-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fingerprintAdmin">Fingerprint Admin</button>
+                    <div class="relative group">
+                        <button class="nav-item px-4 py-2 rounded-md font-medium text-sm">Report ▾</button>
+                        <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50">
+                            <a href="statement.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap" data-tab="statement">Ticket Statement</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="fingerprint-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Fingerprint Report</a>
+                            <a href="visa-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>
+                            <a href="visa-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Report</a>
+                            <a href="ticket-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agent Report</a>
+                            <a href="due-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>
+                            <a href="payment-receiving-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payment Receiving Report</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="reissue-refund-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Reissue & Refund Report</a>
+                            <a href="user-wise-sales-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">User Wise Sales Report</a>
+                            <a href="pending-outbound-ticket-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Pending Outbound Ticket</a>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="hidden md:hidden bg-slate-700" id="mobileMenu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="window.location.href='dashboard.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Dashboard</button>
+                <button onclick="window.location.href='booking.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</button>
+                <button onclick="window.location.href='fare-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fare Admin</button>
+                <button onclick="window.location.href='visa-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</button>
+                <button onclick="window.location.href='settings.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Settings</button>
+                <button onclick="window.location.href='fingerprint-staff.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</button>
+                <div class="border-t border-slate-600 pt-2 mt-2">
+                    <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORT</span>
+                    <button onclick="window.location.href='statement.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Statement</button>
+                    <button onclick="window.location.href='profit-loss-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</button>
+                    <button onclick="window.location.href='fingerprint-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</button>
+                    <button onclick="window.location.href='visa-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Report</button>
+                    <button onclick="window.location.href='visa-agent-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Report</button>
+                    <button onclick="window.location.href='ticket-agent-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agent Report</button>
+                    <button onclick="window.location.href='due-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</button>
+                    <button onclick="window.location.href='payment-receiving-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payment Receiving Report</button>
+                    <button onclick="window.location.href='reissue-refund-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Reissue & Refund Report</button>
+                    <button onclick="window.location.href='user-wise-sales-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">User Wise Sales Report</button>
+                    <button onclick="window.location.href='pending-outbound-ticket-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Pending Outbound Ticket</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    END OLD NAVIGATION -->
+
+
+    <!-- Add Booking Button Section -->
+    <div id="addBookingButtonSection" class="w-full py-6 ">
+        <div class="w-full px-4 flex justify-end">
+            <button type="button" onclick="showForm()" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2 shadow-lg">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Booking
+            </button>
+        </div>
+    </div>
+
+    <!-- Index Section - Full Width (Default View) -->
+    <div id="indexSection" class="w-full">
+        <div class="w-full px-4">
+            <div class="flex gap-2 mb-4">
+                <button onclick="showIndexTab('booking')" id="subTabIndex" class="px-4 py-2 rounded-lg font-medium bg-slate-700 text-white">Booking Index</button>
+                <button onclick="showIndexTab('passenger')" id="subTabNew" class="px-4 py-2 rounded-lg font-medium bg-slate-200 text-slate-700 hover:bg-slate-300">Passenger Index</button>
+            </div>
+
+            <div id="bookingIndexSection" class="bg-white rounded-xl shadow-lg p-6">
+                <div class="mb-4">
+                    <input type="text" id="bookingIndexSearch" oninput="searchBookingIndex()" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Mobile or Invoice No...">
+                </div>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[1400px] text-sm">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-medium">Invoice No</th>
+                                <th class="px-3 py-2 text-left font-medium">Booking Date</th>
+                                <!-- <th class="px-3 py-2 text-left font-medium">Flight Date</th> -->
+                                <th class="px-3 py-2 text-left font-medium">Customer</th>
+                                <th class="px-3 py-2 text-left font-medium">Mobile</th>
+                                <th class="px-3 py-2 text-left font-medium">Passenger</th>
+                                <th class="px-3 py-2 text-left font-medium">Fingerprint Location</th>
+                                <th class="px-3 py-2 text-left font-medium">Office</th>
+                                <th class="px-3 py-2 text-left font-medium">District</th>
+                                <th class="px-3 py-2 text-left font-medium">Passengers</th>
+                                <th class="px-3 py-2 text-left font-medium">Re-issue Tkt</th>
+                                <th class="px-3 py-2 text-left font-medium">Re-issue Cost</th>
+                                <th class="px-3 py-2 text-left font-medium">Refund Tkt</th>
+                                <th class="px-3 py-2 text-left font-medium">Refund Amount</th>
+                                <th class="px-3 py-2 text-left font-medium">Total</th>
+                                <th class="px-3 py-2 text-left font-medium">Paid</th>
+                                <th class="px-3 py-2 text-left font-medium">Due</th>
+                                <th class="px-3 py-2 text-left font-medium">Status</th>
+                                <th class="px-3 py-2 text-left font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="bookingIndexTableBody" class="divide-y divide-slate-200"></tbody>
+                    </table>
+                </div>
+                <div id="bookingIndexEmpty" class="text-center py-8 text-slate-500">No bookings yet. Create a new booking to see it here.</div>
+            </div>
+
+            <div id="passengerIndexSection" class="hidden bg-white rounded-xl shadow-lg p-6">
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[1400px] text-sm">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-medium">Booking Date</th>
+                                <!-- <th class="px-3 py-2 text-left font-medium">Ticket Date</th> -->
+                                <th class="px-3 py-2 text-left font-medium">Invoice</th>
+                                <th class="px-3 py-2 text-left font-medium">Pax Qty</th>
+                                <th class="px-3 py-2 text-left font-medium">Guardian</th>
+                                <th class="px-3 py-2 text-left font-medium">Mobile</th>
+                                <th class="px-3 py-2 text-left font-medium">Passenger</th>
+                                <th class="px-3 py-2 text-left font-medium">Passport</th>
+                                <th class="px-3 py-2 text-left font-medium">Route</th>
+                                <th class="px-3 py-2 text-left font-medium">Current Status</th>
+                                <th class="px-3 py-2 text-left font-medium">Ticket Fare</th>
+                                <th class="px-3 py-2 text-left font-medium">Visa</th>
+                                <th class="px-3 py-2 text-left font-medium">Visa Agent</th>
+                                <th class="px-3 py-2 text-left font-medium">Visa Status</th>
+                                <th class="px-3 py-2 text-left font-medium">Required Flight Date</th>
+                                <th class="px-3 py-2 text-left font-medium">Actual Flight Date</th>
+                                <th class="px-3 py-2 text-left font-medium">F. Cost</th>
+                                <th class="px-3 py-2 text-left font-medium">Package</th>
+<th class="px-3 py-2 text-left font-medium">Package Value</th>
+                                <th class="px-3 py-2 text-left font-medium">Total Cost</th>
+                                <th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>
+                                <th class="px-3 py-2 text-left font-medium">Due</th>
+                                <th class="px-3 py-2 text-left font-medium">Actions</th>
+                            </tr>
+                        </thead>
+                        <tbody id="passengerIndexTableBody" class="divide-y divide-slate-200"></tbody>
+                    </table>
+                </div>
+                <div id="passengerIndexEmpty" class="text-center py-8 text-slate-500">No passengers in index yet. Submit a booking to add passengers.</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Add Booking Section - Centered (Hidden by default) -->
+    <div id="addBookingSection" class="hidden max-w-3xl mx-auto pt-6">
+        <div id="bookingForm" class="bg-white rounded-xl shadow-lg p-6">
+            <h2 id="bookingFormTitle" class="text-xl font-semibold text-slate-700 mb-6 pb-2 border-b border-slate-200">Booking Details</h2>
+
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Customer ID <span class="text-slate-400">(Passport No.)</span></label>
+                <div class="relative">
+                    <input type="text" id="customerSearch" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Enter Passport No." autocomplete="off">
+                    <div id="customerSuggestions" class="hidden absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto"></div>
+                </div>
+                <div id="selectedCustomer" class="hidden mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium text-slate-800" id="selectedCustomerName"></p>
+                            <p class="text-sm text-slate-500">Passport: <span id="selectedCustomerPassport"></span> | Iqama: <span id="selectedCustomerIqama"></span> | Mobile: <span id="selectedCustomerMobile"></span></p>
+                        </div>
+                        <button type="button" onclick="clearSelectedCustomer()" class="text-sm text-slate-500 hover:text-slate-700">Clear</button>
+                    </div>
+                </div>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-5 mb-6">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Fingerprint Location *</label>
+                        <select id="bookingFingerprintLocation" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                            <option value="Office">Office</option>
+                            <option value="Home">Home</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Fingerprint Office *</label>
+                        <select id="bookingFingerprintOffice" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                            <option value="">Select Office</option>
+                            <option value="BMT-Dhaka">BMT-Dhaka</option>
+                            <option value="BMT-Chattogram">BMT-Chattogram</option>
+                            <option value="BMT-Sylhet">BMT-Sylhet</option>
+                            <option value="BMT-Rangpur">BMT-Rangpur</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">District *</label>
+                        <select id="bookingDistrict" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                            <option value="">Select District</option>
+                            <option value="Bagerhat" data-fingerprint-charge="160">Bagerhat</option>
+                            <option value="Bandarban" data-fingerprint-charge="160">Bandarban</option>
+                            <option value="Barguna" data-fingerprint-charge="160">Barguna</option>
+                            <option value="Barishal" data-fingerprint-charge="160">Barishal</option>
+                            <option value="Bhola" data-fingerprint-charge="160">Bhola</option>
+                            <option value="Bogura" data-fingerprint-charge="170">Bogura</option>
+                            <option value="Chapainawabganj" data-fingerprint-charge="170">Chapainawabganj</option>
+                            <option value="Chattogram" data-fingerprint-charge="180">Chattogram</option>
+                            <option value="Chuadanga" data-fingerprint-charge="160">Chuadanga</option>
+                            <option value="Cumilla" data-fingerprint-charge="170">Cumilla</option>
+                            <option value="Cox's Bazar" data-fingerprint-charge="180">Cox's Bazar</option>
+                            <option value="Dhaka" data-fingerprint-charge="200">Dhaka</option>
+                            <option value="Dinajpur" data-fingerprint-charge="150">Dinajpur</option>
+                            <option value="Faridpur" data-fingerprint-charge="160">Faridpur</option>
+                            <option value="Feni" data-fingerprint-charge="170">Feni</option>
+                            <option value="Gaibandha" data-fingerprint-charge="150">Gaibandha</option>
+                            <option value="Gazipur" data-fingerprint-charge="180">Gazipur</option>
+                            <option value="Gopalganj" data-fingerprint-charge="160">Gopalganj</option>
+                            <option value="Habiganj" data-fingerprint-charge="150">Habiganj</option>
+                            <option value="Jamalpur" data-fingerprint-charge="170">Jamalpur</option>
+                            <option value="Jashore" data-fingerprint-charge="170">Jashore</option>
+                            <option value="Jhalokati" data-fingerprint-charge="160">Jhalokati</option>
+                            <option value="Joypurhat" data-fingerprint-charge="170">Joypurhat</option>
+                            <option value="Khagrachhari" data-fingerprint-charge="160">Khagrachhari</option>
+                            <option value="Khulna" data-fingerprint-charge="170">Khulna</option>
+                            <option value="Kishoreganj" data-fingerprint-charge="170">Kishoreganj</option>
+                            <option value="Kurigram" data-fingerprint-charge="150">Kurigram</option>
+                            <option value="Kushtia" data-fingerprint-charge="170">Kushtia</option>
+                            <option value="Lakshmipur" data-fingerprint-charge="170">Lakshmipur</option>
+                            <option value="Lalmonirhat" data-fingerprint-charge="150">Lalmonirhat</option>
+                            <option value="Madaripur" data-fingerprint-charge="160">Madaripur</option>
+                            <option value="Magura" data-fingerprint-charge="160">Magura</option>
+                            <option value="Manikganj" data-fingerprint-charge="170">Manikganj</option>
+                            <option value="Meherpur" data-fingerprint-charge="160">Meherpur</option>
+                            <option value="Moulvibazar" data-fingerprint-charge="150">Moulvibazar</option>
+                            <option value="Munshiganj" data-fingerprint-charge="170">Munshiganj</option>
+                            <option value="Mymensingh" data-fingerprint-charge="170">Mymensingh</option>
+                            <option value="Naogaon" data-fingerprint-charge="170">Naogaon</option>
+                            <option value="Narail" data-fingerprint-charge="160">Narail</option>
+                            <option value="Narayanganj" data-fingerprint-charge="180">Narayanganj</option>
+                            <option value="Narsingdi" data-fingerprint-charge="180">Narsingdi</option>
+                            <option value="Natore" data-fingerprint-charge="170">Natore</option>
+                            <option value="Netrokona" data-fingerprint-charge="170">Netrokona</option>
+                            <option value="Nilphamari" data-fingerprint-charge="150">Nilphamari</option>
+                            <option value="Noakhali" data-fingerprint-charge="170">Noakhali</option>
+                            <option value="Pabna" data-fingerprint-charge="170">Pabna</option>
+                            <option value="Panchagarh" data-fingerprint-charge="150">Panchagarh</option>
+                            <option value="Patuakhali" data-fingerprint-charge="160">Patuakhali</option>
+                            <option value="Pirojpur" data-fingerprint-charge="160">Pirojpur</option>
+                            <option value="Rajbari" data-fingerprint-charge="160">Rajbari</option>
+                            <option value="Rajshahi" data-fingerprint-charge="170">Rajshahi</option>
+                            <option value="Rangamati" data-fingerprint-charge="160">Rangamati</option>
+                            <option value="Rangpur" data-fingerprint-charge="150">Rangpur</option>
+                            <option value="Satkhira" data-fingerprint-charge="160">Satkhira</option>
+                            <option value="Shariatpur" data-fingerprint-charge="160">Shariatpur</option>
+                            <option value="Sherpur" data-fingerprint-charge="170">Sherpur</option>
+                            <option value="Sirajganj" data-fingerprint-charge="170">Sirajganj</option>
+                            <option value="Sunamganj" data-fingerprint-charge="150">Sunamganj</option>
+                            <option value="Sylhet" data-fingerprint-charge="150">Sylhet</option>
+                            <option value="Tangail" data-fingerprint-charge="180">Tangail</option>
+                            <option value="Thakurgaon" data-fingerprint-charge="150">Thakurgaon</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Package</label>
+                        <select id="bookingPackage" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                            <option value="" data-package-value="0">Select Package</option>
+                            <option value="Package-1" data-package-value="5000">Package-1</option>
+                            <option value="Package-2" data-package-value="6000">Package-2</option>
+                            <option value="Package-3" data-package-value="7000">Package-3</option>
+                            <option value="Package-4" data-package-value="8000">Package-4</option>
+                            <option value="Package-5" data-package-value="9000">Package-5</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">PAX QTY</label>
+                        <input type="number" id="bookingPaxQty" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" value="1" min="1">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Remarks</label>
+                        <input type="text" id="bookingRemarks" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Enter remarks">
+                    </div>
+                </div>
+
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Customer Documents</h4>
+                <div id="bookingDocUploadArea" class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-400 transition cursor-pointer" onclick="document.getElementById('bookingDocInput').click()">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                    </svg>
+                    <p class="text-sm text-slate-600">Click to upload documents</p>
+                    <p class="text-xs text-slate-400">PDF, JPG, PNG</p>
+                </div>
+                <input type="file" id="bookingDocInput" class="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="handleBookingDocSelect(event)">
+                <div id="bookingDocList" class="mt-3 space-y-2"></div>
+            </div>
+
+            <div class="mb-6">
+                <button type="button" onclick="openPassengerModal()" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Passenger
+                </button>
+            </div>
+
+            <div id="passengerListContainer" class="hidden mb-6">
+                <h3 class="text-lg font-semibold text-slate-700 mb-4">Passengers</h3>
+                <div id="passengerList" class="space-y-4"></div>
+            </div>
+
+            <div id="addMoreButtonContainer" class="hidden mb-6">
+                <button type="button" onclick="openPassengerModal()" class="px-6 py-3 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">+ Add More</button>
+            </div>
+
+            <div id="liveSummarySection" class="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-slate-700">Summary Card</h3>
+                    <div class="flex gap-2">
+                        <button type="button" onclick="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
+                        <button type="button" onclick="openBookingPaymentModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Payment</button>
+                    </div>
+                </div>
+                <div class="space-y-2">
+                    <div class="flex justify-between text-sm text-slate-500">
+                        <span class="w-1/6 text-center">Package</span>
+                        <span class="w-1/6 text-center">Fingerprint Charge</span>
+                        <span class="w-1/6 text-center">Pax Qty</span>
+                        <span class="w-1/6 text-center">Discount</span>
+                        <span class="w-1/6 text-center">Total Before Discount</span>
+                        <span class="w-1/6 text-center">Total Package Value</span>
+                    </div>
+                    <div class="flex justify-between font-medium text-slate-800">
+                        <span id="summaryPackage" class="w-1/6 text-center">-</span>
+                        <span id="summaryFingerprintCharge" class="w-1/6 text-center">-</span>
+                        <span id="summaryPaxQty" class="w-1/6 text-center">0</span>
+                        <span id="summaryDiscount" class="w-1/6 text-center">-</span>
+                        <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center">0 SAR</span>
+                        <span id="summaryTotalValue" class="w-1/6 text-center">0 SAR</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3 pt-6 border-t border-slate-200">
+                <button type="button" onclick="submitForm()" class="flex-1 px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Submit</button>
+                <button type="button" onclick="clearForm()" class="px-6 py-3 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Clear</button>
+                <button type="button" onclick="cancelForm()" class="px-6 py-3 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="discountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeDiscountModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Apply Discount</h3>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Original Total (SAR)</label>
+                    <input type="text" id="discountOriginalTotal" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Discount Type</label>
+                    <select id="discountType" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" onchange="calculateDiscount()">
+                        <option value="fixed">Fixed Amount</option>
+                        <option value="percentage">Percentage</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Discount Value</label>
+                    <input type="number" id="discountValue" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" oninput="calculateDiscount()">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Discount Amount (SAR)</label>
+                    <input type="text" id="discountAmount" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">New Total (SAR)</label>
+                    <input type="text" id="discountNewTotal" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold" value="0">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button type="button" onclick="applyDiscount()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Apply</button>
+                <button type="button" onclick="closeDiscountModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="customerModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeCustomerModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Add New Customer</h3>
+            <form id="customerForm" onsubmit="handleCustomerSubmit(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+                        <input type="text" id="customerName" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Full Name">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Iqama Type *</label>
+<select id="customerIqamaType" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" onchange="toggleReferralFields(); toggleCustomerIqamaField();">
+                            <option value="">Select</option>
+                            <option value="None">None</option>
+                            <option value="Self">Self</option>
+                            <option value="Referral">Referral</option>
+                        </select>
+                    </div>
+                    <div id="referralFields" class="hidden space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ref. Iqama *</label>
+                            <input type="text" id="customerRefIqama" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Referrer Iqama Number">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ref. Mobile No. *</label>
+                            <input type="tel" id="customerRefMobile" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="05XXXXXXXX">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Upload Ref. Iqama *</label>
+                            <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('customerRefIqamaFile').click()">
+                                <input type="file" id="customerRefIqamaFile" class="hidden" accept=".jpg,.jpeg,.png,.pdf" onchange="handleRefIqamaFileUpload(this)">
+                                <div class="text-slate-500">
+                                    <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                    </svg>
+                                    <span id="customerRefIqamaFileName">click to upload</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    <div id="customerIqamaField">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Iqama No. *</label>
+                        <input type="text" id="customerIqama" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder=" Iqama Number">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Passport No. *</label>
+                        <input type="text" id="customerPassport" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Passport Number">
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Mobile No. *</label>
+                        <input type="tel" id="customerMobile" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="05XXXXXXXX">
+                    </div>
+                    <div class="mb-4">
+                        <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Customer Documents</h4>
+                        <div id="customerDocUploadArea" class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-400 transition cursor-pointer" onclick="document.getElementById('customerDocInput').click()">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <p class="text-sm text-slate-600">Click to upload documents</p>
+                            <p class="text-xs text-slate-400">PDF, JPG, PNG</p>
+                        </div>
+                        <input type="file" id="customerDocInput" class="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="handleCustomerDocSelect(event)">
+                        <div id="customerDocList" class="mt-3 space-y-2"></div>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Add</button>
+                    <button type="button" onclick="closeCustomerModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="passengerModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closePassengerModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4" id="passengerModalTitle">Add Passenger</h3>
+            <form id="passengerForm" onsubmit="handlePassengerSubmit(event)">
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Basic Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">First Name *</label>
+                            <input type="text" id="passengerFirstName" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="First Name">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Last Name *</label>
+                            <input type="text" id="passengerLastName" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Last Name">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Passport No. *</label>
+                            <input type="text" id="passengerPassport" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Passport Number">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Mobile No.</label>
+                            <input type="tel" id="passengerMobile" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="05XXXXXXXX">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Date of Birth *</label>
+                            <input type="date" id="passengerDateOfBirth" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" onchange="calculatePassengerType()">
+                            <div id="passengerGenderContainer" class="hidden mt-2">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Gender *</label>
+                                <select id="passengerGender" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                    <option value="">Select</option>
+                                    <option value="Male">Male</option>
+                                    <option value="Female">Female</option>
+                                </select>
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
+                            <input type="text" id="passengerTypeDisplay" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" placeholder="Auto-calculated from DOB">
+                            <input type="hidden" id="passengerType" value="">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Passport Expiry Date</label>
+                            <input type="date" id="passengerPassportExpiry" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Service Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Stay Duration *</label>
+                            <select id="passengerPackage" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Stay Duration</option>
+                                <option value="Group (14 Days)">Group (14 Days)</option>
+                                <option value="Family (85 Days)">Family (85 Days)</option>
+                                <option value="Customize (Set Duration)">Customize (Set Duration)</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Required *</label>
+                            <select id="passengerService" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Service</option>
+                                <option value="All">All</option>
+                                <option value="Visa Only">Visa Only</option>
+                                <option value="Ticket Only">Ticket Only</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
+                            <select id="passengerRouteType" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select</option>
+                                <option value="One Way-Inbound">One Way-Inbound</option>
+                                <option value="One Way-Outbound">One Way-Outbound</option>
+                                <option value="Round">Round</option>
+                                <option value="Multi City">Multi City</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                            <select id="passengerFlightType" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select</option>
+                                <option value="Transit">Transit</option>
+                                <option value="Direct">Direct</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
+                            <select id="passengerRoute" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Route</option>
+                                <option value="DAC-JED-DAC">DAC-JED-DAC</option>
+                                <option value="DAC-RUH-DAC">DAC-RUH-DAC</option>
+                                <option value="DAC-MED-DAC">DAC-MED-DAC</option>
+                                <option value="DAC-JED-MED-DAC">DAC-JED-MED-DAC</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
+                            <select id="passengerAirline" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Airline</option>
+                                <option value="Saudia">Saudia</option>
+                                <option value="Biman Bangladesh">Biman Bangladesh</option>
+                                <option value="Emirates">Emirates</option>
+                                <option value="Qatar Airways">Qatar Airways</option>
+                                <option value="Flynas">Flynas</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
+                            <select id="passengerClass" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Class</option>
+                                <option value="Economy">Economy</option>
+                                <option value="Business">Business</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
+                            <select id="passengerFlightDateRange" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Date Range</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
+                    <div>
+                        <h5 class="text-sm font-medium text-slate-700 mb-2">Baggage Weight</h5>
+                        <input type="text" id="passengerBaggageWeight" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="30kg">
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Location</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Detailed Address <span class="text-slate-400">(Optional)</span></label>
+                            <input type="text" id="passengerAddress" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Full address (optional)">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Options</h4>
+                    <div class="flex flex-wrap gap-6">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="passengerWithOffer" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                            <span class="text-sm text-slate-700">With Offer</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="passengerRefundable" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                            <span class="text-sm text-slate-700">Refundable</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Documents</h4>
+                    <div id="passengerDocUploadArea" class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-400 transition cursor-pointer" onclick="document.getElementById('passengerDocInput').click()">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto text-slate-400 mb-2" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <p class="text-sm text-slate-600">Click to upload documents</p>
+                        <p class="text-xs text-slate-400">PDF, JPG, PNG</p>
+                    </div>
+                    <input type="file" id="passengerDocInput" class="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="handlePassengerDocSelect(event)">
+                    <div id="passengerDocList" class="mt-3 space-y-2"></div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Add</button>
+                    <button type="button" onclick="closePassengerModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="customDurationModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeCustomDurationModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Set Custom Duration</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Duration (days)</label>
+                <input type="number" id="customDurationDays" min="30" max="89" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" placeholder="Enter days (30-89)">
+                <p class="text-xs text-slate-500 mt-1">Enter a value between 30 and 89 days</p>
+            </div>
+            <div class="flex gap-3">
+                <button type="button" onclick="saveCustomDuration()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" onclick="closeCustomDurationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="ticketFareModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeTicketFareModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4" id="ticketFareModalTitle">Issue Ticket</h3>
+            <form id="ticketFareForm" onsubmit="handleTicketFareSubmit(event)">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                    <select id="ticketFareType" onchange="handleTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="regular">Regular</option>
+                        <option value="group">Group</option>
+                    </select>
+                </div>
+
+                <div id="groupTicketSection" class="mb-4 hidden">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Group Ticket</label>
+                    <select id="ticketFareGroupTicket" onchange="handleGroupTicketSelect()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select Ticket</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
+                            <input type="date" id="ticketFareUpDate" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
+                            <input type="date" id="ticketFareDownDate" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">PNR *</label>
+                            <input type="text" id="ticketFarePNR" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter PNR">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Number *</label>
+                            <input type="text" id="ticketFareTicketNumber" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter Ticket Number">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+                            <input type="date" id="ticketFareDate" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
+                            <select id="ticketFareAgent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Agent</option>
+                                <option value="Al-Reem">Al-Reem</option>
+                                <option value="Nasser">Nasser</option>
+                                <option value="Al-Masria">Al-Masria</option>
+                                <option value="Umrah Plus">Umrah Plus</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
+                            <input type="text" id="ticketFareRoute" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
+                            <input type="text" id="ticketFareAirline" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
+                            <input type="text" id="ticketFareClass" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
+                            <select id="ticketFareFlightDateRange" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Date Range</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
+                            <input type="text" id="ticketFareRouteType" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                            <input type="text" id="ticketFareFlightType" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
+                            <input type="text" id="ticketFarePassengerType" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Final Flight Date</label>
+                            <input type="date" id="ticketFareFinalFlightDate" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
+                            <input type="number" id="ticketFareSellingFare" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
+                            <input type="number" id="ticketFareNet" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Options</h4>
+                    <div class="flex flex-wrap gap-6">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="ticketFareWithOffer" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                            <span class="text-sm text-slate-700">With Offer</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="ticketFareRefundable" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                            <span class="text-sm text-slate-700">Refundable</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                    <button type="button" onclick="closeTicketFareModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="visaCostModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeVisaCostModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4" id="visaCostModalTitle">Visa Submit Form</h3>
+            <form id="visaCostForm" onsubmit="handleVisaCostSubmit(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent *</label>
+                        <select id="visaCostAgent" required onchange="updateCommissionAgentOptions()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Agent</option>
+                            <option value="Visa Agent A">Visa Agent A</option>
+                            <option value="Visa Agent B">Visa Agent B</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Commission Agent *</label>
+                        <select id="visaCostCommissionAgent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Commission Agent</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Selling Price (SAR)</label>
+                        <input type="number" id="visaCostSellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
+                        <input type="number" id="visaCostAgentCommission" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" oninput="updateVisaCostFinal()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
+                        <input type="number" id="visaCostNetVisaCost" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" oninput="updateVisaCostFinal()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Final Visa Cost (SAR)</label>
+                        <input type="number" id="visaCostFinal" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold" value="0">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                    <button type="button" onclick="closeVisaCostModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="visaIssueModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeVisaIssueModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4" id="visaIssueModalTitle">Visa Issue Form</h3>
+            <form id="visaIssueForm" onsubmit="handleVisaIssueSubmit(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent</label>
+                        <input type="text" id="visaIssueAgent" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Number *</label>
+                        <input type="text" id="visaIssueVisaNumber" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter visa number">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (SAR)</label>
+                        <input type="number" id="visaIssueSellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
+                        <input type="number" id="visaIssueTotalCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (SAR)</label>
+                        <input type="number" id="visaIssueAdditionalCost" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" oninput="calculateVisaIssueTotal()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                        <input type="text" id="visaIssueRemarks" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter remarks">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Issue</button>
+                    <button type="button" onclick="closeVisaIssueModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="visaEditModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeVisaEditModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4" id="visaEditModalTitle">Edit Visa</h3>
+            <form id="visaEditForm" onsubmit="handleVisaEditSubmit(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent *</label>
+                        <select id="visaEditAgent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Agent</option>
+                            <option value="Visa Agent A">Visa Agent A</option>
+                            <option value="Visa Agent B">Visa Agent B</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Number *</label>
+                        <input type="text" id="visaEditVisaNumber" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter visa number">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Commission Agent *</label>
+                        <select id="visaEditCommissionAgent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Commission Agent</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Selling Price (SAR)</label>
+                        <input type="number" id="visaEditSellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
+                        <input type="number" id="visaEditAgentCommission" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" oninput="calculateVisaEditFinal()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
+                        <input type="number" id="visaEditNetVisaCost" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" oninput="calculateVisaEditFinal()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (SAR)</label>
+                        <input type="number" id="visaEditAdditionalCost" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" oninput="calculateVisaEditFinal()">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                        <input type="text" id="visaEditRemarks" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter remarks">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (SAR)</label>
+                        <input type="number" id="visaEditFinalCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                        <span id="visaEditStatus" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-green-100 text-green-700">Issued</span>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                    <button type="button" onclick="closeVisaEditModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="visaPaymentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeVisaPaymentModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Visa Payment</h3>
+            <form id="visaPaymentForm" onsubmit="handleVisaPaymentSubmit(event)">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Pay To *</label>
+                        <select id="visaPaymentPayTo" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="Visa Agent">Visa Agent</option>
+                            <option value="Commission Agent">Commission Agent</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method *</label>
+                        <select id="visaPaymentMethod" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="Bank">Bank</option>
+                            <option value="Cash">Cash</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (SAR) *</label>
+                        <input type="number" id="visaPaymentAmount" required min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                    <button type="button" onclick="closeVisaPaymentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div id="invoiceDetailsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeInvoiceDetails()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-800">Invoice Details</h3>
+                    <p class="text-slate-500" id="invoiceDetailsId"></p>
+                </div>
+                <button onclick="closeInvoiceDetails()" class="text-slate-400 hover:text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-4 mb-4">
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div><span class="text-slate-500 text-sm">Invoice No</span><p class="text-slate-800 font-medium" id="invoiceNo"></p></div>
+                    <div><span class="text-slate-500 text-sm">Booking Date</span><p class="text-slate-800 font-medium" id="invoiceDate"></p></div>
+                    <div><span class="text-slate-500 text-sm">Customer</span><p class="text-slate-800 font-medium" id="invoiceCustomer"></p></div>
+                    <div><span class="text-slate-500 text-sm">Status</span><span id="invoiceStatus" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"></span></div>
+                </div>
+                <div class="grid grid-cols-3 gap-4 mt-4 pt-4 border-t border-slate-200">
+                    <div><span class="text-slate-500 text-sm">Total Value</span><p class="text-xl font-bold text-slate-800" id="invoiceTotal"></p></div>
+                    <div><span class="text-slate-500 text-sm">Total Paid</span><p class="text-xl font-bold text-green-600" id="invoicePaid"></p></div>
+                    <div><span class="text-slate-500 text-sm">Due</span><p class="text-xl font-bold text-red-600" id="invoiceDue"></p></div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-200 flex justify-end">
+                    <button type="button" onclick="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
+                </div>
+            </div>
+            <div class="mb-4">
+                <h4 class="text-lg font-semibold text-slate-700 mb-3">Passengers</h4>
+                <div id="invoicePassengers" class="space-y-3"></div>
+            </div>
+            <div>
+                <h4 class="text-lg font-semibold text-slate-700 mb-3">Payment History</h4>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="px-3 py-2 text-left">Date</th>
+                                <th class="px-3 py-2 text-left">Voucher No</th>
+                                <th class="px-3 py-2 text-left">Method</th>
+                                <th class="px-3 py-2 text-left">Trx ID</th>
+                                <th class="px-3 py-2 text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoicePaymentsBody" class="divide-y divide-slate-200"></tbody>
+                    </table>
+                </div>
+                <div id="invoicePaymentsEmpty" class="text-center py-4 text-slate-500">No payments recorded</div>
+            </div>
+        </div>
+    </div>
+
+    <div id="deletePassengerModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeDeletePassengerModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-2">Delete Passenger?</h3>
+            <p class="text-slate-600 mb-4">Are you sure you want to remove this passenger from the booking? This will update the booking total and due amount.</p>
+            <div id="deletePassengerInfo" class="mb-4 p-3 bg-slate-50 rounded-lg text-sm"></div>
+            <div class="flex gap-3">
+                <button type="button" onclick="confirmDeletePassenger()" class="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">Delete</button>
+                <button type="button" onclick="closeDeletePassengerModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="discountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeDiscountModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Apply Discount</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Original Total (SAR)</label>
+                <input type="text" id="discountOriginalTotal" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Discount Type</label>
+                <select id="discountType" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <option value="amount">Amount (SAR)</option>
+                    <option value="percentage">Percentage (%)</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Discount Value</label>
+                <input type="number" id="discountValue" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Discount Amount (SAR)</label>
+                <input type="text" id="discountAmount" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="0">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">New Total (SAR)</label>
+                <input type="text" id="discountNewTotal" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold" value="0">
+            </div>
+            <div class="flex gap-3">
+                <button type="button" onclick="applyDiscount()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Apply</button>
+                <button type="button" onclick="closeDiscountModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <div id="docUploadModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeDocUploadModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-xl font-semibold text-slate-800">Upload Documents</h3>
+                <button onclick="closeDocUploadModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="docDropZone" class="border-2 border-dashed border-slate-300 rounded-lg p-8 text-center hover:border-slate-400 transition cursor-pointer" onclick="document.getElementById('docFileInput').click()">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-12 w-12 mx-auto text-slate-400 mb-3" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                </svg>
+                <p class="text-slate-600 mb-2">Click to upload or drag and drop</p>
+                <p class="text-xs text-slate-400">PDF, JPG, PNG (max 5MB)</p>
+            </div>
+            <input type="file" id="docFileInput" class="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="handleDocFileSelect(event)">
+            <div id="docFileList" class="mt-4 space-y-2"></div>
+            <div class="flex gap-3 mt-6">
+                <button onclick="saveDocuments()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button onclick="closeDocUploadModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Booking Payment Modal -->
+    <div id="bookingPaymentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeBookingPaymentModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800">Payment Interface</h3>
+            <p class="text-sm text-slate-500 mb-4">Customer Information</p>
+            <!-- Booking Summary -->
+            <div class="mb-4">
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Total Package Value:</span>
+                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">0 SAR</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Paid:</span>
+                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">0 SAR</span>
+                    </div>
+                    <div class="flex justify-between col-span-2">
+                        <span class="text-slate-600 font-medium">Due:</span>
+                        <span id="paymentDue" class="text-slate-800 font-bold text-right">0 SAR</span>
+                    </div>
+                </div>
+            </div>
+            <!-- Payment Details -->
+            <div class="mb-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                        <select id="bookingPaymentCurrency" onchange="handleBookingPaymentCurrencyChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="SAR" selected>SAR</option>
+                            <option value="BDT">BDT</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Method</label>
+                        <select id="bookingPaymentMethod" onchange="handleBookingPaymentMethodChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="Cash" selected>Cash</option>
+                            <option value="Bank">Bank</option>
+                        </select>
+                    </div>
+                    <div id="bookingPaymentBankMethod" class="hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
+                        <select id="bookingPaymentBankMethod" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Bank</option>
+                            <option value="AL-Raji">AL-Raji</option>
+                            <option value="SNB">SNB</option>
+                            <option value="Bkash-BMT">Bkash-BMT</option>
+                            <option value="IBBL-BMT">IBBL-BMT</option>
+                        </select>
+                    </div>
+                    <div id="bookingPaymentTRXID" class="hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">TRX ID</label>
+                        <input type="text" id="bookingPaymentTRXID" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter TRX ID">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (SAR)</label>
+                        <input type="number" id="bookingPaymentAmountSAR" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter SAR amount">
+                    </div>
+                    <div id="bookingPaymentAmountBDT" class="hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (BDT)</label>
+                        <input type="number" id="bookingPaymentAmountBDT" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter BDT amount">
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button type="button" onclick="saveBookingPayment()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" onclick="closeBookingPaymentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector('.nav-item[data-tab="bookingIndex"]')?.classList.add('active');
+
+        // Booking Payment Modal Functions
+        function openBookingPaymentModal() {
+            const passengers = (typeof state !== 'undefined' && state.passengers) ? state.passengers : [];
+            const total = passengers.reduce((sum, p) => sum + (parseFloat(p.total) || 0), 0);
+            const paid = passengers.reduce((sum, p) => sum + (parseFloat(p.paid) || 0), 0);
+            const due = total - paid;
+            
+            // Demo values when no data
+            const displayTotal = total > 0 ? total : 10000;
+            const displayPaid = paid > 0 ? paid : 5000;
+            const displayDue = displayTotal - displayPaid;
+            
+            document.getElementById('paymentTotalPackageValue').textContent = displayTotal + ' SAR';
+            document.getElementById('paymentPaid').textContent = displayPaid + ' SAR';
+            document.getElementById('paymentDue').textContent = displayDue + ' SAR';
+            
+            document.getElementById('bookingPaymentCurrency').value = 'SAR';
+            document.getElementById('bookingPaymentMethod').value = 'Cash';
+            document.getElementById('bookingPaymentAmountSAR').value = '';
+            document.getElementById('bookingPaymentAmountBDT').value = '';
+            document.getElementById('bookingPaymentBankMethod').value = '';
+            document.getElementById('bookingPaymentTRXID').value = '';
+            
+            document.getElementById('bookingPaymentBankMethod').classList.add('hidden');
+            document.getElementById('bookingPaymentTRXID').classList.add('hidden');
+            document.getElementById('bookingPaymentAmountBDT').classList.add('hidden');
+            
+            document.getElementById('bookingPaymentModal').classList.remove('hidden');
+        }
+
+        function closeBookingPaymentModal() {
+            document.getElementById('bookingPaymentModal').classList.add('hidden');
+        }
+
+        function handleBookingPaymentCurrencyChange() {
+            const currency = document.getElementById('bookingPaymentCurrency').value;
+            const amountBDT = document.getElementById('bookingPaymentAmountBDT');
+            
+            if (currency === 'BDT') {
+                amountBDT.classList.remove('hidden');
+            } else {
+                amountBDT.classList.add('hidden');
+            }
+        }
+
+        function handleBookingPaymentMethodChange() {
+            const method = document.getElementById('bookingPaymentMethod').value;
+            const bankMethod = document.getElementById('bookingPaymentBankMethod');
+            const trxID = document.getElementById('bookingPaymentTRXID');
+            
+            if (method === 'Bank') {
+                bankMethod.classList.remove('hidden');
+                trxID.classList.remove('hidden');
+            } else {
+                bankMethod.classList.add('hidden');
+                trxID.classList.add('hidden');
+            }
+        }
+
+        function saveBookingPayment() {
+            const currency = document.getElementById('bookingPaymentCurrency').value;
+            const method = document.getElementById('bookingPaymentMethod').value;
+            const amountSAR = parseFloat(document.getElementById('bookingPaymentAmountSAR').value) || 0;
+            const amountBDT = parseFloat(document.getElementById('bookingPaymentAmountBDT').value) || 0;
+            const bankMethod = document.getElementById('bookingPaymentBankMethod').value;
+            const trxID = document.getElementById('bookingPaymentTRXID').value;
+            
+            if (amountSAR === 0 && amountBDT === 0) {
+                showToast('Please enter payment amount');
+                return;
+            }
+            
+            showToast('Payment saved successfully!');
+            closeBookingPaymentModal();
+        }
+
+        function closeBookingPaymentModal() {
+            document.getElementById('bookingPaymentModal').classList.add('hidden');
+        }
+    </script>
+    <script src="shared.js"></script>
+    <script src="booking.js"></script>
+</body>
+</html>

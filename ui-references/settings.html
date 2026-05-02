@@ -1,0 +1,226 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Settings - BM Umrah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .modal-overlay { transition: opacity 0.2s ease; }
+        .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
+        .toast { transition: transform 0.3s ease, opacity 0.3s ease; }
+        .nav-item { color: #94a3b8; transition: all 0.2s ease; }
+        .nav-item:hover { color: white; background-color: rgba(255,255,255,0.1); }
+        .nav-item.active { background-color: white; color: #1e293b; }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen px-4">
+    <!-- Dynamic Navigation Container -->
+    <div id="navContainer"></div>
+    
+    <!-- Navigation Scripts -->
+    <script src="nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadNavigation);
+    </script>
+
+    <div id="settingsSection" class="w-full mt-8 px-4">
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h2 class="text-xl font-semibold text-slate-700 mb-6">Admin Settings</h2>
+            
+            <div class="mb-6 border-b border-slate-200">
+                <div class="flex space-x-1 -mb-px">
+                    <button type="button" onclick="showTab('flightDateGapSection')" id="tab-flightDateGap" class="px-4 py-2 border-b-2 font-medium text-sm transition border-slate-800 text-slate-800">Flight Date Gap</button>
+                    <button type="button" onclick="showTab('fingerprintChargeSection')" id="tab-fingerprintCharge" class="px-4 py-2 border-b-2 font-medium text-sm transition border-transparent text-slate-500 hover:text-slate-700">Fingerprint Charge</button>
+                    <button type="button" onclick="showTab('packageConfigSection')" id="tab-packageConfig" class="px-4 py-2 border-b-2 font-medium text-sm transition border-transparent text-slate-500 hover:text-slate-700">Package Configuration</button>
+                </div>
+            </div>
+
+            <div id="flightDateGapSection" class="py-2">
+            <div class="mb-8">
+                <h3 class="text-lg font-medium text-slate-700 mb-4 pb-2 border-b border-slate-200">Flight Date Gap</h3>
+                <div class="flex items-end gap-4">
+                    <div class="flex-1">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Default Gap Between Booking and Flight Date (Days)</label>
+                        <input type="number" id="flightDateGapInput" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="30" min="0">
+                    </div>
+                    <button type="button" onclick="saveFlightDateGap()" class="px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                </div>
+            </div>
+            </div>
+
+            <div id="fingerprintChargeSection" class="py-2 hidden">
+            <div>
+                <div class="flex items-end justify-between mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Division</label>
+                        <select id="filterDivisionSelect" onchange="onDivisionFilterChange()" class="w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Division</option>
+                        </select>
+                    </div>
+                    <button type="button" id="addUpdateChargeBtn" onclick="showFingerprintChargeModal()" class="px-4 py-2 bg-slate-700 text-white rounded-lg transition font-medium opacity-50 cursor-not-allowed" disabled>Add/Update</button>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-medium">Division</th>
+                                <th class="px-3 py-2 text-left font-medium">District</th>
+                                <th class="px-3 py-2 text-right font-medium">Charge (SAR)</th>
+                                <th class="px-3 py-2 text-center font-medium">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="fingerprintChargesTableBody" class="divide-y divide-slate-200"></tbody>
+                    </table>
+                </div>
+                <div id="fingerprintChargesEmpty" class="text-center py-4 text-slate-500">No fingerprint charges configured yet.</div>
+            </div>
+            </div>
+
+            <div id="packageConfigSection" class="py-2 hidden">
+            <div class="mt-2">
+                <h3 class="text-lg font-medium text-slate-700 mb-4 pb-2 border-b border-slate-200">Package Configuration</h3>
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Package Name</label>
+                        <input type="text" id="packageNameInput" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Package name">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                        <select id="packageOfferSelect" onchange="togglePackageOfferPrice(); renderPackageTicketOptions();" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Type</option>
+                            <option value="Regular">Regular</option>
+                            <option value="Offer">Offer</option>
+                            <option value="Group">Group</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket</label>
+                        <select id="packageTicketSelect" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Ticket</option>
+                        </select>
+                    </div>
+                </div>
+                <!-- <div class="grid grid-cols-1 md:grid-cols-4 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Available Tickets</label>
+                        <input type="number" id="packageAvailableTicket" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" placeholder="0">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Effective From</label>
+                        <input type="date" id="packageEffectiveFrom" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Effective To</label>
+                        <input type="date" id="packageEffectiveTo" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (SAR)</label>
+                        <input type="number" id="packageRegularPriceInput" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                    </div>
+                </div> -->
+
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (SAR)</label>
+                        <input type="number" id="packageRegularPriceInput" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                    </div>
+                    <div id="packageOfferPriceField" class="hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
+                        <input type="number" id="packageOfferPriceInput" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                    </div>
+                </div>
+                <div class="flex items-end gap-4 mb-4">
+                    <button type="button" onclick="addPackageConfig()" class="px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Add/Update</button>
+                </div>
+
+                <div class="overflow-x-auto mt-4">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-medium">Package</th>
+                                <th class="px-3 py-2 text-left font-medium">Ticket</th>
+                                <th class="px-3 py-2 text-left font-medium">Ticket Type</th>
+                                <th class="px-3 py-2 text-left font-medium">Available Tickets</th>
+                                <th class="px-3 py-2 text-left font-medium">Effective From</th>
+                                <th class="px-3 py-2 text-left font-medium">Effective To</th>
+                                <th class="px-3 py-2 text-right font-medium">Regular Price</th>
+                                <th class="px-3 py-2 text-right font-medium">Offer Price</th>
+                                <th class="px-3 py-2 text-center font-medium">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="packageConfigTableBody" class="divide-y divide-slate-200"></tbody>
+                    </table>
+                </div>
+                <div id="packageConfigEmpty" class="text-center py-4 text-slate-500">No packages configured yet.</div>
+            </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <div id="fingerprintChargeModal" class="fixed inset-0 z-50 hidden">
+        <div class="modal-overlay fixed inset-0 bg-black bg-opacity-50" onclick="hideFingerprintChargeModal()"></div>
+        <div class="modal-content fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+            <div class="flex justify-between items-center mb-4">
+                <h3 class="text-lg font-semibold text-slate-700">Add/Update Fingerprint Charge</h3>
+                <button onclick="hideFingerprintChargeModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">District</label>
+                    <select id="modalDistrictSelect" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select District</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Fingerprint Charge (SAR)</label>
+                    <input type="number" id="modalFingerprintChargeInput" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button type="button" onclick="hideFingerprintChargeModal()" class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                <button type="button" onclick="submitFingerprintCharge()" class="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Submit</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector('.nav-item[data-tab="settings"]')?.classList.add('active');
+    </script>
+    <script src="shared.js"></script>
+    <script src="settings.js"></script>
+</body>
+</html>

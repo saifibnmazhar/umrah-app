@@ -1,0 +1,2195 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Invoice Details - BM Umrah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .modal-overlay { transition: opacity 0.2s ease; }
+        .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
+        .toast { transition: transform 0.3s ease, opacity 0.3s ease; }
+        .nav-item { color: #94a3b8; transition: all 0.2s ease; }
+        .nav-item:hover { color: white; background-color: rgba(255,255,255,0.1); }
+        .nav-item.active { background-color: white; color: #1e293b; }
+        @media print {
+            body { background: white; }
+            nav, .no-print { display: none !important; }
+            .bg-slate-100 { background: white; }
+            .shadow-lg, .shadow-xl { box-shadow: none; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen px-4">
+    <!-- Dynamic Navigation Container -->
+    <div id="navContainer"></div>
+    
+    <!-- Navigation Scripts -->
+    <script src="nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadNavigation);
+    </script>
+
+    <!-- OLD NAVIGATION
+    <nav class="bg-slate-800 text-white sticky top-0 z-40 shadow-lg -mx-4 pb-8">
+        <div class="max-w-4xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0 flex items-center gap-3">
+                    <button onclick="window.location.href='booking.html'" class="text-slate-300 hover:text-white">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                        </svg>
+                    </button>
+                    <h1 class="text-xl font-bold">BM Umrah Booking</h1>
+                </div>
+                <div class="hidden md:flex space-x-1" id="desktopNav">
+                    <button onclick="window.location.href='dashboard.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="dashboard">Dashboard</button>
+                    <button onclick="window.location.href='booking.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="bookingIndex">Booking</button>
+                    <button onclick="window.location.href='fare-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fareAdmin">Fare Admin</button>
+                    <button onclick="window.location.href='visa-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="visaAdmin">Visa Admin</button>
+                    <button onclick="window.location.href='settings.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="settings">Settings</button>
+                    <button onclick="window.location.href='fingerprint-staff.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fingerprintStaff">Fingerprint Staff</button>
+                    <div class="relative group">
+                        <button class="nav-item px-4 py-2 rounded-md font-medium text-sm">Report ▾</button>
+                        <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50">
+                            <a href="statement.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap" data-tab="statement">Statement</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="fingerprint-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Fingerprint Report</a>
+                            <a href="visa-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>
+                            <a href="visa-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Report</a>
+                            <a href="due-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>
+                            <a href="ticket-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agent Report</a>
+                            <a href="payment-receiving-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payment Receiving Report</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="reissue-refund-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Reissue & Refund Report</a>
+                            <a href="user-wise-sales-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">User Wise Sales Report</a>
+                            <a href="pending-outbound-ticket-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Pending Outbound Ticket</a>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="hidden md:hidden bg-slate-700" id="mobileMenu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="window.location.href='dashboard.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Dashboard</button>
+                <button onclick="window.location.href='booking.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</button>
+                <button onclick="window.location.href='fare-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fare Admin</button>
+                <button onclick="window.location.href='visa-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</button>
+                <button onclick="window.location.href='settings.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Settings</button>
+                <button onclick="window.location.href='fingerprint-staff.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</button>
+                <div class="border-t border-slate-600 pt-2 mt-2">
+                    <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORT</span>
+                    <button onclick="window.location.href='statement.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Statement</button>
+                    <button onclick="window.location.href='profit-loss-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</button>
+                    <button onclick="window.location.href='fingerprint-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</button>
+                    <button onclick="window.location.href='visa-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Report</button>
+                    <button onclick="window.location.href='visa-agent-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Report</button>
+                    <button onclick="window.location.href='ticket-agent-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agent Report</button>
+                    <button onclick="window.location.href='due-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</button>
+                    <button onclick="window.location.href='payment-receiving-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payment Receiving Report</button>
+                    <button onclick="window.location.href='reissue-refund-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Reissue & Refund Report</button>
+                    <button onclick="window.location.href='user-wise-sales-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">User Wise Sales Report</button>
+                    <button onclick="window.location.href='pending-outbound-ticket-report.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Pending Outbound Ticket</button>
+                </div>
+            </div>
+        </div>
+    </nav>
+    END OLD NAVIGATION -->
+
+
+    <div class="max-w-4xl mx-auto pt-6">
+<div id="invoiceDetailsContent" class="space-y-6">
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
+                    <div class="flex items-center gap-3">
+                        <button onclick="window.location.href='booking.html'" class="text-slate-400 hover:text-slate-600">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7" />
+                            </svg>
+                        </button>
+                        <div>
+                            <h2 class="text-xl font-semibold text-slate-800">Invoice Details</h2>
+                            <p class="text-slate-500 text-sm mt-1" id="invoiceDetailsId">ID: <span id="invoiceId">-</span></p>
+                        </div>
+                    </div>
+                    <div class="flex gap-2">
+                        <button onclick="const params = new URLSearchParams(window.location.search); const index = params.get('index') || 0; window.open('invoice-print.html?index=' + index, '_blank');" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm">Print</button>
+                        <button onclick="editBooking()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">Edit</button>
+                    </div>
+                </div>
+
+                <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                    <div><span class="text-slate-500 text-sm">Invoice No</span><p class="text-slate-800 font-medium" id="invoiceNo">-</p></div>
+                    <div><span class="text-slate-500 text-sm">Booking Date</span><p class="text-slate-800 font-medium" id="invoiceDate">-</p></div>
+                    <div><span class="text-slate-500 text-sm">Customer</span><p class="text-slate-800 font-medium" id="invoiceCustomer">-</p></div>
+                    <div><span class="text-slate-500 text-sm">Status</span><span id="invoiceStatus" class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"></span></div>
+                </div>
+
+                <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-200">
+                    <div><span class="text-slate-500 text-sm">Total Value</span><p class="text-xl font-bold text-slate-800" id="invoiceTotal">-</p></div>
+                    <div><span class="text-slate-500 text-sm">Total Paid</span><p class="text-xl font-bold text-green-600" id="invoicePaid">-</p></div>
+                    <div><span class="text-slate-500 text-sm">Due</span><p class="text-xl font-bold text-red-600" id="invoiceDue">-</p></div>
+                </div>
+                <div class="mt-4 pt-4 border-t border-slate-200 flex justify-end">
+                    <button type="button" onclick="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
+                </div>
+            </div>
+
+            <div class="bg-white rounded-xl shadow-lg p-6">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-slate-700">Passengers</h3>
+                </div>
+                <div id="invoicePassengers" class="space-y-3"></div>
+                <div class="flex justify-end mt-4">
+                    <button onclick="editBooking(true)" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
+                </div>
+            </div>
+
+            <div class="grid grid-cols-2 gap-4 mt-4">
+                <div class="bg-slate-50 rounded-lg p-4">
+                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                        <h3 class="text-sm font-medium text-slate-500">Customer Documents</h3>
+                        <div class="flex gap-2">
+                            <input type="file" id="customerDocInput" class="hidden" accept=".pdf,image/*" multiple onchange="handleCustomerDocSelect(event)">
+                            <button onclick="document.getElementById('customerDocInput').click()" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">Upload</button>
+                            <button onclick="downloadAllCustomerDocs()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
+                        </div>
+                    </div>
+                    <div id="customerDocumentsList" class="space-y-2 overflow-y-auto" style="max-height: 16rem;">
+                        <p class="text-sm text-slate-400">No customer documents</p>
+                    </div>
+                </div>
+
+                <div class="bg-slate-50 rounded-lg p-4">
+                    <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                        <h3 class="text-sm font-medium text-slate-500">Passenger Documents</h3>
+                        <div class="flex gap-2">
+                            <button onclick="downloadAllPassengerDocsForInvoice()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
+                        </div>
+                    </div>
+                    <div id="passengerDocumentsList" class="space-y-2 overflow-y-auto" style="max-height: 16rem;">
+                        <p class="text-sm text-slate-400">No passenger documents</p>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="flex justify-end gap-3">
+                <button onclick="openReIssueModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                    Request Re-Issue
+                </button>
+                <button onclick="openAddTicketModal()" class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
+                    Request Add. Tkt
+                </button>
+                <button onclick="openRefundModal()" class="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium">
+                    Request Refund
+                </button>
+                <button onclick="downloadAllInvoiceDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                    Download All Docs
+                </button>
+                <button onclick="openPaymentModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                    Payment
+                </button>
+            </div>
+
+            <!-- Tab Navigation -->
+            <div class="bg-white rounded-xl shadow-lg mb-6">
+                <div class="flex border-b border-slate-200">
+                    <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
+                        Payment History
+                    </button>
+                    <button onclick="switchTab('reissue')" id="tab-reissue" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
+                        Re-issue History
+                    </button>
+                    <button onclick="switchTab('addticket')" id="tab-addticket" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
+                        Additional Ticket
+                    </button>
+                    <button onclick="switchTab('refund')" id="tab-refund" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
+                        Refund History
+                    </button>
+                </div>
+            </div>
+
+            <div id="content-payment" class="tab-content block bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-slate-700 mb-4">Payment History</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full text-sm">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="px-3 py-2 text-left">Date</th>
+                                <th class="px-3 py-2 text-left">Voucher No</th>
+                                <th class="px-3 py-2 text-left">Method</th>
+                                <th class="px-3 py-2 text-left">Trx ID</th>
+                                <th class="px-3 py-2 text-right">Amount</th>
+                            </tr>
+                        </thead>
+                        <tbody id="invoicePaymentsBody" class="divide-y divide-slate-200"></tbody>
+                    </table>
+                </div>
+                <div id="invoicePaymentsEmpty" class="text-center py-4 text-slate-500">No payments recorded</div>
+            </div>
+
+            <!-- Re-issue History -->
+            <div id="content-reissue" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-slate-700 mb-4">Re-issue History</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[1100px] text-sm">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-medium">Date</th>
+                                <th class="px-3 py-2 text-left font-medium">Passenger Name</th>
+                                <th class="px-3 py-2 text-left font-medium">Passport No.</th>
+                                <th class="px-3 py-2 text-left font-medium">PNR</th>
+                                <th class="px-3 py-2 text-left font-medium">Agent</th>
+                                <th class="px-3 py-2 text-right font-medium">Total Reissue Cost</th>
+                                <th class="px-3 py-2 text-right font-medium">Total Customer Payment</th>
+                                <th class="px-3 py-2 text-right font-medium">Profit</th>
+                                <th class="px-3 py-2 text-left font-medium">Payment Method</th>
+                                <th class="px-3 py-2 text-left font-medium">Status</th>
+                                <th class="px-3 py-2 text-left font-medium">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="reissueHistoryBody" class="divide-y divide-slate-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Additional Ticket History -->
+            <div id="content-addticket" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-slate-700 mb-4">Additional Ticket History</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[1100px] text-sm">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-medium">Date</th>
+                                <th class="px-3 py-2 text-left font-medium">Passenger Name</th>
+                                <th class="px-3 py-2 text-left font-medium">Passport No.</th>
+                                <th class="px-3 py-2 text-left font-medium">PNR</th>
+                                <th class="px-3 py-2 text-left font-medium">Agent</th>
+                                <th class="px-3 py-2 text-right font-medium">Additional Ticket Cost</th>
+                                <th class="px-3 py-2 text-right font-medium">Total Customer Payment</th>
+                                <th class="px-3 py-2 text-right font-medium">Profit</th>
+                                <th class="px-3 py-2 text-left font-medium">Payment Method</th>
+                                <th class="px-3 py-2 text-left font-medium">Status</th>
+                                <th class="px-3 py-2 text-left font-medium">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="additionalTicketHistoryBody" class="divide-y divide-slate-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- Refund History -->
+            <div id="content-refund" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
+                <h3 class="text-lg font-semibold text-slate-700 mb-4">Refund History</h3>
+                <div class="overflow-x-auto">
+                    <table class="w-full min-w-[1100px] text-sm">
+                        <thead class="bg-slate-50 text-slate-600">
+                            <tr>
+                                <th class="px-3 py-2 text-left font-medium">Date</th>
+                                <th class="px-3 py-2 text-left font-medium">Passenger Name</th>
+                                <th class="px-3 py-2 text-left font-medium">Passport No.</th>
+                                <th class="px-3 py-2 text-left font-medium">PNR</th>
+                                <th class="px-3 py-2 text-left font-medium">Agent</th>
+                                <th class="px-3 py-2 text-right font-medium">Agent Refund Amount</th>
+                                <th class="px-3 py-2 text-right font-medium">Customer Refund Amount</th>
+                                <th class="px-3 py-2 text-right font-medium">Profit</th>
+                                <th class="px-3 py-2 text-left font-medium">Payment Method</th>
+                                <th class="px-3 py-2 text-left font-medium">Status</th>
+                                <th class="px-3 py-2 text-left font-medium">Action</th>
+                            </tr>
+                        </thead>
+                        <tbody id="refundHistoryBody" class="divide-y divide-slate-200">
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <div class="mt-6 pt-4 border-t border-slate-200 flex gap-3">
+                <button onclick="goBack()" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Back to List</button>
+            </div>
+        </div>
+
+        <div id="notFound" class="hidden bg-white rounded-xl shadow-lg p-12 text-center">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-16 w-16 mx-auto text-slate-300 mb-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9.172 16.172a4 4 0 015.656 0M9 10h.01M15 10h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <h2 class="text-xl font-semibold text-slate-800 mb-2">Invoice Not Found</h2>
+            <p class="text-slate-500 mb-6">The invoice details you're looking for could not be found.</p>
+            <button onclick="window.location.href='booking.html'" class="px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Go to Booking</button>
+        </div>
+    </div>
+
+    <div id="reIssueModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeReIssueModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-800">Request Re-Issue</h3>
+                    <p class="text-slate-500 text-sm mt-1">Select passengers and enter dates</p>
+                </div>
+                <button onclick="closeReIssueModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="reIssuePassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto"></div>
+            <div class="flex gap-3">
+                <button onclick="submitReIssueRequest()" class="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Submit Request</button>
+                <button onclick="closeReIssueModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="addTicketModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeAddTicketModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-800">Request Additional Ticket</h3>
+                    <p class="text-slate-500 text-sm mt-1">Select passengers and enter dates</p>
+                </div>
+                <button onclick="closeAddTicketModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="addTicketPassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto"></div>
+            <div class="flex gap-3">
+                <button onclick="submitAddTicketRequest()" class="flex-1 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">Submit Request</button>
+                <button onclick="closeAddTicketModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <!-- Re-Issue Details Modal -->
+    <div id="reissueDetailsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeReissueDetailsModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="text-xl font-semibold text-slate-800">Re-Issue Details</h3>
+                <button onclick="closeReissueDetailsModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="reissueDetailsContent"></div>
+        </div>
+    </div>
+
+    <!-- Refund Details Modal -->
+    <div id="refundDetailsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeRefundDetailsModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-4">
+                <h3 class="text-xl font-semibold text-slate-800">Refund Details</h3>
+                <button onclick="closeRefundDetailsModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="refundDetailsContent"></div>
+        </div>
+    </div>
+
+    <div id="refundModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeRefundModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex justify-between items-start mb-4">
+                <div>
+                    <h3 class="text-xl font-semibold text-slate-800">Request Refund</h3>
+                    <p class="text-slate-500 text-sm mt-1">Select passengers for refund</p>
+                </div>
+                <button onclick="closeRefundModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                    </svg>
+                </button>
+            </div>
+            <div id="refundPassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto"></div>
+            <div class="flex gap-3">
+                <button onclick="submitRefundRequest()" class="flex-1 px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium">Submit Request</button>
+                <button onclick="closeRefundModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="discountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeDiscountModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Apply Discount</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Original Total</label>
+                <input type="text" id="discountOriginalTotal" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Discount Type</label>
+                <select id="discountType" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" onchange="calculateInvoiceDiscount()">
+                    <option value="percentage">Percentage (%)</option>
+                    <option value="fixed">Fixed Amount (SAR)</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Discount Value</label>
+                <input type="number" id="discountValue" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" oninput="calculateInvoiceDiscount()">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Discount Amount (SAR)</label>
+                <input type="text" id="discountAmount" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="0">
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">New Total (SAR)</label>
+                <input type="text" id="discountNewTotal" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold" value="0">
+            </div>
+            <div class="flex gap-3">
+                <button type="button" onclick="applyInvoiceDiscount()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Apply</button>
+                <button type="button" onclick="closeDiscountModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="paymentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+        <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closePaymentModal()"></div>
+        <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Payment Interface</h3>
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Customer Information</h4>
+                <div class="grid grid-cols-2 gap-x-6 gap-y-2 text-sm">
+                    <!-- <div class="flex justify-between">
+                        <span class="text-slate-500">Customer Name:</span>
+                        <span id="paymentCustomerName" class="text-slate-800 font-medium text-right"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Customer Mobile:</span>
+                        <span id="paymentCustomerMobile" class="text-slate-800 font-medium text-right"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Iqama No.:</span>
+                        <span id="paymentIqamaNo" class="text-slate-800 font-medium text-right"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Passport:</span>
+                        <span id="paymentPassport" class="text-slate-800 font-medium text-right"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Pax QTY:</span>
+                        <span id="paymentPaxQty" class="text-slate-800 font-medium text-right"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Package Name:</span>
+                        <span id="paymentPackageName" class="text-slate-800 font-medium text-right"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Fingerprint Charge:</span>
+                        <span id="paymentFingerprintCharge" class="text-slate-800 font-medium text-right"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Discount:</span>
+                        <span id="paymentDiscount" class="text-slate-800 font-medium text-right"></span>
+                    </div> -->
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Total Package Value:</span>
+                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Paid:</span>
+                        <span id="paymentPaid" class="text-slate-800 font-medium text-right"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Due:</span>
+                        <span id="paymentDue" class="text-slate-800 font-medium text-right"></span>
+                    </div>
+                </div>
+                <div class="grid grid-cols-2 gap-4 mt-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                        <select id="paymentCurrency" onchange="handlePaymentCurrencyChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="SAR" selected>SAR</option>
+                            <option value="BDT">BDT</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Method</label>
+                        <select id="paymentMethod" onchange="handlePaymentMethodChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="Cash" selected>Cash</option>
+                            <option value="Bank">Bank</option>
+                        </select>
+                    </div>
+                    <div id="paymentBankMethod" class="hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
+                        <select id="paymentBankMethod" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Bank</option>
+                            <option value="AL-Raji">AL-Raji</option>
+                            <option value="SNB">SNB</option>
+                            <option value="Bkash-BMT">Bkash-BMT</option>
+                            <option value="IBBL-BMT">IBBL-BMT</option>
+                        </select>
+                    </div>
+                    <div id="paymentTRXID" class="hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">TRX ID</label>
+                        <input type="text" id="paymentTRXID" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter TRX ID">
+                    </div>
+                    <div id="paymentAmountSAR">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (SAR)</label>
+                        <input type="number" id="paymentAmountSAR" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter SAR amount">
+                    </div>
+                    <div id="paymentAmountBDT" class="hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (BDT)</label>
+                        <input type="number" id="paymentAmountBDT" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter BDT amount">
+                    </div>
+                </div>
+            </div>
+            <div class="flex gap-3">
+                <button type="button" onclick="savePayment()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <!-- <button type="button" onclick="printPaymentReceipt()" class="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Print</button> -->
+                <button type="button" onclick="closePaymentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
+    <script src="shared.js"></script>
+    <script>
+        // Define bookingIndexState inline to ensure it's available
+        const bookingIndexState = {
+            bookings: [
+                {
+                    id: 1,
+                    invoiceNo: 'INV-1001',
+                    bookingDate: '2026-03-15',
+                    customerName: 'Ahmed Al-Rashid',
+                    customerMobile: '0501234567',
+                    passengers: [
+                        { name: 'Ahmed Al-Rashid', passport: 'P123456', total: 3200 },
+                        { name: 'Sara Khan', passport: 'P654321', total: 3200 }
+                    ],
+                    payments: [
+                        { amount: 5000 }
+                    ]
+                }
+            ],
+selectedBookingId: null
+        };
+
+        // Define passengerIndexState inline to ensure it's available
+        const passengerIndexState = {
+            passengerIndexRows: [],
+            selectedPassengerId: null
+        };
+
+        let currentInvoiceBooking = null;
+        
+        function getElement(id) {
+            return document.getElementById(id);
+        }
+
+        function showToast(msg) {
+            const container = getElement('toastContainer');
+            if(!container) {
+                alert(msg);
+                return;
+            }
+            const toast = document.createElement('div');
+            toast.className = 'px-4 py-2 bg-slate-700 text-white rounded shadow';
+            toast.textContent = msg;
+            container.appendChild(toast);
+            setTimeout(() => toast.remove(), 3000);
+        }
+        
+        function loadInvoiceDetails() {
+            const params = new URLSearchParams(window.location.search);
+            const index = params.get('index') || '0';
+            
+            const rowIndex = parseInt(index);
+            const booking = bookingIndexState.bookings[rowIndex];
+            
+            if (!booking) {
+                // Try loading first booking if index not found
+                if (bookingIndexState.bookings.length > 0) {
+                    booking = bookingIndexState.bookings[0];
+                } else {
+                    showNotFound();
+                    return;
+                }
+            }
+            
+            currentInvoiceBooking = booking;
+            bookingIndexState.selectedBookingId = booking.id;
+            renderInvoiceDetails(booking, rowIndex);
+            try { initializePassengerIndexFromBookings(); } catch(e) {}
+            try { addSampleDocuments(); } catch(e) {}
+            setTimeout(() => {
+                try { renderCustomerDocumentsList(); } catch(e) {}
+                try { renderPassengerDocumentsListForInvoice(); } catch(e) {}
+            }, 100);
+        }
+
+        function editBooking(addPassenger = false) {
+            const params = new URLSearchParams(window.location.search);
+            const index = params.get('index');
+            let url = 'booking.html?edit=' + index;
+            if (addPassenger) {
+                url += '&addPassenger=true';
+            }
+            window.location.href = url;
+        }
+        
+        function printInvoice() {
+            window.print();
+        }
+        
+        function renderInvoiceDetails(booking, rowIndex) {
+            document.getElementById('invoiceId').textContent = booking.id;
+            document.getElementById('invoiceNo').textContent = booking.invoiceNo || '-';
+            document.getElementById('invoiceDate').textContent = booking.bookingDate || '-';
+            document.getElementById('invoiceCustomer').textContent = booking.customerName || '-';
+
+            const total = booking.passengers.reduce((sum, p) => sum + (p.total || 0), 0);
+            const paid = booking.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const due = total - paid;
+
+            document.getElementById('invoiceTotal').textContent = total;
+            document.getElementById('invoicePaid').textContent = paid;
+            document.getElementById('invoiceDue').textContent = due;
+
+            // Apply any existing discount
+            const discountValue = booking.discountValue || 0;
+            const discountType = booking.discountType || 'amount';
+            if (discountValue > 0) {
+                let discountAmount = 0;
+                if (discountType === 'percentage') {
+                    discountAmount = total * discountValue / 100;
+                } else {
+                    discountAmount = discountValue;
+                }
+                const discountedTotal = total - discountAmount;
+                document.getElementById('invoiceTotal').textContent = discountedTotal + ' (was ' + total + ')';
+                const discountedDue = discountedTotal - paid;
+                document.getElementById('invoiceDue').textContent = discountedDue;
+            }
+
+            const statusEl = document.getElementById('invoiceStatus');
+            statusEl.textContent = due > 0 ? 'Due' : 'Paid';
+            statusEl.className = `inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${due > 0 ? 'bg-yellow-100 text-yellow-700' : 'bg-green-100 text-green-700'}`;
+
+            const passengersEl = document.getElementById('invoicePassengers');
+            passengersEl.innerHTML = booking.passengers.map((p, pIndex) => {
+                const passengerIndex = passengerIndexState.passengerIndexRows.findIndex(row => row.passengerName === p.name && row.invoiceNo === booking.invoiceNo);
+                return `
+                    <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                        <div>
+                            <span class="font-medium text-slate-800">${p.name}</span>
+                            <span class="text-slate-500 text-sm ml-2">(${p.passport})</span>
+                        </div>
+                        <div class="flex items-center gap-3">
+                            <span class="text-slate-800 font-medium">${p.total} SAR</span>
+                            ${passengerIndex !== -1 ? `<button onclick="window.location.href='passenger-details.html?index=' + ${passengerIndex} + '&source=invoice'" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-1 rounded">View</button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+
+            const paymentsBody = document.getElementById('invoicePaymentsBody');
+            paymentsBody.innerHTML = booking.payments.map(p => `
+                <tr>
+                    <td class="px-3 py-2 text-slate-600">${p.date}</td>
+                    <td class="px-3 py-2 text-slate-600">${p.voucherNo}</td>
+                    <td class="px-3 py-2 text-slate-600">${p.paymentMethod}</td>
+                    <td class="px-3 py-2 text-slate-600">${p.trxId}</td>
+                    <td class="px-3 py-2 text-right text-slate-800 font-medium">${p.amount}</td>
+                </tr>
+            `).join('');
+
+            document.getElementById('invoicePaymentsEmpty').classList.toggle('hidden', booking.payments.length > 0);
+        }
+        
+        function openReIssueModal() {
+            if (!currentInvoiceBooking) return;
+            
+            const modal = document.getElementById('reIssueModal');
+            modal.classList.remove('hidden');
+            
+            const passengersEl = document.getElementById('reIssuePassengers');
+            passengersEl.innerHTML = currentInvoiceBooking.passengers.map((p, pIndex) => `
+                <div class="border border-slate-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" id="reIssue_${pIndex}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('reIssue_${pIndex}', 'reIssueFields_${pIndex}')">
+                            <label for="reIssue_${pIndex}" class="font-medium text-slate-800 whitespace-nowrap">${p.name} <span class="text-slate-500 text-sm">(${p.passport})</span></label>
+                        </div>
+                        <div id="reIssueFields_${pIndex}" class="hidden flex items-center gap-3">
+                            <label for="ticketOption_${pIndex}" class="text-sm font-medium text-slate-700">Ticket Option</label>
+                            <select id="ticketOption_${pIndex}" onchange="toggleTicketOptionFields('${pIndex}')" class="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select</option>
+                                <option value="up">Inbound</option>
+                                <option value="down">Outbound</option>
+                                <option value="both">Both</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="reIssueDateFields_${pIndex}" class="hidden mt-3 pl-7">
+                        <div class="flex gap-6 mb-2">
+                            <div id="probableDateUp_${pIndex}" class="hidden flex flex-col">
+                                <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Inbound):</label>
+                                <input type="date" id="probableDateUp_${pIndex}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            </div>
+                            <div id="probableDateDown_${pIndex}" class="hidden flex flex-col">
+                                <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Outbound):</label>
+                                <input type="date" id="probableDateDown_${pIndex}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            </div>
+                            <div id="visaExpiry_${pIndex}" class="flex flex-col">
+                                <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Visa Expiry Date:</label>
+                                <input type="date" id="visaExpiry_${pIndex}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function toggleReIssueFields(checkboxId, fieldsId) {
+            const checkbox = document.getElementById(checkboxId);
+            const fields = document.getElementById(fieldsId);
+            if (checkbox.checked) {
+                fields.classList.remove('hidden');
+            } else {
+                fields.classList.add('hidden');
+            }
+        }
+        
+        function toggleTicketOptionFields(pIndex) {
+            const ticketOption = document.getElementById(`ticketOption_${pIndex}`);
+            const dateFields = document.getElementById(`reIssueDateFields_${pIndex}`);
+            const probableDateUp = document.getElementById(`probableDateUp_${pIndex}`);
+            const probableDateDown = document.getElementById(`probableDateDown_${pIndex}`);
+            const visaExpiry = document.getElementById(`visaExpiry_${pIndex}`);
+            
+            if (!ticketOption || !dateFields) return;
+            
+            dateFields.classList.remove('hidden');
+            probableDateUp.classList.add('hidden');
+            probableDateDown.classList.add('hidden');
+            visaExpiry.classList.add('hidden');
+            
+            if (ticketOption.value === 'up') {
+                probableDateUp.classList.remove('hidden');
+                visaExpiry.classList.remove('hidden');
+            } else if (ticketOption.value === 'down') {
+                probableDateDown.classList.remove('hidden');
+                visaExpiry.classList.remove('hidden');
+            } else if (ticketOption.value === 'both') {
+                probableDateUp.classList.remove('hidden');
+                probableDateDown.classList.remove('hidden');
+                visaExpiry.classList.remove('hidden');
+            }
+        }
+        
+        function closeReIssueModal() {
+            document.getElementById('reIssueModal').classList.add('hidden');
+        }
+        
+        function submitReIssueRequest() {
+            if (!currentInvoiceBooking) return;
+            
+            const selectedPassengers = [];
+            
+            currentInvoiceBooking.passengers.forEach((p, pIndex) => {
+                const checkbox = document.getElementById(`reIssue_${pIndex}`);
+                if (checkbox && checkbox.checked) {
+                    const ticketOption = document.getElementById(`ticketOption_${pIndex}`).value;
+                    const probableDateUp = document.getElementById(`probableDateUp_${pIndex}`).value;
+                    const probableDateDown = document.getElementById(`probableDateDown_${pIndex}`).value;
+                    const visaExpiry = document.getElementById(`visaExpiry_${pIndex}`).value;
+                    selectedPassengers.push({
+                        name: p.name,
+                        passport: p.passport,
+                        ticketOption: ticketOption,
+                        probableDateUp: probableDateUp,
+                        probableDateDown: probableDateDown,
+                        visaExpiry: visaExpiry
+                    });
+                }
+            });
+            
+            if (selectedPassengers.length === 0) {
+                showToast('Please select at least one passenger', 'error');
+                return;
+            }
+            
+            const reIssueRequests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
+            const newRequest = {
+                id: Date.now(),
+                invoiceId: currentInvoiceBooking.id,
+                invoiceNo: currentInvoiceBooking.invoiceNo,
+                customerName: currentInvoiceBooking.customerName,
+                bookingIndex: bookingIndexState.bookings.findIndex(b => b.id === currentInvoiceBooking.id),
+                passengers: selectedPassengers,
+                status: 'pending',
+                requestedAt: new Date().toISOString()
+            };
+            reIssueRequests.push(newRequest);
+            localStorage.setItem('reIssueRequests', JSON.stringify(reIssueRequests));
+            
+            console.log('Re-Issue Request:', newRequest);
+            showToast('Re-Issue request submitted successfully!', 'success');
+            closeReIssueModal();
+        }
+        
+        function openAddTicketModal() {
+            if (!currentInvoiceBooking) return;
+            
+            const modal = document.getElementById('addTicketModal');
+            modal.classList.remove('hidden');
+            
+            const passengersEl = document.getElementById('addTicketPassengers');
+            passengersEl.innerHTML = currentInvoiceBooking.passengers.map((p, pIndex) => `
+                <div class="border border-slate-200 rounded-lg p-4">
+                    <div class="flex items-center justify-between gap-3">
+                        <div class="flex items-center gap-3">
+                            <input type="checkbox" id="addTicket_${pIndex}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleAddTicketFields('addTicket_${pIndex}', 'addTicketFields_${pIndex}')">
+                            <label for="addTicket_${pIndex}" class="font-medium text-slate-800 whitespace-nowrap">${p.name} <span class="text-slate-500 text-sm">(${p.passport})</span></label>
+                        </div>
+                        <div id="addTicketFields_${pIndex}" class="hidden flex items-center gap-3">
+                            <label for="addTicketOption_${pIndex}" class="text-sm font-medium text-slate-700">Ticket Option</label>
+                            <select id="addTicketOption_${pIndex}" onchange="toggleAddTicketOptionFields('${pIndex}')" class="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select</option>
+                                <option value="up">Inbound</option>
+                                <option value="down">Outbound</option>
+                                <option value="both">Both</option>
+                            </select>
+                        </div>
+                    </div>
+                    <div id="addTicketDateFields_${pIndex}" class="hidden mt-3 pl-7">
+                        <div class="flex gap-6 mb-2">
+                            <div id="probableDateUpAT_${pIndex}" class="hidden flex flex-col">
+                                <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Date (Inbound):</label>
+                                <input type="date" id="probableDateUpAT_${pIndex}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            </div>
+                            <div id="probableDateDownAT_${pIndex}" class="hidden flex flex-col">
+                                <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Date (Outbound):</label>
+                                <input type="date" id="probableDateDownAT_${pIndex}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            </div>
+                            <div id="visaExpiryAT_${pIndex}" class="flex flex-col">
+                                <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Visa Expiry Date:</label>
+                                <input type="date" id="visaExpiryAT_${pIndex}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function toggleAddTicketFields(checkboxId, fieldsId) {
+            const checkbox = document.getElementById(checkboxId);
+            const fields = document.getElementById(fieldsId);
+            if (checkbox.checked) {
+                fields.classList.remove('hidden');
+            } else {
+                fields.classList.add('hidden');
+            }
+        }
+        
+        function toggleAddTicketOptionFields(pIndex) {
+            const ticketOption = document.getElementById(`addTicketOption_${pIndex}`);
+            const dateFields = document.getElementById(`addTicketDateFields_${pIndex}`);
+            const probableDateUp = document.getElementById(`probableDateUpAT_${pIndex}`);
+            const probableDateDown = document.getElementById(`probableDateDownAT_${pIndex}`);
+            const visaExpiry = document.getElementById(`visaExpiryAT_${pIndex}`);
+            
+            if (!ticketOption || !dateFields) return;
+            
+            dateFields.classList.remove('hidden');
+            probableDateUp.classList.add('hidden');
+            probableDateDown.classList.add('hidden');
+            visaExpiry.classList.add('hidden');
+            
+            if (ticketOption.value === 'up') {
+                probableDateUp.classList.remove('hidden');
+                visaExpiry.classList.remove('hidden');
+            } else if (ticketOption.value === 'down') {
+                probableDateDown.classList.remove('hidden');
+                visaExpiry.classList.remove('hidden');
+            } else if (ticketOption.value === 'both') {
+                probableDateUp.classList.remove('hidden');
+                probableDateDown.classList.remove('hidden');
+                visaExpiry.classList.remove('hidden');
+            }
+        }
+        
+        function closeAddTicketModal() {
+            document.getElementById('addTicketModal').classList.add('hidden');
+        }
+        
+        function submitAddTicketRequest() {
+            if (!currentInvoiceBooking) return;
+            
+            const selectedPassengers = [];
+            
+            currentInvoiceBooking.passengers.forEach((p, pIndex) => {
+                const checkbox = document.getElementById(`addTicket_${pIndex}`);
+                if (checkbox && checkbox.checked) {
+                    const ticketOption = document.getElementById(`addTicketOption_${pIndex}`).value;
+                    const probableDateUp = document.getElementById(`probableDateUpAT_${pIndex}`).value;
+                    const probableDateDown = document.getElementById(`probableDateDownAT_${pIndex}`).value;
+                    const visaExpiry = document.getElementById(`visaExpiryAT_${pIndex}`).value;
+                    selectedPassengers.push({
+                        name: p.name,
+                        passport: p.passport,
+                        ticketOption: ticketOption,
+                        probableDateUp: probableDateUp,
+                        probableDateDown: probableDateDown,
+                        visaExpiry: visaExpiry
+                    });
+                }
+            });
+            
+            if (selectedPassengers.length === 0) {
+                showToast('Please select at least one passenger', 'error');
+                return;
+            }
+            
+            const addTicketRequests = JSON.parse(localStorage.getItem('addTicketRequests') || '[]');
+            const newRequest = {
+                id: Date.now(),
+                invoiceId: currentInvoiceBooking.id,
+                invoiceNo: currentInvoiceBooking.invoiceNo,
+                customerName: currentInvoiceBooking.customerName,
+                bookingIndex: bookingIndexState.bookings.findIndex(b => b.id === currentInvoiceBooking.id),
+                passengers: selectedPassengers,
+                status: 'pending',
+                requestedAt: new Date().toISOString()
+            };
+            addTicketRequests.push(newRequest);
+            localStorage.setItem('addTicketRequests', JSON.stringify(addTicketRequests));
+            
+            console.log('Add Ticket Request:', newRequest);
+            showToast('Additional Ticket request submitted successfully!', 'success');
+            closeAddTicketModal();
+        }
+        
+        function openRefundModal() {
+            if (!currentInvoiceBooking) return;
+            
+            const modal = document.getElementById('refundModal');
+            modal.classList.remove('hidden');
+            
+            const passengersEl = document.getElementById('refundPassengers');
+            passengersEl.innerHTML = currentInvoiceBooking.passengers.map((p, pIndex) => `
+                <div class="border border-slate-200 rounded-lg p-4">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="refund_${pIndex}" class="w-4 h-4 text-slate-600 rounded">
+                        <label for="refund_${pIndex}" class="font-medium text-slate-800">${p.name} <span class="text-slate-500 text-sm">(${p.passport})</span></label>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function closeRefundModal() {
+            document.getElementById('refundModal').classList.add('hidden');
+        }
+        
+        function submitRefundRequest() {
+            if (!currentInvoiceBooking) return;
+            
+            const selectedPassengers = [];
+            
+            currentInvoiceBooking.passengers.forEach((p, pIndex) => {
+                const checkbox = document.getElementById(`refund_${pIndex}`);
+                if (checkbox && checkbox.checked) {
+                    selectedPassengers.push({
+                        name: p.name,
+                        passport: p.passport
+                    });
+                }
+            });
+            
+            if (selectedPassengers.length === 0) {
+                showToast('Please select at least one passenger', 'error');
+                return;
+            }
+            
+            const refundRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
+            const newRequest = {
+                id: Date.now(),
+                invoiceId: currentInvoiceBooking.id,
+                invoiceNo: currentInvoiceBooking.invoiceNo,
+                customerName: currentInvoiceBooking.customerName,
+                bookingIndex: bookingIndexState.bookings.findIndex(b => b.id === currentInvoiceBooking.id),
+                passengers: selectedPassengers,
+                status: 'pending',
+                requestedAt: new Date().toISOString()
+            };
+            refundRequests.push(newRequest);
+            localStorage.setItem('refundRequests', JSON.stringify(refundRequests));
+            
+            console.log('Refund Request:', newRequest);
+            showToast('Refund request submitted successfully!', 'success');
+            closeRefundModal();
+        }
+
+        // ============================================
+        // Discount Functions
+        // ============================================
+        function openDiscountModal() {
+            if (!currentInvoiceBooking) return;
+            
+            const total = currentInvoiceBooking.passengers.reduce((sum, p) => sum + (p.total || 0), 0);
+            
+            document.getElementById('discountOriginalTotal').value = total;
+            document.getElementById('discountType').value = currentInvoiceBooking.discountType || 'fixed';
+            document.getElementById('discountValue').value = currentInvoiceBooking.discountValue || 0;
+            
+            calculateInvoiceDiscount();
+            document.getElementById('discountModal').classList.remove('hidden');
+        }
+
+        function calculateInvoiceDiscount() {
+            const originalTotal = parseFloat(document.getElementById('discountOriginalTotal').value) || 0;
+            const discountType = document.getElementById('discountType').value;
+            const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
+            
+            let discountAmount = 0;
+            if (discountType === 'percentage') {
+                discountAmount = originalTotal * discountValue / 100;
+            } else {
+                discountAmount = discountValue;
+            }
+            
+            const newTotal = Math.max(0, originalTotal - discountAmount);
+            
+            document.getElementById('discountAmount').value = Math.round(discountAmount);
+            document.getElementById('discountNewTotal').value = Math.round(newTotal);
+        }
+
+        function applyInvoiceDiscount() {
+            if (!currentInvoiceBooking) return;
+            
+            const bookingIndex = bookingIndexState.bookings.findIndex(b => b.id === currentInvoiceBooking.id);
+            if (bookingIndex === -1) return;
+            
+            bookingIndexState.bookings[bookingIndex].discountType = document.getElementById('discountType').value;
+            bookingIndexState.bookings[bookingIndex].discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
+            
+            closeDiscountModal();
+            loadInvoiceDetails();
+            showToast('Discount applied');
+        }
+
+        function closeDiscountModal() {
+            document.getElementById('discountModal').classList.add('hidden');
+            document.getElementById('discountValue').value = 0;
+        }
+
+        function openPaymentModal() {
+            console.log('openPaymentModal called');
+            console.log('currentInvoiceBooking:', currentInvoiceBooking);
+            
+            // Check if currentInvoiceBooking is set
+            if (!currentInvoiceBooking) {
+                // Try to get booking from URL
+                const params = new URLSearchParams(window.location.search);
+                const index = params.get('index') || '0'; // Default to 0 if no index
+                
+                if (bookingIndexState && bookingIndexState.bookings && bookingIndexState.bookings[parseInt(index)]) {
+                    currentInvoiceBooking = bookingIndexState.bookings[parseInt(index)];
+                    console.log('Loaded booking from index:', index);
+                }
+                
+                if (!currentInvoiceBooking) {
+                    alert('No booking found. Please open this page from the Booking Index.');
+                    return;
+                }
+            }
+
+            const passengers = currentInvoiceBooking.passengers || [];
+            const payments = currentInvoiceBooking.payments || [];
+            
+            const totalPackageValue = passengers.reduce((sum, p) => sum + (p.total || 0), 0);
+            const paid = payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const due = totalPackageValue - paid;
+
+            document.getElementById('paymentTotalPackageValue').textContent = totalPackageValue.toLocaleString();
+            document.getElementById('paymentPaid').textContent = paid.toLocaleString();
+            document.getElementById('paymentDue').textContent = due.toLocaleString();
+
+            document.getElementById('paymentModal').classList.remove('hidden');
+        }
+
+        function closePaymentModal() {
+            document.getElementById('paymentModal').classList.add('hidden');
+        }
+
+        function handlePaymentCurrencyChange() {
+            const currency = document.getElementById('paymentCurrency').value;
+            const amountBDT = document.getElementById('paymentAmountBDT');
+            
+            if (currency === 'BDT') {
+                amountBDT.classList.remove('hidden');
+            } else {
+                amountBDT.classList.add('hidden');
+            }
+        }
+
+        function handlePaymentMethodChange() {
+            const method = document.getElementById('paymentMethod').value;
+            const bankMethod = document.getElementById('paymentBankMethod');
+            const trxID = document.getElementById('paymentTRXID');
+            
+            if (method === 'Bank') {
+                bankMethod.classList.remove('hidden');
+                trxID.classList.remove('hidden');
+            } else {
+                bankMethod.classList.add('hidden');
+                trxID.classList.add('hidden');
+            }
+        }
+
+        function savePayment() {
+            showToast('Payment record saved');
+            closePaymentModal();
+        }
+
+        function printPaymentReceipt() {
+            showToast('Printing payment receipt...');
+        }
+        
+        function showNotFound() {
+            document.getElementById('invoiceDetailsContent').classList.add('hidden');
+            document.getElementById('notFound').classList.remove('hidden');
+        }
+
+        // ============================================
+        // Tab Switching Function
+        // ============================================
+        function switchTab(tabName) {
+            document.querySelectorAll('.tab-content').forEach(el => {
+                el.classList.remove('block');
+                el.classList.add('hidden');
+            });
+            
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-blue-600', 'text-blue-600');
+                btn.classList.add('border-transparent', 'text-slate-500');
+            });
+            
+            document.getElementById('content-' + tabName).classList.remove('hidden');
+            document.getElementById('content-' + tabName).classList.add('block');
+            
+            const activeTab = document.getElementById('tab-' + tabName);
+            activeTab.classList.remove('border-transparent', 'text-slate-500');
+            activeTab.classList.add('border-blue-600', 'text-blue-600');
+        }
+        
+        // ============================================
+        // Re-issue History Functions
+        // ============================================
+        const reissueHistoryData = [
+            { date: '2026-03-20', passengerName: 'Ahmed Hassan', passport: 'P1234567', pnr: 'ABC123', agent: 'Al-Reem', reissueCost: 450, customerPayment: 500, profit: 50, paymentMethod: 'Bank', status: 'Approved' },
+            { date: '2026-03-18', passengerName: 'Fatima Rahman', passport: 'P7654321', pnr: 'DEF456', agent: 'Nasser', reissueCost: 600, customerPayment: 650, profit: 50, paymentMethod: 'Cash', status: 'Pending' },
+            { date: '2026-03-15', passengerName: 'Mohammed Ali', passport: 'P1122334', pnr: 'GHI789', agent: 'Al-Masria', reissueCost: 350, customerPayment: 350, profit: 0, paymentMethod: 'Bank', status: 'Rejected' },
+            { date: '2026-03-10', passengerName: 'Sara Ahmed', passport: 'P9988776', pnr: 'JKL012', agent: 'Umrah Plus', reissueCost: 800, customerPayment: 900, profit: 100, paymentMethod: 'Bank', status: 'Approved' },
+            { date: '2026-03-05', passengerName: 'Omar Khan', passport: 'P5566778', pnr: 'MNO345', agent: 'Al-Reem', reissueCost: 550, customerPayment: 600, profit: 50, paymentMethod: 'Cash', status: 'Approved' },
+            { date: '2026-02-28', passengerName: 'Aisha Begum', passport: 'P4455667', pnr: 'PQR678', agent: 'Nasser', reissueCost: 700, customerPayment: 700, profit: 0, paymentMethod: 'Bank', status: 'Pending' }
+        ];
+
+        const additionalTicketHistoryData = [
+            { date: '2026-03-20', passengerName: 'Ahmed Hassan', passport: 'P1234567', pnr: 'ABC123', agent: 'Al-Reem', additionalTicketCost: 450, customerPayment: 500, profit: 50, paymentMethod: 'Bank', status: 'Approved' },
+            { date: '2026-03-18', passengerName: 'Fatima Rahman', passport: 'P7654321', pnr: 'DEF456', agent: 'Nasser', additionalTicketCost: 600, customerPayment: 650, profit: 50, paymentMethod: 'Cash', status: 'Pending' },
+            { date: '2026-03-15', passengerName: 'Mohammed Ali', passport: 'P1122334', pnr: 'GHI789', agent: 'Al-Masria', additionalTicketCost: 350, customerPayment: 350, profit: 0, paymentMethod: 'Bank', status: 'Approved' },
+            { date: '2026-03-10', passengerName: 'Sara Ahmed', passport: 'P9988776', pnr: 'JKL012', agent: 'Umrah Plus', additionalTicketCost: 800, customerPayment: 900, profit: 100, paymentMethod: 'Bank', status: 'Pending' }
+        ];
+
+        function renderReissueHistory() {
+            const tbody = document.getElementById('reissueHistoryBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            reissueHistoryData.forEach((item, index) => {
+                let statusBadge = '';
+                switch(item.status) {
+                    case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
+                    case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
+                    case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50';
+                tr.innerHTML = `
+                    <td class="px-3 py-2 text-slate-600">${item.date}</td>
+                    <td class="px-3 py-2 text-slate-800">${item.passengerName}</td>
+                    <td class="px-3 py-2 text-slate-600">${item.passport}</td>
+                    <td class="px-3 py-2 text-slate-600">${item.pnr}</td>
+                    <td class="px-3 py-2 text-slate-800">${item.agent}</td>
+                    <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.reissueCost} SAR</td>
+                    <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.customerPayment} SAR</td>
+                    <td class="px-3 py-2 text-green-600 text-right font-medium">${item.profit} SAR</td>
+                    <td class="px-3 py-2 text-slate-600">${item.paymentMethod}</td>
+                    <td class="px-3 py-2">${statusBadge}</td>
+                    <td class="px-3 py-2">
+                        <button onclick="openReissueDetails(${index})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function renderAdditionalTicketHistory() {
+            const tbody = document.getElementById('additionalTicketHistoryBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            additionalTicketHistoryData.forEach((item, index) => {
+                let statusBadge = '';
+                switch(item.status) {
+                    case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
+                    case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
+                    case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50';
+                tr.innerHTML = `
+                    <td class="px-3 py-2 text-slate-600">${item.date}</td>
+                    <td class="px-3 py-2 text-slate-800">${item.passengerName}</td>
+                    <td class="px-3 py-2 text-slate-600">${item.passport}</td>
+                    <td class="px-3 py-2 text-slate-600">${item.pnr}</td>
+                    <td class="px-3 py-2 text-slate-800">${item.agent}</td>
+                    <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.additionalTicketCost} SAR</td>
+                    <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.customerPayment} SAR</td>
+                    <td class="px-3 py-2 text-green-600 text-right font-medium">${item.profit} SAR</td>
+                    <td class="px-3 py-2 text-slate-600">${item.paymentMethod}</td>
+                    <td class="px-3 py-2">${statusBadge}</td>
+                    <td class="px-3 py-2">
+                        <button class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openReissueDetails(index) {
+            const item = reissueHistoryData[index];
+            const content = document.getElementById('reissueDetailsContent');
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Summary</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><span class="text-xs text-slate-400">Passenger Name</span><p class="text-slate-800">${item.passengerName}</p></div>
+                            <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${item.passport}</p></div>
+                            <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr}</p></div>
+                            <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${item.agent}</p></div>
+                            <div><span class="text-xs text-slate-400">Reissue Cost</span><p class="text-slate-800 font-medium">${item.reissueCost} SAR</p></div>
+                            <div><span class="text-xs text-slate-400">Customer Payment</span><p class="text-slate-800 font-medium">${item.customerPayment} SAR</p></div>
+                            <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${item.profit} SAR</p></div>
+                            <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod}</p></div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Change Summary</h4>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Old Route</span>
+                                <span class="text-slate-800 font-medium">DAC-JED-DAC</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">New Route</span>
+                                <span class="text-blue-600 font-medium">DAC-RUH-DAC</span>
+                            </div>
+                            <div class="flex justify-between pt-2 border-t border-slate-200">
+                                <span class="text-slate-500">Old Travel Date</span>
+                                <span class="text-slate-800 font-medium">2026-04-15</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">New Travel Date</span>
+                                <span class="text-blue-600 font-medium">2026-04-20</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('reissueDetailsModal').classList.remove('hidden');
+        }
+
+        function closeReissueDetailsModal() {
+            document.getElementById('reissueDetailsModal').classList.add('hidden');
+        }
+
+        // ============================================
+        // Refund History Functions
+        // ============================================
+        const refundHistoryData = [
+            { date: '2026-03-22', passengerName: 'Rahim Uddin', passport: 'P3344556', pnr: 'STU901', agent: 'Al-Reem', agentRefund: 400, customerRefund: 450, profit: 50, paymentMethod: 'Bank', status: 'Approved' },
+            { date: '2026-03-19', passengerName: 'Nadia Islam', passport: 'P7788990', pnr: 'VWX234', agent: 'Nasser', agentRefund: 550, customerRefund: 600, profit: 50, paymentMethod: 'Cash', status: 'Pending' },
+            { date: '2026-03-16', passengerName: 'Karim Hussein', passport: 'P1122445', pnr: 'YZA567', agent: 'Al-Masria', agentRefund: 300, customerRefund: 300, profit: 0, paymentMethod: 'Bank', status: 'Rejected' },
+            { date: '2026-03-12', passengerName: 'Laila Mohamed', passport: 'P6677889', pnr: 'BCD890', agent: 'Umrah Plus', agentRefund: 700, customerRefund: 800, profit: 100, paymentMethod: 'Bank', status: 'Approved' },
+            { date: '2026-03-08', passengerName: 'Tariq Ahmed', passport: 'P9900112', pnr: 'EFG123', agent: 'Al-Reem', agentRefund: 500, customerRefund: 550, profit: 50, paymentMethod: 'Cash', status: 'Approved' },
+            { date: '2026-03-01', passengerName: 'Sabrina Khan', passport: 'P2233445', pnr: 'HIJ456', agent: 'Nasser', agentRefund: 650, customerRefund: 650, profit: 0, paymentMethod: 'Bank', status: 'Pending' }
+        ];
+
+        function renderRefundHistory() {
+            const tbody = document.getElementById('refundHistoryBody');
+            if (!tbody) return;
+            tbody.innerHTML = '';
+            
+            refundHistoryData.forEach((item, index) => {
+                let statusBadge = '';
+                switch(item.status) {
+                    case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
+                    case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
+                    case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
+                }
+                
+                const tr = document.createElement('tr');
+                tr.className = 'hover:bg-slate-50';
+                tr.innerHTML = `
+                    <td class="px-3 py-2 text-slate-600">${item.date}</td>
+                    <td class="px-3 py-2 text-slate-800">${item.passengerName}</td>
+                    <td class="px-3 py-2 text-slate-600">${item.passport}</td>
+                    <td class="px-3 py-2 text-slate-600">${item.pnr}</td>
+                    <td class="px-3 py-2 text-slate-800">${item.agent}</td>
+                    <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.agentRefund} SAR</td>
+                    <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.customerRefund} SAR</td>
+                    <td class="px-3 py-2 text-green-600 text-right font-medium">${item.profit} SAR</td>
+                    <td class="px-3 py-2 text-slate-600">${item.paymentMethod}</td>
+                    <td class="px-3 py-2">${statusBadge}</td>
+                    <td class="px-3 py-2">
+                        <button onclick="openRefundDetails(${index})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
+                    </td>
+                `;
+                tbody.appendChild(tr);
+            });
+        }
+
+        function openRefundDetails(index) {
+            const item = refundHistoryData[index];
+            const content = document.getElementById('refundDetailsContent');
+            content.innerHTML = `
+                <div class="space-y-4">
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Summary</h4>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div><span class="text-xs text-slate-400">Passenger Name</span><p class="text-slate-800">${item.passengerName}</p></div>
+                            <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${item.passport}</p></div>
+                            <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr}</p></div>
+                            <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${item.agent}</p></div>
+                            <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${item.agentRefund} SAR</p></div>
+                            <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${item.customerRefund} SAR</p></div>
+                            <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${item.profit} SAR</p></div>
+                            <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod}</p></div>
+                        </div>
+                    </div>
+                    <div class="bg-slate-50 rounded-lg p-4">
+                        <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Refund Breakdown</h4>
+                        <div class="space-y-3">
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Original Ticket Cost</span>
+                                <span class="text-slate-800 font-medium">2,500 SAR</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Cancellation Charges</span>
+                                <span class="text-red-600 font-medium">-500 SAR</span>
+                            </div>
+                            <div class="flex justify-between pt-2 border-t border-slate-200">
+                                <span class="text-slate-500">Refund to Customer</span>
+                                <span class="text-blue-600 font-medium">2,000 SAR</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-slate-500">Agent Refund to Company</span>
+                                <span class="text-green-600 font-medium">1,800 SAR</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            document.getElementById('refundDetailsModal').classList.remove('hidden');
+        }
+
+        function closeRefundDetailsModal() {
+            document.getElementById('refundDetailsModal').classList.add('hidden');
+        }
+        
+        function goBack() {
+            window.location.href = 'booking.html';
+        }
+
+        function downloadAllInvoiceDocs() {
+            const urlParams = new URLSearchParams(window.location.search);
+            const index = parseInt(urlParams.get('index'));
+            const booking = bookingIndexState.bookings[index];
+
+            if (!booking) {
+                showToast('Booking not found');
+                return;
+            }
+
+            let allDocs = [];
+            booking.passengers.forEach((pax, paxIndex) => {
+                const paxRow = passengerIndexState.passengerIndexRows.find(r => r.invoiceNo === booking.invoiceNo && r.passport === pax.passport);
+                if (paxRow && paxRow.documents && paxRow.documents.length > 0) {
+                    allDocs.push(...paxRow.documents.map(d => ({ ...d, paxName: pax.name })));
+                }
+            });
+
+            if (allDocs.length === 0) {
+                showToast('No documents found for this invoice');
+                return;
+            }
+
+            if (typeof jspdf === 'undefined') {
+                showToast('PDF library not loaded');
+                return;
+            }
+
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            let hasContent = false;
+
+            allDocs.forEach((doc, i) => {
+                if (doc.data) {
+                    hasContent = true;
+                    if (i > 0) pdf.addPage();
+
+                    if (doc.type.startsWith('image/')) {
+                        try {
+                            pdf.addImage(doc.data, 'JPEG', 10, 10, 180, 250);
+                        } catch (e) {
+                            pdf.text(`Image: ${doc.name} (${doc.paxName})`, 10, 20);
+                        }
+                    } else {
+                        pdf.text(`Document: ${doc.name}`, 10, 20);
+                        pdf.text(`Passenger: ${doc.paxName}`, 10, 30);
+                        pdf.text('(PDF content cannot be previewed in demo)', 10, 40);
+                    }
+                } else {
+                    if (i > 0) pdf.addPage();
+                    pdf.setFontSize(12);
+                    pdf.text(`Sample Document: ${doc.name}`, 10, 20);
+                    pdf.setFontSize(10);
+                    pdf.text(`Passenger: ${doc.paxName}`, 10, 30);
+                    pdf.text(`Type: ${doc.type}`, 10, 40);
+                    pdf.text(`Upload Date: ${doc.uploadDate || 'N/A'}`, 10, 50);
+                    pdf.text('(Sample document for demo)', 10, 60);
+                    hasContent = true;
+                }
+            });
+
+            if (hasContent) {
+                pdf.save(`${booking.invoiceNo}_all_documents.pdf`);
+                showToast('All documents downloaded');
+            } else {
+                showToast('No downloadable content');
+            }
+        }
+        
+        function renderCustomerDocumentsList() {
+            const booking = bookingIndexState.bookings.find(b => b.id === bookingIndexState.selectedBookingId);
+            if (!booking) return;
+            
+            const container = document.getElementById('customerDocumentsList');
+            if (!booking.customerDocuments || booking.customerDocuments.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-400">No customer documents</p>';
+                return;
+            }
+            
+            container.innerHTML = booking.customerDocuments.map((doc, i) => `
+                <div class="flex items-center justify-between bg-white rounded px-3 py-2 border border-slate-200">
+                    <div class="flex items-center gap-2">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                        </svg>
+                        <span class="text-sm text-slate-700">${doc.name}</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <button onclick="downloadSingleCustomerDoc(${bookingIndexState.bookings.indexOf(booking)}, ${i})" class="text-blue-500 hover:text-blue-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                        </button>
+                        <button onclick="deleteCustomerDoc(${bookingIndexState.bookings.indexOf(booking)}, ${i})" class="text-red-500 hover:text-red-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                            </svg>
+                        </button>
+                    </div>
+                </div>
+            `).join('');
+        }
+        
+        function downloadSingleCustomerDoc(bookingIndex, docIndex) {
+            const booking = bookingIndexState.bookings[bookingIndex];
+            const doc = booking.customerDocuments[docIndex];
+            
+            if (!doc) {
+                showToast('No document to download');
+                return;
+            }
+            
+            if (doc.data) {
+                const link = document.createElement('a');
+                link.href = doc.data;
+                link.download = doc.name;
+                link.click();
+                showToast('Document downloaded');
+                return;
+            }
+            
+            if (doc.type.startsWith('image/')) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 400;
+                canvas.height = 300;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(0, 0, 400, 300);
+                ctx.fillStyle = '#666';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(doc.name, 200, 150);
+                const dataUrl = canvas.toDataURL(doc.type);
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = doc.name;
+                link.click();
+            } else {
+                const content = `Sample Document: ${doc.name}
+Type: ${doc.type}
+Upload Date: ${doc.uploadDate || 'N/A'}
+Size: ${doc.size || 'N/A'}
+
+(This is a sample document for demo purposes)`;
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = doc.name;
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
+            
+            showToast('Document downloaded');
+        }
+        
+        function deleteCustomerDoc(bookingIndex, docIndex) {
+            bookingIndexState.bookings[bookingIndex].customerDocuments.splice(docIndex, 1);
+            renderCustomerDocumentsList();
+            showToast('Document deleted');
+        }
+        
+        function handleCustomerDocSelect(event) {
+            const files = event.target.files;
+            const booking = bookingIndexState.bookings.find(b => b.id === bookingIndexState.selectedBookingId);
+            if (!booking) return;
+            
+            Array.from(files).forEach(file => {
+                const reader = new FileReader();
+                reader.onload = function(e) {
+                    const docData = {
+                        id: 'cust_doc_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9),
+                        name: file.name,
+                        type: file.type,
+                        size: file.size,
+                        data: e.target.result,
+                        uploadDate: new Date().toISOString().split('T')[0]
+                    };
+                    booking.customerDocuments.push(docData);
+                    renderCustomerDocumentsList();
+                    showToast('Document uploaded: ' + file.name);
+                };
+                reader.readAsDataURL(file);
+            });
+            event.target.value = '';
+        }
+        
+        function downloadAllCustomerDocs() {
+            const booking = bookingIndexState.bookings.find(b => b.id === bookingIndexState.selectedBookingId);
+            if (!booking || !booking.customerDocuments || booking.customerDocuments.length === 0) {
+                showToast('No customer documents to download');
+                return;
+            }
+            
+            if (typeof jspdf === 'undefined') {
+                showToast('PDF library not loaded');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            let hasContent = false;
+            
+            booking.customerDocuments.forEach((doc, i) => {
+                if (doc.data) {
+                    hasContent = true;
+                    if (i > 0) pdf.addPage();
+                    pdf.text(`Document: ${doc.name}`, 10, 20);
+                } else {
+                    if (i > 0) pdf.addPage();
+                    pdf.setFontSize(12);
+                    pdf.text(`Sample Document: ${doc.name}`, 10, 20);
+                    pdf.setFontSize(10);
+                    pdf.text(`Type: ${doc.type}`, 10, 30);
+                    pdf.text(`Upload Date: ${doc.uploadDate || 'N/A'}`, 10, 40);
+                    pdf.text('(Sample document for demo)', 10, 50);
+                    hasContent = true;
+                }
+            });
+            
+            if (hasContent) {
+                pdf.save(`${booking.invoiceNo}_customer_documents.pdf`);
+                showToast('Customer documents downloaded');
+            }
+        }
+        
+        function renderPassengerDocumentsListForInvoice() {
+            const booking = bookingIndexState.bookings.find(b => b.id === bookingIndexState.selectedBookingId);
+            const container = document.getElementById('passengerDocumentsList');
+            
+            if (!booking || !booking.passengers || booking.passengers.length === 0) {
+                container.innerHTML = '<p class="text-sm text-slate-400">No passenger documents</p>';
+                return;
+            }
+            
+            let allDocsHtml = '';
+            
+            booking.passengers.forEach((pax, paxIndex) => {
+                const paxRow = passengerIndexState.passengerIndexRows.find(r => r.invoiceNo === booking.invoiceNo && r.passport === pax.passport);
+                const docs = paxRow && paxRow.documents ? paxRow.documents : [];
+                
+                if (docs.length === 0) return;
+                
+                allDocsHtml += `<div class="mb-2"><span class="text-xs font-medium text-slate-600">${pax.name}</span></div>`;
+                allDocsHtml += docs.map((doc, docIndex) => `
+                    <div class="flex items-center justify-between bg-white rounded px-3 py-2 border border-slate-200 mb-1">
+                        <div class="flex items-center gap-2">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
+                            </svg>
+                            <span class="text-sm text-slate-700">${doc.name}</span>
+                        </div>
+                        <button onclick="downloadSingleInvoicePassengerDoc('${booking.invoiceNo}', '${pax.passport}', ${docIndex})" class="text-blue-500 hover:text-blue-700">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                            </svg>
+                        </button>
+                    </div>
+                `).join('');
+            });
+            
+            if (!allDocsHtml) {
+                container.innerHTML = '<p class="text-sm text-slate-400">No passenger documents</p>';
+                return;
+            }
+            
+            container.innerHTML = allDocsHtml;
+        }
+        
+        function downloadSingleInvoicePassengerDoc(invoiceNo, passport, docIndex) {
+            const paxRow = passengerIndexState.passengerIndexRows.find(r => r.invoiceNo === invoiceNo && r.passport === passport);
+            if (!paxRow || !paxRow.documents || !paxRow.documents[docIndex]) {
+                showToast('No document to download');
+                return;
+            }
+            
+            const doc = paxRow.documents[docIndex];
+            
+            if (doc.data) {
+                const link = document.createElement('a');
+                link.href = doc.data;
+                link.download = doc.name;
+                link.click();
+                showToast('Document downloaded');
+                return;
+            }
+            
+            if (doc.type.startsWith('image/')) {
+                const canvas = document.createElement('canvas');
+                canvas.width = 400;
+                canvas.height = 300;
+                const ctx = canvas.getContext('2d');
+                ctx.fillStyle = '#f0f0f0';
+                ctx.fillRect(0, 0, 400, 300);
+                ctx.fillStyle = '#666';
+                ctx.font = '20px Arial';
+                ctx.textAlign = 'center';
+                ctx.fillText(doc.name, 200, 150);
+                const dataUrl = canvas.toDataURL(doc.type);
+                const link = document.createElement('a');
+                link.href = dataUrl;
+                link.download = doc.name;
+                link.click();
+            } else {
+                const content = `Sample Document: ${doc.name}
+Type: ${doc.type}
+Upload Date: ${doc.uploadDate || 'N/A'}
+Size: ${doc.size || 'N/A'}
+
+(This is a sample document for demo purposes)`;
+                const blob = new Blob([content], { type: 'text/plain' });
+                const url = URL.createObjectURL(blob);
+                const link = document.createElement('a');
+                link.href = url;
+                link.download = doc.name;
+                link.click();
+                setTimeout(() => URL.revokeObjectURL(url), 1000);
+            }
+            
+            showToast('Document downloaded');
+        }
+        
+        function downloadAllPassengerDocsForInvoice() {
+            const booking = bookingIndexState.bookings.find(b => b.id === bookingIndexState.selectedBookingId);
+            if (!booking || !booking.passengers || booking.passengers.length === 0) {
+                showToast('No passenger documents found');
+                return;
+            }
+            
+            let allDocs = [];
+            booking.passengers.forEach((pax, paxIndex) => {
+                const paxRow = passengerIndexState.passengerIndexRows.find(r => r.invoiceNo === booking.invoiceNo && r.passport === pax.passport);
+                if (paxRow && paxRow.documents && paxRow.documents.length > 0) {
+                    allDocs.push(...paxRow.documents.map(d => ({ ...d, paxName: pax.name })));
+                }
+            });
+            
+            if (allDocs.length === 0) {
+                showToast('No passenger documents found');
+                return;
+            }
+            
+            if (typeof jspdf === 'undefined') {
+                showToast('PDF library not loaded');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const pdf = new jsPDF();
+            let hasContent = false;
+            
+            allDocs.forEach((doc, i) => {
+                if (doc.data) {
+                    hasContent = true;
+                    if (i > 0) pdf.addPage();
+                    pdf.text(`Document: ${doc.name}`, 10, 20);
+                    pdf.text(`Passenger: ${doc.paxName}`, 10, 30);
+                } else {
+                    if (i > 0) pdf.addPage();
+                    pdf.setFontSize(12);
+                    pdf.text(`Sample Document: ${doc.name}`, 10, 20);
+                    pdf.setFontSize(10);
+                    pdf.text(`Passenger: ${doc.paxName}`, 10, 30);
+                    pdf.text(`Type: ${doc.type}`, 10, 40);
+                    pdf.text(`Upload Date: ${doc.uploadDate || 'N/A'}`, 10, 50);
+                    pdf.text('(Sample document for demo)', 10, 60);
+                    hasContent = true;
+                }
+            });
+            
+            if (hasContent) {
+                pdf.save(`${booking.invoiceNo}_passenger_documents.pdf`);
+                showToast('Passenger documents downloaded');
+            }
+        }
+        
+        function showToast(message, type = 'info') {
+            const container = document.getElementById('toastContainer');
+            const toast = document.createElement('div');
+            toast.className = `toast px-4 py-3 rounded-lg shadow-lg ${type === 'success' ? 'bg-green-600' : type === 'error' ? 'bg-red-600' : 'bg-slate-700'} text-white`;
+            toast.textContent = message;
+            container.appendChild(toast);
+            setTimeout(() => {
+                toast.style.opacity = '0';
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
+        }
+
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            loadInvoiceDetails();
+            renderReissueHistory();
+            renderRefundHistory();
+            renderAdditionalTicketHistory();
+            document.querySelectorAll('.nav-item').forEach(item => {
+                item.classList.remove('active');
+            });
+            document.querySelector('.nav-item[data-tab="bookingIndex"]')?.classList.add('active');
+            setTimeout(() => {
+                renderCustomerDocumentsList();
+                renderPassengerDocumentsListForInvoice();
+            }, 500);
+        });
+
+        // Print Preview Modal Functions
+        function printInvoice() {
+            const modal = document.getElementById('printPreviewModal');
+            const content = document.getElementById('printPreviewContent');
+            
+            // Use currentInvoiceBooking if available, otherwise get from URL
+            let booking = currentInvoiceBooking;
+            
+            if (!booking) {
+                const params = new URLSearchParams(window.location.search);
+                const indexVal = params.get('index');
+                const index = indexVal ? parseInt(indexVal) : 0;
+                booking = bookingIndexState.bookings[index];
+            }
+            
+            if (!booking) {
+                showToast('Booking not found');
+                return;
+            }
+            
+            // Build preview content
+            const total = booking.passengers.reduce((sum, p) => sum + (p.total || 0), 0);
+            const paid = booking.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const due = total - paid;
+            const fingerprintCost = booking.passengers[0]?.fingerprintCost || 200;
+            const packageValue = booking.passengers[0]?.packageValue || total - fingerprintCost;
+            const additionalFee = booking.additionalFee || 0;
+            const discount = booking.discountValue || 0;
+            
+            content.innerHTML = `
+                <div class="invoice-preview p-4" style="font-size: 11px; width: 7in; margin: 0 auto;">
+                    <!-- Header -->
+                    <div class="border-2 border-slate-800 mb-3">
+                        <div class="bg-yellow-300 px-3 py-2 border-b-2 border-slate-800">
+                            <h2 class="text-lg font-bold text-slate-800 text-center">BOOKING INVOICE UMH</h2>
+                        </div>
+                        <div class="flex">
+                            <div class="w-1/2 p-3 border-r-2 border-slate-800">
+                                <p class="font-semibold"><strong>Booking Date:</strong> ${booking.bookingDate || '-'}</p>
+                                <p class="font-semibold"><strong>Guardian Name:</strong> ${booking.customerName || '-'}</p>
+                                <p class="font-semibold"><strong>Iqama No:</strong> ${booking.customerIqama || '-'}</p>
+                                <p class="font-semibold"><strong>Phone Number:</strong> ${booking.customerMobile || '-'}</p>
+                                <p class="font-semibold"><strong>Address:</strong> ${booking.customerAddress || '-'}</p>
+                            </div>
+                            <div class="w-1/2 p-3">
+                                <p class="font-semibold"><strong>Invoice Date:</strong> ${booking.invoiceDate || booking.bookingDate || '-'}</p>
+                                <p class="font-semibold"><strong>Invoice Number:</strong> ${booking.invoiceNo || '-'}</p>
+                                <p class="font-semibold"><strong>Branch:</strong> ${booking.branch || 'RUH'}</p>
+                                <p class="font-semibold"><strong>Representative:</strong> ${booking.representative || '-'}</p>
+                                <p class="font-semibold"><strong>Offer:</strong> ${booking.offer || 'NO'}</p>
+                                <p class="font-semibold"><strong>Finger Location:</strong> ${booking.fingerLocation || '-'}</p>
+                                <p class="font-semibold"><strong>Finger Deadline:</strong> <span class="bg-red-600 text-white px-2 py-0.5">${booking.fingerDeadline || '-'}</span></p>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Passenger & Package Details + Package Calculation -->
+                    <div class="flex mb-3">
+                        <!-- Passenger & Package Details Table -->
+                        <div class="w-[65%] border-2 border-slate-800 mr-2">
+                            <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
+                                <h3 class="font-bold text-slate-800">PASSENGER & PACKAGE DETAILS</h3>
+                            </div>
+                            <table class="w-full text-sm border-collapse">
+                                <thead class="bg-yellow-200">
+                                    <tr>
+                                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Pax No</th>
+                                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Name of Passengers</th>
+                                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Gender</th>
+                                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Passport Number</th>
+                                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Package</th>
+                                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Duration</th>
+                                        <th class="border border-slate-300 px-1 py-1 text-right text-xs">Package Value</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    ${booking.passengers.map((p, i) => `
+                                        <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+                                            <td class="border border-slate-300 px-1 py-1">${i + 1}</td>
+                                            <td class="border border-slate-300 px-1 py-1">${p.name || '-'}</td>
+                                            <td class="border border-slate-300 px-1 py-1">${p.gender || '-'}</td>
+                                            <td class="border border-slate-300 px-1 py-1">${p.passport || '-'}</td>
+                                            <td class="border border-slate-300 px-1 py-1">${p.package || '-'}</td>
+                                            <td class="border border-slate-300 px-1 py-1">${p.duration || '-'}</td>
+                                            <td class="border border-slate-300 px-1 py-1 text-right">${p.total || 0}</td>
+                                        </tr>
+                                    `).join('')}
+                                </tbody>
+                            </table>
+                        </div>
+                        
+                        <!-- Package Calculation -->
+                        <div class="w-[35%] border-2 border-slate-800">
+                            <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
+                                <h3 class="font-bold text-slate-800">PACKAGE CALCULATION</h3>
+                            </div>
+                            <div class="p-2">
+                                <div class="flex justify-between py-1">
+                                    <span class="font-semibold">Sub Total:</span>
+                                    <span>${packageValue}</span>
+                                </div>
+                                <div class="flex justify-between py-1">
+                                    <span class="font-semibold">Total Package:</span>
+                                    <span>${total}</span>
+                                </div>
+                                <div class="flex justify-between py-1">
+                                    <span class="font-semibold">Finger Fee:</span>
+                                    <span>${fingerprintCost}</span>
+                                </div>
+                                <div class="flex justify-between py-1">
+                                    <span class="font-semibold">Additional Fee:</span>
+                                    <span>${additionalFee}</span>
+                                </div>
+                                <div class="flex justify-between py-1">
+                                    <span class="font-semibold">Discount:</span>
+                                    <span>${discount}</span>
+                                </div>
+                                <div class="flex justify-between py-1 border-t-2 border-slate-800 mt-1 pt-1">
+                                    <span class="font-bold text-lg">GRAND TOTAL:</span>
+                                    <span class="font-bold text-lg">${total + additionalFee - discount}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Flight Details Table -->
+                    <div class="border-2 border-slate-800 mb-3">
+                        <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
+                            <h3 class="font-bold text-slate-800">FLIGHT DETAILS</h3>
+                        </div>
+                        <table class="w-full text-sm border-collapse">
+                            <thead class="bg-yellow-200">
+                                <tr>
+                                    <th class="border border-slate-300 px-1 py-1 text-xs">Pax</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-xs">Type</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-xs">Airlines</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-xs">Route</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-xs">Est. Flight Date</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-xs">Baggage</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-xs">Cabin</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-xs">Meal</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-xs">Flight Type</th>
+                                    <th class="border border-slate-300 px-1 py-1 text-xs">Remarks</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                ${booking.passengers.map((p, i) => `
+                                    <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
+                                        <td class="border border-slate-300 px-1 py-1">${i + 1}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.flightType || '-'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.airline || '-'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.route || '-'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.flightDate || '-'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.baggage || '20kg'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.cabin || '-'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.meal || 'Yes'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.tripType || '-'}</td>
+                                        <td class="border border-slate-300 px-1 py-1">${p.remarks || '-'}</td>
+                                    </tr>
+                                `).join('')}
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Group Umrah Features -->
+                    <div class="border-2 border-slate-800 mb-3">
+                        <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
+                            <h3 class="font-bold text-slate-800">GROUP UMRAH FEATURES</h3>
+                        </div>
+                        <table class="w-full text-sm border-collapse">
+                            <tbody>
+                                <tr class="bg-white">
+                                    <td class="border border-slate-300 px-2 py-1 font-semibold w-1/4">Accommodation</td>
+                                    <td class="border border-slate-300 px-2 py-1">N/A</td>
+                                    <td class="border border-slate-300 px-2 py-1 font-semibold w-1/4">Meal Facilities</td>
+                                    <td class="border border-slate-300 px-2 py-1">N/A</td>
+                                </tr>
+                                <tr class="bg-gray-50">
+                                    <td class="border border-slate-300 px-2 py-1 font-semibold">Transport</td>
+                                    <td class="border border-slate-300 px-2 py-1">N/A</td>
+                                    <td class="border border-slate-300 px-2 py-1 font-semibold">Site Visit</td>
+                                    <td class="border border-slate-300 px-2 py-1">N/A</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                    
+                    <!-- Payment Summary -->
+                    <div class="border-2 border-slate-800 mb-3">
+                        <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
+                            <h3 class="font-bold text-slate-800">PAYMENT SUMMARY</h3>
+                        </div>
+                        <div class="flex">
+                            <div class="w-1/2 p-2 border-r-2 border-slate-800">
+                                <div class="flex justify-between py-1">
+                                    <span class="font-semibold">Total Amount:</span>
+                                    <span class="font-bold">${total + additionalFee - discount}</span>
+                                </div>
+                                <div class="flex justify-between py-1">
+                                    <span class="font-semibold">Previous Paid Amount:</span>
+                                    <span>${paid}</span>
+                                </div>
+                                <div class="flex justify-between py-1">
+                                    <span class="font-semibold">Current Paid Amount:</span>
+                                    <span>0</span>
+                                </div>
+                            </div>
+                            <div class="w-1/2 p-2">
+                                <div class="flex justify-between py-1 bg-red-100 px-2 -mx-2">
+                                    <span class="font-bold text-red-700">Due Amount:</span>
+                                    <span class="font-bold text-red-700">${due}</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Footer -->
+                    <div class="border-2 border-slate-800">
+                        <div class="flex">
+                            <div class="w-1/2 p-2 border-r-2 border-slate-800">
+                                <p class="font-semibold">Offer: N/A</p>
+                            </div>
+                            <div class="w-1/2 p-2">
+                                <p class="font-semibold">Conditions: ________________________</p>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            `;
+            
+            modal.classList.remove('hidden');
+        }
+        
+        function closePrintPreview() {
+            document.getElementById('printPreviewModal').classList.add('hidden');
+        }
+        
+        function downloadPDF() {
+            const params = new URLSearchParams(window.location.search);
+            const index = params.get('index');
+            const booking = bookingIndexState.bookings[index];
+            
+            if (!booking) {
+                showToast('Booking not found');
+                return;
+            }
+            
+            const { jsPDF } = window.jspdf;
+            const doc = new jsPDF();
+            
+            const total = booking.passengers.reduce((sum, p) => sum + (p.total || 0), 0);
+            const paid = booking.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const due = total - paid;
+            const fingerprintCost = booking.passengers[0]?.fingerprintCost || 200;
+            
+            let y = 20;
+            
+            // Header
+            doc.setFontSize(18);
+            doc.text('BM UMRAH BOOKING', 105, y, { align: 'center' });
+            y += 10;
+            doc.setFontSize(14);
+            doc.text('INVOICE', 105, y, { align: 'center' });
+            y += 15;
+            
+            // Invoice Info
+            doc.setFontSize(10);
+            doc.text(`Invoice No: ${booking.invoiceNo || '-'}`, 20, y);
+            doc.text(`Date: ${booking.bookingDate || '-'}`, 130, y);
+            y += 8;
+            doc.text(`Customer: ${booking.customerName || '-'}`, 20, y);
+            doc.text(`Mobile: ${booking.customerMobile || '-'}`, 130, y);
+            y += 15;
+            
+            // Table Header
+            doc.setFillColor(240, 240, 240);
+            doc.rect(20, y, 170, 8, 'F');
+            doc.text('Description', 22, y + 6);
+            doc.text('Amount (SAR)', 150, y + 6);
+            y += 12;
+            
+            // Table Rows
+            doc.text(`Package (${booking.passengers.length} PAX)`, 22, y);
+            doc.text(String(booking.passengers[0]?.packageValue || total - fingerprintCost), 160, y, { align: 'right' });
+            y += 8;
+            
+            doc.text('Fingerprint', 22, y);
+            doc.text(String(fingerprintCost), 160, y, { align: 'right' });
+            y += 8;
+            
+            doc.text('Total', 22, y);
+            doc.text(String(total), 160, y, { align: 'right' });
+            y += 8;
+            
+            doc.setTextColor(0, 128, 0);
+            doc.text('Paid', 22, y);
+            doc.text(String(paid), 160, y, { align: 'right' });
+            y += 8;
+            
+            doc.setTextColor(220, 0, 0);
+            doc.text('Due', 22, y);
+            doc.text(String(due), 160, y, { align: 'right' });
+            y += 20;
+            
+            doc.setTextColor(0, 0, 0);
+            doc.text('Signature: _____________________', 20, y);
+            
+            // Save
+            doc.save(`${booking.invoiceNo || 'invoice'}.pdf`);
+            showToast('PDF downloaded');
+            closePrintPreview();
+        }
+    </script>
+</body>
+
+<!-- Print Preview Modal -->
+<div id="printPreviewModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closePrintPreview()"></div>
+    <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-[7.5in] mx-4 p-4 max-h-[95vh] overflow-y-auto">
+        <div class="flex justify-between items-center mb-4 pb-2 border-b border-slate-200">
+            <h3 class="text-lg font-semibold text-slate-800">PRINT PREVIEW</h3>
+            <button onclick="closePrintPreview()" class="text-slate-400 hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="printPreviewContent" class="mb-4"></div>
+        <div class="flex gap-3">
+            <button onclick="closePrintPreview()" class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            <button onclick="downloadPDF()" class="flex-1 px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">Download PDF</button>
+        </div>
+    </div>
+</div>
+
+</html>

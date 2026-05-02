@@ -1,0 +1,442 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>User Wise Sales Report - BM Umrah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .modal-overlay { transition: opacity 0.2s ease; }
+        .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
+        .toast { transition: transform 0.3s ease, opacity 0.3s ease; }
+        .nav-item { color: #94a3b8; transition: all 0.2s ease; }
+        .nav-item:hover { color: white; background-color: rgba(255,255,255,0.1); }
+        .nav-item.active { background-color: white; color: #1e293b; }
+        
+        .search-input {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
+        }
+        
+        .filter-btn {
+            background: linear-gradient(to bottom, #fff 0%, #e9ecef 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+        
+        .filter-btn:hover {
+            background: linear-gradient(to bottom, #f0f0f0 0%, #e2e6ea 100%);
+        }
+        
+        .date-input {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
+        }
+        
+        .table-header {
+            background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+            border: 1px solid #d4d4d4;
+        }
+        
+        .table-row-sales {
+            background-color: #ffffff;
+            border: 1px solid #d4d4d4;
+        }
+        
+        .table-row-sales:nth-child(even) {
+            background-color: #fafafa;
+        }
+        
+        .table-row-sales:hover {
+            background-color: #e8f4fc !important;
+        }
+        
+        .footer-box {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 2px solid #d4d4d4;
+        }
+        
+        .footer-box-header {
+            background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+            border-bottom: 1px solid #d4d4d4;
+        }
+        
+        .export-btn {
+            background: linear-gradient(to bottom, #fff 0%, #e9ecef 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+        
+        .export-btn:hover {
+            background: linear-gradient(to bottom, #f0f0f0 0%, #dee2e6 100%);
+        }
+        
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.5);
+            cursor: pointer;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 8px center;
+            background-repeat: no-repeat;
+            background-size: 16px 16px;
+            padding-right: 32px;
+        }
+
+        .percent-bar {
+            height: 20px;
+            background-color: #e5e7eb;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+        
+        .percent-fill {
+            height: 100%;
+            background: linear-gradient(to right, #3b82f6, #2563eb);
+            transition: width 0.3s ease;
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen px-4">
+    <!-- OLD NAVIGATION
+    <nav class="bg-slate-800 text-white sticky top-0 z-40 shadow-lg -mx-4 pb-8">
+        <div class="max-w-3xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold">BM Umrah Booking</h1>
+                </div>
+                <div class="hidden md:flex space-x-1" id="desktopNav">
+                    <button onclick="window.location.href='dashboard.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="dashboard">Dashboard</button>
+                    <button onclick="window.location.href='booking.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="bookingIndex">Booking</button>
+                    <button onclick="window.location.href='fare-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fareAdmin">Fare Admin</button>
+                    <button onclick="window.location.href='visa-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="visaAdmin">Visa Admin</button>
+                    <button onclick="window.location.href='settings.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="settings">Settings</button>
+                    <button onclick="window.location.href='fingerprint-staff.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fingerprintStaff">Fingerprint Staff</button>
+                    <div class="relative group">
+                        <button class="nav-item px-4 py-2 rounded-md font-medium text-sm">Report ▾</button>
+                        <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50">
+                            <a href="statement.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Statement</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="fingerprint-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Fingerprint Report</a>
+                            <a href="visa-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>
+                            <a href="visa-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Report</a>
+                            <a href="ticket-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agent Report</a>
+                            <a href="due-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>
+                            <a href="reissue-refund-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Reissue & Refund Report</a>
+                            <a href="user-wise-sales-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap active" data-tab="userWiseSales">User Wise Sales Report</a>
+                            <a href="pending-outbound-ticket-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Pending Outbound Ticket</a>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="hidden md:hidden bg-slate-700" id="mobileMenu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="window.location.href='dashboard.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Dashboard</button>
+                <button onclick="window.location.href='booking.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</button>
+                <button onclick="window.location.href='fare-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fare Admin</button>
+                <button onclick="window.location.href='visa-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</button>
+                <button onclick="window.location.href='settings.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Settings</button>
+                <button onclick="window.location.href='fingerprint-staff.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</button>
+                <div class="border-t border-slate-600 pt-2 mt-2">
+                    <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORT</span>
+                    <a href="statement.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Statement</a>
+                    <a href="profit-loss-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</a>
+                    <a href="fingerprint-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</a>
+                    <a href="visa-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Report</a>
+                    <a href="visa-agent-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Report</a>
+                    <a href="ticket-agent-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agent Report</a>
+                    <a href="due-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</a>
+                    <a href="reissue-refund-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Reissue & Refund Report</a>
+                    <a href="user-wise-sales-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium" data-tab="userWiseSales">User Wise Sales Report</a>
+                    <a href="pending-outbound-ticket-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Pending Outbound Ticket</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    END OLD NAVIGATION -->
+
+    <!-- Dynamic Navigation Container -->
+    <div id="navContainer"></div>
+    
+    <!-- Navigation Scripts -->
+    <script src="nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadNavigation);
+    </script>
+
+    <div class="max-w-[1600px] mx-auto p-4">
+        <div class="mb-3">
+            <span class="text-sm text-gray-500 font-medium">Report</span>
+            <span class="text-sm text-gray-400 mx-1">></span>
+            <span class="text-sm text-gray-700 font-semibold">User Wise Sales Report</span>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-semibold text-gray-700">Branch</label>
+                    <select id="branchFilter" class="search-input w-40 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="all">All Branches</option>
+                        <option value="riyadh">Riyadh</option>
+                        <option value="jeddah">Jeddah</option>
+                        <option value="dammam">Dammam</option>
+                        <option value="mecca">Mecca</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-semibold text-gray-700">User</label>
+                    <select id="userFilter" class="search-input w-40 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="all">All Users</option>
+                        <option value="ahmed">Ahmed Al-Fahad</option>
+                        <option value="khalid">Khalid Ibrahim</option>
+                        <option value="fahad">Fahad Mohammed</option>
+                        <option value="youssef">Youssef Abdullah</option>
+                        <option value="salman">Salman Rashid</option>
+                        <option value="omar">Omar Hassan</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-semibold text-gray-700">Date</label>
+                    <label class="text-xs text-gray-500">From</label>
+                    <input type="date" id="dateFrom" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <label class="text-xs text-gray-500">To</label>
+                    <input type="date" id="dateTo" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+
+                <div class="flex items-center gap-2 ml-auto">
+                    <button onclick="applyFilters()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                        Filter
+                    </button>
+                    <button onclick="resetFilters()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[900px] table-fixed">
+                    <thead>
+                        <tr class="table-header">
+                            <th class="w-32 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Branch</th>
+                            <th class="w-40 px-2 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">User</th>
+                            <th class="w-28 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total Invoice</th>
+                            <th class="w-28 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total Passenger</th>
+                            <th class="w-36 px-2 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Total Package Value</th>
+                            <th class="w-40 px-2 py-3 text-xs font-bold text-gray-700 text-center">Sales Percent</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reportTableBody">
+                        <tr class="table-row-sales">
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200 font-medium">Riyadh</td>
+                            <td class="px-2 py-3 text-xs text-left border-r border-gray-200 font-medium">Ahmed Al-Fahad</td>
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200">15</td>
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200">45</td>
+                            <td class="px-2 py-3 text-xs text-right border-r border-gray-200 font-medium">225,000 SAR</td>
+                            <td class="px-2 py-3 text-xs text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <div class="percent-bar w-20">
+                                        <div class="percent-fill" style="width: 25%"></div>
+                                    </div>
+                                    <span class="font-bold text-blue-600">25%</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="table-row-sales">
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200 font-medium">Riyadh</td>
+                            <td class="px-2 py-3 text-xs text-left border-r border-gray-200 font-medium">Khalid Ibrahim</td>
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200">12</td>
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200">36</td>
+                            <td class="px-2 py-3 text-xs text-right border-r border-gray-200 font-medium">180,000 SAR</td>
+                            <td class="px-2 py-3 text-xs text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <div class="percent-bar w-20">
+                                        <div class="percent-fill" style="width: 20%"></div>
+                                    </div>
+                                    <span class="font-bold text-blue-600">20%</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="table-row-sales">
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200 font-medium">Jeddah</td>
+                            <td class="px-2 py-3 text-xs text-left border-r border-gray-200 font-medium">Fahad Mohammed</td>
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200">18</td>
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200">54</td>
+                            <td class="px-2 py-3 text-xs text-right border-r border-gray-200 font-medium">270,000 SAR</td>
+                            <td class="px-2 py-3 text-xs text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <div class="percent-bar w-20">
+                                        <div class="percent-fill" style="width: 30%"></div>
+                                    </div>
+                                    <span class="font-bold text-blue-600">30%</span>
+                                </div>
+                            </td>
+                        </tr>
+                        <tr class="table-row-sales">
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200 font-medium">Dammam</td>
+                            <td class="px-2 py-3 text-xs text-left border-r border-gray-200 font-medium">Youssef Abdullah</td>
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200">15</td>
+                            <td class="px-2 py-3 text-xs text-center border-r border-gray-200">45</td>
+                            <td class="px-2 py-3 text-xs text-right border-r border-gray-200 font-medium">225,000 SAR</td>
+                            <td class="px-2 py-3 text-xs text-center">
+                                <div class="flex items-center justify-center gap-2">
+                                    <div class="percent-bar w-20">
+                                        <div class="percent-fill" style="width: 25%"></div>
+                                    </div>
+                                    <span class="font-bold text-blue-600">25%</span>
+                                </div>
+                            </td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mt-0">
+            <div class="flex flex-wrap gap-6">
+                <div class="footer-box rounded-lg overflow-hidden min-w-[320px]">
+                    <div class="footer-box-header px-4 py-2">
+                        <span class="text-sm font-bold text-gray-700">User Wise Sales Summary</span>
+                    </div>
+                    <div class="p-4">
+                        <div class="grid grid-cols-2 gap-x-8 gap-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Users:</span>
+                                <span class="text-xs font-bold text-gray-800">4</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Branches:</span>
+                                <span class="text-xs font-bold text-gray-800">3</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Invoices:</span>
+                                <span class="text-xs font-bold text-gray-800">60</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Passengers:</span>
+                                <span class="text-xs font-bold text-gray-800">180</span>
+                            </div>
+                            <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
+                                <span class="text-xs text-gray-600">Total Package Value:</span>
+                                <span class="text-xs font-bold text-green-700">900,000 SAR</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    <div class="footer-box rounded-lg overflow-hidden">
+                        <div class="footer-box-header px-4 py-2">
+                            <span class="text-sm font-bold text-gray-700">Export Options</span>
+                        </div>
+                        <div class="p-4 flex gap-3">
+                            <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
+                                <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                                    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                                </svg>
+                                PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
+            <span class="text-xs text-gray-400">Last Updated: 09-Apr-2026 10:15 AM</span>
+            <span class="text-xs text-gray-400">Generated by BM Umrah System</span>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        function applyFilters() {
+            const branch = document.getElementById('branchFilter').value;
+            const user = document.getElementById('userFilter').value;
+            const dateFrom = document.getElementById('dateFrom').value;
+            const dateTo = document.getElementById('dateTo').value;
+            console.log('Filters applied:', { branch, user, dateFrom, dateTo });
+        }
+
+        function resetFilters() {
+            document.getElementById('branchFilter').value = 'all';
+            document.getElementById('userFilter').value = 'all';
+            document.getElementById('dateFrom').value = '';
+            document.getElementById('dateTo').value = '';
+            console.log('Filters reset');
+        }
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector('.nav-item[data-tab="userWiseSales"]')?.classList.add('active');
+    </script>
+</body>
+</html>

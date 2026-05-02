@@ -1,0 +1,2997 @@
+Day 1- 15/03/2026
+
+Demo Building
+	- Booking form and related forms
+		- (raw) 
+			- I need a Booking form where there will be an input field labelled as Customer ID, when the user start typing, if the ID matches, it will show suggestions, if not, it will show a link to add new customer. Clicking Add New Customer will open a modal consisting a form with fields labelled as Name, Iqama No., Passport No. Mobile No., and Add and Cancel buttons. Below the customer id input field Add Passenger button is needed. Add Passenger button will also trigger a module consisting New Passenger form. This form will contain fields labelled as Name, Passport no., Package (Select Dropdown with options- 14 days, 85 days), Sevice Required (Select dropdown with options- All, Visa Only, Ticket Only), District, Detailed Address (optional), and Add and Cancel buttons. After adding a passenger, the passenger will be shown in the boking form in a list with passenger summary. An edit button will be there besides the summary, and an add mopre button below the passenger list, which will open the add passenger form again. Add More but will be shown, only if at least one passenger is there in the list. Rewrite this raw prompt for Opencode plan agent. I mean I need a prompt with the requirement above to plan in Opencode.
+		- (Opencode v1)
+			Create a plan for building an interactive Booking Form demo using HTML + Tailwind CSS + JavaScript only (no backend required).
+
+			This is for a client demo/prototype, so the focus should be on:
+			- Main booking workflow
+			- UI behavior
+			- Conditional interactivity
+			- Demo-quality user experience
+			- Not full production logic
+
+			1. Goal
+			   - Build a Booking Form with:
+			     - Customer search / suggestion behavior
+			     - Add New Customer modal
+			     - Passenger add/edit flow using modal
+			     - Dynamic passenger list rendering
+			     - Conditional visibility of buttons
+
+			2. Main Booking Form Requirements
+
+			   2.1) Customer ID Field
+			   - Add an input field labeled:
+			     - Customer ID
+
+			   2.2) Customer ID Behavior
+			   - When the user starts typing in the Customer ID field:
+			     - If the entered value matches an existing customer (use dummy/mock data in JavaScript), show a suggestion dropdown/list below the input.
+			     - Suggestions should be clickable.
+			     - Clicking a suggestion should select that customer and populate the booking form’s selected customer state.
+
+			   - If the entered value does NOT match any existing customer:
+			     - Show a visible action/link/button:
+			       - Add New Customer
+
+			   2.3) Add New Customer Modal
+			   - Clicking Add New Customer should open a modal containing a New Customer Form with the following fields:
+			     - Name
+			     - Iqama No.
+			     - Passport No.
+			     - Mobile No.
+
+			   - Modal actions:
+			     - Add
+			     - Cancel
+
+			   2.4) New Customer Modal Behavior
+			   - Clicking Add should:
+			     - Create a new customer in mock frontend state (JavaScript array/object)
+			     - Close the modal
+			     - Optionally auto-select the newly added customer for the booking
+
+			   - Clicking Cancel should:
+			     - Close the modal without saving
+
+			3. Add Passenger Button
+			   - Below the Customer ID field, add a button:
+			     - Add Passenger
+
+			   - Clicking Add Passenger should open a modal containing a New Passenger Form.
+
+			4. Passenger Modal / New Passenger Form Requirements
+
+			   4.1) Passenger Form Fields
+			   - Name
+			   - Passport No.
+			   - Package (select dropdown)
+			     - Options:
+			       - 14 days
+			       - 85 days
+			   - Service Required (select dropdown)
+			     - Options:
+			       - All
+			       - Visa Only
+			       - Ticket Only
+			   - District
+			   - Detailed Address (optional)
+
+			   4.2) Passenger Modal Actions
+			   - Add
+			   - Cancel
+
+			   4.3) Passenger Modal Behavior
+			   - Clicking Add should:
+			     - Validate required fields
+			     - Add the passenger to a frontend array/list in JavaScript
+			     - Close the modal
+			     - Render/update the passenger list in the booking form
+
+			   - Clicking Cancel should:
+			     - Close the modal without saving
+
+			5. Passenger List in Booking Form
+			   - After at least one passenger is added:
+			     - Show a Passenger List section in the booking form
+
+			   - Each passenger should appear as a summary card/row with concise details, such as:
+			     - Name
+			     - Passport No.
+			     - Package
+			     - Service Required
+			     - District
+
+			   - Each passenger summary should have:
+			     - Edit button
+
+			   5.1) Edit Passenger Behavior
+			   - Clicking Edit should:
+			     - Open the same passenger modal
+			     - Pre-fill the selected passenger’s existing data
+			     - Allow updating the passenger
+			     - Save changes back into the passenger list
+
+			6. Add More Button
+			   - Below the passenger list, show a button:
+			     - Add More
+
+			   6.1) Add More Button Behavior
+			   - This button should be visible ONLY if at least one passenger already exists in the passenger list
+			   - Clicking Add More should open the New Passenger Form modal again for adding another passenger
+
+			7. UI / Interaction Expectations
+			   - This should be a demo-quality interactive prototype, so include:
+			     - Tailwind-based clean and professional layout
+			     - Modal open/close interactions
+			     - Conditional rendering using JavaScript
+			     - Suggestion dropdown behavior for Customer ID
+			     - Mock data for customer search suggestions
+			     - Frontend-only state management using JavaScript arrays/objects
+			     - No backend/API required
+			     - Keep code organized and easy to extend later
+
+			8. Deliverable Expectation for Planning
+			   - Please provide a development plan for this demo that includes:
+
+			   8.1) UI Sections / Components Breakdown
+			   - Booking form
+			   - Customer search / suggestion section
+			   - New Customer modal
+			   - Passenger modal
+			   - Passenger list section
+
+			   8.2) State / Data Structure Design in JavaScript
+			   - Suggested example:
+			     - customers array
+			     - selectedCustomer
+			     - passengers array
+			     - editingPassengerIndex
+			     - modal visibility states
+
+			   8.3) Interaction Flow
+			   - Customer search → match / no match
+			   - Add new customer
+			   - Add passenger
+			   - Edit passenger
+			   - Conditional Add More visibility
+
+			   8.4) Implementation Order
+			   - A step-by-step recommended build order for fast prototyping
+
+			   8.5) Optional UX Enhancements
+			   - Simple validation
+			   - Inline error messages
+			   - Toast messages
+			   - Empty-state messaging
+			   - Smooth modal transitions
+
+			9. Important Constraints
+			   - Use HTML + Tailwind CSS + JavaScript only
+			   - No backend
+			   - No framework required
+			   - This is a client demo, so prioritize:
+			     - Interactivity
+			     - Believable workflow
+			     - Polished UX
+			     - Simple maintainable structure
+		- (Opencode v2)
+			Plan an interactive Booking Form demo prototype using HTML + Tailwind CSS + JavaScript only (no backend).
+
+			The goal is to create a client-demo-ready booking workflow with realistic frontend behavior and conditional UI logic.
+
+			1. Required Features
+
+			   1.1) Customer Search / Suggestion
+			   - Add a Customer ID input field
+			   - Implement live suggestion matching from mock data while the user types
+			   - If a match is found:
+			     - Show clickable customer suggestions below the input
+			   - If no match is found:
+			     - Show an Add New Customer action
+
+			   1.2) Add New Customer Modal
+			   - Clicking Add New Customer should open a modal
+			   - The modal should contain the following fields:
+			     - Name
+			     - Iqama No.
+			     - Passport No.
+			     - Mobile No.
+
+			   - The modal should contain the following buttons:
+			     - Add
+			     - Cancel
+
+			   - Expected behavior:
+			     - Add should save the customer into mock frontend state
+			     - The modal should close after adding
+			     - Optionally auto-select the newly added customer
+			     - Cancel should close the modal without saving
+
+			   1.3) Add Passenger Button
+			   - Below the Customer ID field, show an Add Passenger button
+			   - Clicking Add Passenger should open a passenger modal
+
+			   1.4) Passenger Modal
+			   - The passenger modal should contain the following fields:
+			     - Name
+			     - Passport No.
+			     - Package (dropdown)
+			       - 14 days
+			       - 85 days
+			     - Service Required (dropdown)
+			       - All
+			       - Visa Only
+			       - Ticket Only
+			     - District
+			     - Detailed Address (optional)
+
+			   - The modal should contain:
+			     - Add
+			     - Cancel
+
+			   - Expected behavior:
+			     - Add should validate required fields
+			     - Add should save the passenger into a frontend array
+			     - The modal should close after adding
+			     - The booking form should update immediately
+
+			   1.5) Passenger List
+			   - After at least one passenger is added:
+			     - Show a passenger summary list inside the booking form
+
+			   - Each passenger item should display:
+			     - Name
+			     - Passport No.
+			     - Package
+			     - Service Required
+			     - District
+
+			   - Each passenger item should include:
+			     - Edit button
+
+			   1.6) Edit Passenger
+			   - Clicking Edit should:
+			     - Open the same passenger modal
+			     - Pre-fill the selected passenger’s existing data
+			     - Allow updating the passenger
+			     - Save changes back into the list
+
+			   1.7) Add More Button
+			   - Show an Add More button below the passenger list
+			   - This button should be visible ONLY if at least one passenger exists
+			   - Clicking Add More should open the passenger modal again for adding another passenger
+
+			2. Need From You
+
+			   2.1) Component Breakdown
+			   - Booking form
+			   - Customer search / suggestion UI
+			   - New Customer modal
+			   - Passenger modal
+			   - Passenger list
+			   - Conditional Add More button
+
+			   2.2) Frontend State Structure
+			   - Recommend a clean JavaScript state structure, for example:
+			     - customers
+			     - customerSearchTerm
+			     - filteredCustomers
+			     - selectedCustomer
+			     - passengers
+			     - editingPassengerIndex
+			     - isCustomerModalOpen
+			     - isPassengerModalOpen
+
+			   2.3) Interaction Logic Plan
+			   - Explain the interaction flow for:
+			     - Customer typing and suggestion matching
+			     - No-match state and Add New Customer trigger
+			     - New customer creation and selection
+			     - Passenger creation
+			     - Passenger editing
+			     - Conditional rendering of passenger list
+			     - Conditional rendering of Add More button
+
+			   2.4) Step-by-Step Implementation Order
+			   - Provide the best build order for fast prototyping, such as:
+			     - Static layout first
+			     - Mock data setup
+			     - Customer search logic
+			     - Customer modal logic
+			     - Passenger modal logic
+			     - Passenger list rendering
+			     - Edit passenger logic
+			     - Final UI polish
+
+			   2.5) Recommended File Structure (if split)
+			   - Suggest a simple structure if the prototype is split, such as:
+			     - index.html
+			     - app.js
+			     - optional styles or helper sections if needed
+
+			   2.6) Edge Cases to Handle in Demo
+			   - Include practical demo-safe edge cases such as:
+			     - Empty Customer ID input
+			     - Partial matches
+			     - No matches found
+			     - Adding duplicate-looking customers
+			     - Adding first passenger
+			     - Editing passenger after multiple passengers exist
+			     - Canceling modals
+			     - Required field validation
+
+			   2.7) Optional Polish Ideas for Client Presentation
+			   - Suggest optional UX improvements such as:
+			     - Toast success messages
+			     - Empty-state messages
+			     - Smooth modal transitions
+			     - Inline validation feedback
+			     - Highlight selected customer
+			     - Clear passenger cards
+			     - Simple visual hierarchy for demo clarity
+
+			3. Important Constraints
+			   - Use HTML + Tailwind CSS + JavaScript only
+			   - No backend
+			   - No framework required
+			   - This is a prototype/demo, not production
+			   - Focus on:
+			     - Interactive UX
+			     - Conditional rendering
+			     - Mock data handling
+			     - Believable booking flow
+			     - Clean and maintainable structure
+
+			4. Final Instruction
+			   - Please provide a practical implementation plan optimized for:
+			     - Fast prototyping
+			     - Demo readiness
+			     - Clean UI behavior
+			     - Easy future expansion into a real app
+		- (raw)
+			Need Booking form Submit button and cancel Button. And a clear button for clearing the form.
+		- (raw)
+			Cancel button should clear and close the form. The defauld page should show Add Booking Button. The clear button should reset entire form.
+		- (raw)
+			There is a change of plan. I need some extra info and ticket related info in Booking section. It will be inserted in the passenger entry form. The infos I need are Mobile no., Route (Select dropdown with mock data like DAC-JED-DAC), Airline(Select), Class (select dropdown with options- Business, Economy), Passenger Type (Select dropdown with options- Adult, Child, Infant), With Offer, Refundable and Re-Issueable checkboxes. If user checks the Offer checkbox, then Refundable and Re-issuable checkboxes will be disabled and cannot be checked. Rewrite this raw prompt for Opencode plan agent. I mean I need a prompt with the requirement above to plan in Opencode.
+	- Passenger Index
+		- (raw)
+			Now I Need a passenger index below add booking button columns named Date, Invoice No. (A booking should have a Invoice number, more than one passngers can sare same invoice number who has the same booking), Guardian name(Customer name from the booking form the passenger has), Mobile no., Passenger name, Passport, Route, Status (Dropdown cell value with options- None by default, Underprocessing, Fingerprint Done, Ticket Booking, Visa Application, Visa Issued, Ticket Issued, Delivered, Hold, Cancel, Return Done), Package (derived from passanger info from booking), due, Ticket Fare, Visa, Fingerprint Location (Select Dropdown with options- 64 districts of Bnagladesh, BMT-DHK, BMT-CTG, Tabuk with DHK, Tabuk with CTG, Tabuk with DHK-BMT, None by default), Fingerprint Cost, Individual Cost. Empty ticket fare, visa and Fingerprint cells should have an add button, that will open two separate modals- Add Ticket fare modal, Add Visa cost modal. Ticket Fare modal will include the fields Date, Ticket Agent (select dropdown with mock agent data, Flight Info (Combination of Airline name, class and Route, Such as DAC-JED-DAC), Gross Fare(will be appear based on the flight info and whether it is offer price or not- Read only), Discount(amount or percantage- input by user), Net Fare (Fare after Discount- Read only). Three Conditional Checkboxes will be in the ticket fare form. 1. Offer(will be active on condition that the selected flight info has offer associated with it). 2. Non-Refundable(if offer is checked, then it will be checked and disabled), 3. Re-Issueable. The next modal is visa cost modal. It will have only three field- Visa Package (select dropdown with options 14 days and 85 days), Visa Agent (Select dropdown with mock agent data) and Profit Margin. The packages will have fixed costs. With the profit margin added total cost will be shown in passenger list's Visa cost cell with an edit button which will trigger visa cost form with prefilled data. Same thing happens for ticket fare forrm- the net fare will appear in ticket fare cell, with same edit button functionality as visa cost. It will open the ticket fare form with prefilled old data. Rewrite this raw prompt for Opencode plan agent. I mean I need a prompt with the requirement above to plan in Opencode.
+
+
+		- (Opencode)
+			Plan the next module of the interactive Booking Form demo prototype using HTML + Tailwind CSS + JavaScript only (no backend).
+
+			This is a continuation of the same client-demo-ready prototype. The new module should be a Passenger Index section that appears below the Add Booking button and is directly tied to the booking + passenger data already captured in the Booking Form.
+
+			The goal is to design a realistic, interactive Passenger Index table with:
+			- derived values from booking and passenger data
+			- editable cost workflows
+			- status tracking
+			- conditional dropdowns
+			- modal-based add/edit flows
+			- frontend-only state using mock data
+
+			1. Goal
+			   - Build a Passenger Index section below the Add Booking button
+			   - Each passenger added through the booking form should appear as a row in this table
+			   - Multiple passengers from the same booking should be allowed to share the same Invoice No.
+			   - The Passenger Index should support:
+			     - derived data from booking + passenger form
+			     - editable status tracking
+			     - ticket fare add/edit flow
+			     - visa cost add/edit flow
+			     - fingerprint location selection
+			     - conditional form behavior inside ticket fare modal
+
+			2. Placement / Relationship to Existing Booking Form
+			   - This Passenger Index should appear below the Add Booking button
+			   - It should be connected to the booking form workflow
+			   - When a booking is created:
+			     - The booking should generate an Invoice No.
+			     - Each passenger from that booking should be inserted as a separate row in the Passenger Index
+			     - If multiple passengers belong to the same booking, they should share the same Invoice No.
+
+			3. Passenger Index Table Requirements
+			   - Create a Passenger Index table below the Add Booking button
+			   - Each passenger row should contain the following columns:
+
+			   3.1) Required Columns
+			   - Date
+			   - Invoice No.
+			     - A booking should have a single Invoice No.
+			     - More than one passenger can share the same Invoice No. if they belong to the same booking
+			   - Guardian Name
+			     - This should come from the Customer Name selected/created in the Booking Form
+			   - Mobile No.
+			     - This should come from the selected/created customer in the Booking Form
+			   - Passenger Name
+			   - Passport
+			   - Route
+			   - Status
+			   - Package
+			     - Derived from passenger info in the booking form
+			   - Due
+			   - Ticket Fare
+			   - Visa
+			   - Fingerprint Location
+			   - Fingerprint Cost
+			   - Individual Cost
+
+			4. Column Data Source / Derivation Rules
+			   - Date:
+			     - Use booking date or booking creation date (mock/demo date is acceptable)
+			   - Invoice No.:
+			     - Auto-generated when a booking is created
+			     - Shared by all passengers in the same booking
+			   - Guardian Name:
+			     - Derived from selected customer / customer form
+			   - Mobile No.:
+			     - Derived from selected customer / customer form
+			   - Passenger Name:
+			     - Derived from passenger data
+			   - Passport:
+			     - Derived from passenger data
+			   - Route:
+			     - Derived from selected flight/ticket data if available
+			   - Package:
+			     - Derived from passenger form (14 days or 85 days)
+			   - Due:
+			     - Can be mocked for planning purposes
+			     - Need planning guidance for a simple demo-safe approach
+			   - Individual Cost:
+			     - Should represent the combined cost view for the passenger
+			     - Need planning guidance on what should be included in demo logic (e.g. Ticket Fare + Visa + Fingerprint Cost)
+
+			5. Status Column Requirements
+			   - Status should be an editable dropdown inside each row
+			   - Default value:
+			     - None
+
+			   5.1) Status Dropdown Options
+			   - None
+			   - Underprocessing
+			   - Fingerprint Done
+			   - Ticket Booking
+			   - Visa Application
+			   - Visa Issued
+			   - Ticket Issued
+			   - Delivered
+			   - Hold
+			   - Cancel
+			   - Return Done
+
+			6. Fingerprint Location Column Requirements
+			   - Fingerprint Location should be an editable select dropdown inside each row
+			   - Default value:
+			     - None
+
+			   6.1) Fingerprint Location Options
+			   - All 64 districts of Bangladesh
+			   - BMT-DHK
+			   - BMT-CTG
+			   - Tabuk with DHK
+			   - Tabuk with CTG
+			   - Tabuk with DHK-BMT
+			   - None
+
+			   6.2) Planning Note
+			   - Since 64 districts create a large dropdown, recommend the best demo-safe UI approach:
+			     - native select
+			     - searchable dropdown
+			     - grouped options
+			   - Suggest what is best for quick prototyping in HTML + Tailwind + JS only
+
+			7. Ticket Fare and Visa Cell Behavior
+			   - Ticket Fare and Visa cells should support add/edit workflows
+
+			   7.1) Empty Cell Behavior
+			   - If Ticket Fare cell is empty:
+			     - Show an Add button
+			     - Clicking it should open the Add Ticket Fare modal
+
+			   - If Visa cell is empty:
+			     - Show an Add button
+			     - Clicking it should open the Add Visa Cost modal
+
+			   7.2) Filled Cell Behavior
+			   - Once data is added:
+			     - Show the computed/display value in the cell
+			     - Show an Edit button next to the value
+
+			   - Clicking Edit should:
+			     - Open the same modal
+			     - Pre-fill old data
+			     - Allow update
+			     - Save changes back into the row
+
+			8. Add Ticket Fare Modal Requirements
+			   - Create a Ticket Fare modal for add/edit
+			   - This modal should support both:
+			     - Add flow
+			     - Edit flow
+
+			   8.1) Ticket Fare Modal Fields
+			   - Date
+			   - Ticket Agent
+			     - Select dropdown with mock agent data
+			   - Flight Info
+			     - Select dropdown
+			     - Display format example:
+			       - DAC-JED-DAC
+			       - Or combination of airline name, class, and route
+			     - Example idea:
+			       - Saudia | Economy | DAC-JED-DAC
+			       - Biman | Economy | DAC-JED-DAC
+
+			   - Gross Fare
+			     - Read-only
+			     - Should appear automatically based on:
+			       - selected flight info
+			       - whether offer pricing applies or not
+
+			   - Discount
+			     - User input
+			     - Should support:
+			       - amount
+			       - or percentage
+			     - Need planning recommendation for the best simple UI approach
+
+			   - Net Fare
+			     - Read-only
+			     - Should automatically calculate:
+			       - Gross Fare minus Discount
+
+			9. Ticket Fare Modal Conditional Checkboxes
+			   - The Ticket Fare modal should contain three conditional checkboxes:
+
+			   9.1) Checkbox 1: Offer
+			   - Label:
+			     - Offer
+			   - This checkbox should be active ONLY if the selected flight info has an offer associated with it
+			   - If selected flight has no offer:
+			     - Offer checkbox should be disabled or unavailable
+
+			   9.2) Checkbox 2: Non-Refundable
+			   - Label:
+			     - Non-Refundable
+			   - If Offer is checked:
+			     - Non-Refundable should automatically become checked
+			     - Non-Refundable should become disabled (user cannot uncheck it)
+
+			   9.3) Checkbox 3: Re-Issueable
+			   - Label:
+			     - Re-Issueable
+			   - Should remain user-controllable unless other logic is recommended
+
+			10. Ticket Fare Modal Data / Pricing Logic
+			   - Use mock flight data in JavaScript
+			   - Each flight option should include:
+			     - display label
+			     - base gross fare
+			     - whether offer is available
+			     - optional offer fare
+			     - route
+			     - airline
+			     - class
+
+			   10.1) Gross Fare Logic
+			   - If selected flight has offer available AND Offer checkbox is checked:
+			     - Gross Fare should use offer price
+			   - Otherwise:
+			     - Gross Fare should use regular/base price
+
+			   10.2) Net Fare Logic
+			   - Net Fare = Gross Fare - Discount
+			   - If discount is percentage:
+			     - calculate accordingly
+			   - If discount is fixed amount:
+			     - calculate accordingly
+
+			   10.3) Ticket Fare Cell Output
+			   - After save:
+			     - The Net Fare should appear in the Passenger Index row’s Ticket Fare cell
+			     - Show an Edit button beside it
+
+			11. Add Visa Cost Modal Requirements
+			   - Create a Visa Cost modal for add/edit
+			   - This modal should support both:
+			     - Add flow
+			     - Edit flow
+
+			   11.1) Visa Cost Modal Fields
+			   - Visa Package
+			     - Select dropdown
+			     - Options:
+			       - 14 days
+			       - 85 days
+
+			   - Visa Agent
+			     - Select dropdown with mock agent data
+
+			   - Profit Margin
+			     - User input
+
+			12. Visa Cost Logic
+			   - Packages should have fixed base costs (mock values in JavaScript)
+			   - Example:
+			     - 14 days = fixed cost
+			     - 85 days = fixed cost
+			   - Opencode should recommend demo-safe mock values
+
+			   12.1) Final Visa Cost Calculation
+			   - Final Visa Cost = Base Package Cost + Profit Margin
+
+			   12.2) Visa Cell Output
+			   - After save:
+			     - Show the Final Visa Cost in the Passenger Index row’s Visa cell
+			     - Show an Edit button beside it
+
+			   12.3) Edit Behavior
+			   - Clicking Edit should:
+			     - Open the Visa Cost modal
+			     - Pre-fill previous data
+			     - Allow update
+			     - Save changes back into the row
+
+			13. Fingerprint Cost Column Behavior
+			   - Need planning guidance for how Fingerprint Cost should work in the demo
+			   - Recommend one of the following demo-safe approaches:
+			     - Manual editable inline input
+			     - Add button + modal
+			     - Auto-filled based on Fingerprint Location
+			   - Suggest the simplest but believable approach for the prototype
+
+			14. Individual Cost Column Behavior
+			   - Individual Cost should represent the passenger’s combined cost
+			   - Need planning guidance on what should be included in demo logic
+
+			   14.1) Recommended Demo Formula
+			   - Ask Opencode to recommend a simple formula, such as:
+			     - Individual Cost = Ticket Fare + Visa + Fingerprint Cost
+			   - Or include other relevant derived values if needed
+
+			15. Frontend State / Data Structure Requirements
+			   - Please propose a clean JavaScript state structure for this module, including (example idea):
+
+			   15.1) Existing Related State
+			   - bookings
+			   - customers
+			   - passengers
+
+			   15.2) Passenger Index Related State
+			   - passengerIndexRows
+			   - invoiceCounter
+			   - selectedPassengerIndexRow
+			   - editingTicketFareRowIndex
+			   - editingVisaRowIndex
+
+			   15.3) Modal State
+			   - isTicketFareModalOpen
+			   - isVisaModalOpen
+
+			   15.4) Lookup / Mock Data
+			   - ticketAgents
+			   - visaAgents
+			   - flights
+			   - visaPackageCosts
+			   - districts
+
+			16. Interaction Flow Requirements
+			   - Please explain the interaction flow for:
+
+			   16.1) Booking Creation to Passenger Index
+			   - Booking submitted
+			   - Invoice generated
+			   - Each passenger inserted as separate row
+			   - Shared invoice across passengers in same booking
+
+			   16.2) Ticket Fare Add Flow
+			   - Empty Ticket Fare cell shows Add button
+			   - Click Add
+			   - Open modal
+			   - Fill fields
+			   - Conditional checkbox behavior
+			   - Save
+			   - Show Net Fare + Edit button in cell
+
+			   16.3) Ticket Fare Edit Flow
+			   - Click Edit
+			   - Open same modal with prefilled data
+			   - Update values
+			   - Save updated Net Fare
+
+			   16.4) Visa Add Flow
+			   - Empty Visa cell shows Add button
+			   - Click Add
+			   - Open modal
+			   - Fill fields
+			   - Save
+			   - Show final Visa Cost + Edit button
+
+			   16.5) Visa Edit Flow
+			   - Click Edit
+			   - Open same modal with prefilled data
+			   - Update values
+			   - Save updated Visa Cost
+
+			   16.6) Status Update Flow
+			   - Change status inline in row
+
+			   16.7) Fingerprint Location Update Flow
+			   - Change fingerprint location inline in row
+
+			17. Deliverable Expectation for Planning
+			   - Please provide a practical implementation plan for this Passenger Index module that includes:
+
+			   17.1) UI Components Breakdown
+			   - Passenger Index section
+			   - Passenger table
+			   - Status dropdown cell
+			   - Fingerprint Location dropdown cell
+			   - Ticket Fare add/edit modal
+			   - Visa Cost add/edit modal
+			   - Optional Fingerprint Cost UI strategy
+
+			   17.2) State Design
+			   - JavaScript state structure for table rows, bookings, modals, and lookup data
+
+			   17.3) Derived Data Rules
+			   - How values should flow from booking form → passenger list → passenger index
+
+			   17.4) Calculation Rules
+			   - Invoice number generation
+			   - Gross fare logic
+			   - Offer logic
+			   - Net fare logic
+			   - Visa cost logic
+			   - Individual cost logic
+			   - Due logic (demo-safe recommendation)
+
+			   17.5) Step-by-Step Build Order
+			   - Best implementation order for fast prototyping
+
+			   17.6) Edge Cases to Handle in Demo
+			   - Multiple passengers sharing same invoice
+			   - Passenger without ticket fare yet
+			   - Passenger without visa cost yet
+			   - Editing after data exists
+			   - Flight without offer
+			   - Offer forcing non-refundable
+			   - Discount type handling
+			   - Empty fingerprint selection
+			   - Large district dropdown usability
+
+			   17.7) Optional UX Enhancements
+			   - Readable currency formatting
+			   - Sticky table header
+			   - Row highlighting by status
+			   - Inline badges
+			   - Smooth modal transitions
+			   - Empty-state messaging
+			   - Simple validation feedback
+			   - Responsive horizontal scroll strategy for wide table
+
+			18. Important Constraints
+			   - Use HTML + Tailwind CSS + JavaScript only
+			   - No backend
+			   - No framework required
+			   - This is a client demo / prototype, not production
+			   - Prioritize:
+			     - believable workflow
+			     - strong interactivity
+			     - clean modal behavior
+			     - frontend-only mock state
+			     - maintainable structure
+			     - fast prototyping
+
+			19. Final Instruction
+			   - Please provide a practical implementation plan optimized for:
+			     - fast prototyping
+			     - demo readiness
+			     - clean interactive behavior
+			     - realistic business workflow
+			     - easy future expansion into a real app
+
+
+		- (raw)
+			Now I have a change in Passenger index planning. Now I want The data for Add Ticket fare form prefilled form Booking section's passenger info. Instead of Combined flight info I need separated fields like passenger entry form. And instead of Non-refundable checkbox I need Refundable checkbox. The checkbox conditions will be same as passenger entry form.
+
+		- (Opencode- revised)
+			Update the existing Passenger Index module plan for the interactive Booking Form demo prototype built with HTML + Tailwind CSS + JavaScript only (no backend).
+
+			This is a revision request to the previously planned Passenger Index module. The main change applies specifically to the Add/Edit Ticket Fare modal workflow.
+
+			The previous plan used:
+			- a combined Flight Info dropdown (e.g. Airline + Class + Route in one field)
+			- an Offer checkbox
+			- a Non-Refundable checkbox
+			- a Re-Issueable checkbox
+
+			That plan should now be updated.
+
+			The new requirement is:
+			- the Ticket Fare modal should use separate ticket-related fields instead of a combined Flight Info field
+			- these fields should be prefilled from the passenger data already captured in the Booking section
+			- replace Non-Refundable with Refundable
+			- checkbox behavior should now match the Passenger Entry Form logic exactly
+
+			1. Context
+			   - This is NOT a new module from scratch.
+			   - This is an update to the already planned Passenger Index module.
+			   - The change applies specifically to:
+			     - Add Ticket Fare modal
+			     - Edit Ticket Fare modal
+			   - Keep the rest of the Passenger Index plan unless changes are required because of this new logic.
+
+			2. Main Change Summary
+			   - Remove the old combined "Flight Info" approach from the Ticket Fare modal.
+			   - Instead, use separate ticket-related fields already captured in the Booking section Passenger Entry Form.
+			   - These fields should be:
+			     - prefilled in the Ticket Fare modal
+			     - editable if needed
+			   - Replace:
+			     - Non-Refundable
+			   - With:
+			     - Refundable
+			   - Checkbox logic should now be the same as the Passenger Entry Form:
+			     - With Offer
+			     - Refundable
+			     - Re-Issueable
+			     - If With Offer is checked:
+			       - Refundable becomes disabled
+			       - Re-Issueable becomes disabled
+			       - both cannot be checked
+
+			3. Source of Ticket Fare Modal Data
+			   - The Ticket Fare modal should no longer depend on a single combined Flight Info field.
+			   - Instead, it should reuse passenger-level ticket/travel data already captured in the Booking section Passenger Entry Form.
+
+			4. Passenger Entry Form Fields Already Available (from Booking Section)
+			   - The Booking section Passenger Entry Form already contains:
+			     - Route
+			     - Airline
+			     - Class
+			     - Passenger Type
+			     - With Offer
+			     - Refundable
+			     - Re-Issueable
+
+			   - These values should now be considered the primary source for the Ticket Fare modal.
+
+			5. Ticket Fare Modal Field Changes (Important)
+			   - Update the Add/Edit Ticket Fare modal field structure.
+
+			6. Remove Old Field
+			   - Remove this old field from the Ticket Fare modal:
+			     - Flight Info (combined dropdown)
+
+			   - The old combined format like:
+			     - Saudia | Economy | DAC-JED-DAC
+			   - should NO LONGER be the primary input pattern.
+
+			7. Replace with Separate Prefilled Fields
+			   - Instead of combined Flight Info, the Ticket Fare modal should now use separate fields that align with the passenger entry form.
+
+			   7.1) Route
+			   - Field:
+			     - Route
+			   - Source:
+			     - Prefilled from the passenger’s Booking section data
+
+			   7.2) Airline
+			   - Field:
+			     - Airline
+			   - Source:
+			     - Prefilled from the passenger’s Booking section data
+
+			   7.3) Class
+			   - Field:
+			     - Class
+			   - Source:
+			     - Prefilled from the passenger’s Booking section data
+
+			   7.4) Passenger Type
+			   - Field:
+			     - Passenger Type
+			   - Source:
+			     - Prefilled from the passenger’s Booking section data
+
+			8. Recommendation Needed: Read-Only vs Editable
+			   - Opencode should recommend the best demo-safe UX for these prefilled fields in the Ticket Fare modal.
+
+			   8.1) Preferred Recommendation
+			   - Since these values already come from the Booking section, recommend whether they should be:
+			     - read-only display fields
+			     - editable selects
+			     - or editable only in special cases
+
+			   8.2) Strong Demo Preference
+			   - Preferred for demo simplicity:
+			     - show them as prefilled fields
+			     - allow them to remain read-only OR lightly editable if that makes the flow more believable
+			   - Opencode should explain the cleanest approach for:
+			     - data consistency
+			     - avoiding duplicate/conflicting ticket info
+			     - fast prototyping
+
+			9. Updated Ticket Fare Modal Fields
+			   - The Ticket Fare modal should now include the following fields:
+
+			   9.1) Date
+			   - Date input
+
+			   9.2) Ticket Agent
+			   - Select dropdown with mock agent data
+
+			   9.3) Route
+			   - Prefilled from passenger booking data
+
+			   9.4) Airline
+			   - Prefilled from passenger booking data
+
+			   9.5) Class
+			   - Prefilled from passenger booking data
+
+			   9.6) Passenger Type
+			   - Prefilled from passenger booking data
+
+			   9.7) Gross Fare
+			   - Read-only
+			   - Should be derived based on:
+			     - Route
+			     - Airline
+			     - Class
+			     - Passenger Type
+			     - whether Offer pricing applies
+
+			   9.8) Discount
+			   - User input
+			   - Should support:
+			     - amount
+			     - percentage
+			   - Opencode should recommend the cleanest simple UI pattern
+
+			   9.9) Net Fare
+			   - Read-only
+			   - Automatically calculated:
+			     - Net Fare = Gross Fare - Discount
+
+			10. Checkbox Changes in Ticket Fare Modal
+			   - Update the checkbox structure in the Ticket Fare modal.
+
+			11. Old Checkbox Set (Remove / Replace)
+			   - The old Ticket Fare modal used:
+			     - Offer
+			     - Non-Refundable
+			     - Re-Issueable
+
+			   - This should be replaced.
+
+			12. New Checkbox Set (Must Match Passenger Entry Form)
+			   - The Ticket Fare modal should now use:
+			     - With Offer
+			     - Refundable
+			     - Re-Issueable
+
+			13. Checkbox Conditional Logic (Must Match Passenger Entry Form Exactly)
+			   - The logic in the Ticket Fare modal should now be the same as the Passenger Entry Form.
+
+			   13.1) If With Offer is checked:
+			   - Refundable must become disabled
+			   - Re-Issueable must become disabled
+			   - User cannot check Refundable
+			   - User cannot check Re-Issueable
+
+			   13.2) If Refundable or Re-Issueable were already checked before With Offer is checked:
+			   - Preferred demo-safe behavior:
+			     - automatically uncheck Refundable
+			     - automatically uncheck Re-Issueable
+			     - then disable both
+
+			   13.3) If With Offer is later unchecked:
+			   - Refundable becomes enabled again
+			   - Re-Issueable becomes enabled again
+			   - They remain unchecked until user manually checks them again
+
+			14. Prefill Behavior from Booking Section (Important)
+			   - When opening the Add Ticket Fare modal for a passenger row:
+			     - prefill Route from the passenger record
+			     - prefill Airline from the passenger record
+			     - prefill Class from the passenger record
+			     - prefill Passenger Type from the passenger record
+			     - prefill With Offer from the passenger record
+			     - prefill Refundable from the passenger record
+			     - prefill Re-Issueable from the passenger record
+
+			15. Add Flow Behavior
+			   - When the Ticket Fare cell is empty and user clicks Add:
+			     - Open Ticket Fare modal
+			     - Pre-fill all ticket-related fields from passenger data
+			     - Pre-fill checkbox states from passenger data
+			     - Apply checkbox conditional logic immediately on open
+			     - Allow entering:
+			       - Date
+			       - Ticket Agent
+			       - Discount
+			     - Gross Fare should auto-calculate from the prefilled travel/ticket fields
+			     - Net Fare should auto-calculate
+			     - Save the ticket fare record to that passenger index row
+
+			16. Edit Flow Behavior
+			   - When Ticket Fare already exists and user clicks Edit:
+			     - Open the same Ticket Fare modal
+			     - Pre-fill previously saved ticket fare data
+			     - Also show the passenger-derived travel/ticket fields
+			     - If Opencode recommends read-only mode:
+			       - keep Route / Airline / Class / Passenger Type as locked display values
+			     - If Opencode recommends editable mode:
+			       - explain how to prevent conflicts with passenger source data
+
+			   - Also pre-fill:
+			     - With Offer
+			     - Refundable
+			     - Re-Issueable
+			     - Ticket Agent
+			     - Date
+			     - Discount
+			     - computed Gross Fare
+			     - computed Net Fare
+
+			17. Gross Fare Logic Update
+			   - Since the combined Flight Info field is removed, Gross Fare logic should now be based on separate fields.
+
+			18. Gross Fare Calculation Inputs
+			   - Gross Fare should be determined from a mock pricing matrix or structured lookup using:
+			     - Route
+			     - Airline
+			     - Class
+			     - Passenger Type
+
+			19. Offer Pricing Logic
+			   - If With Offer is checked:
+			     - Gross Fare should use offer-based fare (if offer pricing exists for that combination)
+			   - If With Offer is not checked:
+			     - Gross Fare should use regular/base fare
+
+			20. Pricing Data Structure Recommendation
+			   - Opencode should recommend a clean mock data structure for ticket pricing, such as:
+			     - a pricing table keyed by:
+			       - route
+			       - airline
+			       - class
+			       - passenger type
+			     - with:
+			       - base fare
+			       - optional offer fare
+			       - offer availability
+
+			   - The goal is:
+			     - maintainable mock data
+			     - easy fare lookup in frontend-only JavaScript
+			     - easy future expansion
+
+			21. Net Fare Logic
+			   - Net Fare = Gross Fare - Discount
+
+			   21.1) Discount Support
+			   - Discount should support:
+			     - fixed amount
+			     - percentage
+
+			   21.2) Recommendation Needed
+			   - Opencode should recommend the cleanest simple UI for discount input, such as:
+			     - discount type select (Amount / %)
+			     - discount value input
+
+			22. Ticket Fare Cell Output
+			   - After saving:
+			     - Show the Net Fare in the Passenger Index row’s Ticket Fare cell
+			     - Show an Edit button beside it
+
+			   - Clicking Edit:
+			     - opens the same modal
+			     - with prefilled saved values and correct checkbox logic
+
+			23. Data Consistency Recommendation
+			   - Because ticket-related fields now come from the Booking section passenger data, Opencode should explain the best approach for consistency:
+
+			   23.1) Preferred Approach
+			   - Recommend whether the Ticket Fare modal should:
+			     - inherit and lock these values
+			     - or allow editing and sync changes back to passenger data
+			     - or allow local override only inside ticket fare data
+
+			   23.2) Strong Preference for Demo Simplicity
+			   - Prefer the cleanest and safest approach for a client demo:
+			     - avoid conflicting duplicate data
+			     - keep logic easy to explain
+			     - keep future real-app expansion possible
+
+			24. State Structure Update Needed
+			   - Update the Passenger Index / Ticket Fare related state design to reflect the new logic.
+
+			25. Passenger Data Already Available
+			   - Each passenger already stores:
+			     - route
+			     - airline
+			     - travelClass
+			     - passengerType
+			     - withOffer
+			     - refundable
+			     - reIssueable
+
+			26. Ticket Fare State Should Now Support
+			   - date
+			   - ticketAgent
+			   - route (derived or stored reference)
+			   - airline (derived or stored reference)
+			   - class / travelClass
+			   - passengerType
+			   - withOffer
+			   - refundable
+			   - reIssueable
+			   - grossFare
+			   - discountType
+			   - discountValue
+			   - netFare
+
+			27. Deliverable Expectation
+			   - Please revise the existing Passenger Index module plan and specifically update the Ticket Fare modal plan to include:
+
+			   27.1) Updated UI Breakdown
+			   - Ticket Fare modal fields with separate prefilled travel fields
+			   - Updated checkbox set
+			   - Updated checkbox conditional logic
+
+			   27.2) Updated State Design
+			   - How the modal should consume passenger data
+			   - What should be stored as derived vs copied vs editable values
+
+			   27.3) Updated Fare Calculation Logic
+			   - Gross Fare from Route + Airline + Class + Passenger Type
+			   - Offer pricing logic
+			   - Net Fare logic
+
+			   27.4) Updated Add/Edit Flow
+			   - Add flow with prefilled values from passenger data
+			   - Edit flow with prefilled saved values
+			   - Behavior in read-only vs editable mode
+
+			   27.5) Recommended Build Order
+			   - Best order to update the existing Passenger Index implementation plan with minimal disruption
+
+			28. Important Constraints
+			   - Use HTML + Tailwind CSS + JavaScript only
+			   - No backend
+			   - No framework required
+			   - This is a client demo / prototype, not production
+			   - Prioritize:
+			     - consistency with Booking section passenger data
+			     - believable workflow
+			     - clean modal behavior
+			     - frontend-only mock state
+			     - maintainable structure
+			     - fast prototyping
+
+			29. Final Instruction
+			   - Please revise only the relevant parts of the existing Passenger Index plan (especially the Ticket Fare modal and its related data logic) rather than rewriting the whole module from scratch, unless restructuring is necessary for cleaner implementation.
+
+		- (Opencode- combined and revised)
+			Plan the next module of the interactive Booking Form demo prototype using HTML + Tailwind CSS + JavaScript only (no backend).
+
+			This is a continuation of the same client-demo-ready prototype. The new module should be a Passenger Index section that appears below the Add Booking button and is directly tied to the booking + passenger data already captured in the Booking Form.
+
+			This version includes the latest adjustment:
+			- the Ticket Fare modal should no longer use a combined Flight Info field
+			- instead, ticket-related data should be prefilled from the Booking section passenger data
+			- the Ticket Fare modal should use:
+			  - With Offer
+			  - Refundable
+			  - Re-Issueable
+			- checkbox behavior in Ticket Fare modal must match the Passenger Entry Form logic exactly
+
+			The goal is to design a realistic, interactive Passenger Index table with:
+			- derived values from booking and passenger data
+			- editable cost workflows
+			- status tracking
+			- conditional dropdowns
+			- modal-based add/edit flows
+			- frontend-only state using mock data
+
+			1. Goal
+			   - Build a Passenger Index section below the Add Booking button
+			   - Each passenger added through the booking form should appear as a row in this table
+			   - Multiple passengers from the same booking should be allowed to share the same Invoice No.
+			   - The Passenger Index should support:
+			     - derived data from booking + passenger form
+			     - editable status tracking
+			     - ticket fare add/edit flow
+			     - visa cost add/edit flow
+			     - fingerprint location selection
+			     - conditional form behavior inside ticket fare modal
+
+			2. Placement / Relationship to Existing Booking Form
+			   - This Passenger Index should appear below the Add Booking button
+			   - It should be connected to the booking form workflow
+			   - When a booking is created:
+			     - The booking should generate an Invoice No.
+			     - Each passenger from that booking should be inserted as a separate row in the Passenger Index
+			     - If multiple passengers belong to the same booking, they should share the same Invoice No.
+
+			3. Passenger Index Table Requirements
+			   - Create a Passenger Index table below the Add Booking button
+			   - Each passenger row should contain the following columns:
+
+			   3.1) Required Columns
+			   - Date
+			   - Invoice No.
+			     - A booking should have a single Invoice No.
+			     - More than one passenger can share the same Invoice No. if they belong to the same booking
+			   - Guardian Name
+			     - This should come from the Customer Name selected/created in the Booking Form
+			   - Mobile No.
+			     - This should come from the selected/created customer in the Booking Form
+			   - Passenger Name
+			   - Passport
+			   - Route
+			   - Status
+			   - Package
+			     - Derived from passenger info in the booking form
+			   - Due
+			   - Ticket Fare
+			   - Visa
+			   - Fingerprint Location
+			   - Fingerprint Cost
+			   - Individual Cost
+
+			4. Column Data Source / Derivation Rules
+			   - Date:
+			     - Use booking date or booking creation date (mock/demo date is acceptable)
+			   - Invoice No.:
+			     - Auto-generated when a booking is created
+			     - Shared by all passengers in the same booking
+			   - Guardian Name:
+			     - Derived from selected customer / customer form
+			   - Mobile No.:
+			     - Derived from selected customer / customer form
+			   - Passenger Name:
+			     - Derived from passenger data
+			   - Passport:
+			     - Derived from passenger data
+			   - Route:
+			     - Derived from passenger data captured in the Booking section Passenger Entry Form
+			   - Package:
+			     - Derived from passenger form (14 days or 85 days)
+			   - Due:
+			     - Can be calculated from known costs vs received amount, or can be mocked for planning purposes
+			     - Need planning guidance for a simple demo-safe approach
+			   - Individual Cost:
+			     - Should represent the combined cost view for the passenger
+			     - Need planning guidance on what should be included in demo logic (e.g. Ticket Fare + Visa + Fingerprint Cost)
+
+			5. Status Column Requirements
+			   - Status should be an editable dropdown inside each row
+			   - Default value:
+			     - None
+
+			   5.1) Status Dropdown Options
+			   - None
+			   - Underprocessing
+			   - Fingerprint Done
+			   - Ticket Booking
+			   - Visa Application
+			   - Visa Issued
+			   - Ticket Issued
+			   - Delivered
+			   - Hold
+			   - Cancel
+			   - Return Done
+
+			6. Fingerprint Location Column Requirements
+			   - Fingerprint Location should be an editable select dropdown inside each row
+			   - Default value:
+			     - None
+
+			   6.1) Fingerprint Location Options
+			   - All 64 districts of Bangladesh
+			   - BMT-DHK
+			   - BMT-CTG
+			   - Tabuk with DHK
+			   - Tabuk with CTG
+			   - Tabuk with DHK-BMT
+			   - None
+
+			   6.2) Planning Note
+			   - Since 64 districts create a large dropdown, recommend the best demo-safe UI approach:
+			     - native select
+			     - searchable dropdown
+			     - grouped options
+			   - Suggest what is best for quick prototyping in HTML + Tailwind + JS only
+
+			7. Ticket Fare and Visa Cell Behavior
+			   - Ticket Fare and Visa cells should support add/edit workflows
+
+			   7.1) Empty Cell Behavior
+			   - If Ticket Fare cell is empty:
+			     - Show an Add button
+			     - Clicking it should open the Add Ticket Fare modal
+
+			   - If Visa cell is empty:
+			     - Show an Add button
+			     - Clicking it should open the Add Visa Cost modal
+
+			   7.2) Filled Cell Behavior
+			   - Once data is added:
+			     - Show the computed/display value in the cell
+			     - Show an Edit button next to the value
+
+			   - Clicking Edit should:
+			     - Open the same modal
+			     - Pre-fill old data
+			     - Allow update
+			     - Save changes back into the row
+
+			8. Add/Edit Ticket Fare Modal Requirements (Updated)
+			   - Create a Ticket Fare modal for add/edit
+			   - This modal should support both:
+			     - Add flow
+			     - Edit flow
+
+			   - IMPORTANT:
+			     - Do NOT use the old combined "Flight Info" dropdown approach.
+			     - Instead, use separate travel/ticket fields derived from the passenger’s Booking section data.
+
+			9. Ticket Fare Modal Data Source (Important)
+			   - The Ticket Fare modal should reuse passenger-level travel/ticket data already captured in the Booking section Passenger Entry Form.
+
+			   9.1) Relevant Passenger Fields Already Available
+			   - Route
+			   - Airline
+			   - Class
+			   - Passenger Type
+			   - With Offer
+			   - Refundable
+			   - Re-Issueable
+
+			   9.2) Prefill Requirement
+			   - When opening the Ticket Fare modal for a passenger:
+			     - prefill Route from passenger data
+			     - prefill Airline from passenger data
+			     - prefill Class from passenger data
+			     - prefill Passenger Type from passenger data
+			     - prefill With Offer from passenger data
+			     - prefill Refundable from passenger data
+			     - prefill Re-Issueable from passenger data
+
+			10. Ticket Fare Modal Fields (Updated Structure)
+			   - The Ticket Fare modal should now include the following fields:
+
+			   10.1) Date
+			   - Date input
+
+			   10.2) Ticket Agent
+			   - Select dropdown with mock agent data
+
+			   10.3) Route
+			   - Prefilled from passenger booking data
+
+			   10.4) Airline
+			   - Prefilled from passenger booking data
+
+			   10.5) Class
+			   - Prefilled from passenger booking data
+
+			   10.6) Passenger Type
+			   - Prefilled from passenger booking data
+
+			   10.7) Gross Fare
+			   - Read-only
+			   - Should be derived based on:
+			     - Route
+			     - Airline
+			     - Class
+			     - Passenger Type
+			     - whether Offer pricing applies
+
+			   10.8) Discount
+			   - User input
+			   - Should support:
+			     - amount
+			     - percentage
+			   - Need planning recommendation for the best simple UI approach
+
+			   10.9) Net Fare
+			   - Read-only
+			   - Should automatically calculate:
+			     - Net Fare = Gross Fare - Discount
+
+			11. Recommendation Needed: Read-Only vs Editable Prefilled Fields
+			   - Opencode should recommend the best demo-safe UX for the prefilled fields in the Ticket Fare modal:
+			     - Route
+			     - Airline
+			     - Class
+			     - Passenger Type
+
+			   11.1) Preferred Guidance
+			   - Since these values already come from the Booking section:
+			     - recommend whether they should be read-only display fields
+			     - or editable fields
+			     - or editable with local override only
+
+			   11.2) Strong Demo Preference
+			   - Prefer the cleanest and safest client-demo approach:
+			     - avoid conflicting duplicate data
+			     - keep logic easy to explain
+			     - keep future real-app expansion possible
+
+			12. Ticket Fare Modal Checkbox Requirements (Updated)
+			   - The Ticket Fare modal should use the following checkboxes:
+
+			   12.1) With Offer
+			   - Label:
+			     - With Offer
+
+			   12.2) Refundable
+			   - Label:
+			     - Refundable
+
+			   12.3) Re-Issueable
+			   - Label:
+			     - Re-Issueable
+
+			13. Ticket Fare Modal Checkbox Conditional Logic (Must Match Passenger Entry Form)
+			   - The logic in the Ticket Fare modal must match the Passenger Entry Form exactly.
+
+			   13.1) If With Offer is checked:
+			   - Refundable must become disabled
+			   - Re-Issueable must become disabled
+			   - User cannot check Refundable
+			   - User cannot check Re-Issueable
+
+			   13.2) If Refundable or Re-Issueable were already checked before With Offer is checked:
+			   - Preferred demo-safe behavior:
+			     - automatically uncheck Refundable
+			     - automatically uncheck Re-Issueable
+			     - then disable both
+
+			   13.3) If With Offer is later unchecked:
+			   - Refundable becomes enabled again
+			   - Re-Issueable becomes enabled again
+			   - They remain unchecked until user manually checks them again
+
+			14. Ticket Fare Modal Pricing Logic (Updated)
+			   - Use mock pricing data in JavaScript
+			   - Since the combined Flight Info field is removed, Gross Fare logic should now be based on separate fields.
+
+			15. Gross Fare Calculation Inputs
+			   - Gross Fare should be determined using:
+			     - Route
+			     - Airline
+			     - Class
+			     - Passenger Type
+
+			16. Offer Pricing Logic
+			   - If With Offer is checked:
+			     - Gross Fare should use offer-based fare (if offer pricing exists for that combination)
+			   - If With Offer is not checked:
+			     - Gross Fare should use regular/base fare
+
+			17. Pricing Data Structure Recommendation
+			   - Please recommend a clean mock data structure for ticket pricing, such as:
+			     - a pricing table keyed by:
+			       - route
+			       - airline
+			       - class
+			       - passenger type
+			     - with:
+			       - base fare
+			       - optional offer fare
+			       - offer availability
+
+			   - The goal is:
+			     - maintainable mock data
+			     - easy fare lookup in frontend-only JavaScript
+			     - easy future expansion
+
+			18. Net Fare Logic
+			   - Net Fare = Gross Fare - Discount
+
+			   18.1) Discount Support
+			   - Discount should support:
+			     - fixed amount
+			     - percentage
+
+			   18.2) Recommendation Needed
+			   - Recommend the cleanest simple UI for discount input, such as:
+			     - discount type select (Amount / %)
+			     - discount value input
+
+			19. Ticket Fare Cell Output
+			   - After save:
+			     - The Net Fare should appear in the Passenger Index row’s Ticket Fare cell
+			     - Show an Edit button beside it
+
+			20. Ticket Fare Add Flow (Updated)
+			   - Empty Ticket Fare cell shows Add button
+			   - Click Add
+			   - Open Ticket Fare modal
+			   - Pre-fill all ticket-related fields from passenger data
+			   - Pre-fill checkbox states from passenger data
+			   - Apply checkbox conditional logic immediately on open
+			   - Allow entering:
+			     - Date
+			     - Ticket Agent
+			     - Discount
+			   - Gross Fare should auto-calculate from the prefilled travel/ticket fields
+			   - Net Fare should auto-calculate
+			   - Save
+			   - Show Net Fare + Edit button in cell
+
+			21. Ticket Fare Edit Flow (Updated)
+			   - Click Edit
+			   - Open the same Ticket Fare modal with prefilled saved data
+			   - Also show the passenger-derived travel/ticket fields
+			   - If Opencode recommends read-only mode:
+			     - keep Route / Airline / Class / Passenger Type as locked display values
+			   - If Opencode recommends editable mode:
+			     - explain how to prevent conflicts with passenger source data
+
+			   - Also pre-fill:
+			     - With Offer
+			     - Refundable
+			     - Re-Issueable
+			     - Ticket Agent
+			     - Date
+			     - Discount
+			     - computed Gross Fare
+			     - computed Net Fare
+
+			22. Add/Edit Visa Cost Modal Requirements
+			   - Create a Visa Cost modal for add/edit
+			   - This modal should support both:
+			     - Add flow
+			     - Edit flow
+
+			   22.1) Visa Cost Modal Fields
+			   - Visa Package
+			     - Select dropdown
+			     - Options:
+			       - 14 days
+			       - 85 days
+
+			   - Visa Agent
+			     - Select dropdown with mock agent data
+
+			   - Profit Margin
+			     - User input
+
+			23. Visa Cost Logic
+			   - Packages should have fixed base costs (mock values in JavaScript)
+			   - Example:
+			     - 14 days = fixed cost
+			     - 85 days = fixed cost
+			   - Please recommend demo-safe mock values
+
+			   23.1) Final Visa Cost Calculation
+			   - Final Visa Cost = Base Package Cost + Profit Margin
+
+			   23.2) Visa Cell Output
+			   - After save:
+			     - Show the Final Visa Cost in the Passenger Index row’s Visa cell
+			     - Show an Edit button beside it
+
+			   23.3) Edit Behavior
+			   - Clicking Edit should:
+			     - Open the Visa Cost modal
+			     - Pre-fill previous data
+			     - Allow update
+			     - Save changes back into the row
+
+			24. Fingerprint Cost Column Behavior
+			   - Need planning guidance for how Fingerprint Cost should work in the demo
+			   - Recommend one of the following demo-safe approaches:
+			     - Manual editable inline input
+			     - Add button + modal
+			     - Auto-filled based on Fingerprint Location
+			   - Suggest the simplest but believable approach for the prototype
+
+			25. Individual Cost Column Behavior
+			   - Individual Cost should represent the passenger’s combined cost
+			   - Need planning guidance on what should be included in demo logic
+
+			   25.1) Recommended Demo Formula
+			   - Recommend a simple formula, such as:
+			     - Individual Cost = Ticket Fare + Visa + Fingerprint Cost
+			   - Or include other relevant derived values if needed
+
+			26. Due Column Behavior
+			   - Need planning guidance for a simple and believable demo-safe Due calculation
+			   - Recommend one of the following:
+			     - mock value
+			     - derived from booking received amount vs passenger share
+			     - simple formula based on known costs and mock paid amount
+			   - Prefer a practical approach that is easy to explain in a client demo
+
+			27. Frontend State / Data Structure Requirements
+			   - Please propose a clean JavaScript state structure for this module, including (example idea):
+
+			   27.1) Existing Related State
+			   - bookings
+			   - customers
+			   - passengers
+
+			   27.2) Passenger Index Related State
+			   - passengerIndexRows
+			   - invoiceCounter
+			   - selectedPassengerIndexRow
+			   - editingTicketFareRowIndex
+			   - editingVisaRowIndex
+
+			   27.3) Modal State
+			   - isTicketFareModalOpen
+			   - isVisaModalOpen
+
+			   27.4) Lookup / Mock Data
+			   - ticketAgents
+			   - visaAgents
+			   - ticketPricingMatrix
+			   - visaPackageCosts
+			   - districts
+
+			28. State Structure Update Needed for Ticket Fare
+			   - Since ticket-related fields come from the passenger data, please explain how the Ticket Fare modal should consume/store:
+
+			   28.1) Passenger Data Already Available
+			   - route
+			   - airline
+			   - travelClass
+			   - passengerType
+			   - withOffer
+			   - refundable
+			   - reIssueable
+
+			   28.2) Ticket Fare Data Should Support
+			   - date
+			   - ticketAgent
+			   - route (derived or stored reference)
+			   - airline (derived or stored reference)
+			   - class / travelClass
+			   - passengerType
+			   - withOffer
+			   - refundable
+			   - reIssueable
+			   - grossFare
+			   - discountType
+			   - discountValue
+			   - netFare
+
+			29. Interaction Flow Requirements
+			   - Please explain the interaction flow for:
+
+			   29.1) Booking Creation to Passenger Index
+			   - Booking submitted
+			   - Invoice generated
+			   - Each passenger inserted as separate row
+			   - Shared invoice across passengers in same booking
+
+			   29.2) Ticket Fare Add Flow
+			   - Empty Ticket Fare cell shows Add button
+			   - Click Add
+			   - Open modal
+			   - Pre-filled travel/ticket values from passenger data
+			   - Conditional checkbox behavior
+			   - Save
+			   - Show Net Fare + Edit button in cell
+
+			   29.3) Ticket Fare Edit Flow
+			   - Click Edit
+			   - Open same modal with prefilled data
+			   - Update values
+			   - Save updated Net Fare
+
+			   29.4) Visa Add Flow
+			   - Empty Visa cell shows Add button
+			   - Click Add
+			   - Open modal
+			   - Fill fields
+			   - Save
+			   - Show final Visa Cost + Edit button
+
+			   29.5) Visa Edit Flow
+			   - Click Edit
+			   - Open same modal with prefilled data
+			   - Update values
+			   - Save updated Visa Cost
+
+			   29.6) Status Update Flow
+			   - Change status inline in row
+
+			   29.7) Fingerprint Location Update Flow
+			   - Change fingerprint location inline in row
+
+			30. Deliverable Expectation for Planning
+			   - Please provide a practical implementation plan for this Passenger Index module that includes:
+
+			   30.1) UI Components Breakdown
+			   - Passenger Index section
+			   - Passenger table
+			   - Status dropdown cell
+			   - Fingerprint Location dropdown cell
+			   - Ticket Fare add/edit modal (updated structure)
+			   - Visa Cost add/edit modal
+			   - Optional Fingerprint Cost UI strategy
+
+			   30.2) State Design
+			   - JavaScript state structure for table rows, bookings, modals, and lookup data
+
+			   30.3) Derived Data Rules
+			   - How values should flow from booking form → passenger list → passenger index
+
+			   30.4) Calculation Rules
+			   - Invoice number generation
+			   - Gross fare logic from separate fields
+			   - Offer logic
+			   - Net fare logic
+			   - Visa cost logic
+			   - Individual cost logic
+			   - Due logic (demo-safe recommendation)
+
+			   30.5) Step-by-Step Build Order
+			   - Best implementation order for fast prototyping
+
+			   30.6) Edge Cases to Handle in Demo
+			   - Multiple passengers sharing same invoice
+			   - Passenger without ticket fare yet
+			   - Passenger without visa cost yet
+			   - Editing after data exists
+			   - Route / Airline / Class / Passenger Type consistency
+			   - Offer disabling Refundable and Re-Issueable
+			   - Discount type handling
+			   - Empty fingerprint selection
+			   - Large district dropdown usability
+
+			   30.7) Optional UX Enhancements
+			   - Readable currency formatting
+			   - Sticky table header
+			   - Row highlighting by status
+			   - Inline badges
+			   - Smooth modal transitions
+			   - Empty-state messaging
+			   - Simple validation feedback
+			   - Responsive horizontal scroll strategy for wide table
+
+			31. Important Constraints
+			   - Use HTML + Tailwind CSS + JavaScript only
+			   - No backend
+			   - No framework required
+			   - This is a client demo / prototype, not production
+			   - Prioritize:
+			     - believable workflow
+			     - strong interactivity
+			     - clean modal behavior
+			     - frontend-only mock state
+			     - maintainable structure
+			     - consistency with Booking section passenger data
+			     - fast prototyping
+
+			32. Final Instruction
+			   - Please provide a practical implementation plan optimized for:
+			     - fast prototyping
+			     - demo readiness
+			     - clean interactive behavior
+			     - realistic business workflow
+			     - easy future expansion into a real app
+
+			   - IMPORTANT:
+			     - This should be the revised full Passenger Index plan using the latest Ticket Fare modal rules.
+			     - Do not use the old combined Flight Info + Non-Refundable logic.
+			     - Use the updated separate prefilled fields + With Offer / Refundable / Re-Issueable logic instead.
+
+		- (raw)
+			Now I need an Interface for ticket admin , Who will set and update the base fare of tickets. There will be an index of ticket fares, with view, edit and delete options in action menu. Add/edit modal with fields like date, Airline (select dropdown with mock options), Class (select dropdown with mock options), Routes (select dropdown with mock options), Fare (editable input field), With Offer checkbox. Checked with offer checkbox will make visible three more fields, Offer price (editable input), Effective from and effective to date input fields. Default effective from date will be today. Unchecking with offer checkbox will hide and clear the offer related fields. When editing a fare Only fare, with offer checkbox, and offer related fields will be editable. Rewrite this raw prompt for Opencode plan agent. I mean I need a prompt with the requirement above to plan in Opencode.
+	- Ticket Admin UI
+		- (raw)
+			Now I need an Interface for ticket admin , Who will set and update the base fare of tickets. There will be an index of ticket fares, with view, edit and delete options in action menu. Add/edit modal with fields like date, Airline (select dropdown with mock options), Class (select dropdown with mock options), Routes (select dropdown with mock options), Fare (editable input field), With Offer checkbox. Checked with offer checkbox will make visible three more fields, Offer price (editable input), Effective from and effective to date input fields. Default effective from date will be today. Unchecking with offer checkbox will hide and clear the offer related fields. When editing a fare Only fare, with offer checkbox, and offer related fields will be editable. Rewrite this raw prompt for Opencode plan agent. I mean I need a prompt with the requirement above to plan in Opencode.
+
+		- (Opencode)
+			Plan the next module of the interactive Booking Form demo prototype using HTML + Tailwind CSS + JavaScript only (no backend).
+
+			This is a continuation of the same client-demo-ready prototype. The new module is a Ticket Admin Fare Management Interface for internal/admin use.
+
+			This interface will be used by a ticket admin who manages the base fare of tickets. The purpose of this module is to create, view, update, and delete fare configurations that can later be reused by the Passenger Index Ticket Fare modal as the pricing source.
+
+			The goal is to design a realistic, interactive admin interface with:
+			- a ticket fare index/table
+			- add fare workflow
+			- edit fare workflow
+			- view details workflow
+			- delete workflow
+			- conditional offer pricing fields
+			- frontend-only state using mock data
+			- compatibility with the Passenger Index Ticket Fare pricing logic
+
+			1. Goal
+			   - Build a Ticket Admin Fare Management module for internal/admin use
+			   - This module should allow a ticket admin to:
+			     - view existing fare records
+			     - add new fare records
+			     - edit existing fare records
+			     - delete fare records
+			   - These fare records should represent the base fare pricing rules for tickets
+			   - The module should support optional offer pricing with effective date range
+			   - The module should be planned so that it can later serve as the pricing source for the Passenger Index Ticket Fare modal
+
+			2. Relationship to Existing Prototype
+			   - This module belongs to the same prototype ecosystem as:
+			     - Booking Form
+			     - Passenger Entry Form
+			     - Passenger Index
+			     - Ticket Fare modal
+			   - It should be planned as the admin-facing configuration layer for ticket pricing
+			   - The fare records created here should conceptually match the Ticket Fare modal pricing logic, which uses:
+			     - Airline
+			     - Class
+			     - Route
+			     - optional Offer pricing
+
+			3. Main Module Requirements
+			   - Create a Ticket Admin interface with:
+			     - fare index table
+			     - action menu per row
+			     - add fare modal
+			     - edit fare modal
+			     - view fare details modal or drawer
+			     - delete confirmation flow
+			   - Use HTML + Tailwind CSS + JavaScript only
+			   - Use frontend-only mock state
+			   - No backend required
+
+			4. Ticket Fare Index / Listing Requirements
+			   - Create an index/table of ticket fare records
+			   - This is the main admin list view
+
+			5. Ticket Fare Index Columns
+			   - Each fare row should contain the following columns:
+
+			   5.1) Required Columns
+			   - Date
+			   - Airline
+			   - Class
+			   - Route
+			   - Fare
+			   - Offer Status
+			   - Offer Price
+			   - Effective From
+			   - Effective To
+			   - Actions
+
+			6. Column Meaning / Data Rules
+			   - Date
+			     - The date the fare record was created or set
+			   - Airline
+			     - Selected airline for this fare rule
+			   - Class
+			     - Selected travel class for this fare rule
+			   - Route
+			     - Selected route for this fare rule
+			   - Fare
+			     - Base/regular fare amount
+			   - Offer Status
+			     - Indicates whether offer pricing is enabled
+			     - Example values:
+			       - Yes
+			       - No
+			   - Offer Price
+			     - Show the offer price if offer is enabled
+			     - If no offer:
+			       - show empty / dash / N/A (Opencode should recommend best display)
+			   - Effective From
+			     - Start date of offer validity (if offer enabled)
+			   - Effective To
+			     - End date of offer validity (if offer enabled)
+			   - Actions
+			     - Action menu containing:
+			       - View
+			       - Edit
+			       - Delete
+
+			7. Action Menu Requirements
+			   - Each row should have an action menu (e.g. 3-dot dropdown menu or compact action button)
+			   - The action menu should contain:
+			     - View
+			     - Edit
+			     - Delete
+
+			8. View Action Requirements
+			   - Clicking View should open a details modal or drawer
+			   - This view should show the full fare configuration in a clean read-only format
+
+			   8.1) View Modal / Drawer Fields
+			   - Date
+			   - Airline
+			   - Class
+			   - Route
+			   - Fare
+			   - With Offer
+			   - Offer Price (if applicable)
+			   - Effective From (if applicable)
+			   - Effective To (if applicable)
+
+			   8.2) Planning Note
+			   - Please recommend whether:
+			     - a modal
+			     - or a side drawer
+			   - is the better demo-safe option for this prototype
+
+			9. Add Fare Workflow
+			   - There should be an Add Fare button in the module header or near the table
+			   - Clicking Add Fare should open an Add Fare modal
+
+			10. Add Fare Modal Requirements
+			   - Create an Add Fare modal
+			   - This modal is used to create a new fare configuration
+
+			11. Add Fare Modal Fields
+			   - The Add Fare modal should include the following fields:
+
+			   11.1) Date
+			   - Date input
+			   - This should be editable
+			   - Opencode should recommend whether:
+			     - default to today
+			     - or require manual input
+			   - Preferred demo-safe behavior:
+			     - default to today, but allow editing if useful
+
+			   11.2) Airline
+			   - Select dropdown
+			   - Use mock airline options
+			   - Example mock options:
+			     - Saudia
+			     - Biman Bangladesh
+			     - Emirates
+			     - Qatar Airways
+			     - Flynas
+
+			   11.3) Class
+			   - Select dropdown
+			   - Use mock class options:
+			     - Business
+			     - Economy
+
+			   11.4) Route
+			   - Select dropdown
+			   - Use mock route options
+			   - Example:
+			     - DAC-JED-DAC
+			     - DAC-RUH-DAC
+			     - DAC-MED-DAC
+			     - DAC-JED-MED-DAC
+
+			   11.5) Fare
+			   - Editable numeric input field
+			   - This is the base/regular fare amount
+
+			   11.6) With Offer
+			   - Checkbox
+			   - Label:
+			     - With Offer
+
+			12. Conditional Offer Fields in Add Fare Modal
+			   - If With Offer is checked:
+			     - show additional offer-related fields
+			   - If With Offer is unchecked:
+			     - hide offer-related fields
+			     - clear/reset their values
+
+			13. Offer Fields (Visible Only When With Offer is Checked)
+			   - When With Offer is checked, show these additional fields:
+
+			   13.1) Offer Price
+			   - Editable numeric input
+			   - Represents the discounted/offer fare
+
+			   13.2) Effective From
+			   - Date input
+			   - Default value should be today when the fields first become visible
+
+			   13.3) Effective To
+			   - Date input
+			   - User editable
+
+			14. Offer Field Visibility / Reset Logic
+			   - The conditional behavior must be clear and consistent:
+
+			   14.1) If With Offer is Checked
+			   - Show:
+			     - Offer Price
+			     - Effective From
+			     - Effective To
+			   - If Effective From is empty:
+			     - set default Effective From = today
+
+			   14.2) If With Offer is Unchecked
+			   - Hide:
+			     - Offer Price
+			     - Effective From
+			     - Effective To
+			   - Also clear/reset:
+			     - Offer Price value
+			     - Effective From value
+			     - Effective To value
+
+			15. Add Fare Save Behavior
+			   - On save:
+			     - validate required fields
+			     - create a new fare record in frontend state
+			     - insert it into the ticket fare index table
+			   - If With Offer is enabled:
+			     - save offer-related values
+			   - If With Offer is disabled:
+			     - offer-related values should remain null/empty in state
+
+			16. Edit Fare Workflow
+			   - Clicking Edit from the row action menu should open an Edit Fare modal
+			   - The Edit Fare modal should reuse the same general form structure as Add Fare, but with different edit restrictions
+
+			17. Edit Fare Modal Requirements (Important)
+			   - When editing a fare record:
+			     - NOT all fields should be editable
+			   - Only the following fields should be editable:
+
+			   17.1) Editable Fields in Edit Mode
+			   - Fare
+			   - With Offer
+			   - Offer Price
+			   - Effective From
+			   - Effective To
+
+			18. Non-Editable Fields in Edit Mode
+			   - When editing, the following fields should be shown but NOT editable:
+			   - Date
+			   - Airline
+			   - Class
+			   - Route
+
+			   18.1) Planning Note
+			   - Please recommend the best UI treatment for non-editable fields in edit mode:
+			     - disabled form fields
+			     - read-only display rows
+			     - static summary panel above editable fields
+
+			   18.2) Strong Demo Preference
+			   - Prefer the cleanest approach that clearly communicates:
+			     - these are key identity fields of the fare rule
+			     - only pricing-related values can be changed
+
+			19. Edit Modal Offer Logic
+			   - The same conditional behavior must apply in Edit mode:
+
+			   19.1) If With Offer is checked
+			   - Show:
+			     - Offer Price
+			     - Effective From
+			     - Effective To
+
+			   19.2) If With Offer is unchecked
+			   - Hide:
+			     - Offer Price
+			     - Effective From
+			     - Effective To
+			   - Clear/reset those values
+
+			20. Edit Save Behavior
+			   - On save:
+			     - update only the editable fields in the existing fare record
+			     - preserve the original:
+			       - Date
+			       - Airline
+			       - Class
+			       - Route
+
+			21. Delete Workflow
+			   - Clicking Delete from the row action menu should trigger a delete confirmation flow
+
+			22. Delete Confirmation Requirements
+			   - Use a confirmation modal or confirmation popover
+			   - Ask for confirmation before removing the fare record
+
+			   22.1) Confirmation Content Example
+			   - Title:
+			     - Delete Fare Record?
+			   - Message:
+			     - Are you sure you want to delete this fare configuration?
+
+			23. Delete Behavior
+			   - On confirm:
+			     - remove the fare record from frontend state
+			     - remove the row from the table
+			   - On cancel:
+			     - close confirmation without changes
+
+			24. Frontend State / Data Structure Requirements
+			   - Please propose a clean JavaScript state structure for this module
+
+			25. Suggested State Structure
+			   - Recommend a maintainable frontend-only structure such as:
+
+			   25.1) Main State
+			   - ticketFareRecords
+			   - selectedFareRecord
+			   - editingFareRecordId
+			   - viewingFareRecordId
+
+			   25.2) Modal State
+			   - isAddFareModalOpen
+			   - isEditFareModalOpen
+			   - isViewFareModalOpen
+			   - isDeleteConfirmOpen
+
+			   25.3) Lookup / Mock Data
+			   - airlines
+			   - travelClasses
+			   - routes
+
+			26. Fare Record Data Shape Recommendation
+			   - Each fare record should support fields such as:
+			   - id
+			   - date
+			   - airline
+			   - travelClass
+			   - route
+			   - fare
+			   - withOffer
+			   - offerPrice
+			   - effectiveFrom
+			   - effectiveTo
+			   - createdAt / updatedAt (optional, if useful for demo planning)
+
+			27. Compatibility with Passenger Index Ticket Fare Modal
+			   - This module should be planned so that its fare records can later be reused as the pricing source for the Passenger Index Ticket Fare modal
+
+			28. Compatibility Rules
+			   - The fare record identity should conceptually be based on:
+			     - Airline
+			     - Class
+			     - Route
+
+			   - The Passenger Index Ticket Fare modal already uses:
+			     - Route
+			     - Airline
+			     - Class
+			     - Passenger Type
+			     - With Offer
+			     - Refundable
+			     - Re-Issueable
+
+			29. Planning Guidance Needed for Compatibility
+			   - Please explain how this Ticket Admin fare interface should be structured so it can later feed the Ticket Fare modal pricing logic cleanly
+
+			   29.1) Important Note
+			   - Even if Passenger Type is not part of this admin interface yet, explain whether:
+			     - it should be added later
+			     - or handled as a future extension
+			     - or mocked separately for now
+
+			30. Index Table UX Requirements
+			   - Please recommend the best demo-safe UX for the index table:
+			     - readable currency formatting
+			     - compact action menu
+			     - empty-state message if no fare records exist
+			     - optional sorting by date or airline
+			     - optional filtering by airline / route
+			   - Keep enhancements optional and lightweight
+
+			31. Interaction Flow Requirements
+			   - Please explain the interaction flow for:
+
+			   31.1) Add Fare Flow
+			   - Click Add Fare
+			   - Open modal
+			   - Fill fields
+			   - Check / uncheck With Offer
+			   - Offer fields show/hide conditionally
+			   - Save
+			   - Insert new row into index table
+
+			   31.2) View Fare Flow
+			   - Click row action menu
+			   - Click View
+			   - Open read-only details modal/drawer
+
+			   31.3) Edit Fare Flow
+			   - Click row action menu
+			   - Click Edit
+			   - Open edit modal
+			   - Only Fare + With Offer + offer-related fields editable
+			   - Save updated pricing fields
+
+			   31.4) Delete Fare Flow
+			   - Click row action menu
+			   - Click Delete
+			   - Open confirmation
+			   - Confirm delete
+			   - Remove row
+
+			32. Deliverable Expectation for Planning
+			   - Please provide a practical implementation plan for this Ticket Admin Fare Management module that includes:
+
+			   32.1) UI Components Breakdown
+			   - Ticket fare index section
+			   - Table columns
+			   - Action menu
+			   - View modal or drawer
+			   - Add Fare modal
+			   - Edit Fare modal
+			   - Delete confirmation UI
+
+			   32.2) State Design
+			   - JavaScript state structure for fare records, modal state, and lookup data
+
+			   32.3) Conditional Logic Rules
+			   - With Offer checkbox behavior
+			   - Showing/hiding offer fields
+			   - Clearing hidden offer fields
+			   - Default Effective From behavior
+
+			   32.4) Edit Restrictions
+			   - Clear explanation of what is editable vs locked in edit mode
+
+			   32.5) Data Structure Rules
+			   - Fare record object shape
+			   - How offer data is stored when enabled/disabled
+
+			   32.6) Step-by-Step Build Order
+			   - Best implementation order for fast prototyping
+
+			   32.7) Edge Cases to Handle in Demo
+			   - Add fare without offer
+			   - Add fare with offer
+			   - Toggle offer on then off before save
+			   - Edit fare and disable existing offer
+			   - Missing Effective To
+			   - Empty table state
+			   - Deleting last row
+
+			   32.8) Optional UX Enhancements
+			   - Sticky table header
+			   - Compact badges for offer status
+			   - Human-friendly currency display
+			   - Simple validation messages
+			   - Smooth modal transitions
+			   - Responsive table scroll on smaller screens
+
+			33. Important Constraints
+			   - Use HTML + Tailwind CSS + JavaScript only
+			   - No backend
+			   - No framework required
+			   - This is a client demo / prototype, not production
+			   - Prioritize:
+			     - clean admin workflow
+			     - believable internal management interface
+			     - strong interactivity
+			     - frontend-only mock state
+			     - maintainable structure
+			     - future compatibility with Passenger Index ticket pricing logic
+			     - fast prototyping
+
+			34. Final Instruction
+			   - Please provide a practical implementation plan optimized for:
+			     - fast prototyping
+			     - demo readiness
+			     - clean interactive admin behavior
+			     - realistic business workflow
+			     - easy future expansion into a real app
+
+			   - IMPORTANT:
+			     - This should be planned as the ticket fare configuration source for the Passenger Index Ticket Fare modal.
+			     - Keep the pricing identity aligned around:
+			       - Airline
+			       - Class
+			       - Route
+			     - Offer pricing should be optional and date-ranged.
+	- Visa Admin UI
+		- (raw)
+			Now I need an ui for Visa Admin with Visa prices. The ui should consist index and add and edit flow with two fields- Date and price. Index should show the latest price on top. Rewrite this raw prompt for Opencode plan agent. I mean I need a prompt with the requirement above to plan in Opencode.
+		- (Opencode)
+			Plan the next module of the interactive Booking Form demo prototype using HTML + Tailwind CSS + JavaScript only (no backend).
+
+			This is a continuation of the same client-demo-ready prototype. The new module is a Visa Admin interface for internal/admin use.
+
+			This interface will be used by an admin who manages visa prices. The purpose of this module is to create and update visa pricing records that can later be reused by the Passenger Index Visa Cost modal as the pricing source.
+
+			The goal is to design a realistic, interactive admin interface with:
+			- a visa price index/table
+			- add visa price workflow
+			- edit visa price workflow
+			- frontend-only state using mock data
+			- compatibility with the Passenger Index Visa Cost modal
+
+			1. Goal
+			   - Build a Visa Admin pricing module for internal/admin use
+			   - This module should allow an admin to:
+			     - view existing visa price records
+			     - add new visa price records
+			     - edit existing visa price records
+			   - These visa price records should represent the visa pricing history/configuration
+			   - The latest visa price should always appear at the top of the index
+			   - This module should be planned so that it can later serve as the pricing source for the Passenger Index Visa Cost modal
+
+			2. Relationship to Existing Prototype
+			   - This module belongs to the same prototype ecosystem as:
+			     - Booking Form
+			     - Passenger Entry Form
+			     - Passenger Index
+			     - Ticket Fare modal
+			     - Visa Cost modal
+			   - It should be planned as the admin-facing configuration layer for visa pricing
+			   - The visa price records created here should conceptually match the Passenger Index Visa Cost modal
+
+			3. Main Module Requirements
+			   - Create a Visa Admin interface with:
+			     - visa price index/table
+			     - add visa price modal
+			     - edit visa price modal
+			   - Use HTML + Tailwind CSS + JavaScript only
+			   - Use frontend-only mock state
+			   - No backend required
+
+			4. Visa Price Index / Listing Requirements
+			   - Create an index/table of visa price records
+			   - This is the main admin list view
+
+			5. Visa Price Index Columns
+			   - Each row should contain the following columns:
+			     - Date
+			     - Price
+			     - Actions
+
+			6. Index Ordering Requirement
+			   - The latest visa price should always appear at the top of the index
+			   - This means the table should be sorted in descending order by Date
+			   - Newer dates should appear before older dates
+
+			7. Actions Requirements
+			   - Each row should have an action menu or action buttons
+			   - Minimum required action:
+			     - Edit
+			   - Opencode can recommend whether:
+			     - compact Edit button
+			     - or 3-dot action menu with Edit option
+			   - Preferred demo-safe behavior:
+			     - keep it simple and clean
+
+			8. Add Visa Price Workflow
+			   - There should be an Add Visa Price button in the module header or near the table
+			   - Clicking Add Visa Price should open an Add Visa Price modal
+
+			9. Add Visa Price Modal Requirements
+			   - Create an Add Visa Price modal
+			   - This modal is used to create a new visa price record
+
+			10. Add Visa Price Modal Fields
+			   - The Add Visa Price modal should include the following fields:
+
+			   10.1) Date
+			   - Date input
+			   - This should be editable
+			   - Preferred demo-safe behavior:
+			     - default to today, but allow editing
+
+			   10.2) Price
+			   - Editable numeric input field
+			   - This is the visa price amount
+
+			11. Add Save Behavior
+			   - On save:
+			     - validate required fields
+			     - create a new visa price record in frontend state
+			     - insert it into the visa price index
+			     - keep the table sorted so the latest date stays on top
+
+			12. Edit Visa Price Workflow
+			   - Clicking Edit from a row should open an Edit Visa Price modal
+			   - The Edit modal should preload the selected record values
+
+			13. Edit Visa Price Modal Requirements
+			   - The Edit Visa Price modal should include the same fields:
+			     - Date
+			     - Price
+			   - Both fields should be editable
+
+			14. Edit Save Behavior
+			   - On save:
+			     - update the selected visa price record in frontend state
+			     - re-sort the table so the latest date stays on top
+
+			15. Frontend State / Data Structure Requirements
+			   - Please propose a clean JavaScript state structure for this module
+
+			16. Suggested State Structure
+			   - Recommend a maintainable frontend-only structure such as:
+
+			   16.1) Main State
+			   - visaPriceRecords
+			   - selectedVisaPriceRecord
+			   - editingVisaPriceId
+
+			   16.2) Modal State
+			   - isAddVisaPriceModalOpen
+			   - isEditVisaPriceModalOpen
+
+			17. Visa Price Record Data Shape Recommendation
+			   - Each visa price record should support fields such as:
+			     - id
+			     - date
+			     - price
+			     - createdAt (optional)
+			     - updatedAt (optional)
+
+			18. Compatibility with Passenger Index Visa Cost Modal
+			   - This module should be planned so that its visa price records can later be reused as the pricing source for the Passenger Index Visa Cost modal
+
+			19. Compatibility Rules
+			   - The latest applicable visa price should be easy to retrieve from frontend state
+			   - The Passenger Index Visa Cost modal should be able to use:
+			     - the latest price
+			     - or a selected price record if needed in the future
+
+			20. Planning Guidance Needed for Compatibility
+			   - Please explain how this Visa Admin price interface should be structured so it can later feed the Passenger Index Visa Cost modal cleanly
+			   - Prefer the simplest demo-safe structure now, while allowing future extension later
+
+			21. Index Table UX Requirements
+			   - Please recommend the best demo-safe UX for the index table:
+			     - readable currency formatting
+			     - compact action control
+			     - empty-state message if no price records exist
+			     - sorted latest-first by date
+			   - Keep enhancements optional and lightweight
+
+			22. Interaction Flow Requirements
+			   - Please explain the interaction flow for:
+
+			   22.1) Add Visa Price Flow
+			   - Click Add Visa Price
+			   - Open modal
+			   - Fill Date and Price
+			   - Save
+			   - Insert new row into index
+			   - Re-sort so latest date stays on top
+
+			   22.2) Edit Visa Price Flow
+			   - Click Edit
+			   - Open edit modal
+			   - Update Date and/or Price
+			   - Save
+			   - Re-sort so latest date stays on top
+
+			23. Deliverable Expectation for Planning
+			   - Please provide a practical implementation plan for this Visa Admin module that includes:
+
+			   23.1) UI Components Breakdown
+			   - Visa price index section
+			   - Table columns
+			   - Add Visa Price modal
+			   - Edit Visa Price modal
+
+			   23.2) State Design
+			   - JavaScript state structure for visa price records and modal state
+
+			   23.3) Sorting Logic
+			   - How to keep latest date at the top
+			   - How to sort after add
+			   - How to sort after edit
+
+			   23.4) Data Structure Rules
+			   - Visa price record object shape
+
+			   23.5) Step-by-Step Build Order
+			   - Best implementation order for fast prototyping
+
+			   23.6) Edge Cases to Handle in Demo
+			   - Empty table state
+			   - Add first visa price record
+			   - Add older record after newer record
+			   - Edit a record date so ordering changes
+			   - Invalid / empty price
+			   - Multiple records with close dates
+
+			   23.7) Optional UX Enhancements
+			   - Human-friendly currency display
+			   - Simple validation messages
+			   - Smooth modal transitions
+			   - Responsive table scroll on smaller screens
+
+			24. Important Constraints
+			   - Use HTML + Tailwind CSS + JavaScript only
+			   - No backend
+			   - No framework required
+			   - This is a client demo / prototype, not production
+			   - Prioritize:
+			     - clean admin workflow
+			     - believable internal management interface
+			     - strong interactivity
+			     - frontend-only mock state
+			     - maintainable structure
+			     - future compatibility with Passenger Index Visa Cost modal
+			     - fast prototyping
+
+			25. Final Instruction
+			   - Please provide a practical implementation plan optimized for:
+			     - fast prototyping
+			     - demo readiness
+			     - clean interactive admin behavior
+			     - realistic business workflow
+			     - easy future expansion into a real app
+
+			   - IMPORTANT:
+			     - This should be planned as the visa pricing source for the Passenger Index Visa Cost modal.
+			     - The index must always show the latest visa price on top.
+	- Booking Index
+		- (raw)
+			Now I want to work on a booking index. In passenger index we have every passenger's details. In booking index there will be summery of the whole booking with total Value/cost of a booking and Due. In invoice details page, along with other informations, there will be summary of each passenger, with edit and delete option for each passenger. Deletions of a passenger should require adjustment in the total value of a booking. There will be also a payment history with Date, voucher no, Payment method, Trx Id, Amount.
+		- (Opencode)
+			Plan the next module of the interactive Booking Form demo prototype using HTML + Tailwind CSS + JavaScript only (no backend).
+
+			This is a continuation of the same client-demo-ready prototype. The new module is a Booking Index and Invoice Details flow.
+
+			This module should sit above the Passenger Index level. The Passenger Index already contains each passenger's details and per-passenger cost breakdown. The Booking Index should represent a summary of the whole booking, and the Invoice Details page should show both booking-level summary and passenger-level summaries.
+
+			The goal is to design a realistic, interactive booking management flow with:
+			- a Booking Index / booking list
+			- booking-level summary rows
+			- total booking value / cost
+			- due amount calculation
+			- Invoice Details page
+			- passenger summary section inside Invoice Details
+			- edit/delete options for each passenger inside Invoice Details
+			- automatic booking total adjustment when a passenger is deleted
+			- payment history section inside Invoice Details
+			- frontend-only mock state
+			- compatibility with the existing Passenger Index, Ticket Fare modal, and Visa Cost modal
+
+			1. Goal
+			   - Build a Booking Index and Invoice Details module for the same prototype
+			   - This module should allow the demo to show:
+			     - a list of bookings
+			     - booking-level summaries
+			     - invoice-level details for a single booking
+			     - passenger summaries inside a booking
+			     - payment history for the booking
+			     - automatic recalculation of booking totals and due when passengers are deleted
+			   - This should be planned as the next layer above Passenger Index
+
+			2. Relationship to Existing Prototype
+			   - This module belongs to the same prototype ecosystem as:
+			     - Booking Form
+			     - Passenger Entry Form
+			     - Passenger Index
+			     - Ticket Fare modal
+			     - Visa Cost modal
+			     - Ticket Admin Fare Management
+			     - Visa Admin Price Management
+			   - The Passenger Index already contains each passenger's detailed data
+			   - The Booking Index should summarize a full booking composed of one or more passengers
+			   - The Invoice Details page should display booking-level and passenger-level information together
+
+			3. Main Module Requirements
+			   - Create a Booking Index / Booking List
+			   - Create an Invoice Details page/view for a selected booking
+			   - Include booking summary values:
+			     - Total Value / Total Cost
+			     - Total Paid
+			     - Due
+			   - Include passenger summaries inside the Invoice Details page
+			   - Include edit and delete options for each passenger inside Invoice Details
+			   - If a passenger is deleted:
+			     - booking totals must be recalculated
+			     - due must be recalculated
+			   - Include payment history inside Invoice Details
+
+			4. Booking Index / Booking List Requirements
+			   - Create a booking index/table or list view
+			   - This is the main list of all bookings
+			   - Each booking row should show a concise summary of the entire booking
+
+			5. Booking Index Columns / Summary Fields
+			   - Each booking row should contain the following information:
+
+			   5.1) Recommended Core Columns
+			   - Booking / Invoice No
+			   - Booking Date
+			   - Customer Name
+			   - Passenger Count
+			   - Total Value / Total Cost
+			   - Total Paid
+			   - Due
+			   - Status
+			   - Actions
+
+			6. Booking Index Column Meaning
+			   - Booking / Invoice No
+			     - Unique booking identifier
+			   - Booking Date
+			     - Date of booking creation
+			   - Customer Name
+			     - Main customer attached to the booking
+			   - Passenger Count
+			     - Number of passengers in this booking
+			   - Total Value / Total Cost
+			     - Sum of all passenger-level totals
+			   - Total Paid
+			     - Sum of all payments made against this booking
+			   - Due
+			     - Total Value - Total Paid
+			   - Status
+			     - Can be a simple derived badge such as:
+			       - Unpaid
+			       - Partial
+			       - Paid
+			   - Actions
+			     - At minimum:
+			       - View Invoice / Details
+			     - Opencode may recommend whether Edit Booking is needed or not for demo simplicity
+
+			7. Booking Index Behavior
+			   - The booking index should be frontend-only and driven by mock state
+			   - Each booking record should reference:
+			     - booking-level metadata
+			     - passenger summaries
+			     - payment history
+			   - The booking index should display derived totals, not just static hardcoded values
+
+			8. Invoice Details Page / View Requirements
+			   - Clicking View Invoice / Details from a booking row should open:
+			     - a dedicated Invoice Details page
+			     - or a large detail modal / drawer
+			   - Preferred demo-safe recommendation:
+			     - Opencode should recommend whether a dedicated page or large modal is better
+			   - Strong preference:
+			     - If practical, use a dedicated detail page or large panel because this module contains multiple sections
+
+			9. Invoice Details Main Sections
+			   - The Invoice Details view should include the following sections:
+
+			   9.1) Booking Header / Summary Section
+			   - Booking / Invoice No
+			   - Booking Date
+			   - Customer Name
+			   - Optional basic booking metadata if useful
+
+			   9.2) Booking Financial Summary Section
+			   - Total Value / Total Cost
+			   - Total Paid
+			   - Due
+			   - Optional payment status badge:
+			     - Unpaid
+			     - Partial
+			     - Paid
+
+			   9.3) Passenger Summary Section
+			   - A list/table/cards showing summary of each passenger within the booking
+			   - Each passenger should have:
+			     - summary information
+			     - edit option
+			     - delete option
+
+			   9.4) Payment History Section
+			   - A table/list showing payment history records for the booking
+
+			10. Passenger Summary Section in Invoice Details
+			   - This section should summarize each passenger in the booking
+			   - The Passenger Index already contains detailed passenger-level information
+			   - For the Invoice Details page, show a concise but meaningful summary for each passenger
+
+			11. Passenger Summary Fields (Recommended)
+			   - For each passenger summary, include fields such as:
+			     - Passenger Name
+			     - Route
+			     - Airline
+			     - Class
+			     - Passenger Type
+			     - Ticket Fare / Ticket Gross Fare (or equivalent fare summary)
+			     - Visa Cost (if applicable)
+			     - Passenger Total
+			   - Opencode may recommend the best compact display format
+
+			12. Passenger Actions in Invoice Details
+			   - Each passenger summary must include:
+			     - Edit
+			     - Delete
+
+			13. Passenger Edit Flow in Invoice Details
+			   - Clicking Edit for a passenger should allow updating that passenger's data
+			   - Since this is a planning prompt, Opencode should recommend the best demo-safe approach:
+			     - reopen the Passenger Entry modal prefilled
+			     - or open a dedicated edit modal
+			     - or link back to the Passenger Index edit flow
+			   - Strong preference:
+			     - reuse the existing passenger edit flow if possible for consistency
+
+			14. Passenger Delete Flow in Invoice Details
+			   - Clicking Delete for a passenger should trigger a delete confirmation flow
+			   - Deleting a passenger is a booking-level financial change and must not be silent
+
+			15. Passenger Delete Confirmation Requirements
+			   - Use a confirmation modal or confirmation popover
+			   - The confirmation should clearly indicate that deleting a passenger will affect booking totals
+
+			   15.1) Example Confirmation Content
+			   - Title:
+			     - Delete Passenger?
+			   - Message:
+			     - Are you sure you want to remove this passenger from the booking? This will update the booking total and due amount.
+
+			16. Passenger Delete Behavior (Critical)
+			   - On confirm:
+			     - remove the passenger from the booking's passenger list
+			     - remove the passenger's cost contribution from the booking total
+			     - recalculate booking Total Value / Total Cost
+			     - recalculate booking Due
+			     - refresh any derived payment status badge
+			   - On cancel:
+			     - close confirmation with no changes
+
+			17. Booking Total Calculation Rules
+			   - The booking Total Value / Total Cost should be derived from passenger-level totals
+			   - It should not be treated as a static manually entered value
+
+			18. Recommended Booking Total Formula
+			   - Booking Total Value / Total Cost =
+			     sum of all passenger-level total values in that booking
+
+			19. Passenger Total Contribution
+			   - Each passenger's total contribution may come from existing passenger-level pricing logic such as:
+			     - Ticket Fare / Gross Fare
+			     - Visa Cost
+			     - Any other existing passenger-level costs already present in the prototype
+			   - Opencode should explain the cleanest way to reuse the existing passenger total data rather than duplicating calculations
+
+			20. Payment History Section Requirements
+			   - The Invoice Details page must include a Payment History section
+			   - This section should show all payments made against the booking
+
+			21. Payment History Columns
+			   - Each payment history row should include:
+			     - Date
+			     - Voucher No
+			     - Payment Method
+			     - Trx Id
+			     - Amount
+
+			22. Payment History Data Rules
+			   - Date
+			     - Payment date
+			   - Voucher No
+			     - Payment voucher/reference number
+			   - Payment Method
+			     - Example:
+			       - Cash
+			       - Bank Transfer
+			       - Mobile Banking
+			       - Card
+			   - Trx Id
+			     - Transaction reference ID
+			   - Amount
+			     - Payment amount
+
+			23. Payment Total Calculation Rules
+			   - Total Paid should be derived from payment history
+			   - It should not be a disconnected static value
+
+			24. Recommended Total Paid Formula
+			   - Total Paid =
+			     sum of all payment history amounts for the booking
+
+			25. Due Calculation Rules (Critical)
+			   - Due should be dynamically derived
+
+			26. Recommended Due Formula
+			   - Due =
+			     Booking Total Value / Total Cost - Total Paid
+
+			27. Due Recalculation Scenarios
+			   - Due must update when:
+			     - a passenger is deleted
+			     - a passenger is edited and their total changes
+			     - a payment history record changes in the future (even if not implemented now, the data structure should allow it)
+
+			28. Payment Status Logic (Recommended)
+			   - Please recommend a simple derived status badge:
+			     - Unpaid = Total Paid = 0
+			     - Partial = Total Paid > 0 and Total Paid < Total Value
+			     - Paid = Total Paid >= Total Value
+			   - Keep it demo-safe and simple
+
+			29. Frontend State / Data Structure Requirements
+			   - Please propose a clean JavaScript state structure for this module
+
+			30. Suggested State Structure
+			   - Recommend a maintainable frontend-only structure such as:
+
+			   30.1) Booking Collection
+			   - bookings
+
+			   30.2) Selection / View State
+			   - selectedBookingId
+			   - selectedPassengerId
+			   - isInvoiceDetailsOpen (if modal/drawer approach is used)
+			   - isPassengerDeleteConfirmOpen
+
+			   30.3) Nested Booking Structure
+			   - Each booking should contain:
+			     - booking metadata
+			     - passenger summaries / passenger records
+			     - payment history array
+
+			31. Recommended Booking Record Data Shape
+			   - Each booking record should support fields such as:
+			     - id
+			     - invoiceNo
+			     - bookingDate
+			     - customerName
+			     - passengers: []
+			     - payments: []
+			   - Derived values should be computed from data, not redundantly stored unless Opencode recommends caching for demo simplicity
+
+			32. Recommended Passenger Summary Shape inside a Booking
+			   - Each passenger entry inside a booking may support:
+			     - id
+			     - name
+			     - route
+			     - airline
+			     - travelClass
+			     - passengerType
+			     - ticketFare
+			     - visaCost
+			     - passengerTotal
+			   - Opencode should explain whether:
+			     - passengerTotal should be stored directly
+			     - or derived from ticketFare + visaCost + other cost parts
+
+			33. Recommended Payment History Record Shape
+			   - Each payment record may support:
+			     - id
+			     - date
+			     - voucherNo
+			     - paymentMethod
+			     - trxId
+			     - amount
+
+			34. Invoice Details UX Requirements
+			   - Please recommend the best demo-safe layout for the Invoice Details page:
+			     - clear booking summary at top
+			     - passenger summary section in the middle
+			     - payment history section below
+			   - Keep it realistic and easy to understand for a client demo
+
+			35. Booking Index UX Requirements
+			   - Please recommend the best demo-safe UX for the Booking Index:
+			     - readable totals
+			     - clear Due highlight
+			     - simple status badge
+			     - action button to view invoice details
+			     - empty-state message if no bookings exist
+
+			36. Interaction Flow Requirements
+			   - Please explain the interaction flow for:
+
+			   36.1) Booking Index Flow
+			   - Open booking list
+			   - See booking-level summaries
+			   - Click View Invoice / Details
+
+			   36.2) Invoice Details Flow
+			   - Open booking details
+			   - Review booking summary
+			   - Review passenger summaries
+			   - Review payment history
+
+			   36.3) Passenger Edit Flow inside Invoice Details
+			   - Click Edit on a passenger
+			   - Reuse or open passenger edit flow
+			   - Save changes
+			   - Recalculate passenger summary and booking totals if needed
+
+			   36.4) Passenger Delete Flow inside Invoice Details
+			   - Click Delete on a passenger
+			   - Show confirmation
+			   - Confirm delete
+			   - Remove passenger
+			   - Recalculate:
+			     - booking total
+			     - due
+			     - payment status
+
+			37. Deliverable Expectation for Planning
+			   - Please provide a practical implementation plan for this Booking Index + Invoice Details module that includes:
+
+			   37.1) UI Components Breakdown
+			   - Booking Index section
+			   - Booking list/table
+			   - Invoice Details layout
+			   - Booking summary section
+			   - Passenger summary section
+			   - Passenger action controls
+			   - Delete confirmation UI
+			   - Payment history table
+
+			   37.2) State Design
+			   - JavaScript state structure for bookings, passengers, payments, and view state
+
+			   37.3) Derived Calculation Rules
+			   - Booking total calculation
+			   - Total paid calculation
+			   - Due calculation
+			   - Status calculation
+
+			   37.4) Delete Adjustment Logic
+			   - How passenger deletion updates booking totals and due
+			   - How to avoid stale totals
+
+			   37.5) Reuse of Existing Passenger Data
+			   - How this module should reuse Passenger Index data cleanly
+
+			   37.6) Data Structure Rules
+			   - Booking object shape
+			   - Passenger summary object shape
+			   - Payment history object shape
+
+			   37.7) Step-by-Step Build Order
+			   - Best implementation order for fast prototyping
+
+			   37.8) Edge Cases to Handle in Demo
+			   - Booking with one passenger
+			   - Booking with multiple passengers
+			   - Deleting the only passenger
+			   - Deleting a passenger when payments already exist
+			   - Due becoming zero
+			   - Due becoming negative (if overpaid)
+			   - Empty payment history
+			   - Empty passenger list after deletion
+
+			   37.9) Optional UX Enhancements
+			   - Currency formatting
+			   - Status badges
+			   - Sticky summary card
+			   - Expand/collapse passenger cards
+			   - Responsive tables
+			   - Print-friendly invoice details layout
+
+			38. Important Constraints
+			   - Use HTML + Tailwind CSS + JavaScript only
+			   - No backend
+			   - No framework required
+			   - This is a client demo / prototype, not production
+			   - Prioritize:
+			     - realistic booking management flow
+			     - believable business logic
+			     - clear derived totals
+			     - strong interactivity
+			     - frontend-only mock state
+			     - maintainable structure
+			     - compatibility with existing Passenger Index and pricing flows
+			     - fast prototyping
+
+			39. Final Instruction
+			   - Please provide a practical implementation plan optimized for:
+			     - fast prototyping
+			     - demo readiness
+			     - clean interactive behavior
+			     - realistic business workflow
+			     - strong booking-level financial clarity
+			     - easy future expansion into a real app
+
+			   - IMPORTANT:
+			     - The Booking Index should summarize the whole booking.
+			     - The Invoice Details page should show booking-level summary + passenger summaries + payment history.
+			     - Passenger deletion inside Invoice Details must recalculate booking total and due automatically.
+			     - Total Paid must come from payment history.
+			     - Due must be derived from booking total minus total paid.

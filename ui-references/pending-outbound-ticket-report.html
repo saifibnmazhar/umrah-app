@@ -1,0 +1,1074 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Pending Outbound Ticket Report - BM Umrah</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        slate: {
+                            50: '#f8fafc',
+                            100: '#f1f5f9',
+                            200: '#e2e8f0',
+                            300: '#cbd5e1',
+                            400: '#94a3b8',
+                            500: '#64748b',
+                            600: '#475569',
+                            700: '#334155',
+                            800: '#1e293b',
+                            900: '#0f172a',
+                            950: '#020617',
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        .modal-overlay { transition: opacity 0.2s ease; }
+        .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
+        .toast { transition: transform 0.3s ease, opacity 0.3s ease; }
+        .nav-item { color: #94a3b8; transition: all 0.2s ease; }
+        .nav-item:hover { color: white; background-color: rgba(255,255,255,0.1); }
+        .nav-item.active { background-color: white; color: #1e293b; }
+        
+        .search-input {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
+        }
+        
+        .filter-btn {
+            background: linear-gradient(to bottom, #fff 0%, #e9ecef 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+        
+        .filter-btn:hover {
+            background: linear-gradient(to bottom, #f0f0f0 0%, #e2e6ea 100%);
+        }
+        
+        .date-input {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: inset 0 1px 2px rgba(0,0,0,0.075);
+        }
+        
+        .table-header {
+            background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+            border: 1px solid #d4d4d4;
+        }
+        
+        .table-row-ticket {
+            background-color: #ffffff;
+            border: 1px solid #d4d4d4;
+        }
+        
+        .table-row-ticket:nth-child(even) {
+            background-color: #fafafa;
+        }
+        
+        .table-row-ticket:hover {
+            background-color: #e8f4fc !important;
+        }
+        
+        .footer-box {
+            background: linear-gradient(to bottom, #fff 0%, #f8f9fa 100%);
+            border: 2px solid #d4d4d4;
+        }
+        
+        .footer-box-header {
+            background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 100%);
+            border-bottom: 1px solid #d4d4d4;
+        }
+        
+        .export-btn {
+            background: linear-gradient(to bottom, #fff 0%, #e9ecef 100%);
+            border: 1px solid #d4d4d4;
+            box-shadow: 0 1px 0 rgba(255,255,255,0.5);
+        }
+        
+        .export-btn:hover {
+            background: linear-gradient(to bottom, #f0f0f0 0%, #dee2e6 100%);
+        }
+        
+        input[type="date"]::-webkit-calendar-picker-indicator {
+            filter: invert(0.5);
+            cursor: pointer;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar {
+            height: 8px;
+            width: 8px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-track {
+            background: #f1f1f1;
+            border-radius: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb {
+            background: #c1c1c1;
+            border-radius: 4px;
+        }
+        
+        .scrollbar-thin::-webkit-scrollbar-thumb:hover {
+            background: #a1a1a1;
+        }
+
+        select {
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3csvg xmlns='http://www.w3.org/2000/svg' fill='none' viewBox='0 0 20 20'%3e%3cpath stroke='%236b7280' stroke-linecap='round' stroke-linejoin='round' stroke-width='1.5' d='M6 8l4 4 4-4'/%3e%3c/svg%3e");
+            background-position: right 8px center;
+            background-repeat: no-repeat;
+            background-size: 16px 16px;
+            padding-right: 32px;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 9999px;
+            font-size: 11px;
+            font-weight: 600;
+            text-align: center;
+            white-space: nowrap;
+        }
+
+        .status-not-arrived {
+            background-color: #f3f4f6;
+            color: #374151;
+            border: 1px solid #d1d5db;
+        }
+
+        .status-pending {
+            background-color: #fef3c7;
+            color: #92400e;
+            border: 1px solid #f59e0b;
+        }
+
+        .status-issued {
+            background-color: #dcfce7;
+            color: #166534;
+            border: 1px solid #22c55e;
+        }
+
+        .btn-action {
+            padding: 3px 10px;
+            border-radius: 4px;
+            font-size: 11px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s ease;
+            margin-left: 4px;
+        }
+
+        .btn-issue {
+            background: linear-gradient(to bottom, #3b82f6 0%, #2563eb 100%);
+            color: white;
+            border: 1px solid #1d4ed8;
+        }
+
+        .btn-issue:hover {
+            background: linear-gradient(to bottom, #2563eb 0%, #1d4ed8 100%);
+        }
+
+        .btn-edit {
+            background: linear-gradient(to bottom, #8b5cf6 0%, #7c3aed 100%);
+            color: white;
+            border: 1px solid #6d28d9;
+        }
+
+        .btn-edit:hover {
+            background: linear-gradient(to bottom, #7c3aed 0%, #6d28d9 100%);
+        }
+
+        .modal-backdrop {
+            background-color: rgba(0, 0, 0, 0.5);
+            backdrop-filter: blur(2px);
+        }
+
+        .animate-fade {
+            animation: fadeIn 0.2s ease-in-out;
+        }
+
+        @keyframes fadeIn {
+            from { opacity: 0; }
+            to { opacity: 1; }
+        }
+    </style>
+</head>
+<body class="bg-slate-100 min-h-screen px-4">
+    <!-- OLD NAVIGATION 
+    <nav class="bg-slate-800 text-white sticky top-0 z-40 shadow-lg -mx-4 pb-8">
+        <div class="max-w-3xl mx-auto px-4">
+            <div class="flex justify-between items-center h-16">
+                <div class="flex-shrink-0">
+                    <h1 class="text-xl font-bold">BM Umrah Booking</h1>
+                </div>
+                <div class="hidden md:flex space-x-1" id="desktopNav">
+                    <button onclick="window.location.href='dashboard.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="dashboard">Dashboard</button>
+                    <button onclick="window.location.href='booking.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="bookingIndex">Booking</button>
+                    <button onclick="window.location.href='fare-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fareAdmin">Fare Admin</button>
+                    <button onclick="window.location.href='visa-admin.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="visaAdmin">Visa Admin</button>
+                    <button onclick="window.location.href='settings.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="settings">Settings</button>
+                    <button onclick="window.location.href='fingerprint-staff.html'" class="nav-item px-4 py-2 rounded-md font-medium text-sm" data-tab="fingerprintStaff">Fingerprint Staff</button>
+                    <div class="relative group">
+                        <button class="nav-item px-4 py-2 rounded-md font-medium text-sm">Report ▾</button>
+                        <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50">
+                            <a href="statement.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap" data-tab="statement">Statement</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="fingerprint-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Fingerprint Report</a>
+                            <a href="visa-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>
+                            <a href="visa-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Report</a>
+                            <a href="ticket-agent-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agent Report</a>
+                            <a href="due-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>
+                            <a href="payment-receiving-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payment Receiving Report</a>
+                            <a href="profit-loss-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>
+                            <a href="reissue-refund-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Reissue & Refund Report</a>
+                            <a href="user-wise-sales-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">User Wise Sales Report</a>
+                            <a href="pending-outbound-ticket-report.html" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap active" data-tab="pendingOutboundTicket">Pending Outbound Ticket</a>
+                        </div>
+                    </div>
+                </div>
+                <button onclick="toggleMobileMenu()" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
+                    <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
+                    </svg>
+                </button>
+            </div>
+        </div>
+        <div class="hidden md:hidden bg-slate-700" id="mobileMenu">
+            <div class="px-2 pt-2 pb-3 space-y-1">
+                <button onclick="window.location.href='dashboard.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Dashboard</button>
+                <button onclick="window.location.href='booking.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</button>
+                <button onclick="window.location.href='fare-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fare Admin</button>
+                <button onclick="window.location.href='visa-admin.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</button>
+                <button onclick="window.location.href='settings.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Settings</button>
+                <button onclick="window.location.href='fingerprint-staff.html'; toggleMobileMenu();" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</button>
+                <div class="border-t border-slate-600 pt-2 mt-2">
+                    <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORT</span>
+                    <a href="statement.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Statement</a>
+                    <a href="profit-loss-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</a>
+                    <a href="fingerprint-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</a>
+                    <a href="visa-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Report</a>
+                    <a href="visa-agent-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Report</a>
+                    <a href="ticket-agent-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agent Report</a>
+                    <a href="due-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</a>
+                    <a href="payment-receiving-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payment Receiving Report</a>
+                    <a href="reissue-refund-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Reissue & Refund Report</a>
+                    <a href="user-wise-sales-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">User Wise Sales Report</a>
+                    <a href="pending-outbound-ticket-report.html" class="block w-full text-left px-3 py-2 rounded-md font-medium bg-slate-600 text-white">Pending Outbound Ticket</a>
+                </div>
+            </div>
+        </div>
+    </nav>
+    END OLD NAVIGATION -->
+
+    <!-- Dynamic Navigation Container -->
+    <div id="navContainer"></div>
+    
+    <!-- Navigation Scripts -->
+    <script src="nav.js"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', loadNavigation);
+    </script>
+
+    <div class="max-w-[1600px] mx-auto p-4">
+        <div class="mb-3">
+            <span class="text-sm text-gray-500 font-medium">Report</span>
+            <span class="text-sm text-gray-400 mx-1">></span>
+            <span class="text-sm text-gray-700 font-semibold">Pending Outbound Ticket</span>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
+            <div class="flex flex-wrap items-center gap-3">
+                <div class="flex items-center gap-2">
+                    <label class="text-sm font-semibold text-gray-700">SEARCH BOX</label>
+                    <input type="text" placeholder="Search by Invoice No, Customer Name, PAX Name, Mobile, Passport" 
+                           class="search-input w-96 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-700">Booking Date</span>
+                    <label class="text-xs text-gray-500">From</label>
+                    <input type="date" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <label class="text-xs text-gray-500">To</label>
+                    <input type="date" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-700">Expected Flight</span>
+                    <label class="text-xs text-gray-500">From</label>
+                    <input type="date" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <label class="text-xs text-gray-500">To</label>
+                    <input type="date" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                </div>
+
+                <div class="flex items-center gap-2">
+                    <span class="text-sm font-semibold text-gray-700">Pending Tkt Status</span>
+                    <select class="search-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                        <option value="all">All</option>
+                        <option value="not-arrived">Not Arrived</option>
+                        <option value="pending">Pending</option>
+                        <option value="issued">Issued</option>
+                    </select>
+                </div>
+
+                <div class="flex items-center gap-2 ml-auto">
+                    <button class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
+                        </svg>
+                        Filter
+                    </button>
+                    <button class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
+                        </svg>
+                        Reset
+                    </button>
+                </div>
+            </div>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[1400px] table-fixed">
+                    <thead>
+                        <tr class="table-header">
+                            <th class="w-28 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Booking Date</th>
+                            <th class="w-28 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Invoice</th>
+                            <th class="w-40 px-2 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
+                            <th class="w-32 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
+                            <th class="w-40 px-2 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
+                            <th class="w-32 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Passport</th>
+                            <th class="w-32 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Pending Tkt Status</th>
+                            <th class="w-32 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Visa Expiry Date</th>
+                            <th class="w-32 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Expected Flight Date</th>
+                            <th class="w-32 px-2 py-3 text-xs font-bold text-gray-700 text-center">Actual Flight Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="table-row-ticket">
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">15-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">INV-TK-07201</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">Al-Rajhi Trading Co.</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">+966 55 123 4567</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">AHMED/MOHAMMAD ALI</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">P12345678</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200"><span class="status-badge status-issued">Issued</span><button class="btn-action btn-edit" onclick="openEditModal('INV-TK-07201')">Edit</button></td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">15-Sep-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">25-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center font-medium text-green-700">25-Mar-2026</td>
+                        </tr>
+
+                        <tr class="table-row-ticket">
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">16-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">INV-TK-07202</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">Al-Faisal Group</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">+966 50 234 5678</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">KHAN/ABDUL RAHMAN</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">P23456789</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200"><span class="status-badge status-pending">Pending</span><button class="btn-action btn-issue" onclick="openIssueModal('INV-TK-07202')">Issue</button></td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">20-Sep-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">28-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center text-gray-400">-</td>
+                        </tr>
+
+                        <tr class="table-row-ticket">
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">17-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">INV-TK-07203</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">Al-Nour Enterprises</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">+966 55 345 6789</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">RAHMAN/TARIQ MAHMUD</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">P34567890</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200"><span class="status-badge status-not-arrived">Not Arrived</span></td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">25-Sep-2026</td>
+                            <td class="px-2 py-2 text-xs text-center text-gray-400">-</td>
+                            <td class="px-2 py-2 text-xs text-center text-gray-400">-</td>
+                        </tr>
+
+                        <tr class="table-row-ticket">
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">18-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">INV-TK-07204</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">Al-Salam Holdings</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">+966 50 456 7890</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">SIDDIQUI/NADEEM AHMAD</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">P45678901</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200"><span class="status-badge status-issued">Issued</span><button class="btn-action btn-edit" onclick="openEditModal('INV-TK-07204')">Edit</button></td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">30-Sep-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">02-Apr-2026</td>
+                            <td class="px-2 py-2 text-xs text-center font-medium text-green-700">01-Apr-2026</td>
+                        </tr>
+
+                        <tr class="table-row-ticket">
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">19-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">INV-TK-07205</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">Al-Huda Services</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">+966 55 567 8901</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">CHOUDHURY/SAIFUL ISLAM</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">P56789012</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200"><span class="status-badge status-pending">Pending</span><button class="btn-action btn-issue" onclick="openIssueModal('INV-TK-07205')">Issue</button></td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">05-Oct-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">05-Apr-2026</td>
+                            <td class="px-2 py-2 text-xs text-center text-gray-400">-</td>
+                        </tr>
+
+                        <tr class="table-row-ticket">
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">20-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">INV-TK-07206</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">Al-Madinah Corp.</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">+966 50 678 9012</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">HASAN/MIZANUR RAHMAN</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">P67890123</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200"><span class="status-badge status-not-arrived">Not Arrived</span></td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">10-Oct-2026</td>
+                            <td class="px-2 py-2 text-xs text-center text-gray-400">-</td>
+                            <td class="px-2 py-2 text-xs text-center text-gray-400">-</td>
+                        </tr>
+
+                        <tr class="table-row-ticket">
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">21-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">INV-TK-07207</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">Al-Baraka Travels</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">+966 55 789 0123</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">MIA/KAMAL UDDIN</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">P78901234</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200"><span class="status-badge status-issued">Issued</span><button class="btn-action btn-edit" onclick="openEditModal('INV-TK-07207')">Edit</button></td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">15-Oct-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">08-Apr-2026</td>
+                            <td class="px-2 py-2 text-xs text-center font-medium text-green-700">08-Apr-2026</td>
+                        </tr>
+
+                        <tr class="table-row-ticket">
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">22-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">INV-TK-07208</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">Al-Noor Pilgrimage</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">+966 50 890 1234</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">RAZA/MOHAMMAD YUSUF</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">P89012345</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200"><span class="status-badge status-not-arrived">Not Arrived</span></td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">20-Oct-2026</td>
+                            <td class="px-2 py-2 text-xs text-center text-gray-400">-</td>
+                            <td class="px-2 py-2 text-xs text-center text-gray-400">-</td>
+                        </tr>
+
+                        <tr class="table-row-ticket">
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">23-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">INV-TK-07209</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">Al-Zahra Enterprises</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">+966 55 901 2345</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">HASSAN/JAVED IQBAL</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">P90123456</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200"><span class="status-badge status-pending">Pending</span><button class="btn-action btn-issue" onclick="openIssueModal('INV-TK-07209')">Issue</button></td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">25-Oct-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">12-Apr-2026</td>
+                            <td class="px-2 py-2 text-xs text-center text-gray-400">-</td>
+                        </tr>
+
+                        <tr class="table-row-ticket">
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">24-Mar-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium">INV-TK-07210</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">Al-Wafa Travel Agency</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">+966 50 012 3456</td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">BASHIR/MOHAMMAD ASLAM</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">P01234567</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200"><span class="status-badge status-issued">Issued</span><button class="btn-action btn-edit" onclick="openEditModal('INV-TK-07210')">Edit</button></td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">30-Oct-2026</td>
+                            <td class="px-2 py-2 text-xs text-center border-r border-gray-200">15-Apr-2026</td>
+                            <td class="px-2 py-2 text-xs text-center font-medium text-green-700">14-Apr-2026</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mt-0">
+            <div class="flex flex-wrap gap-6">
+                <div class="footer-box rounded-lg overflow-hidden min-w-[320px]">
+                    <div class="footer-box-header px-4 py-2">
+                        <span class="text-sm font-bold text-gray-700">Pending Outbound Ticket Summary</span>
+                    </div>
+                    <div class="p-4">
+                        <div class="grid grid-cols-2 gap-x-8 gap-y-2">
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Records:</span>
+                                <span class="text-xs font-bold text-gray-800">10</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Total Invoices:</span>
+                                <span class="text-xs font-bold text-gray-800">10</span>
+                            </div>
+                            <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
+                                <span class="text-xs text-gray-600">Not Arrived:</span>
+                                <span class="text-xs font-bold text-gray-700">3</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Pending:</span>
+                                <span class="text-xs font-bold text-yellow-700">3</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-xs text-gray-600">Issued:</span>
+                                <span class="text-xs font-bold text-green-700">4</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex flex-col gap-4">
+                    <div class="footer-box rounded-lg overflow-hidden">
+                        <div class="footer-box-header px-4 py-2">
+                            <span class="text-sm font-bold text-gray-700">Export Options</span>
+                        </div>
+                        <div class="p-4 flex gap-3">
+                            <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
+                                <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24">
+                                    <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
+                                    <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+                                </svg>
+                                PDF
+                            </button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
+                <span class="text-xs text-gray-400">Last Updated: 23-Apr-2026 10:15 AM</span>
+                <span class="text-xs text-gray-400">Generated by BM Umrah System</span>
+            </div>
+        </div>
+    </div>
+
+    <div id="issueModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="modal-backdrop absolute inset-0 bg-black/50" onclick="closeIssueModal()"></div>
+        <div class="relative z-10 flex items-start justify-center p-4 pt-8">
+            <div class="modal-content bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden animate-fade">
+                <div class="bg-slate-700 text-white px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-lg font-bold">Issue Ticket</h2>
+                    <button onclick="closeIssueModal()" class="text-white hover:text-gray-200 p-1">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6 max-h-[80vh] overflow-y-auto">
+                    <p class="text-sm text-slate-600 mb-4">Invoice: <span id="issueInvoice" class="font-semibold text-slate-800"></span></p>
+                    <form id="issueTicketForm" onsubmit="handleIssueTicketSubmit(event)">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                            <select id="issueTicketType" onchange="handleIssueTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="" selected>Select</option>
+                                <option value="regular">Regular</option>
+                                <option value="offer">Offer</option>
+                                <option value="group">Group</option>
+                            </select>
+                        </div>
+
+                        <div id="issueGroupTicketSection" class="mb-4 hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Group Ticket</label>
+                            <select id="issueGroupTicket" onchange="handleIssueGroupTicketSelect()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Ticket</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Information</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
+                                    <select id="issueRouteType" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-600">
+                                        <option value="One Way-Outbound" selected>One Way-Outbound</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                                    <select id="issueFlightType" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                        <option value="">Select</option>
+                                        <option value="Transit">Transit</option>
+                                        <option value="Direct">Direct</option>
+                                    </select>
+                                </div>
+                                <div id="issueInboundDateField" class="hidden">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
+                                    <input type="date" id="issueInboundDate" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                                <div id="issueOutboundDateField">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
+                                    <input type="date" id="issueOutboundDate" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">PNR</label>
+                                    <input type="text" id="issuePNR" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter PNR">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Number *</label>
+                                    <input type="text" id="issueTicketNumber" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter Ticket Number">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+                                    <input type="date" id="issueDate" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
+                                    <select id="issueAgent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                        <option value="">Select Agent</option>
+                                        <option value="Al-Reem">Al-Reem</option>
+                                        <option value="Nasser">Nasser</option>
+                                        <option value="Al-Masria">Al-Masria</option>
+                                        <option value="Umrah Plus">Umrah Plus</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
+                                    <input type="text" id="issueRoute" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
+                                    <input type="text" id="issueAirline" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
+                                    <input type="text" id="issueClass" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
+                                    <input type="text" id="issuePassengerType" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
+                                    <input type="number" id="issueSellingFare" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
+                                    <input type="number" id="issueNetFare" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="issueBaggageSection" class="mb-4">
+                            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
+                            <div id="issueInboundBaggage" class="mb-4 hidden">
+                                <h5 class="text-sm font-medium text-slate-700 mb-2">Inbound</h5>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Adult</label>
+                                        <input type="number" id="issueInboundAdult" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="30" min="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Child</label>
+                                        <input type="number" id="issueInboundChild" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="30" min="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Infant</label>
+                                        <input type="number" id="issueInboundInfant" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="issueOutboundBaggage">
+                                <h5 class="text-sm font-medium text-slate-700 mb-2">Outbound</h5>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Adult</label>
+                                        <input type="number" id="issueOutboundAdult" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="50" min="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Child</label>
+                                        <input type="number" id="issueOutboundChild" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="50" min="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Infant</label>
+                                        <input type="number" id="issueOutboundInfant" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Options</h4>
+                            <div class="flex flex-wrap gap-6">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="issueNonRefundable" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                                    <span class="text-sm text-slate-700">Non-Refundable</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="issueNonExchangeable" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                                    <span class="text-sm text-slate-700">Non-Exchangeable</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 mt-6">
+                            <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                            <button type="button" onclick="closeIssueModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div id="editModal" class="fixed inset-0 z-50 hidden overflow-y-auto">
+        <div class="modal-backdrop absolute inset-0 bg-black/50" onclick="closeEditModal()"></div>
+        <div class="relative z-10 flex items-start justify-center p-4 pt-8">
+            <div class="modal-content bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden animate-fade">
+                <div class="bg-slate-700 text-white px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-lg font-bold">Edit Ticket</h2>
+                    <button onclick="closeEditModal()" class="text-white hover:text-gray-200 p-1">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6 max-h-[80vh] overflow-y-auto">
+                    <p class="text-sm text-slate-600 mb-4">Invoice: <span id="editInvoice" class="font-semibold text-slate-800"></span></p>
+                    <form id="editTicketForm" onsubmit="handleEditTicketSubmit(event)">
+                        <div class="mb-4">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                            <select id="editTicketType" onchange="handleEditTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="" selected>Select</option>
+                                <option value="regular">Regular</option>
+                                <option value="offer">Offer</option>
+                                <option value="group">Group</option>
+                            </select>
+                        </div>
+
+                        <div id="editGroupTicketSection" class="mb-4 hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Group Ticket</label>
+                            <select id="editGroupTicket" onchange="handleEditGroupTicketSelect()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Ticket</option>
+                            </select>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Information</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
+                                    <select id="editRouteType" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-600">
+                                        <option value="One Way-Outbound" selected>One Way-Outbound</option>
+                                    </select>
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                                    <select id="editFlightType" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                        <option value="">Select</option>
+                                        <option value="Transit">Transit</option>
+                                        <option value="Direct">Direct</option>
+                                    </select>
+                                </div>
+                                <div id="editInboundDateField" class="hidden">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
+                                    <input type="date" id="editInboundDate" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                                <div id="editOutboundDateField">
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
+                                    <input type="date" id="editOutboundDate" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">PNR</label>
+                                    <input type="text" id="editPNR" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter PNR">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Number *</label>
+                                    <input type="text" id="editTicketNumber" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter Ticket Number">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+                                    <input type="date" id="editDate" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
+                                    <select id="editAgent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                        <option value="">Select Agent</option>
+                                        <option value="Al-Reem">Al-Reem</option>
+                                        <option value="Nasser">Nasser</option>
+                                        <option value="Al-Masria">Al-Masria</option>
+                                        <option value="Umrah Plus">Umrah Plus</option>
+                                    </select>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
+                                    <input type="text" id="editRoute" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
+                                    <input type="text" id="editAirline" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
+                                    <input type="text" id="editClass" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
+                                    <input type="text" id="editPassengerType" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
+                            <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
+                                    <input type="number" id="editSellingFare" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                                </div>
+                                <div>
+                                    <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
+                                    <input type="number" id="editNetFare" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div id="editBaggageSection" class="mb-4">
+                            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
+                            <div id="editInboundBaggage" class="mb-4 hidden">
+                                <h5 class="text-sm font-medium text-slate-700 mb-2">Inbound</h5>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Adult</label>
+                                        <input type="number" id="editInboundAdult" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="30" min="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Child</label>
+                                        <input type="number" id="editInboundChild" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="30" min="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Infant</label>
+                                        <input type="number" id="editInboundInfant" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                                    </div>
+                                </div>
+                            </div>
+                            <div id="editOutboundBaggage">
+                                <h5 class="text-sm font-medium text-slate-700 mb-2">Outbound</h5>
+                                <div class="grid grid-cols-3 gap-4">
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Adult</label>
+                                        <input type="number" id="editOutboundAdult" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="50" min="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Child</label>
+                                        <input type="number" id="editOutboundChild" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="50" min="0">
+                                    </div>
+                                    <div>
+                                        <label class="block text-sm text-slate-600 mb-1">Infant</label>
+                                        <input type="number" id="editOutboundInfant" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="mb-4">
+                            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Options</h4>
+                            <div class="flex flex-wrap gap-6">
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="editNonRefundable" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                                    <span class="text-sm text-slate-700">Non-Refundable</span>
+                                </label>
+                                <label class="flex items-center gap-2 cursor-pointer">
+                                    <input type="checkbox" id="editNonExchangeable" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                                    <span class="text-sm text-slate-700">Non-Exchangeable</span>
+                                </label>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-3 mt-6">
+                            <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                            <button type="button" onclick="closeEditModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <script src="shared.js"></script>
+    <script>
+        function toggleMobileMenu() {
+            const menu = document.getElementById('mobileMenu');
+            menu.classList.toggle('hidden');
+        }
+
+        function openIssueModal(invoice) {
+            document.getElementById('issueInvoice').textContent = invoice;
+            document.getElementById('issueModal').classList.remove('hidden');
+            initializeIssueForm();
+        }
+
+        function closeIssueModal() {
+            document.getElementById('issueModal').classList.add('hidden');
+            resetIssueForm();
+        }
+
+        function initializeIssueForm() {
+            const inboundDateField = document.getElementById('issueInboundDateField');
+            const outboundDateField = document.getElementById('issueOutboundDateField');
+            const inboundBaggage = document.getElementById('issueInboundBaggage');
+            const outboundBaggage = document.getElementById('issueOutboundBaggage');
+
+            inboundDateField.classList.add('hidden');
+            outboundDateField.classList.remove('hidden');
+            inboundBaggage.classList.add('hidden');
+            outboundBaggage.classList.remove('hidden');
+
+            document.getElementById('issueTicketType').value = '';
+            document.getElementById('issueFlightType').value = '';
+            document.getElementById('issueInboundDate').value = '';
+            document.getElementById('issueOutboundDate').value = '';
+            document.getElementById('issuePNR').value = '';
+            document.getElementById('issueTicketNumber').value = '';
+            document.getElementById('issueDate').value = '';
+            document.getElementById('issueAgent').value = '';
+            document.getElementById('issueRoute').value = '';
+            document.getElementById('issueAirline').value = '';
+            document.getElementById('issueClass').value = '';
+            document.getElementById('issuePassengerType').value = '';
+            document.getElementById('issueSellingFare').value = '0';
+            document.getElementById('issueNetFare').value = '0';
+            document.getElementById('issueOutboundAdult').value = '50';
+            document.getElementById('issueOutboundChild').value = '50';
+            document.getElementById('issueOutboundInfant').value = '0';
+            document.getElementById('issueNonRefundable').checked = false;
+            document.getElementById('issueNonExchangeable').checked = false;
+
+            document.getElementById('issueGroupTicketSection').classList.add('hidden');
+        }
+
+        function resetIssueForm() {
+            document.getElementById('issueTicketForm').reset();
+        }
+
+        function handleIssueTicketTypeChange() {
+            const ticketType = document.getElementById('issueTicketType').value;
+            const groupTicketSection = document.getElementById('issueGroupTicketSection');
+            const groupTicketSelect = document.getElementById('issueGroupTicket');
+
+            if (ticketType === 'group') {
+                groupTicketSection.classList.remove('hidden');
+                groupTicketSelect.innerHTML = '<option value="">Select Ticket</option>';
+            } else {
+                groupTicketSection.classList.add('hidden');
+                groupTicketSelect.innerHTML = '<option value="">Select Ticket</option>';
+            }
+        }
+
+        function handleIssueGroupTicketSelect() {
+            const selectedId = document.getElementById('issueGroupTicket').value;
+            if (selectedId) {
+                document.getElementById('issuePNR').value = '';
+            }
+        }
+
+        function handleIssueTicketSubmit(event) {
+            event.preventDefault();
+            alert('Ticket issued successfully!');
+            closeIssueModal();
+        }
+
+        function openEditModal(invoice) {
+            document.getElementById('editInvoice').textContent = invoice;
+            document.getElementById('editModal').classList.remove('hidden');
+            initializeEditForm();
+        }
+
+        function closeEditModal() {
+            document.getElementById('editModal').classList.add('hidden');
+            resetEditForm();
+        }
+
+        function initializeEditForm() {
+            const inboundDateField = document.getElementById('editInboundDateField');
+            const outboundDateField = document.getElementById('editOutboundDateField');
+            const inboundBaggage = document.getElementById('editInboundBaggage');
+            const outboundBaggage = document.getElementById('editOutboundBaggage');
+
+            inboundDateField.classList.add('hidden');
+            outboundDateField.classList.remove('hidden');
+            inboundBaggage.classList.add('hidden');
+            outboundBaggage.classList.remove('hidden');
+
+            document.getElementById('editTicketType').value = '';
+            document.getElementById('editFlightType').value = '';
+            document.getElementById('editInboundDate').value = '';
+            document.getElementById('editOutboundDate').value = '';
+            document.getElementById('editPNR').value = '';
+            document.getElementById('editTicketNumber').value = '';
+            document.getElementById('editDate').value = '';
+            document.getElementById('editAgent').value = '';
+            document.getElementById('editRoute').value = '';
+            document.getElementById('editAirline').value = '';
+            document.getElementById('editClass').value = '';
+            document.getElementById('editPassengerType').value = '';
+            document.getElementById('editSellingFare').value = '0';
+            document.getElementById('editNetFare').value = '0';
+            document.getElementById('editOutboundAdult').value = '50';
+            document.getElementById('editOutboundChild').value = '50';
+            document.getElementById('editOutboundInfant').value = '0';
+            document.getElementById('editNonRefundable').checked = false;
+            document.getElementById('editNonExchangeable').checked = false;
+
+            document.getElementById('editGroupTicketSection').classList.add('hidden');
+        }
+
+        function resetEditForm() {
+            document.getElementById('editTicketForm').reset();
+        }
+
+        function handleEditTicketTypeChange() {
+            const ticketType = document.getElementById('editTicketType').value;
+            const groupTicketSection = document.getElementById('editGroupTicketSection');
+            const groupTicketSelect = document.getElementById('editGroupTicket');
+
+            if (ticketType === 'group') {
+                groupTicketSection.classList.remove('hidden');
+                groupTicketSelect.innerHTML = '<option value="">Select Ticket</option>';
+            } else {
+                groupTicketSection.classList.add('hidden');
+                groupTicketSelect.innerHTML = '<option value="">Select Ticket</option>';
+            }
+        }
+
+        function handleEditGroupTicketSelect() {
+            const selectedId = document.getElementById('editGroupTicket').value;
+            if (selectedId) {
+                document.getElementById('editPNR').value = '';
+            }
+        }
+
+        function handleEditTicketSubmit(event) {
+            event.preventDefault();
+            alert('Changes saved successfully!');
+            closeEditModal();
+        }
+
+        document.querySelectorAll('.nav-item').forEach(item => {
+            item.classList.remove('active');
+        });
+        document.querySelector('.nav-item[data-tab="pendingOutboundTicket"]')?.classList.add('active');
+    </script>
+</body>
+</html>
