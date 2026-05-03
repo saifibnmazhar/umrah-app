@@ -10,30 +10,30 @@
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold text-slate-700 mb-4">Main Pages</h2>
             <ul class="space-y-2">
-                <li><a href="/dashboard" class="text-blue-600 hover:underline">Dashboard</a></li>
-                <li><a href="/bookings" class="text-blue-600 hover:underline">Booking</a></li>
-                <li><a href="/fares/admin" class="text-blue-600 hover:underline">Fare Admin</a></li>
-                <li><a href="/visas/admin" class="text-blue-600 hover:underline">Visa Admin</a></li>
-                <li><a href="/fingerprints/admin" class="text-blue-600 hover:underline">Fingerprint Admin</a></li>
-                <li><a href="/fingerprints/staff" class="text-blue-600 hover:underline">Fingerprint Staff</a></li>
-                <li><a href="/settings" class="text-blue-600 hover:underline">Settings</a></li>
+                <li><a href="{{ route('dashboard') }}" class="text-blue-600 hover:underline">Dashboard</a></li>
+                <li><a href="{{ route('booking.index') }}" class="text-blue-600 hover:underline">Booking</a></li>
+                <li><a href="{{ route('fare.admin') }}" class="text-blue-600 hover:underline">Fare Admin</a></li>
+                <li><a href="{{ route('visa.admin') }}" class="text-blue-600 hover:underline">Visa Admin</a></li>
+                <li><a href="{{ route('fingerprint.admin') }}" class="text-blue-600 hover:underline">Fingerprint Admin</a></li>
+                <li><a href="{{ route('fingerprint.staff') }}" class="text-blue-600 hover:underline">Fingerprint Staff</a></li>
+                <li><a href="{{ route('settings') }}" class="text-blue-600 hover:underline">Settings</a></li>
             </ul>
         </div>
         
         <div class="bg-white rounded-lg shadow p-6">
             <h2 class="text-xl font-semibold text-slate-700 mb-4">Reports</h2>
             <ul class="space-y-2">
-                <li><a href="/reports/statement" class="text-blue-600 hover:underline">Ticket Statement</a></li>
-                <li><a href="/reports/profit-loss" class="text-blue-600 hover:underline">Profit/Loss Report</a></li>
-                <li><a href="/reports/visa" class="text-blue-600 hover:underline">Visa Report</a></li>
-                <li><a href="/reports/visa-agent" class="text-blue-600 hover:underline">Visa Agent Report</a></li>
-                <li><a href="/reports/ticket-agent" class="text-blue-600 hover:underline">Ticket Agent Report</a></li>
-                <li><a href="/reports/due" class="text-blue-600 hover:underline">Due Report</a></li>
-                <li><a href="/reports/reissue-refund" class="text-blue-600 hover:underline">Re-Issue & Refund Report</a></li>
-                <li><a href="/reports/user-wise-sales" class="text-blue-600 hover:underline">User-wise Sales Report</a></li>
-                <li><a href="/reports/pending-outbound" class="text-blue-600 hover:underline">Pending Outbound Ticket Report</a></li>
-                <li><a href="/reports/payment-receiving" class="text-blue-600 hover:underline">Payment Receiving Report</a></li>
-                <li><a href="/reports/fingerprint" class="text-blue-600 hover:underline">Fingerprint Report</a></li>
+                <li><a href="{{ route('report.statement') }}" class="text-blue-600 hover:underline">Ticket Statement</a></li>
+                <li><a href="{{ route('report.profit-loss') }}" class="text-blue-600 hover:underline">Profit/Loss Report</a></li>
+                <li><a href="{{ route('report.visa') }}" class="text-blue-600 hover:underline">Visa Report</a></li>
+                <li><a href="{{ route('report.visa-agent') }}" class="text-blue-600 hover:underline">Visa Agent Report</a></li>
+                <li><a href="{{ route('report.ticket-agent') }}" class="text-blue-600 hover:underline">Ticket Agent Report</a></li>
+                <li><a href="{{ route('report.due') }}" class="text-blue-600 hover:underline">Due Report</a></li>
+                <li><a href="{{ route('report.reissue-refund') }}" class="text-blue-600 hover:underline">Re-Issue & Refund Report</a></li>
+                <li><a href="{{ route('report.user-sales') }}" class="text-blue-600 hover:underline">User-wise Sales Report</a></li>
+                <li><a href="{{ route('report.pending-ticket') }}" class="text-blue-600 hover:underline">Pending Outbound Ticket Report</a></li>
+                <li><a href="{{ route('report.payment-receiving') }}" class="text-blue-600 hover:underline">Payment Receiving Report</a></li>
+                <li><a href="{{ route('report.fingerprint') }}" class="text-blue-600 hover:underline">Fingerprint Report</a></li>
             </ul>
         </div>
     </div>
