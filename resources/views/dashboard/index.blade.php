@@ -3,6 +3,35 @@
 @section('title', 'Dashboard')
 
 @section('content')
+@php
+$stats = [
+    'visaSubmitted' => 120,
+    'visaIssued' => 80,
+    'visaPending' => 68,
+    'inboundTicket' => 1200,
+    'outboundTicket' => 656,
+    'pendingTicket' => 45,
+    'totalInvoice' => 312,
+    'totalDue' => '124,500 SAR',
+    'totalProfit' => '89,750 SAR',
+    'totalFingerprint' => 156,
+    'totalPassengers' => 892,
+    'totalReceived' => 86,
+    'totalDueCollection' => '67,250 SAR',
+    'departureDone' => 50,
+    'departureStay' => 30,
+];
+$packages = [
+    ['name' => 'Umrah Basic', 'price' => '5,500 SAR'],
+    ['name' => 'Umrah Standard', 'price' => '7,500 SAR'],
+    ['name' => 'Umrah Premium', 'price' => '10,000 SAR'],
+];
+$reissueRequests = [
+    ['id' => 1, 'invoiceId' => 1001, 'invoiceNo' => 'INV-2024-001', 'branch' => 'Riyadh', 'passengers' => ['count' => 2]],
+];
+$addTicketRequests = [];
+$refundRequests = [];
+@endphp
 <div class="max-w-3xl mx-auto pt-6">
     <section class="mb-8">
         <div class="flex items-center justify-between mb-6">
@@ -21,16 +50,16 @@
                 </div>
                 <div class="flex justify-between items-center mb-2">
                     <div class="text-left">
-                        <div class="text-2xl font-bold text-slate-800">{{ $visaSubmitted ?? 120 }}</div>
+                        <div class="text-2xl font-bold text-slate-800">{{ $stats['visaSubmitted'] }}</div>
                         <div class="text-xs font-medium text-blue-600">Submitted</div>
                     </div>
                     <div class="text-right">
-                        <div class="text-2xl font-bold text-slate-800">{{ $visaIssued ?? 80 }}</div>
+                        <div class="text-2xl font-bold text-slate-800">{{ $stats['visaIssued'] }}</div>
                         <div class="text-xs font-medium text-emerald-600">Issued</div>
                     </div>
                 </div>
                 <div class="text-center pt-2 border-t border-slate-100">
-                    <div class="text-xl font-bold text-slate-800">{{ $visaPending ?? 68 }}</div>
+                    <div class="text-xl font-bold text-slate-800">{{ $stats['visaPending'] }}</div>
                     <div class="text-xs font-medium text-amber-600">Pending</div>
                 </div>
                 <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>

@@ -1,6 +1,13 @@
 @extends('layouts.app')
 @section('title', 'Booking')
 @section('content')
+@php
+$bookings = [
+    ['invoiceNo' => 'INV-2024-001', 'bookingDate' => '2024-04-01', 'customerName' => 'Ahmed Abdullah', 'mobile' => '+966501111111', 'route' => 'DAC-JED-DAC', 'status' => 'None', 'totalAmount' => 5500, 'paidAmount' => 3000, 'dueAmount' => 2500],
+    ['invoiceNo' => 'INV-2024-002', 'bookingDate' => '2024-04-02', 'customerName' => 'Fatima Ali', 'mobile' => '+966559876543', 'route' => 'DAC-RUH-DAC', 'status' => 'Visa Application', 'totalAmount' => 6200, 'paidAmount' => 6200, 'dueAmount' => 0],
+    ['invoiceNo' => 'INV-2024-003', 'bookingDate' => '2024-04-03', 'customerName' => 'Mohammad Khan', 'mobile' => '+966550123456', 'route' => 'DAC-MED-DAC', 'status' => 'Issued', 'totalAmount' => 4800, 'paidAmount' => 4800, 'dueAmount' => 0],
+];
+@endphp
 <div class="max-w-3xl mx-auto" x-data="{ activeTab: 'bookingIndex' }">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Booking</h1>
 
