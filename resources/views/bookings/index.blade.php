@@ -94,34 +94,28 @@ $bookings = [
             @csrf
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Customer ID (Passport Search)</label>
-                    <input type="text" name="customer_id" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent" placeholder="Enter passport number">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Customer Name</label>
+                    <input type="text" name="customer_name" class="w-full px-3 py-2 border border-slate-300 rounded-md" placeholder="Customer Name">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Fingerprint Location</label>
-                    <input type="text" name="fingerprint_location" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent" placeholder="Enter location">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Customer Mobile</label>
+                    <input type="text" name="customer_mobile" class="w-full px-3 py-2 border border-slate-300 rounded-md" placeholder="+966501234567">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Fingerprint Office</label>
-                    <input type="text" name="fingerprint_office" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent" placeholder="Enter office">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Name</label>
+                    <input type="text" name="passenger_name[]" class="w-full px-3 py-2 border border-slate-300 rounded-md" placeholder="Passenger Name">
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">District</label>
-                    <select name="district" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent">
-                        <option value="">Select District</option>
-                        <option value="dhaka">Dhaka</option>
-                        <option value="chittagong">Chittagong</option>
-                        <option value="khulna">Khulna</option>
-                        <option value="barisal">Barisal</option>
-                        <option value="sylhet">Sylhet</option>
-                        <option value="rangpur">Rangpur</option>
-                        <option value="mymensingh">Mymensingh</option>
-                        <option value="rajshahi">Rajshahi</option>
-                    </select>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Passport</label>
+                    <input type="text" name="passenger_passport[]" class="w-full px-3 py-2 border border-slate-300 rounded-md" placeholder="Passport Number">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
+                    <input type="text" name="route" class="w-full px-3 py-2 border border-slate-300 rounded-md" placeholder="DAC-JED-DAC">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Package</label>
-                    <select name="package" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent">
+                    <select name="package_type" class="w-full px-3 py-2 border border-slate-300 rounded-md focus:outline-none focus:ring-2 focus:ring-slate-500 focus:border-transparent">
                         <option value="">Select Package</option>
                         <option value="standard">Standard</option>
                         <option value="premium">Premium</option>

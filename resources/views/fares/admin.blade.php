@@ -96,23 +96,23 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Airline</label>
-                            <input type="text" x-model="fare.airline" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" required>
+                            <input type="text" x-model="fare.airline" name="airline" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
-                            <input type="text" x-model="fare.route" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="e.g., JED-CAI" required>
+                            <input type="text" x-model="fare.route" name="route" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" placeholder="e.g., JED-CAI" required>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Fare Amount</label>
-                            <input type="number" x-model="fare.fare_amount" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" required>
+                            <input type="number" x-model="fare.fare_amount" name="selling_fare" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Tax</label>
-                            <input type="number" x-model="fare.tax" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" required>
+                            <input type="number" x-model="fare.tax" name="tax" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Pax Type</label>
-                            <select x-model="fare.pax_type" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" required>
+                            <select x-model="fare.pax_type" name="pax_type" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
                                 <option value="">Select Pax Type</option>
                                 <option value="Adult">Adult</option>
                                 <option value="Child">Child</option>

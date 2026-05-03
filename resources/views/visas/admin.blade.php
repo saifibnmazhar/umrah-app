@@ -104,19 +104,19 @@
                     <div class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Passport</label>
-                            <input type="text" x-model="visa.passport" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" required>
+                            <input type="text" x-model="visa.passport" name="passport" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Name</label>
-                            <input type="text" x-model="visa.name" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" required>
+                            <input type="text" x-model="visa.name" name="name" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Mobile</label>
-                            <input type="text" x-model="visa.mobile" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" placeholder="e.g., +966501234567" required>
+                            <input type="text" x-model="visa.mobile" name="mobile" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" placeholder="e.g., +966501234567" required>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent</label>
-                            <input type="text" x-model="visa.visa_agent" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-emerald-500 focus:border-emerald-500" required>
+                            <input type="text" x-model="visa.visa_agent" name="agent_name" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Submission Date</label>
