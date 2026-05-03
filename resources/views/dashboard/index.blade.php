@@ -1,0 +1,262 @@
+@extends('layouts.app')
+
+@section('title', 'Dashboard')
+
+@section('content')
+<div class="max-w-3xl mx-auto pt-6">
+    <section class="mb-8">
+        <div class="flex items-center justify-between mb-6">
+            <h2 class="text-2xl font-bold text-slate-800">Dashboard</h2>
+        </div>
+        
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-sm font-semibold text-slate-600">Visa</h3>
+                    <div class="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-left">
+                        <div class="text-2xl font-bold text-slate-800">{{ $visaSubmitted ?? 120 }}</div>
+                        <div class="text-xs font-medium text-blue-600">Submitted</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-slate-800">{{ $visaIssued ?? 80 }}</div>
+                        <div class="text-xs font-medium text-emerald-600">Issued</div>
+                    </div>
+                </div>
+                <div class="text-center pt-2 border-t border-slate-100">
+                    <div class="text-xl font-bold text-slate-800">{{ $visaPending ?? 68 }}</div>
+                    <div class="text-xs font-medium text-amber-600">Pending</div>
+                </div>
+                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 5v2m0 4v2m0 4v2M5 5a2 2 0 00-2 2v3a2 2 0 110 4v3a2 2 0 002 2h14a2 2 0 002-2v-3a2 2 0 110-4V7a2 2 0 00-2-2H5z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-left">
+                        <div class="text-2xl font-bold text-slate-800">{{ $inboundTicket ?? 0 }}</div>
+                        <div class="text-xs font-medium text-emerald-600">Inbound Ticket</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-slate-800">{{ $outboundTicket ?? 0 }}</div>
+                        <div class="text-xs font-medium text-red-600">Outbound Ticket</div>
+                    </div>
+                </div>
+                <div class="text-center pt-2 border-t border-slate-100">
+                    <div class="text-xl font-bold text-slate-800">{{ $pendingTicket ?? 0 }}</div>
+                    <div class="text-xs font-medium text-amber-600">Pending Ticket</div>
+                </div>
+                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-slate-800 mb-1">{{ $totalInvoice ?? 312 }}</div>
+                <div class="text-sm font-semibold text-slate-700">Total Invoice</div>
+                <div class="text-xs text-slate-500 mt-1">This Month</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8c-1.657 0-3 .895-3 2s1.343 2 3 2 3 .895 3 2-1.343 2-3 2m0-8c1.11 0 2.08.402 2.599 1M12 8V7m0 1v8m0 0v1m0-1c-1.11 0-2.08-.402-2.599-1M21 12a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-orange-600 mb-1">{{ $totalDue ?? '124,500 SAR' }}</div>
+                <div class="text-sm font-semibold text-slate-700">Total Due</div>
+                <div class="text-xs text-slate-500 mt-1">Receivable</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-emerald-600 mb-1">{{ $totalProfit ?? '89,750 SAR' }}</div>
+                <div class="text-sm font-semibold text-slate-700">Total Profit</div>
+                <div class="text-xs text-slate-500 mt-1">This Month</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-slate-800 mb-1">{{ $totalFingerprint ?? 156 }}</div>
+                <div class="text-sm font-semibold text-slate-700">Total Fingerprint</div>
+                <div class="text-xs text-slate-500 mt-1">This Month</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 rounded-full bg-pink-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-pink-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 4.354a4 4 0 110 5.292M15 21H3v-1a6 6 0 0112 0v1zm0 0h6v-1a6 6 0 00-9-5.197M13 7a4 4 0 11-8 0 4 4 0 018 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-slate-800 mb-1">{{ $totalPassengers ?? 892 }}</div>
+                <div class="text-sm font-semibold text-slate-700">Total Passengers</div>
+                <div class="text-xs text-slate-500 mt-1">This Month</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-slate-800 mb-1">{{ $totalReceived ?? 86 }}</div>
+                <div class="text-sm font-semibold text-slate-700">Total Received</div>
+                <div class="text-xs text-slate-500 mt-1">New Booking (This Month)</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-start justify-between mb-3">
+                    <div class="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-slate-800 mb-1">{{ $totalDueCollection ?? '67,250 SAR' }}</div>
+                <div class="text-sm font-semibold text-slate-700">Total Due Collection</div>
+                <div class="text-xs text-slate-500 mt-1">Collection (This Month)</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-sm font-semibold text-slate-600">Departure</h3>
+                    <div class="w-10 h-10 rounded-full bg-cyan-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-cyan-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4m0 2a2 2 0 012-2h14a2 2 0 012 2v12a2 2 0 01-2 2H5a2 2 0 01-2-2V4zm16 12h-4a2 2 0 100 4h4a2 2 0 100-4z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center">
+                    <div class="text-left">
+                        <div class="text-2xl font-bold text-emerald-600">{{ $departureDone ?? 50 }}</div>
+                        <div class="text-xs font-medium text-emerald-600">Done</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-red-600">{{ $departureStay ?? 30 }}</div>
+                        <div class="text-xs font-medium text-red-600">Stay</div>
+                    </div>
+                </div>
+                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
+            </div>
+        </div>
+
+        <div class="text-right mt-4">
+            <span class="text-xs text-slate-400">Last Updated: Just now</span>
+        </div>
+    </section>
+
+    <section class="mb-6">
+        <h3 class="text-lg font-semibold text-slate-800 mb-4">Popular Packages</h3>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            @forelse($packages ?? [] as $package)
+            <div class="bg-white rounded-lg border border-slate-200 p-4">
+                <div class="font-medium text-slate-800">{{ $package['name'] ?? 'Package Name' }}</div>
+                <div class="text-sm text-slate-500">{{ $package['price'] ?? '0 SAR' }}</div>
+            </div>
+            @empty
+            <div class="text-center py-8 text-slate-500 col-span-2">No packages available</div>
+            @endforelse
+        </div>
+    </section>
+
+    <div class="mb-6" x-data="{ activeTab: 'reissue' }">
+        <div class="flex border-b border-slate-200 mb-4">
+            <button @click="activeTab = 'reissue'" :class="activeTab === 'reissue' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'" class="px-4 py-2 font-medium text-sm border-b-2 transition">Re-Issue Requests</button>
+            <button @click="activeTab = 'addticket'" :class="activeTab === 'addticket' ? 'border-purple-600 text-purple-600' : 'border-transparent text-slate-500'" class="px-4 py-2 font-medium text-sm border-b-2 transition">Add. Tkt Requests</button>
+            <button @click="activeTab = 'refund'" :class="activeTab === 'refund' ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-500'" class="px-4 py-2 font-medium text-sm border-b-2 transition">Refund Requests</button>
+        </div>
+
+        <div x-show="activeTab === 'reissue'" class="space-y-3">
+            @forelse($reissueRequests ?? [] as $request)
+            <a href="{{ route('re-issues.confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-blue-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="font-medium text-slate-800">Invoice ID: {{ $request['invoiceId'] }}</span>
+                        <span class="text-slate-500 text-sm ml-2">({{ $request['invoiceNo'] }}{{ isset($request['branch']) ? ' • ' . $request['branch'] : '' }})</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-slate-500">{{ $request['passengers']['count'] ?? 1 }} passenger(s)</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
+                    </div>
+                </div>
+            </a>
+            @empty
+            <div class="text-center py-8 text-slate-500">No pending re-issue requests</div>
+            @endforelse
+        </div>
+
+        <div x-show="activeTab === 'addticket'" class="space-y-3" style="display: none;">
+            @forelse($addTicketRequests ?? [] as $request)
+            <a href="{{ route('tickets.add-confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-purple-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="font-medium text-slate-800">Invoice ID: {{ $request['invoiceId'] }}</span>
+                        <span class="text-slate-500 text-sm ml-2">({{ $request['invoiceNo'] }}{{ isset($request['branch']) ? ' • ' . $request['branch'] : '' }})</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-slate-500">{{ $request['passengers']['count'] ?? 1 }} passenger(s)</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
+                    </div>
+                </div>
+            </a>
+            @empty
+            <div class="text-center py-8 text-slate-500">No pending additional ticket requests</div>
+            @endforelse
+        </div>
+
+        <div x-show="activeTab === 'refund'" class="space-y-3" style="display: none;">
+            @forelse($refundRequests ?? [] as $request)
+            <a href="{{ route('refunds.confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-orange-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="font-medium text-slate-800">Invoice ID: {{ $request['invoiceId'] }}</span>
+                        <span class="text-slate-500 text-sm ml-2">({{ $request['invoiceNo'] }}{{ isset($request['branch']) ? ' • ' . $request['branch'] : '' }})</span>
+                    </div>
+                    <div class="flex items-center gap-2">
+                        <span class="text-sm text-slate-500">{{ $request['passengers']['count'] ?? 1 }} passenger(s)</span>
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
+                    </div>
+                </div>
+            </a>
+            @empty
+            <div class="text-center py-8 text-slate-500">No pending refund requests</div>
+            @endforelse
+        </div>
+    </div>
+</div>
+@endsection
