@@ -4,18 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Models\Bank;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Schema;
 
 class BankController extends Controller
 {
-    protected array $uniqueRules = [
-        'banks' => ['name'],
-    ];
-
-    protected array $nullableRules = [
-        'banks' => ['description'],
-    ];
-
     public function index()
     {
         $banks = Bank::orderBy('name')->paginate(10)->withQueryString();
@@ -29,7 +20,10 @@ class BankController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate($this->getValidationRules('banks'));
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:banks,name',
+            'description' => 'nullable|string|max:255',
+        ]);
 
         try {
             Bank::create($validated);
@@ -46,7 +40,10 @@ class BankController extends Controller
 
     public function update(Request $request, Bank $bank)
     {
-        $validated = $request->validate($this->getValidationRules('banks', $bank->id));
+        $validated = $request->validate([
+            'name' => 'required|string|max:255|unique:banks,name,' . $bank->id,
+            'description' => 'nullable|string|max:255',
+        ]);
 
         try {
             $bank->update($validated);
@@ -64,47 +61,5 @@ class BankController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete bank.');
         }
-    }
-
-    protected function getValidationRules(string $table, $id = null): array
-    {
-        $columns = Schema::getColumnListing($table);
-        $rules = [];
-
-        $skipColumns = ['id', 'created_at', 'updated_at'];
-        $uniqueColumns = $this->uniqueRules[$table] ?? [];
-        $nullableColumns = $this->nullableRules[$table] ?? [];
-
-        foreach ($columns as $column) {
-            if (in_array($column, $skipColumns)) {
-                continue;
-            }
-
-            $columnType = Schema::getColumnType($table, $column);
-            $rule = $this->mapColumnTypeToRule($columnType);
-
-            if (in_array($column, $uniqueColumns)) {
-                $rule .= '|unique:' . $table . ',' . $column . ($id ? ',' . $id : '');
-            }
-
-            if (in_array($column, $nullableColumns)) {
-                $rule = str_replace('required', 'nullable', $rule);
-            }
-
-            $rules[$column] = $rule;
-        }
-
-        return $rules;
-    }
-
-    protected function mapColumnTypeToRule(string $type): string
-    {
-        return match (true) {
-            str_contains($type, 'integer'), str_contains($type, 'bigint'), str_contains($type, 'smallint') => 'required|integer',
-            str_contains($type, 'decimal'), str_contains($type, 'float'), str_contains($type, 'double') => 'required|numeric',
-            str_contains($type, 'boolean') => 'required|boolean',
-            str_contains($type, 'text') => 'required|string',
-            default => 'required|string|max:255',
-        };
     }
 }
