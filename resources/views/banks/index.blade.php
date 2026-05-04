@@ -40,11 +40,11 @@
                             <td class="px-4 py-3 text-slate-600">{{ $bank->description ?? '-' }}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
-                                    <a href="{{ route('banks.edit', $bank->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
+                                    <a href="{{ route('banks.edit', $bank->id) }}" class="text-slate-600 hover:text-slate-800 font-medium" aria-label="Edit {{ $bank->name }}">Edit</a>
                                     <form method="POST" action="{{ route('banks.destroy', $bank->id) }}" onsubmit="return confirm('Are you sure you want to delete this bank?')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
+                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium" aria-label="Delete {{ $bank->name }}">Delete</button>
                                     </form>
                                 </div>
                             </td>

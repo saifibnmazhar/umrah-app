@@ -21,6 +21,7 @@
                 id="name" 
                 value="{{ old('name') }}" 
                 placeholder="Enter bank name"
+                aria-describedby="name-error"
                 class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('name') border-red-500 @enderror"
             >
             @error('name')
@@ -36,6 +37,7 @@
                 id="description" 
                 value="{{ old('description') }}" 
                 placeholder="Enter description (optional)"
+                aria-describedby="description-error"
                 class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('description') border-red-500 @enderror"
             >
             @error('description')
