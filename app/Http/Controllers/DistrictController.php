@@ -12,13 +12,9 @@ class DistrictController extends Controller
         'districts' => ['name'],
     ];
 
-    protected array $nullableRules = [
-        'districts' => [],
-    ];
-
     public function index()
     {
-        $districts = District::orderBy('name')->paginate(10);
+        $districts = District::orderBy('name')->paginate(10)->withQueryString();
         return view('districts.index', compact('districts'));
     }
 

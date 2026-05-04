@@ -2,9 +2,11 @@
 @section('title', 'Edit District')
 @section('content')
 <div class="max-w-2xl mx-auto">
-    <a href="{{ route('districts.index') }}" class="text-slate-600 hover:text-slate-800 text-sm mb-4 inline-block">
-        ← Back to Districts
-    </a>
+    <div class="mb-6">
+        <a href="{{ route('districts.index') }}" class="text-slate-600 hover:text-slate-800 text-sm">
+            ← Back to Districts
+        </a>
+    </div>
 
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Edit District</h1>
 
@@ -18,6 +20,10 @@
             'name' => 'District Name',
             'division' => 'Division',
         ];
+        $placeholders = [
+            'name' => 'Enter district name',
+            'division' => 'Enter division name',
+        ];
         @endphp
 
         @foreach($fields as $field)
@@ -30,6 +36,7 @@
                     name="{{ $field }}" 
                     id="{{ $field }}" 
                     value="{{ old($field, $district->$field) }}"
+                    placeholder="{{ $placeholders[$field] ?? '' }}"
                     class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error($field) border-red-500 @enderror"
                 >
                 @error($field)
@@ -38,10 +45,13 @@
             </div>
         @endforeach
 
-        <div class="pt-2">
+        <div class="pt-4 flex items-center gap-4">
             <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
                 Update District
             </button>
+            <a href="{{ route('districts.index') }}" class="text-slate-600 hover:text-slate-800 text-sm">
+                Cancel
+            </a>
         </div>
     </form>
 </div>

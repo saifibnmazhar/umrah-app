@@ -22,43 +22,47 @@
     @endif
 
     <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        <table class="w-full text-sm">
-            <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
-                <tr>
-                    <th class="px-4 py-3 text-left">ID</th>
-                    <th class="px-4 py-3 text-left">Name</th>
-                    <th class="px-4 py-3 text-left">Division</th>
-                    <th class="px-4 py-3 text-right">Actions</th>
-                </tr>
-            </thead>
-            <tbody class="divide-y divide-slate-200">
-                @forelse($districts as $district)
-                    <tr class="hover:bg-slate-50">
-                        <td class="px-4 py-3 text-slate-700">{{ $district->id }}</td>
-                        <td class="px-4 py-3 text-slate-700 font-medium">{{ $district->name }}</td>
-                        <td class="px-4 py-3 text-slate-600">{{ $district->division }}</td>
-                        <td class="px-4 py-3 text-right">
-                            <a href="{{ route('districts.edit', $district->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
-                            <form method="POST" action="{{ route('districts.destroy', $district->id) }}" class="inline ml-3" onsubmit="return confirm('Are you sure you want to delete this district?')">
-                                @csrf
-                                @method('DELETE')
-                                <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
-                            </form>
-                        </td>
-                    </tr>
-                @empty
+        <div class="overflow-x-auto">
+            <table class="w-full text-sm">
+                <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
                     <tr>
-                        <td colspan="4" class="px-4 py-12 text-center text-slate-500">
-                            No districts found.
-                        </td>
+                        <th class="px-4 py-3 text-left">ID</th>
+                        <th class="px-4 py-3 text-left">Name</th>
+                        <th class="px-4 py-3 text-left">Division</th>
+                        <th class="px-4 py-3 text-right">Actions</th>
                     </tr>
-                @endforelse
-            </tbody>
-        </table>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    @forelse($districts as $district)
+                        <tr class="hover:bg-slate-50">
+                            <td class="px-4 py-3 text-slate-700">{{ $district->id }}</td>
+                            <td class="px-4 py-3 text-slate-700 font-medium">{{ $district->name }}</td>
+                            <td class="px-4 py-3 text-slate-600">{{ $district->division }}</td>
+                            <td class="px-4 py-3 text-right">
+                                <div class="flex items-center justify-end gap-3">
+                                    <a href="{{ route('districts.edit', $district->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
+                                    <form method="POST" action="{{ route('districts.destroy', $district->id) }}" onsubmit="return confirm('Are you sure you want to delete this district?')">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
+                                    </form>
+                                </div>
+                            </td>
+                        </tr>
+                    @empty
+                        <tr>
+                            <td colspan="4" class="px-4 py-12 text-center text-slate-500">
+                                No districts found.
+                            </td>
+                        </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
     </div>
 
-    <div class="mt-4">
-        {{ $districts->links() }}
+    <div class="mt-4 flex justify-center">
+        {{ $districts->appends(request()->query())->links() }}
     </div>
 </div>
 @endsection
