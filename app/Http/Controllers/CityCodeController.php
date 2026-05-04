@@ -22,7 +22,7 @@ class CityCodeController extends Controller
     {
         $validated = $request->validate([
             'city_name' => 'required|string|max:255',
-            'code' => 'required|string|max:10|unique:city_codes,code',
+            'code' => 'required|string|max:50|unique:city_codes,code',
             'country' => 'required|string|max:255',
         ]);
 
@@ -43,7 +43,7 @@ class CityCodeController extends Controller
     {
         $validated = $request->validate([
             'city_name' => 'required|string|max:255',
-            'code' => 'required|string|max:10|unique:city_codes,code,' . $cityCode->id,
+            'code' => 'required|string|max:50|unique:city_codes,code,' . $cityCode->id,
             'country' => 'required|string|max:255',
         ]);
 
