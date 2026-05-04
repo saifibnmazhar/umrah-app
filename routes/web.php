@@ -3,6 +3,7 @@
 use App\Http\Controllers\BankController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\DistrictController;
+use App\Http\Controllers\OfficeController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -13,6 +14,7 @@ Route::get('/dashboard', fn() => view('dashboard.index'))->name('dashboard');
 Route::resource('districts', DistrictController::class);
 Route::resource('banks', BankController::class);
 Route::resource('branches', BranchController::class);
+Route::resource('offices', OfficeController::class);
 Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
 Route::post('/bookings', function () {
     return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
