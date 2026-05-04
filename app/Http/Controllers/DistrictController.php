@@ -4,9 +4,18 @@ namespace App\Http\Controllers;
 
 use App\Models\District;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Schema;
 
 class DistrictController extends Controller
 {
+    protected array $uniqueRules = [
+        'districts' => ['name'],
+    ];
+
+    protected array $nullableRules = [
+        'districts' => [],
+    ];
+
     public function index()
     {
         $districts = District::orderBy('name')->paginate(10);
@@ -20,10 +29,7 @@ class DistrictController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'division' => 'required|string|max:255',
-        ]);
+        $validated = $request->validate($this->getValidationRules('districts'));
 
         try {
             District::create($validated);
@@ -40,10 +46,7 @@ class DistrictController extends Controller
 
     public function update(Request $request, District $district)
     {
-        $validated = $request->validate([
-            'name' => 'required|string|max:255',
-            'division' => 'required|string|max:255',
-        ]);
+        $validated = $request->validate($this->getValidationRules('districts', $district->id));
 
         try {
             $district->update($validated);
@@ -61,5 +64,47 @@ class DistrictController extends Controller
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete district.');
         }
+    }
+
+    protected function getValidationRules(string $table, $id = null): array
+    {
+        $columns = Schema::getColumnListing($table);
+        $rules = [];
+
+        $skipColumns = ['id', 'created_at', 'updated_at'];
+        $uniqueColumns = $this->uniqueRules[$table] ?? [];
+        $nullableColumns = $this->nullableRules[$table] ?? [];
+
+        foreach ($columns as $column) {
+            if (in_array($column, $skipColumns)) {
+                continue;
+            }
+
+            $columnType = Schema::getColumnType($table, $column);
+            $rule = $this->mapColumnTypeToRule($columnType);
+
+            if (in_array($column, $uniqueColumns)) {
+                $rule .= '|unique:' . $table . ',' . $column . ($id ? ',' . $id : '');
+            }
+
+            if (in_array($column, $nullableColumns)) {
+                $rule = str_replace('required', 'nullable', $rule);
+            }
+
+            $rules[$column] = $rule;
+        }
+
+        return $rules;
+    }
+
+    protected function mapColumnTypeToRule(string $type): string
+    {
+        return match (true) {
+            str_contains($type, 'integer'), str_contains($type, 'bigint'), str_contains($type, 'smallint') => 'required|integer',
+            str_contains($type, 'decimal'), str_contains($type, 'float'), str_contains($type, 'double') => 'required|numeric',
+            str_contains($type, 'boolean') => 'required|boolean',
+            str_contains($type, 'text') => 'required|string',
+            default => 'required|string|max:255',
+        };
     }
 }
