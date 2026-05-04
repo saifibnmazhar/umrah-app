@@ -32,11 +32,11 @@ return new class extends Migration
      * Reverse the migrations.
      */
     public function down(): void
-{
-    Schema::table('users', function (Blueprint $table) {
-        $table->dropForeign(['branch_id']);
-        $table->dropForeign(['office_id']);
-        $table->dropColumn(['branch_id', 'office_id']);
-    });
-}
+    {
+        Schema::table('users', function (Blueprint $table) {
+            $table->dropForeign(['branch_id']);
+            $table->dropForeign(['office_id']);
+            $table->dropColumn(['branch_id', 'office_id']);
+        });
+    }
 };
