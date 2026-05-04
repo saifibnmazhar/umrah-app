@@ -8,6 +8,9 @@ Route::get('/dashboard', fn() => view('dashboard.index'))->name('dashboard');
 
 // Main Pages
 Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
+Route::post('/bookings', function () {
+    return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
+})->name('booking.store');
 Route::get('/fares/admin', fn() => view('fares.admin'))->name('fare.admin');
 Route::get('/visas/admin', fn() => view('visas.admin'))->name('visa.admin');
 Route::get('/fingerprints/admin', fn() => view('fingerprints.admin'))->name('fingerprint.admin');
