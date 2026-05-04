@@ -46,4 +46,6 @@ Route::get('/passengers/{id}', fn($id) => view('passengers.details', compact('id
 Route::get('/packages/{id}', fn($id) => view('packages.details', compact('id')))->name('packages.details');
 Route::get('/re-issues/{id}/confirm', fn($id) => view('re-issues.confirmation', compact('id')))->name('re-issues.confirmation');
 Route::get('/refunds/{id}/confirm', fn($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation');
+Route::get('/tickets', fn() => view('tickets.index'))->name('tickets.index');
+Route::get('/tickets/{id}/print', fn($id) => view('tickets.print', compact('id')))->name('tickets.print');
 Route::get('/tickets/{id}/add-confirm', fn($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation');
