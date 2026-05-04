@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BankController;
 use App\Http\Controllers\DistrictController;
 use Illuminate\Support\Facades\Route;
 
@@ -9,6 +10,7 @@ Route::get('/dashboard', fn() => view('dashboard.index'))->name('dashboard');
 
 // Main Pages
 Route::resource('districts', DistrictController::class);
+Route::resource('banks', BankController::class);
 Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
 Route::post('/bookings', function () {
     return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
