@@ -645,5 +645,489 @@ protected $casts = [
 ];
 ```
 
-*Plan Version: 2.1*
+---
+
+## Route Tables (Phase 3)
+
+### Overview
+
+This phase adds 3 route-related tables with proper ordering based on foreign key dependencies.
+
+---
+
+### Dependency Analysis
+
+### Tables with dependencies (create in order):
+- **routes** → depends on `airlines`, `city_codes`
+- **route_multi_segments** → depends on `routes`, `city_codes`
+- **route_transits** → depends on `routes`, `city_codes`
+
+---
+
+### Migration Order (Phase 3: Route Tables)
+
+| Step | Table | Dependencies | Artisan Command |
+|------|-------|--------------|-----------------|
+| 1 | routes | airlines, city_codes | `php artisan make:migration create_routes_table` |
+| 2 | route_multi_segments | routes, city_codes | `php artisan make:migration create_route_multi_segments_table` |
+| 3 | route_transits | routes, city_codes | `php artisan make:migration create_route_transits_table` |
+
+---
+
+### Design Decisions
+
+#### 1. ID Configuration
+- All primary keys use `bigIncrements()` for consistency
+- Foreign keys use `unsignedBigInteger()` to match
+
+#### 2. Foreign Key Constraints
+| Table | Column | References | Delete Behavior |
+|-------|--------|------------|------------------|
+| routes | airline_id | airlines.id | `restrictOnDelete()` |
+| routes | from_city_id | city_codes.id | `restrictOnDelete()` |
+| routes | to_city_id | city_codes.id | `restrictOnDelete()` |
+| routes | return_city_id | city_codes.id | `restrictOnDelete()` |
+| route_multi_segments | route_id | routes.id | `restrictOnDelete()` |
+| route_multi_segments | from_city_id | city_codes.id | `restrictOnDelete()` |
+| route_multi_segments | to_city_id | city_codes.id | `restrictOnDelete()` |
+| route_transits | route_id | routes.id | `restrictOnDelete()` |
+| route_transits | transit_city_id | city_codes.id | `restrictOnDelete()` |
+
+- `onUpdate('cascade')` on all foreign keys
+- `restrictOnDelete()` prevents accidental deletion of parent records with existing children
+
+#### 3. Conditional Nullability Rules (IMPORTANT)
+
+| Column | Nullable in Schema | Business Logic Requirement |
+|--------|-------------------|----------------------------|
+| `from_city_id` | YES | REQUIRED when `route_type != multi_city`; NOT used when `route_type = multi_city` |
+| `to_city_id` | YES | REQUIRED when `route_type != multi_city`; NOT used when `route_type = multi_city` |
+| `return_city_id` | YES | REQUIRED ONLY when `route_type = round` |
+
+**Note**: These conditional requirements CANNOT be fully enforced at database level. Must be documented and enforced in:
+- Application validation layer
+- Form/Request validation
+- Model observers
+
+#### 4. Enum Handling
+
+**Database Enums:**
+```php
+// routes.route_type
+$table->enum('route_type', ['oneway_inbound', 'oneway_outbound', 'round', 'multi_city']);
+
+// routes.flight_type
+$table->enum('flight_type', ['direct', 'transit']);
+
+// route_multi_segments.segment_direction
+$table->enum('segment_direction', ['inbound', 'outbound']);
+```
+
+**Recommended PHP Enums** (for model casting):
+
+**File**: `app/Enums/RouteType.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum RouteType: string
+{
+    case ONEWAY_INBOUND = 'oneway_inbound';
+    case ONEWAY_OUTBOUND = 'oneway_outbound';
+    case ROUND = 'round';
+    case MULTI_CITY = 'multi_city';
+}
+```
+
+**File**: `app/Enums/FlightType.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum FlightType: string
+{
+    case DIRECT = 'direct';
+    case TRANSIT = 'transit';
+}
+```
+
+**File**: `app/Enums/SegmentDirection.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum SegmentDirection: string
+{
+    case INBOUND = 'inbound';
+    case OUTBOUND = 'outbound';
+}
+```
+
+#### 5. transit_time Data Type Decision
+
+**Decision**: Use `unsignedInteger` (minutes)
+
+| Option | Pros | Cons |
+|--------|------|------|
+| `unsignedInteger` (minutes) | Simple math operations, timezone-agnostic, easy aggregation in queries | Requires conversion for display |
+| `time` type | Native time representation | Database-specific behavior, timezone issues, harder to aggregate |
+| `varchar` | Flexible | No validation, harder to query |
+
+**Justification**: Integer minutes is the industry standard for flight durations. It allows:
+- Easy sorting/filtering (e.g., flights under 4 hours)
+- Simple aggregation (total transit time)
+- Cleaner comparison operations
+- No timezone complications
+
+#### 6. Business Logic Notes
+
+| Route Type | Use Fields | Multi-Segments |
+|------------|------------|----------------|
+| `oneway_inbound` | from_city_id, to_city_id | No |
+| `oneway_outbound` | from_city_id, to_city_id | No |
+| `round` | from_city_id, to_city_id, return_city_id | No |
+| `multi_city` | from_city_id/to_city_id NOT used | YES - use route_multi_segments |
+
+| Flight Type | Transit Records |
+|-------------|-----------------|
+| `direct` | No entries in route_transits |
+| `transit` | One or more entries in route_transits |
+
+#### 7. Indexes
+- Foreign key constraints auto-create indexes
+- No redundant manual indexes needed
+
+---
+
+### Migration File Details
+
+#### 1. routes table
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('routes', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('airline_id');
+        $table->enum('route_type', ['oneway_inbound', 'oneway_outbound', 'round', 'multi_city']);
+        $table->enum('flight_type', ['direct', 'transit']);
+        $table->unsignedBigInteger('from_city_id')->nullable();
+        $table->unsignedBigInteger('to_city_id')->nullable();
+        $table->unsignedBigInteger('return_city_id')->nullable();
+        
+        $table->foreign('airline_id')
+            ->references('id')
+            ->on('airlines')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        
+        $table->foreign('from_city_id')
+            ->references('id')
+            ->on('city_codes')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        
+        $table->foreign('to_city_id')
+            ->references('id')
+            ->on('city_codes')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        
+        $table->foreign('return_city_id')
+            ->references('id')
+            ->on('city_codes')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        
+        $table->timestamps();
+    });
+}
+
+// DOWN
+public function down(): void
+{
+    if (Schema::hasTable('routes')) {
+        Schema::table('routes', function (Blueprint $table) {
+            $table->dropForeign(['airline_id']);
+            $table->dropForeign(['from_city_id']);
+            $table->dropForeign(['to_city_id']);
+            $table->dropForeign(['return_city_id']);
+        });
+    }
+
+    Schema::dropIfExists('routes');
+}
+```
+
+**Important**: This schema makes ALL city fields nullable. Business logic enforcement must happen at application level.
+
+#### 2. route_multi_segments table
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('route_multi_segments', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('route_id');
+        $table->unsignedBigInteger('from_city_id');
+        $table->unsignedBigInteger('to_city_id');
+        $table->enum('segment_direction', ['inbound', 'outbound']);
+        
+        $table->foreign('route_id')
+            ->references('id')
+            ->on('routes')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        
+        $table->foreign('from_city_id')
+            ->references('id')
+            ->on('city_codes')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        
+        $table->foreign('to_city_id')
+            ->references('id')
+            ->on('city_codes')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        
+        $table->timestamps();
+    });
+}
+
+// DOWN
+public function down(): void
+{
+    if (Schema::hasTable('route_multi_segments')) {
+        Schema::table('route_multi_segments', function (Blueprint $table) {
+            $table->dropForeign(['route_id']);
+            $table->dropForeign(['from_city_id']);
+            $table->dropForeign(['to_city_id']);
+        });
+    }
+
+    Schema::dropIfExists('route_multi_segments');
+}
+```
+
+#### 3. route_transits table
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('route_transits', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('route_id');
+        $table->unsignedBigInteger('transit_city_id');
+        $table->unsignedInteger('transit_time'); // Minutes
+        
+        $table->foreign('route_id')
+            ->references('id')
+            ->on('routes')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        
+        $table->foreign('transit_city_id')
+            ->references('id')
+            ->on('city_codes')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        
+        $table->timestamps();
+    });
+}
+
+// DOWN
+public function down(): void
+{
+    if (Schema::hasTable('route_transits')) {
+        Schema::table('route_transits', function (Blueprint $table) {
+            $table->dropForeign(['route_id']);
+            $table->dropForeign(['transit_city_id']);
+        });
+    }
+
+    Schema::dropIfExists('route_transits');
+}
+```
+
+---
+
+### Safe Execution Plan
+
+#### Option 1: Full Migration Run (Recommended)
+Run all Phase 3 migrations after creating all files:
+```bash
+php artisan migrate
+```
+
+#### Option 2: Partial/Step-by-Step Execution
+If you need to test incrementally:
+
+```bash
+# Step 1: Create all migration files
+php artisan make:migration create_routes_table
+php artisan make:migration create_route_multi_segments_table
+php artisan make:migration create_route_transits_table
+
+# Step 2: Verify migration files content
+
+# Step 3: Run migrations
+php artisan migrate
+
+# Step 4: Verify tables created
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('routes');
+```
+
+#### Option 3: Rollback Plan
+If something goes wrong:
+```bash
+# Rollback last migration
+php artisan migrate:rollback
+
+# Rollback all (if needed)
+php artisan migrate:fresh
+```
+
+---
+
+### Rollback Considerations
+
+| Table | Delete Behavior | Rollback Risk |
+|-------|-----------------|---------------|
+| routes | restrictOnDelete | Medium - prevents airline deletion if routes exist |
+| route_multi_segments | restrictOnDelete | Medium - prevents route deletion if segments exist |
+| route_transits | restrictOnDelete | Medium - prevents route deletion if transits exist |
+
+**Note**: The `restrictOnDelete()` constraints mean you cannot delete parent records (airlines, routes, city_codes) if child records exist. You must first delete the child records or modify them to allow parent deletion.
+
+---
+
+### Summary (Phase 3)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 3 |
+| Foreign Keys | 9 |
+| Enum Columns | 4 |
+| Indexes | Auto-created by FK |
+
+---
+
+### Combined Summary (All Phases)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 19 |
+| Total Foreign Keys | 21 |
+| Total Unique Constraints | 6 |
+| Total Indexes | 7+ (auto from FK) |
+
+---
+
+### Enum Definitions Required
+
+Create the following enums before running migrations:
+
+**File**: `app/Enums/RouteType.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum RouteType: string
+{
+    case ONEWAY_INBOUND = 'oneway_inbound';
+    case ONEWAY_OUTBOUND = 'oneway_outbound';
+    case ROUND = 'round';
+    case MULTI_CITY = 'multi_city';
+}
+```
+
+**File**: `app/Enums/FlightType.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum FlightType: string
+{
+    case DIRECT = 'direct';
+    case TRANSIT = 'transit';
+}
+```
+
+**File**: `app/Enums/SegmentDirection.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum SegmentDirection: string
+{
+    case INBOUND = 'inbound';
+    case OUTBOUND = 'outbound';
+}
+```
+
+**Model Cast Example** (in Route model):
+```php
+protected $casts = [
+    'route_type' => RouteType::class,
+    'flight_type' => FlightType::class,
+];
+```
+
+**Model Cast Example** (in RouteMultiSegment model):
+```php
+protected $casts = [
+    'segment_direction' => SegmentDirection::class,
+];
+```
+
+---
+
+### Validation Layer Requirements
+
+Since database constraints cannot enforce conditional nullability, implement validation at:
+
+1. **Form Requests**: Validate based on route_type
+2. **Model Observers**: Validate before save
+3. **Service Layer**: Centralized validation logic
+
+**Example validation logic**:
+```php
+// In Form Request
+public function rules()
+{
+    $routeType = $this->route_type;
+    
+    $rules = [
+        'airline_id' => 'required|exists:airlines,id',
+        'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
+        'flight_type' => 'required|in:direct,transit',
+    ];
+    
+    if ($routeType !== 'multi_city') {
+        $rules['from_city_id'] = 'required|exists:city_codes,id';
+        $rules['to_city_id'] = 'required|exists:city_codes,id';
+    }
+    
+    if ($routeType === 'round') {
+        $rules['return_city_id'] = 'required|exists:city_codes,id';
+    }
+    
+    return $rules;
+}
+```
+
+---
+
+*Plan Version: 3.0*
 *Updated: May 2026*
