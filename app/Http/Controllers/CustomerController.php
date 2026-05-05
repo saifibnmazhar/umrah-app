@@ -26,13 +26,13 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'iqama_type' => 'required|in:self,referral',
-            'passport_no' => 'required|string|unique:customers,passport_no',
-            'iqama_no' => 'required|string|unique:customers,iqama_no',
-            'mobile_no' => 'required|string',
-            'ref_iqama_no' => 'nullable|string',
-            'ref_mobile_no' => 'nullable|string',
-            'ref_iqama_doc' => 'nullable|string',
-            'address' => 'required|string',
+            'passport_no' => 'required|string|max:50|unique:customers,passport_no',
+            'iqama_no' => 'required|string|max:50|unique:customers,iqama_no',
+            'mobile_no' => 'required|string|max:20',
+            'ref_iqama_no' => 'nullable|string|max:50',
+            'ref_mobile_no' => 'nullable|string|max:20',
+            'ref_iqama_doc' => 'nullable|string|max:512',
+            'address' => 'required|string|max:500',
         ]);
 
         try {
@@ -53,13 +53,13 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'iqama_type' => 'required|in:self,referral',
-            'passport_no' => 'required|string|unique:customers,passport_no,' . $customer->id,
-            'iqama_no' => 'required|string|unique:customers,iqama_no,' . $customer->id,
-            'mobile_no' => 'required|string',
-            'ref_iqama_no' => 'nullable|string',
-            'ref_mobile_no' => 'nullable|string',
-            'ref_iqama_doc' => 'nullable|string',
-            'address' => 'required|string',
+            'passport_no' => 'required|string|max:50|unique:customers,passport_no,' . $customer->id,
+            'iqama_no' => 'required|string|max:50|unique:customers,iqama_no,' . $customer->id,
+            'mobile_no' => 'required|string|max:20',
+            'ref_iqama_no' => 'nullable|string|max:50',
+            'ref_mobile_no' => 'nullable|string|max:20',
+            'ref_iqama_doc' => 'nullable|string|max:512',
+            'address' => 'required|string|max:500',
         ]);
 
         try {
