@@ -6,6 +6,7 @@ use App\Models\Airline;
 use App\Models\AirlineClass;
 use App\Models\TravelClass;
 use Illuminate\Http\Request;
+use Illuminate\Validation\Rule;
 
 class AirlineClassController extends Controller
 {
@@ -29,7 +30,15 @@ class AirlineClassController extends Controller
     {
         $validated = $request->validate([
             'airline_id' => 'required|integer|exists:airlines,id',
-            'class_id' => 'required|integer|exists:classes,id',
+            'class_id' => [
+                'required',
+                'integer',
+                'exists:classes,id',
+                Rule::unique('airline_classes')->where(function ($query) use ($request) {
+                    return $query->where('airline_id', $request->airline_id)
+                        ->where('class_id', $request->class_id);
+                }),
+            ],
         ]);
 
         try {
@@ -51,7 +60,15 @@ class AirlineClassController extends Controller
     {
         $validated = $request->validate([
             'airline_id' => 'required|integer|exists:airlines,id',
-            'class_id' => 'required|integer|exists:classes,id',
+            'class_id' => [
+                'required',
+                'integer',
+                'exists:classes,id',
+                Rule::unique('airline_classes')->where(function ($query) use ($request) {
+                    return $query->where('airline_id', $request->airline_id)
+                        ->where('class_id', $request->class_id);
+                })->ignore($airlineClass->id),
+            ],
         ]);
 
         try {
