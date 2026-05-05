@@ -1661,5 +1661,773 @@ public function rules()
 
 ---
 
-*Plan Version: 4.0*
+## Package & Configuration Tables (Phase 5)
+
+### Overview
+
+This phase adds 2 tables: one for packages (depends on ticket_fares and visa_selling_prices) and one for flight date gap configuration (independent).
+
+---
+
+### Dependency Analysis
+
+### Tables with NO dependencies:
+- `flight_date_gap` → independent (global configuration)
+
+### Tables with dependencies:
+- **packages** → depends on `ticket_fares`, `visa_selling_prices`
+
+---
+
+### Migration Order (Phase 5: Package & Configuration Tables)
+
+| Step | Table | Dependencies | Artisan Command |
+|------|-------|--------------|-----------------|
+| 1 | flight_date_gap | none | `php artisan make:migration create_flight_date_gap_table` |
+| 2 | packages | ticket_fares, visa_selling_prices | `php artisan make:migration create_packages_table` |
+
+---
+
+### Design Decisions
+
+#### 1. ID Configuration
+- All primary keys use `bigIncrements()` for consistency
+- Foreign keys use `unsignedBigInteger()` to match
+
+#### 2. Foreign Key Constraints
+
+| Table | Column | References | Delete Behavior |
+|-------|--------|------------|------------------|
+| packages | ticket_fare_id | ticket_fares.id | `restrictOnDelete()` |
+| packages | visa_selling_price_id | visa_selling_prices.id | `restrictOnDelete()` |
+
+- `onUpdate('cascade')` on all foreign keys
+- `restrictOnDelete()` prevents accidental deletion of parent records with existing children
+
+#### 3. Nullable Rules
+
+| Column | Nullable | Justification |
+|--------|----------|---------------|
+| `offer_price` | YES | Only used for promotional/offer packages; regular packages use only regular_price |
+
+#### 4. Unique Constraints
+
+| Table | Constraint | Justification |
+|-------|------------|---------------|
+| packages | ticket_fare_id (unique) | One package per ticket fare |
+| flight_date_gap | gap (unique) | Prevent duplicate configuration values |
+
+#### 5. Monetary & Numeric Constraints
+
+| Field | Type | Constraint |
+|-------|------|------------|
+| regular_price | decimal(10,2) | CHECK >= 0 |
+| offer_price | decimal(10,2) | CHECK >= 0 (nullable) |
+| gap | integer | CHECK >= 1 |
+
+**Justification**:
+- `decimal(10,2)` provides sufficient precision for package prices
+- Positive integer constraint for gap ensures valid configuration values
+
+#### 6. Indexes
+- Foreign key constraints auto-create indexes
+- No redundant manual indexes needed
+
+---
+
+### Business Logic Notes
+
+| Table | Logic |
+|-------|-------|
+| packages | Combines ticket_fare + visa_selling_price to form complete package |
+| packages | offer_price optional - use for promotional packages |
+| packages | One package per ticket_fare_id (unique) |
+| flight_date_gap | Global configuration table - defines gap value used elsewhere |
+
+---
+
+### Migration File Details
+
+#### 1. flight_date_gap table (create first - independent)
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('flight_date_gap', function (Blueprint $table) {
+        $table->id();
+        $table->integer('gap')->unique();
+
+        $table->timestamps();
+    });
+
+    DB::statement('ALTER TABLE flight_date_gap ADD CONSTRAINT gap_positive CHECK (gap >= 1)');
+}
+
+// DOWN
+public function down(): void
+{
+    try {
+        DB::statement('ALTER TABLE flight_date_gap DROP CONSTRAINT gap_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+
+    Schema::dropIfExists('flight_date_gap');
+}
+```
+
+#### 2. packages table (create second - depends on ticket_fares, visa_selling_prices)
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('packages', function (Blueprint $table) {
+        $table->id();
+        $table->string('package_name');
+        $table->unsignedBigInteger('ticket_fare_id');
+        $table->unsignedBigInteger('visa_selling_price_id');
+        $table->decimal('regular_price', 10, 2);
+        $table->decimal('offer_price', 10, 2)->nullable();
+
+        // Foreign keys with restrictOnDelete
+        $table->foreign('ticket_fare_id')
+            ->references('id')
+            ->on('ticket_fares')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+
+        $table->foreign('visa_selling_price_id')
+            ->references('id')
+            ->on('visa_selling_prices')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+
+        // Unique constraint: one package per ticket_fare
+        $table->unique('ticket_fare_id');
+
+        $table->timestamps();
+    });
+
+    DB::statement('ALTER TABLE packages ADD CONSTRAINT regular_price_positive CHECK (regular_price >= 0)');
+    DB::statement('ALTER TABLE packages ADD CONSTRAINT offer_price_positive CHECK (offer_price >= 0)');
+}
+
+// DOWN
+public function down(): void
+{
+    try {
+        DB::statement('ALTER TABLE packages DROP CONSTRAINT regular_price_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+    try {
+        DB::statement('ALTER TABLE packages DROP CONSTRAINT offer_price_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+
+    if (Schema::hasTable('packages')) {
+        Schema::table('packages', function (Blueprint $table) {
+            $table->dropForeign(['ticket_fare_id']);
+            $table->dropForeign(['visa_selling_price_id']);
+        });
+    }
+
+    Schema::dropIfExists('packages');
+}
+```
+
+---
+
+### Safe Execution Plan
+
+#### Option 1: Full Migration Run (Recommended)
+Run all Phase 5 migrations after creating all files:
+```bash
+php artisan migrate
+```
+
+#### Option 2: Partial/Step-by-Step Execution
+If you need to test incrementally:
+
+```bash
+# Step 1: Create all migration files
+php artisan make:migration create_flight_date_gap_table
+php artisan make:migration create_packages_table
+
+# Step 2: Verify migration files content
+
+# Step 3: Run migrations
+php artisan migrate
+
+# Step 4: Verify tables created
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('packages');
+```
+
+#### Option 3: Rollback Plan
+If something goes wrong:
+```bash
+# Rollback last migration
+php artisan migrate:rollback
+
+# Rollback all (if needed)
+php artisan migrate:fresh
+```
+
+---
+
+### Rollback Considerations
+
+| Table | Delete Behavior | Rollback Risk |
+|-------|-----------------|---------------|
+| packages | restrictOnDelete | Medium - prevents ticket_fare/visa_selling_price deletion if packages exist |
+| flight_date_gap | N/A (independent) | Low - safe to drop |
+
+---
+
+### Summary (Phase 5)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 2 |
+| Foreign Keys | 2 |
+| Unique Constraints | 2 |
+| CHECK Constraints | 3 |
+| Indexes | Auto-created by FK |
+
+---
+
+### Model Configuration (Post-Migration)
+
+**Package Model**:
+```php
+protected $casts = [
+    'regular_price' => 'decimal:2',
+    'offer_price' => 'decimal:2',
+];
+```
+
+**FlightDateGap Model**:
+```php
+protected $casts = [
+    'gap' => 'integer',
+];
+```
+
+---
+
+### Validation Layer Requirements
+
+Since business logic cannot be fully enforced at database level, implement validation at:
+
+1. **Form Requests**: Validate package prices, gap values
+2. **Model Observers**: Validate before save
+3. **Service Layer**: Centralized validation logic
+
+**Example validation logic**:
+```php
+// In Package Form Request
+public function rules()
+{
+    return [
+        'package_name' => 'required|string|max:255',
+        'ticket_fare_id' => 'required|exists:ticket_fares,id|unique:packages,ticket_fare_id',
+        'visa_selling_price_id' => 'required|exists:visa_selling_prices,id',
+        'regular_price' => 'required|numeric|min:0',
+        'offer_price' => 'nullable|numeric|min:0',
+    ];
+}
+```
+
+---
+
+## Booking & Passenger Tables (Phase 6)
+
+### Overview
+
+This phase adds 4 tables for managing bookings, passengers, passenger statuses, and documents. These tables form the core of the booking system.
+
+---
+
+### Dependency Analysis
+
+### Tables with NO dependencies:
+- `passenger_statuses` → independent (reference table)
+
+### Tables with dependencies:
+- **bookings** → depends on `users`, `customers`, `offices`, `districts`, `packages`, `fingerprint_charges`, `branches`, `flight_date_gap`
+- **passengers** → depends on `bookings`, `passenger_statuses`
+- **documents** → polymorphic-like (no FK constraints, uses owner_type + owner_id)
+
+---
+
+### Migration Order (Phase 6: Booking & Passenger Tables)
+
+| Step | Table | Dependencies | Artisan Command |
+|------|-------|--------------|-----------------|
+| 1 | passenger_statuses | none | `php artisan make:migration create_passenger_statuses_table` |
+| 2 | bookings | users, customers, offices, districts, packages, fingerprint_charges, branches, flight_date_gap | `php artisan make:migration create_bookings_table` |
+| 3 | passengers | bookings, passenger_statuses | `php artisan make:migration create_passengers_table` |
+| 4 | documents | customers OR passengers (polymorphic) | `php artisan make:migration create_documents_table` |
+
+---
+
+### Design Decisions
+
+#### 1. ID Configuration
+- All primary keys use `bigIncrements()` for consistency
+- Foreign keys use `unsignedBigInteger()` to match
+
+#### 2. Foreign Key Constraints
+
+| Table | Column | References | Delete Behavior |
+|-------|--------|------------|------------------|
+| bookings | user_id | users.id | `restrictOnDelete()` |
+| bookings | customer_id | customers.id | `restrictOnDelete()` |
+| bookings | office_id | offices.id | `restrictOnDelete()` |
+| bookings | district_id | districts.id | `restrictOnDelete()` |
+| bookings | package_id | packages.id | `restrictOnDelete()` |
+| bookings | fingerprint_charge_id | fingerprint_charges.id | `restrictOnDelete()` |
+| bookings | branch_id | branches.id | `restrictOnDelete()` |
+| bookings | date_gap_id | flight_date_gap.id | `restrictOnDelete()` |
+| passengers | booking_id | bookings.id | `restrictOnDelete()` |
+| passengers | passenger_status_id | passenger_statuses.id | `restrictOnDelete()` |
+
+- `onUpdate('cascade')` on all foreign keys
+- `restrictOnDelete()` prevents accidental deletion of parent records with existing children
+
+#### 3. Special Handling: documents Table
+
+Implement as **polymorphic-like structure** (NO foreign key constraints):
+
+```php
+$table->enum('owner_type', ['customer', 'passenger']);
+$table->unsignedBigInteger('owner_id');
+```
+
+- `owner_type = 'customer'` → `owner_id` points to `customers.id`
+- `owner_type = 'passenger'` → `owner_id` points to `passengers.id`
+
+#### 4. Data Type Decisions
+
+| Field | Type | Decision |
+|-------|------|----------|
+| flight_date_range | Two columns | `flight_date_from` (date), `flight_date_to` (date) - easier to query than range |
+| invoice_id | string | Unique, autogenerated in controller later |
+
+#### 5. Nullable Rules
+
+| Column | Nullable | Justification |
+|--------|----------|---------------|
+| remarks | YES | Optional notes |
+| actual_flight_date | YES | May not be known at booking time |
+| description (passenger_statuses) | YES | Optional description |
+
+#### 6. Unique Constraints
+
+| Table | Constraint | Justification |
+|-------|------------|---------------|
+| bookings | invoice_id | Unique autogenerated ID |
+| passenger_statuses | name | Prevent duplicate status names |
+
+#### 7. Enum Handling
+
+**Database Enums:**
+```php
+// bookings.fingerprint_location
+$table->enum('fingerprint_location', ['home', 'office']);
+
+// bookings.discount_type
+$table->enum('discount_type', ['fixed_amount', 'percentage']);
+
+// passengers.passenger_type
+$table->enum('passenger_type', ['adult', 'child', 'infant']);
+
+// passengers.service_required
+$table->enum('service_required', ['all', 'visa_only', 'ticket_only']);
+
+// passengers.ticket_status
+$table->enum('ticket_status', ['pending', 'issued', 're-issued', 'refunded']);
+
+// passengers.visa_status
+$table->enum('visa_status', ['pending', 'submitted', 'issued']);
+
+// documents.owner_type
+$table->enum('owner_type', ['customer', 'passenger']);
+```
+
+**Note**: `passenger_type` reuses existing `App\Enums\PassengerType` enum.
+
+#### 8. Monetary & Numeric Constraints
+
+| Field | Type | Constraint |
+|-------|------|------------|
+| discount_value | decimal(10,2) | CHECK >= 0 |
+| discount_amount | decimal(10,2) | CHECK >= 0 |
+| pax_qty | integer | CHECK >= 1 |
+| stay_duration | integer | CHECK >= 1 |
+
+#### 9. Indexes
+- Foreign key constraints auto-create indexes
+- No redundant manual indexes needed
+
+---
+
+### Business Logic Notes
+
+| Table | Logic |
+|-------|-------|
+| bookings | Central entity linking customer, package, and pricing |
+| bookings | Discount: discount_type determines how discount_value is interpreted (fixed_amount = absolute, percentage = 0-100) |
+| passengers | Belong to bookings - one booking can have multiple passengers |
+| passenger_statuses | Tracks lifecycle of each passenger |
+| documents | Supports both customers and passengers (polymorphic) |
+
+---
+
+### Migration File Details
+
+#### 1. passenger_statuses table
+
+```php
+public function up(): void
+{
+    Schema::create('passenger_statuses', function (Blueprint $table) {
+        $table->id();
+        $table->string('name')->unique();
+        $table->string('description')->nullable();
+        $table->timestamps();
+    });
+}
+
+public function down(): void
+{
+    Schema::dropIfExists('passenger_statuses');
+}
+```
+
+#### 2. bookings table
+
+```php
+public function up(): void
+{
+    Schema::create('bookings', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('user_id');
+        $table->unsignedBigInteger('customer_id');
+        $table->unsignedBigInteger('office_id');
+        $table->unsignedBigInteger('district_id');
+        $table->unsignedBigInteger('package_id');
+        $table->unsignedBigInteger('fingerprint_charge_id');
+        $table->unsignedBigInteger('branch_id');
+        $table->string('invoice_id')->unique();
+        $table->unsignedBigInteger('date_gap_id');
+        $table->enum('fingerprint_location', ['home', 'office']);
+        $table->integer('pax_qty');
+        $table->enum('discount_type', ['fixed_amount', 'percentage']);
+        $table->decimal('discount_value', 10, 2);
+        $table->decimal('discount_amount', 10, 2);
+        $table->string('remarks')->nullable();
+
+        $table->foreign('user_id')->references('id')->on('users')->restrictOnDelete()->onUpdate('cascade');
+        $table->foreign('customer_id')->references('id')->on('customers')->restrictOnDelete()->onUpdate('cascade');
+        $table->foreign('office_id')->references('id')->on('offices')->restrictOnDelete()->onUpdate('cascade');
+        $table->foreign('district_id')->references('id')->on('districts')->restrictOnDelete()->onUpdate('cascade');
+        $table->foreign('package_id')->references('id')->on('packages')->restrictOnDelete()->onUpdate('cascade');
+        $table->foreign('fingerprint_charge_id')->references('id')->on('fingerprint_charges')->restrictOnDelete()->onUpdate('cascade');
+        $table->foreign('branch_id')->references('id')->on('branches')->restrictOnDelete()->onUpdate('cascade');
+        $table->foreign('date_gap_id')->references('id')->on('flight_date_gap')->restrictOnDelete()->onUpdate('cascade');
+
+        $table->timestamps();
+    });
+
+    DB::statement('ALTER TABLE bookings ADD CONSTRAINT pax_qty_positive CHECK (pax_qty >= 1)');
+    DB::statement('ALTER TABLE bookings ADD CONSTRAINT discount_value_positive CHECK (discount_value >= 0)');
+    DB::statement('ALTER TABLE bookings ADD CONSTRAINT discount_amount_positive CHECK (discount_amount >= 0)');
+}
+
+public function down(): void
+{
+    try { DB::statement('ALTER TABLE bookings DROP CONSTRAINT pax_qty_positive'); } catch (\Exception $e) { }
+    try { DB::statement('ALTER TABLE bookings DROP CONSTRAINT discount_value_positive'); } catch (\Exception $e) { }
+    try { DB::statement('ALTER TABLE bookings DROP CONSTRAINT discount_amount_positive'); } catch (\Exception $e) { }
+
+    if (Schema::hasTable('bookings')) {
+        Schema::table('bookings', function (Blueprint $table) {
+            $table->dropForeign(['user_id']);
+            $table->dropForeign(['customer_id']);
+            $table->dropForeign(['office_id']);
+            $table->dropForeign(['district_id']);
+            $table->dropForeign(['package_id']);
+            $table->dropForeign(['fingerprint_charge_id']);
+            $table->dropForeign(['branch_id']);
+            $table->dropForeign(['date_gap_id']);
+        });
+    }
+    Schema::dropIfExists('bookings');
+}
+```
+
+#### 3. passengers table
+
+```php
+public function up(): void
+{
+    Schema::create('passengers', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('booking_id');
+        $table->unsignedBigInteger('passenger_status_id');
+        $table->string('first_name');
+        $table->string('last_name');
+        $table->string('passport_no');
+        $table->string('mobile_no');
+        $table->date('date_of_birth');
+        $table->enum('passenger_type', ['adult', 'child', 'infant']);
+        $table->date('passport_expiry');
+        $table->integer('stay_duration');
+        $table->enum('service_required', ['all', 'visa_only', 'ticket_only']);
+        $table->date('flight_date_from');
+        $table->date('flight_date_to');
+        $table->date('actual_flight_date')->nullable();
+        $table->enum('ticket_status', ['pending', 'issued', 're-issued', 'refunded']);
+        $table->enum('visa_status', ['pending', 'submitted', 'issued']);
+        $table->string('address');
+
+        $table->foreign('booking_id')->references('id')->on('bookings')->restrictOnDelete()->onUpdate('cascade');
+        $table->foreign('passenger_status_id')->references('id')->on('passenger_statuses')->restrictOnDelete()->onUpdate('cascade');
+
+        $table->timestamps();
+    });
+
+    DB::statement('ALTER TABLE passengers ADD CONSTRAINT stay_duration_positive CHECK (stay_duration >= 1)');
+}
+
+public function down(): void
+{
+    try { DB::statement('ALTER TABLE passengers DROP CONSTRAINT stay_duration_positive'); } catch (\Exception $e) { }
+
+    if (Schema::hasTable('passengers')) {
+        Schema::table('passengers', function (Blueprint $table) {
+            $table->dropForeign(['booking_id']);
+            $table->dropForeign(['passenger_status_id']);
+        });
+    }
+    Schema::dropIfExists('passengers');
+}
+```
+
+#### 4. documents table (polymorphic-like)
+
+```php
+public function up(): void
+{
+    Schema::create('documents', function (Blueprint $table) {
+        $table->id();
+        $table->enum('owner_type', ['customer', 'passenger']);
+        $table->unsignedBigInteger('owner_id');
+        $table->string('file_path', 512);
+        $table->string('display_name');
+        $table->timestamps();
+    });
+}
+
+public function down(): void
+{
+    Schema::dropIfExists('documents');
+}
+```
+
+---
+
+### Safe Execution Plan
+
+```bash
+# Step 1: Create all migration files
+php artisan make:migration create_passenger_statuses_table
+php artisan make:migration create_bookings_table
+php artisan make:migration create_passengers_table
+php artisan make:migration create_documents_table
+
+# Step 2: Run migrations
+php artisan migrate
+
+# Step 3: Verify tables created
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('bookings');
+```
+
+---
+
+### Rollback Considerations
+
+| Table | Delete Behavior | Rollback Risk |
+|-------|-----------------|---------------|
+| passenger_statuses | independent | Low |
+| bookings | restrictOnDelete | Medium - prevents customer/package deletion if bookings exist |
+| passengers | restrictOnDelete | Medium - prevents booking/status deletion if passengers exist |
+| documents | N/A (no FK) | Low |
+
+---
+
+### Summary (Phase 6)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 4 |
+| Foreign Keys | 10 |
+| Unique Constraints | 2 |
+| CHECK Constraints | 4 |
+| Enum Columns | 8 |
+| Indexes | Auto-created by FK |
+
+---
+
+### Combined Summary (All Phases)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 28 |
+| Total Foreign Keys | 39 |
+| Total Unique Constraints | 12 |
+| Total CHECK Constraints | 13 |
+| Total Indexes | 15+ (auto from FK) |
+
+---
+
+### PHP Enums Required
+
+**New enums to create:**
+
+```php
+// app/Enums/FingerprintLocation.php
+enum FingerprintLocation: string
+{
+    case HOME = 'home';
+    case OFFICE = 'office';
+}
+```
+
+```php
+// app/Enums/DiscountType.php
+enum DiscountType: string
+{
+    case FIXED_AMOUNT = 'fixed_amount';
+    case PERCENTAGE = 'percentage';
+}
+```
+
+```php
+// app/Enums/ServiceRequired.php
+enum ServiceRequired: string
+{
+    case ALL = 'all';
+    case VISA_ONLY = 'visa_only';
+    case TICKET_ONLY = 'ticket_only';
+}
+```
+
+```php
+// app/Enums/TicketStatus.php
+enum TicketStatus: string
+{
+    case PENDING = 'pending';
+    case ISSUED = 'issued';
+    case RE_ISSUED = 're-issued';
+    case REFUNDED = 'refunded';
+}
+```
+
+```php
+// app/Enums/VisaStatus.php
+enum VisaStatus: string
+{
+    case PENDING = 'pending';
+    case SUBMITTED = 'submitted';
+    case ISSUED = 'issued';
+}
+```
+
+```php
+// app/Enums/OwnerType.php
+enum OwnerType: string
+{
+    case CUSTOMER = 'customer';
+    case PASSENGER = 'passenger';
+}
+```
+
+**Existing enum to reuse:**
+- `App\Enums\PassengerType` - already exists for passenger_type
+
+---
+
+### Model Configuration (Post-Migration)
+
+**Booking Model**:
+```php
+protected $casts = [
+    'fingerprint_location' => FingerprintLocation::class,
+    'discount_type' => DiscountType::class,
+    'discount_value' => 'decimal:2',
+    'discount_amount' => 'decimal:2',
+    'pax_qty' => 'integer',
+];
+```
+
+**Passenger Model**:
+```php
+protected $casts = [
+    'passenger_type' => PassengerType::class,
+    'service_required' => ServiceRequired::class,
+    'ticket_status' => TicketStatus::class,
+    'visa_status' => VisaStatus::class,
+    'date_of_birth' => 'date',
+    'passport_expiry' => 'date',
+    'flight_date_from' => 'date',
+    'flight_date_to' => 'date',
+    'actual_flight_date' => 'date',
+    'stay_duration' => 'integer',
+];
+```
+
+**Document Model**:
+```php
+protected $casts = [
+    'owner_type' => OwnerType::class,
+];
+```
+
+---
+
+### Validation Layer Requirements
+
+**Example validation logic**:
+```php
+// In Booking Form Request
+public function rules()
+{
+    return [
+        'user_id' => 'required|exists:users,id',
+        'customer_id' => 'required|exists:customers,id',
+        'office_id' => 'required|exists:offices,id',
+        'district_id' => 'required|exists:districts,id',
+        'package_id' => 'required|exists:packages,id',
+        'fingerprint_charge_id' => 'required|exists:fingerprint_charges,id',
+        'branch_id' => 'required|exists:branches,id',
+        'date_gap_id' => 'required|exists:flight_date_gap,id',
+        'invoice_id' => 'required|string|unique:bookings,invoice_id',
+        'fingerprint_location' => 'required|in:home,office',
+        'pax_qty' => 'required|integer|min:1',
+        'discount_type' => 'required|in:fixed_amount,percentage',
+        'discount_value' => 'required|numeric|min:0',
+        'discount_amount' => 'required|numeric|min:0',
+        'remarks' => 'nullable|string',
+    ];
+}
+```
+
+---
+
+*Plan Version: 6.0*
 *Updated: May 2026*
