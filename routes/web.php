@@ -6,6 +6,7 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CityCodeController;
 use App\Http\Controllers\DistrictController;
 use App\Http\Controllers\OfficeController;
+use App\Http\Controllers\TravelClassController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -19,6 +20,7 @@ Route::resource('branches', BranchController::class);
 Route::resource('offices', OfficeController::class);
 Route::resource('city-codes', CityCodeController::class);
 Route::resource('airlines', AirlineController::class);
+Route::resource('classes', TravelClassController::class);
 Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
 Route::post('/bookings', function () {
     return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
