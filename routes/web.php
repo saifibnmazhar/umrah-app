@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AirlineCityController;
 use App\Http\Controllers\AirlineClassController;
 use App\Http\Controllers\AirlineController;
 use App\Http\Controllers\BankController;
@@ -23,6 +24,7 @@ Route::resource('city-codes', CityCodeController::class);
 Route::resource('airlines', AirlineController::class);
 Route::resource('classes', TravelClassController::class);
 Route::resource('airline-classes', AirlineClassController::class);
+Route::resource('airline-cities', AirlineCityController::class);
 Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
 Route::post('/bookings', function () {
     return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
