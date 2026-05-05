@@ -1661,5 +1661,301 @@ public function rules()
 
 ---
 
-*Plan Version: 4.0*
+---
+
+## Package & Configuration Tables (Phase 5)
+
+### Overview
+
+This phase adds 2 tables: one for packages (depends on ticket_fares and visa_selling_prices) and one for flight date gap configuration (independent).
+
+---
+
+### Dependency Analysis
+
+### Tables with NO dependencies:
+- `flight_date_gap` → independent (global configuration)
+
+### Tables with dependencies:
+- **packages** → depends on `ticket_fares`, `visa_selling_prices`
+
+---
+
+### Migration Order (Phase 5: Package & Configuration Tables)
+
+| Step | Table | Dependencies | Artisan Command |
+|------|-------|--------------|-----------------|
+| 1 | flight_date_gap | none | `php artisan make:migration create_flight_date_gap_table` |
+| 2 | packages | ticket_fares, visa_selling_prices | `php artisan make:migration create_packages_table` |
+
+---
+
+### Design Decisions
+
+#### 1. ID Configuration
+- All primary keys use `bigIncrements()` for consistency
+- Foreign keys use `unsignedBigInteger()` to match
+
+#### 2. Foreign Key Constraints
+
+| Table | Column | References | Delete Behavior |
+|-------|--------|------------|------------------|
+| packages | ticket_fare_id | ticket_fares.id | `restrictOnDelete()` |
+| packages | visa_selling_price_id | visa_selling_prices.id | `restrictOnDelete()` |
+
+- `onUpdate('cascade')` on all foreign keys
+- `restrictOnDelete()` prevents accidental deletion of parent records with existing children
+
+#### 3. Nullable Rules
+
+| Column | Nullable | Justification |
+|--------|----------|---------------|
+| `offer_price` | YES | Only used for promotional/offer packages; regular packages use only regular_price |
+
+#### 4. Unique Constraints
+
+| Table | Constraint | Justification |
+|-------|------------|---------------|
+| packages | ticket_fare_id (unique) | One package per ticket fare |
+| flight_date_gap | gap (unique) | Prevent duplicate configuration values |
+
+#### 5. Monetary & Numeric Constraints
+
+| Field | Type | Constraint |
+|-------|------|------------|
+| regular_price | decimal(10,2) | CHECK >= 0 |
+| offer_price | decimal(10,2) | CHECK >= 0 (nullable) |
+| gap | integer | CHECK >= 1 |
+
+**Justification**:
+- `decimal(10,2)` provides sufficient precision for package prices
+- Positive integer constraint for gap ensures valid configuration values
+
+#### 6. Indexes
+- Foreign key constraints auto-create indexes
+- No redundant manual indexes needed
+
+---
+
+### Business Logic Notes
+
+| Table | Logic |
+|-------|-------|
+| packages | Combines ticket_fare + visa_selling_price to form complete package |
+| packages | offer_price optional - use for promotional packages |
+| packages | One package per ticket_fare_id (unique) |
+| flight_date_gap | Global configuration table - defines gap value used elsewhere |
+
+---
+
+### Migration File Details
+
+#### 1. flight_date_gap table (create first - independent)
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('flight_date_gap', function (Blueprint $table) {
+        $table->id();
+        $table->integer('gap')->unique();
+
+        $table->timestamps();
+    });
+
+    DB::statement('ALTER TABLE flight_date_gap ADD CONSTRAINT gap_positive CHECK (gap >= 1)');
+}
+
+// DOWN
+public function down(): void
+{
+    try {
+        DB::statement('ALTER TABLE flight_date_gap DROP CONSTRAINT gap_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+
+    Schema::dropIfExists('flight_date_gap');
+}
+```
+
+#### 2. packages table (create second - depends on ticket_fares, visa_selling_prices)
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('packages', function (Blueprint $table) {
+        $table->id();
+        $table->string('package_name');
+        $table->unsignedBigInteger('ticket_fare_id');
+        $table->unsignedBigInteger('visa_selling_price_id');
+        $table->decimal('regular_price', 10, 2);
+        $table->decimal('offer_price', 10, 2)->nullable();
+
+        // Foreign keys with restrictOnDelete
+        $table->foreign('ticket_fare_id')
+            ->references('id')
+            ->on('ticket_fares')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+
+        $table->foreign('visa_selling_price_id')
+            ->references('id')
+            ->on('visa_selling_prices')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+
+        // Unique constraint: one package per ticket_fare
+        $table->unique('ticket_fare_id');
+
+        $table->timestamps();
+    });
+
+    DB::statement('ALTER TABLE packages ADD CONSTRAINT regular_price_positive CHECK (regular_price >= 0)');
+    DB::statement('ALTER TABLE packages ADD CONSTRAINT offer_price_positive CHECK (offer_price >= 0)');
+}
+
+// DOWN
+public function down(): void
+{
+    try {
+        DB::statement('ALTER TABLE packages DROP CONSTRAINT regular_price_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+    try {
+        DB::statement('ALTER TABLE packages DROP CONSTRAINT offer_price_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+
+    if (Schema::hasTable('packages')) {
+        Schema::table('packages', function (Blueprint $table) {
+            $table->dropForeign(['ticket_fare_id']);
+            $table->dropForeign(['visa_selling_price_id']);
+        });
+    }
+
+    Schema::dropIfExists('packages');
+}
+```
+
+---
+
+### Safe Execution Plan
+
+#### Option 1: Full Migration Run (Recommended)
+Run all Phase 5 migrations after creating all files:
+```bash
+php artisan migrate
+```
+
+#### Option 2: Partial/Step-by-Step Execution
+If you need to test incrementally:
+
+```bash
+# Step 1: Create all migration files
+php artisan make:migration create_flight_date_gap_table
+php artisan make:migration create_packages_table
+
+# Step 2: Verify migration files content
+
+# Step 3: Run migrations
+php artisan migrate
+
+# Step 4: Verify tables created
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('packages');
+```
+
+#### Option 3: Rollback Plan
+If something goes wrong:
+```bash
+# Rollback last migration
+php artisan migrate:rollback
+
+# Rollback all (if needed)
+php artisan migrate:fresh
+```
+
+---
+
+### Rollback Considerations
+
+| Table | Delete Behavior | Rollback Risk |
+|-------|-----------------|---------------|
+| packages | restrictOnDelete | Medium - prevents ticket_fare/visa_selling_price deletion if packages exist |
+| flight_date_gap | N/A (independent) | Low - safe to drop |
+
+---
+
+### Summary (Phase 5)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 2 |
+| Foreign Keys | 2 |
+| Unique Constraints | 2 |
+| CHECK Constraints | 3 |
+| Indexes | Auto-created by FK |
+
+---
+
+### Combined Summary (All Phases)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 24 |
+| Total Foreign Keys | 29 |
+| Total Unique Constraints | 10 |
+| Total CHECK Constraints | 9 |
+| Total Indexes | 12+ (auto from FK) |
+
+---
+
+### Model Configuration (Post-Migration)
+
+**Package Model**:
+```php
+protected $casts = [
+    'regular_price' => 'decimal:2',
+    'offer_price' => 'decimal:2',
+];
+```
+
+**FlightDateGap Model**:
+```php
+protected $casts = [
+    'gap' => 'integer',
+];
+```
+
+---
+
+### Validation Layer Requirements
+
+Since business logic cannot be fully enforced at database level, implement validation at:
+
+1. **Form Requests**: Validate package prices, gap values
+2. **Model Observers**: Validate before save
+3. **Service Layer**: Centralized validation logic
+
+**Example validation logic**:
+```php
+// In Package Form Request
+public function rules()
+{
+    return [
+        'package_name' => 'required|string|max:255',
+        'ticket_fare_id' => 'required|exists:ticket_fares,id|unique:packages,ticket_fare_id',
+        'visa_selling_price_id' => 'required|exists:visa_selling_prices,id',
+        'regular_price' => 'required|numeric|min:0',
+        'offer_price' => 'nullable|numeric|min:0',
+    ];
+}
+```
+
+---
+
+*Plan Version: 5.0*
 *Updated: May 2026*
