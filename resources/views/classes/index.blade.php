@@ -32,17 +32,17 @@
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
-                    @forelse($travelClasses as $travelClass)
+                    @forelse($travelClasses as $class)
                         <tr class="hover:bg-slate-50">
-                            <td class="px-4 py-3 text-slate-700">{{ $travelClass->id }}</td>
-                            <td class="px-4 py-3 text-slate-700 font-medium">{{ $travelClass->name }}</td>
+                            <td class="px-4 py-3 text-slate-700">{{ $class->id }}</td>
+                            <td class="px-4 py-3 text-slate-700 font-medium">{{ $class->name }}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
-                                    <a href="{{ route('classes.edit', $travelClass->id) }}" class="text-slate-600 hover:text-slate-800 font-medium" aria-label="Edit {{ $travelClass->name }}">Edit</a>
-                                    <form method="POST" action="{{ route('classes.destroy', $travelClass->id) }}" onsubmit="return confirm('Are you sure you want to delete this class?')">
+                                    <a href="{{ route('classes.edit', $class->id) }}" class="text-slate-600 hover:text-slate-800 font-medium" aria-label="Edit {{ $class->name }}">Edit</a>
+                                    <form method="POST" action="{{ route('classes.destroy', $class->id) }}" onsubmit="return confirm('Are you sure you want to delete this class?')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium" aria-label="Delete {{ $travelClass->name }}">Delete</button>
+                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium" aria-label="Delete {{ $class->name }}">Delete</button>
                                     </form>
                                 </div>
                             </td>

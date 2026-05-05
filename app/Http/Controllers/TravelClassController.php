@@ -32,29 +32,29 @@ class TravelClassController extends Controller
         }
     }
 
-    public function edit(TravelClass $travelClass)
+    public function edit(TravelClass $class)
     {
-        return view('classes.edit', compact('travelClass'));
+        return view('classes.edit', compact('class'));
     }
 
-    public function update(Request $request, TravelClass $travelClass)
+    public function update(Request $request, TravelClass $class)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:classes,name,' . $travelClass->id,
+            'name' => 'required|string|max:255|unique:classes,name,' . $class->id,
         ]);
 
         try {
-            $travelClass->update($validated);
+            $class->update($validated);
             return redirect()->route('classes.index')->with('success', 'Travel class updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update travel class.')->withInput();
         }
     }
 
-    public function destroy(TravelClass $travelClass)
+    public function destroy(TravelClass $class)
     {
         try {
-            $travelClass->delete();
+            $class->delete();
             return redirect()->route('classes.index')->with('success', 'Travel class deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete travel class.');
