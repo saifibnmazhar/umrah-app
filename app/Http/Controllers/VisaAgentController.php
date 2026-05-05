@@ -24,8 +24,8 @@ class VisaAgentController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'address' => 'required|string|max:500',
-            'contacts' => 'required|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'contacts' => 'nullable|string|max:255',
         ]);
 
         try {
@@ -45,8 +45,8 @@ class VisaAgentController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'address' => 'required|string|max:500',
-            'contacts' => 'required|string|max:255',
+            'address' => 'nullable|string|max:500',
+            'contacts' => 'nullable|string|max:255',
         ]);
 
         try {
