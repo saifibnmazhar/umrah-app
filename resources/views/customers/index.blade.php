@@ -39,8 +39,8 @@
                         <tr class="hover:bg-slate-50">
                             <td class="px-6 py-4 text-slate-700 font-medium">{{ $customer->name }}</td>
                             <td class="px-6 py-4">
-                                <span class="px-2 py-1 rounded text-xs font-medium {{ $customer->iqama_type === 'self' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
-                                    {{ ucfirst($customer->iqama_type) }}
+                                <span class="px-2 py-1 rounded text-xs font-medium {{ $customer->iqama_type->value === 'self' ? 'bg-emerald-100 text-emerald-700' : 'bg-amber-100 text-amber-700' }}">
+                                    {{ ucfirst($customer->iqama_type->value) }}
                                 </span>
                             </td>
                             <td class="px-6 py-4 text-slate-600">{{ $customer->passport_no }}</td>
