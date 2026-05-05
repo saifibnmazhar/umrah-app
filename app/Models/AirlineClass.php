@@ -20,4 +20,9 @@ class AirlineClass extends Model
     {
         return $this->belongsTo(TravelClass::class, 'class_id');
     }
+
+    public function class(): BelongsTo
+    {
+        return $this->belongsTo(TravelClass::class, 'class_id');
+    }
 }

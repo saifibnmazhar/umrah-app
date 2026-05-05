@@ -12,7 +12,7 @@ class AirlineClassController extends Controller
 {
     public function index()
     {
-        $airlineClasses = AirlineClass::with(['airline', 'travelClass'])
+        $airlineClasses = AirlineClass::with(['airline', 'class'])
             ->orderBy('id')
             ->paginate(10)
             ->withQueryString();

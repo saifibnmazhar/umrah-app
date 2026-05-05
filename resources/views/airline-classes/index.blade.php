@@ -26,32 +26,30 @@
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
                     <tr>
-                        <th class="px-4 py-3 text-left">ID</th>
-                        <th class="px-4 py-3 text-left">Airline</th>
-                        <th class="px-4 py-3 text-left">Class</th>
-                        <th class="px-4 py-3 text-right">Actions</th>
+                        <th class="px-6 py-4 text-left">Airline</th>
+                        <th class="px-6 py-4 text-left">Class</th>
+                        <th class="px-6 py-4 text-right">Actions</th>
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
                     @forelse($airlineClasses as $airlineClass)
                         <tr class="hover:bg-slate-50">
-                            <td class="px-4 py-3 text-slate-700">{{ $airlineClass->id }}</td>
-                            <td class="px-4 py-3 text-slate-700 font-medium">{{ $airlineClass->airline->name }}</td>
-                            <td class="px-4 py-3 text-slate-600">{{ $airlineClass->travelClass->name }}</td>
-                            <td class="px-4 py-3 text-right">
-                                <div class="flex items-center justify-end gap-3">
-                                    <a href="{{ route('airline-classes.edit', $airlineClass->id) }}" class="text-slate-600 hover:text-slate-800 font-medium" aria-label="Edit {{ $airlineClass->airline->name }} - {{ $airlineClass->travelClass->name }}">Edit</a>
+                            <td class="px-6 py-4 text-slate-700 font-medium">{{ $airlineClass->airline->name }}</td>
+                            <td class="px-6 py-4 text-slate-600">{{ $airlineClass->class->name }}</td>
+                            <td class="px-6 py-4 text-right">
+                                <div class="flex items-center justify-end gap-4">
+                                    <a href="{{ route('airline-classes.edit', $airlineClass->id) }}" class="text-slate-600 hover:text-slate-800 font-medium text-sm" aria-label="Edit {{ $airlineClass->airline->name }} - {{ $airlineClass->class->name }}">Edit</a>
                                     <form method="POST" action="{{ route('airline-classes.destroy', $airlineClass->id) }}" onsubmit="return confirm('Are you sure you want to delete this airline class?')">
                                         @csrf
                                         @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium" aria-label="Delete {{ $airlineClass->airline->name }} - {{ $airlineClass->travelClass->name }}">Delete</button>
+                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium text-sm" aria-label="Delete {{ $airlineClass->airline->name }} - {{ $airlineClass->class->name }}">Delete</button>
                                     </form>
                                 </div>
                             </td>
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-4 py-12 text-center text-slate-500">
+                            <td colspan="3" class="px-6 py-12 text-center text-slate-500">
                                 No airline classes found.
                             </td>
                         </tr>
@@ -61,8 +59,8 @@
         </div>
     </div>
 
-    <div class="mt-4 flex justify-center">
-        {{ $airlineClasses->appends(request()->query())->links() }}
+    <div class="mt-6 flex justify-center">
+        {{ $airlineClasses->links() }}
     </div>
 </div>
 @endsection
