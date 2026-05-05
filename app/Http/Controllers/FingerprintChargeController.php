@@ -11,11 +11,15 @@ class FingerprintChargeController extends Controller
 {
     public function index()
     {
-        $fingerprintCharges = FingerprintCharge::with(['district', 'user'])
-            ->orderBy('id')
-            ->paginate(10)
-            ->withQueryString();
-        return view('fingerprint-charges.index', compact('fingerprintCharges'));
+        $query = FingerprintCharge::with(['district', 'user']);
+
+        if (request()->has('district') && request('district')) {
+            $query->where('district_id', request('district'));
+        }
+
+        $fingerprintCharges = $query->orderBy('id')->paginate(10)->withQueryString();
+        $districts = District::orderBy('name')->get();
+        return view('fingerprint-charges.index', compact('fingerprintCharges', 'districts'));
     }
 
     public function create()
