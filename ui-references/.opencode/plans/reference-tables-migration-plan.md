@@ -1129,5 +1129,537 @@ public function rules()
 
 ---
 
-*Plan Version: 3.0*
+---
+
+## Ticket Fare Tables (Phase 4)
+
+### Overview
+
+This phase adds 3 ticket fare-related tables with proper ordering based on foreign key dependencies.
+
+---
+
+### Dependency Analysis
+
+### Tables with dependencies (create in order):
+- **ticket_fares** → depends on `airlines`, `airline_classes`, `routes`, `users`
+- **group_tickets** → depends on `ticket_fares`
+- **baggage_allowances** → depends on `ticket_fares`
+
+---
+
+### Migration Order (Phase 4: Ticket Fare Tables)
+
+| Step | Table | Dependencies | Artisan Command |
+|------|-------|--------------|-----------------|
+| 1 | ticket_fares | airlines, airline_classes, routes, users | `php artisan make:migration create_ticket_fares_table` |
+| 2 | group_tickets | ticket_fares | `php artisan make:migration create_group_tickets_table` |
+| 3 | baggage_allowances | ticket_fares | `php artisan make:migration create_baggage_allowances_table` |
+
+---
+
+### Design Decisions
+
+#### 1. ID Configuration
+- All primary keys use `bigIncrements()` for consistency
+- Foreign keys use `unsignedBigInteger()` to match
+
+#### 2. Foreign Key Constraints
+
+| Table | Column | References | Delete Behavior |
+|-------|--------|------------|------------------|
+| ticket_fares | airline_id | airlines.id | `restrictOnDelete()` |
+| ticket_fares | airline_classes_id | airline_classes.id | `restrictOnDelete()` |
+| ticket_fares | route_id | routes.id | `restrictOnDelete()` |
+| ticket_fares | user_id | users.id | `restrictOnDelete()` |
+| group_tickets | ticket_fare_id | ticket_fares.id | `restrictOnDelete()` |
+| baggage_allowances | ticket_fare_id | ticket_fares.id | `restrictOnDelete()` |
+
+- `onUpdate('cascade')` on all foreign keys
+- `restrictOnDelete()` prevents accidental deletion of parent records with existing children
+
+#### 3. Nullable Rules
+
+| Column | Nullable | Justification |
+|--------|----------|---------------|
+| `offer_price` | YES | Only used when ticket_type = offer |
+
+#### 4. Unique Constraints
+
+| Table | Constraint | Justification |
+|-------|------------|---------------|
+| ticket_fares | route_id (unique) | One ticket fare per route |
+| group_tickets | pnr (NOT unique) | Same PNR can appear in multiple records |
+| baggage_allowances | (ticket_fare_id, passenger_type, travel_direction) | One allowance per fare/ passenger type/direction |
+
+#### 5. Enum Handling
+
+**Database Enums:**
+```php
+// ticket_fares.ticket_type
+$table->enum('ticket_type', ['regular', 'offer', 'group']);
+
+// baggage_allowances.passenger_type
+$table->enum('passenger_type', ['adult', 'child', 'infant']);
+
+// baggage_allowances.travel_direction
+$table->enum('travel_direction', ['inbound', 'outbound']);
+```
+
+**Recommended PHP Enums** (for model casting):
+
+**File**: `app/Enums/TicketType.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum TicketType: string
+{
+    case REGULAR = 'regular';
+    case OFFER = 'offer';
+    case GROUP = 'group';
+}
+```
+
+**File**: `app/Enums/PassengerType.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum PassengerType: string
+{
+    case ADULT = 'adult';
+    case CHILD = 'child';
+    case INFANT = 'infant';
+}
+```
+
+**File**: `app/Enums/TravelDirection.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum TravelDirection: string
+{
+    case INBOUND = 'inbound';
+    case OUTBOUND = 'outbound';
+}
+```
+
+#### 6. Monetary & Numeric Constraints
+
+All monetary/percentage fields must be **non-negative** (>= 0):
+
+| Field | Type | Constraint |
+|-------|------|------------|
+| net_fare | decimal(10,2) | CHECK >= 0 |
+| selling_fare | decimal(10,2) | CHECK >= 0 |
+| offer_price | decimal(10,2) | CHECK >= 0 (nullable) |
+| child_fare_percentage | decimal(5,2) | CHECK >= 0 |
+| infant_fare_percentage | decimal(5,2) | CHECK >= 0 |
+| ticket_qty | integer | CHECK >= 1 |
+
+**Justification**:
+- `decimal(10,2)` provides sufficient precision for fares (up to 99,999,999.99)
+- Percentage fields use `decimal(5,2)` (max 999.99%) for child/infant discounts
+- CHECK constraints at DB level prevent negative values
+- Business logic should also validate at application layer
+
+#### 7. Indexes
+- Foreign key constraints auto-create indexes
+- No redundant manual indexes needed
+
+---
+
+### Business Logic Notes
+
+| Condition | Field Usage |
+|-----------|-------------|
+| ticket_type = regular | use net_fare, selling_fare |
+| ticket_type = offer | use net_fare, selling_fare, offer_price |
+| ticket_type = group | use net_fare, selling_fare, group_tickets records |
+| baggage_allowances | varies by passenger_type and travel_direction |
+| effective_from/effective_to | defines fare validity date range |
+
+---
+
+### Migration File Details
+
+#### 1. ticket_fares table
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('ticket_fares', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('airline_id');
+        $table->unsignedBigInteger('airline_classes_id');
+        $table->unsignedBigInteger('route_id');
+        $table->enum('ticket_type', ['regular', 'offer', 'group']);
+        $table->date('effective_from');
+        $table->date('effective_to');
+        $table->decimal('net_fare', 10, 2);
+        $table->decimal('selling_fare', 10, 2);
+        $table->decimal('offer_price', 10, 2)->nullable();
+        $table->decimal('child_fare_percentage', 5, 2);
+        $table->decimal('infant_fare_percentage', 5, 2);
+        $table->boolean('with_meal');
+        $table->unsignedBigInteger('user_id');
+
+        // Foreign keys with restrictOnDelete
+        $table->foreign('airline_id')
+            ->references('id')
+            ->on('airlines')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+
+        $table->foreign('airline_classes_id')
+            ->references('id')
+            ->on('airline_classes')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+
+        $table->foreign('route_id')
+            ->references('id')
+            ->on('routes')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+
+        $table->foreign('user_id')
+            ->references('id')
+            ->on('users')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+
+        // Unique constraint: one fare per route
+        $table->unique('route_id');
+
+        $table->timestamps();
+    });
+
+    // Add CHECK constraints
+    DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT net_fare_positive CHECK (net_fare >= 0)');
+    DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT selling_fare_positive CHECK (selling_fare >= 0)');
+    DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT offer_price_positive CHECK (offer_price >= 0)');
+    DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT child_fare_percentage_positive CHECK (child_fare_percentage >= 0)');
+    DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT infant_fare_percentage_positive CHECK (infant_fare_percentage >= 0)');
+}
+
+// DOWN
+public function down(): void
+{
+    try {
+        DB::statement('ALTER TABLE ticket_fares DROP CONSTRAINT net_fare_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+    try {
+        DB::statement('ALTER TABLE ticket_fares DROP CONSTRAINT selling_fare_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+    try {
+        DB::statement('ALTER TABLE ticket_fares DROP CONSTRAINT offer_price_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+    try {
+        DB::statement('ALTER TABLE ticket_fares DROP CONSTRAINT child_fare_percentage_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+    try {
+        DB::statement('ALTER TABLE ticket_fares DROP CONSTRAINT infant_fare_percentage_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+
+    if (Schema::hasTable('ticket_fares')) {
+        Schema::table('ticket_fares', function (Blueprint $table) {
+            $table->dropForeign(['airline_id']);
+            $table->dropForeign(['airline_classes_id']);
+            $table->dropForeign(['route_id']);
+            $table->dropForeign(['user_id']);
+        });
+    }
+
+    Schema::dropIfExists('ticket_fares');
+}
+```
+
+#### 2. group_tickets table
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('group_tickets', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('ticket_fare_id');
+        $table->date('inbound_date');
+        $table->date('outbound_date');
+        $table->string('pnr'); // NOT unique
+        $table->integer('ticket_qty');
+        $table->boolean('is_refundable');
+        $table->boolean('is_exchangable');
+
+        // Foreign keys
+        $table->foreign('ticket_fare_id')
+            ->references('id')
+            ->on('ticket_fares')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+
+        $table->timestamps();
+    });
+
+    // Add CHECK constraint for positive ticket_qty
+    DB::statement('ALTER TABLE group_tickets ADD CONSTRAINT ticket_qty_positive CHECK (ticket_qty >= 1)');
+}
+
+// DOWN
+public function down(): void
+{
+    try {
+        DB::statement('ALTER TABLE group_tickets DROP CONSTRAINT ticket_qty_positive');
+    } catch (\Exception $e) {
+        // ignore if constraint does not exist
+    }
+
+    if (Schema::hasTable('group_tickets')) {
+        Schema::table('group_tickets', function (Blueprint $table) {
+            $table->dropForeign(['ticket_fare_id']);
+        });
+    }
+
+    Schema::dropIfExists('group_tickets');
+}
+```
+
+#### 3. baggage_allowances table
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('baggage_allowances', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('ticket_fare_id');
+        $table->enum('passenger_type', ['adult', 'child', 'infant']);
+        $table->enum('travel_direction', ['inbound', 'outbound']);
+        $table->string('allowance');
+
+        // Foreign keys
+        $table->foreign('ticket_fare_id')
+            ->references('id')
+            ->on('ticket_fares')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+
+        // Unique constraint: one allowance per fare/passenger_type/direction
+        $table->unique(['ticket_fare_id', 'passenger_type', 'travel_direction']);
+
+        $table->timestamps();
+    });
+}
+
+// DOWN
+public function down(): void
+{
+    if (Schema::hasTable('baggage_allowances')) {
+        Schema::table('baggage_allowances', function (Blueprint $table) {
+            $table->dropForeign(['ticket_fare_id']);
+        });
+    }
+
+    Schema::dropIfExists('baggage_allowances');
+}
+```
+
+---
+
+### Safe Execution Plan
+
+#### Option 1: Full Migration Run (Recommended)
+Run all Phase 4 migrations after creating all files:
+```bash
+php artisan migrate
+```
+
+#### Option 2: Partial/Step-by-Step Execution
+If you need to test incrementally:
+
+```bash
+# Step 1: Create all migration files
+php artisan make:migration create_ticket_fares_table
+php artisan make:migration create_group_tickets_table
+php artisan make:migration create_baggage_allowances_table
+
+# Step 2: Verify migration files content
+
+# Step 3: Run migrations
+php artisan migrate
+
+# Step 4: Verify tables created
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('ticket_fares');
+```
+
+#### Option 3: Rollback Plan
+If something goes wrong:
+```bash
+# Rollback last migration
+php artisan migrate:rollback
+
+# Rollback all (if needed)
+php artisan migrate:fresh
+```
+
+---
+
+### Rollback Considerations
+
+| Table | Delete Behavior | Rollback Risk |
+|-------|-----------------|---------------|
+| ticket_fares | restrictOnDelete | Medium - prevents route/airline deletion if fares exist |
+| group_tickets | restrictOnDelete | Medium - prevents ticket_fare deletion if group tickets exist |
+| baggage_allowances | restrictOnDelete | Medium - prevents ticket_fare deletion if allowances exist |
+
+**Note**: The `restrictOnDelete()` constraints mean you cannot delete parent records (routes, airlines, ticket_fares) if child records exist. You must first delete the child records or modify them to allow parent deletion.
+
+---
+
+### Summary (Phase 4)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 3 |
+| Foreign Keys | 6 |
+| Unique Constraints | 2 |
+| CHECK Constraints | 6 |
+| Enum Columns | 4 |
+| Indexes | Auto-created by FK |
+
+---
+
+### Combined Summary (All Phases)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 22 |
+| Total Foreign Keys | 27 |
+| Total Unique Constraints | 8 |
+| Total CHECK Constraints | 6 |
+| Total Indexes | 10+ (auto from FK) |
+
+---
+
+### Enum Definitions Required
+
+Create the following enums before running migrations:
+
+**File**: `app/Enums/TicketType.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum TicketType: string
+{
+    case REGULAR = 'regular';
+    case OFFER = 'offer';
+    case GROUP = 'group';
+}
+```
+
+**File**: `app/Enums/PassengerType.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum PassengerType: string
+{
+    case ADULT = 'adult';
+    case CHILD = 'child';
+    case INFANT = 'infant';
+}
+```
+
+**File**: `app/Enums/TravelDirection.php`
+```php
+<?php
+
+namespace App\Enums;
+
+enum TravelDirection: string
+{
+    case INBOUND = 'inbound';
+    case OUTBOUND = 'outbound';
+}
+```
+
+**Model Cast Examples**:
+```php
+// In TicketFare model
+protected $casts = [
+    'ticket_type' => TicketType::class,
+    'effective_from' => 'date',
+    'effective_to' => 'date',
+    'net_fare' => 'decimal:2',
+    'selling_fare' => 'decimal:2',
+    'offer_price' => 'decimal:2',
+    'child_fare_percentage' => 'decimal:2',
+    'infant_fare_percentage' => 'decimal:2',
+    'with_meal' => 'boolean',
+];
+
+// In BaggageAllowance model
+protected $casts = [
+    'passenger_type' => PassengerType::class,
+    'travel_direction' => TravelDirection::class,
+    'is_refundable' => 'boolean',
+    'is_exchangable' => 'boolean',
+];
+```
+
+---
+
+### Validation Layer Requirements
+
+Since business logic cannot be fully enforced at database level, implement validation at:
+
+1. **Form Requests**: Validate ticket_type, fare amounts, dates
+2. **Model Observers**: Validate before save
+3. **Service Layer**: Centralized validation logic
+
+**Example validation logic**:
+```php
+// In TicketFare Form Request
+public function rules()
+{
+    return [
+        'airline_id' => 'required|exists:airlines,id',
+        'airline_classes_id' => 'required|exists:airline_classes,id',
+        'route_id' => 'required|exists:routes,id|unique:ticket_fares,route_id',
+        'ticket_type' => 'required|in:regular,offer,group',
+        'effective_from' => 'required|date',
+        'effective_to' => 'required|date|after_or_equal:effective_from',
+        'net_fare' => 'required|numeric|min:0',
+        'selling_fare' => 'required|numeric|min:0',
+        'offer_price' => 'nullable|numeric|min:0',
+        'child_fare_percentage' => 'required|numeric|min:0',
+        'infant_fare_percentage' => 'required|numeric|min:0',
+        'with_meal' => 'required|boolean',
+        'user_id' => 'required|exists:users,id',
+    ];
+}
+```
+
+---
+
+*Plan Version: 4.0*
 *Updated: May 2026*
