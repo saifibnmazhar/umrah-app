@@ -15,7 +15,8 @@ class VisaAgentCostController extends Controller
             ->orderBy('id')
             ->paginate(10)
             ->withQueryString();
-        return view('visa-agent-costs.index', compact('visaAgentCosts'));
+        $visaAgents = VisaAgent::orderBy('name')->get();
+        return view('visa-agent-costs.index', compact('visaAgentCosts', 'visaAgents'));
     }
 
     public function create()
