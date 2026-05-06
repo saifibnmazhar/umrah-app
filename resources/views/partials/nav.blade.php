@@ -31,6 +31,27 @@
                 </div>
                 
                 <a href="{{ route('settings') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="settings">Settings</a>
+                
+                <div class="relative group">
+                    <a href="#" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="appManagement">App Management ▾</a>
+                    <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50 min-w-[200px]">
+                        <a href="{{ route('districts.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Districts</a>
+                        <a href="{{ route('banks.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Banks</a>
+                        <a href="{{ route('branches.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Branches</a>
+                        <a href="{{ route('offices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Offices</a>
+                        <a href="{{ route('city-codes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">City Codes</a>
+                        <a href="{{ route('airlines.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airlines</a>
+                        <a href="{{ route('classes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Travel Classes</a>
+                        <a href="{{ route('airline-classes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airline Classes</a>
+                        <a href="{{ route('airline-cities.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airline Cities</a>
+                        <a href="{{ route('customers.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Customers</a>
+                        <a href="{{ route('visa-agents.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agents</a>
+                        <a href="{{ route('ticket-agents.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agents</a>
+                        <a href="{{ route('fingerprint-charges.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Fingerprint Charges</a>
+                        <a href="{{ route('visa-agent-costs.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Costs</a>
+                        <a href="{{ route('visa-selling-prices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Selling Prices</a>
+                    </div>
+                </div>
             </div>
             
             <button @click="mobileOpen = !mobileOpen" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
@@ -66,6 +87,25 @@
             </div>
             
             <a href="{{ route('settings') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600 border-t border-slate-600 mt-2 pt-3">Settings</a>
+            
+            <div class="border-t border-slate-600 pt-2 mt-2">
+                <span class="block px-3 py-1 text-xs text-slate-400 font-medium">APP MANAGEMENT</span>
+                <a href="{{ route('districts.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Districts</a>
+                <a href="{{ route('banks.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Banks</a>
+                <a href="{{ route('branches.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Branches</a>
+                <a href="{{ route('offices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Offices</a>
+                <a href="{{ route('city-codes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">City Codes</a>
+                <a href="{{ route('airlines.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airlines</a>
+                <a href="{{ route('classes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Travel Classes</a>
+                <a href="{{ route('airline-classes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airline Classes</a>
+                <a href="{{ route('airline-cities.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airline Cities</a>
+                <a href="{{ route('customers.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Customers</a>
+                <a href="{{ route('visa-agents.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agents</a>
+                <a href="{{ route('ticket-agents.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agents</a>
+                <a href="{{ route('fingerprint-charges.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Charges</a>
+                <a href="{{ route('visa-agent-costs.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Costs</a>
+                <a href="{{ route('visa-selling-prices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Selling Prices</a>
+            </div>
         </div>
     </div>
 </nav>
