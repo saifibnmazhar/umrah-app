@@ -22,7 +22,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE visa_selling_prices ADD CONSTRAINT selling_price_positive CHECK (selling_price >= 0)');
+        DB::statement('ALTER TABLE visa_selling_prices ADD CONSTRAINT visa_selling_prices_selling_price_check CHECK (selling_price >= 0)');
     }
 
     /**
@@ -30,11 +30,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        try {
-            DB::statement('ALTER TABLE visa_selling_prices DROP CONSTRAINT selling_price_positive');
-        } catch (\Exception $e) {
-            // ignore if constraint does not exist
-        }
+        DB::statement('ALTER TABLE visa_selling_prices DROP CHECK IF EXISTS visa_selling_prices_selling_price_check');
 
         if (Schema::hasTable('visa_selling_prices')) {
             Schema::table('visa_selling_prices', function (Blueprint $table) {
