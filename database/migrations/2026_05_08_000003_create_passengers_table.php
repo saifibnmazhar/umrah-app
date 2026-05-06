@@ -44,16 +44,12 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE passengers ADD CONSTRAINT stay_duration_positive CHECK (stay_duration >= 1)');
+        DB::statement('ALTER TABLE passengers ADD CONSTRAINT passengers_stay_duration_check CHECK (stay_duration >= 1)');
     }
 
     public function down(): void
     {
-        try {
-            DB::statement('ALTER TABLE passengers DROP CONSTRAINT stay_duration_positive');
-        } catch (\Exception $e) {
-            // ignore if constraint does not exist
-        }
+        DB::statement('ALTER TABLE passengers DROP CHECK IF EXISTS passengers_stay_duration_check');
 
         if (Schema::hasTable('passengers')) {
             Schema::table('passengers', function (Blueprint $table) {

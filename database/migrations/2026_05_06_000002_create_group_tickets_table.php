@@ -28,16 +28,12 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE group_tickets ADD CONSTRAINT ticket_qty_positive CHECK (ticket_qty >= 1)');
+        DB::statement('ALTER TABLE group_tickets ADD CONSTRAINT group_tickets_ticket_qty_check CHECK (ticket_qty >= 1)');
     }
 
     public function down(): void
     {
-        try {
-            DB::statement('ALTER TABLE group_tickets DROP CONSTRAINT ticket_qty_positive');
-        } catch (\Exception $e) {
-            // ignore if constraint does not exist
-        }
+        DB::statement('ALTER TABLE group_tickets DROP CHECK IF EXISTS group_tickets_ticket_qty_check');
 
         if (Schema::hasTable('group_tickets')) {
             Schema::table('group_tickets', function (Blueprint $table) {

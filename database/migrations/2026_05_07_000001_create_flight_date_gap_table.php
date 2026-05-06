@@ -16,16 +16,12 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE flight_date_gap ADD CONSTRAINT gap_positive CHECK (gap >= 1)');
+        DB::statement('ALTER TABLE flight_date_gap ADD CONSTRAINT flight_date_gap_gap_check CHECK (gap >= 1)');
     }
 
     public function down(): void
     {
-        try {
-            DB::statement('ALTER TABLE flight_date_gap DROP CONSTRAINT gap_positive');
-        } catch (\Exception $e) {
-            // ignore if constraint does not exist
-        }
+        DB::statement('ALTER TABLE flight_date_gap DROP CHECK IF EXISTS flight_date_gap_gap_check');
 
         Schema::dropIfExists('flight_date_gap');
     }

@@ -34,22 +34,14 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE packages ADD CONSTRAINT regular_price_positive CHECK (regular_price >= 0)');
-        DB::statement('ALTER TABLE packages ADD CONSTRAINT offer_price_positive CHECK (offer_price >= 0)');
+        DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_regular_price_check CHECK (regular_price >= 0)');
+        DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_offer_price_check CHECK (offer_price >= 0)');
     }
 
     public function down(): void
     {
-        try {
-            DB::statement('ALTER TABLE packages DROP CONSTRAINT regular_price_positive');
-        } catch (\Exception $e) {
-            // ignore if constraint does not exist
-        }
-        try {
-            DB::statement('ALTER TABLE packages DROP CONSTRAINT offer_price_positive');
-        } catch (\Exception $e) {
-            // ignore if constraint does not exist
-        }
+        DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_regular_price_check');
+        DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_offer_price_check');
 
         if (Schema::hasTable('packages')) {
             Schema::table('packages', function (Blueprint $table) {

@@ -78,28 +78,16 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE bookings ADD CONSTRAINT pax_qty_positive CHECK (pax_qty >= 1)');
-        DB::statement('ALTER TABLE bookings ADD CONSTRAINT discount_value_positive CHECK (discount_value >= 0)');
-        DB::statement('ALTER TABLE bookings ADD CONSTRAINT discount_amount_positive CHECK (discount_amount >= 0)');
+        DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_pax_qty_check CHECK (pax_qty >= 1)');
+        DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_discount_value_check CHECK (discount_value >= 0)');
+        DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_discount_amount_check CHECK (discount_amount >= 0)');
     }
 
     public function down(): void
     {
-        try {
-            DB::statement('ALTER TABLE bookings DROP CONSTRAINT pax_qty_positive');
-        } catch (\Exception $e) {
-            // ignore if constraint does not exist
-        }
-        try {
-            DB::statement('ALTER TABLE bookings DROP CONSTRAINT discount_value_positive');
-        } catch (\Exception $e) {
-            // ignore if constraint does not exist
-        }
-        try {
-            DB::statement('ALTER TABLE bookings DROP CONSTRAINT discount_amount_positive');
-        } catch (\Exception $e) {
-            // ignore if constraint does not exist
-        }
+        DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_pax_qty_check');
+        DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_discount_value_check');
+        DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_discount_amount_check');
 
         if (Schema::hasTable('bookings')) {
             Schema::table('bookings', function (Blueprint $table) {

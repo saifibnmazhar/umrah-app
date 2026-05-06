@@ -27,7 +27,7 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE fingerprint_charges ADD CONSTRAINT fingerprint_charge_positive CHECK (fingerprint_charge >= 0)');
+        DB::statement('ALTER TABLE fingerprint_charges ADD CONSTRAINT fingerprint_charges_fingerprint_charge_check CHECK (fingerprint_charge >= 0)');
     }
 
     /**
@@ -35,11 +35,7 @@ return new class extends Migration
      */
     public function down(): void
     {
-        try {
-            DB::statement('ALTER TABLE fingerprint_charges DROP CONSTRAINT fingerprint_charge_positive');
-        } catch (\Exception $e) {
-            // ignore if constraint does not exist
-        }
+        DB::statement('ALTER TABLE fingerprint_charges DROP CHECK IF EXISTS fingerprint_charges_fingerprint_charge_check');
 
         if (Schema::hasTable('fingerprint_charges')) {
             Schema::table('fingerprint_charges', function (Blueprint $table) {
