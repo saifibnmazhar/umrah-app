@@ -11,14 +11,26 @@
     <div class="bg-white rounded-xl shadow-lg p-6">
         <h2 class="text-xl font-semibold text-slate-700 mb-6 pb-2 border-b border-slate-200">Add Customer</h2>
 
-        <form method="POST" action="{{ route('customers.store') }}" class="space-y-4">
+        @if(session('success'))
+            <div class="mb-4 px-4 py-3 bg-emerald-50 border border-emerald-200 text-emerald-700 rounded-lg">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="mb-4 px-4 py-3 bg-red-50 border border-red-200 text-red-700 rounded-lg">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        <form method="POST" action="{{ route('customers.store') }}" class="space-y-4" enctype="multipart/form-data">
             @csrf
 
             <div>
                 <label for="name" class="block text-sm font-medium text-slate-700 mb-1">Name *</label>
                 <input type="text" name="name" id="name" value="{{ old('name') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('name') border-red-500 @enderror" placeholder="Full Name">
                 @error('name')
-                    <span class="text-sm text-red-600 mt-1 block">{{ $message }}</span>
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
@@ -30,63 +42,71 @@
                     <option value="referral" {{ old('iqama_type') == 'referral' ? 'selected' : '' }}>Referral</option>
                 </select>
                 @error('iqama_type')
-                    <span class="text-sm text-red-600 mt-1 block">{{ $message }}</span>
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
             <div id="referralFields" class="{{ old('iqama_type') == 'referral' ? '' : 'hidden' }} space-y-4">
                 <div>
                     <label for="ref_iqama_no" class="block text-sm font-medium text-slate-700 mb-1">Ref. Iqama No *</label>
-                    <input type="text" name="ref_iqama_no" id="ref_iqama_no" value="{{ old('ref_iqama_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('ref_iqama_no') border-red-500 @endif" placeholder="Referrer Iqama Number">
+                    <input type="text" name="ref_iqama_no" id="ref_iqama_no" value="{{ old('ref_iqama_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('ref_iqama_no') border-red-500 @enderror" placeholder="Referrer Iqama Number">
                     @error('ref_iqama_no')
-                        <span class="text-sm text-red-600 mt-1 block">{{ $message }}</span>
+                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div>
                     <label for="ref_mobile_no" class="block text-sm font-medium text-slate-700 mb-1">Ref. Mobile No. *</label>
-                    <input type="text" name="ref_mobile_no" id="ref_mobile_no" value="{{ old('ref_mobile_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('ref_mobile_no') border-red-500 @endif" placeholder="05XXXXXXXX">
+                    <input type="tel" name="ref_mobile_no" id="ref_mobile_no" value="{{ old('ref_mobile_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('ref_mobile_no') border-red-500 @enderror" placeholder="05XXXXXXXX">
                     @error('ref_mobile_no')
-                        <span class="text-sm text-red-600 mt-1 block">{{ $message }}</span>
+                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
                 <div>
-                    <label for="ref_iqama_doc" class="block text-sm font-medium text-slate-700 mb-1">Ref. Iqama Doc</label>
-                    <input type="text" name="ref_iqama_doc" id="ref_iqama_doc" value="{{ old('ref_iqama_doc') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('ref_iqama_doc') border-red-500 @endif" placeholder="Document reference">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Upload Ref. Iqama *</label>
+                    <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('ref_iqama_doc').click()">
+                        <input type="file" id="ref_iqama_doc" name="ref_iqama_doc" class="hidden" accept=".jpg,.jpeg,.png,.pdf" onchange="handleRefIqamaFileUpload(this)">
+                        <div class="text-slate-500">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                            </svg>
+                            <span id="ref_iqama_doc_filename">click to upload</span>
+                        </div>
+                    </div>
                     @error('ref_iqama_doc')
-                        <span class="text-sm text-red-600 mt-1 block">{{ $message }}</span>
+                        <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                     @enderror
                 </div>
             </div>
 
             <div>
                 <label for="iqama_no" class="block text-sm font-medium text-slate-700 mb-1">Iqama No. *</label>
-                <input type="text" name="iqama_no" id="iqama_no" value="{{ old('iqama_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('iqama_no') border-red-500 @endif" placeholder="Iqama Number">
+                <input type="text" name="iqama_no" id="iqama_no" value="{{ old('iqama_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('iqama_no') border-red-500 @enderror" placeholder="Iqama Number">
                 @error('iqama_no')
-                    <span class="text-sm text-red-600 mt-1 block">{{ $message }}</span>
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
             <div>
                 <label for="passport_no" class="block text-sm font-medium text-slate-700 mb-1">Passport No. *</label>
-                <input type="text" name="passport_no" id="passport_no" value="{{ old('passport_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('passport_no') border-red-500 @endif" placeholder="Passport Number">
+                <input type="text" name="passport_no" id="passport_no" value="{{ old('passport_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('passport_no') border-red-500 @enderror" placeholder="Passport Number">
                 @error('passport_no')
-                    <span class="text-sm text-red-600 mt-1 block">{{ $message }}</span>
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
             <div>
                 <label for="mobile_no" class="block text-sm font-medium text-slate-700 mb-1">Mobile No. *</label>
-                <input type="text" name="mobile_no" id="mobile_no" value="{{ old('mobile_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('mobile_no') border-red-500 @endif" placeholder="05XXXXXXXX">
+                <input type="tel" name="mobile_no" id="mobile_no" value="{{ old('mobile_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('mobile_no') border-red-500 @enderror" placeholder="05XXXXXXXX">
                 @error('mobile_no')
-                    <span class="text-sm text-red-600 mt-1 block">{{ $message }}</span>
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
             <div>
                 <label for="address" class="block text-sm font-medium text-slate-700 mb-1">Address *</label>
-                <textarea name="address" id="address" rows="3" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('address') border-red-500 @endif">{{ old('address') }}</textarea>
+                <textarea name="address" id="address" rows="3" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('address') border-red-500 @enderror">{{ old('address') }}</textarea>
                 @error('address')
-                    <span class="text-sm text-red-600 mt-1 block">{{ $message }}</span>
+                    <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                 @enderror
             </div>
 
@@ -123,6 +143,14 @@ function toggleReferralFields() {
             refMobile.required = false;
             refMobile.value = '';
         }
+    }
+}
+
+function handleRefIqamaFileUpload(input) {
+    const file = input.files[0];
+    const filenameDisplay = document.getElementById('ref_iqama_doc_filename');
+    if (file && filenameDisplay) {
+        filenameDisplay.textContent = file.name;
     }
 }
 </script>
