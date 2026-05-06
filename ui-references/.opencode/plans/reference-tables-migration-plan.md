@@ -2441,5 +2441,4 @@ public function rules()
 ---
 
 *Plan Version: 6.0*
->>>>>>> migrations
 *Updated: May 2026*
