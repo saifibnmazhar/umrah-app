@@ -34,7 +34,7 @@
                 @enderror
             </div>
 
-            <div id="referralFields" class="{{ old('iqama_type') == 'Referral' ? '' : 'hidden' }} space-y-4">
+            <div id="referralFields" class="{{ old('iqama_type') == 'referral' ? '' : 'hidden' }} space-y-4">
                 <div>
                     <label for="ref_iqama_no" class="block text-sm font-medium text-slate-700 mb-1">Ref. Iqama No *</label>
                     <input type="text" name="ref_iqama_no" id="ref_iqama_no" value="{{ old('ref_iqama_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('ref_iqama_no') border-red-500 @endif" placeholder="Referrer Iqama Number">
@@ -106,11 +106,23 @@
 function toggleReferralFields() {
     const iqamaType = document.getElementById('iqama_type').value;
     const referralFields = document.getElementById('referralFields');
+    const refIqama = document.getElementById('ref_iqama_no');
+    const refMobile = document.getElementById('ref_mobile_no');
     
-    if (iqamaType === 'Referral') {
+    if (iqamaType === 'referral') {
         referralFields.classList.remove('hidden');
+        if (refIqama) refIqama.required = true;
+        if (refMobile) refMobile.required = true;
     } else {
         referralFields.classList.add('hidden');
+        if (refIqama) {
+            refIqama.required = false;
+            refIqama.value = '';
+        }
+        if (refMobile) {
+            refMobile.required = false;
+            refMobile.value = '';
+        }
     }
 }
 </script>
