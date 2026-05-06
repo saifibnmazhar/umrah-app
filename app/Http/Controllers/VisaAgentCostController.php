@@ -40,7 +40,7 @@ class VisaAgentCostController extends Controller
         ]);
 
         try {
-            $validated['user_id'] = auth()->id();
+            $validated['user_id'] = auth()->id() ?? 1;
             VisaAgentCost::create($validated);
             return redirect()->route('visa-agent-costs.index')->with('success', 'Visa agent cost created successfully.');
         } catch (\Exception $e) {

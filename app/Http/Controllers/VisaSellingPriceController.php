@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\User;
 use App\Models\VisaSellingPrice;
 use Illuminate\Http\Request;
 
@@ -10,7 +11,7 @@ class VisaSellingPriceController extends Controller
     public function index()
     {
         $visaSellingPrices = VisaSellingPrice::with(['user'])
-            ->orderBy('id')
+            ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
         return view('visa-selling-prices.index', compact('visaSellingPrices'));
@@ -28,12 +29,17 @@ class VisaSellingPriceController extends Controller
         ]);
 
         try {
-            $validated['user_id'] = auth()->id();
+            $userId = auth()->id() ?? User::first()?->id;
+
+            if (!$userId) {
+                return redirect()->back()->with('error', 'No users found. Please create a user first.')->withInput();
+            }
+
+            $validated['user_id'] = $userId;
             VisaSellingPrice::create($validated);
             return redirect()->route('visa-selling-prices.index')->with('success', 'Visa selling price created successfully.');
         } catch (\Exception $e) {
-            \Log::error('VisaSellingPrice Create Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to create visa selling price: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('error', 'Failed to create visa selling price.')->withInput();
         }
     }
 
@@ -49,11 +55,17 @@ class VisaSellingPriceController extends Controller
         ]);
 
         try {
+            $userId = auth()->id() ?? User::first()?->id;
+
+            if (!$userId) {
+                return redirect()->back()->with('error', 'No users found. Please create a user first.')->withInput();
+            }
+
+            $validated['user_id'] = $userId;
             $visaSellingPrice->update($validated);
             return redirect()->route('visa-selling-prices.index')->with('success', 'Visa selling price updated successfully.');
         } catch (\Exception $e) {
-            \Log::error('VisaSellingPrice Update Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to update visa selling price: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('error', 'Failed to update visa selling price.')->withInput();
         }
     }
 
