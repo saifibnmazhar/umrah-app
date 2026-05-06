@@ -80,20 +80,26 @@
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Agent Name</label>
-                    <select id="visaAgentSelect" name="visa_agent_id" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <select id="visaAgentSelect" name="visa_agent_id" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('visa_agent_id') border-red-500 @enderror">
                         <option value="">Select Agent</option>
                         @foreach($visaAgents as $agent)
-                            <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                            <option value="{{ $agent->id }}" {{ old('visa_agent_id') == $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
                         @endforeach
                     </select>
+                    @error('visa_agent_id')
+                        <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                    @enderror
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Saudi Address</label>
-                    <input type="text" id="agentAddress" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Saudi address">
+                    <input type="text" id="agentAddress" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Saudi address" value="{{ old('agentAddress') }}">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Agent Visa Price (SAR)</label>
-                    <input type="number" id="costInput" name="visa_agent_cost" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" required>
+                    <input type="number" id="costInput" name="visa_agent_cost" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none @error('visa_agent_cost') border-red-500 @enderror" value="{{ old('visa_agent_cost', 0) }}" min="0" required>
+                    @error('visa_agent_cost')
+                        <span class="text-red-500 text-sm mt-1 block">{{ $message }}</span>
+                    @enderror
                 </div>
             </div>
             <div class="flex gap-3 mt-6">
@@ -110,9 +116,9 @@ function openModal() {
     document.getElementById('formMethod').value = 'POST';
     document.getElementById('costForm').action = '{{ route("visa-agent-costs.store") }}';
     document.getElementById('modalTitle').textContent = 'Agent Visa Price';
-    document.getElementById('costInput').value = '0';
-    document.getElementById('visaAgentSelect').value = '';
-    document.getElementById('agentAddress').value = '';
+    document.getElementById('costInput').value = '{{ old('visa_agent_cost', 0) }}';
+    document.getElementById('visaAgentSelect').value = '{{ old('visa_agent_id', '') }}';
+    document.getElementById('agentAddress').value = '{{ old('agentAddress', '') }}';
 }
 
 function closeModal() {
@@ -128,5 +134,12 @@ function editCost(id, agentId, agentAddress, cost) {
     document.getElementById('visaAgentSelect').value = agentId;
     document.getElementById('agentAddress').value = agentAddress;
 }
+
+// Auto-open modal if there are validation errors
+@if($errors->any() || session('error'))
+    document.addEventListener('DOMContentLoaded', function() {
+        openModal();
+    });
+@endif
 </script>
 @endsection

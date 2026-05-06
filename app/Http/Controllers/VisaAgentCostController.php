@@ -44,7 +44,8 @@ class VisaAgentCostController extends Controller
             VisaAgentCost::create($validated);
             return redirect()->route('visa-agent-costs.index')->with('success', 'Visa agent cost created successfully.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to create visa agent cost.')->withInput();
+            \Log::error('VisaAgentCost Create Error: ' . $e->getMessage());
+            return redirect()->back()->with('error', 'Failed to create visa agent cost: ' . $e->getMessage())->withInput();
         }
     }
 
