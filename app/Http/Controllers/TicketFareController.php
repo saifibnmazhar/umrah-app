@@ -56,6 +56,7 @@ class TicketFareController extends Controller
             'airline_id' => 'required|exists:airlines,id',
             'airline_classes_id' => 'required|exists:airline_classes,id',
             'route_id' => 'required|exists:routes,id',
+            'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
             'ticket_type' => 'required|in:regular,offer,group',
             'effective_from' => 'required|date',
             'effective_to' => 'required|date|after_or_equal:effective_from',
@@ -63,7 +64,7 @@ class TicketFareController extends Controller
             'selling_fare' => 'required|numeric|min:0',
             'child_fare_percentage' => 'required|numeric|min:0|max:100',
             'infant_fare_percentage' => 'required|numeric|min:0|max:100',
-            'with_meal' => 'required|boolean',
+            'with_meal' => 'nullable|boolean',
         ];
 
         if ($request->ticket_type === 'offer') {
@@ -71,12 +72,21 @@ class TicketFareController extends Controller
         }
 
         if ($request->ticket_type === 'group') {
-            $rules['inbound_date'] = 'required|date';
-            $rules['outbound_date'] = 'required|date';
+            $routeType = $request->route_type;
+
+            if ($routeType === 'oneway_inbound') {
+                $rules['inbound_date'] = 'required|date';
+            } elseif ($routeType === 'oneway_outbound') {
+                $rules['outbound_date'] = 'required|date';
+            } else {
+                $rules['inbound_date'] = 'required|date';
+                $rules['outbound_date'] = 'required|date';
+            }
+
             $rules['pnr'] = 'required|string|max:255';
             $rules['ticket_qty'] = 'required|integer|min:1';
-            $rules['is_refundable'] = 'required|boolean';
-            $rules['is_exchangable'] = 'required|boolean';
+            $rules['is_non_refundable'] = 'nullable|boolean';
+            $rules['is_non_exchangable'] = 'nullable|boolean';
         }
 
         $validated = $request->validate($rules);
@@ -94,19 +104,24 @@ class TicketFareController extends Controller
                 'offer_price' => $validated['offer_price'] ?? null,
                 'child_fare_percentage' => $validated['child_fare_percentage'],
                 'infant_fare_percentage' => $validated['infant_fare_percentage'],
-                'with_meal' => $validated['with_meal'],
+                'with_meal' => $request->has('with_meal') ? 1 : 0,
                 'user_id' => auth()->id(),
             ]);
 
             if ($request->ticket_type === 'group') {
+                $inboundDate = in_array($validated['route_type'], ['oneway_inbound', 'round', 'multi_city']) 
+                    ? ($validated['inbound_date'] ?? null) : null;
+                $outboundDate = in_array($validated['route_type'], ['oneway_outbound', 'round', 'multi_city']) 
+                    ? ($validated['outbound_date'] ?? null) : null;
+
                 GroupTicket::create([
                     'ticket_fare_id' => $ticketFare->id,
-                    'inbound_date' => $validated['inbound_date'],
-                    'outbound_date' => $validated['outbound_date'],
+                    'inbound_date' => $inboundDate,
+                    'outbound_date' => $outboundDate,
                     'pnr' => $validated['pnr'],
                     'ticket_qty' => $validated['ticket_qty'],
-                    'is_refundable' => $validated['is_refundable'],
-                    'is_exchangable' => $validated['is_exchangable'],
+                    'is_refundable' => !$request->has('is_non_refundable'),
+                    'is_exchangable' => !$request->has('is_non_exchangable'),
                 ]);
             }
 
@@ -142,6 +157,7 @@ class TicketFareController extends Controller
             'airline_id' => 'required|exists:airlines,id',
             'airline_classes_id' => 'required|exists:airline_classes,id',
             'route_id' => 'required|exists:routes,id',
+            'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
             'ticket_type' => 'required|in:regular,offer,group',
             'effective_from' => 'required|date',
             'effective_to' => 'required|date|after_or_equal:effective_from',
@@ -149,7 +165,7 @@ class TicketFareController extends Controller
             'selling_fare' => 'required|numeric|min:0',
             'child_fare_percentage' => 'required|numeric|min:0|max:100',
             'infant_fare_percentage' => 'required|numeric|min:0|max:100',
-            'with_meal' => 'required|boolean',
+            'with_meal' => 'nullable|boolean',
         ];
 
         if ($request->ticket_type === 'offer') {
@@ -157,12 +173,21 @@ class TicketFareController extends Controller
         }
 
         if ($request->ticket_type === 'group') {
-            $rules['inbound_date'] = 'required|date';
-            $rules['outbound_date'] = 'required|date';
+            $routeType = $request->route_type;
+
+            if ($routeType === 'oneway_inbound') {
+                $rules['inbound_date'] = 'required|date';
+            } elseif ($routeType === 'oneway_outbound') {
+                $rules['outbound_date'] = 'required|date';
+            } else {
+                $rules['inbound_date'] = 'required|date';
+                $rules['outbound_date'] = 'required|date';
+            }
+
             $rules['pnr'] = 'required|string|max:255';
             $rules['ticket_qty'] = 'required|integer|min:1';
-            $rules['is_refundable'] = 'required|boolean';
-            $rules['is_exchangable'] = 'required|boolean';
+            $rules['is_non_refundable'] = 'nullable|boolean';
+            $rules['is_non_exchangable'] = 'nullable|boolean';
         }
 
         $validated = $request->validate($rules);
@@ -180,19 +205,24 @@ class TicketFareController extends Controller
                 'offer_price' => $validated['offer_price'] ?? null,
                 'child_fare_percentage' => $validated['child_fare_percentage'],
                 'infant_fare_percentage' => $validated['infant_fare_percentage'],
-                'with_meal' => $validated['with_meal'],
+                'with_meal' => $request->has('with_meal') ? 1 : 0,
             ]);
 
             if ($request->ticket_type === 'group') {
+                $inboundDate = in_array($validated['route_type'], ['oneway_inbound', 'round', 'multi_city']) 
+                    ? ($validated['inbound_date'] ?? null) : null;
+                $outboundDate = in_array($validated['route_type'], ['oneway_outbound', 'round', 'multi_city']) 
+                    ? ($validated['outbound_date'] ?? null) : null;
+
                 $ticketFare->groupTicket()->updateOrCreate(
                     ['ticket_fare_id' => $ticketFare->id],
                     [
-                        'inbound_date' => $validated['inbound_date'],
-                        'outbound_date' => $validated['outbound_date'],
+                        'inbound_date' => $inboundDate,
+                        'outbound_date' => $outboundDate,
                         'pnr' => $validated['pnr'],
                         'ticket_qty' => $validated['ticket_qty'],
-                        'is_refundable' => $validated['is_refundable'],
-                        'is_exchangable' => $validated['is_exchangable'],
+                        'is_refundable' => !$request->has('is_non_refundable'),
+                        'is_exchangable' => !$request->has('is_non_exchangable'),
                     ]
                 );
             } else {
@@ -219,8 +249,7 @@ class TicketFareController extends Controller
 
     private function createBaggageAllowances(TicketFare $ticketFare, Request $request)
     {
-        $route = $ticketFare->route;
-        $routeType = $route->route_type->value;
+        $routeType = $request->input('route_type');
 
         $allowances = [];
 
