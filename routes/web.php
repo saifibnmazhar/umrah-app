@@ -18,6 +18,7 @@ use App\Http\Controllers\VisaSellingPriceController;
 use App\Http\Controllers\CurrencyRateController;
 use App\Http\Controllers\TransactionTypeController;
 use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PaymentController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -71,6 +72,7 @@ Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-detai
 
 // Detail Pages with parameters
 Route::resource('invoices', InvoiceController::class);
+Route::resource('payments', PaymentController::class);
 Route::get('/invoices/{id}/print', fn($id) => view('invoices.print', compact('id')))->name('invoices.print');
 Route::get('/passengers/{id}', fn($id) => view('passengers.details', compact('id')))->name('passengers.details');
 Route::get('/packages/{id}', fn($id) => view('packages.details', compact('id')))->name('packages.details');
