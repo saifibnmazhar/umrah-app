@@ -47,6 +47,7 @@
                         <a href="{{ route('customers.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Customers</a>
                         <a href="{{ route('visa-agents.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agents</a>
                         <a href="{{ route('ticket-agents.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agents</a>
+                        <a href="{{ route('flight-date-gaps.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Flight Date Gap</a>
                         <a href="{{ route('visa-agent-costs.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Costs</a>
                         <a href="{{ route('visa-selling-prices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Selling Prices</a>
                         <a href="{{ route('currency-rates.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Currency Rates</a>
@@ -108,6 +109,7 @@
                 <a href="{{ route('customers.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Customers</a>
                 <a href="{{ route('visa-agents.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agents</a>
                 <a href="{{ route('ticket-agents.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agents</a>
+                <a href="{{ route('flight-date-gaps.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Flight Date Gap</a>
                 <a href="{{ route('visa-agent-costs.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Costs</a>
                 <a href="{{ route('visa-selling-prices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Selling Prices</a>
                 <a href="{{ route('currency-rates.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Currency Rates</a>

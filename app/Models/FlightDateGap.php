@@ -13,4 +13,14 @@ class FlightDateGap extends Model
     protected $casts = [
         'gap' => 'integer',
     ];
+
+    public static function getDefault(): ?self
+    {
+        return static::first();
+    }
+
+    public static function getOrCreate(int $defaultGap = 30): self
+    {
+        return static::first() ?? static::create(['gap' => $defaultGap]);
+    }
 }
