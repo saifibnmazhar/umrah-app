@@ -24,6 +24,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\VisaAdminController;
+use App\Http\Controllers\PackageController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -50,6 +51,7 @@ Route::resource('ticket-fares', \App\Http\Controllers\TicketFareController::clas
 Route::resource('visa-agent-costs', VisaAgentCostController::class);
 Route::resource('visa-selling-prices', VisaSellingPriceController::class);
 Route::resource('currency-rates', CurrencyRateController::class);
+Route::resource('packages', PackageController::class);
 Route::resource('transaction-types', TransactionTypeController::class);
 Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
 Route::post('/bookings', function () {
@@ -84,7 +86,6 @@ Route::resource('payments', PaymentController::class);
 Route::resource('vouchers', VoucherController::class);
 Route::get('/invoices/{id}/print', fn($id) => view('invoices.print', compact('id')))->name('invoices.print');
 Route::get('/passengers/{id}', fn($id) => view('passengers.details', compact('id')))->name('passengers.details');
-Route::get('/packages/{id}', fn($id) => view('packages.details', compact('id')))->name('packages.details');
 Route::get('/re-issues/{id}/confirm', fn($id) => view('re-issues.confirmation', compact('id')))->name('re-issues.confirmation');
 Route::get('/refunds/{id}/confirm', fn($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation');
 Route::get('/tickets', fn() => view('tickets.index'))->name('tickets.index');
