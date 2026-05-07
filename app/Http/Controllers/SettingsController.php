@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\District;
 use App\Models\FingerprintCharge;
+use App\Models\FlightDateGap;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
@@ -20,11 +21,9 @@ class SettingsController extends Controller
         $districts = District::orderBy('division')->orderBy('name')->get();
         $divisions = District::distinct()->pluck('division')->sort();
 
+        $flightDateGap = FlightDateGap::first();
+
         $settings = [
-            'min_days' => 3,
-            'max_days' => 30,
-            'flight_gap_notice' => 7,
-            'default_airport' => 'JFK',
             'package_name' => 'Umrah Premium Package',
             'package_price' => 2500,
             'package_features' => '• 5-star accommodation\n• Round-trip flights\n• Visa processing\n• Airport transfers\n• Guided tours\n• 24/7 support',
@@ -32,7 +31,7 @@ class SettingsController extends Controller
             'package_status' => 'active',
         ];
 
-        return view('settings.index', compact('fingerprintCharges', 'districts', 'divisions', 'settings'));
+        return view('settings.index', compact('fingerprintCharges', 'districts', 'divisions', 'flightDateGap', 'settings'));
     }
 
     public function updateFlightDateGap(Request $request)

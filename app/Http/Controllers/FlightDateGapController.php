@@ -62,14 +62,14 @@ class FlightDateGapController extends Controller
             'gap' => [
                 'required',
                 'integer',
-                'min:1',
+                'min:0',
                 Rule::unique('flight_date_gaps')->ignore($flightDateGap->id),
             ],
         ]);
 
         try {
             $flightDateGap->update($validated);
-            return redirect()->back()->with('success', 'Flight date gap updated successfully.');
+            return redirect()->route('settings')->with('success', 'Flight date gap updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update flight date gap.')->withInput();
         }

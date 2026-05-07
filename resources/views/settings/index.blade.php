@@ -33,42 +33,51 @@
     </div>
 
     <div x-show="activeTab === 'flight-date-gap'" x-cloak>
-        <form method="POST" action="{{ route('settings.flight-date-gap.update') }}">
-            @csrf
-            @method('PUT')
+        @if(session('success'))
+            <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-4">
+                {{ session('success') }}
+            </div>
+        @endif
 
-            <div class="space-y-6">
-                <div>
-                    <label for="min_days" class="block text-sm font-medium text-gray-700 mb-1">Minimum Days</label>
-                    <input type="number" id="min_days" name="min_days" value="{{ $settings['min_days'] ?? 3 }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border">
-                </div>
+        @if(session('error'))
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                {{ session('error') }}
+            </div>
+        @endif
 
-                <div>
-                    <label for="max_days" class="block text-sm font-medium text-gray-700 mb-1">Maximum Days</label>
-                    <input type="number" id="max_days" name="max_days" value="{{ $settings['max_days'] ?? 30 }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border">
-                </div>
-
-                <div>
-                    <label for="flight_gap_notice" class="block text-sm font-medium text-gray-700 mb-1">Flight Date Gap Notice (days)</label>
-                    <input type="number" id="flight_gap_notice" name="flight_gap_notice" value="{{ $settings['flight_gap_notice'] ?? 7 }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border">
-                </div>
-
-                <div>
-                    <label for="default_airport" class="block text-sm font-medium text-gray-700 mb-1">Default Airport</label>
-                    <select id="default_airport" name="default_airport" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border">
-                        <option value="JFK" {{ ($settings['default_airport'] ?? 'JFK') === 'JFK' ? 'selected' : '' }}>John F. Kennedy International Airport</option>
-                        <option value="LAX" {{ ($settings['default_airport'] ?? 'JFK') === 'LAX' ? 'selected' : '' }}>Los Angeles International Airport</option>
-                        <option value="ORD" {{ ($settings['default_airport'] ?? 'JFK') === 'ORD' ? 'selected' : '' }}>O'Hare International Airport</option>
-                    </select>
-                </div>
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div class="mb-6">
+                <h2 class="text-lg font-semibold text-slate-700 mb-2">Current Configuration</h2>
+                <p class="text-sm text-slate-500">
+                    Default gap: <span class="font-medium text-slate-700">{{ $flightDateGap?->gap ?? 'Not set' }}</span> days
+                </p>
+                <p class="text-sm text-slate-500 mt-1">
+                    This value is used to calculate the minimum booking date before flight departure.
+                </p>
             </div>
 
-            <div class="mt-6">
-                <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    Save Flight Date Gap Settings
-                </button>
-            </div>
-        </form>
+            <form method="POST" action="{{ route('flight-date-gaps.update', $flightDateGap?->id ?? 1) }}">
+                @csrf
+                @method('PUT')
+
+                <div class="space-y-4">
+                    <div>
+                        <label for="gap" class="block text-sm font-medium text-slate-700 mb-1">Gap Between Booking and Flight Date (Days) *</label>
+                        <input type="number" id="gap" name="gap"
+                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
+                            value="{{ old('gap', $flightDateGap?->gap ?? 30) }}"
+                            min="1" required>
+                        <p class="text-xs text-slate-500 mt-1">Minimum value is 1 day.</p>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
+                        Save Changes
+                    </button>
+                </div>
+            </form>
+        </div>
     </div>
 
     <div x-show="activeTab === 'fingerprint-charge'" x-cloak>
