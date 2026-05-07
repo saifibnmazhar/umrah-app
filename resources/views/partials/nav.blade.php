@@ -58,6 +58,7 @@
                         <a href="{{ route('vouchers.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Vouchers</a>
                         <a href="{{ route('ticket-fares.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Fares</a>
                         <a href="{{ route('packages.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Packages</a>
+                        <a href="{{ route('users.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Users</a>
                     </div>
                 </div>
             </div>
@@ -121,6 +122,7 @@
                 <a href="{{ route('vouchers.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Vouchers</a>
                 <a href="{{ route('ticket-fares.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Fares</a>
                 <a href="{{ route('packages.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Packages</a>
+                <a href="{{ route('users.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Users</a>
             </div>
         </div>
     </div>
