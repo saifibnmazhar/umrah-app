@@ -21,6 +21,8 @@ use App\Http\Controllers\TransactionTypeController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\VoucherController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\VisaAdminController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -52,13 +54,13 @@ Route::post('/bookings', function () {
     return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
 })->name('booking.store');
 Route::get('/fares/admin', fn() => view('fares.admin'))->name('fare.admin');
-Route::get('/visas/admin', fn() => view('visas.admin'))->name('visa.admin');
+Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin');
 Route::get('/fingerprints/admin', fn() => view('fingerprints.admin'))->name('fingerprint.admin');
 Route::get('/fingerprints/staff', fn() => view('fingerprints.staff'))->name('fingerprint.staff');
-Route::get('/settings', fn() => view('settings.index'))->name('settings');
-Route::put('/settings/flight-date-gap', fn() => redirect('/settings')->with('success', 'Flight date gap settings updated'))->name('settings.flight-date-gap.update');
-Route::put('/settings/fingerprint-charge', fn() => redirect('/settings')->with('success', 'Fingerprint charge settings updated'))->name('settings.fingerprint-charge.update');
-Route::put('/settings/package-configuration', fn() => redirect('/settings')->with('success', 'Package configuration updated'))->name('settings.package-configuration.update');
+Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
+Route::put('/settings/flight-date-gap', [SettingsController::class, 'updateFlightDateGap'])->name('settings.flight-date-gap.update');
+Route::put('/settings/fingerprint-charge', [SettingsController::class, 'updateFingerprintCharge'])->name('settings.fingerprint-charge.update');
+Route::put('/settings/package-configuration', [SettingsController::class, 'updatePackageConfiguration'])->name('settings.package-configuration.update');
 
 // Reports
 Route::get('/reports/statement', fn() => view('reports.statement'))->name('report.statement');

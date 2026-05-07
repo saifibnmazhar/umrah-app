@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\District;
 use App\Models\FingerprintCharge;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -44,13 +45,16 @@ class FingerprintChargeController extends Controller
                     return $query->where('district_id', $request->district_id);
                 }),
             ],
-            'user_id' => 'required|integer|exists:users,id',
             'fingerprint_charge' => 'required|numeric|min:0',
         ]);
 
+        $userId = auth()->id() ?? User::first()?->id;
+        $validated['user_id'] = $userId;
+
         try {
+            $division = $request->query('division');
             FingerprintCharge::create($validated);
-            return redirect()->route('fingerprint-charges.index')->with('success', 'Fingerprint charge created successfully.');
+            return redirect()->route('settings')->with('success', 'Fingerprint charge created successfully.')->with('division', $division);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create fingerprint charge.')->withInput();
         }
@@ -73,13 +77,12 @@ class FingerprintChargeController extends Controller
                     return $query->where('district_id', $request->district_id);
                 })->ignore($fingerprintCharge->id),
             ],
-            'user_id' => 'required|integer|exists:users,id',
             'fingerprint_charge' => 'required|numeric|min:0',
         ]);
 
         try {
             $fingerprintCharge->update($validated);
-            return redirect()->route('fingerprint-charges.index')->with('success', 'Fingerprint charge updated successfully.');
+            return redirect()->route('settings')->with('success', 'Fingerprint charge updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update fingerprint charge.')->withInput();
         }
@@ -89,7 +92,7 @@ class FingerprintChargeController extends Controller
     {
         try {
             $fingerprintCharge->delete();
-            return redirect()->route('fingerprint-charges.index')->with('success', 'Fingerprint charge deleted successfully.');
+            return redirect()->route('settings')->with('success', 'Fingerprint charge deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete fingerprint charge.');
         }
