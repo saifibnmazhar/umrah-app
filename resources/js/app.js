@@ -4,7 +4,7 @@ Alpine.start()
 
 window.Alpine = Alpine
 
-Alpine.store('toast', null)
+Alpine.store('toast', {})
 
 window.showToast = function(message, type = 'info') {
     Alpine.store('toast', { message, type })
