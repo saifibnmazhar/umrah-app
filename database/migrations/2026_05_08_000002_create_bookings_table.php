@@ -71,7 +71,7 @@ return new class extends Migration
 
             $table->foreign('date_gap_id')
                 ->references('id')
-                ->on('flight_date_gap')
+                ->on('flight_date_gaps')
                 ->restrictOnDelete()
                 ->onUpdate('cascade');
 
