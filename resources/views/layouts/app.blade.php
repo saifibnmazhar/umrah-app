@@ -7,12 +7,16 @@
     @vite(['resources/css/app.css', 'resources/js/app.js'])
 </head>
 <body class="bg-slate-100 min-h-screen px-4">
-    @include('partials.nav')
-    
+    @auth
+        @include('partials.nav')
+    @endauth
+
     <main class="py-6">
         @yield('content')
     </main>
-    
-    @include('components.toast')
+
+    @auth
+        @include('components.toast')
+    @endauth
 </body>
 </html>

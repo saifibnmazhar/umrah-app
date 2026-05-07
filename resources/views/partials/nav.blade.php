@@ -61,8 +61,15 @@
                         <a href="{{ route('users.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Users</a>
                     </div>
                 </div>
+
+                <form method="POST" action="{{ route('logout') }}" class="inline">
+                    @csrf
+                    <button type="submit" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition">
+                        Logout
+                    </button>
+                </form>
             </div>
-            
+
             <button @click="mobileOpen = !mobileOpen" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
                 <svg class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 6h16M4 12h16M4 18h16"/>
@@ -124,6 +131,13 @@
                 <a href="{{ route('packages.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Packages</a>
                 <a href="{{ route('users.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Users</a>
             </div>
+
+            <form method="POST" action="{{ route('logout') }}" class="border-t border-slate-600 mt-2 pt-2">
+                @csrf
+                <button type="submit" class="block w-full text-left px-3 py-2 rounded-md font-medium text-red-400 hover:text-red-300 hover:bg-slate-600">
+                    Logout
+                </button>
+            </form>
         </div>
     </div>
 </nav>
