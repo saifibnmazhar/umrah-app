@@ -13,40 +13,88 @@ class PackageController extends Controller
 {
     public function index()
     {
-        $packages = Package::with(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.groupTicket', 'ticketFare.ticketType', 'visaSellingPrice'])
-            ->orderBy('id')
-            ->paginate(10);
+        $packages = Package::with([
+            'ticketFare',
+            'ticketFare.route.fromCity',
+            'ticketFare.route.toCity',
+            'ticketFare.route.returnCity',
+            'ticketFare.route.multiSegments.fromCity',
+            'ticketFare.route.multiSegments.toCity',
+            'ticketFare.groupTicket',
+            'visaSellingPrice'
+        ])->orderBy('id')->paginate(10);
 
-        $ticketFares = TicketFare::with(['route.fromCity', 'route.toCity', 'ticketType', 'groupTicket'])
-            ->orderBy('id')
-            ->get()
-            ->map(fn($f) => [
-                'id' => $f->id,
-                'ticket_type' => $f->ticket_type?->value,
-                'selling_fare' => $f->selling_fare,
-                'offer_price' => $f->offer_price,
-                'seats' => $f->groupTicket?->ticket_qty,
-                'route' => ($f->route?->fromCity?->code ?? '?') . ' → ' . ($f->route?->toCity?->code ?? '?'),
-            ]);
+        $packagesArray = $packages->map(fn($p) => [
+            'id' => $p->id,
+            'package_name' => $p->package_name,
+            'ticket_fare_id' => $p->ticket_fare_id,
+            'regular_price' => $p->regular_price,
+            'offer_price' => $p->offer_price,
+            'ticket_type' => $p->ticketFare?->ticket_type?->value,
+            'selling_fare' => $p->ticketFare?->selling_fare,
+            'ticket_offer_price' => $p->ticketFare?->offer_price,
+            'ticket_seats' => $p->ticketFare?->groupTicket?->ticket_qty,
+        ]);
+
+        $ticketFares = TicketFare::with([
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
+            'groupTicket'
+        ])->orderBy('id')->get()->map(fn($f) => [
+            'id' => $f->id,
+            'ticket_type' => $f->ticket_type?->value,
+            'selling_fare' => $f->selling_fare,
+            'offer_price' => $f->offer_price,
+            'seats' => $f->groupTicket?->ticket_qty,
+            'route' => $this->buildRouteDisplay($f),
+        ]);
 
         $latestVisa = VisaSellingPrice::latest()->first();
 
-        return view('packages.index', compact('packages', 'ticketFares', 'latestVisa'));
+        return view('packages.index', compact('packages', 'packagesArray', 'ticketFares', 'latestVisa'));
+    }
+
+    private function buildRouteDisplay($fare)
+    {
+        $route = $fare->route;
+        
+        if ($route->multiSegments && $route->multiSegments->count() > 0) {
+            $segments = $route->multiSegments->map(fn($s) => 
+                ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?')
+            );
+            return $segments->implode(', ');
+        }
+        
+        if ($route->returnCity) {
+            $from = $route->fromCity?->code ?? '?';
+            $to = $route->toCity?->code ?? '?';
+            $return = $route->returnCity?->code ?? '?';
+            return "$from - $to - $return";
+        }
+        
+        return ($route->fromCity?->code ?? '?') . ' → ' . ($route->toCity?->code ?? '?');
     }
 
     public function create()
     {
-        $ticketFares = TicketFare::with(['route.fromCity', 'route.toCity', 'ticketType', 'groupTicket'])
-            ->orderBy('id')
-            ->get()
-            ->map(fn($f) => [
-                'id' => $f->id,
-                'ticket_type' => $f->ticket_type?->value,
-                'selling_fare' => $f->selling_fare,
-                'offer_price' => $f->offer_price,
-                'seats' => $f->groupTicket?->ticket_qty,
-                'route' => ($f->route?->fromCity?->code ?? '?') . ' → ' . ($f->route?->toCity?->code ?? '?'),
-            ]);
+        $ticketFares = TicketFare::with([
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
+            'groupTicket'
+        ])->orderBy('id')->get()->map(fn($f) => [
+            'id' => $f->id,
+            'ticket_type' => $f->ticket_type?->value,
+            'selling_fare' => $f->selling_fare,
+            'offer_price' => $f->offer_price,
+            'seats' => $f->groupTicket?->ticket_qty,
+            'route' => $this->buildRouteDisplay($f),
+        ]);
         $latestVisa = VisaSellingPrice::latest()->first();
 
         return view('packages.edit', compact('ticketFares', 'latestVisa'));
@@ -90,17 +138,21 @@ class PackageController extends Controller
 
     public function edit(Package $package)
     {
-        $ticketFares = TicketFare::with(['route.fromCity', 'route.toCity', 'ticketType', 'groupTicket'])
-            ->orderBy('id')
-            ->get()
-            ->map(fn($f) => [
-                'id' => $f->id,
-                'ticket_type' => $f->ticket_type?->value,
-                'selling_fare' => $f->selling_fare,
-                'offer_price' => $f->offer_price,
-                'seats' => $f->groupTicket?->ticket_qty,
-                'route' => ($f->route?->fromCity?->code ?? '?') . ' → ' . ($f->route?->toCity?->code ?? '?'),
-            ]);
+        $ticketFares = TicketFare::with([
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
+            'groupTicket'
+        ])->orderBy('id')->get()->map(fn($f) => [
+            'id' => $f->id,
+            'ticket_type' => $f->ticket_type?->value,
+            'selling_fare' => $f->selling_fare,
+            'offer_price' => $f->offer_price,
+            'seats' => $f->groupTicket?->ticket_qty,
+            'route' => $this->buildRouteDisplay($f),
+        ]);
         $latestVisa = VisaSellingPrice::latest()->first();
 
         return view('packages.edit', compact('package', 'ticketFares', 'latestVisa'));

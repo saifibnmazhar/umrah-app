@@ -39,13 +39,21 @@
                 <tbody class="divide-y divide-slate-200">
                     @forelse($packages as $package)
                         @php
-                            $routeName = ($package->ticketFare?->route?->fromCity?->code ?? '?') . ' → ' . ($package->ticketFare?->route?->toCity?->code ?? '?');
+                            $route = $package->ticketFare?->route;
+                            if ($route && $route->multiSegments && $route->multiSegments->count() > 0) {
+                                $routeName = $route->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                            } elseif ($route && $route->returnCity) {
+                                $routeName = ($route->fromCity?->code ?? '?') . ' - ' . ($route->toCity?->code ?? '?') . ' - ' . ($route->returnCity?->code ?? '?');
+                            } else {
+                                $routeName = ($route?->fromCity?->code ?? '?') . ' → ' . ($route?->toCity?->code ?? '?');
+                            }
                             $seats = $package->ticketFare?->groupTicket?->ticket_qty ?? null;
-                            $ticketDisplay = $routeName . ' | ' . strtoupper($package->ticketFare?->ticket_type?->value ?? '?') . ' | BDT ' . number_format($package->ticketFare?->selling_fare ?? 0, 0);
-                            if ($package->ticketFare?->ticket_type === \App\Enums\TicketType::OFFER) {
+                            $ticketType = $package->ticketFare?->ticket_type?->value;
+                            $ticketDisplay = $routeName . ' | ' . strtoupper($ticketType ?? '?') . ' | BDT ' . number_format($package->ticketFare?->selling_fare ?? 0, 0);
+                            if ($ticketType === 'offer') {
                                 $ticketDisplay .= ' | BDT ' . number_format($package->ticketFare?->offer_price ?? 0, 0);
                             }
-                            if ($package->ticketFare?->ticket_type === \App\Enums\TicketType::GROUP && $seats) {
+                            if ($ticketType === 'group' && $seats) {
                                 $ticketDisplay .= ' | ' . $seats . ' seats';
                             }
                         @endphp
@@ -161,6 +169,7 @@
 <script>
 const ticketFares = @json($ticketFares);
 const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
+const packages = @json($packagesArray);
 
 function buildDisplay(fare) {
     let disp = fare.route + ' | ' + fare.ticket_type.toUpperCase() + ' | BDT ' + fare.selling_fare;
