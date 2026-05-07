@@ -95,7 +95,7 @@
                         @endforeach
                     </select>
                 </div>
-                <button type="button" onclick="showFingerprintChargeModal()" id="addChargeBtn" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" {{ request('division') ? '' : 'disabled' }}>
+                <button type="button" onclick="showFingerprintChargeModal()" id="addChargeBtn" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
@@ -114,9 +114,9 @@
                             <th class="px-3 py-2 text-center font-medium">Action</th>
                         </tr>
                     </thead>
-                    <tbody class="divide-y divide-slate-200">
+                    <tbody id="fingerprintTableBody" class="divide-y divide-slate-200">
                         @forelse($fingerprintCharges as $charge)
-                            <tr class="hover:bg-slate-50">
+                            <tr class="hover:bg-slate-50" data-division="{{ $charge->district->division ?? '' }}">
                                 <td class="px-3 py-2 text-slate-600">{{ $charge->district->division ?? 'N/A' }}</td>
                                 <td class="px-3 py-2 text-slate-600">{{ $charge->district->name ?? 'N/A' }}</td>
                                 <td class="px-3 py-2 text-slate-600">{{ $charge->user->name ?? 'N/A' }}</td>
@@ -142,7 +142,7 @@
             </div>
 
             <div class="mt-4 flex justify-center">
-                {{ $fingerprintCharges->links() }}
+                {{ $fingerprintCharges->appends(request()->query())->links() }}
             </div>
         </div>
     </div>
@@ -189,23 +189,30 @@
     <script>
     const districts = @json($districts ?? []);
 
+    // Apply filter on page load
+    document.addEventListener('DOMContentLoaded', function() {
+        filterByDivision();
+    });
+
     function filterByDivision() {
-        const division = document.getElementById('filterDivisionSelect').value;
-        const addBtn = document.getElementById('addChargeBtn');
-
-        if (division) {
-            addBtn.disabled = false;
-        } else {
-            addBtn.disabled = true;
+        try {
+            var selectEl = document.getElementById('filterDivisionSelect');
+            var division = selectEl ? selectEl.value : '';
+            
+            var rows = document.querySelectorAll('#fingerprintTableBody tr');
+            if (!rows || rows.length === 0) return;
+            
+            rows.forEach(function(row) {
+                var rowDivision = row.getAttribute('data-division') || '';
+                if (!division || rowDivision === division) {
+                    row.style.display = '';
+                } else {
+                    row.style.display = 'none';
+                }
+            });
+        } catch (e) {
+            console.error('Filter error:', e);
         }
-
-        const url = new URL(window.location.href);
-        if (division) {
-            url.searchParams.set('division', division);
-        } else {
-            url.searchParams.delete('division');
-        }
-        window.location.href = url.toString();
     }
 
     function showFingerprintChargeModal() {

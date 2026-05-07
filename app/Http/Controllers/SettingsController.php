@@ -20,7 +20,19 @@ class SettingsController extends Controller
         $districts = District::orderBy('division')->orderBy('name')->get();
         $divisions = District::distinct()->pluck('division')->sort();
 
-        return view('settings.index', compact('fingerprintCharges', 'districts', 'divisions'));
+        $settings = [
+            'min_days' => 3,
+            'max_days' => 30,
+            'flight_gap_notice' => 7,
+            'default_airport' => 'JFK',
+            'package_name' => 'Umrah Premium Package',
+            'package_price' => 2500,
+            'package_features' => '• 5-star accommodation\n• Round-trip flights\n• Visa processing\n• Airport transfers\n• Guided tours\n• 24/7 support',
+            'package_duration' => 10,
+            'package_status' => 'active',
+        ];
+
+        return view('settings.index', compact('fingerprintCharges', 'districts', 'divisions', 'settings'));
     }
 
     public function updateFlightDateGap(Request $request)
