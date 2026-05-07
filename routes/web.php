@@ -24,7 +24,7 @@ use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\VoucherController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\VisaAdminController;
-use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\FareAdminController;
 
 // Dashboard
 Route::get('/', fn() => redirect('/dashboard'))->name('home');
@@ -55,7 +55,13 @@ Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
 Route::post('/bookings', function () {
     return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
 })->name('booking.store');
-Route::get('/fares/admin', fn() => view('fares.admin'))->name('fare.admin');
+Route::get('/fares/admin', [FareAdminController::class, 'index'])->name('fare.admin');
+Route::post('/fares/admin/agent', [FareAdminController::class, 'storeAgent'])->name('fare.admin.agent.store');
+Route::put('/fares/admin/agent/{ticketAgent}', [FareAdminController::class, 'updateAgent'])->name('fare.admin.agent.update');
+Route::delete('/fares/admin/agent/{ticketAgent}', [FareAdminController::class, 'destroyAgent'])->name('fare.admin.agent.destroy');
+Route::post('/fares/admin/fare', [FareAdminController::class, 'storeFare'])->name('fare.admin.fare.store');
+Route::put('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'updateFare'])->name('fare.admin.fare.update');
+Route::delete('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'destroyFare'])->name('fare.admin.fare.destroy');
 Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin');
 Route::get('/fingerprints/admin', fn() => view('fingerprints.admin'))->name('fingerprint.admin');
 Route::get('/fingerprints/staff', fn() => view('fingerprints.staff'))->name('fingerprint.staff');

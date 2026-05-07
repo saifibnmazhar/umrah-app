@@ -127,7 +127,7 @@ class TicketFareController extends Controller
 
             $this->createBaggageAllowances($ticketFare, $request);
 
-            return redirect()->route('ticket-fares.index')->with('success', 'Ticket fare created successfully.');
+            return redirect()->route('fare.admin')->with('success', 'Ticket fare created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create ticket fare: ' . $e->getMessage())->withInput();
         }
@@ -231,7 +231,7 @@ class TicketFareController extends Controller
 
             $this->updateBaggageAllowances($ticketFare, $request);
 
-            return redirect()->route('ticket-fares.index')->with('success', 'Ticket fare updated successfully.');
+            return redirect()->route('fare.admin')->with('success', 'Ticket fare updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update ticket fare: ' . $e->getMessage())->withInput();
         }
@@ -241,7 +241,7 @@ class TicketFareController extends Controller
     {
         try {
             $ticketFare->delete();
-            return redirect()->route('ticket-fares.index')->with('success', 'Ticket fare deleted successfully.');
+            return redirect()->route('fare.admin')->with('success', 'Ticket fare deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete ticket fare.');
         }

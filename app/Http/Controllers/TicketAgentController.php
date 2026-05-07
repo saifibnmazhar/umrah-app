@@ -30,7 +30,7 @@ class TicketAgentController extends Controller
 
         try {
             TicketAgent::create($validated);
-            return redirect()->route('ticket-agents.index')->with('success', 'Ticket agent created successfully.');
+            return redirect()->route('fare.admin')->with('success', 'Ticket agent created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create ticket agent.')->withInput();
         }
@@ -51,7 +51,7 @@ class TicketAgentController extends Controller
 
         try {
             $ticketAgent->update($validated);
-            return redirect()->route('ticket-agents.index')->with('success', 'Ticket agent updated successfully.');
+            return redirect()->route('fare.admin')->with('success', 'Ticket agent updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update ticket agent.')->withInput();
         }
@@ -61,7 +61,7 @@ class TicketAgentController extends Controller
     {
         try {
             $ticketAgent->delete();
-            return redirect()->route('ticket-agents.index')->with('success', 'Ticket agent deleted successfully.');
+            return redirect()->route('fare.admin')->with('success', 'Ticket agent deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete ticket agent.');
         }

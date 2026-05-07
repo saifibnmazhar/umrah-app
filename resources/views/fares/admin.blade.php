@@ -3,126 +3,320 @@
 @section('title', 'Fare Admin')
 
 @section('content')
-<div class="max-w-3xl mx-auto pt-6" x-data="{
-    showModal: false,
-    editMode: false,
-    fare: { id: null, airline: '', route: '', fare_amount: '', tax: '', pax_type: '' },
-    fares: [
-        { id: 1, airline: 'Saudi Airlines', route: 'JED-CAI', fare_amount: 1200, tax: 150, pax_type: 'Adult' },
-        { id: 2, airline: 'Egypt Air', route: 'CAI-JED', fare_amount: 950, tax: 120, pax_type: 'Adult' },
-        { id: 3, airline: 'Flynas', route: 'JED-MED', fare_amount: 450, tax: 80, pax_type: 'Adult' },
-        { id: 4, airline: 'Saudi Airlines', route: 'JED-CAI', fare_amount: 800, tax: 100, pax_type: 'Child' },
-        { id: 5, airline: 'Egypt Air', route: 'CAI-JED', fare_amount: 500, tax: 60, pax_type: 'Infant' }
-    ],
-    openModal(f = null) {
-        if (f) {
-            this.editMode = true;
-            this.fare = { ...f };
-        } else {
-            this.editMode = false;
-            this.fare = { id: null, airline: '', route: '', fare_amount: '', tax: '', pax_type: '' };
-        }
-        this.showModal = true;
-    },
-    closeModal() {
-        this.showModal = false;
-        this.editMode = false;
-    },
-    saveFare() {
-        if (this.editMode) {
-            const index = this.fares.findIndex(f => f.id === this.fare.id);
-            if (index !== -1) this.fares[index] = { ...this.fare };
-        } else {
-            this.fare.id = Date.now();
-            this.fares.push({ ...this.fare });
-        }
-        this.closeModal();
-    },
-    deleteFare(id) {
-        this.fares = this.fares.filter(f => f.id !== id);
-    }
+<div class="max-w-7xl mx-auto pt-6" x-data="{
+    activeTab: 'agents',
+    showAgentModal: false,
+    editAgentMode: false,
+    agent: { id: null, name: '', address: '', contacts: '' },
+    showFareModal: false,
+    editFareMode: false,
+    fare: { id: null, airline_id: '', airline_classes_id: '', route_id: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false }
 }">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Fare Admin</h1>
 
-    <div class="bg-white rounded-lg shadow-md p-6 mb-6">
+    <div class="border-b border-slate-200 mb-6">
+        <nav class="-mb-px flex gap-6">
+            <button @click="activeTab = 'agents'" :class="{ 'border-blue-500 text-blue-600': activeTab === 'agents', 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300': activeTab !== 'agents' }" class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap">
+                Ticket Agents
+            </button>
+            <button @click="activeTab = 'fares'" :class="{ 'border-blue-500 text-blue-600': activeTab === 'fares', 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300': activeTab !== 'fares' }" class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap">
+                Ticket Fares
+            </button>
+        </nav>
+    </div>
+
+    @if(session('success'))
+        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-4">
+            {{ session('success') }}
+        </div>
+    @endif
+
+    @if(session('error'))
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            {{ session('error') }}
+        </div>
+    @endif
+
+    <div x-show="activeTab === 'agents'" x-cloak>
         <div class="flex justify-between items-center mb-4">
-            <h2 class="text-lg font-semibold text-slate-700">Manage Fares</h2>
-            <button @click="openModal()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-md text-sm font-medium transition">
-                Add New Fare
+            <h2 class="text-lg font-semibold text-slate-700">Ticket Agents</h2>
+            <button @click="editAgentMode = false; agent = { id: null, name: '', address: '', contacts: '' }; showAgentModal = true" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition text-sm font-medium">
+                Add New
             </button>
         </div>
 
-        <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-                <thead class="bg-slate-100 text-slate-700 uppercase text-xs">
-                    <tr>
-                        <th class="px-4 py-3 rounded-tl-md">Airline</th>
-                        <th class="px-4 py-3">Route</th>
-                        <th class="px-4 py-3">Fare</th>
-                        <th class="px-4 py-3">Tax</th>
-                        <th class="px-4 py-3">Pax Type</th>
-                        <th class="px-4 py-3 rounded-tr-md">Actions</th>
-                    </tr>
-                </thead>
-                <tbody class="divide-y divide-slate-200">
-                    <template x-for="fare in fares" :key="fare.id">
-                        <tr class="hover:bg-slate-50">
-                            <td class="px-4 py-3" x-text="fare.airline"></td>
-                            <td class="px-4 py-3" x-text="fare.route"></td>
-                            <td class="px-4 py-3" x-text="fare.fare_amount"></td>
-                            <td class="px-4 py-3" x-text="fare.tax"></td>
-                            <td class="px-4 py-3" x-text="fare.pax_type"></td>
-                            <td class="px-4 py-3">
-                                <button @click="openModal(fare)" class="text-blue-600 hover:text-blue-800 mr-3">Edit</button>
-                                <button @click="deleteFare(fare.id)" class="text-red-600 hover:text-red-800">Delete</button>
-                            </td>
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
+                        <tr>
+                            <th class="px-6 py-4 text-left">Name</th>
+                            <th class="px-6 py-4 text-left">Address</th>
+                            <th class="px-6 py-4 text-left">Contacts</th>
+                            <th class="px-6 py-4 text-right">Actions</th>
                         </tr>
-                    </template>
-                </tbody>
-            </table>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @forelse($ticketAgents as $ticketAgent)
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 text-slate-700 font-medium">{{ $ticketAgent->name }}</td>
+                                <td class="px-6 py-4 text-slate-600">{{ $ticketAgent->address ?? '—' }}</td>
+                                <td class="px-6 py-4 text-slate-600">{{ $ticketAgent->contacts ?? '—' }}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-4">
+                                        <button @click="editAgentMode = true; agent = { id: {{ $ticketAgent->id }}, name: '{{ $ticketAgent->name }}', address: '{{ $ticketAgent->address ?? '' }}', contacts: '{{ $ticketAgent->contacts ?? '' }}' }; showAgentModal = true" class="text-slate-600 hover:text-slate-800 font-medium text-sm">Edit</button>
+                                        <form method="POST" action="{{ route('fare.admin.agent.destroy', $ticketAgent->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket agent?')" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-800 font-medium text-sm">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="px-6 py-12 text-center text-slate-500">
+                                    No ticket agents found.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
         </div>
 
-        <div x-show="fares.length === 0" class="text-center py-8 text-slate-500">
-            No fares found. Add your first fare.
+        <div class="mt-4 flex justify-center">
+            {{ $ticketAgents->appends(request()->query())->links() }}
         </div>
     </div>
 
-    <div x-show="showModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+    <div x-show="activeTab === 'fares'" x-cloak>
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-slate-700">Ticket Fares</h2>
+            <button @click="editFareMode = false; fare = { id: null, airline_id: '', airline_classes_id: '', route_id: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false }; showFareModal = true" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition text-sm font-medium">
+                Add New
+            </button>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mb-6">
+            <form method="GET" action="{{ route('fare.admin') }}" class="p-4 flex flex-wrap gap-4 items-end">
+                <div class="flex-1 min-w-[200px]">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Search</label>
+                    <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by airline..." class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                </div>
+                <div class="min-w-[150px]">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Airline</label>
+                    <select name="airline_id" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                        <option value="">All Airlines</option>
+                        @foreach($airlines as $airline)
+                            <option value="{{ $airline->id }}" {{ request('airline_id') == $airline->id ? 'selected' : '' }}>
+                                {{ $airline->name }}
+                            </option>
+                        @endforeach
+                    </select>
+                </div>
+                <div class="min-w-[150px]">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                    <select name="ticket_type" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                        <option value="">All Types</option>
+                        <option value="regular" {{ request('ticket_type') == 'regular' ? 'selected' : '' }}>Regular</option>
+                        <option value="offer" {{ request('ticket_type') == 'offer' ? 'selected' : '' }}>Offer</option>
+                        <option value="group" {{ request('ticket_type') == 'group' ? 'selected' : '' }}>Group</option>
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" class="px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-600 transition text-sm font-medium">
+                        Filter
+                    </button>
+                    <a href="{{ route('fare.admin') }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium ml-2">
+                        Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
+                        <tr>
+                            <th class="px-4 py-3 text-left">ID</th>
+                            <th class="px-4 py-3 text-left">Airline</th>
+                            <th class="px-4 py-3 text-left">Class</th>
+                            <th class="px-4 py-3 text-left">Route</th>
+                            <th class="px-4 py-3 text-left">Type</th>
+                            <th class="px-4 py-3 text-left">Net Fare</th>
+                            <th class="px-4 py-3 text-left">Selling Fare</th>
+                            <th class="px-4 py-3 text-left">Offer Price</th>
+                            <th class="px-4 py-3 text-left">Effective From</th>
+                            <th class="px-4 py-3 text-left">Effective To</th>
+                            <th class="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @forelse($ticketFares as $fare)
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-4 py-3 text-slate-700">{{ $fare->id }}</td>
+                                <td class="px-4 py-3 text-slate-700 font-medium">{{ $fare->airline->name ?? '-' }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $fare->airlineClass->travelClass->name ?? '-' }}</td>
+                                <td class="px-4 py-3 text-slate-700 font-medium">
+                                    @if($fare->route)
+                                        {{ $fare->route->fromCity->code ?? '-' }}-{{ $fare->route->toCity->code ?? '-' }}
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3">
+                                    @switch($fare->ticket_type->value)
+                                        @case('regular')
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-600">Regular</span>
+                                            @break
+                                        @case('offer')
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Offer</span>
+                                            @break
+                                        @case('group')
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-purple-100 text-purple-700">Group</span>
+                                            @break
+                                    @endswitch
+                                </td>
+                                <td class="px-4 py-3 text-slate-700 font-medium">{{ number_format($fare->net_fare, 2) }} SAR</td>
+                                <td class="px-4 py-3 text-slate-700 font-medium">{{ number_format($fare->selling_fare, 2) }} SAR</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $fare->offer_price ? number_format($fare->offer_price, 2) . ' SAR' : '-' }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $fare->effective_from->format('Y-m-d') }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $fare->effective_to->format('Y-m-d') }}</td>
+                                <td class="px-4 py-3 text-right">
+                                    <div class="flex items-center justify-end gap-3">
+                                        <button @click="editFareMode = true; fare = { id: {{ $fare->id }}, airline_id: '{{ $fare->airline_id }}', airline_classes_id: '{{ $fare->airline_classes_id }}', route_id: '{{ $fare->route_id }}', ticket_type: '{{ $fare->ticket_type->value }}', effective_from: '{{ $fare->effective_from->format('Y-m-d') }}', effective_to: '{{ $fare->effective_to->format('Y-m-d') }}', net_fare: '{{ $fare->net_fare }}', selling_fare: '{{ $fare->selling_fare }}', child_fare_percentage: '{{ $fare->child_fare_percentage }}', infant_fare_percentage: '{{ $fare->infant_fare_percentage }}', offer_price: '{{ $fare->offer_price ?? '' }}', with_meal: {{ $fare->with_meal ? 'true' : 'false' }} }; showFareModal = true" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
+                                        <form method="POST" action="{{ route('fare.admin.fare.destroy', $fare->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket fare?')" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="11" class="px-4 py-12 text-center text-slate-500">
+                                    No ticket fares found.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-4 flex justify-center">
+            {{ $ticketFares->appends(request()->query())->links() }}
+        </div>
+    </div>
+
+    <div x-show="showAgentModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div x-show="showModal" x-transition.opacity class="fixed inset-0 bg-black bg-opacity-50" @click="closeModal()"></div>
-            <div x-show="showModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 z-10">
-                <h3 class="text-lg font-semibold text-slate-800 mb-4" x-text="editMode ? 'Edit Fare' : 'Add New Fare'"></h3>
-                <form @submit.prevent="saveFare()">
+            <div x-show="showAgentModal" x-transition.opacity class="fixed inset-0 bg-black bg-opacity-50" @click="showAgentModal = false"></div>
+            <div x-show="showAgentModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 z-10">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4" x-text="editAgentMode ? 'Edit Ticket Agent' : 'Add New Ticket Agent'"></h3>
+                <form method="POST" :action="editAgentMode ? '/fares/admin/agent/' + agent.id : '{{ route('fare.admin.agent.store') }}'">
+                    @csrf
+                    <template x-if="editAgentMode">
+                        <input type="hidden" name="_method" value="PUT">
+                    </template>
                     <div class="space-y-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline</label>
-                            <input type="text" x-model="fare.airline" name="airline" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Name *</label>
+                            <input type="text" name="name" x-model="agent.name" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
-                            <input type="text" x-model="fare.route" name="route" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" placeholder="e.g., JED-CAI" required>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                            <textarea name="address" x-model="agent.address" rows="2" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm"></textarea>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Fare Amount</label>
-                            <input type="number" x-model="fare.fare_amount" name="selling_fare" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Tax</label>
-                            <input type="number" x-model="fare.tax" name="tax" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
-                        </div>
-                        <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Pax Type</label>
-                            <select x-model="fare.pax_type" name="pax_type" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
-                                <option value="">Select Pax Type</option>
-                                <option value="Adult">Adult</option>
-                                <option value="Child">Child</option>
-                                <option value="Infant">Infant</option>
-                            </select>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Contacts</label>
+                            <input type="text" name="contacts" x-model="agent.contacts" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                         </div>
                     </div>
                     <div class="flex justify-end gap-3 mt-6">
-                        <button type="button" @click="closeModal()" class="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition">Cancel</button>
-                        <button type="submit" class="px-4 py-2 bg-emerald-600 hover:bg-emerald-700 text-white rounded-md text-sm font-medium transition">Save</button>
+                        <button type="button" @click="showAgentModal = false" class="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-md text-sm font-medium transition" x-text="editAgentMode ? 'Update' : 'Create'"></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="showFareModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div x-show="showFareModal" x-transition.opacity class="fixed inset-0 bg-black bg-opacity-50" @click="showFareModal = false"></div>
+            <div x-show="showFareModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-lg p-6 z-10">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4" x-text="editFareMode ? 'Edit Ticket Fare' : 'Add New Ticket Fare'"></h3>
+                <form method="POST" :action="editFareMode ? '/fares/admin/fare/' + fare.id : '{{ route('fare.admin.fare.store') }}'">
+                    @csrf
+                    <template x-if="editFareMode">
+                        <input type="hidden" name="_method" value="PUT">
+                    </template>
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
+                            <select name="airline_id" x-model="fare.airline_id" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
+                                <option value="">Select Airline</option>
+                                @foreach($airlines as $airline)
+                                    <option value="{{ $airline->id }}">{{ $airline->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type *</label>
+                            <select name="ticket_type" x-model="fare.ticket_type" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
+                                <option value="regular">Regular</option>
+                                <option value="offer">Offer</option>
+                                <option value="group">Group</option>
+                            </select>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare *</label>
+                                <input type="number" name="net_fare" x-model="fare.net_fare" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare *</label>
+                                <input type="number" name="selling_fare" x-model="fare.selling_fare" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Child Fare %</label>
+                                <input type="number" name="child_fare_percentage" x-model="fare.child_fare_percentage" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Infant Fare %</label>
+                                <input type="number" name="infant_fare_percentage" x-model="fare.infant_fare_percentage" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Effective From *</label>
+                                <input type="date" name="effective_from" x-model="fare.effective_from" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Effective To *</label>
+                                <input type="date" name="effective_to" x-model="fare.effective_to" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" required>
+                            </div>
+                        </div>
+                        <div x-show="fare.ticket_type === 'offer'">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price *</label>
+                            <input type="number" name="offer_price" x-model="fare.offer_price" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                        </div>
+                        <div>
+                            <label class="flex items-center gap-2">
+                                <input type="checkbox" name="with_meal" x-model="fare.with_meal" class="rounded border-slate-300">
+                                <span class="text-sm text-slate-700">With Meal</span>
+                            </label>
+                        </div>
+                    </div>
+                    <div class="flex justify-end gap-3 mt-6">
+                        <button type="button" @click="showFareModal = false" class="px-4 py-2 border border-slate-300 rounded-md text-sm font-medium text-slate-700 hover:bg-slate-50 transition">Cancel</button>
+                        <button type="submit" class="px-4 py-2 bg-slate-700 hover:bg-slate-800 text-white rounded-md text-sm font-medium transition" x-text="editFareMode ? 'Update' : 'Create'"></button>
                     </div>
                 </form>
             </div>
