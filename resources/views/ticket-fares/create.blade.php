@@ -26,6 +26,20 @@
             <h2 class="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">Basic Information</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Date</label>
+                    <input type="date" value="{{ date('Y-m-d') }}" readonly class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-slate-50">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
+                    <select name="route_type" id="routeType" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" onchange="toggleFields()">
+                        <option value="">Select Type</option>
+                        <option value="oneway_inbound" {{ old('route_type') == 'oneway_inbound' ? 'selected' : '' }}>One Way - Inbound</option>
+                        <option value="oneway_outbound" {{ old('route_type') == 'oneway_outbound' ? 'selected' : '' }}>One Way - Outbound</option>
+                        <option value="round" {{ old('route_type') == 'round' ? 'selected' : '' }}>Round</option>
+                        <option value="multi_city" {{ old('route_type') == 'multi_city' ? 'selected' : '' }}>Multi City</option>
+                    </select>
+                </div>
+                <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
                     <select name="airline_id" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                         <option value="">Select Airline</option>
@@ -68,7 +82,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type *</label>
-                    <select name="ticket_type" id="ticketType" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" onchange="toggleTicketTypeFields()">
+                    <select name="ticket_type" id="ticketType" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" onchange="toggleFields()">
                         <option value="">Select Type</option>
                         <option value="regular" {{ old('ticket_type') == 'regular' ? 'selected' : '' }}>Regular</option>
                         <option value="offer" {{ old('ticket_type') == 'offer' ? 'selected' : '' }}>Offer</option>
@@ -82,6 +96,12 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Effective To *</label>
                     <input type="date" name="effective_to" value="{{ old('effective_to') }}" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                </div>
+                <div class="flex items-center">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" name="with_meal" value="1" {{ old('with_meal') ? 'checked' : '' }} class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-500">
+                        <span class="ml-2 text-sm text-slate-700">With Meal</span>
+                    </label>
                 </div>
             </div>
         </div>
@@ -97,7 +117,7 @@
                     <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
                     <input type="number" name="selling_fare" value="{{ old('selling_fare') }}" step="0.01" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                 </div>
-                <div id="offerPriceField" class="hidden">
+                <div id="offerPriceField" class="{{ old('ticket_type') !== 'offer' ? 'hidden' : '' }}">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
                     <input type="number" name="offer_price" value="{{ old('offer_price') }}" step="0.01" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                 </div>
@@ -109,27 +129,12 @@
                     <label class="block text-sm font-medium text-slate-700 mb-1">Infant Fare (%) *</label>
                     <input type="number" name="infant_fare_percentage" value="{{ old('infant_fare_percentage', 0) }}" step="0.01" min="0" max="100" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">With Meal</label>
-                    <select name="with_meal" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-                        <option value="0" {{ old('with_meal') == '0' ? 'selected' : '' }}>No</option>
-                        <option value="1" {{ old('with_meal', '1') == '1' ? 'selected' : '' }}>Yes</option>
-                    </select>
-                </div>
             </div>
         </div>
 
-        <div id="groupTicketSection" class="hidden bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
+        <div id="groupTicketSection" class="{{ old('ticket_type') !== 'group' ? 'hidden' : '' }} bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
             <h2 class="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">Group Ticket Details</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
-                    <input type="date" name="inbound_date" value="{{ old('inbound_date') }}" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
-                    <input type="date" name="outbound_date" value="{{ old('outbound_date') }}" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-                </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">PNR *</label>
                     <input type="text" name="pnr" value="{{ old('pnr') }}" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
@@ -138,27 +143,34 @@
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Quantity *</label>
                     <input type="number" name="ticket_qty" value="{{ old('ticket_qty') }}" min="1" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Refundable</label>
-                    <select name="is_refundable" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-                        <option value="0" {{ old('is_refundable') == '0' ? 'selected' : '' }}>No</option>
-                        <option value="1" {{ old('is_refundable', '1') == '1' ? 'selected' : '' }}>Yes</option>
-                    </select>
+                <div id="inboundDateField" class="{{ in_array(old('route_type'), ['oneway_outbound']) ? 'hidden' : '' }}">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date <span class="required-mark">*</span></label>
+                    <input type="date" name="inbound_date" value="{{ old('inbound_date') }}" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                 </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Exchangable</label>
-                    <select name="is_exchangable" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
-                        <option value="0" {{ old('is_exchangable') == '0' ? 'selected' : '' }}>No</option>
-                        <option value="1" {{ old('is_exchangable', '1') == '1' ? 'selected' : '' }}>Yes</option>
-                    </select>
+                <div id="outboundDateField" class="{{ in_array(old('route_type'), ['oneway_inbound']) ? 'hidden' : '' }}">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date <span class="required-mark">*</span></label>
+                    <input type="date" name="outbound_date" value="{{ old('outbound_date') }}" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                </div>
+            </div>
+            <div class="flex justify-start mt-5 gap-4">
+                <div class="flex items-center">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" name="is_non_refundable" value="1" {{ old('is_non_refundable') ? 'checked' : '' }} class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-500">
+                        <span class="ml-2 text-sm text-slate-700">Non-Refundable</span>
+                    </label>
+                </div>
+                <div class="flex items-center">
+                    <label class="flex items-center cursor-pointer">
+                        <input type="checkbox" name="is_non_exchangable" value="1" {{ old('is_non_exchangable') ? 'checked' : '' }} class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-500">
+                        <span class="ml-2 text-sm text-slate-700">Non-Exchangable</span>
+                    </label>
                 </div>
             </div>
         </div>
 
-        <div id="baggageSection" class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
+        <div id="baggageSection" class="hidden bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
             <h2 class="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">Baggage Allowances (KG)</h2>
-            <p class="text-sm text-slate-500 mb-4">Baggage allowances are based on the selected route type.</p>
-            <div id="inboundBaggage" class="mb-4">
+            <div id="inboundBaggage" class="{{ in_array(old('route_type'), ['oneway_outbound']) ? 'hidden' : '' }} mb-4">
                 <h3 class="text-sm font-medium text-slate-700 mb-3">Inbound</h3>
                 <div class="grid grid-cols-3 gap-4">
                     <div>
@@ -175,7 +187,7 @@
                     </div>
                 </div>
             </div>
-            <div id="outboundBaggage">
+            <div id="outboundBaggage" class="{{ in_array(old('route_type'), ['oneway_inbound']) ? 'hidden' : '' }}">
                 <h3 class="text-sm font-medium text-slate-700 mb-3">Outbound</h3>
                 <div class="grid grid-cols-3 gap-4">
                     <div>
@@ -206,26 +218,58 @@
 </div>
 
 <script>
-function toggleTicketTypeFields() {
+function toggleFields() {
+    const routeType = document.getElementById('routeType').value;
     const ticketType = document.getElementById('ticketType').value;
     const offerPriceField = document.getElementById('offerPriceField');
     const groupTicketSection = document.getElementById('groupTicketSection');
+    const baggageSection = document.getElementById('baggageSection');
+    const inboundDateField = document.getElementById('inboundDateField');
+    const outboundDateField = document.getElementById('outboundDateField');
+    const inboundBaggage = document.getElementById('inboundBaggage');
+    const outboundBaggage = document.getElementById('outboundBaggage');
 
+    // Toggle offer price
     if (ticketType === 'offer') {
         offerPriceField.classList.remove('hidden');
     } else {
         offerPriceField.classList.add('hidden');
     }
 
+    // Toggle group ticket section
     if (ticketType === 'group') {
         groupTicketSection.classList.remove('hidden');
     } else {
         groupTicketSection.classList.add('hidden');
     }
+
+    // Toggle baggage section and group ticket dates based on route type
+    if (routeType) {
+        baggageSection.classList.remove('hidden');
+
+        if (routeType === 'oneway_inbound') {
+            inboundDateField.classList.remove('hidden');
+            outboundDateField.classList.add('hidden');
+            inboundBaggage.classList.remove('hidden');
+            outboundBaggage.classList.add('hidden');
+        } else if (routeType === 'oneway_outbound') {
+            inboundDateField.classList.add('hidden');
+            outboundDateField.classList.remove('hidden');
+            inboundBaggage.classList.add('hidden');
+            outboundBaggage.classList.remove('hidden');
+        } else {
+            inboundDateField.classList.remove('hidden');
+            outboundDateField.classList.remove('hidden');
+            inboundBaggage.classList.remove('hidden');
+            outboundBaggage.classList.remove('hidden');
+        }
+    } else {
+        baggageSection.classList.add('hidden');
+    }
 }
 
 document.addEventListener('DOMContentLoaded', function() {
-    toggleTicketTypeFields();
+    toggleFields();
 });
 </script>
 @endsection
