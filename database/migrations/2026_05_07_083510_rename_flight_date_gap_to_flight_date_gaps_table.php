@@ -27,15 +27,6 @@ return new class extends Migration
         DB::statement(
             'ALTER TABLE flight_date_gaps ADD CONSTRAINT flight_date_gaps_gap_check CHECK (gap >= 1)'
         );
-
-        // Recreate foreign key
-        Schema::table('bookings', function (Blueprint $table) {
-            $table->foreign('date_gap_id')
-                ->references('id')
-                ->on('flight_date_gaps')
-                ->restrictOnDelete()
-                ->onUpdate('cascade');
-        });
     }
 
     public function down(): void
@@ -59,14 +50,5 @@ return new class extends Migration
         DB::statement(
             'ALTER TABLE flight_date_gap ADD CONSTRAINT flight_date_gap_gap_check CHECK (gap >= 1)'
         );
-
-        // Restore original FK
-        Schema::table('bookings', function (Blueprint $table) {
-            $table->foreign('date_gap_id')
-                ->references('id')
-                ->on('flight_date_gap')
-                ->restrictOnDelete()
-                ->onUpdate('cascade');
-        });
     }
 };
