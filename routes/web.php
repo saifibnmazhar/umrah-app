@@ -39,6 +39,7 @@ Route::resource('visa-agents', VisaAgentController::class);
 Route::resource('ticket-agents', TicketAgentController::class);
 Route::resource('fingerprint-charges', FingerprintChargeController::class);
 Route::resource('routes', RouteController::class);
+Route::resource('ticket-fares', \App\Http\Controllers\TicketFareController::class);
 Route::resource('visa-agent-costs', VisaAgentCostController::class);
 Route::resource('visa-selling-prices', VisaSellingPriceController::class);
 Route::resource('currency-rates', CurrencyRateController::class);
