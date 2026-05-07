@@ -52,6 +52,7 @@
                         <a href="{{ route('visa-selling-prices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Selling Prices</a>
                         <a href="{{ route('currency-rates.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Currency Rates</a>
                         <a href="{{ route('transaction-types.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Transaction Types</a>
+                        <a href="{{ route('invoices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Invoices</a>
                     </div>
                 </div>
             </div>
@@ -109,6 +110,7 @@
                 <a href="{{ route('visa-selling-prices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Selling Prices</a>
                 <a href="{{ route('currency-rates.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Currency Rates</a>
                 <a href="{{ route('transaction-types.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Transaction Types</a>
+                <a href="{{ route('invoices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Invoices</a>
             </div>
         </div>
     </div>
