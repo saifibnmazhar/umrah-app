@@ -16,6 +16,7 @@ use App\Http\Controllers\VisaAgentController;
 use App\Http\Controllers\VisaAgentCostController;
 use App\Http\Controllers\VisaSellingPriceController;
 use App\Http\Controllers\CurrencyRateController;
+use App\Http\Controllers\TransactionTypeController;
 use Illuminate\Support\Facades\Route;
 
 // Dashboard
@@ -39,6 +40,7 @@ Route::resource('fingerprint-charges', FingerprintChargeController::class);
 Route::resource('visa-agent-costs', VisaAgentCostController::class);
 Route::resource('visa-selling-prices', VisaSellingPriceController::class);
 Route::resource('currency-rates', CurrencyRateController::class);
+Route::resource('transaction-types', TransactionTypeController::class);
 Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
 Route::post('/bookings', function () {
     return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
