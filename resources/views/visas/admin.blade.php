@@ -22,6 +22,13 @@
             >
                 Visa Agent Costs
             </button>
+            <button
+                @click="activeTab = 'visa-agents'"
+                :class="{ 'border-blue-500 text-blue-600': activeTab === 'visa-agents', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'visa-agents' }"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200"
+            >
+                Visa Agents
+            </button>
         </nav>
     </div>
 
@@ -148,6 +155,63 @@
             </div>
         </div>
     </div>
+
+    <!-- Visa Agents Tab -->
+    <div x-show="activeTab === 'visa-agents'" x-cloak>
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-slate-800">Visa Agents</h2>
+            <button onclick="openVisaAgentModal()" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Visa Agent
+            </button>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
+                        <tr>
+                            <th class="px-6 py-4 text-left">Name</th>
+                            <th class="px-6 py-4 text-left">Address</th>
+                            <th class="px-6 py-4 text-left">Contacts</th>
+                            <th class="px-6 py-4 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @forelse($visaAgents as $agent)
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 text-slate-700 font-medium">{{ $agent->name }}</td>
+                                <td class="px-6 py-4 text-slate-600">{{ $agent->address ?? '—' }}</td>
+                                <td class="px-6 py-4 text-slate-600">{{ $agent->contacts ?? '—' }}</td>
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-4">
+                                        <button onclick="editVisaAgent({{ $agent->id }}, '{{ $agent->name }}', '{{ $agent->address ?? '' }}', '{{ $agent->contacts ?? '' }}')" class="text-slate-600 hover:text-slate-800 font-medium text-sm">Edit</button>
+                                        <form method="POST" action="{{ route('visa-agents.destroy', $agent->id) }}" onsubmit="return confirm('Are you sure?')" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-800 font-medium text-sm">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="4" class="px-6 py-12 text-center text-slate-500">
+                                    No visa agents found.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-center">
+            {{ $visaAgents->links() }}
+        </div>
+    </div>
 </div>
 
 <!-- Visa Price Modal -->
@@ -211,6 +275,36 @@
     </div>
 </div>
 
+<!-- Visa Agent Modal -->
+<div id="visaAgentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/50" onclick="closeVisaAgentModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+        <h3 class="text-xl font-semibold text-slate-800 mb-4" id="visaAgentModalTitle">Add Visa Agent</h3>
+        <form id="visaAgentForm" method="POST" action="{{ route('visa-agents.store') }}">
+            @csrf
+            <input type="hidden" id="visaAgentFormMethod" name="_method" value="POST">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                    <input type="text" id="visaAgentName" name="name" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                    <input type="text" id="visaAgentAddress" name="address" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Contacts</label>
+                    <input type="text" id="visaAgentContacts" name="contacts" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button type="button" onclick="closeVisaAgentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 // Visa Price Modal Functions
 function openVisaPriceModal() {
@@ -257,6 +351,31 @@ function editAgentCost(id, agentId, agentAddress, cost) {
     document.getElementById('visaAgentSelect').value = agentId;
     document.getElementById('agentAddress').value = agentAddress;
     document.getElementById('agentCostInput').value = cost;
+}
+
+// Visa Agent Modal Functions
+function openVisaAgentModal() {
+    document.getElementById('visaAgentModal').classList.remove('hidden');
+    document.getElementById('visaAgentFormMethod').value = 'POST';
+    document.getElementById('visaAgentForm').action = '{{ route("visa-agents.store") }}';
+    document.getElementById('visaAgentModalTitle').textContent = 'Add Visa Agent';
+    document.getElementById('visaAgentName').value = '';
+    document.getElementById('visaAgentAddress').value = '';
+    document.getElementById('visaAgentContacts').value = '';
+}
+
+function closeVisaAgentModal() {
+    document.getElementById('visaAgentModal').classList.add('hidden');
+}
+
+function editVisaAgent(id, name, address, contacts) {
+    document.getElementById('visaAgentModal').classList.remove('hidden');
+    document.getElementById('visaAgentFormMethod').value = 'PUT';
+    document.getElementById('visaAgentForm').action = '/visa-agents/' + id;
+    document.getElementById('visaAgentModalTitle').textContent = 'Edit Visa Agent';
+    document.getElementById('visaAgentName').value = name;
+    document.getElementById('visaAgentAddress').value = address;
+    document.getElementById('visaAgentContacts').value = contacts;
 }
 </script>
 @endsection

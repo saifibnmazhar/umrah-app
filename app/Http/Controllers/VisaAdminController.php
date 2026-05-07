@@ -19,8 +19,9 @@ class VisaAdminController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $visaAgents = VisaAgent::orderBy('name')->get();
+        $visaAgents = VisaAgent::orderBy('name')->paginate(10)->withQueryString();
+        $allVisaAgents = VisaAgent::orderBy('name')->get();
 
-        return view('visas.admin', compact('visaSellingPrices', 'visaAgentCosts', 'visaAgents'));
+        return view('visas.admin', compact('visaSellingPrices', 'visaAgentCosts', 'visaAgents', 'allVisaAgents'));
     }
 }
