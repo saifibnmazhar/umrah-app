@@ -1,0 +1,346 @@
+# Laravel UI Integration – OpenCode Commands.txt (UPDATED)
+
+---
+
+## Task 0: Setup UI Reference Folder (READ-ONLY)
+
+**Command:**
+
+- Original UI folder location: `./ui-references/`
+
+**Rules:**
+
+- DO NOT modify anything inside `./ui-references/`
+- Use it only as design reference
+- All work must be done inside Laravel structure
+
+---
+
+## Task 1: Move UI Assets into Laravel
+
+**Command:**
+
+- Copy FROM `./ui-references/` INTO Laravel:
+  - Tailwind config → `tailwind.config.js` (merge with existing)
+  - Custom CSS → `resources/css/app.css`
+  - No JS files to copy - will be converted to Alpine
+
+---
+
+## Task 2: Create Main Layout
+
+**Command:**
+
+Create `resources/views/layouts/app.blade.php`:
+
+- Extract from: `./ui-references/nav.html`
+- Structure: nav > div > flex container > desktop nav + mobile menu button
+- Add: Head section, Tailwind + Vite assets, `@yield('content')`
+- Alpine integration for mobile menu toggle
+- NO sidebar/footer (not present in UI reference)
+
+---
+
+## Task 3: Create Navigation Partial
+
+**Command:**
+
+Create `resources/views/partials/nav.blade.php`:
+
+- Extract from: `./ui-references/nav.html` (full nav element)
+- Map desktop nav items:
+  - Dashboard → `/dashboard`
+  - Booking → `/bookings`
+  - Fingerprint Admin → `/fingerprints/admin`
+  - Fingerprint Staff → `/fingerprints/staff`
+  - Visa Admin → `/visas/admin`
+  - Fare Admin → `/fares/admin`
+  - Reports (dropdown) → 11 report routes
+  - Settings → `/settings`
+- Map mobile nav items (same structure, different layout)
+- Alpine conversion: `x-data="{ mobileOpen: false }"` for mobile menu toggle
+
+---
+
+## Task 4: Convert HTML Pages to Blade Views
+
+**Command:**
+
+For each UI reference page, create Blade view with `@extends('layouts.app')`:
+
+| UI Reference | Blade View Path |
+|--------------|-----------------|
+| dashboard.html | `resources/views/dashboard/index.blade.php` |
+| booking.html | `resources/views/bookings/index.blade.php` |
+| fare-admin.html | `resources/views/fares/admin.blade.php` |
+| visa-admin.html | `resources/views/visas/admin.blade.php` |
+| fingerprint-admin.html | `resources/views/fingerprints/admin.blade.php` |
+| fingerprint-staff.html | `resources/views/fingerprints/staff.blade.php` |
+| settings.html | `resources/views/settings/index.blade.php` |
+| statement.html | `resources/views/reports/statement.blade.php` |
+| profit-loss-report.html | `resources/views/reports/profit-loss.blade.php` |
+| fingerprint-report.html | `resources/views/reports/fingerprint.blade.php` |
+| visa-report.html | `resources/views/reports/visa.blade.php` |
+| visa-agent-report.html | `resources/views/reports/visa-agent.blade.php` |
+| ticket-agent-report.html | `resources/views/reports/ticket-agent.blade.php` |
+| due-report.html | `resources/views/reports/due.blade.php` |
+| reissue-refund-report.html | `resources/views/reports/reissue-refund.blade.php` |
+| user-wise-sales-report.html | `resources/views/reports/user-wise-sales.blade.php` |
+| pending-outbound-ticket-report.html | `resources/views/reports/pending-outbound.blade.php` |
+| payment-receiving-report.html | `resources/views/reports/payment-receiving.blade.php` |
+| invoice-details.html | `resources/views/invoices/details.blade.php` |
+| invoice-print.html | `resources/views/invoices/print.blade.php` |
+| passenger-details.html | `resources/views/passengers/details.blade.php` |
+| package-details.html | `resources/views/packages/details.blade.php` |
+| re-issue-confirmation.html | `resources/views/re-issues/confirmation.blade.php` |
+| refund-confirmation.html | `resources/views/refunds/confirmation.blade.php` |
+| add-ticket-confirmation.html | `resources/views/tickets/add-confirmation.blade.php` |
+| visa-passenger-details.html | `resources/views/visas/passenger-details.blade.php` |
+| fare-passenger-details.html | `resources/views/fares/passenger-details.blade.php` |
+| branch-due-details.html | `resources/views/reports/branch-due-details.blade.php` |
+
+**Total: 28 Blade views** (index.html is redirect, excluded)
+
+---
+
+## Task 5: Setup Routes
+
+**Command:**
+
+Edit `routes/web.php` - Add all routes:
+
+```php
+// Dashboard
+Route::get('/', fn() => redirect('/dashboard'));
+Route::get('/dashboard', fn() => view('dashboard.index'));
+
+// Main Pages
+Route::get('/bookings', fn() => view('bookings.index'));
+Route::get('/fares/admin', fn() => view('fares.admin'));
+Route::get('/visas/admin', fn() => view('visas.admin'));
+Route::get('/fingerprints/admin', fn() => view('fingerprints.admin'));
+Route::get('/fingerprints/staff', fn() => view('fingerprints.staff'));
+Route::get('/settings', fn() => view('settings.index'));
+
+// Reports
+Route::get('/reports/statement', fn() => view('reports.statement'));
+Route::get('/reports/profit-loss', fn() => view('reports.profit-loss'));
+Route::get('/reports/fingerprint', fn() => view('reports.fingerprint'));
+Route::get('/reports/visa', fn() => view('reports.visa'));
+Route::get('/reports/visa-agent', fn() => view('reports.visa-agent'));
+Route::get('/reports/ticket-agent', fn() => view('reports.ticket-agent'));
+Route::get('/reports/due', fn() => view('reports.due'));
+Route::get('/reports/reissue-refund', fn() => view('reports.reissue-refund'));
+Route::get('/reports/user-wise-sales', fn() => view('reports.user-wise-sales'));
+Route::get('/reports/pending-outbound', fn() => view('reports.pending-outbound'));
+Route::get('/reports/payment-receiving', fn() => view('reports.payment-receiving'));
+Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'));
+
+// Detail Pages (with route parameters)
+Route::get('/invoices/{id}', fn($id) => view('invoices.details'))->name('invoices.details');
+Route::get('/invoices/{id}/print', fn($id) => view('invoices.print'))->name('invoices.print');
+Route::get('/passengers/{id}', fn($id) => view('passengers.details'))->name('passengers.details');
+Route::get('/packages/{id}', fn($id) => view('packages.details'))->name('packages.details');
+Route::get('/re-issues/{id}/confirm', fn($id) => view('re-issues.confirmation'))->name('re-issues.confirmation');
+Route::get('/refunds/{id}/confirm', fn($id) => view('refunds.confirmation'))->name('refunds.confirmation');
+Route::get('/tickets/{id}/add-confirm', fn($id) => view('tickets.add-confirmation'))->name('tickets.add-confirmation');
+```
+
+**Total: 28 routes**
+
+---
+
+## Task 6: Create Navigation Landing Page
+
+**Command:**
+
+Create `resources/views/welcome.blade.php`:
+
+- Links to all main pages and reports for testing
+- Grid layout with category sections
+
+---
+
+## Task 7: Setup Tailwind with Vite
+
+**Command:**
+
+- Ensure Tailwind working
+- Update `resources/css/app.css`:
+```css
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+```
+
+- Add custom styles from UI reference (in `<style>` tags):
+  - `.nav-item` - navigation link styling
+  - `.modal-overlay`, `.modal-content` - modal transitions
+  - `.toast` - toast notification animation
+  - Report-specific: `.search-input`, `.filter-btn`, `.date-input`, `.table-header`, `.table-row-*`
+
+---
+
+## Task 8: Setup Alpine.js
+
+**Command:**
+
+- Initialize Alpine in `resources/js/app.js`
+- Import: `import Alpine from 'alpinejs'`
+- Start: `Alpine.start()`
+- Remove inline scripts from copied HTML
+
+---
+
+## Task 9: Convert JavaScript to Alpine Components
+
+**Command:**
+
+Map specific functions FROM `./ui-references/*.js` TO Alpine:
+
+| JS Function | Alpine Conversion |
+|-------------|-------------------|
+| `toggleMobileMenu()` | `x-data="{ mobileOpen: false }"`, `@click="mobileOpen = !mobileOpen"` |
+| `showToast(message, type)` | Create `resources/js/components/Toast.svelte` or Alpine store method |
+| `showFareAdminTab(tabId)` | `x-data="{ activeTab: 'fareIndex' }"` with `x-show="activeTab === 'fareIndex'"` |
+| `showVisaTab(tabId)` | Same pattern as fare admin |
+| `switchDashboardTab(tabName)` | `x-data="{ activeTab: 'reissue' }"` with conditional rendering |
+| `loadNavigation()` | Remove - convert nav.html to Blade include |
+| `searchBookingIndex()` | `x-data="{ search: '' }"` with `@input="search = $el.value"` |
+
+**Files to convert:**
+- `./ui-references/shared.js` → Alpine components (toast, mobile toggle)
+- `./ui-references/nav.js` → Remove (convert nav.html to Blade)
+- `./ui-references/booking.js` → Alpine component (booking form, modals)
+- `./ui-references/fare-admin.js` → Alpine component (tabs, forms, modals)
+- `./ui-references/visa-admin.js` → Alpine component (tabs, tables, modals)
+- `./ui-references/settings.js` → Alpine component (forms, tabs)
+- `./ui-references/fingerprint-admin.js` → Alpine component
+- `./ui-references/fingerprint-staff.js` → Alpine component
+
+---
+
+## Task 10: Create Blade Components
+
+**Command:**
+
+Create reusable components in `resources/views/components/`:
+
+| Component | File | Based On |
+|-----------|------|----------|
+| Stat Card | `stat-card.blade.php` | Dashboard cards with icon, value, label, hover effects |
+| Status Badge | `status-badge.blade.php` | `inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-{color}-100 text-{color}-700` |
+| Page Header | `page-header.blade.php` | `h2 text-2xl font-bold text-slate-800` |
+| Data Table | `data-table.blade.php` | `overflow-x-auto`, headers with `bg-slate-50`, `divide-y` |
+| Search Input | `search-input.blade.php` | `w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2` |
+| Action Button | `action-button.blade.php` | Primary/secondary variants with icons |
+| Empty State | `empty-state.blade.php` | `text-center py-8 text-slate-500` |
+| Tab Button | `tab-button.blade.php` | Active/inactive states with border-bottom |
+| Modal | `modal.blade.php` | Overlay, content with transitions |
+
+---
+
+## Task 11: Add Dummy Data
+
+**Command:**
+
+For each Blade view, add dummy data matching actual data models:
+
+| Page | Dummy Data Structure |
+|------|---------------------|
+| Dashboard | `$stats = ['submittedVisa' => 120, 'issuedVisa' => 80, 'pendingVisa' => 68, 'inboundTicket' => 1200, 'outboundTicket' => 656, 'totalInvoice' => 312, 'totalDue' => '124,500 SAR', 'totalProfit' => '89,750 SAR']` |
+| Booking Index | `$bookings = [['invoiceNo' => 'INV-2024-001', 'bookingDate' => '2024-04-01', 'customerName' => 'Ahmed Abdullah', 'mobile' => '+966501111111', 'route' => 'DAC-JED-DAC', 'status' => 'None', 'totalAmount' => 5500, 'paidAmount' => 3000, 'dueAmount' => 2500], ...]` |
+| Fare Admin | `$fares = [['ticketType' => 'Round', 'airline' => 'Saudia', 'route' => 'DAC-JED-DAC', 'sellingFare' => 2200, 'netFare' => 2000], ...]` |
+| Visa Admin | `$visas = [['passengerName' => 'Ahmed Khan', 'passport' => 'P123456', 'agent' => 'Visa Agent A', 'sellingPrice' => 450, 'status' => 'pending'], ...]` |
+| Fingerprint Admin | `$fingerprints = [['passengerName' => 'Fatima Ali', 'location' => 'BMT-DHK', 'division' => 'Dhaka', 'district' => 'North', 'status' => 'pending', 'fingerCost' => 200], ...]` |
+| Settings | `$settings = ['flightDateGap' => 30, 'fingerprintCharges' => [...], 'packages' => [...]]` |
+
+---
+
+## Task 12: Prepare Forms
+
+**Command:**
+
+Add `name` attributes following actual form fields:
+
+| Page | Form Fields |
+|------|-------------|
+| Booking | `customer_name`, `customer_mobile`, `passenger_name[]`, `passenger_passport[]`, `passenger_route`, `package_type`, `service_type` |
+| Fare Admin | `ticket_type`, `airline`, `flight_type`, `from_city`, `to_city`, `selling_fare`, `net_fare`, `effective_from`, `effective_to` |
+| Visa Admin | `visa_price`, `effective_date`, `agent_name`, `commission_rate` |
+| Settings | `flight_date_gap`, `division`, `district`, `charge_amount` |
+| Fingerprint | `passenger_name`, `location`, `division`, `district`, `finger_charge`, `finger_cost`, `deadline` |
+
+---
+
+## Task 13: Add UI States
+
+**Command:**
+
+Implement UI states for each component:
+
+- **Empty State**: `text-center py-8 text-slate-500` - "No records found"
+- **Loading State**: `animate-pulse` skeleton or spinner
+- **Error State**: Red border, error message display
+
+---
+
+## Task 14: Cleanup Code
+
+**Command:**
+
+- Remove duplicate nav HTML from each page (use `@include('partials.nav')`)
+- Remove inline `<script>` tags (converted to Alpine)
+- Extract repeated card patterns to components
+- Remove old navigation comments from HTML files
+
+---
+
+## Task 15: Responsive Fixes
+
+**Command:**
+
+Ensure UI works on:
+
+- **Mobile** (`<640px`): Hamburger menu, stacked layouts, horizontal scroll tables
+- **Tablet** (`640px-1024px`): 2-column grids, adjusted padding
+- **Desktop** (`>1024px`): Full layout as designed
+
+---
+
+## Task 16: Documentation
+
+**Command:**
+
+Create `README.md`:
+
+- Explain `./ui-references/` usage
+- Document Laravel structure
+- List all Blade components
+- Explain Alpine.js patterns
+- Document route structure
+
+---
+
+## UPDATED RULES (STRICT)
+
+- DO NOT edit `./ui-references/`
+- DO NOT copy full HTML blindly - extract needed sections only
+- DO NOT write backend logic
+- DO NOT create migrations
+- MUST use Blade layout and components
+- MUST use dummy data for all pages
+- MUST make all pages accessible via routes
+
+---
+
+## Summary of Updates
+
+| Area | Before | After |
+|------|--------|-------|
+| Pages | 2 specified | 28 Blade views |
+| Routes | 3 routes | 28 routes |
+| Components | Generic list | 9 specific components |
+| Dummy Data | Placeholder | Real data models |
+| JS→Alpine | Generic terms | 8 function mappings |
+| Layout | Generic | From nav.html partial |

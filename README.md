@@ -1,59 +1,124 @@
-<p align="center"><a href="https://laravel.com" target="_blank"><img src="https://raw.githubusercontent.com/laravel/art/master/logo-lockup/5%20SVG/2%20CMYK/1%20Full%20Color/laravel-logolockup-cmyk-red.svg" width="400" alt="Laravel Logo"></a></p>
+# BM Umrah Laravel UI Integration
 
-<p align="center">
-<a href="https://github.com/laravel/framework/actions"><img src="https://github.com/laravel/framework/workflows/tests/badge.svg" alt="Build Status"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/dt/laravel/framework" alt="Total Downloads"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/v/laravel/framework" alt="Latest Stable Version"></a>
-<a href="https://packagist.org/packages/laravel/framework"><img src="https://img.shields.io/packagist/l/laravel/framework" alt="License"></a>
-</p>
+## Overview
+This project integrates HTML/JS UI references from `./ui-references/` into a Laravel Blade application with Tailwind CSS v4 and Alpine.js.
 
-## About Laravel
+## UI Reference Usage
+- Original HTML/JS files in `./ui-references/` are design references
+- DO NOT modify files in this folder
+- Use as reference only for new implementations
 
-Laravel is a web application framework with expressive, elegant syntax. We believe development must be an enjoyable and creative experience to be truly fulfilling. Laravel takes the pain out of development by easing common tasks used in many web projects, such as:
+## Laravel Structure
+```
+resources/
+├── views/
+│   ├── layouts/app.blade.php      # Main layout
+│   ├── partials/nav.blade.php     # Navigation
+│   ├── components/               # 10 reusable components
+│   ├── dashboard/index.blade.php
+│   ├── bookings/index.blade.php
+│   ├── fares/admin.blade.php
+│   ├── fares/passenger-details.blade.php
+│   ├── visas/admin.blade.php
+│   ├── visas/passenger-details.blade.php
+│   ├── fingerprints/admin.blade.php
+│   ├── fingerprints/staff.blade.php
+│   ├── settings/index.blade.php
+│   ├── reports/                   # 11 report views
+│   ├── invoices/                   # 2 views
+│   ├── passengers/details.blade.php
+│   ├── packages/details.blade.php
+│   ├── refunds/confirmation.blade.php
+│   ├── re-issues/confirmation.blade.php
+│   └── tickets/add-confirmation.blade.php
+```
 
-- [Simple, fast routing engine](https://laravel.com/docs/routing).
-- [Powerful dependency injection container](https://laravel.com/docs/container).
-- Multiple back-ends for [session](https://laravel.com/docs/session) and [cache](https://laravel.com/docs/cache) storage.
-- Expressive, intuitive [database ORM](https://laravel.com/docs/eloquent).
-- Database agnostic [schema migrations](https://laravel.com/docs/migrations).
-- [Robust background job processing](https://laravel.com/docs/queues).
-- [Real-time event broadcasting](https://laravel.com/docs/broadcasting).
+## Blade Components (10)
+1. `stat-card.blade.php` - Dashboard stats
+2. `status-badge.blade.php` - Status indicators
+3. `page-header.blade.php` - Page titles
+4. `data-table.blade.php` - Tables
+5. `search-input.blade.php` - Search fields
+6. `action-button.blade.php` - Buttons
+7. `empty-state.blade.php` - Empty states
+8. `tab-button.blade.php` - Tabs
+9. `modal.blade.php` - Modals
+10. `toast.blade.php` - Notifications
+11. `loading-state.blade.php` - Loading states
+12. `error-state.blade.php` - Error states
+13. `skeleton.blade.php` - Skeleton loaders
 
-Laravel is accessible, powerful, and provides tools required for large, robust applications.
+## Alpine.js Patterns
+- `x-data="{ key: value }"` - Component state
+- `x-show` / `x-bind` - Conditional rendering
+- `x-model` - Two-way binding
+- `@click` - Event handlers
+- `:class` - Dynamic classes
 
-## Learning Laravel
+## Route Structure (28 routes)
+| Path | Name | View |
+|------|------|------|
+| `/` | home | redirect to dashboard |
+| `/dashboard` | dashboard | dashboard.index |
+| `/bookings` | booking.index | bookings.index |
+| `/fares/admin` | fare.admin | fares.admin |
+| `/visas/admin` | visa.admin | visas.admin |
+| `/fingerprints/admin` | fingerprint.admin | fingerprints.admin |
+| `/fingerprints/staff` | fingerprint.staff | fingerprints.staff |
+| `/settings` | settings | settings.index |
+| `/reports/statement` | report.statement | reports.statement |
+| `/reports/profit-loss` | report.profit-loss | reports.profit-loss |
+| `/reports/visa` | report.visa | reports.visa |
+| `/reports/visa-agent` | report.visa-agent | reports.visa-agent |
+| `/reports/ticket-agent` | report.ticket-agent | reports.ticket-agent |
+| `/reports/due` | report.due | reports.due |
+| `/reports/reissue-refund` | report.reissue-refund | reports.reissue-refund |
+| `/reports/user-wise-sales` | report.user-sales | reports.user-wise-sales |
+| `/reports/pending-outbound` | report.pending-ticket | reports.pending-outbound |
+| `/reports/payment-receiving` | report.payment-receiving | reports.payment-receiving |
+| `/reports/fingerprint` | report.fingerprint | reports.fingerprint |
+| `/reports/branch-due-details` | report.branch-due-details | reports.branch-due-details |
+| `/invoices/{id}` | invoices.details | invoices.details |
+| `/invoices/{id}/print` | invoices.print | invoices.print |
+| `/passengers/{id}` | passengers.details | passengers.details |
+| `/packages/{id}` | packages.details | packages.details |
+| `/re-issues/{id}/confirm` | re-issues.confirmation | re-issues.confirmation |
+| `/refunds/{id}/confirm` | refunds.confirmation | refunds.confirmation |
+| `/tickets/{id}/add-confirm` | tickets.add-confirmation | tickets.add-confirmation |
 
-Laravel has the most extensive and thorough [documentation](https://laravel.com/docs) and video tutorial library of all modern web application frameworks, making it a breeze to get started with the framework. You can also check out [Laravel Learn](https://laravel.com/learn), where you will be guided through building a modern Laravel application.
+## Running the Project
+```bash
+# Install dependencies
+npm install
 
-If you don't feel like reading, [Laracasts](https://laracasts.com) can help. Laracasts contains thousands of video tutorials on a range of topics including Laravel, modern PHP, unit testing, and JavaScript. Boost your skills by digging into our comprehensive video library.
+# Start Vite dev server
+npm run dev
 
-## Laravel Sponsors
+# Start Laravel server
+php artisan serve
+```
 
-We would like to extend our thanks to the following sponsors for funding Laravel development. If you are interested in becoming a sponsor, please visit the [Laravel Partners program](https://partners.laravel.com).
+## Key Patterns
+- Use `route()` helper for all links
+- Use `@include('partials.nav')` for navigation
+- Dummy data via `@php` blocks in each view
+- Form `name` attributes for Laravel binding
+- Use `x-data` for component state instead of inline JavaScript
 
-### Premium Partners
+## Tailwind Configuration
+Custom slate colors (50-950) are defined in `resources/css/app.css` via `@theme`:
+```css
+@theme {
+  --color-slate-50: #f8fafc;
+  --color-slate-100: #f1f5f9;
+  /* ... etc */
+}
+```
 
-- **[Vehikl](https://vehikl.com)**
-- **[Tighten Co.](https://tighten.co)**
-- **[Kirschbaum Development Group](https://kirschbaumdevelopment.com)**
-- **[64 Robots](https://64robots.com)**
-- **[Curotec](https://www.curotec.com/services/technologies/laravel)**
-- **[DevSquad](https://devsquad.com/hire-laravel-developers)**
-- **[Redberry](https://redberry.international/laravel-development)**
-- **[Active Logic](https://activelogic.com)**
-
-## Contributing
-
-Thank you for considering contributing to the Laravel framework! The contribution guide can be found in the [Laravel documentation](https://laravel.com/docs/contributions).
-
-## Code of Conduct
-
-In order to ensure that the Laravel community is welcoming to all, please review and abide by the [Code of Conduct](https://laravel.com/docs/contributions#code-of-conduct).
-
-## Security Vulnerabilities
-
-If you discover a security vulnerability within Laravel, please send an e-mail to Taylor Otwell via [taylor@laravel.com](mailto:taylor@laravel.com). All security vulnerabilities will be promptly addressed.
-
-## License
-
-The Laravel framework is open-sourced software licensed under the [MIT license](https://opensource.org/licenses/MIT).
+## Form Field Names
+| Page | Fields |
+|------|--------|
+| Booking | customer_name, customer_mobile, passenger_name[], passenger_passport[], route, package_type, pax_qty, remarks |
+| Fare Admin | airline, route, selling_fare, tax, pax_type, effective_from, effective_to |
+| Visa Admin | passport, name, mobile, agent_name, submission_date, status |
+| Settings | min_days, max_days, flight_gap_notice, default_airport, charge_*, package_* |
