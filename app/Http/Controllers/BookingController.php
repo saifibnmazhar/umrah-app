@@ -46,13 +46,9 @@ class BookingController extends Controller
         $districts = District::orderBy('name')->get();
         $packages = Package::orderBy('package_name')->get();
         $offices = Office::orderBy('name')->get();
-        
-        $routes = Route::orderBy('route_code')->get();
-        $airlines = Airline::orderBy('name')->get();
-        $travelClasses = TravelClass::orderBy('name')->get();
 
         return view('bookings.create', compact(
-            'districts', 'packages', 'offices', 'routes', 'airlines', 'travelClasses'
+            'districts', 'packages', 'offices'
         ));
     }
 
