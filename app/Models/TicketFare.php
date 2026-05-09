@@ -14,6 +14,7 @@ class TicketFare extends Model
         'airline_id',
         'airline_classes_id',
         'route_id',
+        'route_type',
         'ticket_type',
         'effective_from',
         'effective_to',

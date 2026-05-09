@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\BookingController;
+use App\Http\Controllers\PassengerController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AirlineCityController;
 use App\Http\Controllers\AirlineClassController;
@@ -21,6 +23,7 @@ use App\Http\Controllers\VisaAgentCostController;
 use App\Http\Controllers\VisaSellingPriceController;
 use App\Http\Controllers\CurrencyRateController;
 use App\Http\Controllers\TransactionTypeController;
+use App\Http\Controllers\PassengerStatusController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\VoucherController;
@@ -64,10 +67,22 @@ Route::middleware('auth')->group(function () {
     Route::resource('packages', PackageController::class);
     Route::resource('users', UserController::class);
     Route::resource('transaction-types', TransactionTypeController::class);
+    Route::resource('passenger-statuses', PassengerStatusController::class);
     Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
     Route::post('/bookings', function () {
         return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
     })->name('booking.store');
+    Route::resource('bookings', BookingController::class);
+    Route::resource('passengers', PassengerController::class);
+
+    // Booking-specific routes
+    Route::post('/bookings/{booking}/passengers', [BookingController::class, 'addPassenger'])->name('bookings.passengers.store');
+    Route::delete('/bookings/{booking}/passengers/{passenger}', [BookingController::class, 'removePassenger'])->name('bookings.passengers.destroy');
+
+    // API routes
+    Route::post('/api/bookings/calculate-type', [BookingController::class, 'calculatePassengerType'])->name('api.bookings.calculate-type');
+    Route::get('/api/bookings/fingerprint-charge', [BookingController::class, 'getFingerprintCharge'])->name('api.bookings.fingerprint-charge');
+    Route::get('/api/customers/search', [CustomerController::class, 'search'])->name('api.customers.search');
     Route::get('/fares/admin', [FareAdminController::class, 'index'])->name('fare.admin');
     Route::post('/fares/admin/agent', [FareAdminController::class, 'storeAgent'])->name('fare.admin.agent.store');
     Route::put('/fares/admin/agent/{ticketAgent}', [FareAdminController::class, 'updateAgent'])->name('fare.admin.agent.update');
@@ -82,6 +97,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/flight-date-gap', [SettingsController::class, 'updateFlightDateGap'])->name('settings.flight-date-gap.update');
     Route::put('/settings/fingerprint-charge', [SettingsController::class, 'updateFingerprintCharge'])->name('settings.fingerprint-charge.update');
     Route::put('/settings/package-configuration', [SettingsController::class, 'updatePackageConfiguration'])->name('settings.package-configuration.update');
+    Route::post('/settings/package', [SettingsController::class, 'storePackage'])->name('settings.package.store');
+    Route::put('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->name('settings.package.update');
+    Route::delete('/settings/package/{package}', [SettingsController::class, 'destroyPackage'])->name('settings.package.destroy');
 
     // Reports
     Route::get('/reports/statement', fn() => view('reports.statement'))->name('report.statement');
@@ -102,7 +120,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('payments', PaymentController::class);
     Route::resource('vouchers', VoucherController::class);
     Route::get('/invoices/{id}/print', fn($id) => view('invoices.print', compact('id')))->name('invoices.print');
-    Route::get('/passengers/{id}', fn($id) => view('passengers.details', compact('id')))->name('passengers.details');
+    Route::resource('passengers', PassengerController::class);
     Route::get('/re-issues/{id}/confirm', fn($id) => view('re-issues.confirmation', compact('id')))->name('re-issues.confirmation');
     Route::get('/refunds/{id}/confirm', fn($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation');
     Route::get('/tickets', fn() => view('tickets.index'))->name('tickets.index');

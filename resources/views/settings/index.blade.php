@@ -104,7 +104,7 @@
                         @endforeach
                     </select>
                 </div>
-                <button type="button" onclick="showFingerprintChargeModal()" id="addChargeBtn" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
+                <button type="button" onclick="showFingerprintChargeModal()" id="addChargeBtn" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-700" disabled>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
@@ -207,6 +207,11 @@
         try {
             var selectEl = document.getElementById('filterDivisionSelect');
             var division = selectEl ? selectEl.value : '';
+            var addBtn = document.getElementById('addChargeBtn');
+            
+            if (addBtn) {
+                addBtn.disabled = !division;
+            }
             
             var rows = document.querySelectorAll('#fingerprintTableBody tr');
             if (!rows || rows.length === 0) return;
@@ -274,52 +279,267 @@
     </script>
 
     <div x-show="activeTab === 'package-configuration'" x-cloak>
-        <form method="POST" action="{{ route('settings.package-configuration.update') }}">
-            @csrf
-            @method('PUT')
+        @if(session('success'))
+            <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-4">
+                {{ session('success') }}
+            </div>
+        @endif
 
-            <div class="space-y-6">
-                <div>
-                    <label for="package_name" class="block text-sm font-medium text-gray-700 mb-1">Package Name</label>
-                    <input type="text" id="package_name" name="package_name" value="{{ $settings['package_name'] ?? 'Umrah Premium Package' }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border">
+        @if(session('error'))
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        <div class="flex justify-between items-center mb-4">
+            <h2 class="text-lg font-semibold text-slate-700">Packages</h2>
+            <button type="button" onclick="showPackageModal()" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Package
+            </button>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-600">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium">Package Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket</th>
+                            <th class="px-3 py-2 text-right font-medium">Regular Price</th>
+                            <th class="px-3 py-2 text-right font-medium">Offer Price</th>
+                            <th class="px-3 py-2 text-center font-medium">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @forelse($packages as $package)
+                            @php
+                                $route = $package->ticketFare?->route;
+                                if ($route && $route->returnCity) {
+                                    $routeName = ($route->fromCity?->code ?? '?') . ' - ' . ($route->toCity?->code ?? '?') . ' - ' . ($route->returnCity?->code ?? '?');
+                                } else {
+                                    $routeName = ($route?->fromCity?->code ?? '?') . ' → ' . ($route?->toCity?->code ?? '?');
+                                }
+                                $ticketType = $package->ticketFare?->ticket_type?->value;
+                                $ticketDisplay = $routeName . ' | ' . strtoupper($ticketType ?? '?') . ' | BDT ' . number_format($package->ticketFare?->selling_fare ?? 0, 0);
+                                if ($ticketType === 'offer') {
+                                    $ticketDisplay .= ' | BDT ' . number_format($package->ticketFare?->offer_price ?? 0, 0);
+                                }
+                            @endphp
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-3 py-2 text-slate-800 font-medium">{{ $package->package_name }}</td>
+                                <td class="px-3 py-2 text-slate-600">{{ $ticketDisplay }}</td>
+                                <td class="px-3 py-2 text-right text-slate-800 font-medium">BDT {{ number_format($package->regular_price, 0) }}</td>
+                                <td class="px-3 py-2 text-right text-slate-600">
+                                    @if($package->offer_price)
+                                        BDT {{ number_format($package->offer_price, 0) }}
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 text-center">
+                                    <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
+                                    <form method="POST" action="{{ route('settings.package.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs text-red-500 hover:text-red-700">Delete</button>
+                                    </form>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="5" class="px-3 py-8 text-center text-slate-500">
+                                    No packages configured yet.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+
+            <div class="mt-4 flex justify-center">
+                {{ $packages->appends(request()->query())->links() }}
+            </div>
+        </div>
+
+        <!-- Package Modal -->
+        <div id="packageModal" class="fixed inset-0 z-50 hidden">
+            <div class="fixed inset-0 bg-black bg-opacity-50" onclick="hidePackageModal()"></div>
+            <div class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-xl w-full max-w-5xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 id="modalTitle" class="text-lg font-semibold text-slate-700">Add Package</h3>
+                    <button onclick="hidePackageModal()" class="text-slate-400 hover:text-slate-600">
+                        <svg class="w-5 h-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
                 </div>
+                <form id="packageForm" method="POST" action="{{ route('settings.package.store') }}">
+                    @csrf
+                    <input type="hidden" id="packageId" name="id">
+                    <input type="hidden" id="formMethod" name="_method" value="POST">
 
-                <div>
-                    <label for="package_price" class="block text-sm font-medium text-gray-700 mb-1">Package Price</label>
-                    <div class="relative rounded-md shadow-sm">
-                        <div class="pointer-events-none absolute inset-y-0 left-0 flex items-center pl-3">
-                            <span class="text-gray-500 sm:text-sm">$</span>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Package Name *</label>
+                            <input type="text" id="packageName" name="package_name" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" required>
                         </div>
-                        <input type="number" id="package_price" name="package_price" value="{{ $settings['package_price'] ?? 2500 }}" class="block w-full rounded-md border-gray-300 pl-7 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type *</label>
+                            <select id="modalTicketTypeSelect" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+                                <option value="">Select Ticket Type</option>
+                                <option value="regular">REGULAR</option>
+                                <option value="offer">OFFER</option>
+                                <option value="group">GROUP</option>
+                            </select>
+                        </div>
                     </div>
-                </div>
 
-                <div>
-                    <label for="package_features" class="block text-sm font-medium text-gray-700 mb-1">Package Features</label>
-                    <textarea id="package_features" name="package_features" rows="6" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border">{{ $settings['package_features'] ?? '• 5-star accommodation\n• Round-trip flights\n• Visa processing\n• Airport transfers\n• Guided tours\n• 24/7 support' }}</textarea>
-                    <p class="mt-1 text-sm text-gray-500">Enter each feature on a new line starting with •</p>
-                </div>
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
+                        <select id="modalTicketSelect" name="ticket_fare_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+                            <option value="">Select Ticket</option>
+                            @foreach($ticketFares as $fare)
+                                @php
+                                    $type = $fare['ticket_type'];
+                                    $display = $fare['airline'] . ' | ' . $fare['route'] . ' | ' . strtoupper($type ?? '?') . ' | BDT ' . number_format($fare['selling_fare'], 0);
+                                    if ($type === 'offer') {
+                                        $display .= ' | BDT ' . number_format($fare['offer_price'] ?? 0, 0);
+                                    }
+                                @endphp
+                                <option value="{{ $fare['id'] }}"
+                                    data-ticket-type="{{ $fare['ticket_type'] }}"
+                                    data-selling-fare="{{ $fare['selling_fare'] }}"
+                                    data-offer-price="{{ $fare['offer_price'] ?? 0 }}">
+                                    {{ $display }}
+                                </option>
+                            @endforeach
+                        </select>
+                    </div>
 
-                <div>
-                    <label for="package_duration" class="block text-sm font-medium text-gray-700 mb-1">Package Duration (days)</label>
-                    <input type="number" id="package_duration" name="package_duration" value="{{ $settings['package_duration'] ?? 10 }}" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border">
-                </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (BDT) *</label>
+                            <input type="number" id="modalRegularPrice" name="regular_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="0.01" required readonly>
+                        </div>
+                        <div id="modalOfferPriceContainer" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
+                            <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
+                        </div>
+                    </div>
 
-                <div>
-                    <label for="package_status" class="block text-sm font-medium text-gray-700 mb-1">Package Status</label>
-                    <select id="package_status" name="package_status" class="block w-full rounded-md border-gray-300 shadow-sm focus:border-blue-500 focus:ring-blue-500 sm:text-sm px-3 py-2 border">
-                        <option value="active" {{ ($settings['package_status'] ?? 'active') === 'active' ? 'selected' : '' }}>Active</option>
-                        <option value="inactive" {{ ($settings['package_status'] ?? 'active') === 'inactive' ? 'selected' : '' }}>Inactive</option>
-                    </select>
-                </div>
+                    <div class="mt-4 p-4 bg-slate-50 rounded-lg">
+                        <p class="text-sm text-slate-600">
+                            <span class="font-medium">Visa Selling Price (Latest):</span>
+                            <span class="text-slate-800 font-medium">
+                                @if($latestVisa)
+                                    BDT {{ number_format($latestVisa->selling_price, 0) }}
+                                @else
+                                    Not configured
+                                @endif
+                            </span>
+                        </p>
+                    </div>
+
+                    <div class="flex gap-3 mt-6">
+                        <button type="button" onclick="hidePackageModal()" class="flex-1 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-center">Cancel</button>
+                        <button type="submit" class="flex-1 px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save Package</button>
+                    </div>
+                </form>
             </div>
+        </div>
 
-            <div class="mt-6">
-                <button type="submit" class="inline-flex justify-center py-2 px-4 border border-transparent shadow-sm text-sm font-medium rounded-md text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500">
-                    Save Package Configuration
-                </button>
-            </div>
-        </form>
+        <script>
+        const ticketFares = @json($ticketFares);
+        const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
+        const packages = @json($packages->items());
+
+        function showPackageModal() {
+            document.getElementById('modalTitle').textContent = 'Add Package';
+            document.getElementById('packageForm').action = '{{ route('settings.package.store') }}';
+            document.getElementById('formMethod').value = 'POST';
+            document.getElementById('packageId').value = '';
+            document.getElementById('packageName').value = '';
+            document.getElementById('modalTicketTypeSelect').value = '';
+            document.getElementById('modalTicketSelect').value = '';
+            document.getElementById('modalRegularPrice').value = '';
+            document.getElementById('modalOfferPrice').value = '';
+            document.getElementById('modalOfferPriceContainer').classList.add('hidden');
+            filterModalTickets();
+            document.getElementById('packageModal').classList.remove('hidden');
+        }
+
+        function editPackage(id) {
+            const pkg = packages.find(p => p.id === id);
+            if (!pkg) return;
+
+            document.getElementById('modalTitle').textContent = 'Edit Package';
+            document.getElementById('packageForm').action = '/settings/package/' + id;
+            document.getElementById('formMethod').value = 'PUT';
+            document.getElementById('packageId').value = pkg.id;
+            document.getElementById('packageName').value = pkg.package_name;
+            
+            // Find ticket type from ticket_fare
+            const ticketOption = Array.from(document.getElementById('modalTicketSelect').options).find(opt => opt.value == pkg.ticket_fare_id);
+            if (ticketOption) {
+                document.getElementById('modalTicketTypeSelect').value = ticketOption.dataset.ticketType || '';
+                filterModalTickets();
+                document.getElementById('modalTicketSelect').value = pkg.ticket_fare_id;
+            }
+            
+            document.getElementById('modalRegularPrice').value = pkg.regular_price;
+            document.getElementById('modalOfferPrice').value = pkg.offer_price || '';
+            
+            if (ticketOption && ticketOption.dataset.ticketType === 'offer') {
+                document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
+            } else {
+                document.getElementById('modalOfferPriceContainer').classList.add('hidden');
+            }
+            
+            document.getElementById('packageModal').classList.remove('hidden');
+        }
+
+        function hidePackageModal() {
+            document.getElementById('packageModal').classList.add('hidden');
+        }
+
+        function filterModalTickets() {
+            const selectedType = document.getElementById('modalTicketTypeSelect').value;
+            Array.from(document.getElementById('modalTicketSelect').options).forEach(option => {
+                if (option.value === '') return;
+                const ticketType = option.dataset.ticketType;
+                option.style.display = (selectedType === '' || ticketType === selectedType) ? '' : 'none';
+            });
+        }
+
+        function calculateModalPrices() {
+            const selectedOption = document.getElementById('modalTicketSelect').options[document.getElementById('modalTicketSelect').selectedIndex];
+            if (!selectedOption || !selectedOption.value) {
+                document.getElementById('modalRegularPrice').value = '';
+                document.getElementById('modalOfferPrice').value = '';
+                return;
+            }
+
+            const sellingFare = parseFloat(selectedOption.dataset.sellingFare) || 0;
+            const offerFare = parseFloat(selectedOption.dataset.offerPrice) || 0;
+            const ticketType = selectedOption.dataset.ticketType;
+
+            document.getElementById('modalRegularPrice').value = (sellingFare + latestVisaPrice).toFixed(2);
+
+            if (ticketType === 'offer') {
+                document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
+                document.getElementById('modalOfferPrice').value = (offerFare + latestVisaPrice).toFixed(2);
+            } else {
+                document.getElementById('modalOfferPriceContainer').classList.add('hidden');
+                document.getElementById('modalOfferPrice').value = '';
+            }
+        }
+
+        document.getElementById('modalTicketTypeSelect').addEventListener('change', filterModalTickets);
+        document.getElementById('modalTicketSelect').addEventListener('change', calculateModalPrices);
+        </script>
     </div>
 </div>
 @endsection
