@@ -104,7 +104,7 @@
                         @endforeach
                     </select>
                 </div>
-                <button type="button" onclick="showFingerprintChargeModal()" id="addChargeBtn" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
+                <button type="button" onclick="showFingerprintChargeModal()" id="addChargeBtn" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-700" disabled>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
@@ -207,6 +207,11 @@
         try {
             var selectEl = document.getElementById('filterDivisionSelect');
             var division = selectEl ? selectEl.value : '';
+            var addBtn = document.getElementById('addChargeBtn');
+            
+            if (addBtn) {
+                addBtn.disabled = !division;
+            }
             
             var rows = document.querySelectorAll('#fingerprintTableBody tr');
             if (!rows || rows.length === 0) return;
