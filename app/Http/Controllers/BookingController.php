@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\Passenger;
 use App\Models\Customer;
 use App\Models\District;
+use App\Models\Document;
 use App\Models\Package;
 use App\Models\Office;
 use App\Models\FingerprintCharge;
@@ -77,6 +78,8 @@ class BookingController extends Controller
             'passengers.*.flight_date_from' => 'nullable|date',
             'passengers.*.flight_date_to' => 'nullable|date|after:passengers.*.flight_date_from',
             'passengers.*.address' => 'nullable|string|max:500',
+            'booking_customer_docs' => 'nullable|array',
+            'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
         try {
@@ -95,6 +98,17 @@ class BookingController extends Controller
                 'discount_value' => $validated['discount_value'] ?? 0,
                 'remarks' => $validated['remarks'] ?? null,
             ]);
+
+            if ($request->hasFile('booking_customer_docs')) {
+                foreach ($request->file('booking_customer_docs') as $file) {
+                    $booking->documents()->create([
+                        'owner_type' => 'booking',
+                        'owner_id' => $booking->id,
+                        'file_path' => $file->store('booking-docs', 'public'),
+                        'display_name' => $file->getClientOriginalName(),
+                    ]);
+                }
+            }
 
             foreach ($validated['passengers'] as $passengerData) {
                 $dob = Carbon::parse($passengerData['date_of_birth']);

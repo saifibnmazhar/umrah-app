@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Models\Customer;
+use App\Models\Document;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
+use Illuminate\Support\Facades\Storage;
 
 class CustomerController extends Controller
 {
@@ -32,11 +34,30 @@ class CustomerController extends Controller
                 'mobile_no' => 'required|string|max:20',
                 'ref_iqama_no' => 'nullable|string|max:50',
                 'ref_mobile_no' => 'nullable|string|max:20',
-                'ref_iqama_doc' => 'nullable|string|max:512',
+                'ref_iqama_doc' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+                'customer_docs' => 'nullable|array',
+                'customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
                 'address' => 'nullable|string|max:500',
             ]);
 
+            $validated = $request->validated();
+            if ($request->hasFile('ref_iqama_doc')) {
+                $path = $request->file('ref_iqama_doc')->store('customer-docs', 'public');
+                $validated['ref_iqama_doc'] = $path;
+            }
+
             $customer = Customer::create($validated);
+
+            if ($request->hasFile('customer_docs')) {
+                foreach ($request->file('customer_docs') as $file) {
+                    $customer->documents()->create([
+                        'owner_type' => 'customer',
+                        'owner_id' => $customer->id,
+                        'file_path' => $file->store('customer-docs', 'public'),
+                        'display_name' => $file->getClientOriginalName(),
+                    ]);
+                }
+            }
             return response()->json([
                 'success' => true,
                 'customer' => $customer,
@@ -71,11 +92,32 @@ class CustomerController extends Controller
             'mobile_no' => 'required|string|max:20',
             'ref_iqama_no' => 'nullable|string|max:50',
             'ref_mobile_no' => 'nullable|string|max:20',
-            'ref_iqama_doc' => 'nullable|string|max:512',
+            'ref_iqama_doc' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'customer_docs' => 'nullable|array',
+            'customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'address' => 'required|string|max:500',
         ]);
 
         try {
+            if ($request->hasFile('ref_iqama_doc')) {
+                if ($customer->ref_iqama_doc && Storage::disk('public')->exists($customer->ref_iqama_doc)) {
+                    Storage::disk('public')->delete($customer->ref_iqama_doc);
+                }
+                $path = $request->file('ref_iqama_doc')->store('customer-docs', 'public');
+                $validated['ref_iqama_doc'] = $path;
+            }
+
+            if ($request->hasFile('customer_docs')) {
+                foreach ($request->file('customer_docs') as $file) {
+                    $customer->documents()->create([
+                        'owner_type' => 'customer',
+                        'owner_id' => $customer->id,
+                        'file_path' => $file->store('customer-docs', 'public'),
+                        'display_name' => $file->getClientOriginalName(),
+                    ]);
+                }
+            }
+
             $customer->update($validated);
             return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
         } catch (\Exception $e) {

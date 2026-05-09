@@ -87,6 +87,20 @@
             </div>
 
             <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Customer Docs</label>
+                <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('customer_docs').click()">
+                    <input type="file" id="customer_docs" name="customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleCustomerDocUpload(this)">
+                    <div class="text-slate-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <span>click to upload</span>
+                    </div>
+                </div>
+                <div id="customer_docs_list" class="mt-2 space-y-1"></div>
+            </div>
+
+            <div>
                 <label for="passport_no" class="block text-sm font-medium text-slate-700 mb-1">Passport No. *</label>
                 <input type="text" name="passport_no" id="passport_no" value="{{ old('passport_no') }}" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('passport_no') border-red-500 @enderror" placeholder="Passport Number">
                 @error('passport_no')
@@ -152,6 +166,18 @@ function handleRefIqamaFileUpload(input) {
     if (file && filenameDisplay) {
         filenameDisplay.textContent = file.name;
     }
+}
+
+function handleCustomerDocUpload(input) {
+    const list = document.getElementById('customer_docs_list');
+    if (!list) return;
+    list.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="this.parentElement.remove()" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+        list.appendChild(item);
+    });
 }
 </script>
 @endsection

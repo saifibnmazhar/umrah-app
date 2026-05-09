@@ -106,6 +106,20 @@
                 </div>
             </div>
 
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Customer Docs</label>
+                <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('booking_customer_docs').click()">
+                    <input type="file" id="booking_customer_docs" name="booking_customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleBookingCustomerDocsUpload(this)">
+                    <div class="text-slate-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <span>click to upload</span>
+                    </div>
+                </div>
+                <div id="booking_customer_docs_list" class="mt-2 space-y-1"></div>
+            </div>
+
             <div class="mb-6">
                 <button type="button" @click="openPassengerModal()" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -317,9 +331,34 @@
                         <label class="block text-sm font-medium text-slate-600 mb-1">Referral Mobile No.</label>
                         <input type="text" x-model="newCustomer.ref_mobile_no" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
+                    <div x-show="newCustomer.iqama_type === 'referral'">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Upload Ref. Iqama *</label>
+                        <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('ref_iqama_doc').click()">
+                            <input type="file" id="ref_iqama_doc" name="ref_iqama_doc" class="hidden" accept=".jpg,.jpeg,.png,.pdf" onchange="handleRefIqamaFileUpload(this)">
+                            <div class="text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <span id="ref_iqama_doc_filename">click to upload</span>
+                            </div>
+                        </div>
+                    </div>
                     <div x-show="newCustomer.iqama_type !== 'none'&& newCustomer.iqama_type !== ''">
                         <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No.</label>
                         <input type="text" x-model="newCustomer.iqama_no" x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Customer Docs</label>
+                        <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('customer_docs').click()">
+                            <input type="file" id="customer_docs" name="customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleCustomerDocUpload(this)">
+                            <div class="text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <span>click to upload</span>
+                            </div>
+                        </div>
+                        <div id="customer_docs_list" class="mt-2 space-y-1"></div>
                     </div>
                 </div>
                 <div class="flex gap-3 pt-4 border-t border-slate-200">
@@ -332,6 +371,42 @@
 </div>
 
 <script>
+function handleRefIqamaFileUpload(input) {
+    const file = input.files[0];
+    const display = document.getElementById('ref_iqama_doc_filename');
+    if (file && display) display.textContent = file.name;
+}
+
+function handleCustomerDocUpload(input) {
+    const list = document.getElementById('customer_docs_list');
+    if (!list) return;
+    list.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+        list.appendChild(item);
+    });
+}
+function removeCustomerDoc(btn) {
+    btn.parentElement.remove();
+}
+
+function handleBookingCustomerDocsUpload(input) {
+    const list = document.getElementById('booking_customer_docs_list');
+    if (!list) return;
+    list.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeBookingCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+        list.appendChild(item);
+    });
+}
+function removeBookingCustomerDoc(btn) {
+    btn.parentElement.remove();
+}
+
 function bookingApp() {
     return {
         formVisible: false,
@@ -355,6 +430,7 @@ function bookingApp() {
             mobile_no: '',
             ref_iqama_no: '',
             ref_mobile_no: '',
+            ref_iqama_doc: null,
             address: ''
         },
         bookingData: {
@@ -398,8 +474,21 @@ function bookingApp() {
                 mobile_no: '',
                 ref_iqama_no: '',
                 ref_mobile_no: '',
+                ref_iqama_doc: null,
                 address: ''
             };
+            const fileInput = document.getElementById('ref_iqama_doc');
+            if (fileInput) fileInput.value = '';
+            const fileName = document.getElementById('ref_iqama_doc_filename');
+            if (fileName) fileName.textContent = 'click to upload';
+            const docsList = document.getElementById('customer_docs_list');
+            if (docsList) docsList.innerHTML = '';
+            const docsInput = document.getElementById('customer_docs');
+            if (docsInput) docsInput.value = '';
+            const bookingDocsList = document.getElementById('booking_customer_docs_list');
+            if (bookingDocsList) bookingDocsList.innerHTML = '';
+            const bookingDocsInput = document.getElementById('booking_customer_docs');
+            if (bookingDocsInput) bookingDocsInput.value = '';
             this.bookingData = {
                 fingerprint_location: 'Office',
                 fingerprint_office: '',
@@ -517,8 +606,17 @@ function bookingApp() {
                 mobile_no: '',
                 ref_iqama_no: '',
                 ref_mobile_no: '',
+                ref_iqama_doc: null,
                 address: ''
             };
+            const fileInput = document.getElementById('ref_iqama_doc');
+            if (fileInput) fileInput.value = '';
+            const fileName = document.getElementById('ref_iqama_doc_filename');
+            if (fileName) fileName.textContent = 'click to upload';
+            const docsList = document.getElementById('customer_docs_list');
+            if (docsList) docsList.innerHTML = '';
+            const docsInput = document.getElementById('customer_docs');
+            if (docsInput) docsInput.value = '';
             this.customerModalVisible = true;
             this.customerSuggestions = [];
         },
@@ -527,14 +625,30 @@ function bookingApp() {
         },
         async submitNewCustomer() {
             try {
+                const formData = new FormData();
+                Object.keys(this.newCustomer).forEach(key => {
+                    if (this.newCustomer[key] !== null) {
+                        formData.append(key, this.newCustomer[key]);
+                    }
+                });
+                const fileInput = document.getElementById('ref_iqama_doc');
+                if (fileInput && fileInput.files[0]) {
+                    formData.append('ref_iqama_doc', fileInput.files[0]);
+                }
+                const docsInput = document.getElementById('customer_docs');
+                if (docsInput) {
+                    Array.from(docsInput.files).forEach(file => {
+                        formData.append('customer_docs[]', file);
+                    });
+                }
+
                 const response = await fetch('{{ route("customers.store") }}', {
                     method: 'POST',
                     headers: {
-                        'Content-Type': 'application/json',
                         'Accept': 'application/json',
                         'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
-                    body: JSON.stringify(this.newCustomer)
+                    body: formData
                 });
                 const text = await response.text();
                 console.log('Response status:', response.status);
@@ -571,6 +685,53 @@ function bookingApp() {
             } catch (e) {
                 console.error('Error:', e);
                 alert('Failed to add customer');
+            }
+        },
+        async submitForm(e) {
+            e.preventDefault();
+
+            if (!this.selectedCustomer) {
+                alert('Please select a customer');
+                return;
+            }
+            if (this.passengers.length === 0) {
+                alert('Please add at least one passenger');
+                return;
+            }
+
+            const formData = new FormData(e.target);
+
+            const bookingDocsInput = document.getElementById('booking_customer_docs');
+            if (bookingDocsInput) {
+                Array.from(bookingDocsInput.files).forEach(file => {
+                    formData.append('booking_customer_docs[]', file);
+                });
+            }
+
+            try {
+                const response = await fetch(e.target.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success || response.ok) {
+                    window.location.href = '{{ route("bookings.index") }}';
+                } else {
+                    alert(data.message || 'Failed to create booking');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Failed to create booking');
             }
         }
     };

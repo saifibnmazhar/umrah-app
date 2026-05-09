@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use App\Enums\FingerprintLocation;
 use App\Enums\DiscountType;
 
@@ -79,5 +80,10 @@ class Booking extends Model
     public function passengers(): HasMany
     {
         return $this->hasMany(Passenger::class);
+    }
+
+    public function documents(): MorphMany
+    {
+        return $this->morphMany(Document::class, 'owner');
     }
 }
