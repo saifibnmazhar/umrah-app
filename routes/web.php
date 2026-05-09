@@ -82,6 +82,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/flight-date-gap', [SettingsController::class, 'updateFlightDateGap'])->name('settings.flight-date-gap.update');
     Route::put('/settings/fingerprint-charge', [SettingsController::class, 'updateFingerprintCharge'])->name('settings.fingerprint-charge.update');
     Route::put('/settings/package-configuration', [SettingsController::class, 'updatePackageConfiguration'])->name('settings.package-configuration.update');
+    Route::post('/settings/package', [SettingsController::class, 'storePackage'])->name('settings.package.store');
+    Route::put('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->name('settings.package.update');
+    Route::delete('/settings/package/{package}', [SettingsController::class, 'destroyPackage'])->name('settings.package.destroy');
 
     // Reports
     Route::get('/reports/statement', fn() => view('reports.statement'))->name('report.statement');

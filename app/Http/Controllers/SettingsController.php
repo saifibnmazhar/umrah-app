@@ -5,6 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\District;
 use App\Models\FingerprintCharge;
 use App\Models\FlightDateGap;
+use App\Models\Package;
+use App\Models\TicketFare;
+use App\Models\VisaSellingPrice;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
@@ -23,15 +26,40 @@ class SettingsController extends Controller
 
         $flightDateGap = FlightDateGap::first();
 
-        $settings = [
-            'package_name' => 'Umrah Premium Package',
-            'package_price' => 2500,
-            'package_features' => '• 5-star accommodation\n• Round-trip flights\n• Visa processing\n• Airport transfers\n• Guided tours\n• 24/7 support',
-            'package_duration' => 10,
-            'package_status' => 'active',
-        ];
+        $packages = Package::with(['ticketFare', 'ticketFare.route', 'ticketFare.airline', 'visaSellingPrice'])
+            ->orderBy('id', 'desc')
+            ->paginate(10)
+            ->withQueryString();
 
-        return view('settings.index', compact('fingerprintCharges', 'districts', 'divisions', 'flightDateGap', 'settings'));
+        $ticketFares = TicketFare::with(['airline', 'route', 'airlineClass.travelClass'])
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(function ($fare) {
+                $routeDisplay = $fare->route 
+                    ? ($fare->route->fromCity->code ?? '-') . '-' . ($fare->route->toCity->code ?? '-')
+                    : '-';
+                $type = $fare->ticket_type->value ?? 'regular';
+                return [
+                    'id' => $fare->id,
+                    'route' => $routeDisplay,
+                    'ticket_type' => $type,
+                    'selling_fare' => $fare->selling_fare,
+                    'offer_price' => $fare->offer_price,
+                    'airline' => $fare->airline->name ?? '-',
+                ];
+            });
+
+        $latestVisa = VisaSellingPrice::latest()->first();
+
+        return view('settings.index', compact(
+            'fingerprintCharges', 
+            'districts', 
+            'divisions', 
+            'flightDateGap',
+            'packages',
+            'ticketFares',
+            'latestVisa'
+        ));
     }
 
     public function updateFlightDateGap(Request $request)
@@ -44,8 +72,48 @@ class SettingsController extends Controller
         return redirect()->route('settings')->with('success', 'Fingerprint charge settings updated');
     }
 
-    public function updatePackageConfiguration(Request $request)
+    public function storePackage(Request $request)
     {
-        return redirect()->route('settings')->with('success', 'Package configuration updated');
+        $validated = $request->validate([
+            'package_name' => 'required|string|max:255',
+            'ticket_fare_id' => 'required|exists:ticket_fares,id',
+            'regular_price' => 'required|numeric|min:0',
+            'offer_price' => 'nullable|numeric|min:0',
+        ]);
+
+        try {
+            $validated['user_id'] = auth()->id() ?? 1;
+            Package::create($validated);
+            return redirect()->route('settings')->with('success', 'Package created successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to create package: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function updatePackage(Request $request, Package $package)
+    {
+        $validated = $request->validate([
+            'package_name' => 'required|string|max:255',
+            'ticket_fare_id' => 'required|exists:ticket_fares,id',
+            'regular_price' => 'required|numeric|min:0',
+            'offer_price' => 'nullable|numeric|min:0',
+        ]);
+
+        try {
+            $package->update($validated);
+            return redirect()->route('settings')->with('success', 'Package updated successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to update package: ' . $e->getMessage())->withInput();
+        }
+    }
+
+    public function destroyPackage(Package $package)
+    {
+        try {
+            $package->delete();
+            return redirect()->route('settings')->with('success', 'Package deleted successfully.');
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Failed to delete package.');
+        }
     }
 }
