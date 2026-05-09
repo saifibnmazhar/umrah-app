@@ -28,7 +28,6 @@
                     <tr>
                         <th class="px-4 py-3 text-left">Name</th>
                         <th class="px-4 py-3 text-left">Description</th>
-                        <th class="px-4 py-3 text-center">Passengers</th>
                         <th class="px-4 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -37,11 +36,6 @@
                         <tr class="hover:bg-slate-50">
                             <td class="px-4 py-3 text-slate-700 font-medium">{{ $status->name }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $status->description ?? '-' }}</td>
-                            <td class="px-4 py-3 text-center">
-                                <span class="inline-flex items-center justify-center px-2 py-1 text-xs font-medium rounded-full bg-slate-100 text-slate-700">
-                                    {{ $status->passengers->count() }}
-                                </span>
-                            </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
                                     <a href="{{ route('passenger-statuses.edit', $status->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
@@ -55,7 +49,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-4 py-12 text-center text-slate-500">
+                            <td colspan="3" class="px-4 py-12 text-center text-slate-500">
                                 No passenger statuses found.
                             </td>
                         </tr>

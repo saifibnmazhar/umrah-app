@@ -10,8 +10,7 @@ class PassengerStatusController extends Controller
 {
     public function index()
     {
-        $passengerStatuses = PassengerStatus::with(['passengers'])
-            ->orderBy('name')
+        $passengerStatuses = PassengerStatus::orderBy('name')
             ->paginate(10)
             ->withQueryString();
 
