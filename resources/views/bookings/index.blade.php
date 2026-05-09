@@ -136,7 +136,7 @@
     </div>
 
     <div x-show="formVisible" x-cloak class="fixed inset-0 z-50 flex items-center justify-center overflow-y-auto">
-        <div class="fixed inset-0 bg-black/50" @click="hideForm()"></div>
+        <div class="fixed inset-0 bg-black/50" @click="blurActiveElement(); hideForm()"></div>
         <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 p-6 my-8 max-h-[90vh] overflow-y-auto">
             <h2 class="text-xl font-semibold text-slate-700 mb-6 pb-2 border-b border-slate-200">Add Booking</h2>
             
@@ -145,7 +145,7 @@
                 <div class="mb-6">
                     <label class="block text-sm font-medium text-slate-700 mb-2">Customer <span class="text-slate-400">(Passport No.)</span></label>
                     <div class="relative">
-                        <input type="text" x-model="customerSearch" @input="searchCustomers()" :disabled="selectedCustomer" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition disabled:bg-slate-100 disabled:cursor-not-allowed" placeholder="Enter Passport Number">
+                        <input type="text" x-model="customerSearch" @input="searchCustomers()" @focus="customerInputFocused = true" @blur="setTimeout(() => { customerInputFocused = false; customerSuggestions = []; }, 200)" :disabled="selectedCustomer" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition disabled:bg-slate-100 disabled:cursor-not-allowed" placeholder="Enter Passport Number">
                         <div x-show="customerSuggestions.length > 0" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
                             <template x-for="customer in customerSuggestions">
                                 <div @click="selectCustomer(customer)" class="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100">
@@ -154,7 +154,7 @@
                                 </div>
                             </template>
                         </div>
-                        <div x-show="customerSearch.length >= 2 && customerSuggestions.length === 0 && !selectedCustomer" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-4">
+                        <div x-show="customerSearch.length >= 2 && customerSuggestions.length === 0 && !selectedCustomer && customerInputFocused" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-4">
                             <p class="text-slate-600 mb-2">No customer found for "<span x-text="customerSearch"></span>"</p>
                             <button type="button" @click="openCustomerModal()" class="text-slate-700 font-medium hover:underline flex items-center gap-1">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -179,24 +179,23 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">Fingerprint Location *</label>
-                        <select x-model="bookingData.fingerprint_location" @change="updateFingerprintCharge()" name="fingerprint_location" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                        <select x-model="bookingData.fingerprint_location" @change="updateFingerprintCharge(); $el.blur()" name="fingerprint_location" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                             <option value="Office">Office</option>
                             <option value="Home">Home</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-2">Fingerprint Office *</label>
-                        <select x-model="bookingData.fingerprint_office" name="fingerprint_office" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                        <label class="block text-sm font-medium text-slate-700 mb-2">Office *</label>
+                        <select x-model="bookingData.fingerprint_office" name="fingerprint_office" @change="$el.blur()" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                             <option value="">Select Office</option>
-                            <option value="BMT-Dhaka">BMT-Dhaka</option>
-                            <option value="BMT-Chattogram">BMT-Chattogram</option>
-                            <option value="BMT-Sylhet">BMT-Sylhet</option>
-                            <option value="BMT-Rangpur">BMT-Rangpur</option>
+                            @foreach(\App\Models\Office::orderBy('name')->get() as $office)
+                            <option value="{{ $office->name }}">{{ $office->name }}</option>
+                            @endforeach
                         </select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-2">District *</label>
-                        <select x-model="bookingData.district_id" @change="updateFingerprintCharge()" name="district_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                        <select x-model="bookingData.district_id" @change="updateFingerprintCharge(); $el.blur()" name="district_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                             <option value="">Select District</option>
                             @foreach(\App\Models\District::orderBy('name')->get() as $district)
                             <option value="{{ $district->id }}">{{ $district->name }}</option>
@@ -468,6 +467,7 @@ function bookingApp() {
         searchTerm: '',
         customerSearch: '',
         customerSuggestions: [],
+        customerInputFocused: false,
         selectedCustomer: null,
         passengers: [],
         passengerCount: 0,
@@ -510,8 +510,15 @@ function bookingApp() {
             this.formVisible = true;
         },
         hideForm() {
+            this.blurActiveElement();
             this.formVisible = false;
             this.clearForm();
+        },
+        blurActiveElement() {
+            const active = document.activeElement;
+            if (active && (active.tagName === 'SELECT' || active.tagName === 'INPUT')) {
+                active.blur();
+            }
         },
         clearForm() {
             this.selectedCustomer = null;
