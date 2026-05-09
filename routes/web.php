@@ -1,5 +1,7 @@
 <?php
 
+use App\Http\Controllers\BookingController;
+use App\Http\Controllers\PassengerController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AirlineCityController;
 use App\Http\Controllers\AirlineClassController;
@@ -64,10 +66,17 @@ Route::middleware('auth')->group(function () {
     Route::resource('packages', PackageController::class);
     Route::resource('users', UserController::class);
     Route::resource('transaction-types', TransactionTypeController::class);
-    Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
-    Route::post('/bookings', function () {
-        return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
-    })->name('booking.store');
+    Route::resource('bookings', BookingController::class);
+    Route::resource('passengers', PassengerController::class);
+
+    // Booking-specific routes
+    Route::post('/bookings/{booking}/passengers', [BookingController::class, 'addPassenger'])->name('bookings.passengers.store');
+    Route::delete('/bookings/{booking}/passengers/{passenger}', [BookingController::class, 'removePassenger'])->name('bookings.passengers.destroy');
+
+    // API routes
+    Route::post('/api/bookings/calculate-type', [BookingController::class, 'calculatePassengerType'])->name('api.bookings.calculate-type');
+    Route::get('/api/bookings/fingerprint-charge', [BookingController::class, 'getFingerprintCharge'])->name('api.bookings.fingerprint-charge');
+    Route::get('/api/customers/search', [CustomerController::class, 'search'])->name('api.customers.search');
     Route::get('/fares/admin', [FareAdminController::class, 'index'])->name('fare.admin');
     Route::post('/fares/admin/agent', [FareAdminController::class, 'storeAgent'])->name('fare.admin.agent.store');
     Route::put('/fares/admin/agent/{ticketAgent}', [FareAdminController::class, 'updateAgent'])->name('fare.admin.agent.update');
@@ -102,7 +111,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('payments', PaymentController::class);
     Route::resource('vouchers', VoucherController::class);
     Route::get('/invoices/{id}/print', fn($id) => view('invoices.print', compact('id')))->name('invoices.print');
-    Route::get('/passengers/{id}', fn($id) => view('passengers.details', compact('id')))->name('passengers.details');
+    Route::resource('passengers', PassengerController::class);
     Route::get('/re-issues/{id}/confirm', fn($id) => view('re-issues.confirmation', compact('id')))->name('re-issues.confirmation');
     Route::get('/refunds/{id}/confirm', fn($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation');
     Route::get('/tickets', fn() => view('tickets.index'))->name('tickets.index');
