@@ -419,12 +419,12 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1">Iqama Type *</label>
                         <select x-model="newCustomer.iqama_type" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select</option>
-                            <option value="None">None</option>
-                            <option value="Self">Self</option>
-                            <option value="Referral">Referral</option>
+                            <option value="none">None</option>
+                            <option value="self">Self</option>
+                            <option value="referral">Referral</option>
                         </select>
                     </div>
-                    <div x-show="newCustomer.iqama_type === 'Referral'" class="hidden space-y-4">
+                    <div x-show="newCustomer.iqama_type === 'referral'" class="space-y-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ref. Iqama *</label>
                             <input type="text" x-model="newCustomer.ref_iqama_no" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Referrer Iqama Number">
@@ -434,7 +434,7 @@
                             <input type="tel" x-model="newCustomer.ref_mobile_no" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="05XXXXXXXX">
                         </div>
                     </div>
-                    <div x-show="newCustomer.iqama_type !== 'None'">
+                    <div x-show="newCustomer.iqama_type !== 'none'">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Iqama No. *</label>
                         <input type="text" x-model="newCustomer.iqama_no" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Iqama Number">
                     </div>
