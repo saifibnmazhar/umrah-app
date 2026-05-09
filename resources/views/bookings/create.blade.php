@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Create Booking')
 @section('content')
-<div class="max-w-7xl mx-auto" x-data="bookingApp()">
+<div class="max-w-5xl mx-auto" x-data="bookingApp()">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Create Booking</h1>
         <a href="{{ route('bookings.index') }}" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
@@ -283,7 +283,7 @@
         <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <h3 class="text-xl font-semibold text-slate-800 mb-4">Add New Customer</h3>
             <form @submit.prevent="submitNewCustomer()">
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div class="grid grid-cols-1 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-600 mb-1">Name *</label>
                         <input type="text" x-model="newCustomer.name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
@@ -293,24 +293,21 @@
                         <input type="text" x-model="newCustomer.passport_no" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama Type</label>
-                        <select x-model="newCustomer.iqama_type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                            <option value="none">None</option>
-                            <option value="self">Self</option>
-                            <option value="referral">Referral</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No.</label>
-                        <input type="text" x-model="newCustomer.iqama_no" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                    </div>
-                    <div>
                         <label class="block text-sm font-medium text-slate-600 mb-1">Mobile No. *</label>
                         <input type="text" x-model="newCustomer.mobile_no" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-600 mb-1">Address</label>
                         <input type="text" x-model="newCustomer.address" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama Type</label>
+                        <select x-model="newCustomer.iqama_type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="none">None</option>
+                            <option value="self">Self</option>
+                            <option value="referral">Referral</option>
+                        </select>
                     </div>
                     <div x-show="newCustomer.iqama_type === 'referral'">
                         <label class="block text-sm font-medium text-slate-600 mb-1">Referral Iqama No.</label>
@@ -319,6 +316,10 @@
                     <div x-show="newCustomer.iqama_type === 'referral'">
                         <label class="block text-sm font-medium text-slate-600 mb-1">Referral Mobile No.</label>
                         <input type="text" x-model="newCustomer.ref_mobile_no" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div x-show="newCustomer.iqama_type !== 'none'&& newCustomer.iqama_type !== ''">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No.</label>
+                        <input type="text" x-model="newCustomer.iqama_no" x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                 </div>
                 <div class="flex gap-3 pt-4 border-t border-slate-200">
@@ -510,7 +511,7 @@ function bookingApp() {
         openCustomerModal() {
             this.newCustomer = {
                 name: '',
-                iqama_type: 'none',
+                iqama_type: '',
                 iqama_no: '',
                 passport_no: this.customerSearch,
                 mobile_no: '',
