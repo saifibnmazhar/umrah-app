@@ -21,6 +21,7 @@ use App\Http\Controllers\VisaAgentCostController;
 use App\Http\Controllers\VisaSellingPriceController;
 use App\Http\Controllers\CurrencyRateController;
 use App\Http\Controllers\TransactionTypeController;
+use App\Http\Controllers\PassengerStatusController;
 use App\Http\Controllers\InvoiceController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\VoucherController;
@@ -64,6 +65,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('packages', PackageController::class);
     Route::resource('users', UserController::class);
     Route::resource('transaction-types', TransactionTypeController::class);
+    Route::resource('passenger-statuses', PassengerStatusController::class);
     Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
     Route::post('/bookings', function () {
         return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
