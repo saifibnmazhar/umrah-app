@@ -34,11 +34,27 @@ class FareAdminController extends Controller
         }
 
         $ticketFares = $ticketFaresQuery->orderBy('id', 'desc')->paginate(15)->withQueryString();
+        
+        $routesQuery = Route::with(['airline', 'fromCity', 'toCity', 'returnCity']);
+        
+        if ($request->has('route_airline_id') && $request->route_airline_id) {
+            $routesQuery->where('airline_id', $request->route_airline_id);
+        }
+        
+        if ($request->has('route_type') && $request->route_type) {
+            $routesQuery->where('route_type', $request->route_type);
+        }
+        
+        if ($request->has('flight_type') && $request->flight_type) {
+            $routesQuery->where('flight_type', $request->flight_type);
+        }
+        
+        $routes = $routesQuery->orderBy('id', 'desc')->paginate(10)->withQueryString();
+        
         $airlines = Airline::orderBy('name')->get();
         $airlineClasses = AirlineClass::with('travelClass')->get();
-        $routes = Route::with(['airline', 'fromCity', 'toCity'])->get();
 
-        return view('fares.admin', compact('ticketAgents', 'ticketFares', 'airlines', 'airlineClasses', 'routes'));
+        return view('fares.admin', compact('ticketAgents', 'ticketFares', 'routes', 'airlines', 'airlineClasses'));
     }
 
     public function storeAgent(Request $request)

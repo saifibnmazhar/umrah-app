@@ -10,7 +10,10 @@
     agent: { id: null, name: '', address: '', contacts: '' },
     showFareModal: false,
     editFareMode: false,
-    fare: { id: null, airline_id: '', airline_classes_id: '', route_id: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false }
+    fare: { id: null, airline_id: '', airline_classes_id: '', route_id: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false },
+    showRouteModal: false,
+    editRouteMode: false,
+    route: { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '' }
 }">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Fare Admin</h1>
 
@@ -21,6 +24,9 @@
             </button>
             <button @click="activeTab = 'fares'" :class="{ 'border-blue-500 text-blue-600': activeTab === 'fares', 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300': activeTab !== 'fares' }" class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap">
                 Ticket Fares
+            </button>
+            <button @click="activeTab = 'routes'" :class="{ 'border-blue-500 text-blue-600': activeTab === 'routes', 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300': activeTab !== 'routes' }" class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap">
+                Routes
             </button>
         </nav>
     </div>
@@ -212,6 +218,103 @@
         </div>
     </div>
 
+    <div x-show="activeTab === 'routes'" x-cloak>
+        <div class="flex justify-between items-center mb-6">
+            <h1 class="text-2xl font-bold text-slate-800">Routes</h1>
+            <a href="#" @click.prevent="editRouteMode = false; route = { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '' }; showRouteModal = true" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
+                Add New
+            </a>
+        </div>
+
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
+                        <tr>
+                            <th class="px-4 py-3 text-left">ID</th>
+                            <th class="px-4 py-3 text-left">Airline</th>
+                            <th class="px-4 py-3 text-left">Route Type</th>
+                            <th class="px-4 py-3 text-left">Flight Type</th>
+                            <th class="px-4 py-3 text-left">Route</th>
+                            <th class="px-4 py-3 text-left">Transit Info</th>
+                            <th class="px-4 py-3 text-right">Actions</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @forelse($routes as $route)
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-4 py-3 text-slate-700">{{ $route->id }}</td>
+                                <td class="px-4 py-3 text-slate-700 font-medium">{{ $route->airline->name ?? '-' }}</td>
+                                <td class="px-4 py-3 text-slate-600">
+                                    @switch($route->route_type->value)
+                                        @case('oneway_inbound') Oneway - Inbound @break
+                                        @case('oneway_outbound') Oneway - Outbound @break
+                                        @case('round') Round @break
+                                        @case('multi_city') Multi City @break
+                                        @default {{ $route->route_type->value ?? '-' }}
+                                    @endswitch
+                                </td>
+                                <td class="px-4 py-3">
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $route->flight_type->value === 'transit' ? 'bg-yellow-100 text-yellow-700' : 'bg-slate-100 text-slate-600' }}">
+                                        {{ ucfirst($route->flight_type->value ?? '-') }}
+                                    </span>
+                                </td>
+                                <td class="px-4 py-3 text-slate-700 font-medium">
+                                    @if($route->route_type->value === 'multi_city')
+                                        @if($route->multiSegments && $route->multiSegments->count() > 0)
+                                            {{ $route->multiSegments->first()->fromCity->code ?? '-' }}-{{ $route->multiSegments->first()->toCity->code ?? '-' }} ...
+                                        @else
+                                            -
+                                        @endif
+                                    @else
+                                        {{ $route->fromCity->code ?? '-' }}-{{ $route->toCity->code ?? '-' }}
+                                        @if($route->route_type->value === 'round')
+                                            -{{ $route->returnCity->code ?? '-' }}
+                                        @endif
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 text-slate-600">
+                                    @if($route->flight_type->value === 'transit' && $route->transits && $route->transits->count() > 0)
+                                        @foreach($route->transits as $transit)
+                                            @php
+                                                $hours = floor($transit->transit_time / 60);
+                                                $minutes = $transit->transit_time % 60;
+                                            @endphp
+                                            <span class="block">{{ $transit->transitCity->code ?? '-' }} ({{ str_pad($hours, 2, '0', STR_PAD_LEFT) }}:{{ str_pad($minutes, 2, '0', STR_PAD_LEFT) }})</span>
+                                        @endforeach
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 text-right">
+                                    <div class="flex items-center justify-end gap-3">
+                                        <a href="{{ route('routes.show', $route->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">View</a>
+                                        <button @click="editRouteMode = true; route = { id: {{ $route->id }}, airline_id: '{{ $route->airline_id }}', route_type: '{{ $route->route_type->value }}', flight_type: '{{ $route->flight_type->value }}', from_city_id: '{{ $route->from_city_id ?? '' }}', to_city_id: '{{ $route->to_city_id ?? '' }}', return_city_id: '{{ $route->return_city_id ?? '' }}' }; showRouteModal = true" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
+                                        <form method="POST" action="{{ route('routes.destroy', $route->id) }}" onsubmit="return confirm('Are you sure you want to delete this route?')" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="7" class="px-4 py-12 text-center text-slate-500">
+                                    No routes found. <button @click="editRouteMode = false; route = { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '' }; showRouteModal = true" class="text-slate-800 underline hover:text-slate-600">Add one?</button>
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-4 flex justify-center">
+            {{ $routes->appends(request()->query())->links() }}
+        </div>
+    </div>
+
     <div x-show="showAgentModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4">
             <div x-show="showAgentModal" x-transition.opacity class="fixed inset-0 bg-black bg-opacity-50" @click="showAgentModal = false"></div>
@@ -322,5 +425,192 @@
             </div>
         </div>
     </div>
+
+    <div x-show="showRouteModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div x-show="showRouteModal" x-transition.opacity class="fixed inset-0 bg-black bg-opacity-50" @click="showRouteModal = false"></div>
+            <div x-show="showRouteModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-3xl p-6 z-10">
+                <h3 class="text-lg font-semibold text-slate-800 mb-4" x-text="editRouteMode ? 'Edit Route' : 'Add Route'"></h3>
+                <form method="POST" :action="editRouteMode ? '/routes/' + route.id : '{{ route('routes.store') }}'" id="routeFormModal">
+                    @csrf
+                    <template x-if="editRouteMode">
+                        <input type="hidden" name="_method" value="PUT">
+                    </template>
+                    
+                    <div class="grid grid-cols-3 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
+                            <select name="airline_id" x-model="route.airline_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required>
+                                <option value="">Select Airline</option>
+                                @foreach($airlines as $airline)
+                                    <option value="{{ $airline->id }}">{{ $airline->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
+                            <select name="route_type" x-model="route.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleRouteFieldsModal()">
+                                <option value="">Select</option>
+                                <option value="oneway_inbound">Oneway - Inbound</option>
+                                <option value="oneway_outbound">Oneway - Outbound</option>
+                                <option value="round">Round</option>
+                                <option value="multi_city">Multi City</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                            <select name="flight_type" x-model="route.flight_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleTransitFieldsModal()">
+                                <option value="">Select</option>
+                                <option value="direct">Direct</option>
+                                <option value="transit">Transit</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="cityGridModal" class="grid gap-4 mt-4">
+                        <div id="fromFieldModal" class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">From *</label>
+                                <select name="from_city_id" x-model="route.from_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                    <option value="">Select</option>
+                                    @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                                        <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">To *</label>
+                                <select name="to_city_id" x-model="route.to_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                    <option value="">Select</option>
+                                    @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                                        <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <div id="returnFieldModal" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Return To *</label>
+                            <select name="return_city_id" x-model="route.return_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                <option value="">Select</option>
+                                @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                                    <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                    </div>
+
+                    <div id="multiCityFieldsModal" class="hidden mt-4">
+                        <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Multi City Segments</h4>
+                        <div class="grid grid-cols-2 gap-4 mb-3">
+                            <div>
+                                <label class="block text-sm text-slate-600 mb-1">Inbound From</label>
+                                <select name="segments[0][from_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                    <option value="">Select</option>
+                                    @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                                        <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-slate-600 mb-1">Inbound To</label>
+                                <select name="segments[0][to_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                    <option value="">Select</option>
+                                    @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                                        <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" name="segments[0][segment_direction]" value="inbound">
+                        <div class="grid grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm text-slate-600 mb-1">Outbound From</label>
+                                <select name="segments[1][from_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                    <option value="">Select</option>
+                                    @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                                        <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm text-slate-600 mb-1">Outbound To</label>
+                                <select name="segments[1][to_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                    <option value="">Select</option>
+                                    @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                                        <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
+                        <input type="hidden" name="segments[1][segment_direction]" value="outbound">
+                    </div>
+
+                    <div id="transitFieldsModal" class="hidden grid grid-cols-2 gap-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit City</label>
+                            <select name="transits[0][transit_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                <option value="">Select</option>
+                                @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                                    <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="transits[0][transit_hours]" min="0" max="23" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="HH">
+                                <span class="text-slate-500 font-medium">:</span>
+                                <input type="number" name="transits[0][transit_minutes]" min="0" max="59" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="MM">
+                            </div>
+                        </div>
+                    </div>
+
+                    <div class="pt-4 flex items-center gap-4">
+                        <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition" x-text="editRouteMode ? 'Update Route' : 'Create Route'"></button>
+                        <button type="button" @click="showRouteModal = false" class="text-slate-600 hover:text-slate-800 text-sm">Cancel</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <script>
+    function toggleRouteFieldsModal() {
+        const routeType = document.querySelector('select[name="route_type"]').value;
+        const fromField = document.getElementById('fromFieldModal');
+        const returnField = document.getElementById('returnFieldModal');
+        const multiCityFields = document.getElementById('multiCityFieldsModal');
+        const cityGrid = document.getElementById('cityGridModal');
+
+        fromField.classList.add('hidden');
+        returnField.classList.add('hidden');
+        multiCityFields.classList.add('hidden');
+
+        if (routeType === 'oneway_inbound' || routeType === 'oneway_outbound') {
+            fromField.classList.remove('hidden');
+        } else if (routeType === 'round') {
+            fromField.classList.remove('hidden');
+            returnField.classList.remove('hidden');
+        } else if (routeType === 'multi_city') {
+            multiCityFields.classList.remove('hidden');
+        }
+    }
+
+    function toggleTransitFieldsModal() {
+        const flightType = document.querySelector('select[name="flight_type"]').value;
+        const transitFields = document.getElementById('transitFieldsModal');
+
+        if (flightType === 'transit') {
+            transitFields.classList.remove('hidden');
+        } else {
+            transitFields.classList.add('hidden');
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        toggleRouteFieldsModal();
+        toggleTransitFieldsModal();
+    });
+    </script>
 </div>
 @endsection
