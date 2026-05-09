@@ -35,7 +35,7 @@ class FareAdminController extends Controller
 
         $ticketFares = $ticketFaresQuery->orderBy('id', 'desc')->paginate(15)->withQueryString();
         
-        $routesQuery = Route::with(['airline', 'fromCity', 'toCity', 'returnCity']);
+        $routesQuery = Route::with(['airline', 'fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity']);
         
         if ($request->has('route_airline_id') && $request->route_airline_id) {
             $routesQuery->where('airline_id', $request->route_airline_id);
