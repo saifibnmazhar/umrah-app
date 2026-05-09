@@ -106,6 +106,7 @@ class FareAdminController extends Controller
             'airline_id' => 'required|exists:airlines,id',
             'airline_classes_id' => 'required|exists:airline_classes,id',
             'route_id' => 'required|exists:routes,id',
+            'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
             'ticket_type' => 'required|in:regular,offer,group',
             'effective_from' => 'required|date',
             'effective_to' => 'required|date|after_or_equal:effective_from',
@@ -124,7 +125,6 @@ class FareAdminController extends Controller
 
         try {
             TicketFare::create(array_merge($validated, [
-                'route_type' => 'oneway_outbound',
                 'user_id' => auth()->id() ?? 1,
                 'with_meal' => $request->has('with_meal') ? 1 : 0,
             ]));

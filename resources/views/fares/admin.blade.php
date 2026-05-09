@@ -10,7 +10,7 @@
     agent: { id: null, name: '', address: '', contacts: '' },
     showFareModal: false,
     editFareMode: false,
-    fare: { id: null, airline_id: '', airline_classes_id: '', route_id: '', route_type: 'oneway_outbound', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false },
+    fare: { id: null, airline_id: '', airline_classes_id: '', route_id: '', route_type: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false },
     showRouteModal: false,
     editRouteMode: false,
     route: { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '' }
@@ -99,7 +99,7 @@
     <div x-show="activeTab === 'fares'" x-cloak>
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-semibold text-slate-700">Ticket Fares</h2>
-            <button @click="editFareMode = false; fare = { id: null, airline_id: '', airline_classes_id: '', route_id: '', route_type: 'oneway_outbound', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false }; showFareModal = true; setTimeout(toggleFareFieldsModal, 50)" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition text-sm font-medium">
+            <button @click="editFareMode = false; fare = { id: null, airline_id: '', airline_classes_id: '', route_id: '', route_type: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false }; showFareModal = true; setTimeout(toggleFareFieldsModal, 100)" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition text-sm font-medium">
                 Add New
             </button>
         </div>
@@ -192,7 +192,7 @@
                                 <td class="px-4 py-3 text-slate-600">{{ $fare->effective_to->format('Y-m-d') }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-3">
-                                        <button @click="editFareMode = true; fare = { id: {{ $fare->id }}, airline_id: '{{ $fare->airline_id }}', airline_classes_id: '{{ $fare->airline_classes_id }}', route_id: '{{ $fare->route_id }}', route_type: '{{ $fare->route_type ?? 'oneway_outbound' }}', ticket_type: '{{ $fare->ticket_type->value }}', effective_from: '{{ $fare->effective_from->format('Y-m-d') }}', effective_to: '{{ $fare->effective_to->format('Y-m-d') }}', net_fare: '{{ $fare->net_fare }}', selling_fare: '{{ $fare->selling_fare }}', child_fare_percentage: '{{ $fare->child_fare_percentage }}', infant_fare_percentage: '{{ $fare->infant_fare_percentage }}', offer_price: '{{ $fare->offer_price ?? '' }}', with_meal: {{ $fare->with_meal ? 'true' : 'false' }} }; showFareModal = true; setTimeout(toggleFareFieldsModal, 50)" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
+                                        <button @click="editFareMode = true; fare = { id: {{ $fare->id }}, airline_id: '{{ $fare->airline_id }}', airline_classes_id: '{{ $fare->airline_classes_id }}', route_id: '{{ $fare->route_id }}', route_type: '{{ $fare->route_type ?? 'oneway_outbound' }}', ticket_type: '{{ $fare->ticket_type->value }}', effective_from: '{{ $fare->effective_from->format('Y-m-d') }}', effective_to: '{{ $fare->effective_to->format('Y-m-d') }}', net_fare: '{{ $fare->net_fare }}', selling_fare: '{{ $fare->selling_fare }}', child_fare_percentage: '{{ $fare->child_fare_percentage }}', infant_fare_percentage: '{{ $fare->infant_fare_percentage }}', offer_price: '{{ $fare->offer_price ?? '' }}', with_meal: {{ $fare->with_meal ? 'true' : 'false' }} }; showFareModal = true; setTimeout(toggleFareFieldsModal, 100)" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
                                         <form method="POST" action="{{ route('fare.admin.fare.destroy', $fare->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket fare?')" class="inline">
                                             @csrf
                                             @method('DELETE')
@@ -566,6 +566,9 @@
         if (ticketType === 'group') {
             groupSection.classList.remove('hidden');
             baggageSection.classList.add('hidden');
+        } else if (!routeType || routeType === '') {
+            groupSection.classList.add('hidden');
+            baggageSection.classList.add('hidden');
         } else if (routeType === 'oneway_outbound') {
             groupSection.classList.add('hidden');
             baggageSection.classList.remove('hidden');
@@ -583,7 +586,10 @@
             outboundBaggage.classList.remove('hidden');
         }
         
-        if (routeType === 'oneway_outbound') {
+        if (!routeType || routeType === '') {
+            inboundDate.classList.add('hidden');
+            outboundDate.classList.add('hidden');
+        } else if (routeType === 'oneway_outbound') {
             inboundDate.classList.add('hidden');
             outboundDate.classList.remove('hidden');
         } else if (routeType === 'oneway_inbound') {
