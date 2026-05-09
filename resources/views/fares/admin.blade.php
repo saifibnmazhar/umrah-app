@@ -1,6 +1,6 @@
 @extends('layouts.app')
 
-@section('title', 'Fare Admin')
+@section('title', 'Ticket Admin')
 
 @section('content')
 <div class="max-w-7xl mx-auto pt-6" x-data="{
@@ -15,7 +15,7 @@
     editRouteMode: false,
     route: { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '' }
 }">
-    <h1 class="text-2xl font-bold text-slate-800 mb-6">Fare Admin</h1>
+    <h1 class="text-2xl font-bold text-slate-800 mb-6">Ticket Admin</h1>
 
     <div class="border-b border-slate-200 mb-6">
         <nav class="-mb-px flex gap-6">
