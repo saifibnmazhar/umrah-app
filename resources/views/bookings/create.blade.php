@@ -1,0 +1,740 @@
+@extends('layouts.app')
+@section('title', 'Create Booking')
+@section('content')
+<div class="max-w-5xl mx-auto" x-data="bookingApp()">
+    <div class="flex justify-between items-center mb-6">
+        <h1 class="text-2xl font-bold text-slate-800">Create Booking</h1>
+        <a href="{{ route('bookings.index') }}" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
+            <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 17l-5-5m5 5l5-5m-5 5h14" />
+            </svg>
+            Back to Bookings
+        </a>
+    </div>
+
+    @if(session('success'))
+    <div class="bg-green-100 border border-green-400 text-green-700 px-4 py-3 rounded mb-4">
+        {{ session('success') }}
+    </div>
+    @endif
+
+    @if(session('error'))
+    <div class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4">
+        {{ session('error') }}
+    </div>
+    @endif
+
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <form method="POST" action="{{ route('bookings.store') }}" @submit="submitForm($event)">
+            @csrf
+            <div class="mb-6">
+                <label class="block text-sm font-medium text-slate-700 mb-2">Customer <span class="text-slate-400">(Passport No.)</span></label>
+                <div class="relative">
+                    <input type="text" x-model="customerSearch" @input="searchCustomers()" @focus="customerInputFocused = true; searchCustomers()" @blur="setTimeout(() => { customerInputFocused = false; customerSuggestions = []; }, 200)" :disabled="selectedCustomer" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition disabled:bg-slate-100 disabled:cursor-not-allowed" placeholder="Enter Passport Number">
+                    <div x-show="customerSuggestions.length > 0" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
+                        <template x-for="customer in customerSuggestions">
+                            <div @click="selectCustomer(customer)" class="px-4 py-3 hover:bg-slate-50 cursor-pointer border-b border-slate-100">
+                                <div class="font-medium text-slate-800" x-text="customer.name"></div>
+                                <div class="text-sm text-slate-500">Passport: <span x-text="customer.passport_no"></span> | Iqama: <span x-text="customer.iqama_no"></span></div>
+                            </div>
+                        </template>
+                    </div>
+                    <div x-show="customerSearch.length >= 2 && customerSuggestions.length === 0 && !selectedCustomer && customerInputFocused" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg p-4">
+                        <p class="text-slate-600 mb-2">No customer found for "<span x-text="customerSearch"></span>"</p>
+                        <button type="button" @click="openCustomerModal()" class="text-slate-700 font-medium hover:underline flex items-center gap-1">
+                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                            </svg>
+                            Add New Customer
+                        </button>
+                    </div>
+                </div>
+                <div x-show="selectedCustomer" x-cloak class="mt-3 p-3 bg-slate-50 border border-slate-200 rounded-lg">
+                    <div class="flex items-center justify-between">
+                        <div>
+                            <p class="font-medium text-slate-800" x-text="selectedCustomer?.name"></p>
+                            <p class="text-sm text-slate-500">Passport: <span x-text="selectedCustomer?.passport_no"></span> | Iqama: <span x-text="selectedCustomer?.iqama_no"></span> | Mobile: <span x-text="selectedCustomer?.mobile_no"></span></p>
+                        </div>
+                        <button type="button" @click="clearSelectedCustomer()" class="text-sm text-slate-500 hover:text-slate-700">Clear</button>
+                    </div>
+                    <input type="hidden" name="customer_id" :value="selectedCustomer?.id">
+                </div>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-6">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Fingerprint Location *</label>
+                    <select x-model="bookingData.fingerprint_location" @change="updateFingerprintCharge(); $el.blur()" name="fingerprint_location" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                        <option value="Office">Office</option>
+                        <option value="Home">Home</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Office *</label>
+                    <select x-model="bookingData.fingerprint_office" name="fingerprint_office" @change="$el.blur()" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                        <option value="">Select Office</option>
+                        @foreach(\App\Models\Office::orderBy('name')->get() as $office)
+                        <option value="{{ $office->name }}">{{ $office->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">District *</label>
+                    <select x-model="bookingData.district_id" @change="updateFingerprintCharge(); $el.blur()" name="district_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                        <option value="">Select District</option>
+                        @foreach(\App\Models\District::orderBy('name')->get() as $district)
+                        <option value="{{ $district->id }}">{{ $district->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Package</label>
+                    <select x-model="bookingData.package_id" name="package_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                        <option value="">Select Package</option>
+                        @foreach(\App\Models\Package::orderBy('package_name')->get() as $package)
+                        <option value="{{ $package->id }}">{{ $package->package_name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">PAX QTY</label>
+                    <input type="number" x-model="passengerCount" readonly class="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Remarks</label>
+                    <input type="text" x-model="bookingData.remarks" name="remarks" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Enter remarks">
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Customer Docs</label>
+                <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('booking_customer_docs').click()">
+                    <input type="file" id="booking_customer_docs" name="booking_customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleBookingCustomerDocsUpload(this)">
+                    <div class="text-slate-500">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                        </svg>
+                        <span>click to upload</span>
+                    </div>
+                </div>
+                <div id="booking_customer_docs_list" class="mt-2 space-y-1"></div>
+            </div>
+
+            <div class="mb-6">
+                <button type="button" @click="openPassengerModal()" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
+                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                    </svg>
+                    Add Passenger
+                </button>
+            </div>
+
+            <div x-show="passengers.length > 0" class="mb-6">
+                <h3 class="text-lg font-semibold text-slate-700 mb-4">Passengers</h3>
+                <div class="space-y-4">
+                    <template x-for="(passenger, index) in passengers" :key="index">
+                        <div class="bg-slate-50 border border-slate-200 rounded-lg p-4">
+                            <div class="flex items-start justify-between">
+                                <div class="flex-1">
+                                    <div class="flex items-center gap-3 mb-2">
+                                        <span class="bg-slate-700 text-white text-xs font-medium px-2 py-1 rounded" x-text="'P' + (index + 1)"></span>
+                                        <h4 class="font-semibold text-slate-800" x-text="passenger.first_name + ' ' + passenger.last_name"></h4>
+                                    </div>
+                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                                        <div><span class="text-slate-500">Passport:</span> <span class="text-slate-700 ml-1" x-text="passenger.passport_no"></span></div>
+                                        <div><span class="text-slate-500">Type:</span> <span class="text-slate-700 ml-1" x-text="passenger.passenger_type"></span></div>
+                                        <div><span class="text-slate-500">Service:</span> <span class="text-slate-700 ml-1" x-text="passenger.service_required"></span></div>
+                                        <div><span class="text-slate-500">DOB:</span> <span class="text-slate-700 ml-1" x-text="passenger.date_of_birth"></span></div>
+                                    </div>
+                                    <input type="hidden" :name="'passengers[' + index + '][first_name]'" :value="passenger.first_name">
+                                    <input type="hidden" :name="'passengers[' + index + '][last_name]'" :value="passenger.last_name">
+                                    <input type="hidden" :name="'passengers[' + index + '][passport_no]'" :value="passenger.passport_no">
+                                    <input type="hidden" :name="'passengers[' + index + '][date_of_birth]'" :value="passenger.date_of_birth">
+                                    <input type="hidden" :name="'passengers[' + index + '][mobile_no]'" :value="passenger.mobile_no">
+                                    <input type="hidden" :name="'passengers[' + index + '][passport_expiry]'" :value="passenger.passport_expiry">
+                                    <input type="hidden" :name="'passengers[' + index + '][service_required]'" :value="passenger.service_required">
+                                    <input type="hidden" :name="'passengers[' + index + '][stay_duration]'" :value="passenger.stay_duration">
+                                </div>
+                                <div class="flex items-center gap-2 ml-4">
+                                    <button type="button" @click="editPassenger(index)" class="px-3 py-1.5 text-sm border border-slate-300 text-slate-600 rounded hover:bg-slate-100 transition">Edit</button>
+                                    <button type="button" @click="removePassenger(index)" class="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded hover:bg-red-100 transition">Delete</button>
+                                </div>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+                <button type="button" @click="openPassengerModal()" class="mt-4 px-6 py-3 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">+ Add More</button>
+            </div>
+
+            <div class="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
+                <div class="flex justify-between items-center mb-4">
+                    <h3 class="text-lg font-semibold text-slate-700">Summary Card</h3>
+                    <button type="button" @click="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
+                </div>
+                <div class="flex justify-between text-sm text-slate-500 mb-2">
+                    <span class="w-1/6 text-center">Package</span>
+                    <span class="w-1/6 text-center">Fingerprint</span>
+                    <span class="w-1/6 text-center">Pax Qty</span>
+                    <span class="w-1/6 text-center">Discount</span>
+                    <span class="w-1/6 text-center">Total</span>
+                    <span class="w-1/6 text-center">Value</span>
+                </div>
+                <div class="flex justify-between font-medium text-slate-800">
+                    <span class="w-1/6 text-center">-</span>
+                    <span class="w-1/6 text-center" x-text="fingerprintCharge > 0 ? fingerprintCharge + ' SAR' : '-'">-</span>
+                    <span class="w-1/6 text-center" x-text="passengerCount">0</span>
+                    <span class="w-1/6 text-center" x-text="bookingData.discount_value > 0 ? '-' + bookingData.discount_value + (bookingData.discount_type === 'percentage' ? '%' : ' SAR') : '-'">-</span>
+                    <span class="w-1/6 text-center">0 SAR</span>
+                    <span class="w-1/6 text-center">0 SAR</span>
+                </div>
+            </div>
+
+            <div class="flex justify-end gap-3 pt-6 border-t border-slate-200">
+                <button type="submit" class="w-64 px-8 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" :disabled="passengers.length === 0">Submit</button>
+                <button type="button" @click="clearForm()" class="px-6 py-3 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Clear</button>
+                <a href="{{ route('bookings.index') }}" class="px-6 py-3 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</a>
+            </div>
+        </form>
+    </div>
+
+    <div x-show="passengerModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="closePassengerModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Add Passenger</h3>
+            <form @submit.prevent="savePassenger()">
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Basic Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">First Name *</label>
+                            <input type="text" x-model="passengerData.first_name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Last Name *</label>
+                            <input type="text" x-model="passengerData.last_name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Passport No. *</label>
+                            <input type="text" x-model="passengerData.passport_no" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Date of Birth *</label>
+                            <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Passport Expiry</label>
+                            <input type="date" x-model="passengerData.passport_expiry" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Mobile No.</label>
+                            <input type="text" x-model="passengerData.mobile_no" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                    </div>
+                </div>
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Service Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Passenger Type</label>
+                            <select x-model="passengerData.passenger_type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="Adult">Adult</option>
+                                <option value="Child">Child</option>
+                                <option value="Infant">Infant</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Service Required</label>
+                            <select x-model="passengerData.service_required" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="All">All</option>
+                                <option value="Visa">Visa Only</option>
+                                <option value="Fingerprint">Fingerprint Only</option>
+                                <option value="Ticket">Ticket Only</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-600 mb-1">Stay Duration</label>
+                            <select x-model="passengerData.stay_duration" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="7">7 Days</option>
+                                <option value="14">14 Days</option>
+                                <option value="21">21 Days</option>
+                                <option value="30">30 Days</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-4 border-t border-slate-200">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save Passenger</button>
+                    <button type="button" @click="closePassengerModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <div x-show="discountModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="closeDiscountModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Apply Discount</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
+                <select x-model="bookingData.discount_type" id="discountType" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <option value="fixed">Fixed (SAR)</option>
+                    <option value="percentage">Percentage (%)</option>
+                </select>
+            </div>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value</label>
+                <input type="number" x-model="bookingData.discount_value" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+            </div>
+            <div class="flex gap-3 pt-4 border-t border-slate-200">
+                <button type="button" @click="closeDiscountModal()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Apply</button>
+                <button type="button" @click="closeDiscountModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="customerModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="closeCustomerModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Add New Customer</h3>
+            <form @submit.prevent="submitNewCustomer()">
+                <div class="grid grid-cols-1 gap-4 mb-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Name *</label>
+                        <input type="text" x-model="newCustomer.name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Passport No. *</label>
+                        <input type="text" x-model="newCustomer.passport_no" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Mobile No. *</label>
+                        <input type="text" x-model="newCustomer.mobile_no" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Address</label>
+                        <input type="text" x-model="newCustomer.address" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama Type</label>
+                        <select x-model="newCustomer.iqama_type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="none">None</option>
+                            <option value="self">Self</option>
+                            <option value="referral">Referral</option>
+                        </select>
+                    </div>
+                    <div x-show="newCustomer.iqama_type === 'referral'">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Referral Iqama No.</label>
+                        <input type="text" x-model="newCustomer.ref_iqama_no" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div x-show="newCustomer.iqama_type === 'referral'">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Referral Mobile No.</label>
+                        <input type="text" x-model="newCustomer.ref_mobile_no" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div x-show="newCustomer.iqama_type === 'referral'">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Upload Ref. Iqama *</label>
+                        <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('ref_iqama_doc').click()">
+                            <input type="file" id="ref_iqama_doc" name="ref_iqama_doc" class="hidden" accept=".jpg,.jpeg,.png,.pdf" onchange="handleRefIqamaFileUpload(this)">
+                            <div class="text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <span id="ref_iqama_doc_filename">click to upload</span>
+                            </div>
+                        </div>
+                    </div>
+                    <div x-show="newCustomer.iqama_type !== 'none'&& newCustomer.iqama_type !== ''">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No.</label>
+                        <input type="text" x-model="newCustomer.iqama_no" x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Customer Docs</label>
+                        <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('customer_docs').click()">
+                            <input type="file" id="customer_docs" name="customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleCustomerDocUpload(this)">
+                            <div class="text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <span>click to upload</span>
+                            </div>
+                        </div>
+                        <div id="customer_docs_list" class="mt-2 space-y-1"></div>
+                    </div>
+                </div>
+                <div class="flex gap-3 pt-4 border-t border-slate-200">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save Customer</button>
+                    <button type="button" @click="closeCustomerModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+
+<script>
+function handleRefIqamaFileUpload(input) {
+    const file = input.files[0];
+    const display = document.getElementById('ref_iqama_doc_filename');
+    if (file && display) display.textContent = file.name;
+}
+
+function handleCustomerDocUpload(input) {
+    const list = document.getElementById('customer_docs_list');
+    if (!list) return;
+    list.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+        list.appendChild(item);
+    });
+}
+function removeCustomerDoc(btn) {
+    btn.parentElement.remove();
+}
+
+function handleBookingCustomerDocsUpload(input) {
+    const list = document.getElementById('booking_customer_docs_list');
+    if (!list) return;
+    list.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeBookingCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+        list.appendChild(item);
+    });
+}
+function removeBookingCustomerDoc(btn) {
+    btn.parentElement.remove();
+}
+
+function bookingApp() {
+    return {
+        formVisible: false,
+        searchTerm: '',
+        customerSearch: '',
+        customerSuggestions: [],
+        customerInputFocused: false,
+        selectedCustomer: null,
+        passengers: [],
+        passengerCount: 0,
+        fingerprintCharge: 0,
+        editingPassengerIndex: null,
+        passengerModalVisible: false,
+        discountModalVisible: false,
+        customerModalVisible: false,
+        newCustomer: {
+            name: '',
+            iqama_type: '',
+            iqama_no: '',
+            passport_no: '',
+            mobile_no: '',
+            ref_iqama_no: '',
+            ref_mobile_no: '',
+            ref_iqama_doc: null,
+            address: ''
+        },
+        bookingData: {
+            fingerprint_location: 'Office',
+            fingerprint_office: '',
+            district_id: '',
+            package_id: '',
+            discount_type: 'fixed',
+            discount_value: 0,
+            remarks: ''
+        },
+        passengerData: {
+            first_name: '',
+            last_name: '',
+            passport_no: '',
+            date_of_birth: '',
+            passenger_type: '',
+            mobile_no: '',
+            passport_expiry: '',
+            service_required: 'All',
+            stay_duration: '14'
+        },
+        showForm() {
+            this.formVisible = true;
+        },
+        hideForm() {
+            this.formVisible = false;
+            this.clearForm();
+        },
+        clearForm() {
+            this.selectedCustomer = null;
+            this.customerSearch = '';
+            this.customerSuggestions = [];
+            this.passengers = [];
+            this.passengerCount = 0;
+            this.newCustomer = {
+                name: '',
+                iqama_type: '',
+                iqama_no: '',
+                passport_no: '',
+                mobile_no: '',
+                ref_iqama_no: '',
+                ref_mobile_no: '',
+                ref_iqama_doc: null,
+                address: ''
+            };
+            const fileInput = document.getElementById('ref_iqama_doc');
+            if (fileInput) fileInput.value = '';
+            const fileName = document.getElementById('ref_iqama_doc_filename');
+            if (fileName) fileName.textContent = 'click to upload';
+            const docsList = document.getElementById('customer_docs_list');
+            if (docsList) docsList.innerHTML = '';
+            const docsInput = document.getElementById('customer_docs');
+            if (docsInput) docsInput.value = '';
+            const bookingDocsList = document.getElementById('booking_customer_docs_list');
+            if (bookingDocsList) bookingDocsList.innerHTML = '';
+            const bookingDocsInput = document.getElementById('booking_customer_docs');
+            if (bookingDocsInput) bookingDocsInput.value = '';
+            this.bookingData = {
+                fingerprint_location: 'Office',
+                fingerprint_office: '',
+                district_id: '',
+                package_id: '',
+                discount_type: 'fixed',
+                discount_value: 0,
+                remarks: ''
+            };
+        },
+        async searchCustomers() {
+            if (this.customerSearch.length < 2) {
+                this.customerSuggestions = [];
+                return;
+            }
+            try {
+                const response = await fetch('/api/customers/search?q=' + this.customerSearch);
+                this.customerSuggestions = await response.json();
+            } catch (e) {
+                console.error(e);
+            }
+        },
+        selectCustomer(customer) {
+            this.selectedCustomer = customer;
+            this.customerSearch = customer.passport_no;
+            this.customerSuggestions = [];
+        },
+        clearSelectedCustomer() {
+            this.selectedCustomer = null;
+            this.customerSearch = '';
+        },
+        async calculatePassengerType() {
+            if (!this.passengerData.date_of_birth) return;
+            try {
+                const response = await fetch('/api/bookings/calculate-type', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ date_of_birth: this.passengerData.date_of_birth })
+                });
+                const data = await response.json();
+                if (data.passenger_type) {
+                    this.passengerData.passenger_type = data.passenger_type;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        },
+        async updateFingerprintCharge() {
+            if (!this.bookingData.district_id) return;
+            try {
+                const response = await fetch('/api/bookings/fingerprint-charge?district_id=' + this.bookingData.district_id + '&location=' + this.bookingData.fingerprint_location);
+                const data = await response.json();
+                if (data.charge !== undefined) {
+                    this.fingerprintCharge = data.charge;
+                }
+            } catch (e) {
+                console.error(e);
+            }
+        },
+        openPassengerModal() {
+            this.editingPassengerIndex = null;
+            this.passengerData = {
+                first_name: '',
+                last_name: '',
+                passport_no: '',
+                date_of_birth: '',
+                passenger_type: 'Adult',
+                mobile_no: '',
+                passport_expiry: '',
+                service_required: 'All',
+                stay_duration: '14'
+            };
+            this.passengerModalVisible = true;
+        },
+        editPassenger(index) {
+            this.editingPassengerIndex = index;
+            this.passengerData = { ...this.passengers[index] };
+            this.passengerModalVisible = true;
+        },
+        closePassengerModal() {
+            this.passengerModalVisible = false;
+            this.editingPassengerIndex = null;
+        },
+        savePassenger() {
+            if (!this.passengerData.first_name || !this.passengerData.last_name || !this.passengerData.passport_no || !this.passengerData.date_of_birth) {
+                alert('Please fill in all required fields');
+                return;
+            }
+            if (this.editingPassengerIndex !== null) {
+                this.passengers[this.editingPassengerIndex] = { ...this.passengerData };
+            } else {
+                this.passengers.push({ ...this.passengerData });
+            }
+            this.passengerCount = this.passengers.length;
+            this.closePassengerModal();
+        },
+        removePassenger(index) {
+            if (confirm('Are you sure you want to remove this passenger?')) {
+                this.passengers.splice(index, 1);
+                this.passengerCount = this.passengers.length;
+            }
+        },
+        openDiscountModal() {
+            this.discountModalVisible = true;
+        },
+        closeDiscountModal() {
+            this.discountModalVisible = false;
+        },
+        openCustomerModal() {
+            this.newCustomer = {
+                name: '',
+                iqama_type: '',
+                iqama_no: '',
+                passport_no: this.customerSearch,
+                mobile_no: '',
+                ref_iqama_no: '',
+                ref_mobile_no: '',
+                ref_iqama_doc: null,
+                address: ''
+            };
+            const fileInput = document.getElementById('ref_iqama_doc');
+            if (fileInput) fileInput.value = '';
+            const fileName = document.getElementById('ref_iqama_doc_filename');
+            if (fileName) fileName.textContent = 'click to upload';
+            const docsList = document.getElementById('customer_docs_list');
+            if (docsList) docsList.innerHTML = '';
+            const docsInput = document.getElementById('customer_docs');
+            if (docsInput) docsInput.value = '';
+            this.customerModalVisible = true;
+            this.customerSuggestions = [];
+        },
+        closeCustomerModal() {
+            this.customerModalVisible = false;
+        },
+        async submitNewCustomer() {
+            try {
+                const formData = new FormData();
+                Object.keys(this.newCustomer).forEach(key => {
+                    if (this.newCustomer[key] !== null) {
+                        formData.append(key, this.newCustomer[key]);
+                    }
+                });
+                const fileInput = document.getElementById('ref_iqama_doc');
+                if (fileInput && fileInput.files[0]) {
+                    formData.append('ref_iqama_doc', fileInput.files[0]);
+                }
+                const docsInput = document.getElementById('customer_docs');
+                if (docsInput) {
+                    Array.from(docsInput.files).forEach(file => {
+                        formData.append('customer_docs[]', file);
+                    });
+                }
+
+                const response = await fetch('{{ route("customers.store") }}', {
+                    method: 'POST',
+                    headers: {
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: formData
+                });
+                const text = await response.text();
+                console.log('Response status:', response.status);
+                console.log('Raw response:', text);
+                
+                let data;
+                try {
+                    data = JSON.parse(text);
+                } catch (parseError) {
+                    alert('Server error: Received non-JSON response. Check console for details.');
+                    console.log('Parse error:', parseError);
+                    return;
+                }
+                
+                if (data.success) {
+                    this.selectedCustomer = data.customer;
+                    this.customerSearch = data.customer.passport_no;
+                    this.customerSuggestions = [];
+                    this.closeCustomerModal();
+                    this.newCustomer = {
+                        name: '',
+                        iqama_type: '',
+                        iqama_no: '',
+                        passport_no: '',
+                        mobile_no: '',
+                        ref_iqama_no: '',
+                        ref_mobile_no: '',
+                        address: ''
+                    };
+                    alert('Customer added successfully');
+                } else {
+                    alert(data.message || 'Failed to add customer');
+                }
+            } catch (e) {
+                console.error('Error:', e);
+                alert('Failed to add customer');
+            }
+        },
+        async submitForm(e) {
+            e.preventDefault();
+
+            if (!this.selectedCustomer) {
+                alert('Please select a customer');
+                return;
+            }
+            if (this.passengers.length === 0) {
+                alert('Please add at least one passenger');
+                return;
+            }
+
+            const formData = new FormData(e.target);
+
+            const bookingDocsInput = document.getElementById('booking_customer_docs');
+            if (bookingDocsInput) {
+                Array.from(bookingDocsInput.files).forEach(file => {
+                    formData.append('booking_customer_docs[]', file);
+                });
+            }
+
+            try {
+                const response = await fetch(e.target.action, {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest'
+                    },
+                    body: formData
+                });
+
+                if (response.redirected) {
+                    window.location.href = response.url;
+                    return;
+                }
+
+                const data = await response.json();
+                if (data.success || response.ok) {
+                    window.location.href = '{{ route("bookings.index") }}';
+                } else {
+                    alert(data.message || 'Failed to create booking');
+                }
+            } catch (err) {
+                console.error(err);
+                alert('Failed to create booking');
+            }
+        }
+    };
+}
+</script>
+@endsection

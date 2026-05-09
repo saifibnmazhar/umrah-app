@@ -11,7 +11,7 @@
             <h2 class="text-xl font-semibold text-slate-700 mb-4">Main Pages</h2>
             <ul class="space-y-2">
                 <li><a href="{{ route('dashboard') }}" class="text-blue-600 hover:underline">Dashboard</a></li>
-                <li><a href="{{ route('booking.index') }}" class="text-blue-600 hover:underline">Booking</a></li>
+                <li><a href="{{ route('bookings.index') }}" class="text-blue-600 hover:underline">Booking</a></li>
                 <li><a href="{{ route('fare.admin') }}" class="text-blue-600 hover:underline">Fare Admin</a></li>
                 <li><a href="{{ route('visa.admin') }}" class="text-blue-600 hover:underline">Visa Admin</a></li>
                 <li><a href="{{ route('fingerprint.admin') }}" class="text-blue-600 hover:underline">Fingerprint Admin</a></li>
