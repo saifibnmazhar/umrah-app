@@ -13,7 +13,7 @@
     fare: { id: null, airline_id: '', airline_classes_id: '', route_id: '', route_type: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false },
     showRouteModal: false,
     editRouteMode: false,
-    route: { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '' }
+    route: { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '' }
 }">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Ticket Admin</h1>
 
@@ -221,7 +221,7 @@
     <div x-show="activeTab === 'routes'" x-cloak>
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold text-slate-800">Routes</h1>
-            <a href="#" @click.prevent="editRouteMode = false; route = { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '' }; showRouteModal = true" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
+            <a href="#" @click.prevent="editRouteMode = false; route = { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '' }; showRouteModal = true" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
                 Add New
             </a>
         </div>
@@ -289,7 +289,7 @@
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-3">
                                         <a href="{{ route('routes.show', $route->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">View</a>
-                                        <button @click="editRouteMode = true; route = { id: {{ $route->id }}, airline_id: '{{ $route->airline_id }}', route_type: '{{ $route->route_type->value }}', flight_type: '{{ $route->flight_type->value }}', from_city_id: '{{ $route->from_city_id ?? '' }}', to_city_id: '{{ $route->to_city_id ?? '' }}', return_city_id: '{{ $route->return_city_id ?? '' }}' }; showRouteModal = true" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
+                                        <button @click="editRouteMode = true; route = { id: {{ $route->id }}, airline_id: '{{ $route->airline_id }}', route_type: '{{ $route->route_type->value }}', flight_type: '{{ $route->flight_type->value }}', from_city_id: '{{ $route->from_city_id ?? '' }}', to_city_id: '{{ $route->to_city_id ?? '' }}', return_city_id: '{{ $route->return_city_id ?? '' }}', additional_gap: '{{ $route->additional_gap ?? '' }}' }; showRouteModal = true" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
                                         <form method="POST" action="{{ route('routes.destroy', $route->id) }}" onsubmit="return confirm('Are you sure you want to delete this route?')" class="inline">
                                             @csrf
                                             @method('DELETE')
@@ -743,6 +743,11 @@
                                 <input type="number" name="transits[0][transit_minutes]" min="0" max="59" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="MM">
                             </div>
                         </div>
+                    </div>
+
+                    <div class="mt-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Additional Gap (Days)</label>
+                        <input type="number" name="additional_gap" x-model="route.additional_gap" min="0" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="0">
                     </div>
 
                     <div class="pt-4 flex items-center gap-4">
