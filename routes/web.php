@@ -98,6 +98,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/fingerprint-charge', [SettingsController::class, 'updateFingerprintCharge'])->name('settings.fingerprint-charge.update');
     Route::put('/settings/package-configuration', [SettingsController::class, 'updatePackageConfiguration'])->name('settings.package-configuration.update');
     Route::post('/settings/package', [SettingsController::class, 'storePackage'])->name('settings.package.store');
+    Route::get('/settings/package/{package}', [SettingsController::class, 'showPackage'])->name('settings.package.show');
     Route::put('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->name('settings.package.update');
     Route::delete('/settings/package/{package}', [SettingsController::class, 'destroyPackage'])->name('settings.package.destroy');
 

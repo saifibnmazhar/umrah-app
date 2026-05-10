@@ -107,6 +107,13 @@ class SettingsController extends Controller
         }
     }
 
+    public function showPackage(Package $package)
+    {
+        $package->load(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.airline', 'ticketFare.airlineClass']);
+        
+        return view('package-configurations.show', compact('package'));
+    }
+
     public function destroyPackage(Package $package)
     {
         try {

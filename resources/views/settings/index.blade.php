@@ -340,6 +340,7 @@
                                     @endif
                                 </td>
                                 <td class="px-3 py-2 text-center">
+                                    <a href="{{ route('settings.package.show', $package->id) }}" class="text-xs text-slate-600 hover:text-slate-800 mr-3">View</a>
                                     <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
                                     <form method="POST" action="{{ route('settings.package.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
                                         @csrf
