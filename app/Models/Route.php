@@ -17,6 +17,7 @@ class Route extends Model
         'from_city_id',
         'to_city_id',
         'return_city_id',
+        'additional_gap',
     ];
 
     protected $casts = [
