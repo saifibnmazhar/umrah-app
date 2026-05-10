@@ -217,29 +217,29 @@
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Basic Information</h4>
                     <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">First Name *</label>
-                            <input type="text" x-model="passengerData.first_name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">First Name *</label>
+                            <input type="text" x-model="passengerData.first_name" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="First Name">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Last Name *</label>
-                            <input type="text" x-model="passengerData.last_name" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Last Name *</label>
+                            <input type="text" x-model="passengerData.last_name" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Last Name">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Passport No. *</label>
-                            <input type="text" x-model="passengerData.passport_no" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Passport No. *</label>
+                            <input type="text" x-model="passengerData.passport_no" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Passport Number">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Mobile No.</label>
-                            <input type="tel" x-model="passengerData.mobile_no" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="05XXXXXXXX">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Mobile No.</label>
+                            <input type="tel" x-model="passengerData.mobile_no" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="05XXXXXXXX">
                         </div>
                     </div>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Date of Birth *</label>
-                            <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Date of Birth *</label>
+                            <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <div x-show="passengerData.date_of_birth" class="mt-2">
-                                <label class="block text-sm font-medium text-slate-600 mb-1">Gender *</label>
-                                <select x-model="passengerData.gender" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Gender *</label>
+                                <select x-model="passengerData.gender" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                     <option value="">Select</option>
                                     <option value="Male">Male</option>
                                     <option value="Female">Female</option>
@@ -247,12 +247,12 @@
                             </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Passenger Type</label>
-                            <input type="text" x-model="passengerData.passenger_type" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" placeholder="Auto-calculated from DOB">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
+                            <input type="text" x-model="passengerData.passenger_type" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" placeholder="Auto-calculated from DOB">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Passport Expiry Date</label>
-                            <input type="date" x-model="passengerData.passport_expiry" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Passport Expiry Date</label>
+                            <input type="date" x-model="passengerData.passport_expiry" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                     </div>
                 </div>
@@ -261,8 +261,8 @@
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Service Information</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Stay Duration *</label>
-                            <select x-model="passengerData.stay_duration" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Stay Duration *</label>
+                            <select x-model="passengerData.stay_duration" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Stay Duration</option>
                                 <option value="Group (14 Days)">Group (14 Days)</option>
                                 <option value="Family (85 Days)">Family (85 Days)</option>
@@ -270,8 +270,8 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Service Required *</label>
-                            <select x-model="passengerData.service_required" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Required *</label>
+                            <select x-model="passengerData.service_required" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Service</option>
                                 <option value="All">All</option>
                                 <option value="Visa Only">Visa Only</option>
@@ -285,8 +285,8 @@
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Route Type *</label>
-                            <select x-model="passengerData.route_type" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
+                            <select x-model="passengerData.route_type" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select</option>
                                 <option value="One Way-Inbound">One Way-Inbound</option>
                                 <option value="One Way-Outbound">One Way-Outbound</option>
@@ -295,16 +295,16 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Flight Type *</label>
-                            <select x-model="passengerData.flight_type" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                            <select x-model="passengerData.flight_type" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select</option>
                                 <option value="Transit">Transit</option>
                                 <option value="Direct">Direct</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Route *</label>
-                            <select x-model="passengerData.route" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
+                            <select x-model="passengerData.route" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Route</option>
                                 <option value="DAC-JED-DAC">DAC-JED-DAC</option>
                                 <option value="DAC-RUH-DAC">DAC-RUH-DAC</option>
@@ -313,8 +313,8 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Airline *</label>
-                            <select x-model="passengerData.airline" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
+                            <select x-model="passengerData.airline" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Airline</option>
                                 <option value="Saudia">Saudia</option>
                                 <option value="Biman Bangladesh">Biman Bangladesh</option>
@@ -324,16 +324,16 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Class *</label>
-                            <select x-model="passengerData.class" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
+                            <select x-model="passengerData.class" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Class</option>
                                 <option value="Economy">Economy</option>
                                 <option value="Business">Business</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-600 mb-1">Flight Date Range *</label>
-                            <select x-model="passengerData.flight_date_range" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
+                            <select x-model="passengerData.flight_date_range" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Date Range</option>
                             </select>
                         </div>
@@ -343,16 +343,16 @@
                 <div class="mb-4">
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
                     <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Baggage Weight</label>
-                        <input type="text" x-model="passengerData.baggage_weight" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="30kg">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Weight</label>
+                        <input type="text" x-model="passengerData.baggage_weight" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="30kg">
                     </div>
                 </div>
 
                 <div class="mb-4">
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Location</h4>
                     <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Detailed Address <span class="text-slate-400">(Optional)</span></label>
-                        <input type="text" x-model="passengerData.address" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Full address (optional)">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Detailed Address <span class="text-slate-400">(Optional)</span></label>
+                        <input type="text" x-model="passengerData.address" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Full address (optional)">
                     </div>
                 </div>
 
@@ -361,11 +361,11 @@
                     <div class="flex flex-wrap gap-6">
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" x-model="passengerData.with_offer" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
-                            <span class="text-sm text-slate-600">With Offer</span>
+                            <span class="text-sm text-slate-700">With Offer</span>
                         </label>
                         <label class="flex items-center gap-2 cursor-pointer">
                             <input type="checkbox" x-model="passengerData.refundable" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
-                            <span class="text-sm text-slate-600">Refundable</span>
+                            <span class="text-sm text-slate-700">Refundable</span>
                         </label>
                     </div>
                 </div>
@@ -378,8 +378,8 @@
                             <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                             </svg>
-                            <p class="text-sm">Click to upload documents</p>
-                            <p class="text-xs">PDF, JPG, PNG</p>
+                            <p class="text-sm text-slate-600">Click to upload documents</p>
+                            <p class="text-xs text-slate-400">PDF, JPG, PNG</p>
                         </div>
                     </div>
                     <div id="passenger_doc_list" class="mt-3 space-y-2"></div>
