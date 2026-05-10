@@ -13,11 +13,13 @@ class Package extends Model
         'visa_selling_price_id',
         'regular_price',
         'offer_price',
+        'service_charge',
     ];
 
     protected $casts = [
         'regular_price' => 'decimal:2',
         'offer_price' => 'decimal:2',
+        'service_charge' => 'decimal:2',
     ];
 
     public function ticketFare(): BelongsTo
