@@ -10,6 +10,7 @@ use App\Http\Controllers\BankController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CityCodeController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DistrictController;
 use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\FlightDateGapController;
@@ -42,7 +43,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 Route::middleware('auth')->group(function () {
     // Home / Dashboard
     Route::get('/', fn() => redirect('/dashboard'))->name('home');
-    Route::get('/dashboard', fn() => view('dashboard.index'))->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Main Pages
     Route::resource('districts', DistrictController::class);
