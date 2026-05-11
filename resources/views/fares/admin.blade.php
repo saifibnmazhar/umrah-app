@@ -723,7 +723,7 @@
                         <input type="hidden" name="segments[1][segment_direction]" value="outbound">
                     </div>
 
-                    <div id="transitFieldsModal" class="hidden grid grid-cols-2 gap-4 mt-4">
+                    <div id="transitFieldsModal" class="hidden grid grid-cols-3 gap-4 mt-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Transit City</label>
                             <select name="transits[0][transit_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
@@ -734,11 +734,19 @@
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time Inbound</label>
                             <div class="flex items-center gap-2">
                                 <input type="number" name="transits[0][transit_hours]" min="0" max="23" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="HH">
                                 <span class="text-slate-500 font-medium">:</span>
                                 <input type="number" name="transits[0][transit_minutes]" min="0" max="59" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="MM">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time Outbound</label>
+                            <div class="flex items-center gap-2">
+                                <input type="number" name="transits[1][transit_hours]" min="0" max="23" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="HH">
+                                <span class="text-slate-500 font-medium">:</span>
+                                <input type="number" name="transits[1][transit_minutes]" min="0" max="59" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="MM">
                             </div>
                         </div>
                     </div>
