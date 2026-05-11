@@ -13,7 +13,7 @@
     fare: { id: null, airline_id: '', airline_classes_id: '', route_id: '', route_type: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false },
     showRouteModal: false,
     editRouteMode: false,
-    route: { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '' }
+    route: { id: null, airline_id: '', route_type: '', flight_type: '', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '' }
 }">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Ticket Admin</h1>
 
@@ -221,7 +221,7 @@
     <div x-show="activeTab === 'routes'" x-cloak>
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold text-slate-800">Routes</h1>
-            <a href="#" @click.prevent="editRouteMode = false; route = { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '' }; showRouteModal = true" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
+            <a href="#" @click.prevent="editRouteMode = false; route = { id: null, airline_id: '', route_type: '', flight_type: '', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '' }; showRouteModal = true" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
                 Add New
             </a>
         </div>
@@ -301,7 +301,7 @@
                         @empty
                             <tr>
                                 <td colspan="7" class="px-4 py-12 text-center text-slate-500">
-                                    No routes found. <button @click="editRouteMode = false; route = { id: null, airline_id: '', route_type: 'oneway_outbound', flight_type: 'direct', from_city_id: '', to_city_id: '', return_city_id: '' }; showRouteModal = true" class="text-slate-800 underline hover:text-slate-600">Add one?</button>
+                                    No routes found. <button @click="editRouteMode = false; route = { id: null, airline_id: '', route_type: '', flight_type: '', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '' }; showRouteModal = true" class="text-slate-800 underline hover:text-slate-600">Add one?</button>
                                 </td>
                             </tr>
                         @endforelse
