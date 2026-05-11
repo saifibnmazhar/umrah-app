@@ -2765,5 +2765,306 @@ public function rules()
 
 ---
 
-*Plan Version: 7.0*
+## Phase 8: Visa Submission Workflow Tables
+
+### Overview
+
+This phase adds 2 tables for managing visa submissions and their cancellations. These tables track visa application workflow per passenger.
+
+---
+
+### Dependency Analysis
+
+#### Tables with dependencies:
+- **visa_submissions** → depends on `passengers`, `visa_agents`, `commission_agents`, `visa_selling_prices`
+- **cancelled_submissions** → depends on `visa_submissions`
+
+---
+
+### Migration Order (Phase 8: Visa Submission Tables)
+
+| Step | Table | Dependencies | Artisan Command |
+|------|-------|--------------|-----------------|
+| 1 | visa_submissions | passengers, visa_agents, commission_agents, visa_selling_prices | `php artisan make:migration create_visa_submissions_table` |
+| 2 | cancelled_submissions | visa_submissions | `php artisan make:migration create_cancelled_submissions_table` |
+
+---
+
+### Design Decisions
+
+#### 1. ID Configuration
+- All primary keys use `bigIncrements()` for consistency
+- Foreign keys use `foreignId()->constrained()` for proper constraints
+
+#### 2. Foreign Key Constraints
+
+| Table | Column | References | Delete Behavior |
+|-------|--------|------------|------------------|
+| visa_submissions | passenger_id | passengers.id | `restrictOnDelete()` |
+| visa_submissions | visa_agent_id | visa_agents.id | `restrictOnDelete()` |
+| visa_submissions | commission_agent_id | commission_agents.id | `restrictOnDelete()` (nullable) |
+| visa_submissions | visa_selling_price_id | visa_selling_prices.id | `restrictOnDelete()` |
+| cancelled_submissions | visa_submission_id | visa_submissions.id | `restrictOnDelete()` |
+
+- `onUpdate('cascade')` on all foreign keys
+- `restrictOnDelete()` prevents accidental deletion of parent records with existing children
+
+#### 3. Nullable Fields
+
+| Column | Nullable | Justification |
+|--------|----------|---------------|
+| commission_agent_id | YES | Commission agent may not be assigned |
+| agent_commission | YES | Commission amount may not be known |
+| visa_number | YES | Visa number may be assigned later |
+| cancellation_fee | YES | Cancellation fee may be determined later |
+
+#### 4. IMPORTANT: passenger_id NOT Unique
+
+**Justification**:
+- One passenger may have multiple visa submissions over time (historical tracking)
+- Booking information accessible via `passengers.booking_id` through the existing passenger record
+- DO NOT add unique constraint on passenger_id
+
+#### 5. Boolean Field: is_cancelled
+
+- **Default**: `false` (new submissions are active by default)
+- Uses `boolean()` with `default(false)`
+- Tracks whether the visa submission was cancelled
+
+#### 6. Unique Constraints
+
+| Table | Constraint | Justification |
+|-------|------------|---------------|
+| cancelled_submissions | visa_submission_id (unique) | One cancellation record per visa submission |
+
+#### 7. Monetary & Numeric Constraints
+
+| Field | Type | Constraint |
+|-------|------|------------|
+| agent_commission | decimal(10,2) | CHECK (agent_commission IS NULL OR agent_commission >= 0) |
+| cancellation_fee | decimal(10,2) | CHECK (cancellation_fee IS NULL OR cancellation_fee >= 0) |
+
+#### 8. Indexes
+- Foreign key constraints auto-create indexes
+- No redundant manual indexes needed
+
+---
+
+### Business Logic Notes
+
+| Table | Logic |
+|-------|-------|
+| visa_submissions | One visa submission belongs to one passenger |
+| visa_submissions | One passenger may have multiple visa submissions over time |
+| visa_submissions | Cancellation state tracked via is_cancelled boolean |
+| cancelled_submissions | Stores cancellation-related financial data |
+| cancelled_submissions | Only one cancellation record allowed per visa submission |
+
+---
+
+### Migration File Details
+
+#### 1. visa_submissions table
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('visa_submissions', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('passenger_id')
+            ->constrained('passengers')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->foreignId('visa_agent_id')
+            ->constrained('visa_agents')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->foreignId('commission_agent_id')
+            ->nullable()
+            ->constrained('commission_agents')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->decimal('agent_commission', 10, 2)->nullable();
+        $table->foreignId('visa_selling_price_id')
+            ->constrained('visa_selling_prices')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->string('visa_number')->nullable();
+        $table->boolean('is_cancelled')->default(false);
+
+        $table->timestamps();
+    });
+
+    DB::statement('ALTER TABLE visa_submissions ADD CONSTRAINT visa_submissions_agent_commission_check CHECK (agent_commission IS NULL OR agent_commission >= 0)');
+}
+
+// DOWN
+public function down(): void
+{
+    try {
+        DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS visa_submissions_agent_commission_check');
+    } catch (\Exception $e) {
+        // MariaDB compatibility: ignore if constraint doesn't exist
+    }
+
+    if (Schema::hasTable('visa_submissions')) {
+        Schema::table('visa_submissions', function (Blueprint $table) {
+            $table->dropForeign(['passenger_id']);
+            $table->dropForeign(['visa_agent_id']);
+            $table->dropForeign(['commission_agent_id']);
+            $table->dropForeign(['visa_selling_price_id']);
+        });
+    }
+
+    Schema::dropIfExists('visa_submissions');
+}
+```
+
+#### 2. cancelled_submissions table
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('cancelled_submissions', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('visa_submission_id')
+            ->constrained('visa_submissions')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->decimal('cancellation_fee', 10, 2)->nullable();
+
+        $table->unique('visa_submission_id');
+
+        $table->timestamps();
+    });
+
+    DB::statement('ALTER TABLE cancelled_submissions ADD CONSTRAINT cancelled_submissions_cancellation_fee_check CHECK (cancellation_fee IS NULL OR cancellation_fee >= 0)');
+}
+
+// DOWN
+public function down(): void
+{
+    try {
+        DB::statement('ALTER TABLE cancelled_submissions DROP CHECK IF EXISTS cancelled_submissions_cancellation_fee_check');
+    } catch (\Exception $e) {
+        // MariaDB compatibility: ignore if constraint doesn't exist
+    }
+
+    if (Schema::hasTable('cancelled_submissions')) {
+        Schema::table('cancelled_submissions', function (Blueprint $table) {
+            $table->dropForeign(['visa_submission_id']);
+        });
+    }
+
+    Schema::dropIfExists('cancelled_submissions');
+}
+```
+
+---
+
+### Safe Execution Plan
+
+```bash
+# Step 1: Create migration files
+php artisan make:migration create_visa_submissions_table
+php artisan make:migration create_cancelled_submissions_table
+
+# Step 2: Run migrations
+php artisan migrate
+
+# Step 3: Verify tables
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('visa_submissions');
+```
+
+---
+
+### Rollback Considerations
+
+| Table | Delete Behavior | Rollback Risk |
+|-------|-----------------|---------------|
+| visa_submissions | restrictOnDelete | Medium - prevents passenger/visa_agent/commission_agent/visa_selling_price deletion if submissions exist |
+| cancelled_submissions | restrictOnDelete | Medium - prevents visa_submission deletion if cancellation record exists |
+
+**Note**: The `restrictOnDelete()` constraints mean you cannot delete parent records (passengers, visa_agents, commission_agents, visa_selling_prices, visa_submissions) if child records exist. You must first delete the child records or modify them to allow parent deletion.
+
+**Rollback ordering risk**: When rolling back, `cancelled_submissions` must be dropped BEFORE `visa_submissions` due to FK dependency. Laravel's migration rollback handles this automatically in reverse order.
+
+---
+
+### Summary (Phase 8)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 2 |
+| Foreign Keys | 5 |
+| Unique Constraints | 1 |
+| CHECK Constraints | 2 |
+| Boolean Columns | 1 |
+
+---
+
+### Combined Summary (All Phases)
+
+| Category | Before | After |
+|----------|--------|-------|
+| Total Tables | 31 | 33 |
+| Total Foreign Keys | 44 | 49 |
+| Total Unique Constraints | 14 | 15 |
+| Total CHECK Constraints | 15 | 17 |
+
+---
+
+### Model Configuration (Post-Migration)
+
+**VisaSubmission Model:**
+```php
+protected $casts = [
+    'agent_commission' => 'decimal:2',
+    'is_cancelled' => 'boolean',
+];
+```
+
+**CancelledSubmission Model:**
+```php
+protected $casts = [
+    'cancellation_fee' => 'decimal:2',
+];
+```
+
+---
+
+### Validation Layer Requirements
+
+**VisaSubmission - Example validation logic:**
+```php
+public function rules()
+{
+    return [
+        'passenger_id' => 'required|exists:passengers,id',
+        'visa_agent_id' => 'required|exists:visa_agents,id',
+        'commission_agent_id' => 'nullable|exists:commission_agents,id',
+        'visa_selling_price_id' => 'required|exists:visa_selling_prices,id',
+        'visa_number' => 'nullable|string|max:255|unique:visa_submissions,visa_number',
+        'agent_commission' => 'nullable|numeric|min:0',
+        'is_cancelled' => 'boolean',
+    ];
+}
+```
+
+**CancelledSubmission - Example validation logic:**
+```php
+public function rules()
+{
+    return [
+        'visa_submission_id' => 'required|exists:visa_submissions,id|unique:cancelled_submissions,visa_submission_id',
+        'cancellation_fee' => 'nullable|numeric|min:0',
+    ];
+}
+```
+
+---
+
+*Plan Version: 8.0*
 *Updated: May 2026*
