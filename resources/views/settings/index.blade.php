@@ -389,7 +389,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type *</label>
-                            <select id="modalTicketTypeSelect" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+                            <select id="modalTicketTypeSelect" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required onchange="toggleModalOfferPriceField()">
                                 <option value="">Select Ticket Type</option>
                                 <option value="regular">REGULAR</option>
                                 <option value="offer">OFFER</option>
@@ -540,6 +540,17 @@
 
         document.getElementById('modalTicketTypeSelect').addEventListener('change', filterModalTickets);
         document.getElementById('modalTicketSelect').addEventListener('change', calculateModalPrices);
+
+        function toggleModalOfferPriceField() {
+            const ticketType = document.getElementById('modalTicketTypeSelect').value;
+            const offerPriceContainer = document.getElementById('modalOfferPriceContainer');
+            if (ticketType === 'offer') {
+                offerPriceContainer.classList.remove('hidden');
+            } else {
+                offerPriceContainer.classList.add('hidden');
+                document.getElementById('modalOfferPrice').value = '';
+            }
+        }
         </script>
     </div>
 </div>
