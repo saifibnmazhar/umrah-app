@@ -21,11 +21,6 @@ $stats = [
     'departureDone' => 50,
     'departureStay' => 30,
 ];
-$packages = [
-    ['name' => 'Umrah Basic', 'price' => '5,500 SAR'],
-    ['name' => 'Umrah Standard', 'price' => '7,500 SAR'],
-    ['name' => 'Umrah Premium', 'price' => '10,000 SAR'],
-];
 $reissueRequests = [
     ['id' => 1, 'invoiceId' => 1001, 'invoiceNo' => 'INV-2024-001', 'branch' => 'Riyadh', 'passengers' => ['count' => 2]],
 ];
@@ -212,11 +207,25 @@ $refundRequests = [];
     <section class="mb-6">
         <h3 class="text-lg font-semibold text-slate-800 mb-4">Popular Packages</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
-            @forelse($packages ?? [] as $package)
-            <div class="bg-white rounded-lg border border-slate-200 p-4">
-                <div class="font-medium text-slate-800">{{ $package['name'] ?? 'Package Name' }}</div>
-                <div class="text-sm text-slate-500">{{ $package['price'] ?? '0 SAR' }}</div>
-            </div>
+            @forelse($packages as $package)
+            <a href="{{ route('settings.package.show', $package->id) }}" class="block bg-white rounded-lg shadow p-4 cursor-pointer hover:bg-slate-50 transition border-l-4 border-emerald-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="font-medium text-slate-800">{{ $package->package_name }}</span>
+                        @if($package->ticketFare?->ticket_type?->value === 'offer')
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700 ml-2">Offer</span>
+                        @endif
+                    </div>
+                    <div class="text-right">
+                        @if($package->offer_price && $package->ticketFare?->ticket_type?->value === 'offer')
+                        <span class="text-sm text-slate-400 line-through mr-2">{{ number_format($package->regular_price, 0) }} SAR</span>
+                        @endif
+                        <span class="font-semibold {{ $package->offer_price && $package->ticketFare?->ticket_type?->value === 'offer' ? 'text-emerald-600' : 'text-slate-800' }}">
+                            {{ number_format($package->offer_price ?? $package->regular_price, 0) }} SAR
+                        </span>
+                    </div>
+                </div>
+            </a>
             @empty
             <div class="text-center py-8 text-slate-500 col-span-2">No packages available</div>
             @endforelse

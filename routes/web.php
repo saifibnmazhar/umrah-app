@@ -10,6 +10,7 @@ use App\Http\Controllers\BankController;
 use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CityCodeController;
 use App\Http\Controllers\CustomerController;
+use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DistrictController;
 use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\FlightDateGapController;
@@ -42,7 +43,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 Route::middleware('auth')->group(function () {
     // Home / Dashboard
     Route::get('/', fn() => redirect('/dashboard'))->name('home');
-    Route::get('/dashboard', fn() => view('dashboard.index'))->name('dashboard');
+    Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Main Pages
     Route::resource('districts', DistrictController::class);
@@ -98,6 +99,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/fingerprint-charge', [SettingsController::class, 'updateFingerprintCharge'])->name('settings.fingerprint-charge.update');
     Route::put('/settings/package-configuration', [SettingsController::class, 'updatePackageConfiguration'])->name('settings.package-configuration.update');
     Route::post('/settings/package', [SettingsController::class, 'storePackage'])->name('settings.package.store');
+    Route::get('/settings/package/{package}', [SettingsController::class, 'showPackage'])->name('settings.package.show');
     Route::put('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->name('settings.package.update');
     Route::delete('/settings/package/{package}', [SettingsController::class, 'destroyPackage'])->name('settings.package.destroy');
 

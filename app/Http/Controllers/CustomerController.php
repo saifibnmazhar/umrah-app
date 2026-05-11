@@ -26,7 +26,7 @@ class CustomerController extends Controller
     public function store(Request $request)
     {
         try {
-            $validated = $request->validate([
+            $request->validate([
                 'name' => 'required|string|max:255',
                 'iqama_type' => 'nullable|string|max:50',
                 'passport_no' => 'required|string|max:50',
@@ -35,21 +35,22 @@ class CustomerController extends Controller
                 'ref_iqama_no' => 'nullable|string|max:50',
                 'ref_mobile_no' => 'nullable|string|max:20',
                 'ref_iqama_doc' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-                'customer_docs' => 'nullable|array',
-                'customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+                'documents' => 'nullable|array',
+                'documents.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
                 'address' => 'nullable|string|max:500',
             ]);
 
-            $validated = $request->validated();
+            $data = $request->except(['ref_iqama_doc', 'documents']);
+
             if ($request->hasFile('ref_iqama_doc')) {
                 $path = $request->file('ref_iqama_doc')->store('customer-docs', 'public');
-                $validated['ref_iqama_doc'] = $path;
+                $data['ref_iqama_doc'] = $path;
             }
 
-            $customer = Customer::create($validated);
+            $customer = Customer::create($data);
 
-            if ($request->hasFile('customer_docs')) {
-                foreach ($request->file('customer_docs') as $file) {
+            if ($request->hasFile('documents')) {
+                foreach ($request->file('documents') as $file) {
                     $customer->documents()->create([
                         'owner_type' => 'customer',
                         'owner_id' => $customer->id,
@@ -58,6 +59,7 @@ class CustomerController extends Controller
                     ]);
                 }
             }
+
             return response()->json([
                 'success' => true,
                 'customer' => $customer,

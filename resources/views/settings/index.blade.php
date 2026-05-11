@@ -3,7 +3,7 @@
 @section('title', 'Settings')
 
 @section('content')
-<div class="max-w-3xl mx-auto pt-6 container" x-data="{ activeTab: 'flight-date-gap' }">
+<div class="w-full pt-6 px-4 md:px-6" x-data="{ activeTab: 'flight-date-gap' }">
     <h1 class="text-2xl font-bold mb-6">Admin Settings</h1>
 
     <div class="border-b border-gray-200 mb-6">
@@ -64,7 +64,7 @@
                     <div>
                         <label for="gap" class="block text-sm font-medium text-slate-700 mb-1">Gap Between Booking and Flight Date (Days) *</label>
                         <input type="number" id="gap" name="gap"
-                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
+                            class="w-1/2 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
                             value="{{ old('gap', $flightDateGap?->gap ?? 30) }}"
                             min="1" required>
                         <p class="text-xs text-slate-500 mt-1">Minimum value is 1 day.</p>
@@ -340,6 +340,7 @@
                                     @endif
                                 </td>
                                 <td class="px-3 py-2 text-center">
+                                    <a href="{{ route('settings.package.show', $package->id) }}" class="text-xs text-slate-600 hover:text-slate-800 mr-3">View</a>
                                     <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
                                     <form method="POST" action="{{ route('settings.package.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
                                         @csrf
