@@ -2440,5 +2440,321 @@ public function rules()
 
 ---
 
-*Plan Version: 6.0*
+## Phase 7: Fingerprint Workflow Tables
+
+### Overview
+
+This phase adds 3 tables for managing fingerprint workflow: `fingerprints` (parent workflow per booking), `fingerprint_details` (per-passenger tracking), and `rescheduled_fingerprints` (reschedule records).
+
+### Dependency Analysis
+
+| Table | Dependencies | Notes |
+|-------|--------------|-------|
+| fingerprints | bookings, users | Phase 6 tables |
+| fingerprint_details | fingerprints, passengers | Phase 6 & Phase 7 |
+| rescheduled_fingerprints | fingerprint_details | Phase 7 |
+
+### Migration Order (Phase 7)
+
+| Step | Table | Artisan Command |
+|------|-------|-----------------|
+| 1 | fingerprints | `php artisan make:migration create_fingerprints_table` |
+| 2 | fingerprint_details | `php artisan make:migration create_fingerprint_details_table` |
+| 3 | rescheduled_fingerprints | `php artisan make:migration create_rescheduled_fingerprints_table` |
+
+### Design Decisions
+
+#### Foreign Key Constraints
+
+| Table | Column | References | Delete Behavior |
+|-------|--------|------------|-----------------|
+| fingerprints | booking_id | bookings.id | `restrictOnDelete()` |
+| fingerprints | assigned_staff_id | users.id | `restrictOnDelete()` |
+| fingerprint_details | fingerprint_id | fingerprints.id | `restrictOnDelete()` |
+| fingerprint_details | passenger_id | passengers.id | `restrictOnDelete()` |
+| rescheduled_fingerprints | fingerprint_detail_id | fingerprint_details.id | `restrictOnDelete()` |
+
+#### Unique Constraints
+
+| Table | Constraint | Justification |
+|-------|------------|---------------|
+| fingerprints | booking_id | One fingerprint workflow per booking |
+| fingerprint_details | (fingerprint_id, passenger_id) | A passenger can only appear once per workflow |
+
+#### CHECK Constraints
+
+| Table | Field | Constraint |
+|-------|-------|------------|
+| fingerprints | cost | cost >= 0 |
+| rescheduled_fingerprints | occurrence | occurrence >= 1 |
+
+#### Enum Columns
+
+| Column | Values | PHP Enum (to create) |
+|--------|--------|----------------------|
+| fingerprint_details.status | none, processing, approved, cancelled | `FingerprintStatus` |
+| rescheduled_fingerprints.reason | rescheduled_by_client, rescheduled_by_bmt, nfc_problem, others | `RescheduleReason` |
+
+#### Conditional Validation (Application Layer)
+
+| Field | Condition | Enforcement |
+|-------|-----------|-------------|
+| other_reason | Required only when reason = 'others' | Form Request / Service Layer |
+
+### Migration File Details
+
+#### 1. fingerprints table
+
+```php
+public function up(): void
+{
+    Schema::create('fingerprints', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('booking_id')
+            ->constrained('bookings')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->date('deadline');
+        $table->decimal('cost', 10, 2);
+        $table->foreignId('assigned_staff_id')
+            ->constrained('users')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+
+        $table->unique('booking_id');
+
+        $table->timestamps();
+    });
+
+    DB::statement('ALTER TABLE fingerprints ADD CONSTRAINT fingerprints_cost_check CHECK (cost >= 0)');
+}
+
+public function down(): void
+{
+    DB::statement('ALTER TABLE fingerprints DROP CHECK IF EXISTS fingerprints_cost_check');
+
+    if (Schema::hasTable('fingerprints')) {
+        Schema::table('fingerprints', function (Blueprint $table) {
+            $table->dropForeign(['booking_id']);
+            $table->dropForeign(['assigned_staff_id']);
+        });
+    }
+
+    Schema::dropIfExists('fingerprints');
+}
+```
+
+#### 2. fingerprint_details table
+
+```php
+public function up(): void
+{
+    Schema::create('fingerprint_details', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('fingerprint_id')
+            ->constrained('fingerprints')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->foreignId('passenger_id')
+            ->constrained('passengers')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->enum('status', ['none', 'processing', 'approved', 'cancelled']);
+
+        $table->unique(['fingerprint_id', 'passenger_id']);
+
+        $table->timestamps();
+    });
+}
+
+public function down(): void
+{
+    if (Schema::hasTable('fingerprint_details')) {
+        Schema::table('fingerprint_details', function (Blueprint $table) {
+            $table->dropForeign(['fingerprint_id']);
+            $table->dropForeign(['passenger_id']);
+        });
+    }
+
+    Schema::dropIfExists('fingerprint_details');
+}
+```
+
+#### 3. rescheduled_fingerprints table
+
+```php
+public function up(): void
+{
+    Schema::create('rescheduled_fingerprints', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('fingerprint_detail_id')
+            ->constrained('fingerprint_details')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->enum('reason', ['rescheduled_by_client', 'rescheduled_by_bmt', 'nfc_problem', 'others']);
+        $table->string('other_reason')->nullable();
+        $table->date('next_date');
+        $table->unsignedInteger('occurrence');
+
+        $table->timestamps();
+    });
+
+    DB::statement('ALTER TABLE rescheduled_fingerprints ADD CONSTRAINT rescheduled_fingerprints_occurrence_check CHECK (occurrence >= 1)');
+}
+
+public function down(): void
+{
+    DB::statement('ALTER TABLE rescheduled_fingerprints DROP CHECK IF EXISTS rescheduled_fingerprints_occurrence_check');
+
+    if (Schema::hasTable('rescheduled_fingerprints')) {
+        Schema::table('rescheduled_fingerprints', function (Blueprint $table) {
+            $table->dropForeign(['fingerprint_detail_id']);
+        });
+    }
+
+    Schema::dropIfExists('rescheduled_fingerprints');
+}
+```
+
+### Safe Execution Plan
+
+```bash
+# Step 1: Create migration files
+php artisan make:migration create_fingerprints_table
+php artisan make:migration create_fingerprint_details_table
+php artisan make:migration create_rescheduled_fingerprints_table
+
+# Step 2: Run migrations
+php artisan migrate
+
+# Step 3: Verify tables
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('fingerprints');
+```
+
+### Rollback Considerations
+
+| Table | Delete Behavior | Rollback Risk |
+|-------|-----------------|---------------|
+| fingerprints | restrictOnDelete | Medium - prevents booking deletion if fingerprints exist |
+| fingerprint_details | restrictOnDelete | Medium - prevents fingerprint deletion if details exist |
+| rescheduled_fingerprints | restrictOnDelete | Medium - prevents fingerprint_detail deletion if reschedules exist |
+
+### Summary (Phase 7)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 3 |
+| Foreign Keys | 5 |
+| Unique Constraints | 2 |
+| CHECK Constraints | 2 |
+| Enum Columns | 2 |
+
+### Combined Summary (All Phases)
+
+| Category | Before | After |
+|----------|--------|-------|
+| Total Tables | 28 | 31 |
+| Total Foreign Keys | 39 | 44 |
+| Total Unique Constraints | 12 | 14 |
+| Total CHECK Constraints | 13 | 15 |
+
+### Enum Files to Create
+
+The following PHP enum files MUST be created before running migrations:
+
+**File: `app/Enums/FingerprintStatus.php`**
+```php
+<?php
+
+namespace App\Enums;
+
+enum FingerprintStatus: string
+{
+    case NONE = 'none';
+    case PROCESSING = 'processing';
+    case APPROVED = 'approved';
+    case CANCELLED = 'cancelled';
+}
+```
+
+**File: `app/Enums/RescheduleReason.php`**
+```php
+<?php
+
+namespace App\Enums;
+
+enum RescheduleReason: string
+{
+    case RESCHEDULED_BY_CLIENT = 'rescheduled_by_client';
+    case RESCHEDULED_BY_BMT = 'rescheduled_by_bmt';
+    case NFC_PROBLEM = 'nfc_problem';
+    case OTHERS = 'others';
+}
+```
+
+### Model Configuration (Post-Migration)
+
+**Fingerprint Model:**
+```php
+protected $casts = [
+    'deadline' => 'date',
+    'cost' => 'decimal:2',
+];
+```
+
+**FingerprintDetail Model:**
+```php
+protected $casts = [
+    'status' => FingerprintStatus::class,
+];
+```
+
+**RescheduledFingerprint Model:**
+```php
+protected $casts = [
+    'reason' => RescheduleReason::class,
+    'next_date' => 'date',
+    'occurrence' => 'integer',
+];
+```
+
+### Validation Layer Requirements
+
+**RescheduledFingerprint - other_reason conditional validation (Form Request):**
+```php
+public function rules()
+{
+    $rules = [
+        'fingerprint_detail_id' => 'required|exists:fingerprint_details,id',
+        'reason' => 'required|in:rescheduled_by_client,rescheduled_by_bmt,nfc_problem,others',
+        'next_date' => 'required|date',
+        'occurrence' => 'required|integer|min:1',
+    ];
+
+    if ($this->reason === 'others') {
+        $rules['other_reason'] = 'required|string|max:255';
+    }
+
+    return $rules;
+}
+```
+
+**FingerprintDetail - unique fingerprint_id + passenger_id (Form Request):**
+```php
+public function rules()
+{
+    return [
+        'fingerprint_id' => 'required|exists:fingerprints,id',
+        'passenger_id' => 'required|exists:passengers,id',
+        'status' => 'required|in:none,processing,approved,cancelled',
+    ];
+}
+
+// Custom validation for composite unique:
+// 'passenger_id' => 'unique:fingerprint_details,fingerprint_id,NULL,id,fingerprint_id,' . $this->fingerprint_id
+```
+
+---
+
+*Plan Version: 7.0*
 *Updated: May 2026*
