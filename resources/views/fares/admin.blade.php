@@ -629,7 +629,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                            <select name="route_type" x-model="route.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleRouteFieldsModal(this.value)">
+                            <select name="route_type" x-model="route.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleRouteFieldsModal(this.value); route.flight_type = ''">
                                 <option value="">Select</option>
                                 <option value="oneway_inbound">Oneway - Inbound</option>
                                 <option value="oneway_outbound">Oneway - Outbound</option>
@@ -639,7 +639,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                            <select name="flight_type" x-model="route.flight_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleTransitFieldsModal()">
+                            <select name="flight_type" x-model="route.flight_type" :disabled="!route.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleTransitFieldsModal()">
                                 <option value="">Select</option>
                                 <option value="direct">Direct</option>
                                 <option value="transit">Transit</option>
