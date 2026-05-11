@@ -16,6 +16,7 @@ class RescheduledFingerprint extends Model
         'other_reason',
         'next_date',
         'occurrence',
+        'remarks',
     ];
 
     protected $casts = [
