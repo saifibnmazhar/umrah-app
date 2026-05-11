@@ -2469,7 +2469,7 @@ This phase adds 3 tables for managing fingerprint workflow: `fingerprints` (pare
 | Table | Column | References | Delete Behavior |
 |-------|--------|------------|-----------------|
 | fingerprints | booking_id | bookings.id | `restrictOnDelete()` |
-| fingerprints | assigned_staff_id | users.id | `restrictOnDelete()` |
+| fingerprints | assigned_staff_id | users.id | `nullOnDelete()` (nullable) |
 | fingerprint_details | fingerprint_id | fingerprints.id | `restrictOnDelete()` |
 | fingerprint_details | passenger_id | passengers.id | `restrictOnDelete()` |
 | rescheduled_fingerprints | fingerprint_detail_id | fingerprint_details.id | `restrictOnDelete()` |
@@ -2517,8 +2517,9 @@ public function up(): void
         $table->date('deadline');
         $table->decimal('cost', 10, 2);
         $table->foreignId('assigned_staff_id')
+            ->nullable()
             ->constrained('users')
-            ->restrictOnDelete()
+            ->nullOnDelete()
             ->onUpdate('cascade');
 
         $table->unique('booking_id');
@@ -2531,7 +2532,11 @@ public function up(): void
 
 public function down(): void
 {
-    DB::statement('ALTER TABLE fingerprints DROP CHECK IF EXISTS fingerprints_cost_check');
+    try {
+        DB::statement('ALTER TABLE fingerprints DROP CHECK IF EXISTS fingerprints_cost_check');
+    } catch (\Exception $e) {
+        // MariaDB compatibility: ignore if constraint doesn't exist
+    }
 
     if (Schema::hasTable('fingerprints')) {
         Schema::table('fingerprints', function (Blueprint $table) {
@@ -2604,7 +2609,11 @@ public function up(): void
 
 public function down(): void
 {
-    DB::statement('ALTER TABLE rescheduled_fingerprints DROP CHECK IF EXISTS rescheduled_fingerprints_occurrence_check');
+    try {
+        DB::statement('ALTER TABLE rescheduled_fingerprints DROP CHECK IF EXISTS rescheduled_fingerprints_occurrence_check');
+    } catch (\Exception $e) {
+        // MariaDB compatibility: ignore if constraint doesn't exist
+    }
 
     if (Schema::hasTable('rescheduled_fingerprints')) {
         Schema::table('rescheduled_fingerprints', function (Blueprint $table) {

@@ -18,8 +18,9 @@ return new class extends Migration
             $table->date('deadline');
             $table->decimal('cost', 10, 2);
             $table->foreignId('assigned_staff_id')
+                ->nullable()
                 ->constrained('users')
-                ->restrictOnDelete()
+                ->nullOnDelete()
                 ->onUpdate('cascade');
 
             $table->unique('booking_id');
@@ -32,7 +33,11 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE fingerprints DROP CHECK IF EXISTS fingerprints_cost_check');
+        try {
+            DB::statement('ALTER TABLE fingerprints DROP CHECK IF EXISTS fingerprints_cost_check');
+        } catch (\Exception $e) {
+            // MariaDB compatibility: ignore if constraint doesn't exist
+        }
 
         if (Schema::hasTable('fingerprints')) {
             Schema::table('fingerprints', function (Blueprint $table) {

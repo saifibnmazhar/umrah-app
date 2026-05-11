@@ -28,7 +28,11 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE rescheduled_fingerprints DROP CHECK IF EXISTS rescheduled_fingerprints_occurrence_check');
+        try {
+            DB::statement('ALTER TABLE rescheduled_fingerprints DROP CHECK IF EXISTS rescheduled_fingerprints_occurrence_check');
+        } catch (\Exception $e) {
+            // MariaDB compatibility: ignore if constraint doesn't exist
+        }
 
         if (Schema::hasTable('rescheduled_fingerprints')) {
             Schema::table('rescheduled_fingerprints', function (Blueprint $table) {
