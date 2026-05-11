@@ -647,28 +647,26 @@
                         </div>
                     </div>
 
-                    <div id="cityGridModal" class="grid gap-4 mt-4">
-                        <div id="fromFieldModal" class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">From *</label>
-                                <select name="from_city_id" x-model="route.from_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
-                                    <option value="">Select</option>
-                                    @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
-                                        <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
-                                    @endforeach
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">To *</label>
-                                <select name="to_city_id" x-model="route.to_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
-                                    <option value="">Select</option>
-                                    @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
-                                        <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
-                                    @endforeach
-                                </select>
-                            </div>
+                    <div id="cityGridModal" class="grid grid-cols-3 gap-4 mt-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">From *</label>
+                            <select name="from_city_id" x-model="route.from_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                <option value="">Select</option>
+                                @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                                    <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                                @endforeach
+                            </select>
                         </div>
-                        <div id="returnFieldModal" class="hidden">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">To *</label>
+                            <select name="to_city_id" x-model="route.to_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                <option value="">Select</option>
+                                @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                                    <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <div id="returnFieldModal">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Return To *</label>
                             <select name="return_city_id" x-model="route.return_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                 <option value="">Select</option>
@@ -762,21 +760,20 @@
     <script>
     function toggleRouteFieldsModal(routeTypeValue) {
         const routeType = routeTypeValue || document.querySelector('select[name="route_type"]').value;
-        const fromField = document.getElementById('fromFieldModal');
+        const cityGrid = document.getElementById('cityGridModal');
         const returnField = document.getElementById('returnFieldModal');
         const multiCityFields = document.getElementById('multiCityFieldsModal');
-        const cityGrid = document.getElementById('cityGridModal');
 
-        fromField.classList.add('hidden');
+        cityGrid.classList.remove('hidden');
         returnField.classList.add('hidden');
         multiCityFields.classList.add('hidden');
 
         if (routeType === 'oneway_inbound' || routeType === 'oneway_outbound') {
-            fromField.classList.remove('hidden');
+            returnField.classList.add('hidden');
         } else if (routeType === 'round') {
-            fromField.classList.remove('hidden');
             returnField.classList.remove('hidden');
         } else if (routeType === 'multi_city') {
+            cityGrid.classList.add('hidden');
             multiCityFields.classList.remove('hidden');
         }
     }
