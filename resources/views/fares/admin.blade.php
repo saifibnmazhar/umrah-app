@@ -724,7 +724,7 @@
                     </div>
 
                     <div id="transitFieldsModal" class="hidden grid grid-cols-3 gap-4 mt-4">
-                        <div>
+                        <div x-show="route.flight_type === 'transit'">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Transit City</label>
                             <select name="transits[0][transit_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                 <option value="">Select</option>
@@ -733,7 +733,7 @@
                                 @endforeach
                             </select>
                         </div>
-                        <div>
+                        <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_inbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time Inbound</label>
                             <div class="flex items-center gap-2">
                                 <input type="number" name="transits[0][transit_hours]" min="0" max="23" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="HH">
@@ -741,7 +741,7 @@
                                 <input type="number" name="transits[0][transit_minutes]" min="0" max="59" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="MM">
                             </div>
                         </div>
-                        <div>
+                        <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_outbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time Outbound</label>
                             <div class="flex items-center gap-2">
                                 <input type="number" name="transits[1][transit_hours]" min="0" max="23" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="HH">
