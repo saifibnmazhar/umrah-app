@@ -647,7 +647,7 @@
                         </div>
                     </div>
 
-                    <div id="cityGridModal" class="grid grid-cols-3 gap-4 mt-4 hidden">
+                    <div id="cityGridModal" class="grid gap-4 mt-4 hidden">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">From *</label>
                             <select name="from_city_id" x-model="route.from_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
@@ -764,15 +764,18 @@
         const returnField = document.getElementById('returnFieldModal');
         const multiCityFields = document.getElementById('multiCityFieldsModal');
 
+        cityGrid.classList.remove('grid-cols-2', 'grid-cols-3');
         cityGrid.classList.add('hidden');
         returnField.classList.add('hidden');
         multiCityFields.classList.add('hidden');
 
         if (routeType === 'oneway_inbound' || routeType === 'oneway_outbound') {
             cityGrid.classList.remove('hidden');
+            cityGrid.classList.add('grid-cols-2');
             returnField.classList.add('hidden');
         } else if (routeType === 'round') {
             cityGrid.classList.remove('hidden');
+            cityGrid.classList.add('grid-cols-3');
             returnField.classList.remove('hidden');
         } else if (routeType === 'multi_city') {
             multiCityFields.classList.remove('hidden');
