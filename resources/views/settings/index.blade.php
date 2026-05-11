@@ -307,8 +307,12 @@
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Package Name</th>
-                            <th class="px-3 py-2 text-left font-medium">Ticket</th>
-                            <th class="px-3 py-2 text-right font-medium">Regular Price</th>
+                            <th class="px-3 py-2 text-left font-medium">Route</th>
+                            <th class="px-3 py-2 text-right font-medium">Ticket Selling Fare</th>
+                            <th class="px-3 py-2 text-right font-medium">Ticket Offer Fare</th>
+                            <th class="px-3 py-2 text-right font-medium">Visa Selling Price</th>
+                            <th class="px-3 py-2 text-right font-medium">Service Charge</th>
+                            <th class="px-3 py-2 text-right font-medium">Package Price</th>
                             <th class="px-3 py-2 text-right font-medium">Offer Price</th>
                             <th class="px-3 py-2 text-center font-medium">Action</th>
                         </tr>
@@ -322,15 +326,23 @@
                                 } else {
                                     $routeName = ($route?->fromCity?->code ?? '?') . ' → ' . ($route?->toCity?->code ?? '?');
                                 }
-                                $ticketType = $package->ticketFare?->ticket_type?->value;
-                                $ticketDisplay = $routeName . ' | ' . strtoupper($ticketType ?? '?') . ' | BDT ' . number_format($package->ticketFare?->selling_fare ?? 0, 0);
-                                if ($ticketType === 'offer') {
-                                    $ticketDisplay .= ' | BDT ' . number_format($package->ticketFare?->offer_price ?? 0, 0);
-                                }
+                                $ticketSellingFare = $package->ticketFare?->selling_fare ?? 0;
+                                $ticketOfferFare = $package->ticketFare?->offer_price;
+                                $visaSellingPrice = $package->regular_price - $ticketSellingFare;
                             @endphp
                             <tr class="hover:bg-slate-50">
                                 <td class="px-3 py-2 text-slate-800 font-medium">{{ $package->package_name }}</td>
-                                <td class="px-3 py-2 text-slate-600">{{ $ticketDisplay }}</td>
+                                <td class="px-3 py-2 text-slate-600">{{ $routeName }}</td>
+                                <td class="px-3 py-2 text-right text-slate-800">BDT {{ number_format($ticketSellingFare, 0) }}</td>
+                                <td class="px-3 py-2 text-right text-slate-600">
+                                    @if($ticketOfferFare)
+                                        BDT {{ number_format($ticketOfferFare, 0) }}
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 text-right text-slate-600">BDT {{ number_format($visaSellingPrice, 0) }}</td>
+                                <td class="px-3 py-2 text-right text-slate-600">BDT {{ number_format($package->service_charge ?? 0, 0) }}</td>
                                 <td class="px-3 py-2 text-right text-slate-800 font-medium">BDT {{ number_format($package->regular_price, 0) }}</td>
                                 <td class="px-3 py-2 text-right text-slate-600">
                                     @if($package->offer_price)
@@ -351,9 +363,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-3 py-8 text-center text-slate-500">
-                                    No packages configured yet.
-                                </td>
+                                <td colspan="9" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
