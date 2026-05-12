@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use App\Enums\Gender;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\TicketStatus;
@@ -19,6 +20,7 @@ class Passenger extends Model
         'passport_no',
         'mobile_no',
         'date_of_birth',
+        'gender',
         'passenger_type',
         'passport_expiry',
         'stay_duration',
@@ -29,6 +31,7 @@ class Passenger extends Model
         'ticket_status',
         'visa_status',
         'address',
+        'ticket_fare_id',
     ];
 
     protected $casts = [
@@ -38,6 +41,7 @@ class Passenger extends Model
         'flight_date_to' => 'date',
         'actual_flight_date' => 'date',
         'stay_duration' => 'integer',
+        'gender' => Gender::class,
         'passenger_type' => PassengerType::class,
         'service_required' => ServiceRequired::class,
         'ticket_status' => TicketStatus::class,
@@ -57,5 +61,10 @@ class Passenger extends Model
     public function documents(): MorphMany
     {
         return $this->morphMany(Document::class, 'owner');
+    }
+
+    public function ticketFare(): BelongsTo
+    {
+        return $this->belongsTo(TicketFare::class);
     }
 }

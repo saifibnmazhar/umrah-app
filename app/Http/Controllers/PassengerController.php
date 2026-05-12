@@ -31,6 +31,8 @@ class PassengerController extends Controller
             'flight_date_to' => 'nullable|date',
             'address' => 'nullable|string|max:500',
             'passenger_type' => 'nullable|in:adult,child,infant',
+            'gender' => 'nullable|in:male,female',
+            'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
         ]);
 
         try {

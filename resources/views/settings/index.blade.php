@@ -307,8 +307,12 @@
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Package Name</th>
-                            <th class="px-3 py-2 text-left font-medium">Ticket</th>
-                            <th class="px-3 py-2 text-right font-medium">Regular Price</th>
+                            <th class="px-3 py-2 text-left font-medium">Route</th>
+                            <th class="px-3 py-2 text-right font-medium">Ticket Selling Fare</th>
+                            <th class="px-3 py-2 text-right font-medium">Ticket Offer Fare</th>
+                            <th class="px-3 py-2 text-right font-medium">Visa Selling Price</th>
+                            <th class="px-3 py-2 text-right font-medium">Service Charge</th>
+                            <th class="px-3 py-2 text-right font-medium">Package Price</th>
                             <th class="px-3 py-2 text-right font-medium">Offer Price</th>
                             <th class="px-3 py-2 text-center font-medium">Action</th>
                         </tr>
@@ -322,15 +326,23 @@
                                 } else {
                                     $routeName = ($route?->fromCity?->code ?? '?') . ' → ' . ($route?->toCity?->code ?? '?');
                                 }
-                                $ticketType = $package->ticketFare?->ticket_type?->value;
-                                $ticketDisplay = $routeName . ' | ' . strtoupper($ticketType ?? '?') . ' | BDT ' . number_format($package->ticketFare?->selling_fare ?? 0, 0);
-                                if ($ticketType === 'offer') {
-                                    $ticketDisplay .= ' | BDT ' . number_format($package->ticketFare?->offer_price ?? 0, 0);
-                                }
+                                $ticketSellingFare = $package->ticketFare?->selling_fare ?? 0;
+                                $ticketOfferFare = $package->ticketFare?->offer_price;
+                                $visaSellingPrice = $package->regular_price - $ticketSellingFare;
                             @endphp
                             <tr class="hover:bg-slate-50">
                                 <td class="px-3 py-2 text-slate-800 font-medium">{{ $package->package_name }}</td>
-                                <td class="px-3 py-2 text-slate-600">{{ $ticketDisplay }}</td>
+                                <td class="px-3 py-2 text-slate-600">{{ $routeName }}</td>
+                                <td class="px-3 py-2 text-right text-slate-800">BDT {{ number_format($ticketSellingFare, 0) }}</td>
+                                <td class="px-3 py-2 text-right text-slate-600">
+                                    @if($ticketOfferFare)
+                                        BDT {{ number_format($ticketOfferFare, 0) }}
+                                    @else
+                                        -
+                                    @endif
+                                </td>
+                                <td class="px-3 py-2 text-right text-slate-600">BDT {{ number_format($visaSellingPrice, 0) }}</td>
+                                <td class="px-3 py-2 text-right text-slate-600">BDT {{ number_format($package->service_charge ?? 0, 0) }}</td>
                                 <td class="px-3 py-2 text-right text-slate-800 font-medium">BDT {{ number_format($package->regular_price, 0) }}</td>
                                 <td class="px-3 py-2 text-right text-slate-600">
                                     @if($package->offer_price)
@@ -351,9 +363,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-3 py-8 text-center text-slate-500">
-                                    No packages configured yet.
-                                </td>
+                                <td colspan="9" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
@@ -389,7 +399,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type *</label>
-                            <select id="modalTicketTypeSelect" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+                            <select id="modalTicketTypeSelect" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required onchange="toggleModalOfferPriceField()">
                                 <option value="">Select Ticket Type</option>
                                 <option value="regular">REGULAR</option>
                                 <option value="offer">OFFER</option>
@@ -425,10 +435,21 @@
                             <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (BDT) *</label>
                             <input type="number" id="modalRegularPrice" name="regular_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="0.01" required readonly>
                         </div>
-                        <div id="modalOfferPriceContainer" class="hidden">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
-                            <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
+                        <div>
+                            <div id="modalOfferPriceContainer" class="hidden">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
+                                <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
+                            </div>
+                            <div id="modalServiceChargeContainer">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                                <input type="number" id="modalServiceCharge" name="service_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0">
+                            </div>
                         </div>
+                    </div>
+
+                    <div id="modalServiceChargeRow" class="mt-4 hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                        <input type="number" id="modalServiceChargeRowInput" name="service_charge_row" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0">
                     </div>
 
                     <div class="mt-4 p-4 bg-slate-50 rounded-lg">
@@ -466,6 +487,7 @@
             document.getElementById('modalTicketTypeSelect').value = '';
             document.getElementById('modalTicketSelect').value = '';
             document.getElementById('modalRegularPrice').value = '';
+            document.getElementById('modalServiceCharge').value = 0;
             document.getElementById('modalOfferPrice').value = '';
             document.getElementById('modalOfferPriceContainer').classList.add('hidden');
             filterModalTickets();
@@ -492,11 +514,20 @@
             
             document.getElementById('modalRegularPrice').value = pkg.regular_price;
             document.getElementById('modalOfferPrice').value = pkg.offer_price || '';
+            document.getElementById('modalServiceCharge').value = pkg.service_charge || 0;
+            document.getElementById('modalServiceChargeRowInput').value = pkg.service_charge || 0;
+            
+            const serviceChargeContainer = document.getElementById('modalServiceChargeContainer');
+            const serviceChargeRow = document.getElementById('modalServiceChargeRow');
             
             if (ticketOption && ticketOption.dataset.ticketType === 'offer') {
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
+                serviceChargeContainer.classList.add('hidden');
+                serviceChargeRow.classList.remove('hidden');
             } else {
                 document.getElementById('modalOfferPriceContainer').classList.add('hidden');
+                serviceChargeContainer.classList.remove('hidden');
+                serviceChargeRow.classList.add('hidden');
             }
             
             document.getElementById('packageModal').classList.remove('hidden');
@@ -526,20 +557,47 @@
             const sellingFare = parseFloat(selectedOption.dataset.sellingFare) || 0;
             const offerFare = parseFloat(selectedOption.dataset.offerPrice) || 0;
             const ticketType = selectedOption.dataset.ticketType;
-
-            document.getElementById('modalRegularPrice').value = (sellingFare + latestVisaPrice).toFixed(2);
+            
+            const serviceChargeContainer = document.getElementById('modalServiceChargeContainer');
+            const serviceChargeRow = document.getElementById('modalServiceChargeRow');
 
             if (ticketType === 'offer') {
+                document.getElementById('modalRegularPrice').value = (offerFare + latestVisaPrice).toFixed(2);
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
                 document.getElementById('modalOfferPrice').value = (offerFare + latestVisaPrice).toFixed(2);
+                serviceChargeContainer.classList.add('hidden');
+                serviceChargeRow.classList.remove('hidden');
+                document.getElementById('modalServiceChargeRowInput').value = document.getElementById('modalServiceCharge').value;
             } else {
+                document.getElementById('modalRegularPrice').value = (sellingFare + latestVisaPrice).toFixed(2);
                 document.getElementById('modalOfferPriceContainer').classList.add('hidden');
                 document.getElementById('modalOfferPrice').value = '';
+                serviceChargeContainer.classList.remove('hidden');
+                serviceChargeRow.classList.add('hidden');
+                document.getElementById('modalServiceCharge').value = document.getElementById('modalServiceChargeRowInput').value || 0;
             }
         }
 
         document.getElementById('modalTicketTypeSelect').addEventListener('change', filterModalTickets);
         document.getElementById('modalTicketSelect').addEventListener('change', calculateModalPrices);
+
+        function toggleModalOfferPriceField() {
+            const ticketType = document.getElementById('modalTicketTypeSelect').value;
+            const offerPriceContainer = document.getElementById('modalOfferPriceContainer');
+            const serviceChargeContainer = document.getElementById('modalServiceChargeContainer');
+            const serviceChargeRow = document.getElementById('modalServiceChargeRow');
+            
+            if (ticketType === 'offer') {
+                offerPriceContainer.classList.remove('hidden');
+                serviceChargeContainer.classList.add('hidden');
+                serviceChargeRow.classList.remove('hidden');
+            } else {
+                offerPriceContainer.classList.add('hidden');
+                document.getElementById('modalOfferPrice').value = '';
+                serviceChargeContainer.classList.remove('hidden');
+                serviceChargeRow.classList.add('hidden');
+            }
+        }
         </script>
     </div>
 </div>
