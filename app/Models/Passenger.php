@@ -31,6 +31,7 @@ class Passenger extends Model
         'ticket_status',
         'visa_status',
         'address',
+        'ticket_fare_id',
     ];
 
     protected $casts = [
@@ -60,5 +61,10 @@ class Passenger extends Model
     public function documents(): MorphMany
     {
         return $this->morphMany(Document::class, 'owner');
+    }
+
+    public function ticketFare(): BelongsTo
+    {
+        return $this->belongsTo(TicketFare::class);
     }
 }
