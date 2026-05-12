@@ -237,7 +237,7 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Date of Birth *</label>
                             <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" @input="calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                            <div x-show="passengerData.date_of_birth" class="mt-2">
+                            <div x-show="passengerData.passenger_type === 'Adult'" class="mt-2">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Gender *</label>
                                 <select x-model="passengerData.gender" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                     <option value="">Select</option>
