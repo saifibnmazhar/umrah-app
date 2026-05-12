@@ -367,6 +367,7 @@
                     </div>
                 </div>
 
+                {{--
                 <div class="mb-4">
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Options</h4>
                     <div class="flex flex-wrap gap-6">
@@ -380,6 +381,7 @@
                         </label>
                     </div>
                 </div>
+--}}
 
                 <div class="mb-4">
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Documents</h4>
