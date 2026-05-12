@@ -78,6 +78,8 @@ class BookingController extends Controller
             'passengers.*.flight_date_from' => 'nullable|date',
             'passengers.*.flight_date_to' => 'nullable|date|after:passengers.*.flight_date_from',
             'passengers.*.address' => 'nullable|string|max:500',
+            'passengers.*.gender' => 'nullable|in:male,female',
+            'passengers.*.ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'booking_customer_docs' => 'nullable|array',
             'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
@@ -126,14 +128,16 @@ class BookingController extends Controller
                     'last_name' => $passengerData['last_name'],
                     'passport_no' => $passengerData['passport_no'],
                     'date_of_birth' => $passengerData['date_of_birth'],
+                    'gender' => $passengerData['gender'] ?? null,
                     'passenger_type' => $passengerType->value,
-                    'mobile_no' => $passengerData['mobile_no'] ?? null,
                     'passport_expiry' => $passengerData['passport_expiry'] ?? null,
+                    'mobile_no' => $passengerData['mobile_no'] ?? null,
                     'service_required' => $passengerData['service_required'] ?? 'All',
                     'stay_duration' => $passengerData['stay_duration'] ?? 14,
                     'flight_date_from' => $passengerData['flight_date_from'] ?? null,
                     'flight_date_to' => $passengerData['flight_date_to'] ?? null,
                     'address' => $passengerData['address'] ?? null,
+                    'ticket_fare_id' => $passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id,
                 ]);
             }
 
@@ -215,6 +219,8 @@ class BookingController extends Controller
             'flight_date_from' => 'nullable|date',
             'flight_date_to' => 'nullable|date',
             'address' => 'nullable|string|max:500',
+            'gender' => 'nullable|in:male,female',
+            'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
         ]);
 
         $dob = Carbon::parse($validated['date_of_birth']);
@@ -230,6 +236,7 @@ class BookingController extends Controller
         $validated['passenger_type'] = $passengerType->value;
         $validated['service_required'] = $validated['service_required'] ?? 'All';
         $validated['stay_duration'] = $validated['stay_duration'] ?? 14;
+        $validated['ticket_fare_id'] = $validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id;
 
         $passenger = Passenger::create($validated);
 
