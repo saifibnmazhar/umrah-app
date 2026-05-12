@@ -236,7 +236,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Date of Birth *</label>
-                            <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" @input="calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <div x-show="passengerData.date_of_birth" class="mt-2">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Gender *</label>
                                 <select x-model="passengerData.gender" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
@@ -248,7 +248,18 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
-                            <input type="text" x-model="passengerData.passenger_type" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" placeholder="Auto-calculated from DOB">
+                            <div class="relative">
+                                <input type="text" x-model="passengerData.passenger_type" readonly 
+                                       class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 font-medium uppercase" 
+                                       :class="{
+                                           'bg-green-50 border-green-300 text-green-700': passengerData.passenger_type === 'Infant',
+                                           'bg-blue-50 border-blue-300 text-blue-700': passengerData.passenger_type === 'Child',
+                                           'bg-slate-50 border-slate-200 text-slate-600': !passengerData.passenger_type || passengerData.passenger_type === 'Adult'
+                                       }"
+                                       placeholder="Enter DOB to auto-calculate">
+                            </div>
+                            <p x-show="passengerData.date_of_birth && !passengerData.passenger_type" class="text-xs text-slate-400 mt-1">Calculating...</p>
+                            <p x-show="passengerData.passenger_type" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Passport Expiry Date</label>
@@ -669,21 +680,23 @@ function bookingApp() {
             this.selectedCustomer = null;
             this.customerSearch = '';
         },
-        async calculatePassengerType() {
-            if (!this.passengerData.date_of_birth) return;
-            try {
-                const response = await fetch('/api/bookings/calculate-type', {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ date_of_birth: this.passengerData.date_of_birth })
-                });
-                const data = await response.json();
-                if (data.passenger_type) {
-                    this.passengerData.passenger_type = data.passenger_type;
-                }
-            } catch (e) {
-                console.error(e);
+        calculatePassengerType() {
+            const dob = this.passengerData.date_of_birth;
+            if (!dob) {
+                this.passengerData.passenger_type = '';
+                return;
             }
+            const dobDate = new Date(dob);
+            const today = new Date();
+            const ageInMonths = (today.getFullYear() - dobDate.getFullYear()) * 12 + (today.getMonth() - dobDate.getMonth());
+            
+            let calculatedType = 'Adult';
+            if (ageInMonths < 24) {
+                calculatedType = 'Infant';
+            } else if (ageInMonths < 144) {
+                calculatedType = 'Child';
+            }
+            this.passengerData.passenger_type = calculatedType;
         },
         async updateFingerprintCharge() {
             if (!this.bookingData.district_id) return;

@@ -28,7 +28,7 @@ Alpine.data('bookingApp', () => ({
         last_name: '',
         passport_no: '',
         date_of_birth: '',
-        passenger_type: 'adult',
+        passenger_type: '',
         gender: '',
         mobile_no: '',
         passport_expiry: '',
@@ -116,23 +116,26 @@ Alpine.data('bookingApp', () => ({
         this.customerModalVisible = false;
     },
 
-    async calculatePassengerType() {
-        if (!this.passengerData.date_of_birth) {
-            this.passengerData.passenger_type = 'adult';
+    calculatePassengerType() {
+        const dob = this.passengerData.date_of_birth;
+        
+        if (!dob) {
+            this.passengerData.passenger_type = '';
             return;
         }
-        try {
-            const response = await fetch('/api/bookings/calculate-type', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content },
-                body: JSON.stringify({ date_of_birth: this.passengerData.date_of_birth })
-            });
-            const data = await response.json();
-            this.passengerData.passenger_type = data.passenger_type || 'adult';
-        } catch (e) {
-            console.error('Calculate type error:', e);
-            this.passengerData.passenger_type = 'adult';
+
+        const dobDate = new Date(dob);
+        const today = new Date();
+        const ageInMonths = (today.getFullYear() - dobDate.getFullYear()) * 12 + (today.getMonth() - dobDate.getMonth());
+        
+        let calculatedType = 'Adult';
+        if (ageInMonths < 24) {
+            calculatedType = 'Infant';
+        } else if (ageInMonths < 144) {
+            calculatedType = 'Child';
         }
+        
+        this.passengerData.passenger_type = calculatedType;
     },
 
     async updateFingerprintCharge() {
@@ -208,7 +211,7 @@ Alpine.data('bookingApp', () => ({
                 last_name: '',
                 passport_no: '',
                 date_of_birth: '',
-                passenger_type: 'adult',
+                passenger_type: '',
                 gender: '',
                 mobile_no: '',
                 passport_expiry: '',
@@ -224,6 +227,7 @@ Alpine.data('bookingApp', () => ({
                 refundable: false
             };
         }
+        this.generateFlightDateRangeOptions();
         this.passengerModalVisible = true;
     },
 
@@ -241,7 +245,7 @@ Alpine.data('bookingApp', () => ({
             return false;
         }
 
-        if (this.passengerData.passenger_type === 'adult' && !this.passengerData.gender) {
+        if (this.passengerData.passenger_type?.toLowerCase() === 'adult' && !this.passengerData.gender) {
             alert('Please select gender for adult passenger');
             return false;
         }
