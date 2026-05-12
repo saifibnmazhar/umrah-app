@@ -42,14 +42,22 @@ class BookingController extends Controller
         return view('bookings.index', compact('tab', 'bookings', 'passengers'));
     }
 
-    public function create()
+    public function create(Request $request)
     {
+        $packageId = $request->query('package_id');
+        $preSelectedPackageId = null;
+
+        if ($packageId) {
+            $package = Package::find($packageId);
+            $preSelectedPackageId = $package ? $package->id : null;
+        }
+
         $districts = District::orderBy('name')->get();
         $packages = Package::orderBy('package_name')->get();
         $offices = Office::orderBy('name')->get();
 
         return view('bookings.create', compact(
-            'districts', 'packages', 'offices'
+            'districts', 'packages', 'offices', 'preSelectedPackageId'
         ));
     }
 

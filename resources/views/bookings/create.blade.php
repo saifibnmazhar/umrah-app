@@ -575,7 +575,7 @@ function bookingApp() {
             fingerprint_location: 'Office',
             fingerprint_office: '',
             district_id: '',
-            package_id: '',
+            package_id: {{ $preSelectedPackageId ?? 'null' }},
             discount_type: 'fixed',
             discount_value: 0,
             remarks: ''
