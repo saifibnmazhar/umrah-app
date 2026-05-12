@@ -317,7 +317,7 @@
 
     <div x-show="showAgentModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div x-show="showAgentModal" x-transition.opacity class="fixed inset-0 bg-black bg-opacity-50" @click="showAgentModal = false"></div>
+            <div x-show="showAgentModal" x-transition.opacity class="fixed inset-0 bg-black/50" @click="showAgentModal = false"></div>
             <div x-show="showAgentModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 z-10">
                 <h3 class="text-lg font-semibold text-slate-800 mb-4" x-text="editAgentMode ? 'Edit Ticket Agent' : 'Add New Ticket Agent'"></h3>
                 <form method="POST" :action="editAgentMode ? '/fares/admin/agent/' + agent.id : '{{ route('fare.admin.agent.store') }}'">
@@ -350,7 +350,7 @@
 
     <div x-show="showFareModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div x-show="showFareModal" x-transition.opacity class="fixed inset-0 bg-black bg-opacity-50" @click="showFareModal = false"></div>
+            <div x-show="showFareModal" x-transition.opacity class="fixed inset-0 bg-black/50" @click="showFareModal = false"></div>
             <div x-show="showFareModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-4xl p-6 z-10 max-h-[90vh] overflow-y-auto">
                 <h3 class="text-lg font-semibold text-slate-800 mb-4" x-text="editFareMode ? 'Edit Ticket Fare' : 'Create Ticket Fare'"></h3>
                 <form method="POST" :action="editFareMode ? '/fares/admin/fare/' + fare.id : '{{ route('fare.admin.fare.store') }}'">
@@ -608,7 +608,7 @@
 
     <div x-show="showRouteModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div x-show="showRouteModal" x-transition.opacity class="fixed inset-0 bg-black bg-opacity-50" @click="showRouteModal = false"></div>
+            <div x-show="showRouteModal" x-transition.opacity class="fixed inset-0 bg-black/50" @click="showRouteModal = false"></div>
             <div x-show="showRouteModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-3xl p-6 z-10">
                 <h3 class="text-lg font-semibold text-slate-800 mb-4" x-text="editRouteMode ? 'Edit Route' : 'Add Route'"></h3>
                 <form method="POST" :action="editRouteMode ? '/routes/' + route.id : '{{ route('routes.store') }}'" id="routeFormModal">

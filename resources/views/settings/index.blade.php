@@ -157,9 +157,8 @@
     </div>
 
     <!-- Modal -->
-    <div id="fingerprintChargeModal" class="fixed inset-0 z-50 hidden">
-        <div class="fixed inset-0 bg-black bg-opacity-50" onclick="hideFingerprintChargeModal()"></div>
-        <div class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
+    <div id="fingerprintChargeModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+        <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-slate-700">Add/Update Fingerprint Charge</h3>
                 <button onclick="hideFingerprintChargeModal()" class="text-slate-400 hover:text-slate-600">
@@ -376,9 +375,8 @@
         </div>
 
         <!-- Package Modal -->
-        <div id="packageModal" class="fixed inset-0 z-50 hidden">
-            <div class="fixed inset-0 bg-black bg-opacity-50" onclick="hidePackageModal()"></div>
-            <div class="fixed top-1/2 left-1/2 transform -translate-x-1/2 -translate-y-1/2 bg-white rounded-xl shadow-xl w-full max-w-5xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <div id="packageModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
+            <div class="bg-white rounded-xl shadow-xl w-full max-w-5xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
                 <div class="flex justify-between items-center mb-4">
                     <h3 id="modalTitle" class="text-lg font-semibold text-slate-700">Add Package</h3>
                     <button onclick="hidePackageModal()" class="text-slate-400 hover:text-slate-600">
