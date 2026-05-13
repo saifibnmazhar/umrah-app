@@ -296,4 +296,42 @@ class TicketFareController extends Controller
         $ticketFare->baggageAllowances()->delete();
         $this->createBaggageAllowances($ticketFare, $request);
     }
+
+    public function getBaggageAllowance(Request $request)
+    {
+        $route = $request->input('route');
+        $airline = $request->input('airline');
+        $travelClass = $request->input('travel_class');
+        $passengerType = $request->input('passenger_type');
+        $direction = $request->input('direction');
+
+        if (!$route || !$airline || !$travelClass || !$passengerType || !$direction) {
+            return response()->json(['allowance' => null, 'message' => 'Missing required parameters']);
+        }
+
+        $ticketFare = TicketFare::whereHas('route', function ($query) use ($route) {
+                $query->where('code', $route);
+            })
+            ->whereHas('airline', function ($query) use ($airline) {
+                $query->where('name', $airline);
+            })
+            ->whereHas('airlineClass', function ($query) use ($travelClass) {
+                $query->where('name', $travelClass);
+            })
+            ->first();
+
+        if (!$ticketFare) {
+            return response()->json(['allowance' => null, 'message' => 'No ticket fare found']);
+        }
+
+        $baggage = $ticketFare->baggageAllowances()
+            ->where('passenger_type', $passengerType)
+            ->where('travel_direction', $direction)
+            ->first();
+
+        return response()->json([
+            'allowance' => $baggage?->allowance,
+            'message' => $baggage ? 'Baggage allowance found' : 'No baggage allowance defined'
+        ]);
+    }
 }

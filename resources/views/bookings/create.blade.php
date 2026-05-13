@@ -253,6 +253,7 @@
                             <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
                             <div class="relative">
                                 <input type="text" x-model="passengerData.passenger_type" readonly 
+                                       @change="updateBaggageWeight()"
                                        class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 font-medium uppercase" 
                                        :class="{
                                            'bg-green-50 border-green-300 text-green-700': passengerData.passenger_type === 'Infant',
@@ -300,7 +301,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                            <select x-model="passengerData.route_type" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="passengerData.route_type" @change="updateBaggageWeight()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select</option>
                                 <option value="One Way-Inbound">One Way-Inbound</option>
                                 <option value="One Way-Outbound">One Way-Outbound</option>
@@ -358,7 +359,13 @@
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Weight</label>
-                        <input type="text" x-model="passengerData.baggage_weight" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="30kg">
+                        <input type="text" 
+                               x-model="passengerData.baggage_weight" 
+                               readonly 
+                               class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 font-medium"
+                               :class="{ 'bg-yellow-50 border-yellow-300 text-yellow-700': passengerData.baggage_weight }"
+                               placeholder="Select route type & passenger type">
+                        <p x-show="!passengerData.baggage_weight" class="text-xs text-slate-400 mt-1">Baggage weight will be auto-calculated based on route and passenger type</p>
                     </div>
                 </div>
 

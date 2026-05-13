@@ -46,9 +46,12 @@ Alpine.data('bookingApp', () => ({
         route: '',
         airline: '',
         travel_class: '',
+        route_type: '',
+        flight_type: '',
         flight_date_from: '',
         flight_date_to: '',
         address: '',
+        baggage_weight: '',
         with_offer: false,
         refundable: false
     },
@@ -145,6 +148,51 @@ Alpine.data('bookingApp', () => ({
         }
         
         this.passengerData.passenger_type = calculatedType;
+        this.updateBaggageWeight();
+    },
+
+    updateBaggageWeight() {
+        const route = this.passengerData.route;
+        const airline = this.passengerData.airline;
+        const travelClass = this.passengerData.travel_class;
+        const passengerType = this.passengerData.passenger_type;
+        const routeType = this.passengerData.route_type;
+        
+        if (!route || !airline || !travelClass || !passengerType || !routeType) {
+            this.passengerData.baggage_weight = '';
+            return;
+        }
+        
+        let direction = 'Outbound';
+        if (routeType === 'One Way-Inbound') direction = 'Inbound';
+        else if (routeType === 'One Way-Outbound') direction = 'Outbound';
+        else if (routeType === 'Round') direction = 'Round';
+        else if (routeType === 'Multi City') direction = 'MultiCity';
+        
+        this.fetchBaggageAllowance(route, airline, travelClass, passengerType, direction);
+    },
+
+    async fetchBaggageAllowance(route, airline, travelClass, passengerType, direction) {
+        try {
+            const params = new URLSearchParams({
+                route,
+                airline,
+                travel_class: travelClass,
+                passenger_type: passengerType,
+                direction
+            });
+            const response = await fetch(`/api/ticket-fares/baggage?${params}`);
+            const data = await response.json();
+            
+            if (data.allowance) {
+                this.passengerData.baggage_weight = data.allowance + 'kg';
+            } else {
+                this.passengerData.baggage_weight = '';
+            }
+        } catch (e) {
+            console.error('Error fetching baggage allowance:', e);
+            this.passengerData.baggage_weight = '';
+        }
     },
 
     async updateFingerprintCharge() {
@@ -212,7 +260,13 @@ Alpine.data('bookingApp', () => ({
     openPassengerModal(index = null) {
         if (index !== null) {
             this.editingPassengerIndex = index;
-            this.passengerData = { ...this.passengers[index] };
+            this.passengerData = { 
+                ...this.passengers[index],
+                route_type: this.passengers[index].route_type || '',
+                flight_type: this.passengers[index].flight_type || '',
+                baggage_weight: this.passengers[index].baggage_weight || ''
+            };
+            setTimeout(() => this.updateBaggageWeight(), 100);
         } else {
             this.editingPassengerIndex = null;
             this.passengerData = {
@@ -229,9 +283,12 @@ Alpine.data('bookingApp', () => ({
                 route: '',
                 airline: '',
                 travel_class: '',
+                route_type: '',
+                flight_type: '',
                 flight_date_from: '',
                 flight_date_to: '',
                 address: '',
+                baggage_weight: '',
                 with_offer: false,
                 refundable: false
             };
