@@ -62,6 +62,8 @@ class BookingController extends Controller
             'route.returnCity',
             'route.multiSegments.fromCity',
             'route.multiSegments.toCity',
+            'airline',
+            'airlineClass.class',
             'groupTicket'
         ])->get()->map(function ($fare) {
             $routeCode = '';
@@ -83,6 +85,8 @@ class BookingController extends Controller
             return [
                 'id' => $fare->id,
                 'route' => $routeCode,
+                'airline' => $fare->airline->name,
+                'airline_class' => $fare->airlineClass->class?->name,
                 'ticket_type' => $fare->ticket_type->value,
                 'selling_fare' => $fare->selling_fare,
                 'offer_price' => $fare->offer_price,

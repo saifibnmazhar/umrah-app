@@ -329,22 +329,11 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
-                            <select x-model="passengerData.airline" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
-                                <option value="">Select Airline</option>
-                                <option value="Saudia">Saudia</option>
-                                <option value="Biman Bangladesh">Biman Bangladesh</option>
-                                <option value="Emirates">Emirates</option>
-                                <option value="Qatar Airways">Qatar Airways</option>
-                                <option value="Flynas">Flynas</option>
-                            </select>
+                            <input type="text" x-model="passengerData.airline" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Airline">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
-                            <select x-model="passengerData.class" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
-                                <option value="">Select Class</option>
-                                <option value="Economy">Economy</option>
-                                <option value="Business">Business</option>
-                            </select>
+                            <input type="text" x-model="passengerData.class" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Class">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
@@ -778,8 +767,8 @@ function bookingApp() {
                     );
 
                     this.passengerData.route = ticket.route;
-                    this.passengerData.airline = '';
-                    this.passengerData.class = ticket.ticket_type.charAt(0).toUpperCase() + ticket.ticket_type.slice(1);
+                    this.passengerData.airline = ticket.airline || '';
+                    this.passengerData.class = ticket.airline_class || '';
 
                     // Set ticket_fare_id AFTER filteredTickets is populated
                     this.$nextTick(() => {
@@ -821,8 +810,8 @@ function bookingApp() {
                     );
 
                     this.passengerData.route = ticket.route;
-                    this.passengerData.airline = '';
-                    this.passengerData.class = ticket.ticket_type.charAt(0).toUpperCase() + ticket.ticket_type.slice(1);
+                    this.passengerData.airline = ticket.airline || '';
+                    this.passengerData.class = ticket.airline_class || '';
                 }
             } else {
                 this.filteredTickets = [];
@@ -911,8 +900,8 @@ function bookingApp() {
             const ticket = this.filteredTickets.find(t => t.id == this.passengerData.ticket_fare_id);
             if (ticket) {
                 this.passengerData.route = ticket.route;
-                this.passengerData.airline = '';
-                this.passengerData.class = ticket.ticket_type.charAt(0).toUpperCase() + ticket.ticket_type.slice(1);
+                this.passengerData.airline = ticket.airline || '';
+                this.passengerData.class = ticket.airline_class || '';
             }
         },
         removePassenger(index) {
