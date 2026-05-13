@@ -12,9 +12,10 @@ Alpine.data('bookingApp', () => ({
     fingerprintCharge: 0,
     editingPassengerIndex: null,
     passengerModalVisible: false,
-    customerModalVisible: false,
-    discountModalVisible: false,
-    paymentModalVisible: false,
+customerModalVisible: false,
+        discountModalVisible: false,
+        paymentModalVisible: false,
+        customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
         method: 'Cash',
@@ -63,7 +64,8 @@ Alpine.data('bookingApp', () => ({
         address: '',
         baggage_weight: '',
         with_offer: false,
-        refundable: false
+        refundable: false,
+        customDurationDays: ''
     },
     
     init() {
@@ -136,6 +138,51 @@ Alpine.data('bookingApp', () => ({
 
     closeCustomerModal() {
         this.customerModalVisible = false;
+    },
+
+    handleStayDurationChange() {
+        if (this.passengerData.stay_duration === 'Customize (Set Duration)') {
+            this.openCustomDurationModal();
+        }
+    },
+
+    openCustomDurationModal() {
+        this.customDurationModalVisible = true;
+        this.passengerData.customDurationDays = '';
+        this.$nextTick(() => {
+            const input = document.getElementById('customDurationDays');
+            if (input) input.focus();
+        });
+    },
+
+    closeCustomDurationModal() {
+        this.customDurationModalVisible = false;
+        this.passengerData.customDurationDays = '';
+    },
+
+    saveCustomDuration() {
+        const days = parseInt(this.passengerData.customDurationDays);
+        
+        if (isNaN(days) || days < 30 || days > 89) {
+            alert('Please enter a valid duration between 30 and 89 days');
+            return;
+        }
+        
+        const customValue = `Customized (${days} Days)`;
+        this.passengerData.stay_duration = customValue;
+        
+        const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
+        if (select) {
+            let customOption = Array.from(select.options).find(opt => opt.value.startsWith('Customized'));
+            if (!customOption) {
+                customOption = document.createElement('option');
+                select.appendChild(customOption);
+            }
+            customOption.value = customValue;
+            customOption.textContent = customValue;
+        }
+        
+        this.closeCustomDurationModal();
     },
 
     calculatePassengerType() {
