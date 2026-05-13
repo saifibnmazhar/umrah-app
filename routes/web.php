@@ -32,6 +32,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\VisaAdminController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\FareAdminController;
+use App\Http\Controllers\TicketFareController;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -87,6 +88,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/bookings/calculate-type', [BookingController::class, 'calculatePassengerType'])->name('api.bookings.calculate-type');
     Route::get('/api/bookings/fingerprint-charge', [BookingController::class, 'getFingerprintCharge'])->name('api.bookings.fingerprint-charge');
     Route::get('/api/customers/search', [CustomerController::class, 'search'])->name('api.customers.search');
+    Route::get('/api/ticket-fares/filter', [TicketFareController::class, 'filter'])->name('api.ticket-fares.filter');
     Route::get('/fares/admin', [FareAdminController::class, 'index'])->name('fare.admin');
     Route::post('/fares/admin/agent', [FareAdminController::class, 'storeAgent'])->name('fare.admin.agent.store');
     Route::put('/fares/admin/agent/{ticketAgent}', [FareAdminController::class, 'updateAgent'])->name('fare.admin.agent.update');
