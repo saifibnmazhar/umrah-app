@@ -56,7 +56,7 @@
                 </p>
             </div>
 
-            <form method="POST" action="{{ route('flight-date-gaps.update', $flightDateGap?->id ?? 1) }}">
+            <form method="POST" action="{{ route('settings.flight-date-gap.update') }}">
                 @csrf
                 @method('PUT')
 

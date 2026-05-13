@@ -8,6 +8,7 @@ use App\Models\BaggageAllowance;
 use App\Models\Airline;
 use App\Models\AirlineClass;
 use App\Models\Route;
+use App\Models\FlightDateGap;
 use Illuminate\Http\Request;
 use App\Enums\TicketType;
 use App\Enums\PassengerType;
@@ -332,6 +333,41 @@ class TicketFareController extends Controller
         return response()->json([
             'allowance' => $baggage?->allowance,
             'message' => $baggage ? 'Baggage allowance found' : 'No baggage allowance defined'
+        ]);
+    }
+
+    public function getFlightDateGap(Request $request)
+    {
+        $route = $request->input('route');
+        $airline = $request->input('airline');
+        $travelClass = $request->input('travel_class');
+
+        $flightDateGap = FlightDateGap::first();
+        $defaultGap = $flightDateGap?->gap ?? 30;
+
+        $additionalGap = 0;
+        
+        if ($route && $airline && $travelClass) {
+            $ticketFare = TicketFare::whereHas('route', function ($query) use ($route) {
+                    $query->where('code', $route);
+                })
+                ->whereHas('airline', function ($query) use ($airline) {
+                    $query->where('name', $airline);
+                })
+                ->whereHas('airlineClass', function ($query) use ($travelClass) {
+                    $query->where('name', $travelClass);
+                })
+                ->first();
+
+            if ($ticketFare && $ticketFare->route) {
+                $additionalGap = $ticketFare->route->additional_gap ?? 0;
+            }
+        }
+
+        return response()->json([
+            'default_gap' => $defaultGap,
+            'additional_gap' => $additionalGap,
+            'final_gap' => $defaultGap + $additionalGap
         ]);
     }
 }

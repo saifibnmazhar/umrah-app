@@ -63,6 +63,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('routes', RouteController::class);
     Route::resource('ticket-fares', \App\Http\Controllers\TicketFareController::class);
     Route::get('/api/ticket-fares/baggage', [\App\Http\Controllers\TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
+    Route::get('/api/ticket-fares/flight-date-gap', [\App\Http\Controllers\TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
     Route::resource('visa-agent-costs', VisaAgentCostController::class);
     Route::resource('visa-selling-prices', VisaSellingPriceController::class);
     Route::resource('currency-rates', CurrencyRateController::class);

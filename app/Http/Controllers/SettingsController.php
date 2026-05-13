@@ -64,7 +64,19 @@ class SettingsController extends Controller
 
     public function updateFlightDateGap(Request $request)
     {
-        return redirect()->route('settings')->with('success', 'Flight date gap settings updated');
+        $validated = $request->validate([
+            'gap' => 'required|integer|min:1'
+        ]);
+
+        $flightDateGap = FlightDateGap::first();
+        
+        if ($flightDateGap) {
+            $flightDateGap->update(['gap' => $validated['gap']]);
+        } else {
+            FlightDateGap::create(['gap' => $validated['gap']]);
+        }
+
+        return redirect()->route('settings')->with('success', 'Flight date gap updated successfully');
     }
 
     public function updateFingerprintCharge(Request $request)
