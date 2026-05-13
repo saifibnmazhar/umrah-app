@@ -319,7 +319,7 @@
                             <select x-model="passengerData.ticket_fare_id" @change="onTicketChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Ticket</option>
                                 <template x-for="ticket in filteredTickets" :key="ticket.id">
-                                    <option :value="ticket.id" x-text="getTicketDisplayText(ticket)"></option>
+                                    <option :value="String(ticket.id)" x-text="getTicketDisplayText(ticket)"></option>
                                 </template>
                             </select>
                         </div>
@@ -753,7 +753,7 @@ function bookingApp() {
                 route: '',
                 airline: '',
                 class: '',
-                ticket_fare_id: packageTicketFareId || '',
+                ticket_fare_id: '',
                 flight_date_range: '',
                 baggage_weight: '30kg',
                 address: '',
@@ -786,6 +786,11 @@ function bookingApp() {
                     this.passengerData.route = ticket.route;
                     this.passengerData.airline = '';
                     this.passengerData.class = ticket.ticket_type.charAt(0).toUpperCase() + ticket.ticket_type.slice(1);
+
+                    // Set ticket_fare_id AFTER filteredTickets is populated
+                    this.$nextTick(() => {
+                        this.passengerData.ticket_fare_id = String(packageTicketFareId);
+                    });
                 }
             } else {
                 this.filteredTickets = [];
@@ -797,6 +802,7 @@ function bookingApp() {
             this.editingPassengerIndex = index;
             const passenger = this.passengers[index];
             this.passengerData = { ...passenger };
+            this.passengerData.ticket_fare_id = this.passengerData.ticket_fare_id ? String(this.passengerData.ticket_fare_id) : '';
 
             if (this.passengerData.ticket_fare_id) {
                 const ticket = this.allTickets.find(t => t.id == this.passengerData.ticket_fare_id);
