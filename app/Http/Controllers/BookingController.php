@@ -314,4 +314,32 @@ class BookingController extends Controller
 
         return response()->json(['charge' => $charge]);
     }
+
+    public function print(Booking $booking)
+    {
+        $booking = Booking::with(['customer', 'office', 'package', 'passengers', 'payments'])->findOrFail($booking->id);
+
+        $subTotal = $booking->passengers->sum('total') ?? 0;
+        $fingerprintCost = $booking->passengers->first()->fingerprint_cost ?? 200;
+        $totalPackage = $subTotal + $fingerprintCost;
+        $additionalFee = $booking->additional_fee ?? 0;
+        $discount = $booking->discount_value ?? 0;
+        $grandTotal = $totalPackage + $additionalFee - $discount;
+        $totalPaid = $booking->payments->sum('amount') ?? 0;
+        $currentPaid = 0;
+        $dueAmount = $grandTotal - $totalPaid;
+
+        return view('bookings.invoice-print', compact(
+            'booking',
+            'subTotal',
+            'fingerprintCost',
+            'totalPackage',
+            'additionalFee',
+            'discount',
+            'grandTotal',
+            'totalPaid',
+            'currentPaid',
+            'dueAmount'
+        ));
+    }
 }
