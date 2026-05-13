@@ -53,11 +53,47 @@ class BookingController extends Controller
         }
 
         $districts = District::orderBy('name')->get();
-        $packages = Package::orderBy('package_name')->get();
+        $packages = Package::with('ticketFare')->orderBy('package_name')->get();
         $offices = Office::orderBy('name')->get();
 
+        $ticketFares = TicketFare::with([
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
+            'groupTicket'
+        ])->get()->map(function ($fare) {
+            $routeCode = '';
+            $routeType = $fare->route->route_type?->value;
+
+            if ($routeType === 'multi_city') {
+                $segments = $fare->route->multiSegments->map(function ($seg) {
+                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                })->toArray();
+                $routeCode = implode(', ', $segments);
+            } elseif ($routeType === 'round') {
+                $routeCode = $fare->route->fromCity?->code . '-' .
+                    $fare->route->toCity?->code . '-' .
+                    $fare->route->returnCity?->code;
+            } else {
+                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+            }
+
+            return [
+                'id' => $fare->id,
+                'route' => $routeCode,
+                'ticket_type' => $fare->ticket_type->value,
+                'selling_fare' => $fare->selling_fare,
+                'offer_price' => $fare->offer_price,
+                'available_seats' => $fare->groupTicket?->ticket_qty ?? null,
+                'route_type' => $routeType,
+                'flight_type' => $fare->route->flight_type?->value,
+            ];
+        });
+
         return view('bookings.create', compact(
-            'districts', 'packages', 'offices', 'preSelectedPackageId'
+            'districts', 'packages', 'offices', 'preSelectedPackageId', 'ticketFares'
         ));
     }
 
