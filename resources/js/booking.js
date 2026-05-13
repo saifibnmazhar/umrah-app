@@ -14,6 +14,15 @@ Alpine.data('bookingApp', () => ({
     passengerModalVisible: false,
     customerModalVisible: false,
     discountModalVisible: false,
+    paymentModalVisible: false,
+    paymentData: {
+        currency: 'SAR',
+        method: 'Cash',
+        bank_method: '',
+        trx_id: '',
+        amount_sar: '',
+        amount_bdt: ''
+    },
     bookingData: {
         fingerprint_location: 'Office',
         fingerprint_office: '',
@@ -273,6 +282,66 @@ Alpine.data('bookingApp', () => ({
 
     closeDiscountModal() {
         this.discountModalVisible = false;
+    },
+
+    openPaymentModal() {
+        const packageSelect = document.querySelector('#bookingPackage');
+        const packageValue = parseInt(packageSelect?.selectedOptions[0]?.dataset?.packageValue) || 0;
+        const totalPackageValue = (packageValue * this.passengers.length) + this.fingerprintCharge;
+        const due = totalPackageValue - this.bookingData.discount_value;
+        
+        const totalEl = document.getElementById('paymentTotalPackageValue');
+        const paidEl = document.getElementById('paymentPaid');
+        const dueEl = document.getElementById('paymentDue');
+        
+        if (totalEl) totalEl.textContent = totalPackageValue + ' SAR';
+        if (paidEl) paidEl.textContent = '0 SAR';
+        if (dueEl) dueEl.textContent = due + ' SAR';
+        
+        this.paymentData = {
+            currency: 'SAR',
+            method: 'Cash',
+            bank_method: '',
+            trx_id: '',
+            amount_sar: '',
+            amount_bdt: ''
+        };
+        
+        this.paymentModalVisible = true;
+    },
+
+    closePaymentModal() {
+        this.paymentModalVisible = false;
+    },
+
+    handlePaymentCurrencyChange() {
+        // Alpine reactivity handles the visibility via x-show
+    },
+
+    handlePaymentMethodChange() {
+        // Alpine reactivity handles the visibility via x-show
+    },
+
+    savePayment() {
+        const amountSAR = parseFloat(this.paymentData.amount_sar) || 0;
+        const amountBDT = parseFloat(this.paymentData.amount_bdt) || 0;
+        
+        if (amountSAR === 0 && amountBDT === 0) {
+            alert('Please enter payment amount');
+            return;
+        }
+        
+        console.log('Payment saved:', {
+            currency: this.paymentData.currency,
+            method: this.paymentData.method,
+            bank_method: this.paymentData.bank_method,
+            trx_id: this.paymentData.trx_id,
+            amount_sar: amountSAR,
+            amount_bdt: amountBDT
+        });
+        
+        alert('Payment saved successfully!');
+        this.closePaymentModal();
     },
 
     calculateDiscount() {

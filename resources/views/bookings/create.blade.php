@@ -180,7 +180,10 @@
             <div class="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-slate-700">Summary Card</h3>
-                    <button type="button" @click="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
+                    <div class="flex gap-2">
+                        <button type="button" @click="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
+                        <button type="button" @click="openPaymentModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Payment</button>
+                    </div>
                 </div>
                 <div class="flex justify-between text-sm text-slate-500 mb-2">
                     <span class="w-1/6 text-center">Package</span>
@@ -424,6 +427,81 @@
             <div class="flex gap-3 pt-4 border-t border-slate-200">
                 <button type="button" @click="closeDiscountModal()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Apply</button>
                 <button type="button" @click="closeDiscountModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="paymentModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="closePaymentModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800">Payment Interface</h3>
+            <p class="text-sm text-slate-500 mb-4">Booking Summary</p>
+            
+            <div class="mb-4">
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Total Package Value:</span>
+                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">0 SAR</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Paid:</span>
+                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">0 SAR</span>
+                    </div>
+                    <div class="flex justify-between col-span-2">
+                        <span class="text-slate-600 font-medium">Due:</span>
+                        <span id="paymentDue" class="text-slate-800 font-bold text-right">0 SAR</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                        <select id="paymentCurrency" x-model="paymentData.currency" @change="handlePaymentCurrencyChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="SAR">SAR</option>
+                            <option value="BDT">BDT</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Method</label>
+                        <select id="paymentMethod" x-model="paymentData.method" @change="handlePaymentMethodChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="Cash">Cash</option>
+                            <option value="Bank">Bank</option>
+                        </select>
+                    </div>
+                    
+                    <div x-show="paymentData.method === 'Bank'" x-cloak class="col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
+                        <select id="paymentBankMethod" x-model="paymentData.bank_method" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Bank</option>
+                            <option value="AL-Raji">AL-Raji</option>
+                            <option value="SNB">SNB</option>
+                            <option value="Bkash-BMT">Bkash-BMT</option>
+                            <option value="IBBL-BMT">IBBL-BMT</option>
+                        </select>
+                    </div>
+                    
+                    <div x-show="paymentData.method === 'Bank'" x-cloak>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">TRX ID</label>
+                        <input type="text" id="paymentTRXID" x-model="paymentData.trx_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter TRX ID">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (SAR)</label>
+                        <input type="number" id="paymentAmountSAR" x-model="paymentData.amount_sar" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter SAR amount">
+                    </div>
+                    
+                    <div x-show="paymentData.currency === 'BDT'" x-cloak>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (BDT)</label>
+                        <input type="number" id="paymentAmountBDT" x-model="paymentData.amount_bdt" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter BDT amount">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-3">
+                <button type="button" @click="savePayment()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" @click="closePaymentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </div>
     </div>
