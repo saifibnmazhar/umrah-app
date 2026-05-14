@@ -420,7 +420,7 @@ customerModalVisible: false,
         if (summaryFingerprintCharge) summaryFingerprintCharge.textContent = fingerprintCharge > 0 ? `${fingerprintCharge} SAR` : '-';
         if (summaryPaxQty) summaryPaxQty.textContent = paxQty;
         if (summaryDiscount) summaryDiscount.textContent = discountAmount > 0 ? `-${discountAmount} SAR` : '-';
-        if (summaryTotalBeforeDiscount) summaryTotalBeforeDiscount.textContent = totalBeforeDiscount > 0 ? `${totalBeforeDiscount} SAR` : '0 SAR';
+        if (summaryTotalBeforeDiscount) summaryTotalBeforeDiscount.textContent = totalBeforeDiscount > 0 ? `${totalBeforeDiscount} SAR` : '-';
         if (summaryTotalValue) summaryTotalValue.textContent = `${totalValue} SAR`;
     },
 

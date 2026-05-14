@@ -90,10 +90,17 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Package</label>
-                    <select x-model="bookingData.package_id" name="package_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                    <select x-model="bookingData.package_id" @change="updateLiveSummary(); $el.blur()" name="package_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                         <option value="">Select Package</option>
                         @foreach(\App\Models\Package::orderBy('package_name')->get() as $package)
-                        <option value="{{ $package->id }}">{{ $package->package_name }}</option>
+                        @php
+                            $effectivePrice = $package->ticketFare && 
+                                $package->ticketFare->ticket_type->value === 'offer' && 
+                                $package->offer_price 
+                                ? $package->offer_price 
+                                : $package->regular_price;
+                        @endphp
+                        <option value="{{ $package->id }}" data-package-value="{{ $effectivePrice }}">{{ $package->package_name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -196,12 +203,12 @@
                     <span class="w-1/6 text-center">Value</span>
                 </div>
                 <div class="flex justify-between font-medium text-slate-800">
-                    <span class="w-1/6 text-center">-</span>
+                    <span id="summaryPackage" class="w-1/6 text-center">-</span>
                     <span class="w-1/6 text-center" x-text="fingerprintCharge > 0 ? fingerprintCharge + ' SAR' : '-'">-</span>
                     <span class="w-1/6 text-center" x-text="passengerCount">0</span>
                     <span class="w-1/6 text-center" x-text="bookingData.discount_value > 0 ? '-' + bookingData.discount_value + (bookingData.discount_type === 'percentage' ? '%' : ' SAR') : '-'">-</span>
-                    <span class="w-1/6 text-center">0 SAR</span>
-                    <span class="w-1/6 text-center">0 SAR</span>
+                    <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center">0 SAR</span>
+                    <span id="summaryTotalValue" class="w-1/6 text-center">0 SAR</span>
                 </div>
             </div>
 
