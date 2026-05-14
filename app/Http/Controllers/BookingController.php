@@ -19,12 +19,19 @@ use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\FingerprintLocation;
 use App\Enums\DiscountType;
+use App\Services\BookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class BookingController extends Controller
 {
+    protected BookingService $bookingService;
+
+    public function __construct(BookingService $bookingService)
+    {
+        $this->bookingService = $bookingService;
+    }
     public function index(Request $request)
     {
         $tab = $request->get('tab', 'booking');
@@ -323,23 +330,16 @@ class BookingController extends Controller
     public function calculatePassengerType(Request $request)
     {
         $dateOfBirth = $request->input('date_of_birth');
+        $stayDuration = $request->input('stay_duration');
         
         if (!$dateOfBirth) {
             return response()->json(['passenger_type' => null]);
         }
 
-        $dob = Carbon::parse($dateOfBirth);
-        $ageInMonths = $dob->diffInMonths(Carbon::now());
-
-        $passengerType = match(true) {
-            $ageInMonths < 24 => PassengerType::INFANT,
-            $ageInMonths < 144 => PassengerType::CHILD,
-            default => PassengerType::ADULT,
-        };
+        $passengerType = $this->bookingService->calculatePassengerType($dateOfBirth, $stayDuration);
 
         return response()->json([
-            'passenger_type' => $passengerType->value,
-            'age_in_months' => $ageInMonths,
+            'passenger_type' => $passengerType,
         ]);
     }
 
