@@ -21,10 +21,12 @@ use App\Enums\FingerprintLocation;
 use App\Enums\DiscountType;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use App\Services\BookingService;
 use Carbon\Carbon;
 
 class BookingController extends Controller
 {
+    public function __construct(private BookingService $bookingService) {}
     public function index(Request $request)
     {
         $tab = $request->get('tab', 'booking');
@@ -53,8 +55,14 @@ class BookingController extends Controller
         }
 
         $districts = District::orderBy('name')->get();
-        $packages = Package::with('ticketFare')->orderBy('package_name')->get();
-        $offices = Office::orderBy('name')->get();
+        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+            return [
+                'id' => $pkg->id,
+                'package_name' => $pkg->package_name,
+                'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
+                'service_charge' => $pkg->service_charge ?? 0,
+            ];
+        });
 
         $ticketFares = TicketFare::with([
             'route.fromCity',
@@ -65,7 +73,9 @@ class BookingController extends Controller
             'airline',
             'airlineClass.class',
             'groupTicket',
-            'baggageAllowances'
+            'baggageAllowances',
+            'package.visaSellingPrice',
+            'package.serviceCharge',
         ])->get()->map(function ($fare) {
             $routeCode = '';
             $routeType = $fare->route->route_type?->value;
@@ -90,6 +100,8 @@ class BookingController extends Controller
                 'airline_class' => $fare->airlineClass->class?->name,
                 'ticket_type' => $fare->ticket_type->value,
                 'selling_fare' => $fare->selling_fare,
+                'child_fare_percentage' => $fare->child_fare_percentage,
+                'infant_fare_percentage' => $fare->infant_fare_percentage,
                 'offer_price' => $fare->offer_price,
                 'available_seats' => $fare->groupTicket?->ticket_qty ?? null,
                 'route_type' => $routeType,
@@ -101,8 +113,12 @@ class BookingController extends Controller
                         'allowance' => $ba->allowance
                     ];
                 })->toArray(),
+                'visa_selling_price' => $fare->package?->visaSellingPrice?->selling_price ?? 0,
+                'service_charge' => $fare->package?->service_charge ?? 0,
             ];
         });
+
+        $offices = Office::orderBy('name')->get();
 
         return view('bookings.create', compact(
             'districts', 'packages', 'offices', 'preSelectedPackageId', 'ticketFares'
@@ -199,6 +215,9 @@ class BookingController extends Controller
 
             DB::commit();
 
+            $booking->refresh();
+            $this->bookingService->recalculateBookingTotal($booking);
+
             return redirect()->route('bookings.index')
                 ->with('success', 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)');
         } catch (\Exception $e) {
@@ -242,6 +261,7 @@ class BookingController extends Controller
 
         try {
             $booking->update($validated);
+            $this->bookingService->recalculateBookingTotal($booking->fresh());
             return redirect()->route('bookings.show', $booking->id)
                 ->with('success', 'Booking updated successfully');
         } catch (\Exception $e) {
@@ -297,6 +317,7 @@ class BookingController extends Controller
         $passenger = Passenger::create($validated);
 
         $booking->update(['pax_qty' => $booking->passengers()->count()]);
+        $this->bookingService->recalculateBookingTotal($booking->fresh());
 
         return response()->json([
             'success' => true,
@@ -314,6 +335,7 @@ class BookingController extends Controller
         try {
             $passenger->delete();
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
+            $this->bookingService->recalculateBookingTotal($booking->fresh());
             return response()->json(['success' => true, 'message' => 'Passenger removed successfully']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to remove passenger'], 500);
@@ -389,5 +411,17 @@ class BookingController extends Controller
             'currentPaid',
             'dueAmount'
         ));
+    }
+
+    public function recalculatePassengerValue(Passenger $passenger)
+    {
+        $packageValue = $this->bookingService->calculatePackageValue($passenger);
+        $passenger->update(['package_value' => $packageValue]);
+        $this->bookingService->recalculateBookingTotal($passenger->booking->fresh());
+
+        return response()->json([
+            'package_value' => $packageValue,
+            'total_value' => $passenger->booking->total_value,
+        ]);
     }
 }
