@@ -32,6 +32,7 @@ use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\VisaAdminController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\FareAdminController;
+use App\Http\Controllers\TicketFareController;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -61,6 +62,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('fingerprint-charges', FingerprintChargeController::class);
     Route::resource('flight-date-gaps', FlightDateGapController::class);
     Route::resource('routes', RouteController::class);
+    Route::get('/api/ticket-fares/baggage', [\App\Http\Controllers\TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
+    Route::get('/api/ticket-fares/flight-date-gap', [\App\Http\Controllers\TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
     Route::resource('ticket-fares', \App\Http\Controllers\TicketFareController::class);
     Route::resource('visa-agent-costs', VisaAgentCostController::class);
     Route::resource('visa-selling-prices', VisaSellingPriceController::class);
@@ -79,11 +82,13 @@ Route::middleware('auth')->group(function () {
     // Booking-specific routes
     Route::post('/bookings/{booking}/passengers', [BookingController::class, 'addPassenger'])->name('bookings.passengers.store');
     Route::delete('/bookings/{booking}/passengers/{passenger}', [BookingController::class, 'removePassenger'])->name('bookings.passengers.destroy');
+    Route::get('/bookings/{booking}/print', [BookingController::class, 'print'])->name('bookings.print');
 
     // API routes
     Route::post('/api/bookings/calculate-type', [BookingController::class, 'calculatePassengerType'])->name('api.bookings.calculate-type');
     Route::get('/api/bookings/fingerprint-charge', [BookingController::class, 'getFingerprintCharge'])->name('api.bookings.fingerprint-charge');
     Route::get('/api/customers/search', [CustomerController::class, 'search'])->name('api.customers.search');
+    Route::get('/api/ticket-fares/filter', [TicketFareController::class, 'filter'])->name('api.ticket-fares.filter');
     Route::get('/fares/admin', [FareAdminController::class, 'index'])->name('fare.admin');
     Route::post('/fares/admin/agent', [FareAdminController::class, 'storeAgent'])->name('fare.admin.agent.store');
     Route::put('/fares/admin/agent/{ticketAgent}', [FareAdminController::class, 'updateAgent'])->name('fare.admin.agent.update');

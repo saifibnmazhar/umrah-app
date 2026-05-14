@@ -53,11 +53,59 @@ class BookingController extends Controller
         }
 
         $districts = District::orderBy('name')->get();
-        $packages = Package::orderBy('package_name')->get();
+        $packages = Package::with('ticketFare')->orderBy('package_name')->get();
         $offices = Office::orderBy('name')->get();
 
+        $ticketFares = TicketFare::with([
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
+            'airline',
+            'airlineClass.class',
+            'groupTicket',
+            'baggageAllowances'
+        ])->get()->map(function ($fare) {
+            $routeCode = '';
+            $routeType = $fare->route->route_type?->value;
+
+            if ($routeType === 'multi_city') {
+                $segments = $fare->route->multiSegments->map(function ($seg) {
+                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                })->toArray();
+                $routeCode = implode(', ', $segments);
+            } elseif ($routeType === 'round') {
+                $routeCode = $fare->route->fromCity?->code . '-' .
+                    $fare->route->toCity?->code . '-' .
+                    $fare->route->returnCity?->code;
+            } else {
+                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+            }
+
+            return [
+                'id' => $fare->id,
+                'route' => $routeCode,
+                'airline' => $fare->airline->name,
+                'airline_class' => $fare->airlineClass->class?->name,
+                'ticket_type' => $fare->ticket_type->value,
+                'selling_fare' => $fare->selling_fare,
+                'offer_price' => $fare->offer_price,
+                'available_seats' => $fare->groupTicket?->ticket_qty ?? null,
+                'route_type' => $routeType,
+                'flight_type' => $fare->route->flight_type?->value,
+                'baggage_allowances' => $fare->baggageAllowances->map(function ($ba) {
+                    return [
+                        'passenger_type' => $ba->passenger_type,
+                        'travel_direction' => $ba->travel_direction,
+                        'allowance' => $ba->allowance
+                    ];
+                })->toArray(),
+            ];
+        });
+
         return view('bookings.create', compact(
-            'districts', 'packages', 'offices', 'preSelectedPackageId'
+            'districts', 'packages', 'offices', 'preSelectedPackageId', 'ticketFares'
         ));
     }
 
@@ -313,5 +361,33 @@ class BookingController extends Controller
         $charge = $location === 'Home' ? $fingerprintCharge->fingerprint_charge : 0;
 
         return response()->json(['charge' => $charge]);
+    }
+
+    public function print(Booking $booking)
+    {
+        $booking = Booking::with(['customer', 'office', 'package', 'passengers', 'payments'])->findOrFail($booking->id);
+
+        $subTotal = $booking->passengers->sum('total') ?? 0;
+        $fingerprintCost = $booking->passengers->first()->fingerprint_cost ?? 200;
+        $totalPackage = $subTotal + $fingerprintCost;
+        $additionalFee = $booking->additional_fee ?? 0;
+        $discount = $booking->discount_value ?? 0;
+        $grandTotal = $totalPackage + $additionalFee - $discount;
+        $totalPaid = $booking->payments->sum('amount') ?? 0;
+        $currentPaid = 0;
+        $dueAmount = $grandTotal - $totalPaid;
+
+        return view('bookings.invoice-print', compact(
+            'booking',
+            'subTotal',
+            'fingerprintCost',
+            'totalPackage',
+            'additionalFee',
+            'discount',
+            'grandTotal',
+            'totalPaid',
+            'currentPaid',
+            'dueAmount'
+        ));
     }
 }

@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Booking')
 @section('content')
-<div class="max-w-7xl mx-auto" x-data="bookingApp()">
+<div class="max-w-7xl mx-auto" x-data="bookingIndexApp()">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Booking</h1>
         <a href="{{ route('bookings.create') }}" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
@@ -130,7 +130,7 @@
 </div>
 
 <script>
-function bookingApp() {
+function bookingIndexApp() {
     return {
         activeTab: '{{ $tab ?? 'booking' }}',
         searchTerm: '',

@@ -1,7 +1,8 @@
 @extends('layouts.app')
 @section('title', 'Create Booking')
 @section('content')
-<div class="max-w-5xl mx-auto" x-data="bookingApp()">
+<script>window.__bookingServerData = { ticketFares: @json($ticketFares ?? []), packages: @json($packages ?? []), preSelectedPackageId: {{ $preSelectedPackageId ?? 'null' }} };</script>
+<div class="max-w-5xl mx-auto" x-data="createBookingApp()">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Create Booking</h1>
         <a href="{{ route('bookings.index') }}" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
@@ -157,10 +158,11 @@
                                     <input type="hidden" :name="'passengers[' + index + '][mobile_no]'" :value="passenger.mobile_no">
                                     <input type="hidden" :name="'passengers[' + index + '][passport_expiry]'" :value="passenger.passport_expiry">
                                     <input type="hidden" :name="'passengers[' + index + '][service_required]'" :value="passenger.service_required">
-                                    <input type="hidden" :name="'passengers[' + index + '][stay_duration]'" :value="passenger.stay_duration">
+                                    <input type="hidden" :name="'passengers[' + index + '][stay_duration]'" :value="passenger.stay_duration_int || passenger.stay_duration">
                                     <input type="hidden" :name="'passengers[' + index + '][gender]'" :value="passenger.gender">
                                     <input type="hidden" :name="'passengers[' + index + '][route_type]'" :value="passenger.route_type">
                                     <input type="hidden" :name="'passengers[' + index + '][flight_type]'" :value="passenger.flight_type">
+                                    <input type="hidden" :name="'passengers[' + index + '][ticket_fare_id]'" :value="passenger.ticket_fare_id">
                                     <input type="hidden" :name="'passengers[' + index + '][route]'" :value="passenger.route">
                                     <input type="hidden" :name="'passengers[' + index + '][airline]'" :value="passenger.airline">
                                     <input type="hidden" :name="'passengers[' + index + '][class]'" :value="passenger.class">
@@ -180,7 +182,10 @@
             <div class="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-slate-700">Summary Card</h3>
-                    <button type="button" @click="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
+                    <div class="flex gap-2">
+                        <button type="button" @click="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
+                        <button type="button" @click="openPaymentModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Payment</button>
+                    </div>
                 </div>
                 <div class="flex justify-between text-sm text-slate-500 mb-2">
                     <span class="w-1/6 text-center">Package</span>
@@ -250,6 +255,7 @@
                             <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
                             <div class="relative">
                                 <input type="text" x-model="passengerData.passenger_type" readonly 
+                                       @change="updateBaggageWeight()"
                                        class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 font-medium uppercase" 
                                        :class="{
                                            'bg-green-50 border-green-300 text-green-700': passengerData.passenger_type === 'Infant',
@@ -273,10 +279,10 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Stay Duration *</label>
-                            <select x-model="passengerData.stay_duration" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="passengerData.stay_duration" @change="handleStayDurationChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Stay Duration</option>
-                                <option value="Group (14 Days)">Group (14 Days)</option>
-                                <option value="Family (85 Days)">Family (85 Days)</option>
+                                <option value="14">Group (14 Days)</option>
+                                <option value="85">Family (85 Days)</option>
                                 <option value="Customize (Set Duration)">Customize (Set Duration)</option>
                             </select>
                         </div>
@@ -297,7 +303,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                            <select x-model="passengerData.route_type" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="passengerData.route_type" @change="updateBaggageWeight(); filterTickets()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select</option>
                                 <option value="One Way-Inbound">One Way-Inbound</option>
                                 <option value="One Way-Outbound">One Way-Outbound</option>
@@ -307,44 +313,36 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                            <select x-model="passengerData.flight_type" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="passengerData.flight_type" @change="filterTickets()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select</option>
                                 <option value="Transit">Transit</option>
                                 <option value="Direct">Direct</option>
                             </select>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
-                            <select x-model="passengerData.route" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="">Select Route</option>
-                                <option value="DAC-JED-DAC">DAC-JED-DAC</option>
-                                <option value="DAC-RUH-DAC">DAC-RUH-DAC</option>
-                                <option value="DAC-MED-DAC">DAC-MED-DAC</option>
-                                <option value="DAC-JED-MED-DAC">DAC-JED-MED-DAC</option>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
+                            <select x-model="passengerData.ticket_fare_id" @change="onTicketChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Ticket</option>
+                                <template x-for="ticket in filteredTickets" :key="ticket.id">
+                                    <option :value="String(ticket.id)" x-text="getTicketDisplayText(ticket)"></option>
+                                </template>
                             </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
+                            <input type="text" x-model="passengerData.route" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Route">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
-                            <select x-model="passengerData.airline" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="">Select Airline</option>
-                                <option value="Saudia">Saudia</option>
-                                <option value="Biman Bangladesh">Biman Bangladesh</option>
-                                <option value="Emirates">Emirates</option>
-                                <option value="Qatar Airways">Qatar Airways</option>
-                                <option value="Flynas">Flynas</option>
-                            </select>
+                            <input type="text" x-model="passengerData.airline" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Airline">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
-                            <select x-model="passengerData.class" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="">Select Class</option>
-                                <option value="Economy">Economy</option>
-                                <option value="Business">Business</option>
-                            </select>
+                            <input type="text" x-model="passengerData.class" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Class">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
-                            <select x-model="passengerData.flight_date_range" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select id="passengerFlightDateRange" x-model="passengerData.flight_date_range" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Date Range</option>
                             </select>
                         </div>
@@ -354,8 +352,18 @@
                 <div class="mb-4">
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Weight</label>
-                        <input type="text" x-model="passengerData.baggage_weight" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="30kg">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Allowance</label>
+                        <input type="text"
+                               x-model="passengerData.baggage_weight"
+                               readonly
+                               class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 font-medium"
+                               :class="{
+                                   'bg-yellow-50 border-yellow-300 text-yellow-700': passengerData.baggage_weight && !passengerData.baggage_weight.includes('Select') && !passengerData.baggage_weight.includes('No baggage'),
+                                   'bg-red-50 border-red-200 text-red-500': passengerData.baggage_weight === 'No baggage allowance defined',
+                                   'bg-blue-50 border-blue-200 text-blue-600': passengerData.baggage_weight === 'Select passenger type to see baggage'
+                               }"
+                               placeholder="Select a ticket to see baggage allowance">
+                        <p x-show="!passengerData.baggage_weight" class="text-xs text-slate-400 mt-1">Baggage allowance will be displayed based on ticket fare and passenger type</p>
                     </div>
                 </div>
 
@@ -381,7 +389,7 @@
                         </label>
                     </div>
                 </div>
---}}
+                --}}
 
                 <div class="mb-4">
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Documents</h4>
@@ -424,6 +432,81 @@
             <div class="flex gap-3 pt-4 border-t border-slate-200">
                 <button type="button" @click="closeDiscountModal()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Apply</button>
                 <button type="button" @click="closeDiscountModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <div x-show="paymentModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="closePaymentModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800">Payment Interface</h3>
+            <p class="text-sm text-slate-500 mb-4">Booking Summary</p>
+            
+            <div class="mb-4">
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Total Package Value:</span>
+                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">0 SAR</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Paid:</span>
+                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">0 SAR</span>
+                    </div>
+                    <div class="flex justify-between col-span-2">
+                        <span class="text-slate-600 font-medium">Due:</span>
+                        <span id="paymentDue" class="text-slate-800 font-bold text-right">0 SAR</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                        <select id="paymentCurrency" x-model="paymentData.currency" @change="handlePaymentCurrencyChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="SAR">SAR</option>
+                            <option value="BDT">BDT</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Method</label>
+                        <select id="paymentMethod" x-model="paymentData.method" @change="handlePaymentMethodChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="Cash">Cash</option>
+                            <option value="Bank">Bank</option>
+                        </select>
+                    </div>
+                    
+                    <div x-show="paymentData.method === 'Bank'" x-cloak class="col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
+                        <select id="paymentBankMethod" x-model="paymentData.bank_method" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Bank</option>
+                            <option value="AL-Raji">AL-Raji</option>
+                            <option value="SNB">SNB</option>
+                            <option value="Bkash-BMT">Bkash-BMT</option>
+                            <option value="IBBL-BMT">IBBL-BMT</option>
+                        </select>
+                    </div>
+                    
+                    <div x-show="paymentData.method === 'Bank'" x-cloak>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">TRX ID</label>
+                        <input type="text" id="paymentTRXID" x-model="paymentData.trx_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter TRX ID">
+                    </div>
+                    
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (SAR)</label>
+                        <input type="number" id="paymentAmountSAR" x-model="paymentData.amount_sar" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter SAR amount">
+                    </div>
+                    
+                    <div x-show="paymentData.currency === 'BDT'" x-cloak>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (BDT)</label>
+                        <input type="number" id="paymentAmountBDT" x-model="paymentData.amount_bdt" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter BDT amount">
+                    </div>
+                </div>
+            </div>
+            
+            <div class="flex gap-3">
+                <button type="button" @click="savePayment()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" @click="closePaymentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </div>
     </div>
@@ -504,6 +587,22 @@
             </form>
         </div>
     </div>
+
+    <div x-show="customDurationModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeCustomDurationModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeCustomDurationModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Set Custom Duration</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Duration (days)</label>
+                <input type="number" id="customDurationDays" x-model="passengerData.customDurationDays" min="30" max="89" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" placeholder="Enter days (30-89)">
+                <p class="text-xs text-slate-500 mt-1">Enter a value between 30 and 89 days</p>
+            </div>
+            <div class="flex gap-3">
+                <button type="button" @click="saveCustomDuration()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" @click="closeCustomDurationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -557,359 +656,4 @@ function handlePassengerDocUpload(input) {
 function removePassengerDoc(btn) {
     btn.parentElement.remove();
 }
-
-function bookingApp() {
-    return {
-        formVisible: false,
-        searchTerm: '',
-        customerSearch: '',
-        customerSuggestions: [],
-        customerInputFocused: false,
-        selectedCustomer: null,
-        passengers: [],
-        passengerCount: 0,
-        fingerprintCharge: 0,
-        editingPassengerIndex: null,
-        passengerModalVisible: false,
-        discountModalVisible: false,
-        customerModalVisible: false,
-        newCustomer: {
-            name: '',
-            iqama_type: '',
-            iqama_no: '',
-            passport_no: '',
-            mobile_no: '',
-            ref_iqama_no: '',
-            ref_mobile_no: '',
-            ref_iqama_doc: null,
-            address: ''
-        },
-        bookingData: {
-            fingerprint_location: 'Office',
-            fingerprint_office: '',
-            district_id: '',
-            package_id: {{ $preSelectedPackageId ?? 'null' }},
-            discount_type: 'fixed',
-            discount_value: 0,
-            remarks: ''
-        },
-        passengerData: {
-            first_name: '',
-            last_name: '',
-            passport_no: '',
-            date_of_birth: '',
-            passenger_type: '',
-            gender: '',
-            mobile_no: '',
-            passport_expiry: '',
-            service_required: '',
-            stay_duration: '',
-            route_type: '',
-            flight_type: '',
-            route: '',
-            airline: '',
-            class: '',
-            flight_date_range: '',
-            baggage_weight: '30kg',
-            address: '',
-            with_offer: false,
-            refundable: false
-        },
-        showForm() {
-            this.formVisible = true;
-        },
-        hideForm() {
-            this.formVisible = false;
-            this.clearForm();
-        },
-        clearForm() {
-            this.selectedCustomer = null;
-            this.customerSearch = '';
-            this.customerSuggestions = [];
-            this.passengers = [];
-            this.passengerCount = 0;
-            this.newCustomer = {
-                name: '',
-                iqama_type: '',
-                iqama_no: '',
-                passport_no: '',
-                mobile_no: '',
-                ref_iqama_no: '',
-                ref_mobile_no: '',
-                ref_iqama_doc: null,
-                address: ''
-            };
-            const fileInput = document.getElementById('ref_iqama_doc');
-            if (fileInput) fileInput.value = '';
-            const fileName = document.getElementById('ref_iqama_doc_filename');
-            if (fileName) fileName.textContent = 'click to upload';
-            const docsList = document.getElementById('customer_docs_list');
-            if (docsList) docsList.innerHTML = '';
-            const docsInput = document.getElementById('customer_docs');
-            if (docsInput) docsInput.value = '';
-            const bookingDocsList = document.getElementById('booking_customer_docs_list');
-            if (bookingDocsList) bookingDocsList.innerHTML = '';
-            const bookingDocsInput = document.getElementById('booking_customer_docs');
-            if (bookingDocsInput) bookingDocsInput.value = '';
-            this.bookingData = {
-                fingerprint_location: 'Office',
-                fingerprint_office: '',
-                district_id: '',
-                package_id: '',
-                discount_type: 'fixed',
-                discount_value: 0,
-                remarks: ''
-            };
-        },
-        async searchCustomers() {
-            if (this.customerSearch.length < 2) {
-                this.customerSuggestions = [];
-                return;
-            }
-            try {
-                const response = await fetch('/api/customers/search?q=' + this.customerSearch);
-                this.customerSuggestions = await response.json();
-            } catch (e) {
-                console.error(e);
-            }
-        },
-        selectCustomer(customer) {
-            this.selectedCustomer = customer;
-            this.customerSearch = customer.passport_no;
-            this.customerSuggestions = [];
-        },
-        clearSelectedCustomer() {
-            this.selectedCustomer = null;
-            this.customerSearch = '';
-        },
-        calculatePassengerType() {
-            const dob = this.passengerData.date_of_birth;
-            if (!dob) {
-                this.passengerData.passenger_type = '';
-                return;
-            }
-            const dobDate = new Date(dob);
-            const today = new Date();
-            const ageInMonths = (today.getFullYear() - dobDate.getFullYear()) * 12 + (today.getMonth() - dobDate.getMonth());
-            
-            let calculatedType = 'Adult';
-            if (ageInMonths < 24) {
-                calculatedType = 'Infant';
-            } else if (ageInMonths < 144) {
-                calculatedType = 'Child';
-            }
-            this.passengerData.passenger_type = calculatedType;
-        },
-        async updateFingerprintCharge() {
-            if (!this.bookingData.district_id) return;
-            try {
-                const response = await fetch('/api/bookings/fingerprint-charge?district_id=' + this.bookingData.district_id + '&location=' + this.bookingData.fingerprint_location);
-                const data = await response.json();
-                if (data.charge !== undefined) {
-                    this.fingerprintCharge = data.charge;
-                }
-            } catch (e) {
-                console.error(e);
-            }
-        },
-        openPassengerModal() {
-            this.editingPassengerIndex = null;
-            this.passengerData = {
-                first_name: '',
-                last_name: '',
-                passport_no: '',
-                date_of_birth: '',
-                passenger_type: '',
-                gender: '',
-                mobile_no: '',
-                passport_expiry: '',
-                service_required: '',
-                stay_duration: '',
-                route_type: '',
-                flight_type: '',
-                route: '',
-                airline: '',
-                class: '',
-                flight_date_range: '',
-                baggage_weight: '30kg',
-                address: '',
-                with_offer: false,
-                refundable: false
-            };
-            this.passengerModalVisible = true;
-        },
-        editPassenger(index) {
-            this.editingPassengerIndex = index;
-            this.passengerData = { ...this.passengers[index] };
-            this.passengerModalVisible = true;
-        },
-        closePassengerModal() {
-            this.passengerModalVisible = false;
-            this.editingPassengerIndex = null;
-        },
-        savePassenger() {
-            if (!this.passengerData.first_name || !this.passengerData.last_name || !this.passengerData.passport_no || !this.passengerData.date_of_birth) {
-                alert('Please fill in all required fields');
-                return;
-            }
-            if (this.editingPassengerIndex !== null) {
-                this.passengers[this.editingPassengerIndex] = { ...this.passengerData };
-            } else {
-                this.passengers.push({ ...this.passengerData });
-            }
-            this.passengerCount = this.passengers.length;
-            this.closePassengerModal();
-        },
-        removePassenger(index) {
-            if (confirm('Are you sure you want to remove this passenger?')) {
-                this.passengers.splice(index, 1);
-                this.passengerCount = this.passengers.length;
-            }
-        },
-        openDiscountModal() {
-            this.discountModalVisible = true;
-        },
-        closeDiscountModal() {
-            this.discountModalVisible = false;
-        },
-        openCustomerModal() {
-            this.newCustomer = {
-                name: '',
-                iqama_type: '',
-                iqama_no: '',
-                passport_no: this.customerSearch,
-                mobile_no: '',
-                ref_iqama_no: '',
-                ref_mobile_no: '',
-                ref_iqama_doc: null,
-                address: ''
-            };
-            const fileInput = document.getElementById('ref_iqama_doc');
-            if (fileInput) fileInput.value = '';
-            const fileName = document.getElementById('ref_iqama_doc_filename');
-            if (fileName) fileName.textContent = 'click to upload';
-            const docsList = document.getElementById('customer_docs_list');
-            if (docsList) docsList.innerHTML = '';
-            const docsInput = document.getElementById('customer_docs');
-            if (docsInput) docsInput.value = '';
-            this.customerModalVisible = true;
-            this.customerSuggestions = [];
-        },
-        closeCustomerModal() {
-            this.customerModalVisible = false;
-        },
-        async submitNewCustomer() {
-            try {
-                const formData = new FormData();
-                Object.keys(this.newCustomer).forEach(key => {
-                    if (this.newCustomer[key] !== null) {
-                        formData.append(key, this.newCustomer[key]);
-                    }
-                });
-                const fileInput = document.getElementById('ref_iqama_doc');
-                if (fileInput && fileInput.files[0]) {
-                    formData.append('ref_iqama_doc', fileInput.files[0]);
-                }
-                const docsInput = document.getElementById('customer_docs');
-                if (docsInput) {
-                    Array.from(docsInput.files).forEach(file => {
-                        formData.append('customer_docs[]', file);
-                    });
-                }
-
-                const response = await fetch('{{ route("customers.store") }}', {
-                    method: 'POST',
-                    headers: {
-                        'Accept': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: formData
-                });
-                const text = await response.text();
-                console.log('Response status:', response.status);
-                console.log('Raw response:', text);
-                
-                let data;
-                try {
-                    data = JSON.parse(text);
-                } catch (parseError) {
-                    alert('Server error: Received non-JSON response. Check console for details.');
-                    console.log('Parse error:', parseError);
-                    return;
-                }
-                
-                if (data.success) {
-                    this.selectedCustomer = data.customer;
-                    this.customerSearch = data.customer.passport_no;
-                    this.customerSuggestions = [];
-                    this.closeCustomerModal();
-                    this.newCustomer = {
-                        name: '',
-                        iqama_type: '',
-                        iqama_no: '',
-                        passport_no: '',
-                        mobile_no: '',
-                        ref_iqama_no: '',
-                        ref_mobile_no: '',
-                        address: ''
-                    };
-                    alert('Customer added successfully');
-                } else {
-                    alert(data.message || 'Failed to add customer');
-                }
-            } catch (e) {
-                console.error('Error:', e);
-                alert('Failed to add customer');
-            }
-        },
-        async submitForm(e) {
-            e.preventDefault();
-
-            if (!this.selectedCustomer) {
-                alert('Please select a customer');
-                return;
-            }
-            if (this.passengers.length === 0) {
-                alert('Please add at least one passenger');
-                return;
-            }
-
-            const formData = new FormData(e.target);
-
-            const bookingDocsInput = document.getElementById('booking_customer_docs');
-            if (bookingDocsInput) {
-                Array.from(bookingDocsInput.files).forEach(file => {
-                    formData.append('booking_customer_docs[]', file);
-                });
-            }
-
-            try {
-                const response = await fetch(e.target.action, {
-                    method: 'POST',
-                    headers: {
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
-                        'X-Requested-With': 'XMLHttpRequest'
-                    },
-                    body: formData
-                });
-
-                if (response.redirected) {
-                    window.location.href = response.url;
-                    return;
-                }
-
-                const data = await response.json();
-                if (data.success || response.ok) {
-                    window.location.href = '{{ route("bookings.index") }}';
-                } else {
-                    alert(data.message || 'Failed to create booking');
-                }
-            } catch (err) {
-                console.error(err);
-                alert('Failed to create booking');
-            }
-        }
-    };
-}
-</script>
 @endsection

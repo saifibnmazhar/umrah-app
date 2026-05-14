@@ -8,6 +8,7 @@ use App\Models\BaggageAllowance;
 use App\Models\Airline;
 use App\Models\AirlineClass;
 use App\Models\Route;
+use App\Models\FlightDateGap;
 use Illuminate\Http\Request;
 use App\Enums\TicketType;
 use App\Enums\PassengerType;
@@ -247,6 +248,52 @@ class TicketFareController extends Controller
         }
     }
 
+    public function filter(Request $request)
+    {
+        $request->validate([
+            'route_type' => 'required|string',
+            'flight_type' => 'required|string',
+        ]);
+
+        $routeTypeMap = [
+            'One Way-Inbound' => 'oneway_inbound',
+            'One Way-Outbound' => 'oneway_outbound',
+            'Round' => 'round',
+            'Multi City' => 'multi_city',
+        ];
+
+        $flightTypeMap = [
+            'Transit' => 'transit',
+            'Direct' => 'direct',
+        ];
+
+        $dbRouteType = $routeTypeMap[$request->route_type] ?? $request->route_type;
+        $dbFlightType = $flightTypeMap[$request->flight_type] ?? $request->flight_type;
+
+        $fares = TicketFare::whereHas('route', function ($query) use ($dbRouteType, $dbFlightType) {
+                $query->where('route_type', $dbRouteType)
+                      ->where('flight_type', $dbFlightType);
+            })
+            ->with(['route.fromCity', 'route.toCity', 'route.returnCity', 'airline', 'airlineClass.class'])
+            ->get()
+            ->map(function ($fare) {
+                $fromCode = $fare->route->fromCity?->code ?? '';
+                $toCode = $fare->route->toCity?->code ?? '';
+                $returnCode = $fare->route->returnCity?->code ?? '';
+                $routeCode = $returnCode ? "{$fromCode}-{$toCode}-{$returnCode}" : "{$fromCode}-{$toCode}";
+
+                return [
+                    'id' => $fare->id,
+                    'route' => $routeCode,
+                    'airline' => $fare->airline->name,
+                    'class' => $fare->airlineClass->class?->name,
+                    'selling_fare' => $fare->selling_fare,
+                ];
+            });
+
+        return response()->json($fares);
+    }
+
     private function createBaggageAllowances(TicketFare $ticketFare, Request $request)
     {
         $routeType = $request->input('route_type');
@@ -295,5 +342,81 @@ class TicketFareController extends Controller
     {
         $ticketFare->baggageAllowances()->delete();
         $this->createBaggageAllowances($ticketFare, $request);
+    }
+
+    public function getBaggageAllowance(Request $request)
+    {
+        try {
+            $ticketFareId = $request->input('ticket_fare_id');
+            $passengerType = $request->input('passenger_type');
+            $direction = $request->input('direction');
+
+            if (!$ticketFareId) {
+                return response()->json([
+                    'allowances' => [],
+                    'message' => 'Missing required parameter: ticket_fare_id'
+                ]);
+            }
+
+            $ticketFare = TicketFare::with('baggageAllowances')->find($ticketFareId);
+
+            if (!$ticketFare) {
+                return response()->json([
+                    'allowances' => [],
+                    'message' => 'No ticket fare found'
+                ]);
+            }
+
+            $allowances = $ticketFare->baggageAllowances->map(function ($ba) {
+                return [
+                    'passenger_type' => $ba->passenger_type,
+                    'travel_direction' => $ba->travel_direction,
+                    'allowance' => $ba->allowance
+                ];
+            });
+
+            return response()->json([
+                'allowances' => $allowances,
+                'message' => $allowances->isNotEmpty() ? 'Baggage allowances found' : 'No baggage allowances defined'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Baggage allowance error: ' . $e->getMessage());
+            return response()->json(['allowances' => [], 'message' => 'Error: ' . $e->getMessage()], 500);
+        }
+    }
+
+    public function getFlightDateGap(Request $request)
+    {
+        $route = $request->input('route');
+        $airline = $request->input('airline');
+        $travelClass = $request->input('travel_class');
+
+        $flightDateGap = FlightDateGap::first();
+        $defaultGap = $flightDateGap?->gap ?? 30;
+
+        $additionalGap = 0;
+        
+        if ($route && $airline && $travelClass) {
+            $ticketFare = TicketFare::whereHas('route', function ($query) use ($route) {
+                    $query->where('code', $route);
+                })
+                ->whereHas('airline', function ($query) use ($airline) {
+                    $query->where('name', $airline);
+                })
+                ->whereHas('airlineClass', function ($query) use ($travelClass) {
+                    $query->where('name', $travelClass);
+                })
+                ->first();
+
+            if ($ticketFare && $ticketFare->route) {
+                $additionalGap = $ticketFare->route->additional_gap ?? 0;
+            }
+        }
+
+        return response()->json([
+            'default_gap' => $defaultGap,
+            'additional_gap' => $additionalGap,
+            'final_gap' => $defaultGap + $additionalGap
+        ]);
     }
 }

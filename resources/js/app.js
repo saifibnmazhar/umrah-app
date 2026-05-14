@@ -1,4 +1,5 @@
 import Alpine from 'alpinejs'
+import './booking.js'
 
 Alpine.start()
 
