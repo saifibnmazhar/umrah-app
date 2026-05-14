@@ -158,7 +158,7 @@
                                     <input type="hidden" :name="'passengers[' + index + '][mobile_no]'" :value="passenger.mobile_no">
                                     <input type="hidden" :name="'passengers[' + index + '][passport_expiry]'" :value="passenger.passport_expiry">
                                     <input type="hidden" :name="'passengers[' + index + '][service_required]'" :value="passenger.service_required">
-                                    <input type="hidden" :name="'passengers[' + index + '][stay_duration]'" :value="passenger.stay_duration">
+                                    <input type="hidden" :name="'passengers[' + index + '][stay_duration]'" :value="passenger.stay_duration_int || passenger.stay_duration">
                                     <input type="hidden" :name="'passengers[' + index + '][gender]'" :value="passenger.gender">
                                     <input type="hidden" :name="'passengers[' + index + '][route_type]'" :value="passenger.route_type">
                                     <input type="hidden" :name="'passengers[' + index + '][flight_type]'" :value="passenger.flight_type">
@@ -281,8 +281,8 @@
                             <label class="block text-sm font-medium text-slate-700 mb-1">Stay Duration *</label>
                             <select x-model="passengerData.stay_duration" @change="handleStayDurationChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Stay Duration</option>
-                                <option value="Group (14 Days)">Group (14 Days)</option>
-                                <option value="Family (85 Days)">Family (85 Days)</option>
+                                <option value="14">Group (14 Days)</option>
+                                <option value="85">Family (85 Days)</option>
                                 <option value="Customize (Set Duration)">Customize (Set Duration)</option>
                             </select>
                         </div>

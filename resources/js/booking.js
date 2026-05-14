@@ -54,6 +54,8 @@ customerModalVisible: false,
         passport_expiry: '',
         service_required: 'All',
         stay_duration: '14',
+        stay_duration_int: 14,
+        stay_duration_display: '',
         route: '',
         airline: '',
         travel_class: '',
@@ -162,15 +164,16 @@ customerModalVisible: false,
 
     saveCustomDuration() {
         const days = parseInt(this.passengerData.customDurationDays);
-        
+
         if (isNaN(days) || days < 30 || days > 89) {
             alert('Please enter a valid duration between 30 and 89 days');
             return;
         }
-        
-        const customValue = `Customized (${days} Days)`;
-        this.passengerData.stay_duration = customValue;
-        
+
+        this.passengerData.stay_duration = `Customized (${days} Days)`;
+        this.passengerData.stay_duration_int = days;
+        this.passengerData.stay_duration_display = `Customized (${days} Days)`;
+
         const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
         if (select) {
             let customOption = Array.from(select.options).find(opt => opt.value.startsWith('Customized'));
@@ -178,10 +181,11 @@ customerModalVisible: false,
                 customOption = document.createElement('option');
                 select.appendChild(customOption);
             }
-            customOption.value = customValue;
-            customOption.textContent = customValue;
+            customOption.value = `Customized (${days} Days)`;
+            customOption.textContent = `Customized (${days} Days)`;
+            select.value = `Customized (${days} Days)`;
         }
-        
+
         this.closeCustomDurationModal();
     },
 
@@ -423,12 +427,33 @@ customerModalVisible: false,
     openPassengerModal(index = null) {
         if (index !== null) {
             this.editingPassengerIndex = index;
-            this.passengerData = { 
+            this.passengerData = {
                 ...this.passengers[index],
                 route_type: this.passengers[index].route_type || '',
                 flight_type: this.passengers[index].flight_type || '',
                 baggage_weight: this.passengers[index].baggage_weight || ''
             };
+
+            if (this.passengerData.stay_duration_int && this.passengerData.stay_duration_int >= 30 && this.passengerData.stay_duration_int <= 89) {
+                this.passengerData.stay_duration = `Customized (${this.passengerData.stay_duration_int} Days)`;
+                this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration_int} Days)`;
+                this.$nextTick(() => {
+                    const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
+                    if (select) {
+                        let customOption = Array.from(select.options).find(opt => opt.value.startsWith('Customized'));
+                        if (!customOption) {
+                            customOption = document.createElement('option');
+                            select.appendChild(customOption);
+                        }
+                        customOption.value = `Customized (${this.passengerData.stay_duration_int} Days)`;
+                        customOption.textContent = `Customized (${this.passengerData.stay_duration_int} Days)`;
+                        select.value = `Customized (${this.passengerData.stay_duration_int} Days)`;
+                    }
+                });
+            } else if (this.passengerData.stay_duration && typeof this.passengerData.stay_duration === 'string' && this.passengerData.stay_duration.startsWith('Customized')) {
+                this.passengerData.stay_duration_display = this.passengerData.stay_duration;
+            }
+
             setTimeout(() => this.updateBaggageWeight(), 100);
         } else {
             this.editingPassengerIndex = null;
@@ -443,6 +468,8 @@ customerModalVisible: false,
                 passport_expiry: '',
                 service_required: 'All',
                 stay_duration: '14',
+                stay_duration_int: 14,
+                stay_duration_display: '',
                 route: '',
                 airline: '',
                 travel_class: '',
@@ -752,6 +779,8 @@ Alpine.data('createBookingApp', () => ({
         passport_expiry: '',
         service_required: '',
         stay_duration: '',
+        stay_duration_int: 0,
+        stay_duration_display: '',
         route_type: '',
         flight_type: '',
         route: '',
@@ -907,8 +936,11 @@ Alpine.data('createBookingApp', () => ({
             alert('Please enter a valid duration between 30 and 89 days');
             return;
         }
-        const customValue = `Customized (${days} Days)`;
-        this.passengerData.stay_duration = customValue;
+
+        this.passengerData.stay_duration = `Customized (${days} Days)`;
+        this.passengerData.stay_duration_int = days;
+        this.passengerData.stay_duration_display = `Customized (${days} Days)`;
+
         const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
         if (select) {
             let customOption = Array.from(select.options).find(opt => opt.value.startsWith('Customized'));
@@ -916,9 +948,11 @@ Alpine.data('createBookingApp', () => ({
                 customOption = document.createElement('option');
                 select.appendChild(customOption);
             }
-            customOption.value = customValue;
-            customOption.textContent = customValue;
+            customOption.value = `Customized (${days} Days)`;
+            customOption.textContent = `Customized (${days} Days)`;
+            select.value = `Customized (${days} Days)`;
         }
+
         this.closeCustomDurationModal();
     },
 
@@ -1023,6 +1057,7 @@ Alpine.data('createBookingApp', () => ({
             passport_expiry: '',
             service_required: '',
             stay_duration: '',
+            stay_duration_display: '',
             route_type: '',
             flight_type: '',
             route: '',
@@ -1073,6 +1108,23 @@ Alpine.data('createBookingApp', () => ({
         const passenger = this.passengers[index];
         this.passengerData = { ...passenger };
         this.passengerData.ticket_fare_id = this.passengerData.ticket_fare_id ? String(this.passengerData.ticket_fare_id) : '';
+
+        if (typeof this.passengerData.stay_duration === 'number' && this.passengerData.stay_duration >= 30 && this.passengerData.stay_duration <= 89) {
+            this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration} Days)`;
+            this.$nextTick(() => {
+                const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
+                if (select) {
+                    let customOption = Array.from(select.options).find(opt => opt.value.startsWith('Customized'));
+                    if (!customOption) {
+                        customOption = document.createElement('option');
+                        select.appendChild(customOption);
+                    }
+                    customOption.value = `Customized (${this.passengerData.stay_duration} Days)`;
+                    customOption.textContent = `Customized (${this.passengerData.stay_duration} Days)`;
+                    select.value = `Customized (${this.passengerData.stay_duration} Days)`;
+                }
+            });
+        }
         if (this.passengerData.ticket_fare_id) {
             const ticket = this.allTickets.find(t => t.id == this.passengerData.ticket_fare_id);
             if (ticket) {
