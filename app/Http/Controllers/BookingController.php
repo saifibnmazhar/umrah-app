@@ -59,6 +59,7 @@ class BookingController extends Controller
             return [
                 'id' => $pkg->id,
                 'package_name' => $pkg->package_name,
+                'ticket_fare_id' => $pkg->ticket_fare_id,
                 'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
                 'service_charge' => $pkg->service_charge ?? 0,
             ];
