@@ -11,7 +11,7 @@ use Carbon\Carbon;
 
 class BookingService
 {
-    public function calculatePassengerType($dateOfBirth): string
+    public function calculatePassengerType($dateOfBirth, $stayDuration = null): string
     {
         if (!$dateOfBirth) {
             return PassengerType::ADULT->value;
@@ -20,11 +20,32 @@ class BookingService
         $dob = Carbon::parse($dateOfBirth);
         $ageInMonths = $dob->diffInMonths(Carbon::now());
 
+        if ($stayDuration) {
+            $stayDays = $this->parseStayDurationDays($stayDuration);
+            if ($stayDays !== null) {
+                $adjustmentDays = $stayDays < 30 ? 30 : 90;
+                $effectiveDob = $dob->copy()->subDays($adjustmentDays);
+                $effectiveAgeInMonths = $effectiveDob->diffInMonths(Carbon::now());
+                $ageInMonths = max($ageInMonths, $effectiveAgeInMonths);
+            }
+        }
+
         return match (true) {
             $ageInMonths < 24 => PassengerType::INFANT->value,
             $ageInMonths < 144 => PassengerType::CHILD->value,
             default => PassengerType::ADULT->value,
         };
+    }
+
+    private function parseStayDurationDays($stayDuration): ?int
+    {
+        if (!$stayDuration) {
+            return null;
+        }
+        if (preg_match('/(\d+)\s*Days?/', $stayDuration, $matches)) {
+            return (int) $matches[1];
+        }
+        return null;
     }
 
     public function calculateDiscount(float $total, string $type, float $value): float
