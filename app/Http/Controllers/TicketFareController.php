@@ -346,40 +346,43 @@ class TicketFareController extends Controller
 
     public function getBaggageAllowance(Request $request)
     {
-        $route = $request->input('route');
-        $airline = $request->input('airline');
-        $travelClass = $request->input('travel_class');
-        $passengerType = $request->input('passenger_type');
-        $direction = $request->input('direction');
+        try {
+            $ticketFareId = $request->input('ticket_fare_id');
+            $passengerType = $request->input('passenger_type');
+            $direction = $request->input('direction');
 
-        if (!$route || !$airline || !$travelClass || !$passengerType || !$direction) {
-            return response()->json(['allowance' => null, 'message' => 'Missing required parameters']);
+            if (!$ticketFareId) {
+                return response()->json([
+                    'allowances' => [],
+                    'message' => 'Missing required parameter: ticket_fare_id'
+                ]);
+            }
+
+            $ticketFare = TicketFare::with('baggageAllowances')->find($ticketFareId);
+
+            if (!$ticketFare) {
+                return response()->json([
+                    'allowances' => [],
+                    'message' => 'No ticket fare found'
+                ]);
+            }
+
+            $allowances = $ticketFare->baggageAllowances->map(function ($ba) {
+                return [
+                    'passenger_type' => $ba->passenger_type,
+                    'travel_direction' => $ba->travel_direction,
+                    'allowance' => $ba->allowance
+                ];
+            });
+
+            return response()->json([
+                'allowances' => $allowances,
+                'message' => $allowances->isNotEmpty() ? 'Baggage allowances found' : 'No baggage allowances defined'
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Baggage allowance error: ' . $e->getMessage());
+            return response()->json(['allowances' => [], 'message' => 'Error: ' . $e->getMessage()], 500);
         }
-
-        $ticketFare = TicketFare::whereHas('route', function ($query) use ($route) {
-                $query->where('code', $route);
-            })
-            ->whereHas('airline', function ($query) use ($airline) {
-                $query->where('name', $airline);
-            })
-            ->whereHas('airlineClass', function ($query) use ($travelClass) {
-                $query->where('name', $travelClass);
-            })
-            ->first();
-
-        if (!$ticketFare) {
-            return response()->json(['allowance' => null, 'message' => 'No ticket fare found']);
-        }
-
-        $baggage = $ticketFare->baggageAllowances()
-            ->where('passenger_type', $passengerType)
-            ->where('travel_direction', $direction)
-            ->first();
-
-        return response()->json([
-            'allowance' => $baggage?->allowance,
-            'message' => $baggage ? 'Baggage allowance found' : 'No baggage allowance defined'
-        ]);
     }
 
     public function getFlightDateGap(Request $request)

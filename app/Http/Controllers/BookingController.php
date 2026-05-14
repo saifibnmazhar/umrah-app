@@ -64,7 +64,8 @@ class BookingController extends Controller
             'route.multiSegments.toCity',
             'airline',
             'airlineClass.class',
-            'groupTicket'
+            'groupTicket',
+            'baggageAllowances'
         ])->get()->map(function ($fare) {
             $routeCode = '';
             $routeType = $fare->route->route_type?->value;
@@ -93,6 +94,13 @@ class BookingController extends Controller
                 'available_seats' => $fare->groupTicket?->ticket_qty ?? null,
                 'route_type' => $routeType,
                 'flight_type' => $fare->route->flight_type?->value,
+                'baggage_allowances' => $fare->baggageAllowances->map(function ($ba) {
+                    return [
+                        'passenger_type' => $ba->passenger_type,
+                        'travel_direction' => $ba->travel_direction,
+                        'allowance' => $ba->allowance
+                    ];
+                })->toArray(),
             ];
         });
 
