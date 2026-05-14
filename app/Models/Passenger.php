@@ -32,6 +32,7 @@ class Passenger extends Model
         'visa_status',
         'address',
         'ticket_fare_id',
+        'package_value',
     ];
 
     protected $casts = [
@@ -46,6 +47,7 @@ class Passenger extends Model
         'service_required' => ServiceRequired::class,
         'ticket_status' => TicketStatus::class,
         'visa_status' => VisaStatus::class,
+        'package_value' => 'decimal:2',
     ];
 
     public function booking(): BelongsTo
