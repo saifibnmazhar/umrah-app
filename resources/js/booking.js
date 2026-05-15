@@ -1083,12 +1083,20 @@ Alpine.data('createBookingApp', () => ({
         const passengerType = this.passengerData.passenger_type;
         const routeType = this.passengerData.route_type;
 
-        if (!ticketFareId) {
-            this.passengerData.baggage_weight = '';
+        if (!ticketFareId && !passengerType) {
+            this.passengerData.baggage_weight = 'Select a Ticket and Define Passenger Type';
             return;
         }
-        if (!passengerType || !routeType) {
-            this.passengerData.baggage_weight = 'Select passenger type to see baggage';
+        if (!ticketFareId) {
+            this.passengerData.baggage_weight = 'Select a Ticket';
+            return;
+        }
+        if (!passengerType) {
+            this.passengerData.baggage_weight = 'Define Passenger Type';
+            return;
+        }
+        if (!routeType) {
+            this.passengerData.baggage_weight = 'Select Route Type';
             return;
         }
 
