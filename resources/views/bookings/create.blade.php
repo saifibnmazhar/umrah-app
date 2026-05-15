@@ -2,7 +2,7 @@
 @section('title', 'Create Booking')
 @section('content')
 <script>window.__bookingServerData = { ticketFares: @json($ticketFares ?? []), packages: @json($packages ?? []), preSelectedPackageId: {{ $preSelectedPackageId ?? 'null' }} };</script>
-<div class="max-w-5xl mx-auto" x-data="createBookingApp()">
+<div class="max-w-5xl mx-auto" x-data="createBookingApp()" x-init="init()">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Create Booking</h1>
         <a href="{{ route('bookings.index') }}" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">

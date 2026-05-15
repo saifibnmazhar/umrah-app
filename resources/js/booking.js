@@ -854,7 +854,7 @@ Alpine.data('createBookingApp', () => ({
     },
     allTickets: [],
     filteredTickets: [],
-    allPackages: window.__bookingServerData?.packages ?? [],
+    allPackages: [],
     passengerPackageValues: {},
 
     get totalPackageValue() {
@@ -875,20 +875,22 @@ Alpine.data('createBookingApp', () => ({
     },
 
     init() {
-        const urlParams = new URLSearchParams(window.location.search);
-        const tab = urlParams.get('tab');
-        if (tab) {
-            this.activeTab = tab;
-        }
-        if (typeof window.__bookingServerData !== 'undefined') {
-            if (window.__bookingServerData.ticketFares) {
-                this.allTickets = window.__bookingServerData.ticketFares;
+        const serverData = window.__bookingServerData || {};
+        this.packages = serverData.packages || [];
+        this.allPackages = this.packages.map(p => ({
+            ...p,
+            id: String(p.id),
+            ticket_fare_id: p.ticket_fare_id ? String(p.ticket_fare_id) : null,
+        }));
+        this.allTickets = serverData.ticketFares || [];
+        this.filteredTickets = this.allTickets;
+
+        this.$nextTick(() => {
+            if (serverData.preSelectedPackageId) {
+                this.bookingData.package_id = String(serverData.preSelectedPackageId);
             }
-            if (window.__bookingServerData.preSelectedPackageId) {
-                this.bookingData.package_id = window.__bookingServerData.preSelectedPackageId;
-            }
-        }
-        this.recalculateAllPassengerValues();
+            this.recalculateAllPassengerValues();
+        });
     },
 
     showForm() {
