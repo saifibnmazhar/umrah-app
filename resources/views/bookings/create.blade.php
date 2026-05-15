@@ -196,15 +196,15 @@
                     <span class="w-1/6 text-center">Pax Qty</span>
                     <span class="w-1/6 text-center">Discount</span>
                     <span class="w-1/6 text-center">Total</span>
-                    <span class="w-1/6 text-center">Value</span>
+                    <span class="w-1/6 text-center">Discounted Total</span>
                 </div>
                 <div class="flex justify-between font-medium text-slate-800">
-                    <span id="summaryPackage" class="w-1/6 text-center">-</span>
+                    <span id="summaryPackage" class="w-1/6 text-center" x-text="allPackages.find(p => String(p.id) === String(bookingData.package_id))?.package_name ?? '-'">-</span>
                     <span class="w-1/6 text-center" x-text="fingerprintCharge > 0 ? fingerprintCharge + ' SAR' : '-'">-</span>
                     <span class="w-1/6 text-center" x-text="passengerCount">0</span>
                     <span class="w-1/6 text-center" x-text="bookingData.discount_value > 0 ? '-' + bookingData.discount_value + (bookingData.discount_type === 'percentage' ? '%' : ' SAR') : '-'">-</span>
-<span id="summaryTotalBeforeDiscount" class="w-1/6 text-center" x-text="(grandTotalValue ?? 0).toFixed(2) + ' SAR'">0 SAR</span>
-                    <span id="summaryTotalValue" class="w-1/6 text-center" x-text="(totalPackageValue ?? 0).toFixed(2) + ' SAR'">0 SAR</span>
+                    <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center" x-text="(grandTotalValue ?? 0).toFixed(2) + ' SAR'">0 SAR</span>
+                    <span id="summaryTotalValue" class="w-1/6 text-center" x-text="discountedTotal !== null ? discountedTotal.toFixed(2) + ' SAR' : 'N/A'">0 SAR</span>
                 </div>
             </div>
 

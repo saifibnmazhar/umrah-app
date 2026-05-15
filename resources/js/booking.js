@@ -854,7 +854,7 @@ Alpine.data('createBookingApp', () => ({
     },
     allTickets: [],
     filteredTickets: [],
-    allPackages: [],
+    allPackages: window.__bookingServerData?.packages ?? [],
     passengerPackageValues: {},
 
     get totalPackageValue() {
@@ -864,6 +864,14 @@ Alpine.data('createBookingApp', () => ({
     },
     get grandTotalValue() {
         return this.totalPackageValue + (parseFloat(this.fingerprintCharge) || 0);
+    },
+    get discountedTotal() {
+        const disc = parseFloat(this.bookingData.discount_value) || 0;
+        if (disc <= 0) return null;
+        const grand = this.grandTotalValue;
+        const discType = this.bookingData.discount_type;
+        const discAmt = discType === 'percentage' ? grand * disc / 100 : disc;
+        return grand - discAmt;
     },
 
     init() {
@@ -875,9 +883,6 @@ Alpine.data('createBookingApp', () => ({
         if (typeof window.__bookingServerData !== 'undefined') {
             if (window.__bookingServerData.ticketFares) {
                 this.allTickets = window.__bookingServerData.ticketFares;
-            }
-            if (window.__bookingServerData.packages) {
-                this.allPackages = window.__bookingServerData.packages;
             }
             if (window.__bookingServerData.preSelectedPackageId) {
                 this.bookingData.package_id = window.__bookingServerData.preSelectedPackageId;
