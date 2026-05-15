@@ -568,7 +568,6 @@ customerModalVisible: false,
             this.passengers.push({ ...this.passengerData });
             this.recalculateAllPassengerValues();
         }
-        }
         this.passengerCount = this.passengers.length;
         this.closePassengerModal();
         return true;
@@ -1345,7 +1344,6 @@ Alpine.data('createBookingApp', () => ({
             this.passengers.push({ ...this.passengerData });
             this.recalculateAllPassengerValues();
         }
-        }
         this.passengerCount = this.passengers.length;
         this.closePassengerModal();
     },
@@ -1760,5 +1758,3 @@ window.handleCustomerDocUpload = function(input) {
 window.removeCustomerDoc = function(btn) {
     btn.parentElement.remove();
 };
-
-});
