@@ -1574,5 +1574,113 @@ Alpine.data('createBookingApp', () => ({
                 refundable.disabled = false;
             }
         }
+    },
+
+    handleBookingCustomerDocsUpload(input) {
+        const list = document.getElementById('booking_customer_docs_list');
+        if (!list) return;
+        list.innerHTML = '';
+        Array.from(input.files).forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+            item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeBookingCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+            list.appendChild(item);
+        });
+    },
+
+    removeBookingCustomerDoc(btn) {
+        btn.parentElement.remove();
+    },
+
+    handlePassengerDocUpload(input) {
+        const list = document.getElementById('passenger_doc_list');
+        if (!list) return;
+        list.innerHTML = '';
+        Array.from(input.files).forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+            item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removePassengerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+            list.appendChild(item);
+        });
+    },
+
+    removePassengerDoc(btn) {
+        btn.parentElement.remove();
+    },
+
+    handleRefIqamaFileUpload(input) {
+        const file = input.files[0];
+        const display = document.getElementById('ref_iqama_doc_filename');
+        if (file && display) display.textContent = file.name;
+    },
+
+    handleCustomerDocUpload(input) {
+        const list = document.getElementById('customer_docs_list');
+        if (!list) return;
+        list.innerHTML = '';
+        Array.from(input.files).forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+            item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+            list.appendChild(item);
+        });
+    },
+
+    removeCustomerDoc(btn) {
+        btn.parentElement.remove();
     }
 }));
+
+window.handleBookingCustomerDocsUpload = function(input) {
+    const list = document.getElementById('booking_customer_docs_list');
+    if (!list) return;
+    list.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeBookingCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+        list.appendChild(item);
+    });
+};
+
+window.removeBookingCustomerDoc = function(btn) {
+    btn.parentElement.remove();
+};
+
+window.handlePassengerDocUpload = function(input) {
+    const list = document.getElementById('passenger_doc_list');
+    if (!list) return;
+    list.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removePassengerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+        list.appendChild(item);
+    });
+};
+
+window.removePassengerDoc = function(btn) {
+    btn.parentElement.remove();
+};
+
+window.handleRefIqamaFileUpload = function(input) {
+    const file = input.files[0];
+    const display = document.getElementById('ref_iqama_doc_filename');
+    if (file && display) display.textContent = file.name;
+};
+
+window.handleCustomerDocUpload = function(input) {
+    const list = document.getElementById('customer_docs_list');
+    if (!list) return;
+    list.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+        list.appendChild(item);
+    });
+};
+
+window.removeCustomerDoc = function(btn) {
+    btn.parentElement.remove();
+};
