@@ -1256,6 +1256,11 @@ Alpine.data('createBookingApp', () => ({
             customDurationDays: ''
         };
         if (packageTicketFareId) {
+            this.passengerData.baggage_weight = 'Define Passenger Type';
+        } else {
+            this.passengerData.baggage_weight = 'Select a Ticket and Define Passenger Type';
+        }
+        if (packageTicketFareId) {
             const ticket = this.allTickets.find(t => t.id == packageTicketFareId);
             if (ticket) {
                 const reverseRouteTypeMap = {
