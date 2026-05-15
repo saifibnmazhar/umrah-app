@@ -61,29 +61,81 @@ class BookingService
         return min($value, $total);
     }
 
+    public function calculatePackageValue(Passenger $passenger): float
+    {
+        $ticketFare = $passenger->ticketFare;
+        $booking = $passenger->booking;
+        $package = $booking->package;
+        $serviceRequired = $passenger->service_required;
+        $passengerType = $passenger->passenger_type;
+
+        $ticketAmount = 0;
+        $visaAmount = 0;
+        $serviceChargeAmount = 0;
+
+        if ($ticketFare) {
+            $baseFare = (float) $ticketFare->selling_fare;
+            $ticketAmount = match ($passengerType) {
+                'child'  => $baseFare * ((float) $ticketFare->child_fare_percentage) / 100,
+                'infant' => $baseFare * ((float) $ticketFare->infant_fare_percentage) / 100,
+                default  => $baseFare,
+            };
+        }
+
+        if ($serviceRequired !== 'ticket_only' && $package) {
+            $visaAmount = (float) ($package->visaSellingPrice?->selling_price ?? 0);
+            $serviceChargeAmount = (float) ($package->service_charge ?? 0);
+        }
+
+        if ($serviceRequired === 'ticket_only' && $package) {
+            $serviceChargeAmount = (float) ($package->service_charge ?? 0);
+        }
+
+        return $ticketAmount + $visaAmount + $serviceChargeAmount;
+    }
+
+    public function recalculateBookingTotal(Booking $booking): float
+    {
+        foreach ($booking->passengers as $passenger) {
+            $passenger->package_value = $this->calculatePackageValue($passenger);
+            $passenger->saveQuietly();
+        }
+
+        $passengerTotal = (float) $booking->passengers->sum('package_value');
+        $fingerprintCharge = $this->getFingerprintCharge(
+            $booking->district_id,
+            $booking->fingerprint_location ?? 'office'
+        );
+        $total = $passengerTotal + $fingerprintCharge;
+
+        $booking->total_value = $total;
+        $booking->saveQuietly();
+
+        return $total;
+    }
+
     public function calculateTotal(Booking $booking): array
     {
         $passengers = $booking->passengers;
-        $package = $booking->package;
-        
-        $packageValue = $package ? ($package->offer_price ?? $package->regular_price) * $passengers->count() : 0;
-        
+
+        $passengerTotal = (float) $passengers->sum('package_value');
+
         $fingerprintCharge = $this->getFingerprintCharge(
             $booking->district_id,
             $booking->fingerprint_location
         );
-        
-        $subtotal = $packageValue + $fingerprintCharge;
+
+        $subtotal = $passengerTotal + $fingerprintCharge;
         $discount = $this->calculateDiscount(
             $subtotal,
             $booking->discount_type ?? 'fixed',
             $booking->discount_value ?? 0
         );
-        
+
         $total = $subtotal - $discount;
 
         return [
-            'package_value' => $packageValue,
+            'package_value' => $passengerTotal,
             'fingerprint_charge' => $fingerprintCharge,
             'subtotal' => $subtotal,
             'discount' => $discount,

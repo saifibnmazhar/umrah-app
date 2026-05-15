@@ -261,6 +261,7 @@ customerModalVisible: false,
         
         this.passengerData.passenger_type = calculatedType;
         this.updateBaggageWeight();
+        this.recalculateCurrentPassenger(this.editingPassengerIndex ?? this.passengers.length);
     },
 
     updateBaggageWeight() {
@@ -471,7 +472,7 @@ customerModalVisible: false,
         if (summaryFingerprintCharge) summaryFingerprintCharge.textContent = fingerprintCharge > 0 ? `${fingerprintCharge} SAR` : '-';
         if (summaryPaxQty) summaryPaxQty.textContent = paxQty;
         if (summaryDiscount) summaryDiscount.textContent = discountAmount > 0 ? `-${discountAmount} SAR` : '-';
-        if (summaryTotalBeforeDiscount) summaryTotalBeforeDiscount.textContent = totalBeforeDiscount > 0 ? `${totalBeforeDiscount} SAR` : '0 SAR';
+        if (summaryTotalBeforeDiscount) summaryTotalBeforeDiscount.textContent = totalBeforeDiscount > 0 ? `${totalBeforeDiscount} SAR` : '-';
         if (summaryTotalValue) summaryTotalValue.textContent = `${totalValue} SAR`;
     },
 
@@ -561,9 +562,12 @@ customerModalVisible: false,
         passengerCopy.stay_duration = this.parseStayDurationDays(this.passengerData.stay_duration) || this.passengerData.stay_duration;
         
         if (this.editingPassengerIndex !== null) {
-            this.passengers[this.editingPassengerIndex] = passengerCopy;
+            this.passengers[this.editingPassengerIndex] = { ...this.passengerData };
+            this.recalculateCurrentPassenger(this.editingPassengerIndex);
         } else {
-            this.passengers.push(passengerCopy);
+            this.passengers.push({ ...this.passengerData });
+            this.recalculateAllPassengerValues();
+        }
         }
         this.passengerCount = this.passengers.length;
         this.closePassengerModal();
@@ -574,6 +578,7 @@ customerModalVisible: false,
         if (confirm('Are you sure you want to remove this passenger?')) {
             this.passengers.splice(index, 1);
             this.passengerCount = this.passengers.length;
+            this.recalculateAllPassengerValues();
         }
     },
 
@@ -850,7 +855,17 @@ Alpine.data('createBookingApp', () => ({
     },
     allTickets: [],
     filteredTickets: [],
-    packages: [],
+    allPackages: [],
+    passengerPackageValues: {},
+
+    get totalPackageValue() {
+        return Object.values(this.passengerPackageValues).reduce(
+            (sum, v) => sum + (parseFloat(v) || 0), 0
+        );
+    },
+    get grandTotalValue() {
+        return this.totalPackageValue + (parseFloat(this.fingerprintCharge) || 0);
+    },
 
     init() {
         const urlParams = new URLSearchParams(window.location.search);
@@ -863,12 +878,13 @@ Alpine.data('createBookingApp', () => ({
                 this.allTickets = window.__bookingServerData.ticketFares;
             }
             if (window.__bookingServerData.packages) {
-                this.packages = window.__bookingServerData.packages;
+                this.allPackages = window.__bookingServerData.packages;
             }
             if (window.__bookingServerData.preSelectedPackageId) {
                 this.bookingData.package_id = window.__bookingServerData.preSelectedPackageId;
             }
         }
+        this.recalculateAllPassengerValues();
     },
 
     showForm() {
@@ -1013,6 +1029,7 @@ Alpine.data('createBookingApp', () => ({
         
         this.passengerData.passenger_type = calculatedType;
         this.updateBaggageWeight();
+        this.recalculateCurrentPassenger(this.editingPassengerIndex ?? this.passengers.length);
     },
 
     handleStayDurationChange() {
@@ -1143,11 +1160,60 @@ Alpine.data('createBookingApp', () => ({
         }
     },
 
+    calculatePackageValue(passenger, selectedPackage) {
+        const ticketFareId = passenger.ticket_fare_id;
+        const serviceRequired = passenger.service_required || 'all';
+        const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
+
+        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+        if (!ticket) return 0;
+
+        const sellingFare = parseFloat(ticket.selling_fare) || 0;
+        let ticketAmount = sellingFare;
+        if (passengerType === 'child') {
+            const pct = parseFloat(ticket.child_fare_percentage) || 0;
+            ticketAmount = sellingFare * pct / 100;
+        } else if (passengerType === 'infant') {
+            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+            ticketAmount = sellingFare * pct / 100;
+        }
+
+        const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
+        const serviceCharge = parseFloat(selectedPackage?.service_charge) || 0;
+
+        let visaAmount = 0;
+        let scAmount = 0;
+        if (serviceRequired !== 'ticket_only') {
+            visaAmount = visaPrice;
+            scAmount = serviceCharge;
+        } else {
+            scAmount = serviceCharge;
+        }
+
+        return ticketAmount + visaAmount + scAmount;
+    },
+
+    recalculateAllPassengerValues() {
+        const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+        this.passengers.forEach((p, index) => {
+            this.passengerPackageValues[index] = this.calculatePackageValue(p, pkg);
+        });
+    },
+
+    recalculateCurrentPassenger(index) {
+        const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+        this.passengerPackageValues[index] = this.calculatePackageValue(this.passengers[index], pkg);
+    },
+
+    onPackageChange() {
+        this.recalculateAllPassengerValues();
+    },
+
     openPassengerModal() {
         this.editingPassengerIndex = null;
         let packageTicketFareId = null;
         if (this.bookingData.package_id) {
-            const pkg = this.packages.find(p => p.id == this.bookingData.package_id);
+            const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
             if (pkg && pkg.ticket_fare_id) {
                 packageTicketFareId = pkg.ticket_fare_id;
             }
@@ -1273,9 +1339,12 @@ Alpine.data('createBookingApp', () => ({
         const passengerCopy = { ...this.passengerData };
         passengerCopy.stay_duration = this.parseStayDurationDays(this.passengerData.stay_duration) || this.passengerData.stay_duration;
         if (this.editingPassengerIndex !== null) {
-            this.passengers[this.editingPassengerIndex] = passengerCopy;
+            this.passengers[this.editingPassengerIndex] = { ...this.passengerData };
+            this.recalculateCurrentPassenger(this.editingPassengerIndex);
         } else {
-            this.passengers.push(passengerCopy);
+            this.passengers.push({ ...this.passengerData });
+            this.recalculateAllPassengerValues();
+        }
         }
         this.passengerCount = this.passengers.length;
         this.closePassengerModal();
@@ -1329,6 +1398,7 @@ Alpine.data('createBookingApp', () => ({
     onTicketChange() {
         this.updateRouteAirlineClass();
         this.updateBaggageWeight();
+        this.recalculateCurrentPassenger(this.editingPassengerIndex ?? this.passengers.length);
     },
 
     updateRouteAirlineClass() {
@@ -1350,6 +1420,7 @@ Alpine.data('createBookingApp', () => ({
         if (confirm('Are you sure you want to remove this passenger?')) {
             this.passengers.splice(index, 1);
             this.passengerCount = this.passengers.length;
+            this.recalculateAllPassengerValues();
         }
     },
 
@@ -1442,16 +1513,21 @@ Alpine.data('createBookingApp', () => ({
     },
 
     openPaymentModal() {
-        const packageSelect = document.querySelector('#bookingPackage');
-        const packageValue = parseInt(packageSelect?.selectedOptions[0]?.dataset?.packageValue) || 0;
-        const totalPackageValue = (packageValue * this.passengers.length) + this.fingerprintCharge;
-        const due = totalPackageValue - this.bookingData.discount_value;
+        const totalPkgVal = this.totalPackageValue;
+        const fpCharge = parseFloat(this.fingerprintCharge) || 0;
+        const discount = parseFloat(this.bookingData.discount_value) || 0;
+        const discountType = this.bookingData.discount_type;
+        const grand = totalPkgVal + fpCharge;
+        const discountAmount = discountType === 'percentage'
+            ? grand * discount / 100
+            : discount;
+        const due = grand - discountAmount;
         const totalEl = document.getElementById('paymentTotalPackageValue');
         const paidEl = document.getElementById('paymentPaid');
         const dueEl = document.getElementById('paymentDue');
-        if (totalEl) totalEl.textContent = totalPackageValue + ' SAR';
+        if (totalEl) totalEl.textContent = grand.toFixed(2) + ' SAR';
         if (paidEl) paidEl.textContent = '0 SAR';
-        if (dueEl) dueEl.textContent = due + ' SAR';
+        if (dueEl) dueEl.textContent = due.toFixed(2) + ' SAR';
         this.paymentData = {
             currency: 'SAR',
             method: 'Cash',
@@ -1684,3 +1760,5 @@ window.handleCustomerDocUpload = function(input) {
 window.removeCustomerDoc = function(btn) {
     btn.parentElement.remove();
 };
+
+});
