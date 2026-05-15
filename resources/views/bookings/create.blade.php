@@ -354,12 +354,12 @@
                                    readonly
                                    class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 font-medium"
                                    :class="{
-                                       'bg-yellow-50 border-yellow-300 text-yellow-700': passengerData.baggage_weight && !passengerData.baggage_weight.includes('Select') && !passengerData.baggage_weight.includes('No baggage'),
+                                       'bg-yellow-50 border-yellow-300 text-yellow-700': passengerData.baggage_weight && !passengerData.baggage_weight.includes('Select') && !passengerData.baggage_weight.includes('Define') && !passengerData.baggage_weight.includes('No baggage') && !passengerData.baggage_weight.includes('Route Type'),
                                        'bg-red-50 border-red-200 text-red-500': passengerData.baggage_weight === 'No baggage allowance defined',
-                                       'bg-blue-50 border-blue-200 text-blue-600': passengerData.baggage_weight === 'Select passenger type to see baggage'
+                                       'bg-blue-50 border-blue-200 text-blue-600': passengerData.baggage_weight.includes('Select') || passengerData.baggage_weight.includes('Define') || passengerData.baggage_weight.includes('Route Type')
                                    }"
-                                   placeholder="Select a ticket to see baggage allowance">
-                            <p x-show="!passengerData.baggage_weight" class="text-xs text-slate-400 mt-1">Baggage allowance will be displayed based on ticket fare and passenger type</p>
+                                   placeholder="Baggage allowance will appear here">
+                            <p x-show="!passengerData.baggage_weight || passengerData.baggage_weight.includes('Select') || passengerData.baggage_weight.includes('Define') || passengerData.baggage_weight.includes('Route Type')" class="text-xs text-slate-400 mt-1">Select ticket, route type and define passenger type to see baggage</p>
                         </div>
                     </div>
                 </div>
