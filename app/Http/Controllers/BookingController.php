@@ -75,8 +75,6 @@ class BookingController extends Controller
             'airlineClass.class',
             'groupTicket',
             'baggageAllowances',
-            'package.visaSellingPrice',
-            'package.serviceCharge',
         ])->get()->map(function ($fare) {
             $routeCode = '';
             $routeType = $fare->route->route_type?->value;
@@ -114,8 +112,6 @@ class BookingController extends Controller
                         'allowance' => $ba->allowance
                     ];
                 })->toArray(),
-                'visa_selling_price' => $fare->package?->visaSellingPrice?->selling_price ?? 0,
-                'service_charge' => $fare->package?->service_charge ?? 0,
             ];
         });
 
@@ -133,7 +129,7 @@ class BookingController extends Controller
             'district_id' => 'nullable|exists:districts,id',
             'office_id' => 'nullable|exists:offices,id',
             'package_id' => 'nullable|exists:packages,id',
-            'fingerprint_location' => 'nullable|in:Office,Home',
+            'fingerprint_location' => 'nullable|in:office,home',
             'fingerprint_office' => 'nullable|string|max:255',
             'pax_qty' => 'nullable|integer|min:1',
             'discount_type' => 'nullable|in:fixed,percentage',
@@ -253,7 +249,7 @@ class BookingController extends Controller
             'district_id' => 'nullable|exists:districts,id',
             'office_id' => 'nullable|exists:offices,id',
             'package_id' => 'nullable|exists:packages,id',
-            'fingerprint_location' => 'nullable|in:Office,Home',
+            'fingerprint_location' => 'nullable|in:office,home',
             'fingerprint_office' => 'nullable|string|max:255',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
@@ -381,7 +377,7 @@ class BookingController extends Controller
             return response()->json(['charge' => 0]);
         }
 
-        $charge = $location === 'Home' ? $fingerprintCharge->fingerprint_charge : 0;
+        $charge = $location === 'home' ? $fingerprintCharge->fingerprint_charge : 0;
 
         return response()->json(['charge' => $charge]);
     }

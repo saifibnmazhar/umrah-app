@@ -1310,6 +1310,7 @@ Alpine.data('createBookingApp', () => ({
         if (confirm('Are you sure you want to remove this passenger?')) {
             this.passengers.splice(index, 1);
             this.passengerCount = this.passengers.length;
+            this.recalculateAllPassengerValues();
         }
     },
 
@@ -1411,7 +1412,6 @@ Alpine.data('createBookingApp', () => ({
             ? grand * discount / 100
             : discount;
         const due = grand - discountAmount;
-
         const totalEl = document.getElementById('paymentTotalPackageValue');
         const paidEl = document.getElementById('paymentPaid');
         const dueEl = document.getElementById('paymentDue');
