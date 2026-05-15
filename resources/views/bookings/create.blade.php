@@ -360,9 +360,7 @@
                                        'bg-yellow-50 border-yellow-300 text-yellow-700': passengerData.baggage_weight && !passengerData.baggage_weight.includes('Select') && !passengerData.baggage_weight.includes('Define') && !passengerData.baggage_weight.includes('No baggage') && !passengerData.baggage_weight.includes('Route Type'),
                                        'bg-red-50 border-red-200 text-red-500': passengerData.baggage_weight === 'No baggage allowance defined',
                                        'bg-blue-50 border-blue-200 text-blue-600': passengerData.baggage_weight.includes('Select') || passengerData.baggage_weight.includes('Define') || passengerData.baggage_weight.includes('Route Type')
-                                   }"
-                                   placeholder="Baggage allowance will appear here">
-                            <p x-show="!passengerData.baggage_weight || passengerData.baggage_weight.includes('Select') || passengerData.baggage_weight.includes('Define') || passengerData.baggage_weight.includes('Route Type')" class="text-xs text-slate-400 mt-1">Select ticket, route type and define passenger type to see baggage</p>
+                                   }">
                         </div>
                     </div>
                 </div>
