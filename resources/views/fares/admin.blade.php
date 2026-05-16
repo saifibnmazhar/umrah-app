@@ -725,16 +725,17 @@
 
                     <div id="transitFieldsModal" class="hidden grid grid-cols-3 gap-4 mt-4">
                         <div x-show="route.flight_type === 'transit'">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit City</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit City (Inbound)</label>
                             <select name="transits[0][transit_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                 <option value="">Select</option>
                                 @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                     <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                                 @endforeach
                             </select>
+                            <input type="hidden" name="transits[0][route_direction]" value="inbound">
                         </div>
                         <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_inbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time Inbound</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time (Inbound)</label>
                             <div class="flex items-center gap-2">
                                 <input type="number" name="transits[0][transit_hours]" min="0" max="23" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="HH">
                                 <span class="text-slate-500 font-medium">:</span>
@@ -742,7 +743,17 @@
                             </div>
                         </div>
                         <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_outbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time Outbound</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit City (Outbound)</label>
+                            <select name="transits[1][transit_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                <option value="">Select</option>
+                                @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                                    <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                                @endforeach
+                            </select>
+                            <input type="hidden" name="transits[1][route_direction]" value="outbound">
+                        </div>
+                        <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_outbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time (Outbound)</label>
                             <div class="flex items-center gap-2">
                                 <input type="number" name="transits[1][transit_hours]" min="0" max="23" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="HH">
                                 <span class="text-slate-500 font-medium">:</span>

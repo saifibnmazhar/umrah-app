@@ -152,8 +152,8 @@
         </div>
 
         <div id="transitFields" class="hidden grid grid-cols-2 gap-4">
-            <div>
-                <label for="transit_city_id" class="block text-sm font-medium text-slate-700 mb-1">Transit City</label>
+            <div id="inboundTransit">
+                <label for="transit_city_id" class="block text-sm font-medium text-slate-700 mb-1">Transit City (Inbound)</label>
                 <select name="transits[0][transit_city_id]" id="transit_city_id"
                     class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                     <option value="">Select</option>
@@ -161,15 +161,39 @@
                         <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                     @endforeach
                 </select>
+                <input type="hidden" name="transits[0][route_direction]" value="inbound">
             </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time</label>
+            <div id="inboundTransitTime">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time (Inbound)</label>
                 <div class="flex items-center gap-2">
                     <input type="number" name="transits[0][transit_hours]" id="transit_hours" min="0" max="23"
                         class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border"
                         placeholder="HH">
                     <span class="text-slate-500 font-medium">:</span>
                     <input type="number" name="transits[0][transit_minutes]" id="transit_minutes" min="0" max="59"
+                        class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border"
+                        placeholder="MM">
+                </div>
+            </div>
+            <div id="outboundTransit" class="hidden">
+                <label for="transit_city_id_outbound" class="block text-sm font-medium text-slate-700 mb-1">Transit City (Outbound)</label>
+                <select name="transits[1][transit_city_id]" id="transit_city_id_outbound"
+                    class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                    <option value="">Select</option>
+                    @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
+                        <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
+                    @endforeach
+                </select>
+                <input type="hidden" name="transits[1][route_direction]" value="outbound">
+            </div>
+            <div id="outboundTransitTime" class="hidden">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time (Outbound)</label>
+                <div class="flex items-center gap-2">
+                    <input type="number" name="transits[1][transit_hours]" id="transit_hours_outbound" min="0" max="23"
+                        class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border"
+                        placeholder="HH">
+                    <span class="text-slate-500 font-medium">:</span>
+                    <input type="number" name="transits[1][transit_minutes]" id="transit_minutes_outbound" min="0" max="59"
                         class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border"
                         placeholder="MM">
                 </div>
@@ -217,16 +241,42 @@ function toggleRouteFields() {
         cityGrid.classList.remove('grid-cols-2');
         cityGrid.classList.add('grid-cols-3');
     }
+
+    toggleTransitFields();
 }
 
 function toggleTransitFields() {
     const flightType = document.getElementById('flight_type').value;
+    const routeType = document.getElementById('route_type').value;
     const transitFields = document.getElementById('transitFields');
+    const inboundTransit = document.getElementById('inboundTransit');
+    const inboundTransitTime = document.getElementById('inboundTransitTime');
+    const outboundTransit = document.getElementById('outboundTransit');
+    const outboundTransitTime = document.getElementById('outboundTransitTime');
 
-    if (flightType === 'transit') {
-        transitFields.classList.remove('hidden');
-    } else {
+    if (flightType !== 'transit') {
         transitFields.classList.add('hidden');
+        return;
+    }
+
+    transitFields.classList.remove('hidden');
+
+    const showOutbound = routeType === 'round' || routeType === 'multi_city';
+
+    if (routeType === 'oneway_inbound' || showOutbound) {
+        inboundTransit.classList.remove('hidden');
+        inboundTransitTime.classList.remove('hidden');
+    } else {
+        inboundTransit.classList.add('hidden');
+        inboundTransitTime.classList.add('hidden');
+    }
+
+    if (routeType === 'oneway_outbound' || showOutbound) {
+        outboundTransit.classList.remove('hidden');
+        outboundTransitTime.classList.remove('hidden');
+    } else {
+        outboundTransit.classList.add('hidden');
+        outboundTransitTime.classList.add('hidden');
     }
 }
 
