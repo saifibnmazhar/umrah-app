@@ -25,13 +25,13 @@
         <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
             <h2 class="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">Basic Information</h2>
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div>
+                {{-- <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Date</label>
                     <input type="date" value="{{ date('Y-m-d') }}" readonly class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm bg-slate-50">
-                </div>
+                </div> --}}
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                    <select name="route_type" id="routeType" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" onchange="toggleFields()">
+                    <select name="route_type" id="routeType" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" onchange="handleRouteTypeChange()">
                         <option value="">Select Type</option>
                         <option value="oneway_inbound" {{ old('route_type') == 'oneway_inbound' ? 'selected' : '' }}>One Way - Inbound</option>
                         <option value="oneway_outbound" {{ old('route_type') == 'oneway_outbound' ? 'selected' : '' }}>One Way - Outbound</option>
@@ -40,8 +40,16 @@
                     </select>
                 </div>
                 <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                    <select name="flight_type" id="flightType" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" onchange="handleFlightTypeChange()">
+                        <option value="">Select Flight Type</option>
+                        <option value="direct" {{ old('flight_type') == 'direct' ? 'selected' : '' }}>Direct</option>
+                        <option value="transit" {{ old('flight_type') == 'transit' ? 'selected' : '' }}>Transit</option>
+                    </select>
+                </div>
+                <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
-                    <select name="airline_id" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <select name="airline_id" id="airlineId" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" onchange="handleAirlineChange()">
                         <option value="">Select Airline</option>
                         @foreach($airlines as $airline)
                             <option value="{{ $airline->id }}" {{ old('airline_id') == $airline->id ? 'selected' : '' }}>
@@ -52,10 +60,10 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
-                    <select name="airline_classes_id" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <select name="airline_classes_id" id="classId" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                         <option value="">Select Class</option>
                         @foreach($airlineClasses as $class)
-                            <option value="{{ $class->id }}" {{ old('airline_classes_id') == $class->id ? 'selected' : '' }}>
+                            <option value="{{ $class->id }}" data-airline-id="{{ $class->airline_id }}" {{ old('airline_classes_id') == $class->id ? 'selected' : '' }}>
                                 {{ $class->travelClass->name ?? 'Class ' . $class->id }}
                             </option>
                         @endforeach
@@ -63,10 +71,13 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
-                    <select name="route_id" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <select name="route_id" id="routeId" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" onchange="handleRouteChange()">
                         <option value="">Select Route</option>
                         @foreach($routes as $route)
-                            <option value="{{ $route->id }}" {{ old('route_id') == $route->id ? 'selected' : '' }}>
+                            <option value="{{ $route->id }}"
+                                    data-route-type="{{ $route->route_type->value }}"
+                                    data-flight-type="{{ $route->flight_type->value ?? '' }}"
+                                    {{ old('route_id') == $route->id ? 'selected' : '' }}>
                                 @if($route->route_type->value === 'multi_city')
                                     @if($route->multiSegments->count() > 0)
                                         {{ $route->multiSegments->first()->fromCity->code ?? '-' }}-{{ $route->multiSegments->first()->toCity->code ?? '-' }} ... ({{ $route->airline->name }})
@@ -268,8 +279,101 @@ function toggleFields() {
     }
 }
 
+function filterRoutes() {
+    const routeType = document.getElementById('routeType').value;
+    const flightType = document.getElementById('flightType').value;
+    const routeSelect = document.getElementById('routeId');
+    const options = routeSelect.querySelectorAll('option');
+
+    options.forEach(function(option) {
+        if (option.value === '') return;
+
+        const optionRouteType = option.getAttribute('data-route-type');
+        const optionFlightType = option.getAttribute('data-flight-type');
+
+        const matchesRouteType = !routeType || optionRouteType === routeType;
+        const matchesFlightType = !flightType || optionFlightType === flightType;
+
+        if (matchesRouteType && matchesFlightType) {
+            option.style.display = '';
+        } else {
+            option.style.display = 'none';
+        }
+    });
+
+    if (routeSelect.value) {
+        const selectedOption = routeSelect.options[routeSelect.selectedIndex];
+        const selectedRouteType = selectedOption.getAttribute('data-route-type');
+        const selectedFlightType = selectedOption.getAttribute('data-flight-type');
+
+        if ((routeType && selectedRouteType !== routeType) || (flightType && selectedFlightType !== flightType)) {
+            routeSelect.value = '';
+            document.getElementById('flightType').value = '';
+        }
+    }
+}
+
+function handleRouteTypeChange() {
+    filterRoutes();
+    toggleFields();
+}
+
+function handleFlightTypeChange() {
+    filterRoutes();
+}
+
+function handleRouteChange() {
+    const routeSelect = document.getElementById('routeId');
+    const flightTypeSelect = document.getElementById('flightType');
+
+    if (routeSelect.value) {
+        const selectedOption = routeSelect.options[routeSelect.selectedIndex];
+        const flightType = selectedOption.getAttribute('data-flight-type');
+        if (flightType) {
+            flightTypeSelect.value = flightType;
+        }
+    } else {
+        flightTypeSelect.value = '';
+    }
+}
+
+function filterClasses() {
+    const airlineId = document.getElementById('airlineId').value;
+    const classSelect = document.getElementById('classId');
+
+    // Filter class options based on airline
+    const options = classSelect.querySelectorAll('option');
+    options.forEach(function(option) {
+        if (option.value === '') return;
+
+        const optionAirlineId = option.getAttribute('data-airline-id');
+
+        if (airlineId && optionAirlineId !== airlineId) {
+            option.style.display = 'none';
+        } else {
+            option.style.display = '';
+        }
+    });
+
+    // Reset class selection if not valid for new airline
+    if (classSelect.value) {
+        const selectedOption = classSelect.options[classSelect.selectedIndex];
+        const selectedAirlineId = selectedOption.getAttribute('data-airline-id');
+
+        if (airlineId && selectedAirlineId !== airlineId) {
+            classSelect.value = '';
+        }
+    }
+}
+
+function handleAirlineChange() {
+    filterClasses();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     toggleFields();
+    filterRoutes();
+    filterClasses();
 });
 </script>
 @endsection

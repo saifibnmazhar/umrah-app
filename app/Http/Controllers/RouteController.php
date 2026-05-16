@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Route;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class RouteController extends Controller
 {
@@ -44,25 +45,32 @@ public function store(Request $request)
         $validated = $request->validate($rules);
 
         try {
-            $route = Route::create($validated);
+            return DB::transaction(function () use ($request, $routeType, $validated) {
+                $route = Route::create($validated);
 
-            if ($routeType === 'multi_city' && $request->has('segments')) {
-                foreach ($request->segments as $segment) {
-                    $route->multiSegments()->create($segment);
+                if ($routeType === 'multi_city' && $request->has('segments')) {
+                    foreach ($request->segments as $segment) {
+                        $route->multiSegments()->create($segment);
+                    }
                 }
-            }
 
-            if ($validated['flight_type'] === 'transit' && $request->has('transits')) {
-                foreach ($request->transits as $transit) {
-                    $hours = (int) ($transit['transit_hours'] ?? 0);
-                    $minutes = (int) ($transit['transit_minutes'] ?? 0);
-                    $transit['transit_time'] = ($hours * 60) + $minutes;
-                    unset($transit['transit_hours'], $transit['transit_minutes']);
-                    $route->transits()->create($transit);
+                if ($validated['flight_type'] === 'transit' && $request->has('transits')) {
+                    foreach ($request->transits as $index => $transit) {
+                        $hours = (int) ($transit['transit_hours'] ?? 0);
+                        $minutes = (int) ($transit['transit_minutes'] ?? 0);
+                        $transit['transit_time'] = ($hours * 60) + $minutes;
+                        unset($transit['transit_hours'], $transit['transit_minutes']);
+
+                        if (!isset($transit['route_direction'])) {
+                            $transit['route_direction'] = ($index === 0) ? 'inbound' : 'outbound';
+                        }
+
+                        $route->transits()->create($transit);
+                    }
                 }
-            }
 
-            return redirect()->route('routes.index')->with('success', 'Route created successfully.');
+                return redirect()->route('routes.index')->with('success', 'Route created successfully.');
+            });
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create route.')->withInput();
         }
@@ -104,28 +112,35 @@ public function store(Request $request)
         $validated = $request->validate($rules);
 
         try {
-            $route->update($validated);
+            return DB::transaction(function () use ($request, $routeType, $validated, $route) {
+                $route->update($validated);
 
-            $route->multiSegments()->delete();
-            $route->transits()->delete();
+                $route->multiSegments()->delete();
+                $route->transits()->delete();
 
-            if ($routeType === 'multi_city' && $request->has('segments')) {
-                foreach ($request->segments as $segment) {
-                    $route->multiSegments()->create($segment);
+                if ($routeType === 'multi_city' && $request->has('segments')) {
+                    foreach ($request->segments as $segment) {
+                        $route->multiSegments()->create($segment);
+                    }
                 }
-            }
 
-            if ($validated['flight_type'] === 'transit' && $request->has('transits')) {
-                foreach ($request->transits as $transit) {
-                    $hours = (int) ($transit['transit_hours'] ?? 0);
-                    $minutes = (int) ($transit['transit_minutes'] ?? 0);
-                    $transit['transit_time'] = ($hours * 60) + $minutes;
-                    unset($transit['transit_hours'], $transit['transit_minutes']);
-                    $route->transits()->create($transit);
+                if ($validated['flight_type'] === 'transit' && $request->has('transits')) {
+                    foreach ($request->transits as $index => $transit) {
+                        $hours = (int) ($transit['transit_hours'] ?? 0);
+                        $minutes = (int) ($transit['transit_minutes'] ?? 0);
+                        $transit['transit_time'] = ($hours * 60) + $minutes;
+                        unset($transit['transit_hours'], $transit['transit_minutes']);
+
+                        if (!isset($transit['route_direction'])) {
+                            $transit['route_direction'] = ($index === 0) ? 'inbound' : 'outbound';
+                        }
+
+                        $route->transits()->create($transit);
+                    }
                 }
-            }
 
-            return redirect()->route('routes.index')->with('success', 'Route updated successfully.');
+                return redirect()->route('routes.index')->with('success', 'Route updated successfully.');
+            });
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update route.')->withInput();
         }

@@ -15,16 +15,19 @@ use App\Models\Airline;
 use App\Models\TravelClass;
 use App\Models\TicketFare;
 use App\Models\VisaSellingPrice;
+use App\Models\PassengerStatus;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\FingerprintLocation;
 use App\Enums\DiscountType;
+use App\Services\BookingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
 
 class BookingController extends Controller
 {
+    public function __construct(private BookingService $bookingService) {}
     public function index(Request $request)
     {
         $tab = $request->get('tab', 'booking');
@@ -34,12 +37,14 @@ class BookingController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $passengers = Passenger::with(['booking', 'booking.customer'])
+        $passengers = Passenger::with(['booking', 'booking.customer', 'status'])
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->withQueryString();
 
-        return view('bookings.index', compact('tab', 'bookings', 'passengers'));
+        $passengerStatuses = PassengerStatus::all();
+
+        return view('bookings.index', compact('tab', 'bookings', 'passengers', 'passengerStatuses'));
     }
 
     public function create(Request $request)
@@ -53,8 +58,15 @@ class BookingController extends Controller
         }
 
         $districts = District::orderBy('name')->get();
-        $packages = Package::with('ticketFare')->orderBy('package_name')->get();
-        $offices = Office::orderBy('name')->get();
+        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+            return [
+                'id' => $pkg->id,
+                'package_name' => $pkg->package_name,
+                'ticket_fare_id' => $pkg->ticket_fare_id,
+                'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
+                'service_charge' => $pkg->service_charge ?? 0,
+            ];
+        });
 
         $ticketFares = TicketFare::with([
             'route.fromCity',
@@ -65,7 +77,7 @@ class BookingController extends Controller
             'airline',
             'airlineClass.class',
             'groupTicket',
-            'baggageAllowances'
+            'baggageAllowances',
         ])->get()->map(function ($fare) {
             $routeCode = '';
             $routeType = $fare->route->route_type?->value;
@@ -90,6 +102,8 @@ class BookingController extends Controller
                 'airline_class' => $fare->airlineClass->class?->name,
                 'ticket_type' => $fare->ticket_type->value,
                 'selling_fare' => $fare->selling_fare,
+                'child_fare_percentage' => $fare->child_fare_percentage,
+                'infant_fare_percentage' => $fare->infant_fare_percentage,
                 'offer_price' => $fare->offer_price,
                 'available_seats' => $fare->groupTicket?->ticket_qty ?? null,
                 'route_type' => $routeType,
@@ -104,6 +118,8 @@ class BookingController extends Controller
             ];
         });
 
+        $offices = Office::orderBy('name')->get();
+
         return view('bookings.create', compact(
             'districts', 'packages', 'offices', 'preSelectedPackageId', 'ticketFares'
         ));
@@ -111,12 +127,13 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $validator = \Validator::make($request->all(), [
             'customer_id' => 'required|exists:customers,id',
-            'district_id' => 'nullable|exists:districts,id',
+            'district_id' => 'required|exists:districts,id',
             'office_id' => 'nullable|exists:offices,id',
             'package_id' => 'nullable|exists:packages,id',
-            'fingerprint_location' => 'nullable|in:Office,Home',
+            'fingerprint_charge_id' => 'required|exists:fingerprint_charges,id',
+            'fingerprint_location' => 'nullable|in:office,home',
             'fingerprint_office' => 'nullable|string|max:255',
             'pax_qty' => 'nullable|integer|min:1',
             'discount_type' => 'nullable|in:fixed,percentage',
@@ -129,7 +146,7 @@ class BookingController extends Controller
             'passengers.*.date_of_birth' => 'required|date|before:today',
             'passengers.*.mobile_no' => 'nullable|string|max:20',
             'passengers.*.passport_expiry' => 'nullable|date',
-            'passengers.*.service_required' => 'nullable|in:All,Visa Only,Ticket Only',
+            'passengers.*.service_required' => 'nullable|in:all,visa_only,ticket_only',
             'passengers.*.stay_duration' => 'nullable|integer|min:1',
             'passengers.*.flight_date_from' => 'nullable|date',
             'passengers.*.flight_date_to' => 'nullable|date|after:passengers.*.flight_date_from',
@@ -140,20 +157,34 @@ class BookingController extends Controller
             'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
+        if ($validator->fails()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $validated = $validator->validated();
+
         try {
             DB::beginTransaction();
 
             $booking = Booking::create([
                 'user_id' => auth()->id(),
+                'branch_id' => auth()->user()->branch_id ?? 1,
+                'invoice_id' => $this->bookingService->generateInvoiceId(auth()->user()->branch_id ?? 1),
+                'date_gap_id' => \App\Models\FlightDateGap::getOrCreate()->id,
                 'customer_id' => $validated['customer_id'],
                 'district_id' => $validated['district_id'] ?? null,
                 'office_id' => $validated['office_id'] ?? null,
                 'package_id' => $validated['package_id'] ?? null,
+                'fingerprint_charge_id' => $validated['fingerprint_charge_id'] ?? null,
                 'fingerprint_location' => $validated['fingerprint_location'] ?? 'Office',
                 'fingerprint_office' => $validated['fingerprint_office'] ?? null,
                 'pax_qty' => count($validated['passengers']),
-                'discount_type' => $validated['discount_type'] ?? null,
+                'discount_type' => ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage',
                 'discount_value' => $validated['discount_value'] ?? 0,
+                'discount_amount' => 0,
                 'remarks' => $validated['remarks'] ?? null,
             ]);
 
@@ -169,14 +200,10 @@ class BookingController extends Controller
             }
 
             foreach ($validated['passengers'] as $passengerData) {
-                $dob = Carbon::parse($passengerData['date_of_birth']);
-                $ageInMonths = $dob->diffInMonths(Carbon::now());
-
-                $passengerType = match(true) {
-                    $ageInMonths < 24 => PassengerType::INFANT,
-                    $ageInMonths < 144 => PassengerType::CHILD,
-                    default => PassengerType::ADULT,
-                };
+                $passengerType = $this->bookingService->calculatePassengerType(
+                    $passengerData['date_of_birth'],
+                    $passengerData['stay_duration'] ?? null
+                );
 
                 Passenger::create([
                     'booking_id' => $booking->id,
@@ -185,7 +212,7 @@ class BookingController extends Controller
                     'passport_no' => $passengerData['passport_no'],
                     'date_of_birth' => $passengerData['date_of_birth'],
                     'gender' => $passengerData['gender'] ?? null,
-                    'passenger_type' => $passengerType->value,
+                    'passenger_type' => $passengerType,
                     'passport_expiry' => $passengerData['passport_expiry'] ?? null,
                     'mobile_no' => $passengerData['mobile_no'] ?? null,
                     'service_required' => $passengerData['service_required'] ?? 'All',
@@ -199,10 +226,27 @@ class BookingController extends Controller
 
             DB::commit();
 
+            $booking->refresh();
+            $this->bookingService->recalculateBookingTotal($booking);
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)',
+                    'url' => route('bookings.index')
+                ]);
+            }
+
             return redirect()->route('bookings.index')
                 ->with('success', 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)');
         } catch (\Exception $e) {
             DB::rollBack();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create booking: ' . $e->getMessage()
+                ], 500);
+            }
             return redirect()->back()->with('error', 'Failed to create booking: ' . $e->getMessage())->withInput();
         }
     }
@@ -233,7 +277,7 @@ class BookingController extends Controller
             'district_id' => 'nullable|exists:districts,id',
             'office_id' => 'nullable|exists:offices,id',
             'package_id' => 'nullable|exists:packages,id',
-            'fingerprint_location' => 'nullable|in:Office,Home',
+            'fingerprint_location' => 'nullable|in:office,home',
             'fingerprint_office' => 'nullable|string|max:255',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
@@ -242,6 +286,7 @@ class BookingController extends Controller
 
         try {
             $booking->update($validated);
+            $this->bookingService->recalculateBookingTotal($booking->fresh());
             return redirect()->route('bookings.show', $booking->id)
                 ->with('success', 'Booking updated successfully');
         } catch (\Exception $e) {
@@ -279,17 +324,13 @@ class BookingController extends Controller
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
         ]);
 
-        $dob = Carbon::parse($validated['date_of_birth']);
-        $ageInMonths = $dob->diffInMonths(Carbon::now());
-
-        $passengerType = match(true) {
-            $ageInMonths < 24 => PassengerType::INFANT,
-            $ageInMonths < 144 => PassengerType::CHILD,
-            default => PassengerType::ADULT,
-        };
+        $passengerType = $this->bookingService->calculatePassengerType(
+            $validated['date_of_birth'],
+            $validated['stay_duration'] ?? null
+        );
 
         $validated['booking_id'] = $booking->id;
-        $validated['passenger_type'] = $passengerType->value;
+        $validated['passenger_type'] = $passengerType;
         $validated['service_required'] = $validated['service_required'] ?? 'All';
         $validated['stay_duration'] = $validated['stay_duration'] ?? 14;
         $validated['ticket_fare_id'] = $validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id;
@@ -297,6 +338,7 @@ class BookingController extends Controller
         $passenger = Passenger::create($validated);
 
         $booking->update(['pax_qty' => $booking->passengers()->count()]);
+        $this->bookingService->recalculateBookingTotal($booking->fresh());
 
         return response()->json([
             'success' => true,
@@ -314,6 +356,7 @@ class BookingController extends Controller
         try {
             $passenger->delete();
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
+            $this->bookingService->recalculateBookingTotal($booking->fresh());
             return response()->json(['success' => true, 'message' => 'Passenger removed successfully']);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to remove passenger'], 500);
@@ -323,23 +366,16 @@ class BookingController extends Controller
     public function calculatePassengerType(Request $request)
     {
         $dateOfBirth = $request->input('date_of_birth');
+        $stayDuration = $request->input('stay_duration');
         
         if (!$dateOfBirth) {
             return response()->json(['passenger_type' => null]);
         }
 
-        $dob = Carbon::parse($dateOfBirth);
-        $ageInMonths = $dob->diffInMonths(Carbon::now());
-
-        $passengerType = match(true) {
-            $ageInMonths < 24 => PassengerType::INFANT,
-            $ageInMonths < 144 => PassengerType::CHILD,
-            default => PassengerType::ADULT,
-        };
+        $passengerType = $this->bookingService->calculatePassengerType($dateOfBirth, $stayDuration);
 
         return response()->json([
-            'passenger_type' => $passengerType->value,
-            'age_in_months' => $ageInMonths,
+            'passenger_type' => $passengerType,
         ]);
     }
 
@@ -349,18 +385,21 @@ class BookingController extends Controller
         $location = $request->input('location', 'Office');
 
         if (!$districtId) {
-            return response()->json(['charge' => 0]);
+            return response()->json(['error' => 'District is required'], 422);
         }
 
         $fingerprintCharge = FingerprintCharge::where('district_id', $districtId)->first();
 
         if (!$fingerprintCharge) {
-            return response()->json(['charge' => 0]);
+            return response()->json(['error' => 'No fingerprint charge found for selected district. Please contact admin to set up fingerprint charges.'], 422);
         }
 
-        $charge = $location === 'Home' ? $fingerprintCharge->fingerprint_charge : 0;
+        $charge = $location === 'home' ? $fingerprintCharge->fingerprint_charge : 0;
 
-        return response()->json(['charge' => $charge]);
+        return response()->json([
+            'charge' => $charge,
+            'fingerprint_charge_id' => $fingerprintCharge->id
+        ]);
     }
 
     public function print(Booking $booking)
@@ -389,5 +428,17 @@ class BookingController extends Controller
             'currentPaid',
             'dueAmount'
         ));
+    }
+
+    public function recalculatePassengerValue(Passenger $passenger)
+    {
+        $packageValue = $this->bookingService->calculatePackageValue($passenger);
+        $passenger->update(['package_value' => $packageValue]);
+        $this->bookingService->recalculateBookingTotal($passenger->booking->fresh());
+
+        return response()->json([
+            'package_value' => $packageValue,
+            'total_value' => $passenger->booking->total_value,
+        ]);
     }
 }

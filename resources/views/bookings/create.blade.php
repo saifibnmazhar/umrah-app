@@ -2,7 +2,7 @@
 @section('title', 'Create Booking')
 @section('content')
 <script>window.__bookingServerData = { ticketFares: @json($ticketFares ?? []), packages: @json($packages ?? []), preSelectedPackageId: {{ $preSelectedPackageId ?? 'null' }} };</script>
-<div class="max-w-5xl mx-auto" x-data="createBookingApp()">
+<div class="max-w-5xl mx-auto" x-data="createBookingApp()" x-init="init()">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Create Booking</h1>
         <a href="{{ route('bookings.index') }}" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
@@ -66,16 +66,16 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Fingerprint Location *</label>
                     <select x-model="bookingData.fingerprint_location" @change="updateFingerprintCharge(); $el.blur()" name="fingerprint_location" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
-                        <option value="Office">Office</option>
-                        <option value="Home">Home</option>
+                        <option value="office">Office</option>
+                        <option value="home">Home</option>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Office *</label>
-                    <select x-model="bookingData.fingerprint_office" name="fingerprint_office" @change="$el.blur()" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                    <select x-model="bookingData.fingerprint_office" name="office_id" @change="$el.blur()" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                         <option value="">Select Office</option>
                         @foreach(\App\Models\Office::orderBy('name')->get() as $office)
-                        <option value="{{ $office->name }}">{{ $office->name }}</option>
+                        <option value="{{ $office->id }}">{{ $office->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -87,14 +87,18 @@
                         <option value="{{ $district->id }}">{{ $district->name }}</option>
                         @endforeach
                     </select>
+                    <input type="hidden" x-model="bookingData.fingerprint_charge_id" name="fingerprint_charge_id">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Package</label>
-                    <select x-model="bookingData.package_id" name="package_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                    <select x-model="bookingData.package_id" @change="onPackageChange(); $el.blur()" name="package_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                         <option value="">Select Package</option>
-                        @foreach(\App\Models\Package::orderBy('package_name')->get() as $package)
-                        <option value="{{ $package->id }}">{{ $package->package_name }}</option>
-                        @endforeach
+                        <template x-for="pkg in allPackages" :key="pkg.id">
+                            <option :value="String(pkg.id)"
+                                :data-visa-price="pkg.visa_selling_price ?? 0"
+                                :data-service-charge="pkg.service_charge ?? 0"
+                                x-text="pkg.package_name"></option>
+                        </template>
                     </select>
                 </div>
                 <div>
@@ -166,6 +170,8 @@
                                     <input type="hidden" :name="'passengers[' + index + '][route]'" :value="passenger.route">
                                     <input type="hidden" :name="'passengers[' + index + '][airline]'" :value="passenger.airline">
                                     <input type="hidden" :name="'passengers[' + index + '][class]'" :value="passenger.class">
+                                    <input type="hidden" :name="'passengers[' + index + '][flight_date_from]'" :value="passenger.flight_date_from">
+                                    <input type="hidden" :name="'passengers[' + index + '][flight_date_to]'" :value="passenger.flight_date_to">
                                     <input type="hidden" :name="'passengers[' + index + '][address]'" :value="passenger.address">
                                 </div>
                                 <div class="flex items-center gap-2 ml-4">
@@ -193,15 +199,15 @@
                     <span class="w-1/6 text-center">Pax Qty</span>
                     <span class="w-1/6 text-center">Discount</span>
                     <span class="w-1/6 text-center">Total</span>
-                    <span class="w-1/6 text-center">Value</span>
+                    <span class="w-1/6 text-center">Discounted Total</span>
                 </div>
                 <div class="flex justify-between font-medium text-slate-800">
-                    <span class="w-1/6 text-center">-</span>
+                    <span id="summaryPackage" class="w-1/6 text-center" x-text="allPackages.find(p => String(p.id) === String(bookingData.package_id))?.package_name ?? '-'">-</span>
                     <span class="w-1/6 text-center" x-text="fingerprintCharge > 0 ? fingerprintCharge + ' SAR' : '-'">-</span>
                     <span class="w-1/6 text-center" x-text="passengerCount">0</span>
                     <span class="w-1/6 text-center" x-text="bookingData.discount_value > 0 ? '-' + bookingData.discount_value + (bookingData.discount_type === 'percentage' ? '%' : ' SAR') : '-'">-</span>
-                    <span class="w-1/6 text-center">0 SAR</span>
-                    <span class="w-1/6 text-center">0 SAR</span>
+                    <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center" x-text="(grandTotalValue ?? 0).toFixed(2) + ' SAR'">0 SAR</span>
+                    <span id="summaryTotalValue" class="w-1/6 text-center" x-text="discountedTotal !== null ? discountedTotal.toFixed(2) + ' SAR' : 'N/A'">0 SAR</span>
                 </div>
             </div>
 
@@ -265,7 +271,8 @@
                                        placeholder="Enter DOB to auto-calculate">
                             </div>
                             <p x-show="passengerData.date_of_birth && !passengerData.passenger_type" class="text-xs text-slate-400 mt-1">Calculating...</p>
-                            <p x-show="passengerData.passenger_type" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth</p>
+                            <p x-show="passengerData.passenger_type && !passengerData.stay_duration" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth</p>
+                            <p x-show="passengerData.passenger_type && passengerData.stay_duration" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth & stay duration</p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Passport Expiry Date</label>
@@ -279,7 +286,7 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Stay Duration *</label>
-                            <select x-model="passengerData.stay_duration" @change="handleStayDurationChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="passengerData.stay_duration" @change="handleStayDurationChange(); calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Stay Duration</option>
                                 <option value="14">Group (14 Days)</option>
                                 <option value="85">Family (85 Days)</option>
@@ -288,11 +295,11 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Service Required *</label>
-                            <select x-model="passengerData.service_required" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="passengerData.service_required" @change="recalculateCurrentPassenger(editingPassengerIndex ?? passengers.length)" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Service</option>
-                                <option value="All">All</option>
-                                <option value="Visa Only">Visa Only</option>
-                                <option value="Ticket Only">Ticket Only</option>
+                                <option value="all">All</option>
+                                <option value="visa_only">Visa Only</option>
+                                <option value="ticket_only">Ticket Only</option>
                             </select>
                         </div>
                     </div>
@@ -346,24 +353,18 @@
                                 <option value="">Select Date Range</option>
                             </select>
                         </div>
-                    </div>
-                </div>
-
-                <div class="mb-4">
-                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Allowance</label>
-                        <input type="text"
-                               x-model="passengerData.baggage_weight"
-                               readonly
-                               class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 font-medium"
-                               :class="{
-                                   'bg-yellow-50 border-yellow-300 text-yellow-700': passengerData.baggage_weight && !passengerData.baggage_weight.includes('Select') && !passengerData.baggage_weight.includes('No baggage'),
-                                   'bg-red-50 border-red-200 text-red-500': passengerData.baggage_weight === 'No baggage allowance defined',
-                                   'bg-blue-50 border-blue-200 text-blue-600': passengerData.baggage_weight === 'Select passenger type to see baggage'
-                               }"
-                               placeholder="Select a ticket to see baggage allowance">
-                        <p x-show="!passengerData.baggage_weight" class="text-xs text-slate-400 mt-1">Baggage allowance will be displayed based on ticket fare and passenger type</p>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Allowance</label>
+                            <input type="text"
+                                   x-model="passengerData.baggage_weight"
+                                   readonly
+                                   class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 font-medium"
+                                   :class="{
+                                       'bg-yellow-50 border-yellow-300 text-yellow-700': passengerData.baggage_weight && !passengerData.baggage_weight.includes('Select') && !passengerData.baggage_weight.includes('Define') && !passengerData.baggage_weight.includes('No baggage') && !passengerData.baggage_weight.includes('Route Type'),
+                                       'bg-red-50 border-red-200 text-red-500': passengerData.baggage_weight === 'No baggage allowance defined',
+                                       'bg-blue-50 border-blue-200 text-blue-600': passengerData.baggage_weight.includes('Select') || passengerData.baggage_weight.includes('Define') || passengerData.baggage_weight.includes('Route Type')
+                                   }">
+                        </div>
                     </div>
                 </div>
 
@@ -420,14 +421,14 @@
             <h3 class="text-xl font-semibold text-slate-800 mb-4">Apply Discount</h3>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
-                <select x-model="bookingData.discount_type" id="discountType" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                <select x-model="bookingData.discount_type" id="discountType" name="discount_type" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                     <option value="fixed">Fixed (SAR)</option>
                     <option value="percentage">Percentage (%)</option>
                 </select>
             </div>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value</label>
-                <input type="number" x-model="bookingData.discount_value" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                <input type="number" x-model="bookingData.discount_value" name="discount_value" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
             </div>
             <div class="flex gap-3 pt-4 border-t border-slate-200">
                 <button type="button" @click="closeDiscountModal()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Apply</button>
@@ -604,56 +605,4 @@
         </div>
     </div>
 </div>
-
-<script>
-function handleRefIqamaFileUpload(input) {
-    const file = input.files[0];
-    const display = document.getElementById('ref_iqama_doc_filename');
-    if (file && display) display.textContent = file.name;
-}
-
-function handleCustomerDocUpload(input) {
-    const list = document.getElementById('customer_docs_list');
-    if (!list) return;
-    list.innerHTML = '';
-    Array.from(input.files).forEach(file => {
-        const item = document.createElement('div');
-        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
-        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
-        list.appendChild(item);
-    });
-}
-function removeCustomerDoc(btn) {
-    btn.parentElement.remove();
-}
-
-function handleBookingCustomerDocsUpload(input) {
-    const list = document.getElementById('booking_customer_docs_list');
-    if (!list) return;
-    list.innerHTML = '';
-    Array.from(input.files).forEach(file => {
-        const item = document.createElement('div');
-        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
-        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeBookingCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
-        list.appendChild(item);
-    });
-}
-function removeBookingCustomerDoc(btn) {
-    btn.parentElement.remove();
-}
-
-function handlePassengerDocUpload(input) {
-    const list = document.getElementById('passenger_doc_list');
-    if (!list) return;
-    list.innerHTML = '';
-    Array.from(input.files).forEach(file => {
-        const item = document.createElement('div');
-        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
-        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removePassengerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
-        list.appendChild(item);
-    });
-}
-function removePassengerDoc(btn) {
-    btn.parentElement.remove();
-}
 @endsection

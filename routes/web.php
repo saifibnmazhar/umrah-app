@@ -72,17 +72,16 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', UserController::class);
     Route::resource('transaction-types', TransactionTypeController::class);
     Route::resource('passenger-statuses', PassengerStatusController::class);
-    Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
-    Route::post('/bookings', function () {
-        return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
-    })->name('booking.store');
+    Route::get('/bookings', fn() => view('bookings.index'))->name('bookings.index');
     Route::resource('bookings', BookingController::class);
     Route::resource('passengers', PassengerController::class);
+    Route::patch('/passengers/{passenger}/status', [PassengerController::class, 'updateStatus'])->name('passengers.update-status');
 
     // Booking-specific routes
     Route::post('/bookings/{booking}/passengers', [BookingController::class, 'addPassenger'])->name('bookings.passengers.store');
     Route::delete('/bookings/{booking}/passengers/{passenger}', [BookingController::class, 'removePassenger'])->name('bookings.passengers.destroy');
     Route::get('/bookings/{booking}/print', [BookingController::class, 'print'])->name('bookings.print');
+    Route::patch('/bookings/{booking}/passengers/{passenger}/recalculate', [BookingController::class, 'recalculatePassengerValue'])->name('bookings.passengers.recalculate');
 
     // API routes
     Route::post('/api/bookings/calculate-type', [BookingController::class, 'calculatePassengerType'])->name('api.bookings.calculate-type');

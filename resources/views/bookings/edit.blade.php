@@ -44,6 +44,7 @@
                     <option value="{{ $district->id }}" {{ $booking->district_id == $district->id ? 'selected' : '' }}>{{ $district->name }}</option>
                     @endforeach
                 </select>
+                <input type="hidden" name="fingerprint_charge_id" value="{{ $booking->fingerprint_charge_id }}">
             </div>
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-2">Package</label>

@@ -26,6 +26,7 @@ class Booking extends Model
         'discount_type',
         'discount_value',
         'discount_amount',
+        'total_value',
         'remarks',
     ];
 
@@ -34,6 +35,7 @@ class Booking extends Model
         'discount_type' => DiscountType::class,
         'discount_value' => 'decimal:2',
         'discount_amount' => 'decimal:2',
+        'total_value' => 'decimal:2',
         'pax_qty' => 'integer',
     ];
 

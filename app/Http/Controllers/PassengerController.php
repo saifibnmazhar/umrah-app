@@ -117,4 +117,25 @@ class PassengerController extends Controller
 
         return response()->json($passengers);
     }
+
+    public function updateStatus(Request $request, Passenger $passenger)
+    {
+        $validated = $request->validate([
+            'passenger_status_id' => 'nullable|exists:passenger_statuses,id',
+        ]);
+
+        try {
+            $passenger->update(['passenger_status_id' => $validated['passenger_status_id']]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Status updated successfully',
+                'passenger_status_id' => $passenger->passenger_status_id
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update status'
+            ], 500);
+        }
+    }
 }
