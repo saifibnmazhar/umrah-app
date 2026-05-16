@@ -93,6 +93,7 @@
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Current status</th>
                             <th class="px-3 py-2 text-left font-medium">Passport No</th>
                             <th class="px-3 py-2 text-left font-medium">Type</th>
                             <th class="px-3 py-2 text-left font-medium">DOB</th>
@@ -105,6 +106,16 @@
                         @forelse($passengers as $passenger)
                         <tr>
                             <td class="px-3 py-2 text-slate-700">{{ $passenger->first_name }} {{ $passenger->last_name }}</td>
+                            <td class="px-3 py-2">
+                                <select 
+                                    class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
+                                    onchange="updatePassengerStatus({{ $passenger->id }}, this.value)">
+                                    <option value="" {{ is_null($passenger->passenger_status_id) ? 'selected' : '' }}>None</option>
+                                    @foreach($passengerStatuses as $status)
+                                        <option value="{{ $status->id }}" {{ $passenger->passenger_status_id == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+                                    @endforeach
+                                </select>
+                            </td>
                             <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $passenger->passenger_type }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $passenger->date_of_birth }}</td>
@@ -116,7 +127,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+                            <td colspan="8" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -135,6 +146,29 @@ function bookingIndexApp() {
         activeTab: '{{ $tab ?? 'booking' }}',
         searchTerm: '',
     }
+}
+
+function updatePassengerStatus(passengerId, statusId) {
+    fetch(`/passengers/${passengerId}/status`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ passenger_status_id: statusId || null })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            console.log('Status updated successfully');
+        } else {
+            alert('Failed to update status');
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update status');
+    });
 }
 </script>
 @endsection

@@ -78,6 +78,7 @@ Route::middleware('auth')->group(function () {
     })->name('booking.store');
     Route::resource('bookings', BookingController::class);
     Route::resource('passengers', PassengerController::class);
+    Route::patch('/passengers/{passenger}/status', [PassengerController::class, 'updateStatus'])->name('passengers.update-status');
 
     // Booking-specific routes
     Route::post('/bookings/{booking}/passengers', [BookingController::class, 'addPassenger'])->name('bookings.passengers.store');

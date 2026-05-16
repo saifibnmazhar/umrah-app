@@ -15,6 +15,7 @@ use App\Models\Airline;
 use App\Models\TravelClass;
 use App\Models\TicketFare;
 use App\Models\VisaSellingPrice;
+use App\Models\PassengerStatus;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\FingerprintLocation;
@@ -36,12 +37,14 @@ class BookingController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $passengers = Passenger::with(['booking', 'booking.customer'])
+        $passengers = Passenger::with(['booking', 'booking.customer', 'status'])
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->withQueryString();
 
-        return view('bookings.index', compact('tab', 'bookings', 'passengers'));
+        $passengerStatuses = PassengerStatus::all();
+
+        return view('bookings.index', compact('tab', 'bookings', 'passengers', 'passengerStatuses'));
     }
 
     public function create(Request $request)
