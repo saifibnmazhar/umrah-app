@@ -10,7 +10,7 @@
     agent: { id: null, name: '', address: '', contacts: '' },
     showFareModal: false,
     editFareMode: false,
-    fare: { id: null, airline_id: '', airline_classes_id: '', route_id: '', route_type: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false },
+    fare: { id: null, airline_id: '', airline_classes_id: '', route_id: '', route_type: '', flight_type: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false },
     showRouteModal: false,
     editRouteMode: false,
     route: { id: null, airline_id: '', route_type: '', flight_type: '', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '' }
@@ -192,7 +192,7 @@
                                 <td class="px-4 py-3 text-slate-600">{{ $fare->effective_to->format('Y-m-d') }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-3">
-                                        <button @click="editFareMode = true; fare = { id: {{ $fare->id }}, airline_id: '{{ $fare->airline_id }}', airline_classes_id: '{{ $fare->airline_classes_id }}', route_id: '{{ $fare->route_id }}', route_type: '{{ $fare->route_type ?? 'oneway_outbound' }}', ticket_type: '{{ $fare->ticket_type->value }}', effective_from: '{{ $fare->effective_from->format('Y-m-d') }}', effective_to: '{{ $fare->effective_to->format('Y-m-d') }}', net_fare: '{{ $fare->net_fare }}', selling_fare: '{{ $fare->selling_fare }}', child_fare_percentage: '{{ $fare->child_fare_percentage }}', infant_fare_percentage: '{{ $fare->infant_fare_percentage }}', offer_price: '{{ $fare->offer_price ?? '' }}', with_meal: {{ $fare->with_meal ? 'true' : 'false' }} }; showFareModal = true; setTimeout(toggleFareFieldsModal, 100)" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
+                                        <button @click="editFareMode = true; fare = { id: {{ $fare->id }}, airline_id: '{{ $fare->airline_id }}', airline_classes_id: '{{ $fare->airline_classes_id }}', route_id: '{{ $fare->route_id }}', route_type: '{{ $fare->route_type ?? 'oneway_outbound' }}', flight_type: '{{ $fare->route->flight_type->value ?? '' }}', ticket_type: '{{ $fare->ticket_type->value }}', effective_from: '{{ $fare->effective_from->format('Y-m-d') }}', effective_to: '{{ $fare->effective_to->format('Y-m-d') }}', net_fare: '{{ $fare->net_fare }}', selling_fare: '{{ $fare->selling_fare }}', child_fare_percentage: '{{ $fare->child_fare_percentage }}', infant_fare_percentage: '{{ $fare->infant_fare_percentage }}', offer_price: '{{ $fare->offer_price ?? '' }}', with_meal: {{ $fare->with_meal ? 'true' : 'false' }} }; showFareModal = true; setTimeout(function() { toggleFareFieldsModal(); filterModalRoutes(); }, 100)" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
                                         <form method="POST" action="{{ route('fare.admin.fare.destroy', $fare->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket fare?')" class="inline">
                                             @csrf
                                             @method('DELETE')
@@ -362,13 +362,13 @@
                     <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 mb-6">
                         <h2 class="text-lg font-semibold text-slate-800 mb-4 pb-2 border-b border-slate-200">Basic Information</h2>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            <div>
+                            {{-- <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Date</label>
                                 <input type="date" value="{{ date('Y-m-d') }}" readonly class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 sm:text-sm px-3 py-2 border bg-slate-50">
-                            </div>
+                            </div> --}}
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                                <select name="route_type" x-model="fare.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleFareFieldsModal()">
+                                <select name="route_type" x-model="fare.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="handleModalRouteTypeChange()">
                                     <option value="">Select Type</option>
                                     <option value="oneway_inbound">One Way - Inbound</option>
                                     <option value="oneway_outbound">One Way - Outbound</option>
@@ -377,8 +377,16 @@
                                 </select>
                             </div>
                             <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                                <select name="flight_type" x-model="fare.flight_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="handleModalFlightTypeChange()">
+                                    <option value="">Select Flight Type</option>
+                                    <option value="direct">Direct</option>
+                                    <option value="transit">Transit</option>
+                                </select>
+                            </div>
+                            <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
-                                <select name="airline_id" x-model="fare.airline_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required>
+                                <select name="airline_id" id="modalAirlineId" x-model="fare.airline_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="handleModalAirlineChange()">
                                     <option value="">Select Airline</option>
                                     @foreach($airlines as $airline)
                                         <option value="{{ $airline->id }}">{{ $airline->name }}</option>
@@ -387,19 +395,21 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
-                                <select name="airline_classes_id" x-model="fare.airline_classes_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required>
+                                <select name="airline_classes_id" id="modalClassId" x-model="fare.airline_classes_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required>
                                     <option value="">Select Class</option>
                                     @foreach($airlineClasses as $class)
-                                        <option value="{{ $class->id }}">{{ $class->travelClass->name ?? 'Class ' . $class->id }}</option>
+                                        <option value="{{ $class->id }}" data-airline-id="{{ $class->airline_id }}">{{ $class->travelClass->name ?? 'Class ' . $class->id }}</option>
                                     @endforeach
                                 </select>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
-                                <select name="route_id" x-model="fare.route_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required>
+                                <select name="route_id" id="modalRouteId" x-model="fare.route_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="handleModalRouteChange()">
                                     <option value="">Select Route</option>
                                     @foreach($routes as $route)
-                                        <option value="{{ $route->id }}">
+                                        <option value="{{ $route->id }}"
+                                                data-route-type="{{ $route->route_type->value }}"
+                                                data-flight-type="{{ $route->flight_type->value ?? '' }}">
                                             @if($route->route_type->value === 'multi_city')
                                                 {{ $route->multiSegments->first()->fromCity->code ?? '-' }}-{{ $route->multiSegments->first()->toCity->code ?? '-' }} ... ({{ $route->airline->name }})
                                             @else
@@ -548,7 +558,7 @@
     function toggleFareFieldsModal() {
         const ticketType = document.querySelector('select[name="ticket_type"]').value;
         const routeType = document.querySelector('select[name="route_type"]').value;
-        
+
         const offerField = document.getElementById('modalOfferPriceField');
         const groupSection = document.getElementById('modalGroupTicketSection');
         const baggageSection = document.getElementById('modalBaggageSection');
@@ -556,13 +566,13 @@
         const outboundDate = document.getElementById('modalOutboundDateField');
         const inboundBaggage = document.getElementById('modalInboundBaggage');
         const outboundBaggage = document.getElementById('modalOutboundBaggage');
-        
+
         if (ticketType === 'offer') {
             offerField.classList.remove('hidden');
         } else {
             offerField.classList.add('hidden');
         }
-        
+
         if (ticketType === 'group') {
             groupSection.classList.remove('hidden');
             baggageSection.classList.add('hidden');
@@ -585,7 +595,7 @@
             inboundBaggage.classList.remove('hidden');
             outboundBaggage.classList.remove('hidden');
         }
-        
+
         if (!routeType || routeType === '') {
             inboundDate.classList.add('hidden');
             outboundDate.classList.add('hidden');
@@ -600,9 +610,100 @@
             outboundDate.classList.remove('hidden');
         }
     }
-    
+
+    function filterModalRoutes() {
+        const routeType = document.querySelector('select[name="route_type"]').value;
+        const flightType = document.querySelector('select[name="flight_type"]').value;
+        const routeSelect = document.getElementById('modalRouteId');
+        const options = routeSelect.querySelectorAll('option');
+
+        options.forEach(function(option) {
+            if (option.value === '') return;
+
+            const optionRouteType = option.getAttribute('data-route-type');
+            const optionFlightType = option.getAttribute('data-flight-type');
+
+            const matchesRouteType = !routeType || optionRouteType === routeType;
+            const matchesFlightType = !flightType || optionFlightType === flightType;
+
+            if (matchesRouteType && matchesFlightType) {
+                option.style.display = '';
+            } else {
+                option.style.display = 'none';
+            }
+        });
+
+        if (routeSelect.value) {
+            const selectedOption = routeSelect.options[routeSelect.selectedIndex];
+            const selectedRouteType = selectedOption.getAttribute('data-route-type');
+            const selectedFlightType = selectedOption.getAttribute('data-flight-type');
+
+            if ((routeType && selectedRouteType !== routeType) || (flightType && selectedFlightType !== flightType)) {
+                routeSelect.value = '';
+                document.querySelector('select[name="flight_type"]').value = '';
+            }
+        }
+    }
+
+    function handleModalRouteTypeChange() {
+        filterModalRoutes();
+        toggleFareFieldsModal();
+    }
+
+    function handleModalFlightTypeChange() {
+        filterModalRoutes();
+    }
+
+    function handleModalRouteChange() {
+        const routeSelect = document.getElementById('modalRouteId');
+        const flightTypeSelect = document.querySelector('select[name="flight_type"]');
+
+        if (routeSelect.value) {
+            const selectedOption = routeSelect.options[routeSelect.selectedIndex];
+            const flightType = selectedOption.getAttribute('data-flight-type');
+            if (flightType) {
+                flightTypeSelect.value = flightType;
+            }
+        } else {
+            flightTypeSelect.value = '';
+        }
+    }
+
+    function filterModalClasses() {
+        const airlineId = document.getElementById('modalAirlineId').value;
+        const classSelect = document.getElementById('modalClassId');
+
+        const options = classSelect.querySelectorAll('option');
+        options.forEach(function(option) {
+            if (option.value === '') return;
+
+            const optionAirlineId = option.getAttribute('data-airline-id');
+
+            if (airlineId && optionAirlineId !== airlineId) {
+                option.style.display = 'none';
+            } else {
+                option.style.display = '';
+            }
+        });
+
+        if (classSelect.value) {
+            const selectedOption = classSelect.options[classSelect.selectedIndex];
+            const selectedAirlineId = selectedOption.getAttribute('data-airline-id');
+
+            if (airlineId && selectedAirlineId !== airlineId) {
+                classSelect.value = '';
+            }
+        }
+    }
+
+    function handleModalAirlineChange() {
+        filterModalClasses();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         toggleFareFieldsModal();
+        filterModalRoutes();
+        filterModalClasses();
     });
     </script>
 
