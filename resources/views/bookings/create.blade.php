@@ -87,6 +87,7 @@
                         <option value="{{ $district->id }}">{{ $district->name }}</option>
                         @endforeach
                     </select>
+                    <input type="hidden" x-model="bookingData.fingerprint_charge_id" name="fingerprint_charge_id">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Package</label>

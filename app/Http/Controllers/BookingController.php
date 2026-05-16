@@ -129,9 +129,10 @@ class BookingController extends Controller
     {
         $validated = $request->validate([
             'customer_id' => 'required|exists:customers,id',
-            'district_id' => 'nullable|exists:districts,id',
+            'district_id' => 'required|exists:districts,id',
             'office_id' => 'nullable|exists:offices,id',
             'package_id' => 'nullable|exists:packages,id',
+            'fingerprint_charge_id' => 'required|exists:fingerprint_charges,id',
             'fingerprint_location' => 'nullable|in:office,home',
             'fingerprint_office' => 'nullable|string|max:255',
             'pax_qty' => 'nullable|integer|min:1',
@@ -165,6 +166,7 @@ class BookingController extends Controller
                 'district_id' => $validated['district_id'] ?? null,
                 'office_id' => $validated['office_id'] ?? null,
                 'package_id' => $validated['package_id'] ?? null,
+                'fingerprint_charge_id' => $validated['fingerprint_charge_id'] ?? null,
                 'fingerprint_location' => $validated['fingerprint_location'] ?? 'Office',
                 'fingerprint_office' => $validated['fingerprint_office'] ?? null,
                 'pax_qty' => count($validated['passengers']),
@@ -356,18 +358,21 @@ class BookingController extends Controller
         $location = $request->input('location', 'Office');
 
         if (!$districtId) {
-            return response()->json(['charge' => 0]);
+            return response()->json(['error' => 'District is required'], 422);
         }
 
         $fingerprintCharge = FingerprintCharge::where('district_id', $districtId)->first();
 
         if (!$fingerprintCharge) {
-            return response()->json(['charge' => 0]);
+            return response()->json(['error' => 'No fingerprint charge found for selected district. Please contact admin to set up fingerprint charges.'], 422);
         }
 
         $charge = $location === 'home' ? $fingerprintCharge->fingerprint_charge : 0;
 
-        return response()->json(['charge' => $charge]);
+        return response()->json([
+            'charge' => $charge,
+            'fingerprint_charge_id' => $fingerprintCharge->id
+        ]);
     }
 
     public function print(Booking $booking)

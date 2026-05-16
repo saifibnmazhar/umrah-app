@@ -38,6 +38,7 @@ customerModalVisible: false,
         fingerprint_location: 'Office',
         fingerprint_office: '',
         district_id: '',
+        fingerprint_charge_id: '',
         package_id: '',
         discount_type: 'fixed',
         discount_value: 0,
@@ -405,15 +406,24 @@ customerModalVisible: false,
     async updateFingerprintCharge() {
         if (!this.bookingData.district_id) {
             this.fingerprintCharge = 0;
+            this.bookingData.fingerprint_charge_id = '';
             return;
         }
         try {
             const response = await fetch(`/api/bookings/fingerprint-charge?district_id=${this.bookingData.district_id}&location=${this.bookingData.fingerprint_location}`);
             const data = await response.json();
+            if (data.error) {
+                alert(data.error);
+                this.fingerprintCharge = 0;
+                this.bookingData.fingerprint_charge_id = '';
+                return;
+            }
             this.fingerprintCharge = data.charge || 0;
+            this.bookingData.fingerprint_charge_id = data.fingerprint_charge_id || '';
         } catch (e) {
             console.error('Fingerprint charge error:', e);
             this.fingerprintCharge = 0;
+            this.bookingData.fingerprint_charge_id = '';
         }
     },
 
@@ -809,6 +819,7 @@ Alpine.data('createBookingApp', () => ({
         fingerprint_location: 'Office',
         fingerprint_office: '',
         district_id: '',
+        fingerprint_charge_id: '',
         package_id: '',
         discount_type: 'fixed',
         discount_value: 0,
@@ -1140,15 +1151,26 @@ Alpine.data('createBookingApp', () => ({
     },
 
     async updateFingerprintCharge() {
-        if (!this.bookingData.district_id) return;
+        if (!this.bookingData.district_id) {
+            this.fingerprintCharge = 0;
+            this.bookingData.fingerprint_charge_id = '';
+            return;
+        }
         try {
             const response = await fetch(`/api/bookings/fingerprint-charge?district_id=${this.bookingData.district_id}&location=${this.bookingData.fingerprint_location}`);
             const data = await response.json();
-            if (data.charge !== undefined) {
-                this.fingerprintCharge = data.charge;
+            if (data.error) {
+                alert(data.error);
+                this.fingerprintCharge = 0;
+                this.bookingData.fingerprint_charge_id = '';
+                return;
             }
+            this.fingerprintCharge = data.charge || 0;
+            this.bookingData.fingerprint_charge_id = data.fingerprint_charge_id || '';
         } catch (e) {
             console.error('Fingerprint charge error:', e);
+            this.fingerprintCharge = 0;
+            this.bookingData.fingerprint_charge_id = '';
         }
     },
 
