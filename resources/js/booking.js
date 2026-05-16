@@ -192,6 +192,9 @@ customerModalVisible: false,
 
     parseStayDurationDays(stayDuration) {
         if (!stayDuration) return null;
+        if (/^\d+$/.test(stayDuration)) {
+            return parseInt(stayDuration, 10);
+        }
         const match = stayDuration.match(/(\d+)\s*days?/i);
         return match ? parseInt(match[1], 10) : null;
     },
@@ -202,7 +205,7 @@ customerModalVisible: false,
 
     calculatePassengerType() {
         const dob = this.passengerData.date_of_birth;
-        
+
         if (!dob) {
             this.passengerData.passenger_type = '';
             return;
@@ -222,43 +225,28 @@ customerModalVisible: false,
             ageInMonths -= 1;
         }
 
-        console.log('=== Passenger Type Calculation (bookingApp) ===');
-        console.log('DOB:', dob);
-        console.log('Stay Duration:', this.passengerData.stay_duration);
-        
         const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
-        console.log('Stay Days (parsed):', stayDays);
-        
+
         if (stayDays !== null) {
             const adjustmentDays = stayDays < 30 ? 30 : 90;
-            console.log('Adjustment Days:', adjustmentDays);
-            
+
             const effectiveDate = new Date(dobDate);
             effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
-            console.log('Effective DOB (after -days):', effectiveDate.toISOString().split('T')[0]);
-            
+
             const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
             const dayDiff = today.getDate() - effectiveDate.getDate();
             const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
-            
-            console.log('Base Age (months):', ageInMonths);
-            console.log('Effective Age (months):', finalAgeInMonths);
-            
+
             ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
         }
-        
-        console.log('Final Age (months):', ageInMonths);
-        
+
         let calculatedType = 'Adult';
         if (ageInMonths < 24) {
             calculatedType = 'Infant';
         } else if (ageInMonths < 144) {
             calculatedType = 'Child';
         }
-        
-        console.log('Calculated Type:', calculatedType);
-        console.log('===========================================');
-        
+
         this.passengerData.passenger_type = calculatedType;
         this.updateBaggageWeight();
         this.recalculateCurrentPassenger(this.editingPassengerIndex ?? this.passengers.length);
@@ -971,6 +959,9 @@ Alpine.data('createBookingApp', () => ({
 
     parseStayDurationDays(stayDuration) {
         if (!stayDuration) return null;
+        if (/^\d+$/.test(stayDuration)) {
+            return parseInt(stayDuration, 10);
+        }
         const match = stayDuration.match(/(\d+)\s*days?/i);
         return match ? parseInt(match[1], 10) : null;
     },
@@ -997,44 +988,29 @@ Alpine.data('createBookingApp', () => ({
         if (todayDay < dobDay) {
             ageInMonths -= 1;
         }
-        
-        console.log('=== Passenger Type Calculation ===');
-        console.log('DOB:', dob);
-        console.log('Stay Duration:', this.passengerData.stay_duration);
-        
+
         const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
-        console.log('Stay Days (parsed):', stayDays);
-        
+
         if (stayDays !== null) {
             const adjustmentDays = stayDays < 30 ? 30 : 90;
-            console.log('Adjustment Days:', adjustmentDays);
-            
+
             const effectiveDate = new Date(dobDate);
             effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
-            console.log('Effective DOB (after -days):', effectiveDate.toISOString().split('T')[0]);
-            
+
             const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
             const dayDiff = today.getDate() - effectiveDate.getDate();
             const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
-            
-            console.log('Base Age (months):', ageInMonths);
-            console.log('Effective Age (months):', finalAgeInMonths);
-            
+
             ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
         }
-        
-        console.log('Final Age (months):', ageInMonths);
-        
+
         let calculatedType = 'Adult';
         if (ageInMonths < 24) {
             calculatedType = 'Infant';
         } else if (ageInMonths < 144) {
             calculatedType = 'Child';
         }
-        
-        console.log('Calculated Type:', calculatedType);
-        console.log('================================');
-        
+
         this.passengerData.passenger_type = calculatedType;
         this.updateBaggageWeight();
         this.recalculateCurrentPassenger(this.editingPassengerIndex ?? this.passengers.length);

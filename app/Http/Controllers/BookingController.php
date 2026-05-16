@@ -182,14 +182,10 @@ class BookingController extends Controller
             }
 
             foreach ($validated['passengers'] as $passengerData) {
-                $dob = Carbon::parse($passengerData['date_of_birth']);
-                $ageInMonths = $dob->diffInMonths(Carbon::now());
-
-                $passengerType = match(true) {
-                    $ageInMonths < 24 => PassengerType::INFANT,
-                    $ageInMonths < 144 => PassengerType::CHILD,
-                    default => PassengerType::ADULT,
-                };
+                $passengerType = $this->bookingService->calculatePassengerType(
+                    $passengerData['date_of_birth'],
+                    $passengerData['stay_duration'] ?? null
+                );
 
                 Passenger::create([
                     'booking_id' => $booking->id,
@@ -198,7 +194,7 @@ class BookingController extends Controller
                     'passport_no' => $passengerData['passport_no'],
                     'date_of_birth' => $passengerData['date_of_birth'],
                     'gender' => $passengerData['gender'] ?? null,
-                    'passenger_type' => $passengerType->value,
+                    'passenger_type' => $passengerType,
                     'passport_expiry' => $passengerData['passport_expiry'] ?? null,
                     'mobile_no' => $passengerData['mobile_no'] ?? null,
                     'service_required' => $passengerData['service_required'] ?? 'All',
@@ -296,17 +292,13 @@ class BookingController extends Controller
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
         ]);
 
-        $dob = Carbon::parse($validated['date_of_birth']);
-        $ageInMonths = $dob->diffInMonths(Carbon::now());
-
-        $passengerType = match(true) {
-            $ageInMonths < 24 => PassengerType::INFANT,
-            $ageInMonths < 144 => PassengerType::CHILD,
-            default => PassengerType::ADULT,
-        };
+        $passengerType = $this->bookingService->calculatePassengerType(
+            $validated['date_of_birth'],
+            $validated['stay_duration'] ?? null
+        );
 
         $validated['booking_id'] = $booking->id;
-        $validated['passenger_type'] = $passengerType->value;
+        $validated['passenger_type'] = $passengerType;
         $validated['service_required'] = $validated['service_required'] ?? 'All';
         $validated['stay_duration'] = $validated['stay_duration'] ?? 14;
         $validated['ticket_fare_id'] = $validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id;
