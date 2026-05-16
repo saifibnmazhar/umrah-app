@@ -169,6 +169,8 @@
                                     <input type="hidden" :name="'passengers[' + index + '][route]'" :value="passenger.route">
                                     <input type="hidden" :name="'passengers[' + index + '][airline]'" :value="passenger.airline">
                                     <input type="hidden" :name="'passengers[' + index + '][class]'" :value="passenger.class">
+                                    <input type="hidden" :name="'passengers[' + index + '][flight_date_from]'" :value="passenger.flight_date_from">
+                                    <input type="hidden" :name="'passengers[' + index + '][flight_date_to]'" :value="passenger.flight_date_to">
                                     <input type="hidden" :name="'passengers[' + index + '][address]'" :value="passenger.address">
                                 </div>
                                 <div class="flex items-center gap-2 ml-4">

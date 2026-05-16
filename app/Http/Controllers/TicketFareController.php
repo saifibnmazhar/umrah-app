@@ -395,17 +395,19 @@ class TicketFareController extends Controller
         $defaultGap = $flightDateGap?->gap ?? 30;
 
         $additionalGap = 0;
-        
-        if ($route && $airline && $travelClass) {
-            $ticketFare = TicketFare::whereHas('route', function ($query) use ($route) {
-                    $query->where('code', $route);
-                })
-                ->whereHas('airline', function ($query) use ($airline) {
+
+        if ($route && $airline) {
+            $ticketFare = TicketFare::whereHas('airline', function ($query) use ($airline) {
                     $query->where('name', $airline);
                 })
-                ->whereHas('airlineClass', function ($query) use ($travelClass) {
-                    $query->where('name', $travelClass);
+                ->whereHas('route', function ($query) use ($route) {
+                    $query->whereRaw("CONCAT(
+                        (SELECT code FROM city_codes WHERE city_codes.id = routes.from_city_id),
+                        '-',
+                        (SELECT code FROM city_codes WHERE city_codes.id = routes.to_city_id)
+                    ) = ?", [$route]);
                 })
+                ->with('route')
                 ->first();
 
             if ($ticketFare && $ticketFare->route) {

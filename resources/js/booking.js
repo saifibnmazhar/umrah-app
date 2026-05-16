@@ -846,6 +846,8 @@ Alpine.data('createBookingApp', () => ({
         class: '',
         ticket_fare_id: '',
         flight_date_range: '',
+        flight_date_from: '',
+        flight_date_to: '',
         baggage_weight: '',
         address: '',
         with_offer: false,
@@ -1251,6 +1253,8 @@ Alpine.data('createBookingApp', () => ({
             class: '',
             ticket_fare_id: '',
             flight_date_range: '',
+            flight_date_from: '',
+            flight_date_to: '',
             baggage_weight: '',
             address: '',
             with_offer: false,
@@ -1286,6 +1290,7 @@ Alpine.data('createBookingApp', () => ({
                 this.passengerData.class = ticket.airline_class || '';
                 this.$nextTick(() => {
                     this.passengerData.ticket_fare_id = String(packageTicketFareId);
+                    this.calculateFlightDateRange();
                 });
             }
         } else {
@@ -1338,11 +1343,33 @@ Alpine.data('createBookingApp', () => ({
                 this.passengerData.route = ticket.route;
                 this.passengerData.airline = ticket.airline || '';
                 this.passengerData.class = ticket.airline_class || '';
+
+                if (this.passengerData.flight_date_from && this.passengerData.flight_date_to) {
+                    this.generateFlightDateRangeForEdit(this.passengerData.flight_date_from, this.passengerData.flight_date_to);
+                }
             }
         } else {
             this.filteredTickets = [];
         }
         this.passengerModalVisible = true;
+    },
+
+    generateFlightDateRangeForEdit(fromDate, toDate) {
+        const from = new Date(fromDate);
+        const to = new Date(toDate);
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+        const rangeStr = `${months[from.getMonth()]} ${from.getDate()}, ${from.getFullYear()} - ${months[to.getMonth()]} ${to.getDate()}, ${to.getFullYear()}`;
+        this.passengerData.flight_date_range = rangeStr;
+
+        this.$nextTick(() => {
+            const select = document.getElementById('passengerFlightDateRange');
+            if (select) {
+                const existingOption = Array.from(select.options).find(opt => opt.value === rangeStr);
+                if (existingOption) {
+                    select.value = rangeStr;
+                }
+            }
+        });
     },
 
     closePassengerModal() {
@@ -1357,11 +1384,20 @@ Alpine.data('createBookingApp', () => ({
         }
         const passengerCopy = { ...this.passengerData };
         passengerCopy.stay_duration = this.parseStayDurationDays(this.passengerData.stay_duration) || this.passengerData.stay_duration;
+
+        if (this.passengerData.flight_date_range) {
+            const parsedDates = this.parseFlightDateRange(this.passengerData.flight_date_range);
+            if (parsedDates) {
+                passengerCopy.flight_date_from = parsedDates.from;
+                passengerCopy.flight_date_to = parsedDates.to;
+            }
+        }
+
         if (this.editingPassengerIndex !== null) {
-            this.passengers[this.editingPassengerIndex] = { ...this.passengerData };
+            this.passengers[this.editingPassengerIndex] = { ...passengerCopy };
             this.recalculateCurrentPassenger(this.editingPassengerIndex);
         } else {
-            this.passengers.push({ ...this.passengerData });
+            this.passengers.push({ ...passengerCopy });
             this.recalculateAllPassengerValues();
         }
         this.passengerCount = this.passengers.length;
@@ -1381,6 +1417,29 @@ Alpine.data('createBookingApp', () => ({
             default:
                 return `${ticket.route} | ${type} | ${price}`;
         }
+    },
+
+    parseFlightDateRange(rangeString) {
+        if (!rangeString) return null;
+        const parts = rangeString.split(' - ');
+        if (parts.length !== 2) return null;
+        const months = {
+            'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+            'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+        };
+        const parseDate = (dateStr) => {
+            const match = dateStr.trim().match(/^(\w+)\s+(\d+),\s+(\d{4})$/);
+            if (!match) return null;
+            const month = months[match[1]];
+            const day = parseInt(match[2]);
+            const year = parseInt(match[3]);
+            if (month === undefined) return null;
+            return new Date(year, month, day).toISOString().split('T')[0];
+        };
+        const fromDate = parseDate(parts[0]);
+        const toDate = parseDate(parts[1]);
+        if (!fromDate || !toDate) return null;
+        return { from: fromDate, to: toDate };
     },
 
     filterTickets() {
@@ -1413,9 +1472,134 @@ Alpine.data('createBookingApp', () => ({
         this.updateRouteAirlineClass();
     },
 
+    calculateFlightDateRange() {
+        const route = this.passengerData.route;
+        const airline = this.passengerData.airline;
+        const travelClass = this.passengerData.class;
+
+        console.log('[DateRange] calculateFlightDateRange called:', { route, airline, travelClass });
+
+        if (!route || !airline || !travelClass) {
+            console.log('[DateRange] Missing required data, skipping');
+            this.populateFlightDateRangeOptions([]);
+            return;
+        }
+
+        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass);
+    },
+
+    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass) {
+        try {
+            const params = new URLSearchParams({ route, airline, travel_class: travelClass });
+            console.log('[DateRange] Calling API:', `/api/ticket-fares/flight-date-gap?${params}`);
+            const response = await fetch(`/api/ticket-fares/flight-date-gap?${params}`);
+            const data = await response.json();
+
+            console.log('[DateRange] API Response:', data);
+
+            if (data.default_gap !== undefined) {
+                const additionalGap = parseInt(data.additional_gap) || 0;
+                const defaultGap = parseInt(data.default_gap) || 30;
+                console.log('[DateRange] Generating ranges with:', { defaultGap, additionalGap });
+                this.generateFlightDateRangeOptions(defaultGap, additionalGap);
+            } else {
+                console.log('[DateRange] No default_gap in response, using fallback');
+                this.generateFlightDateRangeOptions(30, 0);
+            }
+        } catch (e) {
+            console.error('[DateRange] Error fetching flight date gap:', e);
+            this.generateFlightDateRangeOptions(30, 0);
+        }
+    },
+
+    generateFlightDateRangeOptions(defaultGap, additionalGap) {
+        const finalGap = defaultGap + additionalGap;
+        const expectedDate = new Date();
+        expectedDate.setDate(expectedDate.getDate() + finalGap);
+
+        const day = expectedDate.getDate();
+        let startMonthOffset = 0;
+        let startSlot = 0;
+
+        if (day >= 1 && day <= 5) {
+            startMonthOffset = 0;
+            startSlot = 0;
+        } else if (day >= 6 && day <= 10) {
+            startMonthOffset = 0;
+            startSlot = 1;
+        } else if (day >= 11 && day <= 15) {
+            startMonthOffset = 0;
+            startSlot = 1;
+        } else if (day >= 16 && day <= 20) {
+            startMonthOffset = 0;
+            startSlot = 2;
+        } else if (day >= 21 && day <= 25) {
+            startMonthOffset = 0;
+            startSlot = 2;
+        } else if (day >= 26 && day <= 31) {
+            startMonthOffset = 1;
+            startSlot = 0;
+        }
+
+        const ranges = [];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        const startYear = expectedDate.getFullYear();
+        const startMonth = expectedDate.getMonth();
+
+        for (let i = 0; i < 16; i++) {
+            const slotIndex = (startSlot + i) % 3;
+            const monthIndex = startMonth + startMonthOffset + Math.floor((startSlot + i) / 3);
+
+            let year = startYear + Math.floor(monthIndex / 12);
+            let month = monthIndex % 12;
+            if (month < 0) month += 12;
+
+            let rangeStart, rangeEnd;
+
+            if (slotIndex === 0) {
+                rangeStart = new Date(year, month, 1);
+                rangeEnd = new Date(year, month, 10);
+            } else if (slotIndex === 1) {
+                rangeStart = new Date(year, month, 11);
+                rangeEnd = new Date(year, month, 20);
+            } else {
+                rangeStart = new Date(year, month, 21);
+                const lastDay = new Date(year, month + 1, 0).getDate();
+                rangeEnd = new Date(year, month, lastDay);
+            }
+
+            const startStr = `${months[rangeStart.getMonth()]} ${rangeStart.getDate()}, ${rangeStart.getFullYear()}`;
+            const endStr = `${months[rangeEnd.getMonth()]} ${rangeEnd.getDate()}, ${rangeEnd.getFullYear()}`;
+
+            ranges.push({
+                value: `${startStr} - ${endStr}`,
+                label: `${startStr} - ${endStr}`,
+                dayStart: rangeStart.getDate()
+            });
+        }
+
+        this.populateFlightDateRangeOptions(ranges);
+    },
+
+    populateFlightDateRangeOptions(ranges) {
+        const select = document.getElementById('passengerFlightDateRange');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Select Date Range</option>';
+
+        ranges.forEach(range => {
+            const option = document.createElement('option');
+            option.value = range.value;
+            option.textContent = range.label;
+            select.appendChild(option);
+        });
+    },
+
     onTicketChange() {
         this.updateRouteAirlineClass();
         this.updateBaggageWeight();
+        this.calculateFlightDateRange();
         this.recalculateCurrentPassenger(this.editingPassengerIndex ?? this.passengers.length);
     },
 
@@ -1426,11 +1610,17 @@ Alpine.data('createBookingApp', () => ({
             this.passengerData.class = '';
             return;
         }
-        const ticket = this.filteredTickets.find(t => t.id == this.passengerData.ticket_fare_id);
+        let ticket = this.filteredTickets.find(t => t.id == this.passengerData.ticket_fare_id);
+        if (!ticket) {
+            ticket = this.allTickets.find(t => t.id == this.passengerData.ticket_fare_id);
+        }
         if (ticket) {
             this.passengerData.route = ticket.route;
             this.passengerData.airline = ticket.airline || '';
             this.passengerData.class = ticket.airline_class || '';
+            console.log('[DateRange] updateRouteAirlineClass found ticket:', ticket.route, ticket.airline, ticket.airline_class);
+        } else {
+            console.log('[DateRange] updateRouteAirlineClass: ticket not found for id:', this.passengerData.ticket_fare_id);
         }
     },
 
