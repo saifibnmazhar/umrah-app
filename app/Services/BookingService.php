@@ -104,7 +104,7 @@ class BookingService
         $passengerTotal = (float) $booking->passengers->sum('package_value');
         $fingerprintCharge = $this->getFingerprintCharge(
             $booking->district_id,
-            $booking->fingerprint_location ?? 'office'
+            $booking->fingerprint_location?->value ?? 'office'
         );
         $total = $passengerTotal + $fingerprintCharge;
 
@@ -122,7 +122,7 @@ class BookingService
 
         $fingerprintCharge = $this->getFingerprintCharge(
             $booking->district_id,
-            $booking->fingerprint_location
+            $booking->fingerprint_location?->value
         );
 
         $subtotal = $passengerTotal + $fingerprintCharge;
@@ -150,6 +150,19 @@ class BookingService
         $nextNumber = $lastBooking ? $lastBooking->id + 1 : 1;
         
         return 'INV-' . date('Y') . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+    }
+
+    public function generateInvoiceId(int $branchId): string
+    {
+        $year = date('y');
+        $branchIdPadded = str_pad($branchId, 2, '0', STR_PAD_LEFT);
+        
+        do {
+            $random = strtoupper(substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 4));
+            $invoiceId = 'INV' . $branchIdPadded . $random . $year;
+        } while (Booking::where('invoice_id', $invoiceId)->exists());
+        
+        return $invoiceId;
     }
 
     public function getFingerprintCharge($districtId, string $location = 'Office'): float

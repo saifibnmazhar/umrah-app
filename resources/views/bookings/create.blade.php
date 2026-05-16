@@ -72,10 +72,10 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Office *</label>
-                    <select x-model="bookingData.fingerprint_office" name="fingerprint_office" @change="$el.blur()" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                    <select x-model="bookingData.fingerprint_office" name="office_id" @change="$el.blur()" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                         <option value="">Select Office</option>
                         @foreach(\App\Models\Office::orderBy('name')->get() as $office)
-                        <option value="{{ $office->name }}">{{ $office->name }}</option>
+                        <option value="{{ $office->id }}">{{ $office->name }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -297,9 +297,9 @@
                             <label class="block text-sm font-medium text-slate-700 mb-1">Service Required *</label>
                             <select x-model="passengerData.service_required" @change="recalculateCurrentPassenger(editingPassengerIndex ?? passengers.length)" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Service</option>
-                                <option value="All">All</option>
-                                <option value="Visa Only">Visa Only</option>
-                                <option value="Ticket Only">Ticket Only</option>
+                                <option value="all">All</option>
+                                <option value="visa_only">Visa Only</option>
+                                <option value="ticket_only">Ticket Only</option>
                             </select>
                         </div>
                     </div>
@@ -421,14 +421,14 @@
             <h3 class="text-xl font-semibold text-slate-800 mb-4">Apply Discount</h3>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
-                <select x-model="bookingData.discount_type" id="discountType" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                <select x-model="bookingData.discount_type" id="discountType" name="discount_type" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                     <option value="fixed">Fixed (SAR)</option>
                     <option value="percentage">Percentage (%)</option>
                 </select>
             </div>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value</label>
-                <input type="number" x-model="bookingData.discount_value" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                <input type="number" x-model="bookingData.discount_value" name="discount_value" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
             </div>
             <div class="flex gap-3 pt-4 border-t border-slate-200">
                 <button type="button" @click="closeDiscountModal()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Apply</button>

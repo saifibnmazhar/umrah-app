@@ -250,7 +250,10 @@ customerModalVisible: false,
 
         this.passengerData.passenger_type = calculatedType;
         this.updateBaggageWeight();
-        this.recalculateCurrentPassenger(this.editingPassengerIndex ?? this.passengers.length);
+        // Only recalculate if editing an existing passenger (not adding new one)
+        if (this.editingPassengerIndex !== null && this.editingPassengerIndex !== undefined) {
+            this.recalculateCurrentPassenger(this.editingPassengerIndex);
+        }
     },
 
     updateBaggageWeight() {
@@ -1024,7 +1027,10 @@ Alpine.data('createBookingApp', () => ({
 
         this.passengerData.passenger_type = calculatedType;
         this.updateBaggageWeight();
-        this.recalculateCurrentPassenger(this.editingPassengerIndex ?? this.passengers.length);
+        // Only recalculate if editing an existing passenger (not adding new one)
+        if (this.editingPassengerIndex !== null && this.editingPassengerIndex !== undefined) {
+            this.recalculateCurrentPassenger(this.editingPassengerIndex);
+        }
     },
 
     handleStayDurationChange() {
@@ -1215,6 +1221,10 @@ Alpine.data('createBookingApp', () => ({
     },
 
     recalculateCurrentPassenger(index) {
+        // Skip recalculation if passenger doesn't exist yet (adding new passenger)
+        if (index === null || index === undefined || !this.passengers[index]) {
+            return;
+        }
         const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
         this.passengerPackageValues[index] = this.calculatePackageValue(this.passengers[index], pkg);
     },
@@ -1598,7 +1608,10 @@ Alpine.data('createBookingApp', () => ({
         this.updateRouteAirlineClass();
         this.updateBaggageWeight();
         this.calculateFlightDateRange();
-        this.recalculateCurrentPassenger(this.editingPassengerIndex ?? this.passengers.length);
+        // Only recalculate if editing an existing passenger
+        if (this.editingPassengerIndex !== null && this.editingPassengerIndex !== undefined) {
+            this.recalculateCurrentPassenger(this.editingPassengerIndex);
+        }
     },
 
     updateRouteAirlineClass() {
@@ -1789,6 +1802,20 @@ Alpine.data('createBookingApp', () => ({
             alert('Please add at least one passenger');
             return;
         }
+        // Validate required fields
+        if (!this.bookingData.district_id) {
+            alert('Please select a district');
+            return;
+        }
+        if (!this.bookingData.fingerprint_office) {
+            alert('Please select an office');
+            return;
+        }
+        if (!this.bookingData.fingerprint_charge_id) {
+            alert('Fingerprint charge not configured for selected district');
+            return;
+        }
+
         const formData = new FormData(e.target);
         const bookingDocsInput = document.getElementById('booking_customer_docs');
         if (bookingDocsInput) {
@@ -1796,31 +1823,49 @@ Alpine.data('createBookingApp', () => ({
                 formData.append('booking_customer_docs[]', file);
             });
         }
-        try {
-            const response = fetch(e.target.action, {
-                method: 'POST',
-                headers: {
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
-                    'X-Requested-With': 'XMLHttpRequest'
-                },
-                body: formData
-            }).then(resp => {
-                if (resp.redirected) {
-                    window.location.href = resp.url;
-                    return;
-                }
+
+        fetch(e.target.action, {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json',
+            },
+            body: formData
+        })
+        .then(resp => {
+            if (resp.redirected) {
+                window.location.href = resp.url;
+                return;
+            }
+            if (!resp.ok) {
                 return resp.json().then(data => {
-                    if (data.success || resp.ok) {
-                        window.location.href = '/bookings';
+                    if (data.errors) {
+                        const firstError = Object.values(data.errors)[0];
+                        alert(firstError[0] || 'Validation failed');
                     } else {
-                        alert(data.message || 'Failed to create booking');
+                        alert(data.message || 'An error occurred');
                     }
+                    console.error('Submit failed:', resp.status, data);
+                }).catch(() => {
+                    return resp.text().then(text => {
+                        alert('An error occurred while submitting the form.');
+                        console.error('Submit failed:', resp.status, text);
+                    });
                 });
+            }
+            return resp.json().then(data => {
+                if (data.success || resp.ok) {
+                    window.location.href = resp.url || '/bookings';
+                } else {
+                    alert(data.message || 'Failed to create booking');
+                }
             });
-        } catch (err) {
-            console.error(err);
-            alert('Failed to create booking');
-        }
+        })
+        .catch(err => {
+            console.error('Submit error:', err);
+            alert('An error occurred while submitting the form. Please check the console for details.');
+        });
     },
 
     toggleReferralFields() {

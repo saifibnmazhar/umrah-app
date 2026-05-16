@@ -127,7 +127,7 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
-        $validated = $request->validate([
+        $validator = \Validator::make($request->all(), [
             'customer_id' => 'required|exists:customers,id',
             'district_id' => 'required|exists:districts,id',
             'office_id' => 'nullable|exists:offices,id',
@@ -146,7 +146,7 @@ class BookingController extends Controller
             'passengers.*.date_of_birth' => 'required|date|before:today',
             'passengers.*.mobile_no' => 'nullable|string|max:20',
             'passengers.*.passport_expiry' => 'nullable|date',
-            'passengers.*.service_required' => 'nullable|in:All,Visa Only,Ticket Only',
+            'passengers.*.service_required' => 'nullable|in:all,visa_only,ticket_only',
             'passengers.*.stay_duration' => 'nullable|integer|min:1',
             'passengers.*.flight_date_from' => 'nullable|date',
             'passengers.*.flight_date_to' => 'nullable|date|after:passengers.*.flight_date_from',
@@ -157,11 +157,23 @@ class BookingController extends Controller
             'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
         ]);
 
+        if ($validator->fails()) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(['errors' => $validator->errors()], 422);
+            }
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $validated = $validator->validated();
+
         try {
             DB::beginTransaction();
 
             $booking = Booking::create([
                 'user_id' => auth()->id(),
+                'branch_id' => auth()->user()->branch_id ?? 1,
+                'invoice_id' => $this->bookingService->generateInvoiceId(auth()->user()->branch_id ?? 1),
+                'date_gap_id' => \App\Models\FlightDateGap::getOrCreate()->id,
                 'customer_id' => $validated['customer_id'],
                 'district_id' => $validated['district_id'] ?? null,
                 'office_id' => $validated['office_id'] ?? null,
@@ -170,8 +182,9 @@ class BookingController extends Controller
                 'fingerprint_location' => $validated['fingerprint_location'] ?? 'Office',
                 'fingerprint_office' => $validated['fingerprint_office'] ?? null,
                 'pax_qty' => count($validated['passengers']),
-                'discount_type' => $validated['discount_type'] ?? null,
+                'discount_type' => ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage',
                 'discount_value' => $validated['discount_value'] ?? 0,
+                'discount_amount' => 0,
                 'remarks' => $validated['remarks'] ?? null,
             ]);
 
@@ -216,10 +229,24 @@ class BookingController extends Controller
             $booking->refresh();
             $this->bookingService->recalculateBookingTotal($booking);
 
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)',
+                    'url' => route('bookings.index')
+                ]);
+            }
+
             return redirect()->route('bookings.index')
                 ->with('success', 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)');
         } catch (\Exception $e) {
             DB::rollBack();
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create booking: ' . $e->getMessage()
+                ], 500);
+            }
             return redirect()->back()->with('error', 'Failed to create booking: ' . $e->getMessage())->withInput();
         }
     }

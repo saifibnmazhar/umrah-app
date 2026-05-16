@@ -72,10 +72,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('users', UserController::class);
     Route::resource('transaction-types', TransactionTypeController::class);
     Route::resource('passenger-statuses', PassengerStatusController::class);
-    Route::get('/bookings', fn() => view('bookings.index'))->name('booking.index');
-    Route::post('/bookings', function () {
-        return redirect()->route('booking.index')->with('success', 'Booking created successfully!');
-    })->name('booking.store');
+    Route::get('/bookings', fn() => view('bookings.index'))->name('bookings.index');
     Route::resource('bookings', BookingController::class);
     Route::resource('passengers', PassengerController::class);
     Route::patch('/passengers/{passenger}/status', [PassengerController::class, 'updateStatus'])->name('passengers.update-status');
