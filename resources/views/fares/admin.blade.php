@@ -289,7 +289,7 @@
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-3">
                                         <a href="{{ route('routes.show', $route->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">View</a>
-                                        <button @click="editRouteMode = true; route = { id: {{ $route->id }}, airline_id: '{{ $route->airline_id }}', route_type: '{{ $route->route_type->value }}', flight_type: '{{ $route->flight_type->value }}', from_city_id: '{{ $route->from_city_id ?? '' }}', to_city_id: '{{ $route->to_city_id ?? '' }}', return_city_id: '{{ $route->return_city_id ?? '' }}', additional_gap: '{{ $route->additional_gap ?? '' }}' }; showRouteModal = true" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
+                                        <button @click="editRouteMode = true; route = { id: {{ $route->id }}, airline_id: '{{ $route->airline_id }}', route_type: '{{ $route->route_type->value }}', flight_type: '{{ $route->flight_type->value }}', from_city_id: '{{ $route->from_city_id ?? '' }}', to_city_id: '{{ $route->to_city_id ?? '' }}', return_city_id: '{{ $route->return_city_id ?? '' }}', additional_gap: '{{ $route->additional_gap ?? '' }}' }; showRouteModal = true; toggleRouteFieldsModal('{{ $route->route_type->value }}'); toggleTransitFieldsModal('{{ $route->flight_type->value }}')" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
                                         <form method="POST" action="{{ route('routes.destroy', $route->id) }}" onsubmit="return confirm('Are you sure you want to delete this route?')" class="inline">
                                             @csrf
                                             @method('DELETE')
@@ -902,8 +902,8 @@
         }
     }
 
-    function toggleTransitFieldsModal() {
-        const flightType = document.querySelector('select[name="flight_type"]').value;
+    function toggleTransitFieldsModal(flightTypeValue) {
+        const flightType = flightTypeValue || document.querySelector('select[name="flight_type"]').value;
         const transitFields = document.getElementById('transitFieldsModal');
 
         if (flightType === 'transit') {
