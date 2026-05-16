@@ -386,7 +386,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
-                                <select name="airline_id" x-model="fare.airline_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required>
+                                <select name="airline_id" id="modalAirlineId" x-model="fare.airline_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="handleModalAirlineChange()">
                                     <option value="">Select Airline</option>
                                     @foreach($airlines as $airline)
                                         <option value="{{ $airline->id }}">{{ $airline->name }}</option>
@@ -395,10 +395,10 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
-                                <select name="airline_classes_id" x-model="fare.airline_classes_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required>
+                                <select name="airline_classes_id" id="modalClassId" x-model="fare.airline_classes_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required>
                                     <option value="">Select Class</option>
                                     @foreach($airlineClasses as $class)
-                                        <option value="{{ $class->id }}">{{ $class->travelClass->name ?? 'Class ' . $class->id }}</option>
+                                        <option value="{{ $class->id }}" data-airline-id="{{ $class->airline_id }}">{{ $class->travelClass->name ?? 'Class ' . $class->id }}</option>
                                     @endforeach
                                 </select>
                             </div>
@@ -669,9 +669,41 @@
         }
     }
 
+    function filterModalClasses() {
+        const airlineId = document.getElementById('modalAirlineId').value;
+        const classSelect = document.getElementById('modalClassId');
+
+        const options = classSelect.querySelectorAll('option');
+        options.forEach(function(option) {
+            if (option.value === '') return;
+
+            const optionAirlineId = option.getAttribute('data-airline-id');
+
+            if (airlineId && optionAirlineId !== airlineId) {
+                option.style.display = 'none';
+            } else {
+                option.style.display = '';
+            }
+        });
+
+        if (classSelect.value) {
+            const selectedOption = classSelect.options[classSelect.selectedIndex];
+            const selectedAirlineId = selectedOption.getAttribute('data-airline-id');
+
+            if (airlineId && selectedAirlineId !== airlineId) {
+                classSelect.value = '';
+            }
+        }
+    }
+
+    function handleModalAirlineChange() {
+        filterModalClasses();
+    }
+
     document.addEventListener('DOMContentLoaded', function() {
         toggleFareFieldsModal();
         filterModalRoutes();
+        filterModalClasses();
     });
     </script>
 

@@ -49,7 +49,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
-                    <select name="airline_id" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <select name="airline_id" id="airlineId" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" onchange="handleAirlineChange()">
                         <option value="">Select Airline</option>
                         @foreach($airlines as $airline)
                             <option value="{{ $airline->id }}" {{ old('airline_id') == $airline->id ? 'selected' : '' }}>
@@ -60,10 +60,10 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
-                    <select name="airline_classes_id" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <select name="airline_classes_id" id="classId" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                         <option value="">Select Class</option>
                         @foreach($airlineClasses as $class)
-                            <option value="{{ $class->id }}" {{ old('airline_classes_id') == $class->id ? 'selected' : '' }}>
+                            <option value="{{ $class->id }}" data-airline-id="{{ $class->airline_id }}" {{ old('airline_classes_id') == $class->id ? 'selected' : '' }}>
                                 {{ $class->travelClass->name ?? 'Class ' . $class->id }}
                             </option>
                         @endforeach
@@ -337,9 +337,43 @@ function handleRouteChange() {
     }
 }
 
+function filterClasses() {
+    const airlineId = document.getElementById('airlineId').value;
+    const classSelect = document.getElementById('classId');
+
+    // Filter class options based on airline
+    const options = classSelect.querySelectorAll('option');
+    options.forEach(function(option) {
+        if (option.value === '') return;
+
+        const optionAirlineId = option.getAttribute('data-airline-id');
+
+        if (airlineId && optionAirlineId !== airlineId) {
+            option.style.display = 'none';
+        } else {
+            option.style.display = '';
+        }
+    });
+
+    // Reset class selection if not valid for new airline
+    if (classSelect.value) {
+        const selectedOption = classSelect.options[classSelect.selectedIndex];
+        const selectedAirlineId = selectedOption.getAttribute('data-airline-id');
+
+        if (airlineId && selectedAirlineId !== airlineId) {
+            classSelect.value = '';
+        }
+    }
+}
+
+function handleAirlineChange() {
+    filterClasses();
+}
+
 document.addEventListener('DOMContentLoaded', function() {
     toggleFields();
     filterRoutes();
+    filterClasses();
 });
 </script>
 @endsection
