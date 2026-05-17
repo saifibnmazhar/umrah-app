@@ -210,7 +210,12 @@ class BookingService
     public function updateBookingTotals(Booking $booking): array
     {
         $totals = $this->calculateTotal($booking);
-        
+
         return $totals;
+    }
+
+    public function createInvoiceForBooking(Booking $booking): \App\Models\Invoice
+    {
+        return app(\App\Services\InvoiceService::class)->createForBooking($booking);
     }
 }

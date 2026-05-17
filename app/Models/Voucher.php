@@ -9,6 +9,7 @@ class Voucher extends Model
 {
     protected $fillable = [
         'voucher_id',
+        'invoice_id',
         'booking_id',
         'payment_id',
         'branch_id',
@@ -24,6 +25,7 @@ class Voucher extends Model
         'transaction_id',
         'amount',
         'bdt_amount',
+        'notes',
     ];
 
     protected $casts = [
@@ -32,6 +34,11 @@ class Voucher extends Model
         'bdt_amount' => 'decimal:2',
         'payment_method' => \App\Enums\PaymentMethod::class,
     ];
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
 
     public function booking(): BelongsTo
     {

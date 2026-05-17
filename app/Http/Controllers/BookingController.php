@@ -16,11 +16,15 @@ use App\Models\TravelClass;
 use App\Models\TicketFare;
 use App\Models\VisaSellingPrice;
 use App\Models\PassengerStatus;
+use App\Models\Invoice;
+use App\Models\TransactionType;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\FingerprintLocation;
 use App\Enums\DiscountType;
 use App\Services\BookingService;
+use App\Services\PaymentService;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Carbon\Carbon;
@@ -120,8 +124,12 @@ class BookingController extends Controller
 
         $offices = Office::orderBy('name')->get();
 
+        $currencyRates = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->get();
+        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+
         return view('bookings.create', compact(
-            'districts', 'packages', 'offices', 'preSelectedPackageId', 'ticketFares'
+            'districts', 'packages', 'offices', 'preSelectedPackageId', 'ticketFares',
+            'currencyRates', 'currentCurrencyRate'
         ));
     }
 
@@ -155,6 +163,14 @@ class BookingController extends Controller
             'passengers.*.ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'booking_customer_docs' => 'nullable|array',
             'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'payment' => 'nullable|array',
+            'payment.amount' => 'nullable|numeric|min:0',
+            'payment.bdt_amount' => 'nullable|numeric|min:0',
+            'payment.currency' => 'nullable|in:SAR,BDT',
+            'payment.payment_method' => 'nullable|in:cash,bank',
+            'payment.payment_date' => 'nullable|date',
+            'payment.bank_id' => 'nullable|exists:banks,id',
+            'payment.transaction_id' => 'nullable|string|max:255',
         ]);
 
         if ($validator->fails()) {
@@ -229,16 +245,68 @@ class BookingController extends Controller
             $booking->refresh();
             $this->bookingService->recalculateBookingTotal($booking);
 
+            $invoice = $this->bookingService->createInvoiceForBooking($booking);
+
+            $paymentAmount = (float) ($validated['payment']['amount'] ?? 0);
+            $paymentBdtAmount = (float) ($validated['payment']['bdt_amount'] ?? 0);
+
+            \Log::info('Payment debug - amount: ' . $paymentAmount . ', bdt_amount: ' . $paymentBdtAmount . ', payment array: ', $validated['payment'] ?? []);
+
+            if (!empty($validated['payment']) && ($paymentAmount > 0 || $paymentBdtAmount > 0)) {
+                \Log::info('Processing payment...');
+                try {
+                    $initialPaymentTransactionType = TransactionType::where('name', 'Initial Payment')->first();
+                    
+                    if (!$initialPaymentTransactionType) {
+                        throw new \Exception('Initial Payment transaction type not found. Please seed transaction types.');
+                    }
+
+                    $paymentData = [
+                        'branch_id' => $booking->branch_id,
+                        'user_id' => $booking->user_id,
+                        'payment_date' => $validated['payment']['payment_date'] ?? now()->toDateString(),
+                        'payment_method' => $validated['payment']['payment_method'] ?? 'cash',
+                        'amount' => $validated['payment']['amount'] ?? 0,
+                        'bdt_amount' => $validated['payment']['bdt_amount'] ?? 0,
+                        'currency' => $validated['payment']['currency'] ?? 'SAR',
+                        'bank_id' => $validated['payment']['bank_id'] ?? null,
+                        'transaction_id' => $validated['payment']['transaction_id'] ?? null,
+                        'transaction_type_id' => $initialPaymentTransactionType->id,
+                    ];
+
+                    app(PaymentService::class)->createCustomerPayment($invoice, $paymentData);
+                } catch (\Exception $e) {
+                    \Log::error('Payment creation failed: ' . $e->getMessage());
+                    DB::rollBack();
+                    if ($request->ajax() || $request->wantsJson()) {
+                        return response()->json([
+                            'success' => false,
+                            'message' => 'Booking created but payment failed: ' . $e->getMessage()
+                        ], 500);
+                    }
+                    return redirect()->route('bookings.index')
+                        ->with('warning', 'Booking created but initial payment failed. Please add payment manually.');
+                }
+            }
+
             if ($request->ajax() || $request->wantsJson()) {
+                $paymentMessage = ($paymentAmount > 0 || $paymentBdtAmount > 0)
+                    ? ' with initial payment'
+                    : '';
+
                 return response()->json([
                     'success' => true,
-                    'message' => 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)',
+                    'message' => 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage,
                     'url' => route('bookings.index')
                 ]);
             }
 
+            $paymentMessage = ($paymentAmount > 0 || $paymentBdtAmount > 0)
+                ? ' and initial payment recorded'
+                : '';
+
             return redirect()->route('bookings.index')
-                ->with('success', 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)');
+                ->with('success', 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage);
         } catch (\Exception $e) {
             DB::rollBack();
             if ($request->ajax() || $request->wantsJson()) {

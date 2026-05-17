@@ -15,7 +15,7 @@ Alpine.data('bookingApp', () => ({
 customerModalVisible: false,
         discountModalVisible: false,
         paymentModalVisible: false,
-        customDurationModalVisible: false,
+customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
         method: 'Cash',
@@ -24,6 +24,15 @@ customerModalVisible: false,
         amount_sar: '',
         amount_bdt: ''
     },
+    paymentSaved: false,
+    exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
+
+    hasPaymentData() {
+        const amountSar = parseFloat(this.paymentData.amount_sar) || 0;
+        const amountBdt = parseFloat(this.paymentData.amount_bdt) || 0;
+        return this.paymentSaved && (amountSar > 0 || amountBdt > 0);
+    },
+
     newCustomer: {
         name: '',
         passport_no: '',
@@ -103,6 +112,15 @@ customerModalVisible: false,
             discount_value: 0,
             remarks: ''
         };
+        this.paymentData = {
+            currency: 'SAR',
+            method: 'Cash',
+            bank_method: '',
+            trx_id: '',
+            amount_sar: '',
+            amount_bdt: ''
+        };
+        this.paymentSaved = false;
     },
 
     showIndexTab(tab) {
@@ -621,7 +639,23 @@ customerModalVisible: false,
     },
 
     handlePaymentCurrencyChange() {
-        // Alpine reactivity handles the visibility via x-show
+        if (this.paymentData.currency === 'BDT' && this.paymentData.amount_sar && this.exchangeRate > 0) {
+            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(2);
+        } else if (this.paymentData.currency === 'SAR' && this.paymentData.amount_bdt && this.exchangeRate > 0) {
+            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(2);
+        }
+    },
+
+    convertSarToBdt() {
+        if (this.paymentData.currency === 'SAR' && this.paymentData.amount_sar && this.exchangeRate > 0) {
+            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(2);
+        }
+    },
+
+    convertBdtToSar() {
+        if (this.paymentData.currency === 'BDT' && this.paymentData.amount_bdt && this.exchangeRate > 0) {
+            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(2);
+        }
     },
 
     handlePaymentMethodChange() {
@@ -636,6 +670,8 @@ customerModalVisible: false,
             alert('Please enter payment amount');
             return;
         }
+
+        this.paymentSaved = true;
         
         console.log('Payment saved:', {
             currency: this.paymentData.currency,
@@ -646,7 +682,6 @@ customerModalVisible: false,
             amount_bdt: amountBDT
         });
         
-        alert('Payment saved successfully!');
         this.closePaymentModal();
     },
 
@@ -807,6 +842,15 @@ Alpine.data('createBookingApp', () => ({
         amount_sar: '',
         amount_bdt: ''
     },
+    paymentSaved: false,
+    exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
+
+    hasPaymentData() {
+        const amountSar = parseFloat(this.paymentData.amount_sar) || 0;
+        const amountBdt = parseFloat(this.paymentData.amount_bdt) || 0;
+        return this.paymentSaved && (amountSar > 0 || amountBdt > 0);
+    },
+
     newCustomer: {
         name: '',
         iqama_type: '',
@@ -944,6 +988,15 @@ Alpine.data('createBookingApp', () => ({
             discount_value: 0,
             remarks: ''
         };
+        this.paymentData = {
+            currency: 'SAR',
+            method: 'Cash',
+            bank_method: '',
+            trx_id: '',
+            amount_sar: '',
+            amount_bdt: ''
+        };
+        this.paymentSaved = false;
     },
 
     async searchCustomers() {
@@ -1768,10 +1821,14 @@ Alpine.data('createBookingApp', () => ({
     savePayment() {
         const amountSAR = parseFloat(this.paymentData.amount_sar) || 0;
         const amountBDT = parseFloat(this.paymentData.amount_bdt) || 0;
+        
         if (amountSAR === 0 && amountBDT === 0) {
             alert('Please enter payment amount');
             return;
         }
+
+        this.paymentSaved = true;
+        
         console.log('Payment saved:', {
             currency: this.paymentData.currency,
             method: this.paymentData.method,
@@ -1780,7 +1837,7 @@ Alpine.data('createBookingApp', () => ({
             amount_sar: amountSAR,
             amount_bdt: amountBDT
         });
-        alert('Payment saved successfully!');
+        
         this.closePaymentModal();
     },
 

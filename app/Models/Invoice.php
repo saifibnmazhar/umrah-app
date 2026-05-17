@@ -4,6 +4,8 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Enums\InvoiceStatus;
 
 class Invoice extends Model
 {
@@ -11,6 +13,18 @@ class Invoice extends Model
         'booking_id',
         'branch_id',
         'user_id',
+        'total_amount',
+        'paid_amount',
+        'balance',
+        'status',
+        'notes',
+    ];
+
+    protected $casts = [
+        'total_amount' => 'decimal:2',
+        'paid_amount' => 'decimal:2',
+        'balance' => 'decimal:2',
+        'status' => InvoiceStatus::class,
     ];
 
     public function booking(): BelongsTo
@@ -26,5 +40,20 @@ class Invoice extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function payments(): HasMany
+    {
+        return $this->hasMany(Payment::class);
+    }
+
+    public function vouchers(): HasMany
+    {
+        return $this->hasMany(Voucher::class);
+    }
+
+    public function customer(): BelongsTo
+    {
+        return $this->belongsTo(Customer::class, 'booking_id', 'id');
     }
 }

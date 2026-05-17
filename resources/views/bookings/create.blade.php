@@ -1,7 +1,12 @@
 @extends('layouts.app')
 @section('title', 'Create Booking')
 @section('content')
-<script>window.__bookingServerData = { ticketFares: @json($ticketFares ?? []), packages: @json($packages ?? []), preSelectedPackageId: {{ $preSelectedPackageId ?? 'null' }} };</script>
+<script>window.__bookingServerData = { 
+    ticketFares: @json($ticketFares ?? []), 
+    packages: @json($packages ?? []), 
+    preSelectedPackageId: {{ $preSelectedPackageId ?? 'null' }},
+    currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }}
+};</script>
 <div class="max-w-5xl mx-auto" x-data="createBookingApp()" x-init="init()">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Create Booking</h1>
@@ -28,6 +33,13 @@
     <div class="bg-white rounded-xl shadow-lg p-6">
         <form method="POST" action="{{ route('bookings.store') }}" @submit="submitForm($event)">
             @csrf
+            <input type="hidden" name="payment[amount]" :value="paymentSaved ? (parseFloat(paymentData.amount_sar) || 0) : 0">
+            <input type="hidden" name="payment[bdt_amount]" :value="paymentSaved ? (parseFloat(paymentData.amount_bdt) || 0) : 0">
+            <input type="hidden" name="payment[currency]" :value="paymentSaved ? paymentData.currency : 'SAR'">
+            <input type="hidden" name="payment[payment_method]" :value="paymentSaved && paymentData.method === 'Cash' ? 'cash' : 'bank'">
+            <input type="hidden" name="payment[payment_date]" :value="paymentSaved ? new Date().toISOString().split('T')[0] : ''">
+            <input type="hidden" name="payment[transaction_id]" :value="paymentSaved ? (paymentData.trx_id || '') : ''">
+            <input type="hidden" name="payment[bank_id]" :value="paymentSaved ? (paymentData.bank_method || '') : ''">
             <div class="mb-6">
                 <label class="block text-sm font-medium text-slate-700 mb-2">Customer <span class="text-slate-400">(Passport No.)</span></label>
                 <div class="relative">
