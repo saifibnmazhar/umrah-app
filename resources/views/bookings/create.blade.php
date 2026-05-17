@@ -1,7 +1,12 @@
 @extends('layouts.app')
 @section('title', 'Create Booking')
 @section('content')
-<script>window.__bookingServerData = { ticketFares: @json($ticketFares ?? []), packages: @json($packages ?? []), preSelectedPackageId: {{ $preSelectedPackageId ?? 'null' }} };</script>
+<script>window.__bookingServerData = { 
+    ticketFares: @json($ticketFares ?? []), 
+    packages: @json($packages ?? []), 
+    preSelectedPackageId: {{ $preSelectedPackageId ?? 'null' }},
+    currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }}
+};</script>
 <div class="max-w-5xl mx-auto" x-data="createBookingApp()" x-init="init()">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Create Booking</h1>
@@ -28,6 +33,17 @@
     <div class="bg-white rounded-xl shadow-lg p-6">
         <form method="POST" action="{{ route('bookings.store') }}" @submit="submitForm($event)">
             @csrf
+            <template x-if="hasPaymentData()">
+                <div>
+                    <input type="hidden" name="payment[amount]" :value="paymentData.amount_sar">
+                    <input type="hidden" name="payment[bdt_amount]" :value="paymentData.amount_bdt">
+                    <input type="hidden" name="payment[currency]" :value="paymentData.currency">
+                    <input type="hidden" name="payment[payment_method]" :value="paymentData.method === 'Cash' ? 'cash' : 'bank'">
+                    <input type="hidden" name="payment[payment_date]" :value="new Date().toISOString().split('T')[0]">
+                    <input type="hidden" name="payment[transaction_id]" :value="paymentData.trx_id">
+                    <input type="hidden" name="payment[bank_id]" :value="paymentData.bank_method">
+                </div>
+            </template>
             <div class="mb-6">
                 <label class="block text-sm font-medium text-slate-700 mb-2">Customer <span class="text-slate-400">(Passport No.)</span></label>
                 <div class="relative">
