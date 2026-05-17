@@ -247,7 +247,13 @@ class BookingController extends Controller
 
             $invoice = $this->bookingService->createInvoiceForBooking($booking);
 
-            if (!empty($validated['payment']) && ($validated['payment']['amount'] > 0 || $validated['payment']['bdt_amount'] > 0)) {
+            $paymentAmount = (float) ($validated['payment']['amount'] ?? 0);
+            $paymentBdtAmount = (float) ($validated['payment']['bdt_amount'] ?? 0);
+
+            \Log::info('Payment debug - amount: ' . $paymentAmount . ', bdt_amount: ' . $paymentBdtAmount . ', payment array: ', $validated['payment'] ?? []);
+
+            if (!empty($validated['payment']) && ($paymentAmount > 0 || $paymentBdtAmount > 0)) {
+                \Log::info('Processing payment...');
                 try {
                     $initialPaymentTransactionType = TransactionType::where('name', 'Initial Payment')->first();
                     
@@ -270,6 +276,7 @@ class BookingController extends Controller
 
                     app(PaymentService::class)->createCustomerPayment($invoice, $paymentData);
                 } catch (\Exception $e) {
+                    \Log::error('Payment creation failed: ' . $e->getMessage());
                     DB::rollBack();
                     if ($request->ajax() || $request->wantsJson()) {
                         return response()->json([
@@ -283,7 +290,7 @@ class BookingController extends Controller
             }
 
             if ($request->ajax() || $request->wantsJson()) {
-                $paymentMessage = !empty($validated['payment']) && ($validated['payment']['amount'] > 0 || $validated['payment']['bdt_amount'] > 0)
+                $paymentMessage = ($paymentAmount > 0 || $paymentBdtAmount > 0)
                     ? ' with initial payment'
                     : '';
 
@@ -294,7 +301,7 @@ class BookingController extends Controller
                 ]);
             }
 
-            $paymentMessage = !empty($validated['payment']) && ($validated['payment']['amount'] > 0 || $validated['payment']['bdt_amount'] > 0)
+            $paymentMessage = ($paymentAmount > 0 || $paymentBdtAmount > 0)
                 ? ' and initial payment recorded'
                 : '';
 

@@ -17,13 +17,19 @@ class PaymentService
 
     public function createCustomerPayment(Invoice $invoice, array $data): array
     {
+        \Log::info('PaymentService: Creating payment for invoice ID: ' . $invoice->id . ', booking ID: ' . $invoice->booking_id);
+        \Log::info('PaymentService: Payment data received:', $data);
+
         $processedData = $this->processCurrencyConversion($data);
+        \Log::info('PaymentService: Processed data:', $processedData);
 
         if (!$this->invoiceService->canAcceptPayment($invoice, $processedData['bdt_amount'])) {
             throw new \Exception('Payment exceeds invoice balance');
         }
 
         return DB::transaction(function () use ($invoice, $data, $processedData) {
+            \Log::info('PaymentService: Creating Payment record...');
+            
             $payment = Payment::create([
                 'invoice_id' => $invoice->id,
                 'booking_id' => $invoice->booking_id,
@@ -56,7 +62,12 @@ class PaymentService
                 'notes' => $processedData['notes'] ?? null,
             ]);
 
+            \Log::info('PaymentService: Payment created with ID: ' . $payment->id);
+            \Log::info('PaymentService: Creating Voucher record...');
+
             $this->invoiceService->updatePaymentStatus($invoice);
+
+            \Log::info('PaymentService: Payment and Voucher created successfully for invoice: ' . $invoice->id);
 
             return [$payment, $voucher];
         });
