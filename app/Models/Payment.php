@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 class Payment extends Model
 {
     protected $fillable = [
+        'invoice_id',
         'booking_id',
         'branch_id',
         'user_id',
@@ -22,6 +23,7 @@ class Payment extends Model
         'transaction_id',
         'amount',
         'bdt_amount',
+        'notes',
     ];
 
     protected $casts = [
@@ -30,6 +32,11 @@ class Payment extends Model
         'bdt_amount' => 'decimal:2',
         'payment_method' => \App\Enums\PaymentMethod::class,
     ];
+
+    public function invoice(): BelongsTo
+    {
+        return $this->belongsTo(Invoice::class);
+    }
 
     public function booking(): BelongsTo
     {

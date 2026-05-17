@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class TransactionType extends Model
 {
-    protected $table = 'transaction_type';
+    protected $table = 'transaction_types';
 
     protected $fillable = [
         'name',
