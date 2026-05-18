@@ -3,6 +3,7 @@
 @section('content')
 <div class="max-w-5xl mx-auto">
     <div id="editBookingContent" class="space-y-6">
+        {{-- Header Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
                 <div class="flex items-center gap-3">
@@ -26,6 +27,52 @@
                 </div>
             </div>
 
+            {{-- Info Grid --}}
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mb-6">
+                <div>
+                    <span class="text-slate-500 text-sm">Invoice No</span>
+                    <p class="text-slate-800 font-medium">{{ $booking->invoice_id ?? 'N/A' }}</p>
+                </div>
+                <div>
+                    <span class="text-slate-500 text-sm">Booking Date</span>
+                    <p class="text-slate-800 font-medium">{{ $booking->created_at->format('Y-m-d') }}</p>
+                </div>
+                <div>
+                    <span class="text-slate-500 text-sm">Customer</span>
+                    <p class="text-slate-800 font-medium">{{ $booking->customer->name ?? 'N/A' }}</p>
+                </div>
+                <div>
+                    <span class="text-slate-500 text-sm">Status</span>
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $booking->invoice && $booking->invoice->balance <= 0 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-700' }}">
+                        {{ $booking->invoice && $booking->invoice->balance <= 0 ? 'Paid' : 'Due' }}
+                    </span>
+                </div>
+            </div>
+
+            {{-- Summary Row --}}
+            <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-200">
+                <div>
+                    <span class="text-slate-500 text-sm">Total Value</span>
+                    <p class="text-xl font-bold text-slate-800">{{ number_format($booking->invoice?->total_amount ?? 0) }} SAR</p>
+                </div>
+                <div>
+                    <span class="text-slate-500 text-sm">Total Paid</span>
+                    <p class="text-xl font-bold text-green-600">{{ number_format($booking->invoice?->paid_amount ?? 0) }} SAR</p>
+                </div>
+                <div>
+                    <span class="text-slate-500 text-sm">Due</span>
+                    <p class="text-xl font-bold text-red-600">{{ number_format($booking->invoice?->balance ?? 0) }} SAR</p>
+                </div>
+            </div>
+            <div class="mt-4 pt-4 border-t border-slate-200 flex justify-end">
+                <button type="button" onclick="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">
+                    Discount
+                </button>
+            </div>
+        </div>
+
+        {{-- Edit Form Card --}}
+        <div class="bg-white rounded-xl shadow-lg p-6">
             <form method="POST" action="{{ route('bookings.update', $booking->id) }}" id="editForm" class="space-y-6">
                 @csrf
                 @method('PUT')
@@ -117,11 +164,16 @@
                 </div>
                 <div class="flex items-center gap-3">
                     <span class="text-slate-800 font-medium">{{ number_format($passengerTotal) }} SAR</span>
+                    <button onclick="viewPassengerDetails({{ $passenger->id }})" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-1 rounded">View</button>
                 </div>
             </div>
             @empty
             <p class="text-sm text-slate-400 text-center py-4">No passengers found.</p>
             @endforelse
+            </div>
+            
+            <div class="flex justify-end mt-4">
+                <button onclick="addPassenger()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
             </div>
         </div>
 
@@ -131,10 +183,12 @@
                 <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
                     <h3 class="text-sm font-medium text-slate-500">Customer Documents</h3>
                     <div class="flex gap-2">
+                        <input type="file" id="customerDocInput" class="hidden" accept=".pdf,image/*" multiple onchange="handleCustomerDocSelect(event)">
+                        <button onclick="document.getElementById('customerDocInput').click()" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">Upload</button>
                         <button onclick="downloadAllCustomerDocs()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
                     </div>
                 </div>
-                <div class="space-y-2 overflow-y-auto" style="max-height: 16rem;">
+                <div id="customerDocumentsList" class="space-y-2 overflow-y-auto" style="max-height: 16rem;">
                     @forelse($booking->documents as $doc)
                     <div class="flex justify-between items-center bg-white p-2 rounded border border-slate-200">
                         <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
@@ -153,7 +207,7 @@
                         <button onclick="downloadAllPassengerDocs()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
                     </div>
                 </div>
-                <div class="space-y-2 overflow-y-auto" style="max-height: 16rem;">
+                <div id="passengerDocumentsList" class="space-y-2 overflow-y-auto" style="max-height: 16rem;">
                     @forelse($booking->passengers->flatMap->documents() as $doc)
                     <div class="flex justify-between items-center bg-white p-2 rounded border border-slate-200">
                         <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
@@ -166,11 +220,104 @@
             </div>
         </div>
 
+        {{-- Action Buttons Row --}}
+        <div class="flex justify-end gap-3">
+            <button onclick="openReIssueModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                Request Re-Issue
+            </button>
+            <button onclick="openAddTicketModal()" class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
+                Request Add. Tkt
+            </button>
+            <button onclick="openRefundModal()" class="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium">
+                Request Refund
+            </button>
+            <button onclick="downloadAllDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                Download All Docs
+            </button>
+            <button onclick="openPaymentModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                Payment
+            </button>
+        </div>
+
+        {{-- Payment History Tab --}}
+        <div class="bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-slate-700 mb-4">Payment History</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-600">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium">Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Voucher No</th>
+                            <th class="px-3 py-2 text-left font-medium">Method</th>
+                            <th class="px-3 py-2 text-left font-medium">Trx ID</th>
+                            <th class="px-3 py-2 text-right font-medium">Amount</th>
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @forelse($booking->payments as $payment)
+                        <tr>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->created_at->format('Y-m-d') }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->voucher_no ?? '-' }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->payment_method?->value ?? 'Cash' }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->transaction_id ?? '-' }}</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->amount) }} SAR</td>
+                        </tr>
+                        @empty
+                        <tr>
+                            <td colspan="5" class="px-3 py-4 text-center text-slate-500">No payments recorded</td>
+                        </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
         {{-- Back Button --}}
         <div class="mt-6 pt-4 border-t border-slate-200">
             <a href="{{ route('bookings.index') }}" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">
                 Back to List
             </a>
+        </div>
+    </div>
+</div>
+
+{{-- Discount Modal --}}
+<div id="discountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black/50" onclick="closeDiscountModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <div class="flex justify-between items-start mb-4">
+            <h3 class="text-xl font-semibold text-slate-800">Apply Discount</h3>
+            <button onclick="closeDiscountModal()" class="text-slate-400 hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
+            <select id="discountType" onchange="calculateInvoiceDiscount()" 
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                <option value="fixed" {{ $booking->discount_type === 'fixed' ? 'selected' : '' }}>Fixed (SAR)</option>
+                <option value="percentage" {{ $booking->discount_type === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
+            </select>
+        </div>
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value</label>
+            <input type="number" id="discountValue" 
+                value="{{ $booking->discount_value ?? 0 }}" 
+                min="0" step="0.01"
+                oninput="validateDiscountValue(); calculateInvoiceDiscount()" 
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+        </div>
+        <div class="flex gap-3 pt-4 border-t border-slate-200">
+            <button type="button" onclick="applyInvoiceDiscount()" 
+                class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
+                Apply
+            </button>
+            <button type="button" onclick="closeDiscountModal()" 
+                class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
+                Cancel
+            </button>
         </div>
     </div>
 </div>
@@ -186,6 +333,7 @@
     .shadow-lg, .shadow-xl { box-shadow: none; }
     .bg-white { border: 1px solid #e2e8f0; }
     a[href]:after { content: none !important; }
+    #discountModal { display: none !important; }
 }
 </style>
 
@@ -203,8 +351,132 @@ function showToast(message, type = 'success') {
     setTimeout(() => toast.remove(), 3000);
 }
 
+function openDiscountModal() {
+    const existingDiscount = {{ $booking->discount_value ?? 0 }};
+    const discountType = '{{ $booking->discount_type ?? 'fixed' }}';
+    
+    document.getElementById('discountType').value = discountType;
+    document.getElementById('discountValue').value = existingDiscount;
+    
+    document.getElementById('discountModal').classList.remove('hidden');
+}
+
+function validateDiscountValue() {
+    const input = document.getElementById('discountValue');
+    const discountType = document.getElementById('discountType').value;
+    
+    if (input.value < 0) {
+        input.value = 0;
+        showToast('Discount value cannot be negative', 'error');
+    }
+    
+    if (discountType === 'percentage' && input.value > 100) {
+        input.value = 100;
+        showToast('Percentage cannot exceed 100%', 'error');
+    }
+}
+
+function closeDiscountModal() {
+    document.getElementById('discountModal').classList.add('hidden');
+}
+
+function calculateInvoiceDiscount() {
+    // Function kept for compatibility
+}
+
+function applyInvoiceDiscount() {
+    const discountType = document.getElementById('discountType').value;
+    const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
+    
+    fetch('{{ route('bookings.update', $booking->id) }}', {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+            discount_type: discountType,
+            discount_value: discountValue
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success || data.message) {
+            showToast('Discount applied successfully');
+            closeDiscountModal();
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast('Failed to apply discount', 'error');
+        }
+    })
+    .catch(error => {
+        showToast('Error: ' + error.message, 'error');
+    });
+}
+
+function viewPassengerDetails(passengerId) {
+    window.location.href = '/passengers/' + passengerId;
+}
+
+function addPassenger() {
+    window.location.href = '{{ route('bookings.edit', $booking->id) }}?add_passenger=true';
+}
+
+function openReIssueModal() {
+    showToast('Re-Issue request feature coming soon');
+}
+
+function openAddTicketModal() {
+    showToast('Additional ticket request feature coming soon');
+}
+
+function openRefundModal() {
+    showToast('Refund request feature coming soon');
+}
+
+function openPaymentModal() {
+    showToast('Payment feature coming soon - use Save button to update booking');
+}
+
+function downloadAllDocs() {
+    showToast('Downloading all documents...');
+    setTimeout(() => showToast('No documents available for download'), 1500);
+}
+
+function handleCustomerDocSelect(event) {
+    const files = event.target.files;
+    if (files.length > 0) {
+        showToast('Uploading ' + files.length + ' file(s)...');
+        const formData = new FormData();
+        for (let i = 0; i < files.length; i++) {
+            formData.append('documents[]', files[i]);
+        }
+        formData.append('booking_id', {{ $booking->id }});
+        
+        fetch('{{ route('documents.upload') }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Documents uploaded successfully');
+                setTimeout(() => location.reload(), 500);
+            } else {
+                showToast('Upload failed', 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Upload error: ' + error.message, 'error');
+        });
+    }
+}
+
 function downloadAllCustomerDocs() {
-    const docs = document.querySelectorAll('#customerDocumentsList .text-blue-600, .bg-slate-50 .text-blue-600');
+    const docs = document.querySelectorAll('#customerDocumentsList .text-blue-600');
     if (docs.length === 0) {
         showToast('No customer documents to download', 'error');
         return;
@@ -214,7 +486,7 @@ function downloadAllCustomerDocs() {
 }
 
 function downloadAllPassengerDocs() {
-    const docs = document.querySelectorAll('#passengerDocumentsList .text-blue-600, .bg-slate-50:nth-child(2) .text-blue-600');
+    const docs = document.querySelectorAll('#passengerDocumentsList .text-blue-600');
     if (docs.length === 0) {
         showToast('No passenger documents to download', 'error');
         return;
