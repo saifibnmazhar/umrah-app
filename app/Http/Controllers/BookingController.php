@@ -36,14 +36,7 @@ class BookingController extends Controller
     {
         $tab = $request->get('tab', 'booking');
         
-        $bookings = Booking::with([
-            'customer',
-            'passengers',
-            'district',
-            'package',
-            'office',
-            'invoice'
-        ])
+        $bookings = Booking::with(['customer', 'passengers'])
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
