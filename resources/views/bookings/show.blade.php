@@ -140,45 +140,6 @@
             @endif
         </div>
 
-        {{-- Booking Information Section --}}
-        <div class="bg-slate-50 rounded-lg p-4">
-            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
-                <h3 class="text-sm font-medium text-slate-600">Booking Information</h3>
-            </div>
-            <div class="space-y-3">
-                <div class="flex justify-between">
-                    <span class="text-slate-500 text-sm">Fingerprint Location</span>
-                    <span class="text-slate-700 text-sm font-medium">{{ ucfirst($booking->fingerprint_location?->value ?? 'office') }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-500 text-sm">Fingerprint Office</span>
-                    <span class="text-slate-700 text-sm font-medium">{{ $booking->office->name ?? 'N/A' }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-500 text-sm">District</span>
-                    <span class="text-slate-700 text-sm font-medium">{{ $booking->district->name ?? 'N/A' }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-500 text-sm">Package</span>
-                    <span class="text-slate-700 text-sm font-medium">{{ $booking->package->package_name ?? 'N/A' }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-500 text-sm">Discount Type</span>
-                    <span class="text-slate-700 text-sm font-medium">{{ $booking->discount_type?->value === 'percentage' ? 'Percentage' : 'Fixed' }}</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-500 text-sm">Discount Value</span>
-                    <span class="text-slate-700 text-sm font-medium">{{ $booking->discount_value ?? 0 }}</span>
-                </div>
-                @if($booking->remarks)
-                <div class="pt-2 border-t border-slate-200">
-                    <span class="text-slate-500 text-sm">Remarks</span>
-                    <p class="text-slate-700 text-sm mt-1">{{ $booking->remarks }}</p>
-                </div>
-                @endif
-            </div>
-        </div>
-
         {{-- Action Buttons Row --}}
         <div class="flex justify-end gap-3">
             <button onclick="downloadAllDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
