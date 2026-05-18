@@ -41,7 +41,14 @@ class BookingController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $passengers = Passenger::with(['booking', 'booking.customer', 'status'])
+        $passengers = Passenger::with([
+            'booking',
+            'booking.customer',
+            'booking.package.ticketFare.route',
+            'booking.invoice',
+            'ticketFare.route',
+            'status'
+        ])
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->withQueryString();
