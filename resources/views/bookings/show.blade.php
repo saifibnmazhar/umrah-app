@@ -21,9 +21,9 @@
                     <button onclick="window.print()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm">
                         Print
                     </button>
-                    <a href="{{ route('bookings.edit', $booking->id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">
+                    <button onclick="window.location.href='{{ route('bookings.edit', $booking->id) }}'" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">
                         Edit
-                    </a>
+                    </button>
                 </div>
             </div>
 
@@ -206,48 +206,33 @@
 
 {{-- Discount Modal --}}
 <div id="discountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
-    <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeDiscountModal()"></div>
-    <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-xl font-semibold text-slate-800 mb-4">Apply Discount</h3>
-        
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Original Total</label>
-            <input type="text" id="discountOriginalTotal" readonly 
-                value="{{ number_format($booking->invoice?->total_amount ?? 0) }}" 
-                class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+    <div class="fixed inset-0 bg-black/50" onclick="closeDiscountModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <div class="flex justify-between items-start mb-4">
+            <h3 class="text-xl font-semibold text-slate-800">Apply Discount</h3>
+            <button onclick="closeDiscountModal()" class="text-slate-400 hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
         </div>
-        
         <div class="mb-4">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Discount Type</label>
+            <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
             <select id="discountType" onchange="calculateInvoiceDiscount()" 
-                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                <option value="fixed" {{ $booking->discount_type?->value === 'fixed' ? 'selected' : '' }}>Fixed (SAR)</option>
                 <option value="percentage" {{ $booking->discount_type?->value === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
-                <option value="fixed" {{ $booking->discount_type?->value === 'fixed' ? 'selected' : '' }}>Fixed Amount (SAR)</option>
             </select>
         </div>
-        
         <div class="mb-4">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Discount Value</label>
+            <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value</label>
             <input type="number" id="discountValue" 
                 value="{{ $booking->discount_value ?? 0 }}" 
-                min="0" oninput="calculateInvoiceDiscount()" 
-                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                min="0" step="0.01"
+                oninput="validateDiscountValue(); calculateInvoiceDiscount()" 
+                class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
         </div>
-        
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-slate-700 mb-1">Discount Amount (SAR)</label>
-            <input type="text" id="discountAmount" readonly value="0" 
-                class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
-        </div>
-        
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-slate-700 mb-1">New Total (SAR)</label>
-            <input type="text" id="discountNewTotal" readonly 
-                value="{{ number_format($booking->invoice?->total_amount ?? 0) }}" 
-                class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
-        </div>
-        
-        <div class="flex gap-3">
+        <div class="flex gap-3 pt-4 border-t border-slate-200">
             <button type="button" onclick="applyInvoiceDiscount()" 
                 class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
                 Apply
@@ -383,8 +368,28 @@ function showToast(message, type = 'success') {
 }
 
 function openDiscountModal() {
+    const existingDiscount = {{ $booking->discount_value ?? 0 }};
+    const discountType = '{{ $booking->discount_type?->value ?? 'fixed' }}';
+    
+    document.getElementById('discountType').value = discountType;
+    document.getElementById('discountValue').value = existingDiscount;
+    
     document.getElementById('discountModal').classList.remove('hidden');
-    calculateInvoiceDiscount();
+}
+
+function validateDiscountValue() {
+    const input = document.getElementById('discountValue');
+    const discountType = document.getElementById('discountType').value;
+    
+    if (input.value < 0) {
+        input.value = 0;
+        showToast('Discount value cannot be negative', 'error');
+    }
+    
+    if (discountType === 'percentage' && input.value > 100) {
+        input.value = 100;
+        showToast('Percentage cannot exceed 100%', 'error');
+    }
 }
 
 function closeDiscountModal() {
@@ -392,21 +397,7 @@ function closeDiscountModal() {
 }
 
 function calculateInvoiceDiscount() {
-    const originalTotal = {{ $booking->invoice?->total_amount ?? 0 }};
-    const discountType = document.getElementById('discountType').value;
-    const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
-    
-    let discountAmount = 0;
-    if (discountType === 'percentage') {
-        discountAmount = originalTotal * discountValue / 100;
-    } else {
-        discountAmount = discountValue;
-    }
-    
-    const newTotal = Math.max(0, originalTotal - discountAmount);
-    
-    document.getElementById('discountAmount').value = Math.round(discountAmount);
-    document.getElementById('discountNewTotal').value = Math.round(newTotal);
+    // Function kept for compatibility - calculations are now visual only in this simplified modal
 }
 
 function applyInvoiceDiscount() {
