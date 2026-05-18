@@ -154,7 +154,7 @@ if ($route) {
         </select>
     </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
-    <td class="px-3 py-2 text-slate-700">{{ $passenger->actual_flight_date?->format('d M Y') ?? '—' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ optional($passenger->actual_flight_date)->format('d M Y') ?: 'N/A' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->package_value ? number_format($passenger->package_value, 2) . ' SAR' : '—' }}</td>
     <td class="px-3 py-2"></td>
