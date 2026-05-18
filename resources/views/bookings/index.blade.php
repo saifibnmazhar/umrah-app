@@ -61,7 +61,15 @@
                             <td class="px-3 py-2 text-slate-700">{{ $booking->customer->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->customer->mobile_no ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->passengers->count() }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprint_location }}</td>
+                            <td class="px-3 py-2">
+                                <select
+                                    class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
+                                    data-original="{{ $booking->fingerprint_location?->value ?? 'office' }}"
+                                    onchange="updateFingerprintLocation({{ $booking->id }}, this.value, this)">
+                                    <option value="home" {{ ($booking->fingerprint_location?->value ?? '') === 'home' ? 'selected' : '' }}>Home</option>
+                                    <option value="office" {{ ($booking->fingerprint_location?->value ?? '') === 'office' ? 'selected' : '' }}>Office</option>
+                                </select>
+                            </td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->office->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
@@ -168,6 +176,34 @@ function updatePassengerStatus(passengerId, statusId) {
     .catch(error => {
         console.error('Error:', error);
         alert('Failed to update status');
+    });
+}
+
+function updateFingerprintLocation(bookingId, location, select) {
+    const selectEl = select || event.target;
+    const originalValue = selectEl.dataset.original;
+
+    fetch(`/bookings/${bookingId}/fingerprint-location`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ fingerprint_location: location })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            selectEl.dataset.original = location;
+        } else {
+            alert('Failed to update fingerprint location');
+            selectEl.value = originalValue;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update fingerprint location');
+        selectEl.value = originalValue;
     });
 }
 </script>
