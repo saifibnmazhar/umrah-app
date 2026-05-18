@@ -47,7 +47,7 @@
             </div>
             <div>
                 <h3 class="text-sm font-medium text-slate-500 mb-1">Discount Type</h3>
-                <p class="text-lg text-slate-800">{{ ucfirst($booking->discount_type ?? 'None') }}</p>
+                <p class="text-lg text-slate-800">{{ ucfirst($booking->discount_type->value ?? 'None') }}</p>
             </div>
             <div>
                 <h3 class="text-sm font-medium text-slate-500 mb-1">Discount Value</h3>
@@ -83,10 +83,10 @@
                         <td class="px-3 py-2 text-slate-700">{{ $index + 1 }}</td>
                         <td class="px-3 py-2 text-slate-700">{{ $passenger->first_name }} {{ $passenger->last_name }}</td>
                         <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no }}</td>
-                        <td class="px-3 py-2 text-slate-700">{{ ucfirst($passenger->passenger_type) }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ ucfirst($passenger->passenger_type->value ?? 'N/A') }}</td>
                         <td class="px-3 py-2 text-slate-700">{{ $passenger->date_of_birth }}</td>
                         <td class="px-3 py-2 text-slate-700">{{ $passenger->service_required }}</td>
-                        <td class="px-3 py-2 text-slate-700">{{ ucfirst($passenger->ticket_status ?? 'None') }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ ucfirst($passenger->ticket_status->value ?? 'None') }}</td>
                     </tr>
                     @endforeach
                 </tbody>

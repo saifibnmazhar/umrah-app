@@ -15,7 +15,7 @@
             </div>
             <div>
                 <h3 class="text-sm font-medium text-slate-500 mb-1">Passenger Type</h3>
-                <p class="text-lg text-slate-800">{{ ucfirst($passenger->passenger_type) }}</p>
+                <p class="text-lg text-slate-800">{{ ucfirst($passenger->passenger_type->value ?? 'N/A') }}</p>
             </div>
             <div>
                 <h3 class="text-sm font-medium text-slate-500 mb-1">Passport Number</h3>
@@ -43,11 +43,11 @@
             </div>
             <div>
                 <h3 class="text-sm font-medium text-slate-500 mb-1">Ticket Status</h3>
-                <p class="text-lg text-slate-800">{{ ucfirst($passenger->ticket_status ?? 'None') }}</p>
+                <p class="text-lg text-slate-800">{{ ucfirst($passenger->ticket_status->value ?? 'None') }}</p>
             </div>
             <div>
                 <h3 class="text-sm font-medium text-slate-500 mb-1">Visa Status</h3>
-                <p class="text-lg text-slate-800">{{ ucfirst($passenger->visa_status ?? 'None') }}</p>
+                <p class="text-lg text-slate-800">{{ ucfirst($passenger->visa_status->value ?? 'None') }}</p>
             </div>
             <div>
                 <h3 class="text-sm font-medium text-slate-500 mb-1">Flight Date From</h3>
