@@ -62,12 +62,12 @@
                             <td class="px-3 py-2 text-slate-700">{{ $booking->customer->mobile_no ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->passengers->count() }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprint_location }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprint_office }}</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->office->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-slate-700">0 SAR</td>
-                            <td class="px-3 py-2 text-slate-700">0 SAR</td>
-                            <td class="px-3 py-2 text-slate-700">0 SAR</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->total_amount ?? 0 }} SAR</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->paid_amount ?? 0 }} SAR</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->balance ?? 0 }} SAR</td>
                             <td class="px-3 py-2">
                                 <a href="{{ route('bookings.show', $booking->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
                             </td>
