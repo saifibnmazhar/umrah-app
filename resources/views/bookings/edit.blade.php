@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Edit Booking')
 @section('content')
-<div class="max-w-5xl mx-auto">
+<div class="max-w-4xl mx-auto">
     <div id="editBookingContent" class="space-y-6">
         {{-- Header Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
@@ -21,7 +21,7 @@
                     <button onclick="window.print()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm">
                         Print
                     </button>
-                    <button type="submit" form="editForm" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">
+                    <button type="button" onclick="saveBooking()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">
                         Save
                     </button>
                 </div>
@@ -71,80 +71,7 @@
             </div>
         </div>
 
-        {{-- Edit Form Card --}}
-        <div class="bg-white rounded-xl shadow-lg p-6">
-            <form method="POST" action="{{ route('bookings.update', $booking->id) }}" id="editForm" class="space-y-6">
-                @csrf
-                @method('PUT')
-                
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Customer</label>
-                        <p class="px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
-                            {{ $booking->customer->name ?? '-' }}
-                        </p>
-                        <input type="hidden" name="customer_id" value="{{ $booking->customer_id }}">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Fingerprint Location</label>
-                        <select name="fingerprint_location" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white transition">
-                            <option value="Office" {{ $booking->fingerprint_location === 'Office' ? 'selected' : '' }}>Office</option>
-                            <option value="Home" {{ $booking->fingerprint_location === 'Home' ? 'selected' : '' }}>Home</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Fingerprint Office</label>
-                        <select name="fingerprint_office" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white transition">
-                            <option value="">Select Office</option>
-                            <option value="BMT-Dhaka" {{ $booking->fingerprint_office === 'BMT-Dhaka' ? 'selected' : '' }}>BMT-Dhaka</option>
-                            <option value="BMT-Chattogram" {{ $booking->fingerprint_office === 'BMT-Chattogram' ? 'selected' : '' }}>BMT-Chattogram</option>
-                            <option value="BMT-Sylhet" {{ $booking->fingerprint_office === 'BMT-Sylhet' ? 'selected' : '' }}>BMT-Sylhet</option>
-                            <option value="BMT-Rangpur" {{ $booking->fingerprint_office === 'BMT-Rangpur' ? 'selected' : '' }}>BMT-Rangpur</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">District</label>
-                        <select name="district_id" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white transition">
-                            <option value="">Select District</option>
-                            @foreach(\App\Models\District::orderBy('name')->get() as $district)
-                            <option value="{{ $district->id }}" {{ $booking->district_id == $district->id ? 'selected' : '' }}>{{ $district->name }}</option>
-                            @endforeach
-                        </select>
-                        <input type="hidden" name="fingerprint_charge_id" value="{{ $booking->fingerprint_charge_id }}">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Package</label>
-                        <select name="package_id" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white transition">
-                            <option value="">Select Package</option>
-                            @foreach(\App\Models\Package::orderBy('package_name')->get() as $package)
-                            <option value="{{ $package->id }}" {{ $booking->package_id == $package->id ? 'selected' : '' }}>{{ $package->package_name }}</option>
-                            @endforeach
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
-                        <select name="discount_type" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white transition">
-                            <option value="fixed" {{ $booking->discount_type === 'fixed' ? 'selected' : '' }}>Fixed (SAR)</option>
-                            <option value="percentage" {{ $booking->discount_type === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value</label>
-                        <input type="number" name="discount_value" value="{{ $booking->discount_value ?? 0 }}" min="0" step="0.01" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition">
-                    </div>
-                    <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Remarks</label>
-                        <textarea name="remarks" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition">{{ $booking->remarks ?? '' }}</textarea>
-                    </div>
-                </div>
-
-                <div class="flex gap-3 pt-4 border-t border-slate-200">
-                    <a href="{{ route('bookings.show', $booking->id) }}" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-center">
-                        Cancel
-                    </a>
-                </div>
-            </form>
-        </div>
+        
 
         {{-- Passengers Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
@@ -412,6 +339,10 @@ function applyInvoiceDiscount() {
     .catch(error => {
         showToast('Error: ' + error.message, 'error');
     });
+}
+
+function saveBooking() {
+    showToast('Save feature - please edit booking details from the show page or use available actions');
 }
 
 function viewPassengerDetails(passengerId) {
