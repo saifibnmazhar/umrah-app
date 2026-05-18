@@ -75,73 +75,85 @@
                 <h3 class="text-lg font-semibold text-slate-700">Passengers</h3>
             </div>
             
-            @if($booking->passengers->count() > 0)
-            <div class="space-y-4">
-                @foreach($booking->passengers as $index => $passenger)
-                <div class="border border-slate-200 rounded-lg p-4 hover:shadow-md transition">
-                    <div class="flex items-start justify-between">
-                        <div class="flex items-center gap-3">
-                            <span class="bg-slate-700 text-white text-xs font-medium px-2 py-1 rounded">P{{ str_pad($index + 1, 3, '0', STR_PAD_LEFT) }}</span>
-                            <div>
-                                <h4 class="font-semibold text-slate-800">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</h4>
-                                <p class="text-sm text-slate-500">{{ $passenger->passport_no ?? 'N/A' }}</p>
-                            </div>
-                        </div>
-                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium 
-                            @if(($passenger->ticket_status?->value ?? '') === 'issued') bg-green-100 text-green-800
-                            @elseif(($passenger->ticket_status?->value ?? '') === 'booked') bg-blue-100 text-blue-800
-                            @else bg-yellow-100 text-yellow-800 @endif">
-                            {{ ucfirst($passenger->ticket_status?->value ?? 'pending') }}
-                        </span>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-4 pt-4 border-t border-slate-100">
-                        <div>
-                            <span class="text-slate-500 text-xs">Passenger Type</span>
-                            <p class="text-sm text-slate-700">{{ ucfirst($passenger->passenger_type?->value ?? 'adult') }}</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500 text-xs">Service Required</span>
-                            <p class="text-sm text-slate-700">{{ $passenger->service_required?->value ?? 'All' }}</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500 text-xs">Route</span>
-                            <p class="text-sm text-slate-700">{{ $passenger->route ?? 'N/A' }}</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500 text-xs">Airline</span>
-                            <p class="text-sm text-slate-700">{{ $passenger->airline ?? 'N/A' }}</p>
-                        </div>
-                    </div>
-                    
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-3 pt-3 border-t border-slate-100">
-                        <div>
-                            <span class="text-slate-500 text-xs">Travel Class</span>
-                            <p class="text-sm text-slate-700">{{ $passenger->travel_class ?? 'N/A' }}</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500 text-xs">Flight Date</span>
-                            <p class="text-sm text-slate-700">{{ $passenger->flight_date_from ? $passenger->flight_date_from->format('Y-m-d') : 'N/A' }}</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500 text-xs">Visa Status</span>
-                            <p class="text-sm text-slate-700">{{ $passenger->visa_status?->value ?? 'None' }}</p>
-                        </div>
-                        <div>
-                            <span class="text-slate-500 text-xs">Fingerprint</span>
-                            <p class="text-sm text-slate-700">{{ ucfirst($booking->fingerprint_location?->value ?? 'Office') }}</p>
-                        </div>
+            <div id="invoicePassengers" class="space-y-3">
+            @forelse($booking->passengers as $index => $passenger)
+            @php
+                $passengerTotal = ($passenger->ticketFare?->fare ?? 0) + ($passenger->package_value ?? 0);
+            @endphp
+            <div class="flex justify-between items-center p-3 bg-slate-50 rounded-lg">
+                <div>
+                    <span class="font-medium text-slate-800">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</span>
+                    <span class="text-slate-500 text-sm ml-2">({{ $passenger->passport_no ?? 'N/A' }})</span>
+                </div>
+                <div class="flex items-center gap-3">
+                    <span class="text-slate-800 font-medium">{{ number_format($passengerTotal) }} SAR</span>
+                    <button onclick="viewPassengerDetails({{ $passenger->id }})" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-1 rounded">View</button>
+                </div>
+            </div>
+            @empty
+            <p class="text-sm text-slate-400 text-center py-4">No passengers found.</p>
+            @endforelse
+            </div>
+            
+            <div class="flex justify-end mt-4">
+                <button onclick="addPassenger()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
+            </div>
+        </div>
+
+        {{-- Documents Section --}}
+        <div class="grid grid-cols-2 gap-4">
+            <div class="bg-slate-50 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                    <h3 class="text-sm font-medium text-slate-500">Customer Documents</h3>
+                    <div class="flex gap-2">
+                        <input type="file" id="customerDocInput" class="hidden" accept=".pdf,image/*" multiple onchange="handleCustomerDocSelect(event)">
+                        <button onclick="document.getElementById('customerDocInput').click()" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">Upload</button>
+                        <button onclick="downloadAllCustomerDocs()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
                     </div>
                 </div>
-                @endforeach
+                <div id="customerDocumentsList" class="space-y-2 overflow-y-auto" style="max-height: 16rem;">
+                    @forelse($booking->documents as $doc)
+                    <div class="flex justify-between items-center bg-white p-2 rounded border border-slate-200">
+                        <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
+                        <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
+                    </div>
+                    @empty
+                    <p class="text-sm text-slate-400">No customer documents</p>
+                    @endforelse
+                </div>
             </div>
-            @else
-            <p class="text-slate-500 text-center py-4">No passengers found.</p>
-            @endif
+
+            <div class="bg-slate-50 rounded-lg p-4">
+                <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                    <h3 class="text-sm font-medium text-slate-500">Passenger Documents</h3>
+                    <div class="flex gap-2">
+                        <button onclick="downloadAllPassengerDocs()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
+                    </div>
+                </div>
+                <div id="passengerDocumentsList" class="space-y-2 overflow-y-auto" style="max-height: 16rem;">
+                    @forelse($booking->passengers->flatMap->documents() as $doc)
+                    <div class="flex justify-between items-center bg-white p-2 rounded border border-slate-200">
+                        <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
+                        <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
+                    </div>
+                    @empty
+                    <p class="text-sm text-slate-400">No passenger documents</p>
+                    @endforelse
+                </div>
+            </div>
         </div>
 
         {{-- Action Buttons Row --}}
         <div class="flex justify-end gap-3">
+            <button onclick="openReIssueModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                Request Re-Issue
+            </button>
+            <button onclick="openAddTicketModal()" class="px-6 py-3 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">
+                Request Add. Tkt
+            </button>
+            <button onclick="openRefundModal()" class="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium">
+                Request Refund
+            </button>
             <button onclick="downloadAllDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
                 Download All Docs
             </button>
@@ -505,6 +517,94 @@ function savePayment() {
 function downloadAllDocs() {
     showToast('Downloading all documents...');
     setTimeout(() => showToast('No documents available for download'), 1500);
+}
+
+function viewPassengerDetails(passengerId) {
+    window.location.href = '/passengers/' + passengerId;
+}
+
+function addPassenger() {
+    window.location.href = '{{ route('bookings.edit', $booking->id) }}?add_passenger=true';
+}
+
+function openReIssueModal() {
+    showToast('Re-Issue request feature coming soon');
+}
+
+function closeReIssueModal() {
+    // Modal close placeholder
+}
+
+function openAddTicketModal() {
+    showToast('Additional ticket request feature coming soon');
+}
+
+function closeAddTicketModal() {
+    // Modal close placeholder
+}
+
+function openRefundModal() {
+    showToast('Refund request feature coming soon');
+}
+
+function closeRefundModal() {
+    // Modal close placeholder
+}
+
+function handleCustomerDocSelect(event) {
+    const files = event.target.files;
+    if (files.length > 0) {
+        showToast('Uploading ' + files.length + ' file(s)...');
+        const formData = new FormData();
+        for (let i = 0; i < files.length; i++) {
+            formData.append('documents[]', files[i]);
+        }
+        formData.append('booking_id', {{ $booking->id }});
+        
+        fetch('{{ route('documents.upload') }}', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: formData
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showToast('Documents uploaded successfully');
+                setTimeout(() => location.reload(), 500);
+            } else {
+                showToast('Upload failed', 'error');
+            }
+        })
+        .catch(error => {
+            showToast('Upload error: ' + error.message, 'error');
+        });
+    }
+}
+
+function downloadAllCustomerDocs() {
+    const docs = document.querySelectorAll('#customerDocumentsList .text-blue-600');
+    if (docs.length === 0) {
+        showToast('No customer documents to download', 'error');
+        return;
+    }
+    docs.forEach(doc => doc.click());
+    showToast('Downloading customer documents...');
+}
+
+function downloadAllPassengerDocs() {
+    const docs = document.querySelectorAll('#passengerDocumentsList .text-blue-600');
+    if (docs.length === 0) {
+        showToast('No passenger documents to download', 'error');
+        return;
+    }
+    docs.forEach(doc => doc.click());
+    showToast('Downloading passenger documents...');
+}
+
+function downloadDoc(docId) {
+    window.open('/documents/' + docId + '/download', '_blank');
 }
 </script>
 @endpush
