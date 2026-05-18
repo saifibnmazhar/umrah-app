@@ -507,12 +507,21 @@
                     
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Amount (SAR)</label>
-                        <input type="number" id="paymentAmountSAR" x-model="paymentData.amount_sar" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter SAR amount">
+                        <input type="number" id="paymentAmountSAR" x-model="paymentData.amount_sar" :disabled="paymentData.currency === 'BDT'" @input="handleSarAmountInput()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" :class="{'bg-slate-100 cursor-not-allowed': paymentData.currency === 'BDT'}" placeholder="Enter SAR amount">
                     </div>
                     
                     <div x-show="paymentData.currency === 'BDT'" x-cloak>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Amount (BDT)</label>
-                        <input type="number" id="paymentAmountBDT" x-model="paymentData.amount_bdt" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter BDT amount">
+                        <input type="number" id="paymentAmountBDT" x-model="paymentData.amount_bdt" @input="handleBdtAmountInput()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter BDT amount">
+                    </div>
+                    
+                    <div x-show="paymentData.currency === 'BDT'" class="col-span-2 mt-2">
+                        <template x-if="exchangeRate > 0">
+                            <p class="text-sm text-slate-500">1 SAR = <span x-text="exchangeRate"></span> BDT</p>
+                        </template>
+                        <template x-if="exchangeRate <= 0">
+                            <p class="text-sm text-red-500">Exchange rate not available. Cannot process BDT payment.</p>
+                        </template>
                     </div>
                 </div>
             </div>

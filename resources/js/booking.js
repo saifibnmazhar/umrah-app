@@ -639,10 +639,41 @@ customDurationModalVisible: false,
     },
 
     handlePaymentCurrencyChange() {
-        if (this.paymentData.currency === 'BDT' && this.paymentData.amount_sar && this.exchangeRate > 0) {
-            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(2);
-        } else if (this.paymentData.currency === 'SAR' && this.paymentData.amount_bdt && this.exchangeRate > 0) {
-            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(2);
+        if (this.paymentData.currency === 'BDT') {
+            if (this.paymentData.amount_sar) {
+                this.handleSarAmountInput();
+            }
+        } else {
+            if (this.paymentData.amount_bdt) {
+                this.handleBdtAmountInput();
+            } else {
+                this.paymentData.amount_bdt = '';
+                if (this.paymentData.amount_sar) {
+                    this.handleSarAmountInput();
+                }
+            }
+        }
+    },
+
+    handleSarAmountInput() {
+        const sarAmount = parseFloat(this.paymentData.amount_sar) || 0;
+        
+        if (sarAmount > 0 && this.exchangeRate > 0) {
+            const convertedBdt = (sarAmount * this.exchangeRate).toFixed(2);
+            this.paymentData.amount_bdt = convertedBdt;
+        } else {
+            this.paymentData.amount_bdt = '';
+        }
+    },
+
+    handleBdtAmountInput() {
+        const bdtAmount = parseFloat(this.paymentData.amount_bdt) || 0;
+        
+        if (bdtAmount > 0 && this.exchangeRate > 0) {
+            const convertedSar = (bdtAmount / this.exchangeRate).toFixed(2);
+            this.paymentData.amount_sar = convertedSar;
+        } else if (bdtAmount > 0 && this.exchangeRate <= 0) {
+            this.paymentData.amount_sar = '';
         }
     },
 
@@ -666,11 +697,16 @@ customDurationModalVisible: false,
         const amountSAR = parseFloat(this.paymentData.amount_sar) || 0;
         const amountBDT = parseFloat(this.paymentData.amount_bdt) || 0;
         
-        if (amountSAR === 0 && amountBDT === 0) {
+        if (amountSAR === 0) {
             alert('Please enter payment amount');
             return;
         }
-
+        
+        if (this.paymentData.currency === 'BDT' && amountBDT > 0 && this.exchangeRate <= 0) {
+            alert('Cannot process BDT payment. Exchange rate not available.');
+            return;
+        }
+        
         this.paymentSaved = true;
         
         console.log('Payment saved:', {
@@ -1815,18 +1851,72 @@ Alpine.data('createBookingApp', () => ({
         this.paymentModalVisible = false;
     },
 
-    handlePaymentCurrencyChange() {},
+    handlePaymentCurrencyChange() {
+        if (this.paymentData.currency === 'BDT') {
+            if (this.paymentData.amount_sar) {
+                this.handleSarAmountInput();
+            }
+        } else {
+            if (this.paymentData.amount_bdt) {
+                this.handleBdtAmountInput();
+            } else {
+                this.paymentData.amount_bdt = '';
+                if (this.paymentData.amount_sar) {
+                    this.handleSarAmountInput();
+                }
+            }
+        }
+    },
+
+    handleSarAmountInput() {
+        const sarAmount = parseFloat(this.paymentData.amount_sar) || 0;
+        
+        if (sarAmount > 0 && this.exchangeRate > 0) {
+            const convertedBdt = (sarAmount * this.exchangeRate).toFixed(2);
+            this.paymentData.amount_bdt = convertedBdt;
+        } else {
+            this.paymentData.amount_bdt = '';
+        }
+    },
+
+    handleBdtAmountInput() {
+        const bdtAmount = parseFloat(this.paymentData.amount_bdt) || 0;
+        
+        if (bdtAmount > 0 && this.exchangeRate > 0) {
+            const convertedSar = (bdtAmount / this.exchangeRate).toFixed(2);
+            this.paymentData.amount_sar = convertedSar;
+        } else if (bdtAmount > 0 && this.exchangeRate <= 0) {
+            this.paymentData.amount_sar = '';
+        }
+    },
+
     handlePaymentMethodChange() {},
+    convertSarToBdt() {
+        if (this.paymentData.currency === 'SAR' && this.paymentData.amount_sar && this.exchangeRate > 0) {
+            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(2);
+        }
+    },
+
+    convertBdtToSar() {
+        if (this.paymentData.currency === 'BDT' && this.paymentData.amount_bdt && this.exchangeRate > 0) {
+            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(2);
+        }
+    },
 
     savePayment() {
         const amountSAR = parseFloat(this.paymentData.amount_sar) || 0;
         const amountBDT = parseFloat(this.paymentData.amount_bdt) || 0;
         
-        if (amountSAR === 0 && amountBDT === 0) {
+        if (amountSAR === 0) {
             alert('Please enter payment amount');
             return;
         }
-
+        
+        if (this.paymentData.currency === 'BDT' && amountBDT > 0 && this.exchangeRate <= 0) {
+            alert('Cannot process BDT payment. Exchange rate not available.');
+            return;
+        }
+        
         this.paymentSaved = true;
         
         console.log('Payment saved:', {

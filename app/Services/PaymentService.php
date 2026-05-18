@@ -23,13 +23,13 @@ class PaymentService
         $processedData = $this->processCurrencyConversion($data);
         \Log::info('PaymentService: Processed data:', $processedData);
 
-        if (!$this->invoiceService->canAcceptPayment($invoice, $processedData['bdt_amount'])) {
+        if (!$this->invoiceService->canAcceptPayment($invoice, $processedData['amount'])) {
             throw new \Exception('Payment exceeds invoice balance');
         }
 
         return DB::transaction(function () use ($invoice, $data, $processedData) {
             \Log::info('PaymentService: Creating Payment record...');
-            
+
             $payment = Payment::create([
                 'invoice_id' => $invoice->id,
                 'booking_id' => $invoice->booking_id,
@@ -65,12 +65,79 @@ class PaymentService
             \Log::info('PaymentService: Payment created with ID: ' . $payment->id);
             \Log::info('PaymentService: Creating Voucher record...');
 
-            $this->invoiceService->updatePaymentStatus($invoice);
-
-            \Log::info('PaymentService: Payment and Voucher created successfully for invoice: ' . $invoice->id);
-
             return [$payment, $voucher];
         });
+    }
+
+    public function updateInvoiceAfterPayment(Invoice $invoice): void
+    {
+        $this->invoiceService->updatePaymentStatus($invoice);
+    }
+
+    public function createCustomerPaymentAndUpdateInvoice(Invoice $invoice, array $data): array
+    {
+        \Log::info('PaymentService: Starting createCustomerPaymentAndUpdateInvoice for invoice ID: ' . $invoice->id);
+
+        $processedData = $this->processCurrencyConversion($data);
+        \Log::info('PaymentService: Processed data:', $processedData);
+
+        if (!$this->invoiceService->canAcceptPayment($invoice, $processedData['amount'])) {
+            throw new \Exception('Payment exceeds invoice balance');
+        }
+
+        \Log::info('PaymentService: Starting transaction for payment and voucher creation...');
+
+        $result = DB::transaction(function () use ($invoice, $processedData) {
+            \Log::info('PaymentService: Inside transaction - Creating Payment record...');
+
+            $payment = Payment::create([
+                'invoice_id' => $invoice->id,
+                'booking_id' => $invoice->booking_id,
+                'branch_id' => $processedData['branch_id'],
+                'user_id' => $processedData['user_id'],
+                'payment_date' => $processedData['payment_date'],
+                'payment_method' => $processedData['payment_method'],
+                'amount' => $processedData['amount'],
+                'bdt_amount' => $processedData['bdt_amount'],
+                'bank_id' => $processedData['bank_id'] ?? null,
+                'transaction_id' => $processedData['transaction_id'] ?? null,
+                'currency_rate_id' => $processedData['currency_rate_id'] ?? null,
+                'notes' => $processedData['notes'] ?? null,
+            ]);
+
+            \Log::info('PaymentService: Payment created with ID: ' . $payment->id);
+
+            $voucher = $this->voucherService->createVoucher([
+                'invoice_id' => $invoice->id,
+                'booking_id' => $invoice->booking_id,
+                'payment_id' => $payment->id,
+                'branch_id' => $processedData['branch_id'],
+                'user_id' => $processedData['user_id'],
+                'transaction_type_id' => $processedData['transaction_type_id'],
+                'payment_date' => $processedData['payment_date'],
+                'payment_method' => $processedData['payment_method'],
+                'amount' => $processedData['amount'],
+                'bdt_amount' => $processedData['bdt_amount'],
+                'bank_id' => $processedData['bank_id'] ?? null,
+                'transaction_id' => $processedData['transaction_id'] ?? null,
+                'currency_rate_id' => $processedData['currency_rate_id'] ?? null,
+                'notes' => $processedData['notes'] ?? null,
+            ]);
+
+            \Log::info('PaymentService: Voucher created with ID: ' . $voucher->id);
+            \Log::info('PaymentService: Transaction complete, returning payment and voucher');
+
+            return ['payment' => $payment, 'voucher' => $voucher];
+        });
+
+        \Log::info('PaymentService: Transaction committed. Now updating invoice status...');
+
+        $invoice->refresh();
+        $this->invoiceService->updatePaymentStatus($invoice);
+
+        \Log::info('PaymentService: Invoice updated successfully. Paid: ' . $invoice->paid_amount . ', Balance: ' . $invoice->balance);
+
+        return [$result['payment'], $result['voucher']];
     }
 
     public function createAgentPayment(string $agentType, array $data): array
@@ -121,19 +188,12 @@ class PaymentService
     {
         $currencyRateService = app(CurrencyRateService::class);
         $currentRate = $currencyRateService->getCurrentRate();
-        $currency = $data['currency'] ?? 'SAR';
-
-        $amount = (float) ($data['amount'] ?? 0);
-        $bdtAmount = (float) ($data['bdt_amount'] ?? 0);
-
-        if ($currency === 'SAR' && $amount > 0 && $bdtAmount === 0) {
-            $data['bdt_amount'] = $currencyRateService->convertSarToBdt($amount);
-            $data['currency_rate_id'] = $currentRate?->id;
-        } elseif ($currency === 'BDT' && $bdtAmount > 0 && $amount === 0) {
-            $data['amount'] = $currencyRateService->convertBdtToSar($bdtAmount);
-            $data['currency_rate_id'] = $currentRate?->id;
-        }
-
+        
+        $data['amount'] = (float) ($data['amount'] ?? 0);
+        $data['bdt_amount'] = (float) ($data['bdt_amount'] ?? 0);
+        
+        $data['currency_rate_id'] = $currentRate?->id;
+        
         return $data;
     }
 }
