@@ -42,10 +42,11 @@
                             <th class="px-3 py-2 text-left font-medium">Booking Date</th>
                             <th class="px-3 py-2 text-left font-medium">Customer</th>
                             <th class="px-3 py-2 text-left font-medium">Mobile</th>
-                            <th class="px-3 py-2 text-left font-medium">Passengers</th>
+                            <th class="px-3 py-2 text-left font-medium">Passenger Name</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Location</th>
                             <th class="px-3 py-2 text-left font-medium">Office</th>
                             <th class="px-3 py-2 text-left font-medium">District</th>
+                            <th class="px-3 py-2 text-left font-medium">Pax Qty</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
                             <th class="px-3 py-2 text-left font-medium">Total</th>
                             <th class="px-3 py-2 text-left font-medium">Paid</th>
@@ -56,25 +57,31 @@
                     <tbody class="divide-y divide-slate-200">
                         @forelse($bookings as $booking)
                         <tr>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->id }}</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice_id ?? $booking->id }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->created_at->format('Y-m-d') }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->customer->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->customer->mobile_no ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->passengers->count() }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprint_location }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprint_office }}</td>
+                            <td class="px-3 py-2 text-slate-700">
+                                @php
+                                    $firstPassenger = $booking->passengers->first();
+                                @endphp
+                                {{ $firstPassenger ? $firstPassenger->first_name . ' ' . $firstPassenger->last_name : 'N/A' }}
+                            </td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprint_location ?? 'N/A' }}</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->office->name ?? ($booking->fingerprint_office ?? 'N/A') }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->pax_qty ?? $booking->passengers->count() }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-slate-700">0 SAR</td>
-                            <td class="px-3 py-2 text-slate-700">0 SAR</td>
-                            <td class="px-3 py-2 text-slate-700">0 SAR</td>
+                            <td class="px-3 py-2 text-slate-700">{{ number_format($booking->invoice->total_amount ?? 0, 2) }} SAR</td>
+                            <td class="px-3 py-2 text-slate-700">{{ number_format($booking->invoice->paid_amount ?? 0, 2) }} SAR</td>
+                            <td class="px-3 py-2 text-slate-700">{{ number_format($booking->invoice->balance ?? 0, 2) }} SAR</td>
                             <td class="px-3 py-2">
                                 <a href="{{ route('bookings.show', $booking->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="13" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
+                            <td colspan="14" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
                         </tr>
                         @endforelse
                     </tbody>
