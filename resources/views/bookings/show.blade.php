@@ -3,6 +3,7 @@
 @section('content')
 <div class="max-w-5xl mx-auto">
     <div id="invoiceDetailsContent" class="space-y-6">
+        {{-- Header Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
                 <div class="flex items-center gap-3">
@@ -41,7 +42,7 @@
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Status</span>
-                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium {{ $booking->invoice && $booking->invoice->balance <= 0 ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-700' }}">
                         {{ $booking->invoice && $booking->invoice->balance <= 0 ? 'Paid' : 'Due' }}
                     </span>
                 </div>
@@ -61,12 +62,17 @@
                     <p class="text-xl font-bold text-red-600">{{ number_format($booking->invoice?->balance ?? 0) }} SAR</p>
                 </div>
             </div>
+            <div class="mt-4 pt-4 border-t border-slate-200 flex justify-end">
+                <button type="button" onclick="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">
+                    Discount
+                </button>
+            </div>
         </div>
 
+        {{-- Passengers Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-slate-700">Passengers</h3>
-                <span class="text-sm text-slate-500">{{ $booking->passengers->count() }} passenger(s)</span>
             </div>
             
             @if($booking->passengers->count() > 0)
@@ -134,138 +140,412 @@
             @endif
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div class="bg-slate-50 rounded-lg p-4">
-                <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
-                    <h3 class="text-sm font-medium text-slate-600">Booking Information</h3>
-                </div>
-                <div class="space-y-3">
-                    <div class="flex justify-between">
-                        <span class="text-slate-500 text-sm">Fingerprint Location</span>
-                        <span class="text-slate-700 text-sm font-medium">{{ ucfirst($booking->fingerprint_location?->value ?? 'office') }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500 text-sm">Fingerprint Office</span>
-                        <span class="text-slate-700 text-sm font-medium">{{ $booking->office->name ?? 'N/A' }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500 text-sm">District</span>
-                        <span class="text-slate-700 text-sm font-medium">{{ $booking->district->name ?? 'N/A' }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500 text-sm">Package</span>
-                        <span class="text-slate-700 text-sm font-medium">{{ $booking->package->package_name ?? 'N/A' }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500 text-sm">Discount Type</span>
-                        <span class="text-slate-700 text-sm font-medium">{{ $booking->discount_type?->value === 'percentage' ? 'Percentage' : 'Fixed' }}</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500 text-sm">Discount Value</span>
-                        <span class="text-slate-700 text-sm font-medium">{{ $booking->discount_value ?? 0 }}</span>
-                    </div>
-                    @if($booking->remarks)
-                    <div class="pt-2 border-t border-slate-200">
-                        <span class="text-slate-500 text-sm">Remarks</span>
-                        <p class="text-slate-700 text-sm mt-1">{{ $booking->remarks }}</p>
-                    </div>
-                    @endif
-                </div>
+        {{-- Booking Information Section --}}
+        <div class="bg-slate-50 rounded-lg p-4">
+            <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
+                <h3 class="text-sm font-medium text-slate-600">Booking Information</h3>
             </div>
-
-            <div class="bg-slate-50 rounded-lg p-4">
-                <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
-                    <h3 class="text-sm font-medium text-slate-600">Payment History</h3>
-                    <span class="text-xs text-slate-500">{{ $booking->payments->count() }} payment(s)</span>
+            <div class="space-y-3">
+                <div class="flex justify-between">
+                    <span class="text-slate-500 text-sm">Fingerprint Location</span>
+                    <span class="text-slate-700 text-sm font-medium">{{ ucfirst($booking->fingerprint_location?->value ?? 'office') }}</span>
                 </div>
-                @if($booking->payments->count() > 0)
-                <div class="space-y-3 overflow-y-auto" style="max-height: 200px;">
-                    @foreach($booking->payments as $payment)
-                    <div class="bg-white rounded p-3 border border-slate-200">
-                        <div class="flex justify-between items-start">
-                            <div>
-                                <p class="text-slate-700 text-sm font-medium">{{ number_format($payment->amount) }} SAR</p>
-                                <p class="text-slate-500 text-xs">{{ $payment->payment_method?->value ?? 'Cash' }}</p>
-                            </div>
-                            <div class="text-right">
-                                <p class="text-slate-500 text-xs">{{ $payment->created_at->format('Y-m-d') }}</p>
-                                @if($payment->transaction_id)
-                                <p class="text-slate-400 text-xs">TRX: {{ $payment->transaction_id }}</p>
-                                @endif
-                            </div>
-                        </div>
-                    </div>
-                    @endforeach
+                <div class="flex justify-between">
+                    <span class="text-slate-500 text-sm">Fingerprint Office</span>
+                    <span class="text-slate-700 text-sm font-medium">{{ $booking->office->name ?? 'N/A' }}</span>
                 </div>
-                @else
-                <p class="text-slate-400 text-sm">No payments recorded</p>
+                <div class="flex justify-between">
+                    <span class="text-slate-500 text-sm">District</span>
+                    <span class="text-slate-700 text-sm font-medium">{{ $booking->district->name ?? 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500 text-sm">Package</span>
+                    <span class="text-slate-700 text-sm font-medium">{{ $booking->package->package_name ?? 'N/A' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500 text-sm">Discount Type</span>
+                    <span class="text-slate-700 text-sm font-medium">{{ $booking->discount_type?->value === 'percentage' ? 'Percentage' : 'Fixed' }}</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500 text-sm">Discount Value</span>
+                    <span class="text-slate-700 text-sm font-medium">{{ $booking->discount_value ?? 0 }}</span>
+                </div>
+                @if($booking->remarks)
+                <div class="pt-2 border-t border-slate-200">
+                    <span class="text-slate-500 text-sm">Remarks</span>
+                    <p class="text-slate-700 text-sm mt-1">{{ $booking->remarks }}</p>
+                </div>
                 @endif
             </div>
         </div>
 
+        {{-- Action Buttons Row --}}
+        <div class="flex justify-end gap-3">
+            <button onclick="downloadAllDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
+                Download All Docs
+            </button>
+            <button onclick="openPaymentModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+                Payment
+            </button>
+        </div>
+
+        {{-- Payment History Tab --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
-            <div class="flex justify-between items-center mb-4">
-                <h3 class="text-lg font-semibold text-slate-700">Passenger Financial Details</h3>
-            </div>
+            <h3 class="text-lg font-semibold text-slate-700 mb-4">Payment History</h3>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
-                            <th class="px-3 py-2 text-left font-medium">#</th>
-                            <th class="px-3 py-2 text-left font-medium">Passenger</th>
-                            <th class="px-3 py-2 text-left font-medium">Ticket Fare</th>
-                            <th class="px-3 py-2 text-left font-medium">Package Value</th>
-                            <th class="px-3 py-2 text-left font-medium">Total</th>
+                            <th class="px-3 py-2 text-left font-medium">Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Voucher No</th>
+                            <th class="px-3 py-2 text-left font-medium">Method</th>
+                            <th class="px-3 py-2 text-left font-medium">Trx ID</th>
+                            <th class="px-3 py-2 text-right font-medium">Amount</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
-                        @forelse($booking->passengers as $index => $passenger)
+                        @forelse($booking->payments as $payment)
                         <tr>
-                            <td class="px-3 py-2 text-slate-700">{{ $index + 1 }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ number_format($passenger->ticketFare?->fare ?? 0) }} SAR</td>
-                            <td class="px-3 py-2 text-slate-700">{{ number_format($passenger->package_value ?? 0) }} SAR</td>
-                            <td class="px-3 py-2 text-slate-800 font-medium">{{ number_format(($passenger->ticketFare?->fare ?? 0) + ($passenger->package_value ?? 0)) }} SAR</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->created_at->format('Y-m-d') }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->voucher_no ?? '-' }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->payment_method?->value ?? 'Cash' }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->transaction_id ?? '-' }}</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->amount) }} SAR</td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+                            <td colspan="5" class="px-3 py-4 text-center text-slate-500">No payments recorded</td>
                         </tr>
                         @endforelse
                     </tbody>
-                    <tfoot class="bg-slate-50">
-                        <tr>
-                            <td colspan="4" class="px-3 py-2 text-right font-medium text-slate-600">Total:</td>
-                            <td class="px-3 py-2 font-bold text-slate-800">{{ number_format($booking->invoice?->total_amount ?? 0) }} SAR</td>
-                        </tr>
-                    </tfoot>
                 </table>
             </div>
         </div>
 
-        <div class="flex gap-3 mt-6">
-            <a href="{{ route('bookings.edit', $booking->id) }}" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
-                Edit Booking
+        {{-- Back Button --}}
+        <div class="mt-6 pt-4 border-t border-slate-200">
+            <a href="{{ route('bookings.index') }}" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">
+                Back to List
             </a>
-            <form method="POST" action="{{ route('bookings.destroy', $booking->id) }}" onsubmit="return confirm('Are you sure you want to delete this booking? This action cannot be undone.')">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="px-6 py-3 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">
-                    Delete Booking
-                </button>
-            </form>
         </div>
     </div>
 </div>
 
+{{-- Discount Modal --}}
+<div id="discountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeDiscountModal()"></div>
+    <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <h3 class="text-xl font-semibold text-slate-800 mb-4">Apply Discount</h3>
+        
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Original Total</label>
+            <input type="text" id="discountOriginalTotal" readonly 
+                value="{{ number_format($booking->invoice?->total_amount ?? 0) }}" 
+                class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+        </div>
+        
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Discount Type</label>
+            <select id="discountType" onchange="calculateInvoiceDiscount()" 
+                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                <option value="percentage" {{ $booking->discount_type?->value === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
+                <option value="fixed" {{ $booking->discount_type?->value === 'fixed' ? 'selected' : '' }}>Fixed Amount (SAR)</option>
+            </select>
+        </div>
+        
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Discount Value</label>
+            <input type="number" id="discountValue" 
+                value="{{ $booking->discount_value ?? 0 }}" 
+                min="0" oninput="calculateInvoiceDiscount()" 
+                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+        </div>
+        
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Discount Amount (SAR)</label>
+            <input type="text" id="discountAmount" readonly value="0" 
+                class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+        </div>
+        
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1">New Total (SAR)</label>
+            <input type="text" id="discountNewTotal" readonly 
+                value="{{ number_format($booking->invoice?->total_amount ?? 0) }}" 
+                class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+        </div>
+        
+        <div class="flex gap-3">
+            <button type="button" onclick="applyInvoiceDiscount()" 
+                class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
+                Apply
+            </button>
+            <button type="button" onclick="closeDiscountModal()" 
+                class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- Payment Modal --}}
+<div id="paymentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closePaymentModal()"></div>
+    <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-semibold text-slate-800 mb-4">Payment Interface</h3>
+        
+        <div class="mb-6">
+            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Booking Information</h4>
+            <div class="grid grid-cols-3 gap-4 text-sm">
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Total Package Value:</span>
+                    <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->total_amount ?? 0) }} SAR</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Paid:</span>
+                    <span id="paymentPaid" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->paid_amount ?? 0) }} SAR</span>
+                </div>
+                <div class="flex justify-between">
+                    <span class="text-slate-500">Due:</span>
+                    <span id="paymentDue" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->balance ?? 0) }} SAR</span>
+                </div>
+            </div>
+            
+            <div class="grid grid-cols-2 gap-4 mt-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                    <select id="paymentCurrency" onchange="handlePaymentCurrencyChange()" 
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="SAR" selected>SAR</option>
+                        <option value="BDT">BDT</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Method</label>
+                    <select id="paymentMethod" onchange="handlePaymentMethodChange()" 
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="Cash" selected>Cash</option>
+                        <option value="Bank">Bank</option>
+                    </select>
+                </div>
+            </div>
+            
+            <div id="paymentBankMethod" class="hidden mt-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
+                <select id="paymentBankMethod" 
+                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <option value="">Select Bank</option>
+                    <option value="AL-Raji">AL-Raji</option>
+                    <option value="SNB">SNB</option>
+                    <option value="Bkash-BMT">Bkash-BMT</option>
+                    <option value="IBBL-BMT">IBBL-BMT</option>
+                </select>
+            </div>
+            
+            <div id="paymentTRXID" class="hidden mt-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">TRX ID</label>
+                <input type="text" id="paymentTRXID" 
+                    placeholder="Enter TRX ID" 
+                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+            </div>
+            
+            <div id="paymentAmountSAR" class="mt-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Amount (SAR)</label>
+                <input type="number" id="paymentAmountSAR" 
+                    placeholder="Enter SAR amount" min="0" step="0.01"
+                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+            </div>
+            
+            <div id="paymentAmountBDT" class="hidden mt-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Amount (BDT)</label>
+                <input type="number" id="paymentAmountBDT" 
+                    placeholder="Enter BDT amount" min="0" step="0.01"
+                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+            </div>
+        </div>
+        
+        <div class="flex gap-3">
+            <button type="button" onclick="savePayment()" 
+                class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
+                Save
+            </button>
+            <button type="button" onclick="closePaymentModal()" 
+                class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
+
+{{-- Toast Container --}}
+<div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+
 <style>
+.modal-overlay { transition: opacity 0.2s ease; }
+.modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
+.toast { transition: transform 0.3s ease, opacity 0.3s ease; }
+
 @media print {
     body { background: white; }
-    nav, .no-print, .max-w-5xl > div > div:last-child { display: none !important; }
+    nav, .no-print { display: none !important; }
     .bg-slate-100 { background: white; }
     .shadow-lg, .shadow-xl { box-shadow: none; }
     .bg-white { border: 1px solid #e2e8f0; }
     a[href]:after { content: none !important; }
+    #discountModal, #paymentModal { display: none !important; }
 }
 </style>
+
+@push('scripts')
+<script>
+function showToast(message, type = 'success') {
+    const container = document.getElementById('toastContainer');
+    if (!container) return;
+    
+    const toast = document.createElement('div');
+    toast.className = `px-4 py-2 rounded shadow text-white ${type === 'error' ? 'bg-red-600' : 'bg-slate-700'}`;
+    toast.textContent = message;
+    container.appendChild(toast);
+    
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function openDiscountModal() {
+    document.getElementById('discountModal').classList.remove('hidden');
+    calculateInvoiceDiscount();
+}
+
+function closeDiscountModal() {
+    document.getElementById('discountModal').classList.add('hidden');
+}
+
+function calculateInvoiceDiscount() {
+    const originalTotal = {{ $booking->invoice?->total_amount ?? 0 }};
+    const discountType = document.getElementById('discountType').value;
+    const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
+    
+    let discountAmount = 0;
+    if (discountType === 'percentage') {
+        discountAmount = originalTotal * discountValue / 100;
+    } else {
+        discountAmount = discountValue;
+    }
+    
+    const newTotal = Math.max(0, originalTotal - discountAmount);
+    
+    document.getElementById('discountAmount').value = Math.round(discountAmount);
+    document.getElementById('discountNewTotal').value = Math.round(newTotal);
+}
+
+function applyInvoiceDiscount() {
+    const discountType = document.getElementById('discountType').value;
+    const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
+    
+    fetch('{{ route('bookings.update', $booking->id) }}', {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+            discount_type: discountType,
+            discount_value: discountValue
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success || data.message) {
+            showToast('Discount applied successfully');
+            closeDiscountModal();
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast('Failed to apply discount', 'error');
+        }
+    })
+    .catch(error => {
+        showToast('Error: ' + error.message, 'error');
+    });
+}
+
+function openPaymentModal() {
+    document.getElementById('paymentModal').classList.remove('hidden');
+    resetPaymentForm();
+}
+
+function closePaymentModal() {
+    document.getElementById('paymentModal').classList.add('hidden');
+}
+
+function resetPaymentForm() {
+    document.getElementById('paymentCurrency').value = 'SAR';
+    document.getElementById('paymentMethod').value = 'Cash';
+    document.getElementById('paymentBankMethod').value = '';
+    document.getElementById('paymentTRXID').value = '';
+    document.getElementById('paymentAmountSAR').value = '';
+    document.getElementById('paymentAmountBDT').value = '';
+    handlePaymentCurrencyChange();
+    handlePaymentMethodChange();
+}
+
+function handlePaymentCurrencyChange() {
+    const currency = document.getElementById('paymentCurrency').value;
+    document.getElementById('paymentAmountSAR').classList.toggle('hidden', currency !== 'SAR');
+    document.getElementById('paymentAmountBDT').classList.toggle('hidden', currency !== 'BDT');
+}
+
+function handlePaymentMethodChange() {
+    const method = document.getElementById('paymentMethod').value;
+    document.getElementById('paymentBankMethod').classList.toggle('hidden', method !== 'Bank');
+    document.getElementById('paymentTRXID').classList.toggle('hidden', method !== 'Bank');
+}
+
+function savePayment() {
+    const currency = document.getElementById('paymentCurrency').value;
+    const method = document.getElementById('paymentMethod').value;
+    const amountSAR = currency === 'SAR' ? parseFloat(document.getElementById('paymentAmountSAR').value) || 0 : 0;
+    const amountBDT = currency === 'BDT' ? parseFloat(document.getElementById('paymentAmountBDT').value) || 0 : 0;
+    const bankMethod = document.getElementById('paymentBankMethod').value;
+    const trxID = document.getElementById('paymentTRXID').value;
+    
+    if (amountSAR === 0 && amountBDT === 0) {
+        showToast('Please enter payment amount', 'error');
+        return;
+    }
+    
+    fetch('{{ route('bookings.payment.store', $booking->id) }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: JSON.stringify({
+            amount: amountSAR,
+            amount_bdt: amountBDT,
+            currency: currency,
+            payment_method: method,
+            bank_method: bankMethod,
+            transaction_id: trxID
+        })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success || data.message) {
+            showToast('Payment saved successfully');
+            closePaymentModal();
+            setTimeout(() => location.reload(), 500);
+        } else {
+            showToast('Failed to save payment', 'error');
+        }
+    })
+    .catch(error => {
+        showToast('Error: ' + error.message, 'error');
+    });
+}
+
+function downloadAllDocs() {
+    showToast('Downloading all documents...');
+    setTimeout(() => showToast('No documents available for download'), 1500);
+}
+</script>
+@endpush
+
 @endsection

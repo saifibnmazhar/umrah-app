@@ -83,6 +83,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/bookings/{booking}/print', [BookingController::class, 'print'])->name('bookings.print');
     Route::patch('/bookings/{booking}/passengers/{passenger}/recalculate', [BookingController::class, 'recalculatePassengerValue'])->name('bookings.passengers.recalculate');
     Route::patch('/bookings/{booking}/fingerprint-location', [BookingController::class, 'updateFingerprintLocation'])->name('bookings.fingerprint-location.update');
+    Route::post('/bookings/{booking}/payment', [BookingController::class, 'storePayment'])->name('bookings.payment.store');
 
     // API routes
     Route::post('/api/bookings/calculate-type', [BookingController::class, 'calculatePassengerType'])->name('api.bookings.calculate-type');

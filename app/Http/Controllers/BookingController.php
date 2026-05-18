@@ -529,6 +529,65 @@ class BookingController extends Controller
         ));
     }
 
+    public function storePayment(Request $request, Booking $booking)
+    {
+        $validated = $request->validate([
+            'amount' => 'nullable|numeric|min:0',
+            'amount_bdt' => 'nullable|numeric|min:0',
+            'currency' => 'nullable|in:SAR,BDT',
+            'payment_method' => 'nullable|in:Cash,Bank',
+            'bank_method' => 'nullable|string|max:255',
+            'transaction_id' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $amount = $validated['amount'] ?? 0;
+            $bdtAmount = $validated['amount_bdt'] ?? 0;
+
+            if ($amount == 0 && $bdtAmount == 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please enter payment amount'
+                ], 422);
+            }
+
+            $invoice = $booking->invoice;
+            if (!$invoice) {
+                $invoice = Invoice::create([
+                    'booking_id' => $booking->id,
+                    'total_amount' => $booking->total_value ?? 0,
+                    'paid_amount' => 0,
+                    'balance' => $booking->total_value ?? 0,
+                ]);
+            }
+
+            $payment = Payment::create([
+                'booking_id' => $booking->id,
+                'invoice_id' => $invoice->id,
+                'payment_date' => now(),
+                'payment_method' => $validated['payment_method'] ?? 'Cash',
+                'transaction_id' => $validated['transaction_id'] ?? null,
+                'amount' => $amount,
+                'bdt_amount' => $bdtAmount,
+            ]);
+
+            $invoice->paid_amount = ($invoice->paid_amount ?? 0) + $amount;
+            $invoice->balance = ($invoice->total_amount ?? 0) - $invoice->paid_amount;
+            $invoice->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment saved successfully',
+                'payment' => $payment
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save payment: ' . $e->getMessage()
+            ], 500);
+        }
+    }
+
     public function recalculatePassengerValue(Passenger $passenger)
     {
         $packageValue = $this->bookingService->calculatePackageValue($passenger);
