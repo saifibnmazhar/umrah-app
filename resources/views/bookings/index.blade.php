@@ -38,7 +38,7 @@
                 <table class="w-full min-w-[1000px] text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
-                            <th class="px-3 py-2 text-left font-medium">Invoice No</th>
+                            <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
                             <th class="px-3 py-2 text-left font-medium">Booking Date</th>
                             <th class="px-3 py-2 text-left font-medium">Customer</th>
                             <th class="px-3 py-2 text-left font-medium">Mobile</th>
@@ -56,7 +56,7 @@
                     <tbody class="divide-y divide-slate-200">
                         @forelse($bookings as $booking)
                         <tr>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->id }}</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice_id ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->created_at->format('Y-m-d') }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->customer->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->customer->mobile_no ?? 'N/A' }}</td>
@@ -101,6 +101,7 @@
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Customer</th>
                             <th class="px-3 py-2 text-left font-medium">Current status</th>
                             <th class="px-3 py-2 text-left font-medium">Passport No</th>
                             <th class="px-3 py-2 text-left font-medium">Type</th>
@@ -114,6 +115,7 @@
                         @forelse($passengers as $passenger)
                         <tr>
                             <td class="px-3 py-2 text-slate-700">{{ $passenger->first_name }} {{ $passenger->last_name }}</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $passenger->booking->customer->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2">
                                 <select 
                                     class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
@@ -135,7 +137,7 @@
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="8" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+                            <td colspan="9" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
                         </tr>
                         @endforelse
                     </tbody>
