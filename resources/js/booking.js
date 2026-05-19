@@ -1949,6 +1949,10 @@ Alpine.data('createBookingApp', () => ({
             alert('Please add at least one passenger');
             return;
         }
+        if (!this.paymentSaved || (parseFloat(this.paymentData.amount_sar) || 0) <= 0) {
+            alert('Please save a payment before submitting the booking');
+            return;
+        }
         // Validate required fields
         if (!this.bookingData.district_id) {
             alert('Please select a district');

@@ -224,7 +224,12 @@
             </div>
 
             <div class="flex justify-end gap-3 pt-6 border-t border-slate-200">
-                <button type="submit" class="w-64 px-8 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" :disabled="passengers.length === 0">Submit</button>
+                <button type="submit"
+                    class="w-64 px-8 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium"
+                    :disabled="(!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0)"
+                    :class="(!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0) ? 'opacity-50 cursor-not-allowed' : ''"
+                    :title="(!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0) ? 'Please save payment first' : ''"
+                >Submit</button>
                 <button type="button" @click="clearForm()" class="px-6 py-3 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Clear</button>
                 <a href="{{ route('bookings.index') }}" class="px-6 py-3 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</a>
             </div>
