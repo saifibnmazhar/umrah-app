@@ -67,7 +67,12 @@ class BookingService
         $booking = $passenger->booking;
         $package = $booking->package;
         $serviceRequired = $passenger->service_required;
+        
         $passengerType = $passenger->passenger_type;
+        if ($passengerType instanceof \BackedEnum) {
+            $passengerType = $passengerType->value;
+        }
+        $passengerType = strtolower($passengerType);
 
         $ticketAmount = 0;
         $visaAmount = 0;
@@ -102,10 +107,17 @@ class BookingService
         }
 
         $passengerTotal = (float) $booking->passengers->sum('package_value');
+        
+        $fingerprintLocation = $booking->fingerprint_location;
+        if ($fingerprintLocation instanceof \BackedEnum) {
+            $fingerprintLocation = $fingerprintLocation->value;
+        }
+        
         $fingerprintCharge = $this->getFingerprintCharge(
             $booking->district_id,
-            $booking->fingerprint_location?->value ?? 'office'
+            $fingerprintLocation
         );
+        
         $total = $passengerTotal + $fingerprintCharge;
 
         $booking->total_value = $total;
@@ -120,9 +132,14 @@ class BookingService
 
         $passengerTotal = (float) $passengers->sum('package_value');
 
+        $fingerprintLocation = $booking->fingerprint_location;
+        if ($fingerprintLocation instanceof \BackedEnum) {
+            $fingerprintLocation = $fingerprintLocation->value;
+        }
+
         $fingerprintCharge = $this->getFingerprintCharge(
             $booking->district_id,
-            $booking->fingerprint_location?->value
+            $fingerprintLocation
         );
 
         $subtotal = $passengerTotal + $fingerprintCharge;
@@ -165,9 +182,9 @@ class BookingService
         return $invoiceId;
     }
 
-    public function getFingerprintCharge($districtId, string $location = 'Office'): float
+    public function getFingerprintCharge($districtId, ?string $location = null): float
     {
-        if (!$districtId || $location === 'Office') {
+        if (!$districtId || !$location || strtolower($location) === 'office') {
             return 0;
         }
 

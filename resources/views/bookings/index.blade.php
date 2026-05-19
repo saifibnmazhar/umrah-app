@@ -38,7 +38,7 @@
                 <table class="w-full min-w-[1000px] text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
-                            <th class="px-3 py-2 text-left font-medium">Invoice No</th>
+                            <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
                             <th class="px-3 py-2 text-left font-medium">Booking Date</th>
                             <th class="px-3 py-2 text-left font-medium">Customer</th>
                             <th class="px-3 py-2 text-left font-medium">Mobile</th>
@@ -56,18 +56,26 @@
                     <tbody class="divide-y divide-slate-200">
                         @forelse($bookings as $booking)
                         <tr>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->id }}</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice_id ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->created_at->format('Y-m-d') }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->customer->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->customer->mobile_no ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->passengers->count() }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprint_location }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprint_office }}</td>
+                            <td class="px-3 py-2">
+                                <select
+                                    class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
+                                    data-original="{{ $booking->fingerprint_location?->value ?? 'office' }}"
+                                    onchange="updateFingerprintLocation({{ $booking->id }}, this.value, this)">
+                                    <option value="home" {{ ($booking->fingerprint_location?->value ?? '') === 'home' ? 'selected' : '' }}>Home</option>
+                                    <option value="office" {{ ($booking->fingerprint_location?->value ?? '') === 'office' ? 'selected' : '' }}>Office</option>
+                                </select>
+                            </td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->office->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-slate-700">0 SAR</td>
-                            <td class="px-3 py-2 text-slate-700">0 SAR</td>
-                            <td class="px-3 py-2 text-slate-700">0 SAR</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->total_amount ?? 0 }} SAR</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->paid_amount ?? 0 }} SAR</td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->balance ?? 0 }} SAR</td>
                             <td class="px-3 py-2">
                                 <a href="{{ route('bookings.show', $booking->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
                             </td>
@@ -94,9 +102,11 @@
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Booking Date</th>
                             <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
+                            <th class="px-3 py-2 text-left font-medium">Customer</th>
                             <th class="px-3 py-2 text-left font-medium">PAX QTY</th>
                             <th class="px-3 py-2 text-left font-medium">Mobile</th>
                             <th class="px-3 py-2 text-left font-medium">Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Current status</th>
                             <th class="px-3 py-2 text-left font-medium">Passport No</th>
                             <th class="px-3 py-2 text-left font-medium">Route</th>
                             <th class="px-3 py-2 text-left font-medium">Current Status</th>
@@ -133,6 +143,7 @@ if ($route) {
 <tr>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->created_at?->format('d M Y') ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->invoice_id ?? '—' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->booking->customer->name ?? 'N/A' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->pax_qty ?? '—') : '' }}</td>
     <td class="px-3 py-2 text-slate-700">
         <div class="leading-tight">
@@ -141,6 +152,16 @@ if ($route) {
         </div>
     </td>
     <td class="px-3 py-2 text-slate-700">{{ trim($passenger->first_name . ' ' . $passenger->last_name) ?: '—' }}</td>
+    <td class="px-3 py-2">
+        <select
+            class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
+            onchange="updatePassengerStatus({{ $passenger->id }}, this.value)">
+            <option value="" {{ is_null($passenger->passenger_status_id) ? 'selected' : '' }}>None</option>
+            @foreach($passengerStatuses as $status)
+                <option value="{{ $status->id }}" {{ $passenger->passenger_status_id == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+            @endforeach
+        </select>
+    </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-600">{{ $routeDisplay }}</td>
     <td class="px-3 py-2">
@@ -166,7 +187,7 @@ if ($route) {
 </tr>
 @empty
 <tr>
-    <td colspan="16" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="18" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 </tr>
 @endforelse
                     </tbody>
@@ -207,6 +228,34 @@ function updatePassengerStatus(passengerId, statusId) {
     .catch(error => {
         console.error('Error:', error);
         alert('Failed to update status');
+    });
+}
+
+function updateFingerprintLocation(bookingId, location, select) {
+    const selectEl = select || event.target;
+    const originalValue = selectEl.dataset.original;
+
+    fetch(`/bookings/${bookingId}/fingerprint-location`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ fingerprint_location: location })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            selectEl.dataset.original = location;
+        } else {
+            alert('Failed to update fingerprint location');
+            selectEl.value = originalValue;
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        alert('Failed to update fingerprint location');
+        selectEl.value = originalValue;
     });
 }
 </script>

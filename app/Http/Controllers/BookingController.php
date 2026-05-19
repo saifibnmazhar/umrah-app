@@ -36,7 +36,7 @@ class BookingController extends Controller
     {
         $tab = $request->get('tab', 'booking');
         
-        $bookings = Booking::with(['customer', 'passengers'])
+        $bookings = Booking::with(['customer', 'passengers', 'office', 'invoice', 'district', 'package'])
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -281,7 +281,7 @@ class BookingController extends Controller
                         'transaction_type_id' => $initialPaymentTransactionType->id,
                     ];
 
-                    app(PaymentService::class)->createCustomerPayment($invoice, $paymentData);
+                    app(PaymentService::class)->createCustomerPaymentAndUpdateInvoice($invoice, $paymentData);
                 } catch (\Exception $e) {
                     \Log::error('Payment creation failed: ' . $e->getMessage());
                     DB::rollBack();
@@ -366,6 +366,27 @@ class BookingController extends Controller
                 ->with('success', 'Booking updated successfully');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update booking.')->withInput();
+        }
+    }
+
+    public function updateFingerprintLocation(Request $request, Booking $booking)
+    {
+        $validated = $request->validate([
+            'fingerprint_location' => 'required|in:home,office',
+        ]);
+
+        try {
+            $booking->update(['fingerprint_location' => $validated['fingerprint_location']]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Fingerprint location updated successfully',
+                'fingerprint_location' => $booking->fresh()->fingerprint_location?->value,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to update fingerprint location',
+            ], 500);
         }
     }
 
