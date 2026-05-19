@@ -296,24 +296,7 @@ class BookingController extends Controller
                 }
             }
 
-            if ($request->ajax() || $request->wantsJson()) {
-                $paymentMessage = ($paymentAmount > 0 || $paymentBdtAmount > 0)
-                    ? ' with initial payment'
-                    : '';
-
-                return response()->json([
-                    'success' => true,
-                    'message' => 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage,
-                    'url' => route('bookings.index')
-                ]);
-            }
-
-            $paymentMessage = ($paymentAmount > 0 || $paymentBdtAmount > 0)
-                ? ' and initial payment recorded'
-                : '';
-
-            return redirect()->route('bookings.index')
-                ->with('success', 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage);
+            return redirect()->route('bookings.print', $booking->id);
         } catch (\Exception $e) {
             DB::rollBack();
             if ($request->ajax() || $request->wantsJson()) {
