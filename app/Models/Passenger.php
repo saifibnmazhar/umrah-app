@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\MorphMany;
 use App\Enums\Gender;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
@@ -60,7 +61,7 @@ class Passenger extends Model
         return $this->belongsTo(PassengerStatus::class, 'passenger_status_id');
     }
 
-    public function documents(): MorphMany
+    public function documents()
     {
         return $this->morphMany(Document::class, 'owner');
     }

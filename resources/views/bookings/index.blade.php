@@ -97,49 +97,99 @@
     <div x-show="activeTab === 'passenger'" x-cloak>
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1000px] text-sm">
+                <table class="w-full min-w-[1800px] text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
-                            <th class="px-3 py-2 text-left font-medium">Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Booking Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
                             <th class="px-3 py-2 text-left font-medium">Customer</th>
+                            <th class="px-3 py-2 text-left font-medium">PAX QTY</th>
+                            <th class="px-3 py-2 text-left font-medium">Mobile</th>
+                            <th class="px-3 py-2 text-left font-medium">Name</th>
                             <th class="px-3 py-2 text-left font-medium">Current status</th>
                             <th class="px-3 py-2 text-left font-medium">Passport No</th>
-                            <th class="px-3 py-2 text-left font-medium">Type</th>
-                            <th class="px-3 py-2 text-left font-medium">DOB</th>
-                            <th class="px-3 py-2 text-left font-medium">Service</th>
-                            <th class="px-3 py-2 text-left font-medium">Booking</th>
+                            <th class="px-3 py-2 text-left font-medium">Route</th>
+                            <th class="px-3 py-2 text-left font-medium">Current Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Required Flight Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Actual Flight Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Package</th>
+                            <th class="px-3 py-2 text-left font-medium">Package Value</th>
+                            <th class="px-3 py-2 text-left font-medium">Total Cost</th>
+                            <th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>
+                            <th class="px-3 py-2 text-left font-medium">Due</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
-                        @forelse($passengers as $passenger)
-                        <tr>
-                            <td class="px-3 py-2 text-slate-700">{{ $passenger->first_name }} {{ $passenger->last_name }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $passenger->booking->customer->name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2">
-                                <select 
-                                    class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
-                                    onchange="updatePassengerStatus({{ $passenger->id }}, this.value)">
-                                    <option value="" {{ is_null($passenger->passenger_status_id) ? 'selected' : '' }}>None</option>
-                                    @foreach($passengerStatuses as $status)
-                                        <option value="{{ $status->id }}" {{ $passenger->passenger_status_id == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
-                                    @endforeach
-                                </select>
-                            </td>
-                            <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $passenger->passenger_type }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $passenger->date_of_birth }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $passenger->service_required }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $passenger->booking->id ?? 'N/A' }}</td>
-                            <td class="px-3 py-2">
-                                <a href="{{ route('passengers.show', $passenger->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
-                            </td>
-                        </tr>
-                        @empty
-                        <tr>
-                            <td colspan="9" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
-                        </tr>
-                        @endforelse
+@php $lastBookingId = null; @endphp
+@forelse($passengers as $passenger)
+@php
+$isFirstRow = ($lastBookingId !== $passenger->booking_id);
+$lastBookingId = $passenger->booking_id;
+
+$route = $passenger->ticketFare?->route ?? $passenger->booking?->package?->ticketFare?->route;
+$routeDisplay = '—';
+if ($route) {
+    $routeType = $route->route_type?->value;
+    if ($routeType === 'multi_city') {
+        $routeDisplay = $route->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+    } elseif ($routeType === 'round') {
+        $routeDisplay = ($route->fromCity?->code ?? '?') . '-' . ($route->toCity?->code ?? '?') . '-' . ($route->returnCity?->code ?? '?');
+    } else {
+        $routeDisplay = ($route->fromCity?->code ?? '?') . ' → ' . ($route->toCity?->code ?? '?');
+    }
+}
+@endphp
+<tr>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->created_at?->format('d M Y') ?? '—' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->invoice_id ?? '—' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->booking->customer->name ?? 'N/A' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->pax_qty ?? '—') : '' }}</td>
+    <td class="px-3 py-2 text-slate-700">
+        <div class="leading-tight">
+            <span>{{ $passenger->booking?->customer?->mobile_no ?? '—' }}</span><br>
+            <span>{{ $passenger->mobile_no ?? '—' }}</span>
+        </div>
+    </td>
+    <td class="px-3 py-2 text-slate-700">{{ trim($passenger->first_name . ' ' . $passenger->last_name) ?: '—' }}</td>
+    <td class="px-3 py-2">
+        <select
+            class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
+            onchange="updatePassengerStatus({{ $passenger->id }}, this.value)">
+            <option value="" {{ is_null($passenger->passenger_status_id) ? 'selected' : '' }}>None</option>
+            @foreach($passengerStatuses as $status)
+                <option value="{{ $status->id }}" {{ $passenger->passenger_status_id == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+            @endforeach
+        </select>
+    </td>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
+    <td class="px-3 py-2 text-slate-600">{{ $routeDisplay }}</td>
+    <td class="px-3 py-2">
+        <select
+            class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
+            onchange="updatePassengerStatus({{ $passenger->id }}, this.value)">
+            <option value="" {{ is_null($passenger->passenger_status_id) ? 'selected' : '' }}>None</option>
+            @foreach($passengerStatuses as $status)
+                <option value="{{ $status->id }}" {{ $passenger->passenger_status_id == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+            @endforeach
+        </select>
+    </td>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ optional($passenger->actual_flight_date)->format('d M Y') ?: 'N/A' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->package_value ? number_format($passenger->package_value, 2) . ' SAR' : '—' }}</td>
+    <td class="px-3 py-2"></td>
+    <td class="px-3 py-2"></td>
+    <td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->invoice?->balance ? number_format($passenger->booking->invoice->balance, 2) . ' SAR' : '—') : '' }}</td>
+    <td class="px-3 py-2">
+        <a href="{{ route('passengers.show', $passenger->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
+    </td>
+</tr>
+@empty
+<tr>
+    <td colspan="18" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+</tr>
+@endforelse
                     </tbody>
                 </table>
             </div>

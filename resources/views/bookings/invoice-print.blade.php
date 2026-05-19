@@ -4,19 +4,25 @@
 
 @section('content')
 <style>
+    @page {
+        size: landscape;
+        margin: 0.5cm;
+    }
     @media print {
         .no-print { display: none !important; }
-        body { margin: 0; padding: 0; }
+        body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .invoice-container {
-            width: 7in;
+            width: 100%;
+            max-width: 11in;
             margin: 0 auto;
-            font-size: 11px;
+            font-size: 10px;
         }
     }
     .invoice-container {
-        width: 7in;
+        width: 100%;
+        max-width: 11in;
         margin: 0 auto;
-        font-size: 11px;
+        font-size: 10px;
     }
 </style>
 

@@ -41,7 +41,14 @@ class BookingController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $passengers = Passenger::with(['booking', 'booking.customer', 'status'])
+        $passengers = Passenger::with([
+            'booking',
+            'booking.customer',
+            'booking.package.ticketFare.route',
+            'booking.invoice',
+            'ticketFare.route',
+            'status'
+        ])
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->withQueryString();
@@ -163,11 +170,11 @@ class BookingController extends Controller
             'passengers.*.ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'booking_customer_docs' => 'nullable|array',
             'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'payment' => 'nullable|array',
-            'payment.amount' => 'nullable|numeric|min:0',
+            'payment' => 'required|array',
+            'payment.amount' => 'required|numeric|min:0.01',
             'payment.bdt_amount' => 'nullable|numeric|min:0',
-            'payment.currency' => 'nullable|in:SAR,BDT',
-            'payment.payment_method' => 'nullable|in:cash,bank',
+            'payment.currency' => 'required|in:SAR,BDT',
+            'payment.payment_method' => 'required|in:cash,bank',
             'payment.payment_date' => 'nullable|date',
             'payment.bank_id' => 'nullable|exists:banks,id',
             'payment.transaction_id' => 'nullable|string|max:255',
@@ -240,8 +247,6 @@ class BookingController extends Controller
                 ]);
             }
 
-            DB::commit();
-
             $booking->refresh();
             $this->bookingService->recalculateBookingTotal($booking);
 
@@ -252,7 +257,7 @@ class BookingController extends Controller
 
             \Log::info('Payment debug - amount: ' . $paymentAmount . ', bdt_amount: ' . $paymentBdtAmount . ', payment array: ', $validated['payment'] ?? []);
 
-            if (!empty($validated['payment']) && ($paymentAmount > 0 || $paymentBdtAmount > 0)) {
+            if ($paymentAmount > 0 || $paymentBdtAmount > 0) {
                 \Log::info('Processing payment...');
                 try {
                     $initialPaymentTransactionType = TransactionType::where('name', 'Initial Payment')->first();
@@ -277,17 +282,11 @@ class BookingController extends Controller
                     app(PaymentService::class)->createCustomerPaymentAndUpdateInvoice($invoice, $paymentData);
                 } catch (\Exception $e) {
                     \Log::error('Payment creation failed: ' . $e->getMessage());
-                    DB::rollBack();
-                    if ($request->ajax() || $request->wantsJson()) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Booking created but payment failed: ' . $e->getMessage()
-                        ], 500);
-                    }
-                    return redirect()->route('bookings.index')
-                        ->with('warning', 'Booking created but initial payment failed. Please add payment manually.');
+                    throw $e;
                 }
             }
+
+            DB::commit();
 
             if ($request->ajax() || $request->wantsJson()) {
                 $paymentMessage = ($paymentAmount > 0 || $paymentBdtAmount > 0)
@@ -297,7 +296,7 @@ class BookingController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage,
-                    'url' => route('bookings.index')
+                    'url' => route('bookings.print', $booking->id)
                 ]);
             }
 
@@ -305,10 +304,13 @@ class BookingController extends Controller
                 ? ' and initial payment recorded'
                 : '';
 
-            return redirect()->route('bookings.index')
+            return redirect()->route('bookings.print', $booking->id)
                 ->with('success', 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage);
+
         } catch (\Exception $e) {
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
@@ -321,20 +323,71 @@ class BookingController extends Controller
 
     public function show(Booking $booking)
     {
-        $booking->load(['customer', 'passengers', 'user', 'district', 'package', 'office']);
+        $booking->load([
+            'customer',
+            'passengers',
+            'user',
+            'district',
+            'package',
+            'office',
+            'invoice',
+            'payments.vouchers',
+        ]);
+        
         return view('bookings.show', compact('booking'));
     }
 
     public function edit(Booking $booking)
     {
-        $booking->load(['customer', 'passengers']);
-        
+        $booking->load(['customer', 'passengers', 'district', 'office', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
+
         $districts = District::orderBy('name')->get();
-        $packages = Package::orderBy('package_name')->get();
+        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+            return [
+                'id' => $pkg->id,
+                'package_name' => $pkg->package_name,
+                'ticket_fare_id' => $pkg->ticket_fare_id,
+                'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
+                'service_charge' => $pkg->service_charge ?? 0,
+                'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
+            ];
+        });
         $offices = Office::orderBy('name')->get();
 
+        $ticketFares = TicketFare::with([
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'airline',
+            'airlineClass.class',
+            'groupTicket',
+        ])->get()->map(function ($fare) {
+            $routeCode = '';
+            $routeType = $fare->route->route_type?->value;
+
+            if ($routeType === 'round') {
+                $routeCode = $fare->route->fromCity?->code . '-' .
+                    $fare->route->toCity?->code . '-' .
+                    $fare->route->returnCity?->code;
+            } else {
+                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+            }
+
+            return [
+                'id' => $fare->id,
+                'route' => $routeCode,
+                'airline' => $fare->airline->name,
+                'airline_class' => $fare->airlineClass->class?->name,
+                'selling_fare' => $fare->selling_fare,
+                'offer_price' => $fare->offer_price,
+            ];
+        });
+
+        $customers = \App\Models\Customer::orderBy('name')->get(['id', 'name', 'passport_no', 'iqama_no', 'mobile_no']);
+        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+
         return view('bookings.edit', compact(
-            'booking', 'districts', 'packages', 'offices'
+            'booking', 'districts', 'packages', 'offices', 'ticketFares', 'customers', 'currentCurrencyRate'
         ));
     }
 
@@ -517,6 +570,65 @@ class BookingController extends Controller
             'currentPaid',
             'dueAmount'
         ));
+    }
+
+    public function storePayment(Request $request, Booking $booking)
+    {
+        $validated = $request->validate([
+            'amount' => 'nullable|numeric|min:0',
+            'amount_bdt' => 'nullable|numeric|min:0',
+            'currency' => 'nullable|in:SAR,BDT',
+            'payment_method' => 'nullable|in:Cash,Bank',
+            'bank_method' => 'nullable|string|max:255',
+            'transaction_id' => 'nullable|string|max:255',
+        ]);
+
+        try {
+            $amount = $validated['amount'] ?? 0;
+            $bdtAmount = $validated['amount_bdt'] ?? 0;
+
+            if ($amount == 0 && $bdtAmount == 0) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Please enter payment amount'
+                ], 422);
+            }
+
+            $invoice = $booking->invoice;
+            if (!$invoice) {
+                $invoice = Invoice::create([
+                    'booking_id' => $booking->id,
+                    'total_amount' => $booking->total_value ?? 0,
+                    'paid_amount' => 0,
+                    'balance' => $booking->total_value ?? 0,
+                ]);
+            }
+
+            $payment = Payment::create([
+                'booking_id' => $booking->id,
+                'invoice_id' => $invoice->id,
+                'payment_date' => now(),
+                'payment_method' => $validated['payment_method'] ?? 'Cash',
+                'transaction_id' => $validated['transaction_id'] ?? null,
+                'amount' => $amount,
+                'bdt_amount' => $bdtAmount,
+            ]);
+
+            $invoice->paid_amount = ($invoice->paid_amount ?? 0) + $amount;
+            $invoice->balance = ($invoice->total_amount ?? 0) - $invoice->paid_amount;
+            $invoice->save();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment saved successfully',
+                'payment' => $payment
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to save payment: ' . $e->getMessage()
+            ], 500);
+        }
     }
 
     public function recalculatePassengerValue(Passenger $passenger)

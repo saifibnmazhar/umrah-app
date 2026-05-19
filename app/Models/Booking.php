@@ -85,13 +85,18 @@ class Booking extends Model
         return $this->hasMany(Passenger::class);
     }
 
+    public function invoice(): HasOne
+    {
+        return $this->hasOne(Invoice::class);
+    }
+
     public function documents(): MorphMany
     {
         return $this->morphMany(Document::class, 'owner');
     }
 
-    public function invoice(): HasOne
+    public function payments(): HasMany
     {
-        return $this->hasOne(Invoice::class);
+        return $this->hasMany(Payment::class);
     }
 }

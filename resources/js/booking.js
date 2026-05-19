@@ -1836,6 +1836,7 @@ Alpine.data('createBookingApp', () => ({
         if (totalEl) totalEl.textContent = grand.toFixed(2) + ' SAR';
         if (paidEl) paidEl.textContent = '0 SAR';
         if (dueEl) dueEl.textContent = due.toFixed(2) + ' SAR';
+        this.paymentMaxAmount = due;
         this.paymentData = {
             currency: 'SAR',
             method: 'Cash',
@@ -1911,6 +1912,11 @@ Alpine.data('createBookingApp', () => ({
             alert('Please enter payment amount');
             return;
         }
+
+        if (amountSAR > this.paymentMaxAmount) {
+            alert('Payment amount cannot exceed the total booking value of ' + this.paymentMaxAmount.toFixed(2) + ' SAR');
+            return;
+        }
         
         if (this.paymentData.currency === 'BDT' && amountBDT > 0 && this.exchangeRate <= 0) {
             alert('Cannot process BDT payment. Exchange rate not available.');
@@ -1947,6 +1953,10 @@ Alpine.data('createBookingApp', () => ({
         }
         if (this.passengers.length === 0) {
             alert('Please add at least one passenger');
+            return;
+        }
+        if (!this.paymentSaved || (parseFloat(this.paymentData.amount_sar) || 0) <= 0) {
+            alert('Please save a payment before submitting the booking');
             return;
         }
         // Validate required fields
@@ -2003,7 +2013,7 @@ Alpine.data('createBookingApp', () => ({
             }
             return resp.json().then(data => {
                 if (data.success || resp.ok) {
-                    window.location.href = resp.url || '/bookings';
+                    window.location.href = data.url || '/bookings';
                 } else {
                     alert(data.message || 'Failed to create booking');
                 }
@@ -2102,6 +2112,1092 @@ Alpine.data('createBookingApp', () => ({
 
     removeCustomerDoc(btn) {
         btn.parentElement.remove();
+    }
+}));
+
+Alpine.data('editBookingApp', () => ({
+    activeTab: 'booking',
+    formVisible: false,
+    searchTerm: '',
+    customerSearch: '',
+    customerSuggestions: [],
+    selectedCustomer: null,
+    passengers: [],
+    passengerCount: 0,
+    fingerprintCharge: 0,
+    editingPassengerIndex: null,
+    passengerModalVisible: false,
+    customerModalVisible: false,
+    discountModalVisible: false,
+    paymentModalVisible: false,
+    customDurationModalVisible: false,
+    paymentData: {
+        currency: 'SAR',
+        method: 'Cash',
+        bank_method: '',
+        trx_id: '',
+        amount_sar: '',
+        amount_bdt: ''
+    },
+    paymentSaved: false,
+    exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
+
+    hasPaymentData() {
+        const amountSar = parseFloat(this.paymentData.amount_sar) || 0;
+        const amountBdt = parseFloat(this.paymentData.amount_bdt) || 0;
+        return this.paymentSaved && (amountSar > 0 || amountBdt > 0);
+    },
+
+    newCustomer: {
+        name: '',
+        iqama_type: '',
+        iqama_no: '',
+        passport_no: '',
+        mobile_no: '',
+        ref_iqama_no: '',
+        ref_mobile_no: '',
+        ref_iqama_doc: null,
+        address: ''
+    },
+    bookingData: {
+        fingerprint_location: 'Office',
+        fingerprint_office: '',
+        district_id: '',
+        fingerprint_charge_id: '',
+        package_id: '',
+        discount_type: 'fixed',
+        discount_value: 0,
+        remarks: ''
+    },
+    passengerData: {
+        first_name: '',
+        last_name: '',
+        passport_no: '',
+        date_of_birth: '',
+        passenger_type: '',
+        gender: '',
+        mobile_no: '',
+        passport_expiry: '',
+        service_required: '',
+        stay_duration: '',
+        stay_duration_int: 0,
+        stay_duration_display: '',
+        route_type: '',
+        flight_type: '',
+        route: '',
+        airline: '',
+        class: '',
+        ticket_fare_id: '',
+        flight_date_range: '',
+        flight_date_from: '',
+        flight_date_to: '',
+        baggage_weight: '',
+        address: '',
+        with_offer: false,
+        refundable: false,
+        customDurationDays: ''
+    },
+    allTickets: [],
+    filteredTickets: [],
+    allPackages: [],
+    passengerPackageValues: {},
+    isEditMode: false,
+    existingBooking: null,
+    existingPassengers: [],
+    existingCustomer: null,
+
+    get totalPackageValue() {
+        return Object.values(this.passengerPackageValues).reduce(
+            (sum, v) => sum + (parseFloat(v) || 0), 0
+        );
+    },
+    get grandTotalValue() {
+        return this.totalPackageValue + (parseFloat(this.fingerprintCharge) || 0);
+    },
+    get discountedTotal() {
+        const disc = parseFloat(this.bookingData.discount_value) || 0;
+        if (disc <= 0) return null;
+        const grand = this.grandTotalValue;
+        const discType = this.bookingData.discount_type;
+        const discAmt = discType === 'percentage' ? grand * disc / 100 : disc;
+        return grand - discAmt;
+    },
+
+    init() {
+        const serverData = window.__bookingServerData || {};
+        this.packages = serverData.packages || [];
+        this.allPackages = this.packages.map(p => ({
+            ...p,
+            id: String(p.id),
+            ticket_fare_id: p.ticket_fare_id ? String(p.ticket_fare_id) : null,
+        }));
+        this.allTickets = serverData.ticketFares || [];
+        this.filteredTickets = this.allTickets;
+
+        this.isEditMode = serverData.isEditMode || false;
+        this.existingBooking = serverData.existingBooking || null;
+        this.existingPassengers = serverData.existingPassengers || [];
+        this.existingCustomer = serverData.existingCustomer || null;
+
+        if (this.isEditMode && this.existingBooking) {
+            this.loadExistingBooking();
+        }
+
+        this.$nextTick(() => {
+            if (serverData.preSelectedPackageId) {
+                this.bookingData.package_id = String(serverData.preSelectedPackageId);
+            }
+            this.recalculateAllPassengerValues();
+        });
+    },
+
+    loadExistingBooking() {
+        const booking = this.existingBooking;
+        if (!booking) return;
+
+        if (this.existingCustomer) {
+            this.selectedCustomer = this.existingCustomer;
+            this.customerSearch = this.existingCustomer.passport_no || '';
+        }
+
+        const fpLocation = booking.fingerprint_location;
+        if (typeof fpLocation === 'object' && fpLocation !== null) {
+            this.bookingData.fingerprint_location = fpLocation.value === 'home' ? 'home' : 'office';
+        } else if (typeof fpLocation === 'string') {
+            this.bookingData.fingerprint_location = fpLocation === 'home' ? 'home' : 'office';
+        } else {
+            this.bookingData.fingerprint_location = 'office';
+        }
+
+        this.bookingData.fingerprint_office = booking.office_id ? String(booking.office_id) : '';
+        this.bookingData.district_id = booking.district_id ? String(booking.district_id) : '';
+        this.bookingData.package_id = booking.package_id ? String(booking.package_id) : '';
+        this.bookingData.remarks = booking.remarks || '';
+
+        const discountType = booking.discount_type;
+        if (typeof discountType === 'object' && discountType !== null) {
+            this.bookingData.discount_type = discountType.value === 'percentage' ? 'percentage' : 'fixed';
+        } else if (typeof discountType === 'string') {
+            this.bookingData.discount_type = discountType === 'percentage' ? 'percentage' : 'fixed';
+        } else {
+            this.bookingData.discount_type = 'fixed';
+        }
+        this.bookingData.discount_value = parseFloat(booking.discount_value) || 0;
+
+        console.log('Loading booking data:', {
+            fingerprint_location: this.bookingData.fingerprint_location,
+            fingerprint_office: this.bookingData.fingerprint_office,
+            district_id: this.bookingData.district_id,
+            package_id: this.bookingData.package_id,
+            passengers_count: this.existingPassengers ? this.existingPassengers.length : 0
+        });
+
+        if (this.existingPassengers && this.existingPassengers.length > 0) {
+            this.passengers = this.existingPassengers.map(p => ({
+                id: p.id,
+                first_name: p.first_name || '',
+                last_name: p.last_name || '',
+                passport_no: p.passport_no || '',
+                date_of_birth: p.date_of_birth || '',
+                passenger_type: p.passenger_type || '',
+                gender: p.gender || '',
+                mobile_no: p.mobile_no || '',
+                passport_expiry: p.passport_expiry || '',
+                service_required: p.service_required || 'all',
+                stay_duration: p.stay_duration ? String(p.stay_duration) : '',
+                route: p.route || '',
+                airline: p.airline || '',
+                travel_class: p.class || p.travel_class || '',
+                route_type: p.route_type || '',
+                flight_type: p.flight_type || '',
+                ticket_fare_id: p.ticket_fare_id ? String(p.ticket_fare_id) : '',
+                flight_date_from: p.flight_date_from || '',
+                flight_date_to: p.flight_date_to || '',
+                address: p.address || '',
+                baggage_weight: '',
+            }));
+            this.passengerCount = this.passengers.length;
+        }
+
+        this.updateFingerprintCharge();
+        this.updateGrandTotal();
+    },
+
+    showForm() {
+        this.formVisible = true;
+    },
+
+    hideForm() {
+        this.formVisible = false;
+        this.clearForm();
+    },
+
+    clearForm() {
+        this.selectedCustomer = null;
+        this.customerSearch = '';
+        this.customerSuggestions = [];
+        this.passengers = [];
+        this.passengerCount = 0;
+        this.newCustomer = {
+            name: '',
+            iqama_type: '',
+            iqama_no: '',
+            passport_no: '',
+            mobile_no: '',
+            ref_iqama_no: '',
+            ref_mobile_no: '',
+            ref_iqama_doc: null,
+            address: ''
+        };
+        const fileInput = document.getElementById('ref_iqama_doc');
+        if (fileInput) fileInput.value = '';
+        const fileName = document.getElementById('ref_iqama_doc_filename');
+        if (fileName) fileName.textContent = 'click to upload';
+        const docsList = document.getElementById('customer_docs_list');
+        if (docsList) docsList.innerHTML = '';
+        const docsInput = document.getElementById('customer_docs');
+        if (docsInput) docsInput.value = '';
+        const bookingDocsList = document.getElementById('booking_customer_docs_list');
+        if (bookingDocsList) bookingDocsList.innerHTML = '';
+        const bookingDocsInput = document.getElementById('booking_customer_docs');
+        if (bookingDocsInput) bookingDocsInput.value = '';
+        this.bookingData = {
+            fingerprint_location: 'Office',
+            fingerprint_office: '',
+            district_id: '',
+            package_id: '',
+            discount_type: 'fixed',
+            discount_value: 0,
+            remarks: ''
+        };
+        this.paymentData = {
+            currency: 'SAR',
+            method: 'Cash',
+            bank_method: '',
+            trx_id: '',
+            amount_sar: '',
+            amount_bdt: ''
+        };
+        this.paymentSaved = false;
+    },
+
+    async searchCustomers() {
+        if (this.customerSearch.length < 2) {
+            this.customerSuggestions = [];
+            return;
+        }
+        try {
+            const response = await fetch(`/api/customers/search?q=${encodeURIComponent(this.customerSearch)}`);
+            this.customerSuggestions = await response.json();
+        } catch (e) {
+            console.error('Customer search error:', e);
+            this.customerSuggestions = [];
+        }
+    },
+
+    selectCustomer(customer) {
+        this.selectedCustomer = customer;
+        this.customerSearch = customer.passport_no;
+        this.customerSuggestions = [];
+    },
+
+    clearSelectedCustomer() {
+        this.selectedCustomer = null;
+        this.customerSearch = '';
+    },
+
+    parseStayDurationDays(stayDuration) {
+        if (!stayDuration) return null;
+        if (/^\d+$/.test(stayDuration)) {
+            return parseInt(stayDuration, 10);
+        }
+        const match = stayDuration.match(/(\d+)\s*days?/i);
+        return match ? parseInt(match[1], 10) : null;
+    },
+
+    getStayDurationValue() {
+        return this.parseStayDurationDays(this.passengerData.stay_duration);
+    },
+
+    calculatePassengerType() {
+        const dob = this.passengerData.date_of_birth;
+        if (!dob) {
+            this.passengerData.passenger_type = '';
+            return;
+        }
+        const dobDate = new Date(dob);
+        if (isNaN(dobDate.getTime())) {
+            this.passengerData.passenger_type = '';
+            return;
+        }
+        const today = new Date();
+        let ageInMonths = (today.getFullYear() - dobDate.getFullYear()) * 12 + (today.getMonth() - dobDate.getMonth());
+        const dobDay = dobDate.getDate();
+        const todayDay = today.getDate();
+        if (todayDay < dobDay) {
+            ageInMonths -= 1;
+        }
+
+        const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
+
+        if (stayDays !== null) {
+            const adjustmentDays = stayDays < 30 ? 30 : 90;
+
+            const effectiveDate = new Date(dobDate);
+            effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
+
+            const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
+            const dayDiff = today.getDate() - effectiveDate.getDate();
+            const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
+
+            ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
+        }
+
+        let calculatedType = 'Adult';
+        if (ageInMonths < 24) {
+            calculatedType = 'Infant';
+        } else if (ageInMonths < 144) {
+            calculatedType = 'Child';
+        }
+
+        this.passengerData.passenger_type = calculatedType;
+        this.updateBaggageWeight();
+        if (this.editingPassengerIndex !== null && this.editingPassengerIndex !== undefined) {
+            this.recalculateCurrentPassenger(this.editingPassengerIndex);
+        }
+    },
+
+    handleStayDurationChange() {
+        if (this.passengerData.stay_duration === 'Customize (Set Duration)') {
+            this.openCustomDurationModal();
+        }
+    },
+
+    openCustomDurationModal() {
+        this.customDurationModalVisible = true;
+        this.passengerData.customDurationDays = '';
+        this.$nextTick(() => {
+            const input = document.getElementById('customDurationDays');
+            if (input) input.focus();
+        });
+    },
+
+    closeCustomDurationModal() {
+        this.customDurationModalVisible = false;
+        this.passengerData.customDurationDays = '';
+    },
+
+    saveCustomDuration() {
+        const days = parseInt(this.passengerData.customDurationDays);
+        if (isNaN(days) || days < 30 || days > 89) {
+            alert('Please enter a valid duration between 30 and 89 days');
+            return;
+        }
+
+        this.passengerData.stay_duration = `Customized (${days} Days)`;
+        this.passengerData.stay_duration_int = days;
+        this.passengerData.stay_duration_display = `Customized (${days} Days)`;
+
+        const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
+        if (select) {
+            let customOption = Array.from(select.options).find(opt => opt.value.startsWith('Customized'));
+            if (!customOption) {
+                customOption = document.createElement('option');
+                select.appendChild(customOption);
+            }
+            customOption.value = `Customized (${days} Days)`;
+            customOption.textContent = `Customized (${days} Days)`;
+            select.value = `Customized (${days} Days)`;
+        }
+
+        this.closeCustomDurationModal();
+        this.calculatePassengerType();
+    },
+
+    updateBaggageWeight() {
+        const ticketFareId = this.passengerData.ticket_fare_id;
+        const passengerType = this.passengerData.passenger_type;
+        const routeType = this.passengerData.route_type;
+
+        if (!ticketFareId && !passengerType) {
+            this.passengerData.baggage_weight = 'Select a Ticket and Define Passenger Type';
+            return;
+        }
+        if (!ticketFareId) {
+            this.passengerData.baggage_weight = 'Select a Ticket';
+            return;
+        }
+        if (!passengerType) {
+            this.passengerData.baggage_weight = 'Define Passenger Type';
+            return;
+        }
+        if (!routeType) {
+            this.passengerData.baggage_weight = 'Select Route Type';
+            return;
+        }
+
+        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+        if (!ticket || !ticket.baggage_allowances || ticket.baggage_allowances.length === 0) {
+            this.passengerData.baggage_weight = 'No baggage allowance defined';
+            return;
+        }
+
+        const lowerType = passengerType.toLowerCase();
+        const allowances = ticket.baggage_allowances.filter(
+            ba => ba.passenger_type === lowerType
+        );
+
+        const getAllowance = (direction) => {
+            const found = allowances.find(ba => ba.travel_direction === direction);
+            return found ? found.allowance : null;
+        };
+
+        let display = '';
+        if (routeType === 'One Way-Inbound') {
+            const a = getAllowance('inbound');
+            display = a ? `Inbound: ${a}` : '';
+        } else if (routeType === 'One Way-Outbound') {
+            const a = getAllowance('outbound');
+            display = a ? `Outbound: ${a}` : '';
+        } else {
+            const inA = getAllowance('inbound');
+            const outA = getAllowance('outbound');
+            if (inA && outA) {
+                display = `Inbound: ${inA} | Outbound: ${outA}`;
+            } else if (inA) {
+                display = `Inbound: ${inA}`;
+            } else if (outA) {
+                display = `Outbound: ${outA}`;
+            }
+        }
+
+        this.passengerData.baggage_weight = display;
+    },
+
+    async fetchBaggageAllowance(route, airline, travelClass, passengerType, direction) {
+        try {
+            const params = new URLSearchParams({ route, airline, travel_class: travelClass, passenger_type: passengerType, direction });
+            const response = await fetch(`/api/ticket-fares/baggage?${params}`);
+            const data = await response.json();
+            if (data.allowance) {
+                this.passengerData.baggage_weight = data.allowance + 'kg';
+            } else {
+                this.passengerData.baggage_weight = '';
+            }
+        } catch (e) {
+            console.error('Error fetching baggage allowance:', e);
+            this.passengerData.baggage_weight = '';
+        }
+    },
+
+    async updateFingerprintCharge() {
+        if (!this.bookingData.district_id) {
+            this.fingerprintCharge = 0;
+            this.bookingData.fingerprint_charge_id = '';
+            return;
+        }
+        try {
+            const response = await fetch(`/api/bookings/fingerprint-charge?district_id=${this.bookingData.district_id}&location=${this.bookingData.fingerprint_location}`);
+            const data = await response.json();
+            if (data.error) {
+                alert(data.error);
+                this.fingerprintCharge = 0;
+                this.bookingData.fingerprint_charge_id = '';
+                return;
+            }
+            this.fingerprintCharge = data.charge || 0;
+            this.bookingData.fingerprint_charge_id = data.fingerprint_charge_id || '';
+        } catch (e) {
+            console.error('Fingerprint charge error:', e);
+            this.fingerprintCharge = 0;
+            this.bookingData.fingerprint_charge_id = '';
+        }
+    },
+
+    calculatePackageValue(passenger, selectedPackage) {
+        const ticketFareId = passenger.ticket_fare_id;
+        const serviceRequired = passenger.service_required || 'all';
+        const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
+
+        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+        if (!ticket) return 0;
+
+        const sellingFare = parseFloat(ticket.selling_fare) || 0;
+        let ticketAmount = sellingFare;
+        if (passengerType === 'child') {
+            const pct = parseFloat(ticket.child_fare_percentage) || 0;
+            ticketAmount = sellingFare * pct / 100;
+        } else if (passengerType === 'infant') {
+            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+            ticketAmount = sellingFare * pct / 100;
+        }
+
+        const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
+        const serviceCharge = parseFloat(selectedPackage?.service_charge) || 0;
+
+        let visaAmount = 0;
+        let scAmount = 0;
+        if (serviceRequired !== 'ticket_only') {
+            visaAmount = visaPrice;
+            scAmount = serviceCharge;
+        } else {
+            scAmount = serviceCharge;
+        }
+
+        return ticketAmount + visaAmount + scAmount;
+    },
+
+    recalculateAllPassengerValues() {
+        const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+        this.passengers.forEach((p, index) => {
+            this.passengerPackageValues[index] = this.calculatePackageValue(p, pkg);
+        });
+    },
+
+    recalculateCurrentPassenger(index) {
+        if (index === null || index === undefined || !this.passengers[index]) {
+            return;
+        }
+        const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+        this.passengerPackageValues[index] = this.calculatePackageValue(this.passengers[index], pkg);
+    },
+
+    onPackageChange() {
+        this.recalculateAllPassengerValues();
+    },
+
+    openPassengerModal() {
+        this.editingPassengerIndex = null;
+        let packageTicketFareId = null;
+        if (this.bookingData.package_id) {
+            const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+            if (pkg && pkg.ticket_fare_id) {
+                packageTicketFareId = pkg.ticket_fare_id;
+            }
+        }
+        this.passengerData = {
+            first_name: '',
+            last_name: '',
+            passport_no: '',
+            date_of_birth: '',
+            passenger_type: '',
+            gender: '',
+            mobile_no: '',
+            passport_expiry: '',
+            service_required: '',
+            stay_duration: '',
+            stay_duration_display: '',
+            route_type: '',
+            flight_type: '',
+            route: '',
+            airline: '',
+            class: '',
+            ticket_fare_id: '',
+            flight_date_range: '',
+            flight_date_from: '',
+            flight_date_to: '',
+            baggage_weight: '',
+            address: '',
+            with_offer: false,
+            refundable: false,
+            customDurationDays: ''
+        };
+        if (packageTicketFareId) {
+            this.passengerData.baggage_weight = 'Define Passenger Type';
+        } else {
+            this.passengerData.baggage_weight = 'Select a Ticket and Define Passenger Type';
+        }
+        if (packageTicketFareId) {
+            const ticket = this.allTickets.find(t => t.id == packageTicketFareId);
+            if (ticket) {
+                const reverseRouteTypeMap = {
+                    'oneway_inbound': 'One Way-Inbound',
+                    'oneway_outbound': 'One Way-Outbound',
+                    'round': 'Round',
+                    'multi_city': 'Multi City',
+                };
+                const reverseFlightTypeMap = {
+                    'transit': 'Transit',
+                    'direct': 'Direct',
+                };
+                this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+                this.filteredTickets = this.allTickets.filter(t =>
+                    t.route_type === ticket.route_type &&
+                    t.flight_type === ticket.flight_type
+                );
+                this.passengerData.route = ticket.route;
+                this.passengerData.airline = ticket.airline || '';
+                this.passengerData.class = ticket.airline_class || '';
+                this.$nextTick(() => {
+                    this.passengerData.ticket_fare_id = String(packageTicketFareId);
+                    this.calculateFlightDateRange();
+                });
+            }
+        } else {
+            this.filteredTickets = [];
+        }
+        this.passengerModalVisible = true;
+    },
+
+    editPassenger(index) {
+        this.editingPassengerIndex = index;
+        const passenger = this.passengers[index];
+        this.passengerData = { ...passenger };
+        this.passengerData.ticket_fare_id = this.passengerData.ticket_fare_id ? String(this.passengerData.ticket_fare_id) : '';
+
+        if (typeof this.passengerData.stay_duration === 'number' && this.passengerData.stay_duration >= 30 && this.passengerData.stay_duration <= 89) {
+            this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration} Days)`;
+            this.$nextTick(() => {
+                const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
+                if (select) {
+                    let customOption = Array.from(select.options).find(opt => opt.value.startsWith('Customized'));
+                    if (!customOption) {
+                        customOption = document.createElement('option');
+                        select.appendChild(customOption);
+                    }
+                    customOption.value = `Customized (${this.passengerData.stay_duration} Days)`;
+                    customOption.textContent = `Customized (${this.passengerData.stay_duration} Days)`;
+                    select.value = `Customized (${this.passengerData.stay_duration} Days)`;
+                }
+            });
+        }
+        if (this.passengerData.ticket_fare_id) {
+            const ticket = this.allTickets.find(t => t.id == this.passengerData.ticket_fare_id);
+            if (ticket) {
+                const reverseRouteTypeMap = {
+                    'oneway_inbound': 'One Way-Inbound',
+                    'oneway_outbound': 'One Way-Outbound',
+                    'round': 'Round',
+                    'multi_city': 'Multi City',
+                };
+                const reverseFlightTypeMap = {
+                    'transit': 'Transit',
+                    'direct': 'Direct',
+                };
+                this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+                this.filteredTickets = this.allTickets.filter(t =>
+                    t.route_type === ticket.route_type &&
+                    t.flight_type === ticket.flight_type
+                );
+                this.passengerData.route = ticket.route;
+                this.passengerData.airline = ticket.airline || '';
+                this.passengerData.class = ticket.airline_class || '';
+
+                if (this.passengerData.flight_date_from && this.passengerData.flight_date_to) {
+                    this.generateFlightDateRangeForEdit(this.passengerData.flight_date_from, this.passengerData.flight_date_to);
+                }
+            }
+        }
+        this.passengerModalVisible = true;
+    },
+
+    generateFlightDateRangeForEdit(dateFrom, dateTo) {
+        const select = document.getElementById('passengerFlightDateRange');
+        if (!select) return;
+
+        const startDate = new Date(dateFrom);
+        const endDate = new Date(dateTo);
+
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        const startStr = `${months[startDate.getMonth()]} ${startDate.getDate()}, ${startDate.getFullYear()}`;
+        const endStr = `${months[endDate.getMonth()]} ${endDate.getDate()}, ${endDate.getFullYear()}`;
+        const displayText = `${startStr} - ${endStr}`;
+
+        let found = false;
+        Array.from(select.options).forEach(opt => {
+            if (opt.value === displayText) {
+                this.passengerData.flight_date_range = displayText;
+                found = true;
+            }
+        });
+
+        if (!found) {
+            this.passengerData.flight_date_range = displayText;
+        }
+    },
+
+    calculateFlightDateRange() {
+        const route = this.passengerData.route;
+
+        if (!route) {
+            this.passengerData.flight_date_range = '';
+            return;
+        }
+
+        const airline = this.passengerData.airline || '';
+        const travelClass = this.passengerData.travel_class || '';
+
+        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass);
+    },
+
+    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass) {
+        try {
+            const params = new URLSearchParams({ route, airline, travel_class: travelClass });
+            const response = await fetch(`/api/ticket-fares/flight-date-gap?${params}`);
+            const data = await response.json();
+
+            if (data.default_gap !== undefined) {
+                const additionalGap = parseInt(data.additional_gap) || 0;
+                const defaultGap = parseInt(data.default_gap) || 30;
+                this.generateFlightDateRangeWithGap(defaultGap, additionalGap);
+            } else {
+                this.passengerData.flight_date_range = '';
+            }
+        } catch (e) {
+            console.error('Error fetching flight date gap:', e);
+            this.passengerData.flight_date_range = '';
+        }
+    },
+
+    generateFlightDateRangeWithGap(defaultGap, additionalGap) {
+        const finalGap = defaultGap + additionalGap;
+        const bookingDate = new Date();
+        const calculatedDate = new Date(bookingDate);
+        calculatedDate.setDate(calculatedDate.getDate() + finalGap);
+
+        const day = calculatedDate.getDate();
+        let selectedRange = '';
+
+        if (day >= 1 && day <= 5) {
+            selectedRange = '1-10';
+        } else if (day >= 6 && day <= 15) {
+            selectedRange = '11-20';
+        } else if (day >= 16 && day <= 31) {
+            selectedRange = '21-31';
+        }
+
+        this.generateFlightDateRangeOptions(selectedRange);
+    },
+
+    generateFlightDateRangeOptions(preSelectRange = null) {
+        const select = document.getElementById('passengerFlightDateRange');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Select Date Range</option>';
+
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        const ranges = [];
+
+        const startDate = new Date();
+        startDate.setDate(startDate.getDate() + 30);
+
+        for (let i = 0; i < 4; i++) {
+            for (let week = 0; week < 4; week++) {
+                const rangeStart = new Date(startDate);
+                rangeStart.setDate(rangeStart.getDate() + (i * 40) + (week * 10));
+
+                const rangeEnd = new Date(rangeStart);
+                rangeEnd.setDate(rangeEnd.getDate() + 9);
+
+                const startStr = `${months[rangeStart.getMonth()]} ${rangeStart.getDate()}, ${rangeStart.getFullYear()}`;
+                const endStr = `${months[rangeEnd.getMonth()]} ${rangeEnd.getDate()}, ${rangeEnd.getFullYear()}`;
+                const displayText = `${startStr} - ${endStr}`;
+
+                ranges.push({
+                    value: displayText,
+                    label: displayText,
+                    dayStart: rangeStart.getDate()
+                });
+            }
+        }
+
+        ranges.forEach(range => {
+            const option = document.createElement('option');
+            option.value = range.value;
+            option.textContent = range.label;
+            select.appendChild(option);
+        });
+
+        if (preSelectRange) {
+            const preStart = parseInt(preSelectRange.split('-')[0]);
+            const foundRange = ranges.find(r => r.dayStart === preStart);
+            if (foundRange) {
+                this.passengerData.flight_date_range = foundRange.value;
+            } else {
+                this.passengerData.flight_date_range = '';
+            }
+        } else {
+            this.passengerData.flight_date_range = '';
+        }
+    },
+
+    closePassengerModal() {
+        this.passengerModalVisible = false;
+    },
+
+    removePassenger(index) {
+        if (confirm('Are you sure you want to remove this passenger?')) {
+            this.passengers.splice(index, 1);
+            this.passengerCount = this.passengers.length;
+            this.recalculateAllPassengerValues();
+        }
+    },
+
+    savePassenger() {
+        if (!this.passengerData.first_name || !this.passengerData.last_name || !this.passengerData.passport_no || !this.passengerData.date_of_birth) {
+            alert('Please fill in all required fields');
+            return false;
+        }
+
+        if (this.passengerData.passenger_type?.toLowerCase() === 'adult' && !this.passengerData.gender) {
+            alert('Please select gender for adult passenger');
+            return false;
+        }
+
+        if (this.editingPassengerIndex !== null) {
+            this.passengers[this.editingPassengerIndex] = { ...this.passengerData };
+            this.recalculateCurrentPassenger(this.editingPassengerIndex);
+        } else {
+            this.passengers.push({ ...this.passengerData });
+            this.recalculateAllPassengerValues();
+        }
+        this.passengerCount = this.passengers.length;
+        this.closePassengerModal();
+        return true;
+    },
+
+    openDiscountModal() {
+        this.discountModalVisible = true;
+    },
+
+    closeDiscountModal() {
+        this.discountModalVisible = false;
+    },
+
+    openPaymentModal() {
+        const packageSelect = document.querySelector('#bookingPackage');
+        const packageValue = parseInt(packageSelect?.selectedOptions[0]?.dataset?.packageValue) || 0;
+        const totalPackageValue = (packageValue * this.passengers.length) + this.fingerprintCharge;
+        const due = totalPackageValue - this.bookingData.discount_value;
+
+        const totalEl = document.getElementById('paymentTotalPackageValue');
+        const paidEl = document.getElementById('paymentPaid');
+        const dueEl = document.getElementById('paymentDue');
+
+        if (totalEl) totalEl.textContent = totalPackageValue + ' SAR';
+        if (paidEl) paidEl.textContent = '0 SAR';
+        if (dueEl) dueEl.textContent = due + ' SAR';
+
+        this.paymentData = {
+            currency: 'SAR',
+            method: 'Cash',
+            bank_method: '',
+            trx_id: '',
+            amount_sar: '',
+            amount_bdt: ''
+        };
+
+        this.paymentModalVisible = true;
+    },
+
+    closePaymentModal() {
+        this.paymentModalVisible = false;
+    },
+
+    handlePaymentCurrencyChange() {
+        if (this.paymentData.currency === 'BDT' && this.paymentData.amount_sar && this.exchangeRate > 0) {
+            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(2);
+        } else if (this.paymentData.currency === 'SAR' && this.paymentData.amount_bdt && this.exchangeRate > 0) {
+            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(2);
+        }
+    },
+
+    convertSarToBdt() {
+        if (this.paymentData.currency === 'SAR' && this.paymentData.amount_sar && this.exchangeRate > 0) {
+            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(2);
+        }
+    },
+
+    convertBdtToSar() {
+        if (this.paymentData.currency === 'BDT' && this.paymentData.amount_bdt && this.exchangeRate > 0) {
+            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(2);
+        }
+    },
+
+    savePayment() {
+        const amountSAR = parseFloat(this.paymentData.amount_sar) || 0;
+        const amountBDT = parseFloat(this.paymentData.amount_bdt) || 0;
+        
+        if (amountSAR === 0) {
+            alert('Please enter payment amount');
+            return;
+        }
+
+        if (amountSAR > this.paymentMaxAmount) {
+            alert('Payment amount cannot exceed the total booking value of ' + this.paymentMaxAmount.toFixed(2) + ' SAR');
+            return;
+        }
+
+        this.paymentSaved = true;
+
+        console.log('Payment saved:', {
+            currency: this.paymentData.currency,
+            method: this.paymentData.method,
+            bank_method: this.paymentData.bank_method,
+            trx_id: this.paymentData.trx_id,
+            amount_sar: amountSAR,
+            amount_bdt: amountBDT
+        });
+
+        this.closePaymentModal();
+    },
+
+    applyDiscount() {
+        this.bookingData.discount_type = document.getElementById('discountType')?.value || 'fixed';
+        this.bookingData.discount_value = parseFloat(document.getElementById('discountValue')?.value) || 0;
+        this.closeDiscountModal();
+    },
+
+    updateGrandTotal() {
+        this.recalculateAllPassengerValues();
+    },
+
+    submitForm(e) {
+        if (!this.selectedCustomer) {
+            alert('Please select a customer');
+            e.preventDefault();
+            return false;
+        }
+        if (this.passengers.length === 0) {
+            alert('Please add at least one passenger');
+            e.preventDefault();
+            return false;
+        }
+        if (!this.bookingData.district_id) {
+            alert('Please select a district');
+            e.preventDefault();
+            return false;
+        }
+        if (!this.bookingData.fingerprint_location) {
+            alert('Please select fingerprint location');
+            e.preventDefault();
+            return false;
+        }
+        if (!this.bookingData.fingerprint_office) {
+            alert('Please select fingerprint office');
+            e.preventDefault();
+            return false;
+        }
+        return true;
+    },
+
+    toggleReferralFields() {
+        const iqamaType = document.getElementById('customerIqamaType');
+        const referralFields = document.getElementById('referralFields');
+
+        if (!iqamaType || !referralFields) return;
+
+        if (iqamaType.value === 'Referral') {
+            referralFields.classList.remove('hidden');
+        } else {
+            referralFields.classList.add('hidden');
+        }
+    },
+
+    toggleCustomerIqamaField() {
+        const iqamaType = document.getElementById('customerIqamaType');
+        const iqamaField = document.getElementById('customerIqamaField');
+
+        if (!iqamaType || !iqamaField) return;
+
+        if (iqamaType.value === 'None') {
+            iqamaField.classList.add('hidden');
+        } else {
+            iqamaField.classList.remove('hidden');
+        }
+    },
+
+    filterTickets() {
+        const routeType = this.passengerData.route_type || '';
+        const flightType = this.passengerData.flight_type || '';
+
+        const reverseRouteTypeMap = {
+            'One Way-Inbound': 'oneway_inbound',
+            'One Way-Outbound': 'oneway_outbound',
+            'Round': 'round',
+            'Multi City': 'multi_city',
+        };
+        const reverseFlightTypeMap = {
+            'Transit': 'transit',
+            'Direct': 'direct',
+        };
+
+        const mappedRouteType = reverseRouteTypeMap[routeType] || routeType;
+        const mappedFlightType = reverseFlightTypeMap[flightType] || flightType;
+
+        this.filteredTickets = this.allTickets.filter(t =>
+            t.route_type === mappedRouteType &&
+            t.flight_type === mappedFlightType
+        );
+    },
+
+    onTicketChange() {
+        const ticketFareId = this.passengerData.ticket_fare_id;
+        if (!ticketFareId) {
+            this.passengerData.route = '';
+            this.passengerData.airline = '';
+            this.passengerData.class = '';
+            return;
+        }
+
+        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+        if (ticket) {
+            this.passengerData.route = ticket.route || '';
+            this.passengerData.airline = ticket.airline || '';
+            this.passengerData.class = ticket.airline_class || '';
+
+            const reverseRouteTypeMap = {
+                'oneway_inbound': 'One Way-Inbound',
+                'oneway_outbound': 'One Way-Outbound',
+                'round': 'Round',
+                'multi_city': 'Multi City',
+            };
+            const reverseFlightTypeMap = {
+                'transit': 'Transit',
+                'direct': 'Direct',
+            };
+            this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+            this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+
+            this.calculateFlightDateRange();
+            this.updateBaggageWeight();
+        }
+    },
+
+    handlePassengerDocUpload(input) {
+        const list = document.getElementById('passenger_docs_list');
+        if (!list) return;
+        list.innerHTML = '';
+        Array.from(input.files).forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+            item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removePassengerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+            list.appendChild(item);
+        });
+    },
+
+    removePassengerDoc(btn) {
+        btn.parentElement.remove();
+    },
+
+    getTicketDisplayText(ticket) {
+        const price = ticket.selling_fare ? ticket.selling_fare + ' SAR' : '';
+        const ticketType = ticket.ticket_type || 'standard';
+        const type = ticketType.charAt(0).toUpperCase() + ticketType.slice(1);
+        switch (ticketType) {
+            case 'offer':
+                const offer = ticket.offer_price ? ' | ' + ticket.offer_price + ' SAR' : '';
+                return `${ticket.route || ''} | ${type} | ${price}${offer}`;
+            case 'group':
+                const seats = ticket.available_seats ? ' | ' + ticket.available_seats + ' seats' : '';
+                return `${ticket.route || ''} | ${type} | ${price}${seats}`;
+            default:
+                return `${ticket.route || ''} | ${type} | ${price}`;
+        }
     }
 }));
 
