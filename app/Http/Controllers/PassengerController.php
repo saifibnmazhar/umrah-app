@@ -4,16 +4,126 @@ namespace App\Http\Controllers;
 
 use App\Models\Passenger;
 use App\Models\Booking;
+use App\Models\Document;
 use App\Enums\PassengerType;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 
 class PassengerController extends Controller
 {
     public function show(Passenger $passenger)
     {
-        $passenger->load(['booking', 'booking.customer', 'status']);
-        return view('passengers.show', compact('passenger'));
+        $passenger->load([
+            'booking',
+            'booking.customer',
+            'booking.package',
+            'booking.package.visaSellingPrice',
+            'booking.invoice',
+            'booking.fingerprintCharge',
+            'booking.district',
+            'status',
+            'ticketFare',
+            'ticketFare.airline',
+            'ticketFare.airlineClass',
+            'ticketFare.route',
+            'documents'
+        ]);
+
+        $routeDisplay = null;
+        if ($passenger->ticketFare?->route) {
+            $route = $passenger->ticketFare->route;
+            $routeType = $route->route_type?->value;
+            if ($routeType === 'multi_city') {
+                $routeDisplay = $route->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+            } elseif ($routeType === 'round') {
+                $routeDisplay = ($route->fromCity?->code ?? '?') . ' → ' . ($route->toCity?->code ?? '?') . ' → ' . ($route->returnCity?->code ?? '?');
+            } else {
+                $routeDisplay = ($route->fromCity?->code ?? '?') . ' → ' . ($route->toCity?->code ?? '?');
+            }
+        }
+
+        $ticketFare = $passenger->ticketFare?->selling_fare ?? 0;
+        $visaCost = $passenger->booking?->package?->visaSellingPrice?->selling_price ?? 0;
+        $fingerprintCost = ($passenger->booking?->fingerprint_location === 'home' && $passenger->booking?->fingerprintCharge)
+            ? $passenger->booking->fingerprintCharge->fingerprint_charge
+            : 0;
+        $due = $passenger->booking?->invoice?->balance ?? 0;
+        $paid = $passenger->booking?->invoice?->paid_amount ?? 0;
+
+        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid'));
+    }
+
+    public function uploadDocument(Request $request, Passenger $passenger)
+    {
+        $request->validate([
+            'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ]);
+
+        try {
+            $file = $request->file('file');
+            $filename = Str::slug($passenger->first_name . ' ' . $passenger->last_name) . '_' . time() . '.' . $file->getClientOriginalExtension();
+            $path = $file->storeAs('passenger-documents', $filename);
+
+            $document = Document::create([
+                'owner_type' => Passenger::class,
+                'owner_id' => $passenger->id,
+                'file_path' => $path,
+                'display_name' => $file->getClientOriginalName(),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Document uploaded successfully',
+                'document' => $document,
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to upload document: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    public function downloadDocument(Passenger $passenger, Document $document)
+    {
+        if ($document->owner_id !== $passenger->id || $document->owner_type !== Passenger::class) {
+            abort(403, 'Unauthorized');
+        }
+
+        if (!Storage::exists($document->file_path)) {
+            abort(404, 'File not found');
+        }
+
+        return Storage::download($document->file_path, $document->display_name);
+    }
+
+    public function destroyDocument(Passenger $passenger, Document $document)
+    {
+        if ($document->owner_id !== $passenger->id || $document->owner_type !== Passenger::class) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Unauthorized',
+            ], 403);
+        }
+
+        try {
+            if (Storage::exists($document->file_path)) {
+                Storage::delete($document->file_path);
+            }
+            $document->delete();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Document deleted successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Failed to delete document',
+            ], 500);
+        }
     }
 
     public function update(Request $request, Passenger $passenger)
