@@ -336,7 +336,7 @@ class BookingController extends Controller
             'package',
             'office',
             'invoice',
-            'payments',
+            'payments.vouchers',
         ]);
         
         return view('bookings.show', compact('booking'));
