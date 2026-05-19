@@ -2013,7 +2013,7 @@ Alpine.data('createBookingApp', () => ({
             }
             return resp.json().then(data => {
                 if (data.success || resp.ok) {
-                    window.location.href = resp.url || '/bookings';
+                    window.location.href = data.url || '/bookings';
                 } else {
                     alert(data.message || 'Failed to create booking');
                 }

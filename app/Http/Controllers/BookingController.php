@@ -296,7 +296,7 @@ class BookingController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage,
-                    'url' => route('bookings.index')
+                    'url' => route('bookings.print', $booking->id)
                 ]);
             }
 
@@ -304,8 +304,9 @@ class BookingController extends Controller
                 ? ' and initial payment recorded'
                 : '';
 
-            return redirect()->route('bookings.index')
+            return redirect()->route('bookings.print', $booking->id)
                 ->with('success', 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage);
+
         } catch (\Exception $e) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
