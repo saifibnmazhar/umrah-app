@@ -215,10 +215,6 @@
             <div class="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-slate-700">Summary Card</h3>
-                    <div class="flex gap-2">
-                        <button type="button" @click="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
-                        <button type="button" @click="openPaymentModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Payment</button>
-                    </div>
                 </div>
                 <div class="flex justify-between text-sm text-slate-500 mb-2">
                     <span class="w-1/6 text-center">Package</span>
