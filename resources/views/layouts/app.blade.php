@@ -19,5 +19,7 @@
     @auth
         @include('components.toast')
     @endauth
+
+    @stack('scripts')
 </body>
 </html>
