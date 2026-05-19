@@ -1836,6 +1836,7 @@ Alpine.data('createBookingApp', () => ({
         if (totalEl) totalEl.textContent = grand.toFixed(2) + ' SAR';
         if (paidEl) paidEl.textContent = '0 SAR';
         if (dueEl) dueEl.textContent = due.toFixed(2) + ' SAR';
+        this.paymentMaxAmount = due;
         this.paymentData = {
             currency: 'SAR',
             method: 'Cash',
@@ -1909,6 +1910,11 @@ Alpine.data('createBookingApp', () => ({
         
         if (amountSAR === 0) {
             alert('Please enter payment amount');
+            return;
+        }
+
+        if (amountSAR > this.paymentMaxAmount) {
+            alert('Payment amount cannot exceed the total booking value of ' + this.paymentMaxAmount.toFixed(2) + ' SAR');
             return;
         }
         
@@ -3015,9 +3021,14 @@ Alpine.data('editBookingApp', () => ({
     savePayment() {
         const amountSAR = parseFloat(this.paymentData.amount_sar) || 0;
         const amountBDT = parseFloat(this.paymentData.amount_bdt) || 0;
-
-        if (amountSAR === 0 && amountBDT === 0) {
+        
+        if (amountSAR === 0) {
             alert('Please enter payment amount');
+            return;
+        }
+
+        if (amountSAR > this.paymentMaxAmount) {
+            alert('Payment amount cannot exceed the total booking value of ' + this.paymentMaxAmount.toFixed(2) + ' SAR');
             return;
         }
 
