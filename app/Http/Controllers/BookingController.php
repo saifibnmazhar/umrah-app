@@ -382,9 +382,10 @@ class BookingController extends Controller
         });
 
         $customers = \App\Models\Customer::orderBy('name')->get(['id', 'name', 'passport_no', 'iqama_no', 'mobile_no']);
+        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
 
         return view('bookings.edit', compact(
-            'booking', 'districts', 'packages', 'offices', 'ticketFares', 'customers'
+            'booking', 'districts', 'packages', 'offices', 'ticketFares', 'customers', 'currentCurrencyRate'
         ));
     }
 
