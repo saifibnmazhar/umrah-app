@@ -48,7 +48,7 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-4 pt-4 border-t border-slate-200">
+            <div class="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-200">
                 <div>
                     <span class="text-slate-500 text-sm">Total Value</span>
                     <p class="text-xl font-bold text-slate-800">{{ number_format($booking->invoice?->total_amount ?? 0) }} SAR</p>
@@ -62,15 +62,14 @@
                     <p class="text-xl font-bold text-red-600">{{ number_format($booking->invoice?->balance ?? 0) }} SAR</p>
                 </div>
             </div>
-<div class="mt-4 pt-4 border-t border-slate-200 flex justify-end">
+            <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
                 <button type="button" onclick="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">
                     Discount
                 </button>
-            </div>
-            </div>
+</div>
         </div>
 
-{{-- Passengers Section --}}
+        {{-- Passengers Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="flex justify-between items-center mb-4">
                 <h3 class="text-lg font-semibold text-slate-700">Passengers</h3>
@@ -102,8 +101,8 @@
         </div>
 
         {{-- Documents Section --}}
-        <div class="grid grid-cols-2 gap-4">
-            <div class="bg-slate-50 rounded-lg p-4">
+        <div class="grid grid-cols-2 gap-5">
+            <div class="bg-slate-50 rounded-lg p-5">
                 <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
                     <h3 class="text-sm font-medium text-slate-500">Customer Documents</h3>
                     <div class="flex gap-2">
@@ -112,9 +111,9 @@
                         <button onclick="downloadAllCustomerDocs()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
                     </div>
                 </div>
-                <div id="customerDocumentsList" class="space-y-2 overflow-y-auto" style="max-height: 16rem;">
+                <div id="customerDocumentsList" class="space-y-3 overflow-y-auto" style="max-height: 16rem;">
                     @forelse($booking->documents as $doc)
-                    <div class="flex justify-between items-center bg-white p-2 rounded border border-slate-200">
+                    <div class="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200">
                         <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
                         <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
                     </div>
@@ -124,16 +123,16 @@
                 </div>
             </div>
 
-            <div class="bg-slate-50 rounded-lg p-4">
-                <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
+            <div class="bg-slate-50 rounded-lg p-5">
+                <div class="flex justify-between items-center mb-4 pb-3 border-b border-slate-200">
                     <h3 class="text-sm font-medium text-slate-500">Passenger Documents</h3>
                     <div class="flex gap-2">
                         <button onclick="downloadAllPassengerDocs()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
                     </div>
                 </div>
-                <div id="passengerDocumentsList" class="space-y-2 overflow-y-auto" style="max-height: 16rem;">
+                <div id="passengerDocumentsList" class="space-y-3 overflow-y-auto" style="max-height: 16rem;">
                     @forelse($booking->passengers->flatMap->documents() as $doc)
-                    <div class="flex justify-between items-center bg-white p-2 rounded border border-slate-200">
+                    <div class="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200">
                         <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
                         <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
                     </div>
@@ -145,7 +144,7 @@
         </div>
 
         {{-- Action Buttons Row --}}
-        <div class="flex justify-end gap-3">
+        <div class="flex justify-end gap-3 mt-8">
             <button onclick="openReIssueModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                 Request Re-Issue
             </button>
