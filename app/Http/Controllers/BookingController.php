@@ -274,7 +274,7 @@ class BookingController extends Controller
                         'transaction_type_id' => $initialPaymentTransactionType->id,
                     ];
 
-                    app(PaymentService::class)->createCustomerPayment($invoice, $paymentData);
+                    app(PaymentService::class)->createCustomerPaymentAndUpdateInvoice($invoice, $paymentData);
                 } catch (\Exception $e) {
                     \Log::error('Payment creation failed: ' . $e->getMessage());
                     DB::rollBack();
