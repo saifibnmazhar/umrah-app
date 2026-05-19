@@ -170,11 +170,11 @@ class BookingController extends Controller
             'passengers.*.ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'booking_customer_docs' => 'nullable|array',
             'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'payment' => 'nullable|array',
-            'payment.amount' => 'nullable|numeric|min:0',
+            'payment' => 'required|array',
+            'payment.amount' => 'required|numeric|min:0.01',
             'payment.bdt_amount' => 'nullable|numeric|min:0',
-            'payment.currency' => 'nullable|in:SAR,BDT',
-            'payment.payment_method' => 'nullable|in:cash,bank',
+            'payment.currency' => 'required|in:SAR,BDT',
+            'payment.payment_method' => 'required|in:cash,bank',
             'payment.payment_date' => 'nullable|date',
             'payment.bank_id' => 'nullable|exists:banks,id',
             'payment.transaction_id' => 'nullable|string|max:255',
@@ -247,8 +247,6 @@ class BookingController extends Controller
                 ]);
             }
 
-            DB::commit();
-
             $booking->refresh();
             $this->bookingService->recalculateBookingTotal($booking);
 
@@ -259,7 +257,7 @@ class BookingController extends Controller
 
             \Log::info('Payment debug - amount: ' . $paymentAmount . ', bdt_amount: ' . $paymentBdtAmount . ', payment array: ', $validated['payment'] ?? []);
 
-            if (!empty($validated['payment']) && ($paymentAmount > 0 || $paymentBdtAmount > 0)) {
+            if ($paymentAmount > 0 || $paymentBdtAmount > 0) {
                 \Log::info('Processing payment...');
                 try {
                     $initialPaymentTransactionType = TransactionType::where('name', 'Initial Payment')->first();
@@ -284,17 +282,11 @@ class BookingController extends Controller
                     app(PaymentService::class)->createCustomerPaymentAndUpdateInvoice($invoice, $paymentData);
                 } catch (\Exception $e) {
                     \Log::error('Payment creation failed: ' . $e->getMessage());
-                    DB::rollBack();
-                    if ($request->ajax() || $request->wantsJson()) {
-                        return response()->json([
-                            'success' => false,
-                            'message' => 'Booking created but payment failed: ' . $e->getMessage()
-                        ], 500);
-                    }
-                    return redirect()->route('bookings.index')
-                        ->with('warning', 'Booking created but initial payment failed. Please add payment manually.');
+                    throw $e;
                 }
             }
+
+            DB::commit();
 
             if ($request->ajax() || $request->wantsJson()) {
                 $paymentMessage = ($paymentAmount > 0 || $paymentBdtAmount > 0)
@@ -315,7 +307,9 @@ class BookingController extends Controller
             return redirect()->route('bookings.index')
                 ->with('success', 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage);
         } catch (\Exception $e) {
-            DB::rollBack();
+            if (DB::transactionLevel() > 0) {
+                DB::rollBack();
+            }
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
