@@ -18,9 +18,9 @@
                     </div>
                 </div>
                 <div class="flex gap-2">
-                    <button onclick="window.print()" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm">
+                    <a href="{{ route('bookings.print', $booking->id) }}" target="_blank" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm inline-block">
                         Print
-                    </button>
+                    </a>
                     <button onclick="window.location.href='{{ route('bookings.edit', $booking->id) }}'" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">
                         Edit
                     </button>
@@ -342,16 +342,6 @@
 .modal-overlay { transition: opacity 0.2s ease; }
 .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
 .toast { transition: transform 0.3s ease, opacity 0.3s ease; }
-
-@media print {
-    body { background: white; }
-    nav, .no-print { display: none !important; }
-    .bg-slate-100 { background: white; }
-    .shadow-lg, .shadow-xl { box-shadow: none; }
-    .bg-white { border: 1px solid #e2e8f0; }
-    a[href]:after { content: none !important; }
-    #discountModal, #paymentModal { display: none !important; }
-}
 </style>
 
 @push('scripts')
