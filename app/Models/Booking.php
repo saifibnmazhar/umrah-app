@@ -95,11 +95,6 @@ class Booking extends Model
         return $this->morphMany(Document::class, 'owner');
     }
 
-    public function invoice(): HasOne
-    {
-        return $this->hasOne(Invoice::class);
-    }
-
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class);
