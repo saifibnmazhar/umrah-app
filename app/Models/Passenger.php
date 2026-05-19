@@ -61,7 +61,7 @@ class Passenger extends Model
         return $this->belongsTo(PassengerStatus::class, 'passenger_status_id');
     }
 
-    public function documents(): MorphMany
+    public function documents()
     {
         return $this->morphMany(Document::class, 'owner');
     }
