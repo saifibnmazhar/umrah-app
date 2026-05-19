@@ -337,14 +337,54 @@ class BookingController extends Controller
 
     public function edit(Booking $booking)
     {
-        $booking->load(['customer', 'passengers']);
-        
+        $booking->load(['customer', 'passengers', 'district', 'office', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
+
         $districts = District::orderBy('name')->get();
-        $packages = Package::orderBy('package_name')->get();
+        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+            return [
+                'id' => $pkg->id,
+                'package_name' => $pkg->package_name,
+                'ticket_fare_id' => $pkg->ticket_fare_id,
+                'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
+                'service_charge' => $pkg->service_charge ?? 0,
+                'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
+            ];
+        });
         $offices = Office::orderBy('name')->get();
 
+        $ticketFares = TicketFare::with([
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'airline',
+            'airlineClass.class',
+            'groupTicket',
+        ])->get()->map(function ($fare) {
+            $routeCode = '';
+            $routeType = $fare->route->route_type?->value;
+
+            if ($routeType === 'round') {
+                $routeCode = $fare->route->fromCity?->code . '-' .
+                    $fare->route->toCity?->code . '-' .
+                    $fare->route->returnCity?->code;
+            } else {
+                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+            }
+
+            return [
+                'id' => $fare->id,
+                'route' => $routeCode,
+                'airline' => $fare->airline->name,
+                'airline_class' => $fare->airlineClass->class?->name,
+                'selling_fare' => $fare->selling_fare,
+                'offer_price' => $fare->offer_price,
+            ];
+        });
+
+        $customers = \App\Models\Customer::orderBy('name')->get(['id', 'name', 'passport_no', 'iqama_no', 'mobile_no']);
+
         return view('bookings.edit', compact(
-            'booking', 'districts', 'packages', 'offices'
+            'booking', 'districts', 'packages', 'offices', 'ticketFares', 'customers'
         ));
     }
 
