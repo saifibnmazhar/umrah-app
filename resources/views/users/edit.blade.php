@@ -70,6 +70,25 @@
         </div>
 
         <div>
+            <label for="role_id" class="block text-sm font-medium text-slate-700 mb-1">Roles</label>
+            <select
+                name="role_id"
+                id="role_id"
+                class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('role_id') border-red-500 @enderror"
+            >
+                <option value="">-- Select Role --</option>
+                @foreach($roles as $role)
+                    <option value="{{ $role->id }}" {{ old('role_id', $user->roles->first()?->id) == $role->id ? 'selected' : '' }}>
+                        {{ $role->name }}
+                    </option>
+                @endforeach
+            </select>
+            @error('role_id')
+                <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
+            @enderror
+        </div>
+
+        <div>
             <label for="branch_id" class="block text-sm font-medium text-slate-700 mb-1">Branch</label>
             <select
                 name="branch_id"
