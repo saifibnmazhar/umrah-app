@@ -3066,5 +3066,193 @@ public function rules()
 
 ---
 
-*Plan Version: 8.0*
+## Roles & UserRoles Tables (Phase 6)
+
+### Overview
+
+This phase adds 2 tables following existing pivot table conventions (`airline_cities`, `airline_classes`):
+- **roles** - independent table for role definitions
+- **user_roles** - pivot table for many-to-many user-role relationship
+
+---
+
+### Dependency Analysis
+
+### Tables with NO dependencies:
+- `roles` → independent
+
+### Tables with dependencies:
+- `user_roles` → depends on `users`, `roles`
+
+---
+
+### Migration Order (Phase 6: Roles & UserRoles)
+
+| Step | Table | Dependencies | Artisan Command |
+|------|-------|--------------|-----------------|
+| 1 | roles | none | `php artisan make:migration create_roles_table` |
+| 2 | user_roles | users, roles | `php artisan make:migration create_user_roles_table` |
+
+---
+
+### Design Decisions
+
+#### 1. ID Configuration
+- All primary keys use `bigIncrements()` for consistency
+- Foreign keys use `unsignedBigInteger()` to match
+
+#### 2. Foreign Key Constraints
+| Table | Column | References | Delete Behavior |
+|-------|--------|------------|------------------|
+| user_roles | user_id | users.id | `cascade` |
+| user_roles | role_id | roles.id | `cascade` |
+
+- `onUpdate('cascade')` on all foreign keys
+- `cascade` on delete for pivot table - clean up mappings when user/role deleted
+
+#### 3. Unique Constraints
+- **roles**: Unique on `name`
+- **user_roles**: Composite unique on `(user_id, role_id)` - prevents duplicate role assignment
+
+#### 4. Timestamps
+- **roles**: Include `timestamps()` (created_at, updated_at)
+- **user_roles**: Include `timestamps()` for audit trail
+
+#### 5. Indexes
+- Foreign key constraints auto-create indexes
+- Explicit indexes on `user_id` and `role_id` for query optimization
+
+---
+
+### Migration File Details
+
+#### 1. roles table (Independent - create first)
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('roles', function (Blueprint $table) {
+        $table->id();
+        $table->string('name')->unique();
+        $table->timestamps();
+    });
+}
+
+// DOWN
+public function down(): void
+{
+    Schema::dropIfExists('roles');
+}
+```
+
+#### 2. user_roles table (Pivot - create second)
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('user_roles', function (Blueprint $table) {
+        $table->id();
+        $table->unsignedBigInteger('user_id');
+        $table->unsignedBigInteger('role_id');
+        
+        $table->foreign('user_id')
+            ->references('id')
+            ->on('users')
+            ->onDelete('cascade')
+            ->onUpdate('cascade');
+        
+        $table->foreign('role_id')
+            ->references('id')
+            ->on('roles')
+            ->onDelete('cascade')
+            ->onUpdate('cascade');
+        
+        $table->unique(['user_id', 'role_id']);
+        $table->index('user_id');
+        $table->index('role_id');
+        
+        $table->timestamps();
+    });
+}
+
+// DOWN
+public function down(): void
+{
+    Schema::dropIfExists('user_roles');
+}
+```
+
+---
+
+### Safe Execution Plan
+
+#### Option 1: Full Migration Run (Recommended)
+Run all Phase 6 migrations after creating all files:
+```bash
+php artisan migrate
+```
+
+#### Option 2: Partial/Step-by-Step Execution
+If you need to test incrementally:
+
+```bash
+# Step 1: Create migration files
+php artisan make:migration create_roles_table
+php artisan make:migration create_user_roles_table
+
+# Step 2: Verify migration files content
+
+# Step 3: Run migrations
+php artisan migrate
+
+# Step 4: Verify tables created
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('roles');
+```
+
+#### Option 3: Rollback Plan
+If something goes wrong:
+```bash
+# Rollback last migration
+php artisan migrate:rollback
+
+# Rollback all (if needed)
+php artisan migrate:fresh
+```
+
+---
+
+### Rollback Considerations
+
+| Table | Delete Behavior | Rollback Risk |
+|-------|-----------------|---------------|
+| roles | N/A (independent) | Low - safe to drop |
+| user_roles | cascade | Low - safe to drop, clean up mappings |
+
+---
+
+### Summary (Phase 6)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 2 |
+| Foreign Keys | 2 |
+| Unique Constraints | 2 |
+| Indexes | 4 |
+
+---
+
+### Combined Summary (All Phases)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 24 |
+| Total Foreign Keys | 29 |
+| Total Unique Constraints | 10 |
+| Total CHECK Constraints | 6 |
+
+---
+
+*Plan Version: 9.0*
 *Updated: May 2026*
