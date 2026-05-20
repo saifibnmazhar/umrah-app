@@ -145,6 +145,11 @@ class PassengerController extends Controller
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
         ]);
 
+        if (isset($validated['service_required'])) {
+            $map = ['All' => 'all', 'Visa Only' => 'visa_only', 'Ticket Only' => 'ticket_only'];
+            $validated['service_required'] = $map[$validated['service_required']] ?? $validated['service_required'];
+        }
+
         try {
             $passenger->update($validated);
             return response()->json([
