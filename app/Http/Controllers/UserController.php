@@ -7,6 +7,7 @@ use App\Models\Branch;
 use App\Models\Office;
 use App\Models\Role;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -38,6 +39,15 @@ class UserController extends Controller
             'role_id' => 'required|exists:roles,id',
         ]);
 
+        $role = Role::findOrFail($validated['role_id']);
+        $roleName = Str::lower($role->name);
+
+        if (Str::contains($roleName, 'fingerprint')) {
+            $request->validate(['office_id' => 'required|exists:offices,id']);
+        } elseif (Str::contains($roleName, 'branch')) {
+            $request->validate(['branch_id' => 'required|exists:branches,id']);
+        }
+
         $validated['password'] = bcrypt($validated['password']);
         $user = User::create($validated);
         $user->roles()->sync([$validated['role_id']]);
@@ -65,6 +75,15 @@ class UserController extends Controller
             'office_id' => 'nullable|exists:offices,id',
             'role_id' => 'required|exists:roles,id',
         ]);
+
+        $role = Role::findOrFail($validated['role_id']);
+        $roleName = Str::lower($role->name);
+
+        if (Str::contains($roleName, 'fingerprint')) {
+            $request->validate(['office_id' => 'required|exists:offices,id']);
+        } elseif (Str::contains($roleName, 'branch')) {
+            $request->validate(['branch_id' => 'required|exists:branches,id']);
+        }
 
         if (!empty($validated['password'])) {
             $validated['password'] = bcrypt($validated['password']);
