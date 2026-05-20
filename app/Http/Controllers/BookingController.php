@@ -556,6 +556,8 @@ class BookingController extends Controller
             'passengers.ticketFare.route.fromCity',
             'passengers.ticketFare.route.toCity',
             'passengers.ticketFare.route.returnCity',
+            'passengers.ticketFare.route.multiSegments.fromCity',
+            'passengers.ticketFare.route.multiSegments.toCity',
             'passengers.ticketFare.baggageAllowances',
             'payments'
         ])->findOrFail($booking->id);

@@ -76,23 +76,27 @@ class Passenger extends Model
         $route = $this->ticketFare?->route;
         if (!$route) return '-';
 
-        $from = $route->fromCity?->city_code ?? '';
-        $to = $route->toCity?->city_code ?? '';
-        $return = $route->returnCity?->city_code ?? '';
+        $routeType = $route->route_type?->value;
 
-        $routeType = $this->ticketFare?->route_type?->value;
-
-        if ($routeType === 'oneway_inbound') {
-            return "{$from} → {$to}";
-        } elseif ($routeType === 'oneway_outbound') {
-            return "{$from} → {$to}";
-        } elseif ($routeType === 'round') {
-            return "{$from} → {$to} → {$return}";
-        } elseif ($routeType === 'multi_city') {
-            return "{$from} → {$to} → {$return}";
+        if ($routeType === 'multi_city') {
+            if ($route->multiSegments && $route->multiSegments->count() > 0) {
+                $firstSegment = $route->multiSegments->first();
+                $from = $firstSegment->fromCity?->code ?? '-';
+                $to = $firstSegment->toCity?->code ?? '-';
+                return "{$from}-{$to} ...";
+            }
+            return '-';
         }
 
-        return "{$from} → {$to}";
+        $from = $route->fromCity?->code ?? '-';
+        $to = $route->toCity?->code ?? '-';
+        $return = $route->returnCity?->code ?? '';
+
+        if ($routeType === 'round' && $return) {
+            return "{$from}-{$to}-{$return}";
+        }
+
+        return "{$from}-{$to}";
     }
 
     public function getFlightDateDisplayAttribute(): string
