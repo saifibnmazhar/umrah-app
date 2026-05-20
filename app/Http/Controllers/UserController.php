@@ -5,7 +5,9 @@ namespace App\Http\Controllers;
 use App\Models\User;
 use App\Models\Branch;
 use App\Models\Office;
+use App\Models\Role;
 use Illuminate\Http\Request;
+use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
@@ -22,7 +24,8 @@ class UserController extends Controller
     {
         $branches = Branch::orderBy('name')->get();
         $offices = Office::orderBy('name')->get();
-        return view('users.create', compact('branches', 'offices'));
+        $roles = Role::orderBy('name')->get();
+        return view('users.create', compact('branches', 'offices', 'roles'));
     }
 
     public function store(Request $request)
@@ -33,10 +36,21 @@ class UserController extends Controller
             'password' => 'required|min:8|confirmed',
             'branch_id' => 'nullable|exists:branches,id',
             'office_id' => 'nullable|exists:offices,id',
+            'role_id' => 'required|exists:roles,id',
         ]);
 
+        $role = Role::findOrFail($validated['role_id']);
+        $roleName = Str::lower($role->name);
+
+        if (Str::contains($roleName, 'fingerprint')) {
+            $request->validate(['office_id' => 'required|exists:offices,id']);
+        } elseif (Str::contains($roleName, 'branch')) {
+            $request->validate(['branch_id' => 'required|exists:branches,id']);
+        }
+
         $validated['password'] = bcrypt($validated['password']);
-        User::create($validated);
+        $user = User::create($validated);
+        $user->roles()->sync([$validated['role_id']]);
 
         return redirect()->route('users.index')
             ->with('success', 'User created successfully.');
@@ -46,7 +60,9 @@ class UserController extends Controller
     {
         $branches = Branch::orderBy('name')->get();
         $offices = Office::orderBy('name')->get();
-        return view('users.edit', compact('user', 'branches', 'offices'));
+        $roles = Role::orderBy('name')->get();
+        $user->load('roles');
+        return view('users.edit', compact('user', 'branches', 'offices', 'roles'));
     }
 
     public function update(Request $request, User $user)
@@ -57,7 +73,17 @@ class UserController extends Controller
             'password' => 'nullable|min:8|confirmed',
             'branch_id' => 'nullable|exists:branches,id',
             'office_id' => 'nullable|exists:offices,id',
+            'role_id' => 'required|exists:roles,id',
         ]);
+
+        $role = Role::findOrFail($validated['role_id']);
+        $roleName = Str::lower($role->name);
+
+        if (Str::contains($roleName, 'fingerprint')) {
+            $request->validate(['office_id' => 'required|exists:offices,id']);
+        } elseif (Str::contains($roleName, 'branch')) {
+            $request->validate(['branch_id' => 'required|exists:branches,id']);
+        }
 
         if (!empty($validated['password'])) {
             $validated['password'] = bcrypt($validated['password']);
@@ -66,6 +92,7 @@ class UserController extends Controller
         }
 
         $user->update($validated);
+        $user->roles()->sync([$validated['role_id']]);
 
         return redirect()->route('users.index')
             ->with('success', 'User updated successfully.');

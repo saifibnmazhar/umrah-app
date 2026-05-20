@@ -546,7 +546,21 @@ class BookingController extends Controller
 
     public function print(Booking $booking)
     {
-        $booking = Booking::with(['customer', 'office', 'package', 'passengers', 'payments'])->findOrFail($booking->id);
+        $booking = Booking::with([
+            'customer',
+            'office',
+            'package',
+            'passengers.ticketFare.airline',
+            'passengers.ticketFare.airlineClass.travelClass',
+            'passengers.ticketFare.route',
+            'passengers.ticketFare.route.fromCity',
+            'passengers.ticketFare.route.toCity',
+            'passengers.ticketFare.route.returnCity',
+            'passengers.ticketFare.route.multiSegments.fromCity',
+            'passengers.ticketFare.route.multiSegments.toCity',
+            'passengers.ticketFare.baggageAllowances',
+            'payments'
+        ])->findOrFail($booking->id);
 
         $subTotal = $booking->passengers->sum('total') ?? 0;
         $fingerprintCost = $booking->passengers->first()->fingerprint_cost ?? 200;

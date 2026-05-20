@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Edit User')
 @section('content')
+<style>[x-cloak]{display:none!important}</style>
 <div class="max-w-2xl mx-auto">
     <div class="mb-6">
         <a href="{{ route('users.index') }}" class="text-slate-600 hover:text-slate-800 text-sm">
@@ -10,7 +11,34 @@
 
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Edit User</h1>
 
-    <form method="POST" action="{{ route('users.update', $user->id) }}" class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 space-y-5">
+    @php
+    $roleTypeMap = $roles->mapWithKeys(fn($role) => [
+        $role->id => str_contains(strtolower($role->name), 'fingerprint') ? 'fingerprint' : (str_contains(strtolower($role->name), 'branch') ? 'branch' : 'other')
+    ]);
+    @endphp
+
+<script>window.roleTypeMap = @json($roleTypeMap);</script>
+
+    <form method="POST" action="{{ route('users.update', $user->id) }}" class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 space-y-5"
+          x-data="{
+              selectedRole: '{{ old('role_id', $user->roles->first()?->id ?? '') }}',
+              roleTypes: {},
+              get roleType() {
+                  return this.roleTypes[this.selectedRole] || '';
+              },
+              init() {
+                  if (window.roleTypeMap) {
+                      Object.keys(window.roleTypeMap).forEach(key => {
+                          this.roleTypes[key] = window.roleTypeMap[key];
+                      });
+                  }
+                  this.$watch('selectedRole', () => {
+                      const type = this.roleType;
+                      if (type !== 'branch' && this.$refs.branchSelect) this.$refs.branchSelect.value = '';
+                      if (type !== 'fingerprint' && this.$refs.officeSelect) this.$refs.officeSelect.value = '';
+                  });
+              }
+          }">
         @csrf
         @method('PUT')
 
@@ -70,10 +98,31 @@
         </div>
 
         <div>
+            <label for="role_id" class="block text-sm font-medium text-slate-700 mb-1">Roles</label>
+            <select
+                name="role_id"
+                id="role_id"
+                x-model="selectedRole"
+                class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('role_id') border-red-500 @enderror"
+            >
+                <option value="">-- Select Role --</option>
+                @foreach($roles as $role)
+                    <option value="{{ $role->id }}" {{ old('role_id', $user->roles->first()?->id) == $role->id ? 'selected' : '' }}>
+                        {{ $role->name }}
+                    </option>
+                @endforeach
+            </select>
+            @error('role_id')
+                <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
+            @enderror
+        </div>
+
+        <div x-show="roleType === 'branch'" x-cloak>
             <label for="branch_id" class="block text-sm font-medium text-slate-700 mb-1">Branch</label>
             <select
                 name="branch_id"
                 id="branch_id"
+                x-ref="branchSelect"
                 class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('branch_id') border-red-500 @enderror"
             >
                 <option value="">-- Select Branch --</option>
@@ -88,11 +137,12 @@
             @enderror
         </div>
 
-        <div>
+        <div x-show="roleType === 'fingerprint'" x-cloak>
             <label for="office_id" class="block text-sm font-medium text-slate-700 mb-1">Office</label>
             <select
                 name="office_id"
                 id="office_id"
+                x-ref="officeSelect"
                 class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('office_id') border-red-500 @enderror"
             >
                 <option value="">-- Select Office --</option>

@@ -35,16 +35,17 @@
         <div class="flex">
             <div class="w-1/2 p-3 border-r-2 border-slate-800">
                 <p class="font-semibold"><strong>Booking Date:</strong> {{ $booking->booking_date ?? $booking->created_at ?? '-' }}</p>
-                <p class="font-semibold"><strong>Guardian Name:</strong> {{ $booking->customer->name ?? '-' }}</p>
+                <p class="font-semibold"><strong>Customer Name:</strong> {{ $booking->customer->name ?? '-' }}</p>
                 <p class="font-semibold"><strong>Iqama No:</strong> {{ $booking->customer->iqama_no ?? '-' }}</p>
                 <p class="font-semibold"><strong>Phone Number:</strong> {{ $booking->customer->mobile_no ?? '-' }}</p>
                 <p class="font-semibold"><strong>Address:</strong> {{ $booking->customer->address ?? '-' }}</p>
             </div>
             <div class="w-1/2 p-3">
                 <p class="font-semibold"><strong>Invoice Date:</strong> {{ $invoiceDate ?? ($booking->created_at ?? '-') }}</p>
-                <p class="font-semibold"><strong>Invoice Number:</strong> {{ $booking->invoice_no ?? '-' }}</p>
-                <p class="font-semibold"><strong>Branch:</strong> {{ $booking->office->name ?? 'RUH' }}</p>
-                <p class="font-semibold"><strong>Representative:</strong> {{ $representative ?? '-' }}</p>
+                <p class="font-semibold"><strong>Invoice Number:</strong> {{ $booking->invoice_id ?? '-' }}</p>
+                <p class="font-semibold"><strong>Branch:</strong> {{ $booking->branch->name ?? 'RUH' }}</p>
+                <p class="font-semibold"><strong>Office:</strong> {{ $booking->office->name ?? 'RUH' }}</p>
+                <p class="font-semibold"><strong>Representative:</strong> {{ $booking->user->name ?? '-' }}</p>
                 <p class="font-semibold"><strong>Offer:</strong> {{ $offer ?? 'NO' }}</p>
                 <p class="font-semibold"><strong>Finger Location:</strong> {{ $booking->fingerprint_location ?? '-' }}</p>
                 <p class="font-semibold"><strong>Finger Deadline:</strong> <span class="bg-red-600 text-white px-2 py-0.5">{{ $fingerprintDeadline ?? '-' }}</span></p>
@@ -78,9 +79,9 @@
                         <td class="border border-slate-300 px-1 py-1">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</td>
                         <td class="border border-slate-300 px-1 py-1">{{ $passenger->gender ?? '-' }}</td>
                         <td class="border border-slate-300 px-1 py-1">{{ $passenger->passport_no ?? '-' }}</td>
-                        <td class="border border-slate-300 px-1 py-1">{{ $booking->package->name ?? 'Package' }}</td>
+                        <td class="border border-slate-300 px-1 py-1">{{ $booking->package->package_name ?? 'Package' }}</td>
                         <td class="border border-slate-300 px-1 py-1">{{ $passenger->stay_duration ?? '-' }}</td>
-                        <td class="border border-slate-300 px-1 py-1 text-right">{{ number_format($passenger->total ?? 0, 0) }}</td>
+                        <td class="border border-slate-300 px-1 py-1 text-right">{{ $passenger->package_value ?? '-' }}</td>
                     </tr>
                     @empty
                     <tr>
@@ -149,14 +150,14 @@
                 @forelse($booking->passengers as $index => $passenger)
                 <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-gray-50' }}">
                     <td class="border border-slate-300 px-1 py-1">{{ $index + 1 }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->passenger_type ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->airline ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->route ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->flight_date_from ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">20kg</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->travel_class ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">Yes</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->route_type ?? '-' }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->passenger_type?->value ?? '-' }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->route_display }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->flight_date_display }}</td>
+                    <td class="border border-slate-300 px-1 py-1 whitespace-pre-line">{{ $passenger->baggage_display }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-' }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->meal_display }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->flight_type_display }}</td>
                     <td class="border border-slate-300 px-1 py-1">{{ $booking->remarks ?? '-' }}</td>
                 </tr>
                 @empty

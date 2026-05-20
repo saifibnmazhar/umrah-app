@@ -70,4 +70,87 @@ class Passenger extends Model
     {
         return $this->belongsTo(TicketFare::class);
     }
+
+    public function getRouteDisplayAttribute(): string
+    {
+        $route = $this->ticketFare?->route;
+        if (!$route) return '-';
+
+        $routeType = $route->route_type?->value;
+
+        if ($routeType === 'multi_city') {
+            if ($route->multiSegments && $route->multiSegments->count() > 0) {
+                $firstSegment = $route->multiSegments->first();
+                $from = $firstSegment->fromCity?->code ?? '-';
+                $to = $firstSegment->toCity?->code ?? '-';
+                return "{$from}-{$to} ...";
+            }
+            return '-';
+        }
+
+        $from = $route->fromCity?->code ?? '-';
+        $to = $route->toCity?->code ?? '-';
+        $return = $route->returnCity?->code ?? '';
+
+        if ($routeType === 'round' && $return) {
+            return "{$from}-{$to}-{$return}";
+        }
+
+        return "{$from}-{$to}";
+    }
+
+    public function getFlightDateDisplayAttribute(): string
+    {
+        $from = $this->flight_date_from?->format('d M Y') ?? '-';
+        $to = $this->flight_date_to?->format('d M Y') ?? '-';
+
+        if ($from === '-' && $to === '-') return '-';
+        if ($from === $to) return $from;
+
+        return "{$from} → {$to}";
+    }
+
+    public function getBaggageDisplayAttribute(): string
+    {
+        $ticketFare = $this->ticketFare;
+        if (!$ticketFare) return '-';
+
+        $routeType = $ticketFare->route?->route_type?->value;
+        $passengerType = $this->passenger_type?->value;
+        $allowances = $ticketFare->baggageAllowances;
+
+        $inboundAllowances = $allowances->filter(fn($a) => $a->travel_direction?->value === 'inbound');
+        $outboundAllowances = $allowances->filter(fn($a) => $a->travel_direction?->value === 'outbound');
+
+        $inboundBag = $inboundAllowances
+            ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+            ->first()?->allowance;
+
+        $outboundBag = $outboundAllowances
+            ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+            ->first()?->allowance;
+
+        if ($routeType === 'oneway_inbound') {
+            return $inboundBag ? "I:{$inboundBag}" : '-';
+        } elseif ($routeType === 'oneway_outbound') {
+            return $outboundBag ? "O:{$outboundBag}" : '-';
+        } elseif (in_array($routeType, ['round', 'multi_city'])) {
+            $parts = [];
+            if ($inboundBag) $parts[] = "I:{$inboundBag}";
+            if ($outboundBag) $parts[] = "O:{$outboundBag}";
+            return empty($parts) ? '-' : implode("\n", $parts);
+        }
+
+        return '-';
+    }
+
+    public function getMealDisplayAttribute(): string
+    {
+        return $this->ticketFare?->with_meal === true ? 'Yes' : 'No';
+    }
+
+    public function getFlightTypeDisplayAttribute(): string
+    {
+        return $this->ticketFare?->route?->flight_type?->value ?? '-';
+    }
 }
