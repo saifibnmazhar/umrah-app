@@ -35,7 +35,7 @@
         <div class="flex">
             <div class="w-1/2 p-3 border-r-2 border-slate-800">
                 <p class="font-semibold"><strong>Booking Date:</strong> {{ $booking->booking_date ?? $booking->created_at ?? '-' }}</p>
-                <p class="font-semibold"><strong>Guardian Name:</strong> {{ $booking->customer->name ?? '-' }}</p>
+                <p class="font-semibold"><strong>Customer Name:</strong> {{ $booking->customer->name ?? '-' }}</p>
                 <p class="font-semibold"><strong>Iqama No:</strong> {{ $booking->customer->iqama_no ?? '-' }}</p>
                 <p class="font-semibold"><strong>Phone Number:</strong> {{ $booking->customer->mobile_no ?? '-' }}</p>
                 <p class="font-semibold"><strong>Address:</strong> {{ $booking->customer->address ?? '-' }}</p>
@@ -150,14 +150,14 @@
                 @forelse($booking->passengers as $index => $passenger)
                 <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-gray-50' }}">
                     <td class="border border-slate-300 px-1 py-1">{{ $index + 1 }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->passenger_type ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->airline ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->route ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->flight_date_from ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">20kg</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->travel_class ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">Yes</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->route_type ?? '-' }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->passenger_type?->value ?? '-' }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->route_display }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->flight_date_display }}</td>
+                    <td class="border border-slate-300 px-1 py-1 whitespace-pre-line">{{ $passenger->baggage_display }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-' }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->meal_display }}</td>
+                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->flight_type_display }}</td>
                     <td class="border border-slate-300 px-1 py-1">{{ $booking->remarks ?? '-' }}</td>
                 </tr>
                 @empty
