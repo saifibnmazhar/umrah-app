@@ -115,22 +115,20 @@ class Passenger extends Model
         $ticketFare = $this->ticketFare;
         if (!$ticketFare) return '-';
 
-        $routeType = $ticketFare->route_type?->value;
+        $routeType = $ticketFare->route?->route_type?->value;
         $passengerType = $this->passenger_type?->value;
         $allowances = $ticketFare->baggageAllowances;
 
-        $inbound = $allowances->firstWhere('travel_direction', 'inbound');
-        $outbound = $allowances->firstWhere('travel_direction', 'outbound');
+        $inboundAllowances = $allowances->filter(fn($a) => $a->travel_direction?->value === 'inbound');
+        $outboundAllowances = $allowances->filter(fn($a) => $a->travel_direction?->value === 'outbound');
 
-        $inboundBag = null;
-        if ($inbound && ($inbound->passenger_type?->value ?? $inbound->passenger_type) === $passengerType) {
-            $inboundBag = $inbound->allowance;
-        }
+        $inboundBag = $inboundAllowances
+            ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+            ->first()?->allowance;
 
-        $outboundBag = null;
-        if ($outbound && ($outbound->passenger_type?->value ?? $outbound->passenger_type) === $passengerType) {
-            $outboundBag = $outbound->allowance;
-        }
+        $outboundBag = $outboundAllowances
+            ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+            ->first()?->allowance;
 
         if ($routeType === 'oneway_inbound') {
             return $inboundBag ? "I:{$inboundBag}" : '-';
