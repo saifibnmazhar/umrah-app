@@ -3344,11 +3344,16 @@ Alpine.data('showBookingApp', () => ({
             return;
         }
 
+        const flightDates = this.passengerData.flight_date_range
+            ? this.parseFlightDateRange(this.passengerData.flight_date_range)
+            : null;
+
         fetch('/bookings/' + bookingId + '/passengers', {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                 'Content-Type': 'application/json',
+                'Accept': 'application/json',
             },
             body: JSON.stringify({
                 first_name: this.passengerData.first_name,
@@ -3361,10 +3366,23 @@ Alpine.data('showBookingApp', () => ({
                 stay_duration: this.parseStayDurationDays(this.passengerData.stay_duration),
                 gender: this.passengerData.gender || null,
                 ticket_fare_id: this.passengerData.ticket_fare_id || null,
+                flight_date_from: flightDates?.from || null,
+                flight_date_to: flightDates?.to || null,
                 address: this.passengerData.address || null,
             })
         })
-        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    if (err.errors) {
+                        const firstError = Object.values(err.errors)[0];
+                        throw new Error(firstError[0] || 'Validation failed');
+                    }
+                    throw new Error(err.message || 'Failed to add passenger');
+                });
+            }
+            return response.json();
+        })
         .then(data => {
             if (data.success) {
                 this.closePassengerModal();
@@ -3392,6 +3410,29 @@ Alpine.data('showBookingApp', () => ({
 
     getStayDurationValue() {
         return this.parseStayDurationDays(this.passengerData.stay_duration);
+    },
+
+    parseFlightDateRange(rangeString) {
+        if (!rangeString) return null;
+        const parts = rangeString.split(' - ');
+        if (parts.length !== 2) return null;
+        const months = {
+            'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+            'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+        };
+        const parseDate = (dateStr) => {
+            const match = dateStr.trim().match(/^(\w+)\s+(\d+),\s+(\d{4})$/);
+            if (!match) return null;
+            const month = months[match[1]];
+            const day = parseInt(match[2]);
+            const year = parseInt(match[3]);
+            if (month === undefined) return null;
+            return new Date(year, month, day).toISOString().split('T')[0];
+        };
+        const fromDate = parseDate(parts[0]);
+        const toDate = parseDate(parts[1]);
+        if (!fromDate || !toDate) return null;
+        return { from: fromDate, to: toDate };
     },
 
     calculatePassengerType() {
