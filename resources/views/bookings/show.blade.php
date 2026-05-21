@@ -5,7 +5,8 @@
     <div id="invoiceDetailsContent" class="space-y-6">
         {{-- Header Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
-            <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
+            @php $canEditBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty(); @endphp
+        <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
                 <div class="flex items-center gap-3">
                     <a href="{{ route('bookings.index') }}" class="text-slate-400 hover:text-slate-600">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -21,9 +22,11 @@
                     <a href="{{ route('bookings.print', $booking->id) }}" target="_blank" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm inline-block">
                         Print
                     </a>
+                    @if($canEditBooking)
                     <button onclick="window.location.href='{{ route('bookings.edit', $booking->id) }}'" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">
                         Edit
                     </button>
+                    @endif
                 </div>
             </div>
 
@@ -96,7 +99,9 @@
             </div>
             
             <div class="flex justify-end mt-4">
+                @if($canEditBooking)
                 <button onclick="addPassenger()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
+                @endif
             </div>
         </div>
 
