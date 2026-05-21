@@ -398,6 +398,7 @@ function applyInvoiceDiscount() {
         method: 'PATCH',
         headers: {
             'Content-Type': 'application/json',
+            'Accept': 'application/json',
             'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
         },
         body: JSON.stringify({
