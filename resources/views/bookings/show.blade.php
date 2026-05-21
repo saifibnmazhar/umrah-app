@@ -220,7 +220,7 @@
             <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
             <select id="discountType" onchange="calculateInvoiceDiscount()" 
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                <option value="fixed" {{ $booking->discount_type?->value === 'fixed' ? 'selected' : '' }}>Fixed (SAR)</option>
+                <option value="fixed" {{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'selected' : '' }}>Fixed (SAR)</option>
                 <option value="percentage" {{ $booking->discount_type?->value === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
             </select>
         </div>
@@ -359,7 +359,7 @@ function showToast(message, type = 'success') {
 
 function openDiscountModal() {
     const existingDiscount = {{ $booking->discount_value ?? 0 }};
-    const discountType = '{{ $booking->discount_type?->value ?? 'fixed' }}';
+    const discountType = '{{ $booking->discount_type?->value === 'fixed_amount' ? 'fixed' : ($booking->discount_type?->value ?? 'fixed') }}';
     
     document.getElementById('discountType').value = discountType;
     document.getElementById('discountValue').value = existingDiscount;
