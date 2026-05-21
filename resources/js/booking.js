@@ -1452,8 +1452,10 @@ Alpine.data('createBookingApp', () => ({
     },
 
     generateFlightDateRangeForEdit(fromDate, toDate) {
-        const from = new Date(fromDate);
-        const to = new Date(toDate);
+        const fromParts = fromDate.split('-');
+        const toParts = toDate.split('-');
+        const from = new Date(parseInt(fromParts[0]), parseInt(fromParts[1]) - 1, parseInt(fromParts[2]));
+        const to = new Date(parseInt(toParts[0]), parseInt(toParts[1]) - 1, parseInt(toParts[2]));
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
         const rangeStr = `${months[from.getMonth()]} ${from.getDate()}, ${from.getFullYear()} - ${months[to.getMonth()]} ${to.getDate()}, ${to.getFullYear()}`;
         this.passengerData.flight_date_range = rangeStr;
@@ -1531,7 +1533,7 @@ Alpine.data('createBookingApp', () => ({
             const day = parseInt(match[2]);
             const year = parseInt(match[3]);
             if (month === undefined) return null;
-            return new Date(year, month, day).toISOString().split('T')[0];
+            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         };
         const fromDate = parseDate(parts[0]);
         const toDate = parseDate(parts[1]);
@@ -2797,8 +2799,10 @@ Alpine.data('editBookingApp', () => ({
         const select = document.getElementById('passengerFlightDateRange');
         if (!select) return;
 
-        const startDate = new Date(dateFrom);
-        const endDate = new Date(dateTo);
+        const fromParts = dateFrom.split('-');
+        const toParts = dateTo.split('-');
+        const startDate = new Date(parseInt(fromParts[0]), parseInt(fromParts[1]) - 1, parseInt(fromParts[2]));
+        const endDate = new Date(parseInt(toParts[0]), parseInt(toParts[1]) - 1, parseInt(toParts[2]));
 
         const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
 
@@ -2937,6 +2941,29 @@ Alpine.data('editBookingApp', () => ({
         }
     },
 
+    parseFlightDateRange(rangeString) {
+        if (!rangeString) return null;
+        const parts = rangeString.split(' - ');
+        if (parts.length !== 2) return null;
+        const months = {
+            'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+            'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+        };
+        const parseDate = (dateStr) => {
+            const match = dateStr.trim().match(/^(\w+)\s+(\d+),\s+(\d{4})$/);
+            if (!match) return null;
+            const month = months[match[1]];
+            const day = parseInt(match[2]);
+            const year = parseInt(match[3]);
+            if (month === undefined) return null;
+            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        };
+        const fromDate = parseDate(parts[0]);
+        const toDate = parseDate(parts[1]);
+        if (!fromDate || !toDate) return null;
+        return { from: fromDate, to: toDate };
+    },
+
     savePassenger() {
         if (!this.passengerData.first_name || !this.passengerData.last_name || !this.passengerData.passport_no || !this.passengerData.date_of_birth) {
             alert('Please fill in all required fields');
@@ -2946,6 +2973,14 @@ Alpine.data('editBookingApp', () => ({
         if (this.passengerData.passenger_type?.toLowerCase() === 'adult' && !this.passengerData.gender) {
             alert('Please select gender for adult passenger');
             return false;
+        }
+
+        if (this.passengerData.flight_date_range) {
+            const parsedDates = this.parseFlightDateRange(this.passengerData.flight_date_range);
+            if (parsedDates) {
+                this.passengerData.flight_date_from = parsedDates.from;
+                this.passengerData.flight_date_to = parsedDates.to;
+            }
         }
 
         if (this.editingPassengerIndex !== null) {

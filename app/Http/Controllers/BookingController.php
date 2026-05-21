@@ -467,11 +467,36 @@ class BookingController extends Controller
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:1000',
+            'passengers' => 'nullable|array',
+            'passengers.*.id' => 'nullable|exists:passengers,id',
         ]);
 
         try {
             $validated['discount_type'] = ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage';
             $booking->update($validated);
+
+            if ($request->has('passengers')) {
+                foreach ($validated['passengers'] as $passengerData) {
+                    $passenger = Passenger::find($passengerData['id'] ?? null);
+                    if (!$passenger) continue;
+
+                    $passenger->update([
+                        'first_name' => $passengerData['first_name'] ?? $passenger->first_name,
+                        'last_name' => $passengerData['last_name'] ?? $passenger->last_name,
+                        'passport_no' => $passengerData['passport_no'] ?? $passenger->passport_no,
+                        'date_of_birth' => $passengerData['date_of_birth'] ?? $passenger->date_of_birth,
+                        'gender' => $passengerData['gender'] ?? $passenger->gender,
+                        'passport_expiry' => $passengerData['passport_expiry'] ?? $passenger->passport_expiry,
+                        'mobile_no' => $passengerData['mobile_no'] ?? $passenger->mobile_no,
+                        'service_required' => $passengerData['service_required'] ?? $passenger->service_required,
+                        'stay_duration' => $passengerData['stay_duration'] ?? $passenger->stay_duration,
+                        'flight_date_from' => $passengerData['flight_date_from'] ?? $passenger->flight_date_from,
+                        'flight_date_to' => $passengerData['flight_date_to'] ?? $passenger->flight_date_to,
+                        'address' => $passengerData['address'] ?? $passenger->address,
+                    ]);
+                }
+            }
+
             $this->bookingService->recalculateBookingTotal($booking->fresh());
 
             if ($request->expectsJson()) {

@@ -108,7 +108,7 @@
                         </div>
                         <div>
                             <span class="text-xs text-slate-400">Fingerprint Location</span>
-                            <p class="text-slate-800">{{ match($passenger->booking?->fingerprint_location) { 'home' => 'Home', 'office' => 'Office', default => '-' } }}</p>
+                            <p class="text-slate-800">{{ match($passenger->booking?->fingerprint_location?->value) { 'home' => 'Home', 'office' => 'Office', default => '-' } }}</p>
                         </div>
                     </div>
                 </div>
@@ -129,7 +129,7 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <span class="text-xs text-slate-400">Class</span>
-                                <p class="text-slate-800">{{ $passenger->ticketFare?->airlineClass?->class_name ?? '-' }}</p>
+                                <p class="text-slate-800">{{ $passenger->ticketFare?->airlineClass?->class?->name ?? '-' }}</p>
                             </div>
                             <div>
                                 <span class="text-xs text-slate-400">Flight Date Range</span>
