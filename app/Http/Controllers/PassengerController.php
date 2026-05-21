@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Passenger;
 use App\Models\Booking;
 use App\Models\Document;
+use App\Models\Package;
+use App\Models\TicketFare;
 use App\Enums\PassengerType;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -54,6 +56,36 @@ class PassengerController extends Controller
         $paid = $passenger->booking?->invoice?->paid_amount ?? 0;
 
         return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid'));
+    }
+
+    public function edit(Passenger $passenger)
+    {
+        $passenger->load([
+            'booking',
+            'booking.package',
+            'booking.package.visaSellingPrice',
+            'status',
+            'ticketFare',
+            'ticketFare.airline',
+            'ticketFare.airlineClass',
+            'ticketFare.airlineClass.class',
+            'ticketFare.route',
+            'documents'
+        ]);
+
+        $ticketFares = TicketFare::with(['airline', 'airlineClass.class', 'route', 'baggageAllowances'])->get();
+
+        $packages = Package::with(['ticketFare'])
+            ->get()
+            ->map(fn($p) => [
+                'id' => $p->id,
+                'package_name' => $p->package_name,
+                'visa_selling_price' => $p->visaSellingPrice?->selling_price ?? 0,
+                'service_charge' => $p->service_charge ?? 0,
+                'ticket_fare_id' => $p->ticket_fare_id,
+            ]);
+
+        return view('passengers.edit', compact('passenger', 'ticketFares', 'packages'));
     }
 
     public function uploadDocument(Request $request, Passenger $passenger)
@@ -153,16 +185,27 @@ class PassengerController extends Controller
 
         try {
             $passenger->update($validated);
-            return response()->json([
-                'success' => true,
-                'message' => 'Passenger updated successfully',
-                'passenger' => $passenger->fresh()
-            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Passenger updated successfully',
+                    'passenger' => $passenger->fresh()
+                ]);
+            }
+
+            return redirect()->route('passengers.show', $passenger->id)
+                ->with('success', 'Passenger updated successfully.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update passenger'
-            ], 500);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update passenger'
+                ], 500);
+            }
+
+            return redirect()->route('passengers.edit', $passenger->id)
+                ->with('error', 'Failed to update passenger: ' . $e->getMessage());
         }
     }
 
