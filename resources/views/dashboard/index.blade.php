@@ -5,6 +5,7 @@
 @section('content')
 @php
 $showSummaryCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
+$showPackages = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
 $stats = [
     'visaSubmitted' => 120,
     'visaIssued' => 80,
@@ -207,6 +208,7 @@ $refundRequests = [];
         @endif
     </section>
 
+    @if($showPackages)
     <section class="mb-6">
         <h3 class="text-lg font-semibold text-slate-800 mb-4">Popular Packages</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -234,6 +236,7 @@ $refundRequests = [];
             @endforelse
         </div>
     </section>
+    @endif
 
     <div class="mb-6" x-data="{ activeTab: 'reissue' }">
         <div class="flex border-b border-slate-200 mb-4">
