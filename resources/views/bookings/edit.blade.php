@@ -4,6 +4,7 @@
 <script>window.__bookingServerData = {
     ticketFares: @json($ticketFares ?? []),
     packages: @json($packages ?? []),
+    preSelectedPackageId: {{ $booking->package_id ?? 'null' }},
     isEditMode: true,
     existingBooking: @json($booking->toArray()),
     existingPassengers: @json($booking->passengers->toArray()),
@@ -111,12 +112,9 @@
                     <label class="block text-sm font-medium text-slate-700 mb-2">Package</label>
                     <select x-model="bookingData.package_id" @change="onPackageChange(); $el.blur()" name="package_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                         <option value="">Select Package</option>
-                        <template x-for="pkg in allPackages" :key="pkg.id">
-                            <option :value="String(pkg.id)"
-                                :data-visa-price="pkg.visa_selling_price ?? 0"
-                                :data-service-charge="pkg.service_charge ?? 0"
-                                x-text="pkg.package_name"></option>
-                        </template>
+                        @foreach($packages as $pkg)
+                        <option value="{{ $pkg['id'] }}">{{ $pkg['package_name'] }}</option>
+                        @endforeach
                     </select>
                 </div>
                 <div>
