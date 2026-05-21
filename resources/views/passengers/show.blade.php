@@ -108,7 +108,7 @@
                         </div>
                         <div>
                             <span class="text-xs text-slate-400">Fingerprint Location</span>
-                            <p class="text-slate-800">{{ match($passenger->booking?->fingerprint_location) { 'home' => 'Home', 'office' => 'Office', default => '-' } }}</p>
+                            <p class="text-slate-800">{{ match($passenger->booking?->fingerprint_location?->value) { 'home' => 'Home', 'office' => 'Office', default => '-' } }}</p>
                         </div>
                     </div>
                 </div>
