@@ -4,6 +4,7 @@
 
 @section('content')
 @php
+$showSummaryCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
 $stats = [
     'visaSubmitted' => 120,
     'visaIssued' => 80,
@@ -33,6 +34,7 @@ $refundRequests = [];
             <h2 class="text-2xl font-bold text-slate-800">Dashboard</h2>
         </div>
         
+        @if($showSummaryCards)
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
                 <div class="flex justify-between items-center mb-2">
@@ -202,6 +204,7 @@ $refundRequests = [];
         <div class="text-right mt-4">
             <span class="text-xs text-slate-400">Last Updated: Just now</span>
         </div>
+        @endif
     </section>
 
     <section class="mb-6">
