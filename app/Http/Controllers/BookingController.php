@@ -394,7 +394,7 @@ class BookingController extends Controller
     public function update(Request $request, Booking $booking)
     {
         $validated = $request->validate([
-            'customer_id' => 'required|exists:customers,id',
+            'customer_id' => 'sometimes|required|exists:customers,id',
             'district_id' => 'nullable|exists:districts,id',
             'office_id' => 'nullable|exists:offices,id',
             'package_id' => 'nullable|exists:packages,id',
@@ -406,11 +406,27 @@ class BookingController extends Controller
         ]);
 
         try {
+            $validated['discount_type'] = ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage';
             $booking->update($validated);
             $this->bookingService->recalculateBookingTotal($booking->fresh());
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Discount applied successfully',
+                ]);
+            }
+
             return redirect()->route('bookings.show', $booking->id)
                 ->with('success', 'Booking updated successfully');
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update booking.',
+                ], 500);
+            }
+
             return redirect()->back()->with('error', 'Failed to update booking.')->withInput();
         }
     }

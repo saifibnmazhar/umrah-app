@@ -109,7 +109,6 @@
                             <th class="px-3 py-2 text-left font-medium">Current status</th>
                             <th class="px-3 py-2 text-left font-medium">Passport No</th>
                             <th class="px-3 py-2 text-left font-medium">Route</th>
-                            <th class="px-3 py-2 text-left font-medium">Current Status</th>
                             <th class="px-3 py-2 text-left font-medium">Required Flight Date</th>
                             <th class="px-3 py-2 text-left font-medium">Actual Flight Date</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
@@ -164,16 +163,6 @@ if ($route) {
     </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-600">{{ $routeDisplay }}</td>
-    <td class="px-3 py-2">
-        <select
-            class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
-            onchange="updatePassengerStatus({{ $passenger->id }}, this.value)">
-            <option value="" {{ is_null($passenger->passenger_status_id) ? 'selected' : '' }}>None</option>
-            @foreach($passengerStatuses as $status)
-                <option value="{{ $status->id }}" {{ $passenger->passenger_status_id == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
-            @endforeach
-        </select>
-    </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ optional($passenger->actual_flight_date)->format('d M Y') ?: 'N/A' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
