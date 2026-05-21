@@ -326,6 +326,7 @@ class BookingController extends Controller
         $booking->load([
             'customer',
             'passengers',
+            'passengers.ticketFare',
             'user',
             'district',
             'package',
@@ -333,8 +334,71 @@ class BookingController extends Controller
             'invoice',
             'payments.vouchers',
         ]);
-        
-        return view('bookings.show', compact('booking'));
+
+        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+            return [
+                'id' => $pkg->id,
+                'package_name' => $pkg->package_name,
+                'ticket_fare_id' => $pkg->ticket_fare_id,
+                'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
+                'service_charge' => $pkg->service_charge ?? 0,
+                'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
+            ];
+        });
+
+        $ticketFares = TicketFare::with([
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
+            'airline',
+            'airlineClass.class',
+            'groupTicket',
+            'baggageAllowances',
+        ])->get()->map(function ($fare) {
+            $routeCode = '';
+            $routeType = $fare->route->route_type?->value;
+
+            if ($routeType === 'multi_city') {
+                $segments = $fare->route->multiSegments->map(function ($seg) {
+                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                })->toArray();
+                $routeCode = implode(', ', $segments);
+            } elseif ($routeType === 'round') {
+                $routeCode = $fare->route->fromCity?->code . '-' .
+                    $fare->route->toCity?->code . '-' .
+                    $fare->route->returnCity?->code;
+            } else {
+                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+            }
+
+            return [
+                'id' => $fare->id,
+                'route' => $routeCode,
+                'airline' => $fare->airline->name,
+                'airline_class' => $fare->airlineClass->class?->name,
+                'ticket_type' => $fare->ticket_type->value,
+                'selling_fare' => $fare->selling_fare,
+                'child_fare_percentage' => $fare->child_fare_percentage,
+                'infant_fare_percentage' => $fare->infant_fare_percentage,
+                'offer_price' => $fare->offer_price,
+                'available_seats' => $fare->groupTicket?->ticket_qty ?? null,
+                'route_type' => $routeType,
+                'flight_type' => $fare->route->flight_type?->value,
+                'baggage_allowances' => $fare->baggageAllowances->map(function ($ba) {
+                    return [
+                        'passenger_type' => $ba->passenger_type,
+                        'travel_direction' => $ba->travel_direction,
+                        'allowance' => $ba->allowance,
+                    ];
+                })->toArray(),
+            ];
+        });
+
+        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+
+        return view('bookings.show', compact('booking', 'ticketFares', 'packages', 'currentCurrencyRate'));
     }
 
     public function edit(Booking $booking)

@@ -1,7 +1,14 @@
 @extends('layouts.app')
 @section('title', 'Invoice Details')
 @section('content')
-<div class="max-w-5xl mx-auto">
+<script>window.__bookingServerData = {
+    ticketFares: @json($ticketFares ?? []),
+    packages: @json($packages ?? []),
+    preSelectedPackageId: {{ $booking->package_id ?? 'null' }},
+    currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }},
+    bookingId: {{ $booking->id }}
+};</script>
+<div class="max-w-5xl mx-auto" x-data="showBookingApp()" x-init="init()">
     <div id="invoiceDetailsContent" class="space-y-6">
         {{-- Header Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
@@ -96,7 +103,7 @@
             </div>
             
             <div class="flex justify-end mt-4">
-                <button onclick="addPassenger()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
+                <button @click="openPassengerModal()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
             </div>
         </div>
 
@@ -337,6 +344,25 @@
 {{-- Toast Container --}}
 <div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
 
+@include('partials.passenger-form-modal')
+
+{{-- Custom Duration Modal --}}
+<div x-show="customDurationModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeCustomDurationModal()">
+    <div class="fixed inset-0 bg-black/50" @click="closeCustomDurationModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+        <h3 class="text-xl font-semibold text-slate-800 mb-4">Set Custom Duration</h3>
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Duration (days)</label>
+            <input type="number" id="customDurationDays" x-model="passengerData.customDurationDays" min="30" max="89" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" placeholder="Enter days (30-89)">
+            <p class="text-xs text-slate-500 mt-1">Enter a value between 30 and 89 days</p>
+        </div>
+        <div class="flex gap-3">
+            <button type="button" @click="saveCustomDuration()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+            <button type="button" @click="closeCustomDurationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+        </div>
+    </div>
+</div>
+
 <style>
 .modal-overlay { transition: opacity 0.2s ease; }
 .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
@@ -503,10 +529,6 @@ function downloadAllDocs() {
 
 function viewPassengerDetails(passengerId) {
     window.location.href = '/passengers/' + passengerId;
-}
-
-function addPassenger() {
-    window.location.href = '{{ route('bookings.edit', $booking->id) }}?add_passenger=true';
 }
 
 function openReIssueModal() {
