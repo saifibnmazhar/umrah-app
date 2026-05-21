@@ -6,6 +6,7 @@
 @php
 $showSummaryCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
 $showPackages = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
+$showRequests = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
 $stats = [
     'visaSubmitted' => 120,
     'visaIssued' => 80,
@@ -238,6 +239,7 @@ $refundRequests = [];
     </section>
     @endif
 
+    @if($showRequests)
     <div class="mb-6" x-data="{ activeTab: 'reissue' }">
         <div class="flex border-b border-slate-200 mb-4">
             <button @click="activeTab = 'reissue'" :class="activeTab === 'reissue' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'" class="px-4 py-2 font-medium text-sm border-b-2 transition">Re-Issue Requests</button>
@@ -302,5 +304,6 @@ $refundRequests = [];
             @endforelse
         </div>
     </div>
+    @endif
 </div>
 @endsection
