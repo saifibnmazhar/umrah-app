@@ -27,6 +27,7 @@ class PassengerController extends Controller
             'ticketFare',
             'ticketFare.airline',
             'ticketFare.airlineClass',
+            'ticketFare.airlineClass.class',
             'ticketFare.route',
             'documents'
         ]);
