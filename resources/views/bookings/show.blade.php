@@ -1,11 +1,19 @@
 @extends('layouts.app')
 @section('title', 'Invoice Details')
 @section('content')
-<div class="max-w-5xl mx-auto">
+<script>window.__bookingServerData = {
+    ticketFares: @json($ticketFares ?? []),
+    packages: @json($packages ?? []),
+    preSelectedPackageId: {{ $booking->package_id ?? 'null' }},
+    currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }},
+    bookingId: {{ $booking->id }}
+};</script>
+<div class="max-w-5xl mx-auto" x-data="showBookingApp()" x-init="init()">
     <div id="invoiceDetailsContent" class="space-y-6">
         {{-- Header Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
-            <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
+            @php $canEditBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty(); @endphp
+        <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
                 <div class="flex items-center gap-3">
                     <a href="{{ route('bookings.index') }}" class="text-slate-400 hover:text-slate-600">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
@@ -21,9 +29,11 @@
                     <a href="{{ route('bookings.print', $booking->id) }}" target="_blank" class="px-4 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium text-sm inline-block">
                         Print
                     </a>
+                    @if($canEditBooking)
                     <button onclick="window.location.href='{{ route('bookings.edit', $booking->id) }}'" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">
                         Edit
                     </button>
+                    @endif
                 </div>
             </div>
 
@@ -96,7 +106,9 @@
             </div>
             
             <div class="flex justify-end mt-4">
-                <button onclick="addPassenger()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
+                @if($canEditBooking)
+                <button @click="openPassengerModal()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
+                @endif
             </div>
         </div>
 
@@ -200,6 +212,25 @@
             <a href="{{ route('bookings.index') }}" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">
                 Back to List
             </a>
+        </div>
+    </div>
+
+    @include('partials.passenger-form-modal')
+
+    {{-- Custom Duration Modal --}}
+    <div x-show="customDurationModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeCustomDurationModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeCustomDurationModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Set Custom Duration</h3>
+            <div class="mb-4">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Duration (days)</label>
+                <input type="number" id="customDurationDays" x-model="passengerData.customDurationDays" min="30" max="89" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" placeholder="Enter days (30-89)">
+                <p class="text-xs text-slate-500 mt-1">Enter a value between 30 and 89 days</p>
+            </div>
+            <div class="flex gap-3">
+                <button type="button" @click="saveCustomDuration()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" @click="closeCustomDurationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
         </div>
     </div>
 </div>
@@ -503,10 +534,6 @@ function downloadAllDocs() {
 
 function viewPassengerDetails(passengerId) {
     window.location.href = '/passengers/' + passengerId;
-}
-
-function addPassenger() {
-    window.location.href = '{{ route('bookings.edit', $booking->id) }}?add_passenger=true';
 }
 
 function openReIssueModal() {

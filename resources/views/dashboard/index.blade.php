@@ -4,6 +4,9 @@
 
 @section('content')
 @php
+$showSummaryCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
+$showPackages = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
+$showRequests = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
 $stats = [
     'visaSubmitted' => 120,
     'visaIssued' => 80,
@@ -33,6 +36,7 @@ $refundRequests = [];
             <h2 class="text-2xl font-bold text-slate-800">Dashboard</h2>
         </div>
         
+        @if($showSummaryCards)
         <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
                 <div class="flex justify-between items-center mb-2">
@@ -202,8 +206,10 @@ $refundRequests = [];
         <div class="text-right mt-4">
             <span class="text-xs text-slate-400">Last Updated: Just now</span>
         </div>
+        @endif
     </section>
 
+    @if($showPackages)
     <section class="mb-6">
         <h3 class="text-lg font-semibold text-slate-800 mb-4">Popular Packages</h3>
         <div class="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -231,7 +237,9 @@ $refundRequests = [];
             @endforelse
         </div>
     </section>
+    @endif
 
+    @if($showRequests)
     <div class="mb-6" x-data="{ activeTab: 'reissue' }">
         <div class="flex border-b border-slate-200 mb-4">
             <button @click="activeTab = 'reissue'" :class="activeTab === 'reissue' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500'" class="px-4 py-2 font-medium text-sm border-b-2 transition">Re-Issue Requests</button>
@@ -296,5 +304,6 @@ $refundRequests = [];
             @endforelse
         </div>
     </div>
+    @endif
 </div>
 @endsection

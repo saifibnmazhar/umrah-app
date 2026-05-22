@@ -3236,6 +3236,605 @@ Alpine.data('editBookingApp', () => ({
     }
 }));
 
+Alpine.data('showBookingApp', () => ({
+    passengerModalVisible: false,
+    editingPassengerIndex: null,
+    customDurationModalVisible: false,
+    passengers: [],
+    passengerPackageValues: {},
+    passengerData: {
+        first_name: '',
+        last_name: '',
+        passport_no: '',
+        date_of_birth: '',
+        passenger_type: '',
+        gender: '',
+        mobile_no: '',
+        passport_expiry: '',
+        service_required: '',
+        stay_duration: '',
+        stay_duration_int: 0,
+        stay_duration_display: '',
+        route_type: '',
+        flight_type: '',
+        route: '',
+        airline: '',
+        class: '',
+        ticket_fare_id: '',
+        flight_date_range: '',
+        flight_date_from: '',
+        flight_date_to: '',
+        baggage_weight: '',
+        address: '',
+        with_offer: false,
+        refundable: false,
+        customDurationDays: ''
+    },
+    allTickets: [],
+    filteredTickets: [],
+    allPackages: [],
+
+    init() {
+        const data = window.__bookingServerData || {};
+        this.allPackages = (data.packages || []).map(p => ({
+            ...p,
+            id: String(p.id),
+            ticket_fare_id: p.ticket_fare_id ? String(p.ticket_fare_id) : null,
+        }));
+        this.allTickets = data.ticketFares || [];
+        this.filteredTickets = this.allTickets;
+    },
+
+    openPassengerModal() {
+        this.editingPassengerIndex = null;
+        let packageTicketFareId = null;
+        if (window.__bookingServerData?.preSelectedPackageId) {
+            const pkg = this.allPackages.find(p => String(p.id) === String(window.__bookingServerData.preSelectedPackageId));
+            if (pkg && pkg.ticket_fare_id) {
+                packageTicketFareId = pkg.ticket_fare_id;
+            }
+        }
+        this.passengerData = {
+            first_name: '',
+            last_name: '',
+            passport_no: '',
+            date_of_birth: '',
+            passenger_type: '',
+            gender: '',
+            mobile_no: '',
+            passport_expiry: '',
+            service_required: '',
+            stay_duration: '',
+            stay_duration_display: '',
+            route_type: '',
+            flight_type: '',
+            route: '',
+            airline: '',
+            class: '',
+            ticket_fare_id: '',
+            flight_date_range: '',
+            flight_date_from: '',
+            flight_date_to: '',
+            baggage_weight: '',
+            address: '',
+            with_offer: false,
+            refundable: false,
+            customDurationDays: ''
+        };
+        if (packageTicketFareId) {
+            this.passengerData.baggage_weight = 'Define Passenger Type';
+        } else {
+            this.passengerData.baggage_weight = 'Select a Ticket and Define Passenger Type';
+        }
+        if (packageTicketFareId) {
+            const ticket = this.allTickets.find(t => t.id == packageTicketFareId);
+            if (ticket) {
+                const reverseRouteTypeMap = {
+                    'oneway_inbound': 'One Way-Inbound',
+                    'oneway_outbound': 'One Way-Outbound',
+                    'round': 'Round',
+                    'multi_city': 'Multi City',
+                };
+                const reverseFlightTypeMap = {
+                    'transit': 'Transit',
+                    'direct': 'Direct',
+                };
+                this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+                this.filteredTickets = this.allTickets.filter(t =>
+                    t.route_type === ticket.route_type &&
+                    t.flight_type === ticket.flight_type
+                );
+                this.passengerData.route = ticket.route;
+                this.passengerData.airline = ticket.airline || '';
+                this.passengerData.class = ticket.airline_class || '';
+                this.$nextTick(() => {
+                    this.passengerData.ticket_fare_id = String(packageTicketFareId);
+                    this.calculateFlightDateRange();
+                });
+            }
+        } else {
+            this.filteredTickets = [];
+        }
+        this.passengerModalVisible = true;
+    },
+
+    closePassengerModal() {
+        this.passengerModalVisible = false;
+    },
+
+    savePassenger() {
+        if (!this.passengerData.first_name || !this.passengerData.last_name || !this.passengerData.passport_no || !this.passengerData.date_of_birth) {
+            alert('Please fill in all required fields');
+            return;
+        }
+        if (this.passengerData.passenger_type?.toLowerCase() === 'adult' && !this.passengerData.gender) {
+            alert('Please select gender for adult passenger');
+            return;
+        }
+
+        const bookingId = window.__bookingServerData?.bookingId;
+        if (!bookingId) {
+            alert('Invalid booking');
+            return;
+        }
+
+        const flightDates = this.passengerData.flight_date_range
+            ? this.parseFlightDateRange(this.passengerData.flight_date_range)
+            : null;
+
+        fetch('/bookings/' + bookingId + '/passengers', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+            },
+            body: JSON.stringify({
+                first_name: this.passengerData.first_name,
+                last_name: this.passengerData.last_name,
+                passport_no: this.passengerData.passport_no,
+                date_of_birth: this.passengerData.date_of_birth,
+                mobile_no: this.passengerData.mobile_no || null,
+                passport_expiry: this.passengerData.passport_expiry || null,
+                service_required: this.passengerData.service_required || null,
+                stay_duration: this.parseStayDurationDays(this.passengerData.stay_duration),
+                gender: this.passengerData.gender || null,
+                ticket_fare_id: this.passengerData.ticket_fare_id || null,
+                flight_date_from: flightDates?.from || null,
+                flight_date_to: flightDates?.to || null,
+                address: this.passengerData.address || null,
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => {
+                    if (err.errors) {
+                        const firstError = Object.values(err.errors)[0];
+                        throw new Error(firstError[0] || 'Validation failed');
+                    }
+                    throw new Error(err.message || 'Failed to add passenger');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success) {
+                this.closePassengerModal();
+                if (typeof showToast === 'function') {
+                    showToast('Passenger added successfully');
+                }
+                setTimeout(() => location.reload(), 500);
+            } else {
+                alert(data.message || 'Failed to add passenger');
+            }
+        })
+        .catch(error => {
+            alert('Error: ' + error.message);
+        });
+    },
+
+    parseStayDurationDays(stayDuration) {
+        if (!stayDuration) return null;
+        if (/^\d+$/.test(stayDuration)) {
+            return parseInt(stayDuration, 10);
+        }
+        const match = stayDuration.match(/(\d+)\s*days?/i);
+        return match ? parseInt(match[1], 10) : null;
+    },
+
+    getStayDurationValue() {
+        return this.parseStayDurationDays(this.passengerData.stay_duration);
+    },
+
+    parseFlightDateRange(rangeString) {
+        if (!rangeString) return null;
+        const parts = rangeString.split(' - ');
+        if (parts.length !== 2) return null;
+        const months = {
+            'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5,
+            'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11
+        };
+        const parseDate = (dateStr) => {
+            const match = dateStr.trim().match(/^(\w+)\s+(\d+),\s+(\d{4})$/);
+            if (!match) return null;
+            const month = months[match[1]];
+            const day = parseInt(match[2]);
+            const year = parseInt(match[3]);
+            if (month === undefined) return null;
+            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        };
+        const fromDate = parseDate(parts[0]);
+        const toDate = parseDate(parts[1]);
+        if (!fromDate || !toDate) return null;
+        return { from: fromDate, to: toDate };
+    },
+
+    calculatePassengerType() {
+        const dob = this.passengerData.date_of_birth;
+        if (!dob) {
+            this.passengerData.passenger_type = '';
+            return;
+        }
+        const dobDate = new Date(dob);
+        if (isNaN(dobDate.getTime())) {
+            this.passengerData.passenger_type = '';
+            return;
+        }
+        const today = new Date();
+        let ageInMonths = (today.getFullYear() - dobDate.getFullYear()) * 12 + (today.getMonth() - dobDate.getMonth());
+        const dobDay = dobDate.getDate();
+        const todayDay = today.getDate();
+        if (todayDay < dobDay) {
+            ageInMonths -= 1;
+        }
+        const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
+        if (stayDays !== null) {
+            const adjustmentDays = stayDays < 30 ? 30 : 90;
+            const effectiveDate = new Date(dobDate);
+            effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
+            const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
+            const dayDiff = today.getDate() - effectiveDate.getDate();
+            const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
+            ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
+        }
+        let calculatedType = 'Adult';
+        if (ageInMonths < 24) {
+            calculatedType = 'Infant';
+        } else if (ageInMonths < 144) {
+            calculatedType = 'Child';
+        }
+        this.passengerData.passenger_type = calculatedType;
+        this.updateBaggageWeight();
+    },
+
+    handleStayDurationChange() {
+        if (this.passengerData.stay_duration === 'Customize (Set Duration)') {
+            this.openCustomDurationModal();
+        }
+    },
+
+    openCustomDurationModal() {
+        this.customDurationModalVisible = true;
+        this.passengerData.customDurationDays = '';
+        this.$nextTick(() => {
+            const input = document.getElementById('customDurationDays');
+            if (input) input.focus();
+        });
+    },
+
+    closeCustomDurationModal() {
+        this.customDurationModalVisible = false;
+        this.passengerData.customDurationDays = '';
+    },
+
+    saveCustomDuration() {
+        const days = parseInt(this.passengerData.customDurationDays);
+        if (isNaN(days) || days < 30 || days > 89) {
+            alert('Please enter a valid duration between 30 and 89 days');
+            return;
+        }
+        this.passengerData.stay_duration = `Customized (${days} Days)`;
+        this.passengerData.stay_duration_int = days;
+        this.passengerData.stay_duration_display = `Customized (${days} Days)`;
+        const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
+        if (select) {
+            let customOption = Array.from(select.options).find(opt => opt.value.startsWith('Customized'));
+            if (!customOption) {
+                customOption = document.createElement('option');
+                select.appendChild(customOption);
+            }
+            customOption.value = `Customized (${days} Days)`;
+            customOption.textContent = `Customized (${days} Days)`;
+            select.value = `Customized (${days} Days)`;
+        }
+        this.closeCustomDurationModal();
+        this.calculatePassengerType();
+    },
+
+    updateBaggageWeight() {
+        const ticketFareId = this.passengerData.ticket_fare_id;
+        const passengerType = this.passengerData.passenger_type;
+        const routeType = this.passengerData.route_type;
+        if (!ticketFareId && !passengerType) {
+            this.passengerData.baggage_weight = 'Select a Ticket and Define Passenger Type';
+            return;
+        }
+        if (!ticketFareId) {
+            this.passengerData.baggage_weight = 'Select a Ticket';
+            return;
+        }
+        if (!passengerType) {
+            this.passengerData.baggage_weight = 'Define Passenger Type';
+            return;
+        }
+        if (!routeType) {
+            this.passengerData.baggage_weight = 'Select Route Type';
+            return;
+        }
+        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+        if (!ticket || !ticket.baggage_allowances || ticket.baggage_allowances.length === 0) {
+            this.passengerData.baggage_weight = 'No baggage allowance defined';
+            return;
+        }
+        const lowerType = passengerType.toLowerCase();
+        const allowances = ticket.baggage_allowances.filter(ba => ba.passenger_type === lowerType);
+        const getAllowance = (direction) => {
+            const found = allowances.find(ba => ba.travel_direction === direction);
+            return found ? found.allowance : null;
+        };
+        let display = '';
+        if (routeType === 'One Way-Inbound') {
+            const a = getAllowance('inbound');
+            display = a ? `Inbound: ${a}` : '';
+        } else if (routeType === 'One Way-Outbound') {
+            const a = getAllowance('outbound');
+            display = a ? `Outbound: ${a}` : '';
+        } else {
+            const inA = getAllowance('inbound');
+            const outA = getAllowance('outbound');
+            if (inA && outA) {
+                display = `Inbound: ${inA} | Outbound: ${outA}`;
+            } else if (inA) {
+                display = `Inbound: ${inA}`;
+            } else if (outA) {
+                display = `Outbound: ${outA}`;
+            }
+        }
+        this.passengerData.baggage_weight = display;
+    },
+
+    filterTickets() {
+        const routeType = this.passengerData.route_type;
+        const flightType = this.passengerData.flight_type;
+        if (!routeType && !flightType) {
+            this.filteredTickets = this.allTickets;
+            return;
+        }
+        this.filteredTickets = this.allTickets.filter(ticket => {
+            let match = true;
+            if (routeType) {
+                const reverseMap = {
+                    'One Way-Inbound': 'oneway_inbound',
+                    'One Way-Outbound': 'oneway_outbound',
+                    'Round': 'round',
+                    'Multi City': 'multi_city',
+                };
+                match = match && ticket.route_type === reverseMap[routeType];
+            }
+            if (flightType) {
+                const reverseMap = {
+                    'Transit': 'transit',
+                    'Direct': 'direct',
+                };
+                match = match && ticket.flight_type === reverseMap[flightType];
+            }
+            return match;
+        });
+    },
+
+    onTicketChange() {
+        const ticketFareId = this.passengerData.ticket_fare_id;
+        if (!ticketFareId) {
+            this.passengerData.route = '';
+            this.passengerData.airline = '';
+            this.passengerData.class = '';
+            this.passengerData.flight_date_range = '';
+            return;
+        }
+        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+        if (ticket) {
+            this.passengerData.route = ticket.route || '';
+            this.passengerData.airline = ticket.airline || '';
+            this.passengerData.class = ticket.airline_class || '';
+            this.calculateFlightDateRange();
+            this.updateBaggageWeight();
+        }
+    },
+
+    calculateFlightDateRange() {
+        const route = this.passengerData.route;
+        const airline = this.passengerData.airline;
+        const travelClass = this.passengerData.class;
+
+        if (!route || !airline || !travelClass) {
+            this.populateFlightDateRangeOptions([]);
+            return;
+        }
+
+        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass);
+    },
+
+    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass) {
+        try {
+            const params = new URLSearchParams({ route, airline, travel_class: travelClass });
+            const response = await fetch(`/api/ticket-fares/flight-date-gap?${params}`);
+            const data = await response.json();
+
+            if (data.default_gap !== undefined) {
+                const additionalGap = parseInt(data.additional_gap) || 0;
+                const defaultGap = parseInt(data.default_gap) || 30;
+                this.generateFlightDateRangeOptions(defaultGap, additionalGap);
+            } else {
+                this.generateFlightDateRangeOptions(30, 0);
+            }
+        } catch (e) {
+            console.error('Error fetching flight date gap:', e);
+            this.generateFlightDateRangeOptions(30, 0);
+        }
+    },
+
+    generateFlightDateRangeOptions(defaultGap, additionalGap) {
+        const finalGap = defaultGap + additionalGap;
+        const expectedDate = new Date();
+        expectedDate.setDate(expectedDate.getDate() + finalGap);
+
+        const day = expectedDate.getDate();
+        let startMonthOffset = 0;
+        let startSlot = 0;
+
+        if (day >= 1 && day <= 5) {
+            startMonthOffset = 0;
+            startSlot = 0;
+        } else if (day >= 6 && day <= 10) {
+            startMonthOffset = 0;
+            startSlot = 1;
+        } else if (day >= 11 && day <= 15) {
+            startMonthOffset = 0;
+            startSlot = 1;
+        } else if (day >= 16 && day <= 20) {
+            startMonthOffset = 0;
+            startSlot = 2;
+        } else if (day >= 21 && day <= 25) {
+            startMonthOffset = 0;
+            startSlot = 2;
+        } else if (day >= 26 && day <= 31) {
+            startMonthOffset = 1;
+            startSlot = 0;
+        }
+
+        const ranges = [];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        const startYear = expectedDate.getFullYear();
+        const startMonth = expectedDate.getMonth();
+
+        for (let i = 0; i < 16; i++) {
+            const slotIndex = (startSlot + i) % 3;
+            const monthIndex = startMonth + startMonthOffset + Math.floor((startSlot + i) / 3);
+
+            let year = startYear + Math.floor(monthIndex / 12);
+            let month = monthIndex % 12;
+            if (month < 0) month += 12;
+
+            let rangeStart, rangeEnd;
+
+            if (slotIndex === 0) {
+                rangeStart = new Date(year, month, 1);
+                rangeEnd = new Date(year, month, 10);
+            } else if (slotIndex === 1) {
+                rangeStart = new Date(year, month, 11);
+                rangeEnd = new Date(year, month, 20);
+            } else {
+                rangeStart = new Date(year, month, 21);
+                const lastDay = new Date(year, month + 1, 0).getDate();
+                rangeEnd = new Date(year, month, lastDay);
+            }
+
+            const startStr = `${months[rangeStart.getMonth()]} ${rangeStart.getDate()}, ${rangeStart.getFullYear()}`;
+            const endStr = `${months[rangeEnd.getMonth()]} ${rangeEnd.getDate()}, ${rangeEnd.getFullYear()}`;
+
+            ranges.push({
+                value: `${startStr} - ${endStr}`,
+                label: `${startStr} - ${endStr}`,
+                dayStart: rangeStart.getDate()
+            });
+        }
+
+        this.populateFlightDateRangeOptions(ranges);
+    },
+
+    populateFlightDateRangeOptions(ranges) {
+        const select = document.getElementById('passengerFlightDateRange');
+        if (!select) return;
+
+        select.innerHTML = '<option value="">Select Date Range</option>';
+
+        ranges.forEach(range => {
+            const option = document.createElement('option');
+            option.value = range.value;
+            option.textContent = range.label;
+            select.appendChild(option);
+        });
+    },
+
+    async fetchBaggageAllowance(route, airline, travelClass, passengerType, direction) {
+        try {
+            const params = new URLSearchParams({ route, airline, travel_class: travelClass, passenger_type: passengerType, direction });
+            const response = await fetch(`/api/ticket-fares/baggage?${params}`);
+            const data = await response.json();
+            if (data.allowance) {
+                this.passengerData.baggage_weight = data.allowance + 'kg';
+            } else {
+                this.passengerData.baggage_weight = '';
+            }
+        } catch (e) {
+            console.error('Error fetching baggage allowance:', e);
+            this.passengerData.baggage_weight = '';
+        }
+    },
+
+    getTicketDisplayText(ticket) {
+        const price = ticket.selling_fare ? ticket.selling_fare + ' SAR' : '';
+        const ticketType = ticket.ticket_type || 'standard';
+        const type = ticketType.charAt(0).toUpperCase() + ticketType.slice(1);
+        switch (ticketType) {
+            case 'offer':
+                const offer = ticket.offer_price ? ' | ' + ticket.offer_price + ' SAR' : '';
+                return `${ticket.route || ''} | ${type} | ${price}${offer}`;
+            case 'group':
+                const seats = ticket.available_seats ? ' | ' + ticket.available_seats + ' seats' : '';
+                return `${ticket.route || ''} | ${type} | ${price}${seats}`;
+            default:
+                return `${ticket.route || ''} | ${type} | ${price}`;
+        }
+    },
+
+    recalculateCurrentPassenger(index) {
+        if (index === null || index === undefined || !this.passengers[index]) return;
+        const pkg = this.allPackages.find(p => String(p.id) === String(window.__bookingServerData?.preSelectedPackageId));
+        this.passengerPackageValues[index] = this.calculatePackageValue(this.passengers[index], pkg);
+    },
+
+    calculatePackageValue(passenger, selectedPackage) {
+        const ticketFareId = passenger.ticket_fare_id;
+        const serviceRequired = passenger.service_required || 'all';
+        const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
+        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+        if (!ticket) return 0;
+        const sellingFare = parseFloat(ticket.selling_fare) || 0;
+        let ticketAmount = sellingFare;
+        if (passengerType === 'child') {
+            const pct = parseFloat(ticket.child_fare_percentage) || 0;
+            ticketAmount = sellingFare * pct / 100;
+        } else if (passengerType === 'infant') {
+            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+            ticketAmount = sellingFare * pct / 100;
+        }
+        const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
+        const serviceCharge = parseFloat(selectedPackage?.service_charge) || 0;
+        let total = 0;
+        if (serviceRequired === 'all') {
+            total = ticketAmount + visaPrice + serviceCharge;
+        } else if (serviceRequired === 'visa_only') {
+            total = visaPrice;
+        } else if (serviceRequired === 'ticket_only') {
+            total = ticketAmount;
+        }
+        return total;
+    },
+}));
+
 window.handleBookingCustomerDocsUpload = function(input) {
     const list = document.getElementById('booking_customer_docs_list');
     if (!list) return;
