@@ -239,6 +239,15 @@ function updateFingerprintLocation(bookingId, location, select) {
     .then(data => {
         if (data.success) {
             selectEl.dataset.original = location;
+            if (data.invoice) {
+                const row = selectEl.closest('tr');
+                const cells = row.querySelectorAll('td');
+                if (cells.length >= 12) {
+                    cells[9].textContent = data.invoice.total_amount + ' SAR';
+                    cells[10].textContent = data.invoice.paid_amount + ' SAR';
+                    cells[11].textContent = data.invoice.balance + ' SAR';
+                }
+            }
         } else {
             alert('Failed to update fingerprint location');
             selectEl.value = originalValue;
