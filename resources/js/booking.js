@@ -3462,7 +3462,7 @@ Alpine.data('showBookingApp', () => ({
             const day = parseInt(match[2]);
             const year = parseInt(match[3]);
             if (month === undefined) return null;
-            return new Date(year, month, day).toISOString().split('T')[0];
+            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
         };
         const fromDate = parseDate(parts[0]);
         const toDate = parseDate(parts[1]);
@@ -3654,12 +3654,14 @@ Alpine.data('showBookingApp', () => ({
 
     calculateFlightDateRange() {
         const route = this.passengerData.route;
-        if (!route) {
-            this.passengerData.flight_date_range = '';
+        const airline = this.passengerData.airline;
+        const travelClass = this.passengerData.class;
+
+        if (!route || !airline || !travelClass) {
+            this.populateFlightDateRangeOptions([]);
             return;
         }
-        const airline = this.passengerData.airline || '';
-        const travelClass = this.passengerData.travel_class || '';
+
         this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass);
     },
 
@@ -3668,69 +3670,102 @@ Alpine.data('showBookingApp', () => ({
             const params = new URLSearchParams({ route, airline, travel_class: travelClass });
             const response = await fetch(`/api/ticket-fares/flight-date-gap?${params}`);
             const data = await response.json();
+
             if (data.default_gap !== undefined) {
                 const additionalGap = parseInt(data.additional_gap) || 0;
                 const defaultGap = parseInt(data.default_gap) || 30;
-                this.generateFlightDateRangeWithGap(defaultGap, additionalGap);
+                this.generateFlightDateRangeOptions(defaultGap, additionalGap);
             } else {
-                this.passengerData.flight_date_range = '';
+                this.generateFlightDateRangeOptions(30, 0);
             }
         } catch (e) {
             console.error('Error fetching flight date gap:', e);
-            this.passengerData.flight_date_range = '';
+            this.generateFlightDateRangeOptions(30, 0);
         }
     },
 
-    generateFlightDateRangeWithGap(defaultGap, additionalGap) {
+    generateFlightDateRangeOptions(defaultGap, additionalGap) {
         const finalGap = defaultGap + additionalGap;
-        const bookingDate = new Date();
-        const calculatedDate = new Date(bookingDate);
-        calculatedDate.setDate(calculatedDate.getDate() + finalGap);
-        const day = calculatedDate.getDate();
-        let selectedRange = '';
+        const expectedDate = new Date();
+        expectedDate.setDate(expectedDate.getDate() + finalGap);
+
+        const day = expectedDate.getDate();
+        let startMonthOffset = 0;
+        let startSlot = 0;
+
         if (day >= 1 && day <= 5) {
-            selectedRange = '1-10';
-        } else if (day >= 6 && day <= 15) {
-            selectedRange = '11-20';
-        } else if (day >= 16 && day <= 31) {
-            selectedRange = '21-31';
+            startMonthOffset = 0;
+            startSlot = 0;
+        } else if (day >= 6 && day <= 10) {
+            startMonthOffset = 0;
+            startSlot = 1;
+        } else if (day >= 11 && day <= 15) {
+            startMonthOffset = 0;
+            startSlot = 1;
+        } else if (day >= 16 && day <= 20) {
+            startMonthOffset = 0;
+            startSlot = 2;
+        } else if (day >= 21 && day <= 25) {
+            startMonthOffset = 0;
+            startSlot = 2;
+        } else if (day >= 26 && day <= 31) {
+            startMonthOffset = 1;
+            startSlot = 0;
         }
-        this.generateFlightDateRangeOptions(selectedRange);
+
+        const ranges = [];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        const startYear = expectedDate.getFullYear();
+        const startMonth = expectedDate.getMonth();
+
+        for (let i = 0; i < 16; i++) {
+            const slotIndex = (startSlot + i) % 3;
+            const monthIndex = startMonth + startMonthOffset + Math.floor((startSlot + i) / 3);
+
+            let year = startYear + Math.floor(monthIndex / 12);
+            let month = monthIndex % 12;
+            if (month < 0) month += 12;
+
+            let rangeStart, rangeEnd;
+
+            if (slotIndex === 0) {
+                rangeStart = new Date(year, month, 1);
+                rangeEnd = new Date(year, month, 10);
+            } else if (slotIndex === 1) {
+                rangeStart = new Date(year, month, 11);
+                rangeEnd = new Date(year, month, 20);
+            } else {
+                rangeStart = new Date(year, month, 21);
+                const lastDay = new Date(year, month + 1, 0).getDate();
+                rangeEnd = new Date(year, month, lastDay);
+            }
+
+            const startStr = `${months[rangeStart.getMonth()]} ${rangeStart.getDate()}, ${rangeStart.getFullYear()}`;
+            const endStr = `${months[rangeEnd.getMonth()]} ${rangeEnd.getDate()}, ${rangeEnd.getFullYear()}`;
+
+            ranges.push({
+                value: `${startStr} - ${endStr}`,
+                label: `${startStr} - ${endStr}`,
+                dayStart: rangeStart.getDate()
+            });
+        }
+
+        this.populateFlightDateRangeOptions(ranges);
     },
 
-    generateFlightDateRangeOptions(preSelectRange = null) {
+    populateFlightDateRangeOptions(ranges) {
         const select = document.getElementById('passengerFlightDateRange');
         if (!select) return;
+
         select.innerHTML = '<option value="">Select Date Range</option>';
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-        const ranges = [];
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() + 30);
-        for (let i = 0; i < 4; i++) {
-            for (let week = 0; week < 4; week++) {
-                const rangeStart = new Date(startDate);
-                rangeStart.setDate(rangeStart.getDate() + (i * 40) + (week * 10));
-                const rangeEnd = new Date(rangeStart);
-                rangeEnd.setDate(rangeEnd.getDate() + 9);
-                const startStr = `${months[rangeStart.getMonth()]} ${rangeStart.getDate()}, ${rangeStart.getFullYear()}`;
-                const endStr = `${months[rangeEnd.getMonth()]} ${rangeEnd.getDate()}, ${rangeEnd.getFullYear()}`;
-                const displayText = `${startStr} - ${endStr}`;
-                ranges.push({ value: displayText, label: displayText, dayStart: rangeStart.getDate() });
-            }
-        }
+
         ranges.forEach(range => {
             const option = document.createElement('option');
             option.value = range.value;
             option.textContent = range.label;
             select.appendChild(option);
         });
-        if (preSelectRange) {
-            const preStart = parseInt(preSelectRange.split('-')[0]);
-            const foundRange = ranges.find(r => r.dayStart === preStart);
-            this.passengerData.flight_date_range = foundRange ? foundRange.value : '';
-        } else {
-            this.passengerData.flight_date_range = '';
-        }
     },
 
     async fetchBaggageAllowance(route, airline, travelClass, passengerType, direction) {
