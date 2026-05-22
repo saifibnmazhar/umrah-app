@@ -73,8 +73,8 @@ Route::middleware('auth')->group(function () {
     Route::resource('transaction-types', TransactionTypeController::class);
     Route::resource('passenger-statuses', PassengerStatusController::class);
     Route::get('/bookings', fn() => view('bookings.index'))->name('bookings.index');
-    Route::resource('bookings', BookingController::class)->except(['create', 'store', 'edit', 'update']);
     Route::get('/bookings/create', [BookingController::class, 'create'])->name('bookings.create')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
+    Route::resource('bookings', BookingController::class)->except(['create', 'store', 'edit', 'update']);
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
     Route::get('/bookings/{booking}/edit', [BookingController::class, 'edit'])->name('bookings.edit')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
     Route::put('/bookings/{booking}', [BookingController::class, 'update'])->name('bookings.update')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
