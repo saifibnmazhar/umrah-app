@@ -217,8 +217,9 @@
 
 @push('scripts')
 <script>
-document.addEventListener('alpine:init', () => {
-    Alpine.data('editPassengerApp', () => ({
+(function() {
+    function registerEditPassengerApp() {
+        Alpine.data('editPassengerApp', () => ({
         passengerData: {
             first_name: '',
             last_name: '',
@@ -318,35 +319,37 @@ document.addEventListener('alpine:init', () => {
 
             this.passengerData.address = p.address || '';
 
-            const ticketFare = p.ticket_fare || p.ticketFare || null;
+            const ticketFareId = p.ticket_fare_id;
+            if (ticketFareId) {
+                this.passengerData.ticket_fare_id = String(ticketFareId);
 
-            if (ticketFare) {
-                const reverseRouteTypeMap = {
-                    'oneway_inbound': 'One Way-Inbound',
-                    'oneway_outbound': 'One Way-Outbound',
-                    'round': 'Round',
-                    'multi_city': 'Multi City',
-                };
-                const reverseFlightTypeMap = {
-                    'transit': 'Transit',
-                    'direct': 'Direct',
-                };
+                const ticket = this.allTickets.find(t => t.id == ticketFareId);
+                if (ticket) {
+                    const reverseRouteTypeMap = {
+                        'oneway_inbound': 'One Way-Inbound',
+                        'oneway_outbound': 'One Way-Outbound',
+                        'round': 'Round',
+                        'multi_city': 'Multi City',
+                    };
+                    const reverseFlightTypeMap = {
+                        'transit': 'Transit',
+                        'direct': 'Direct',
+                    };
 
-                const route = ticketFare.route || null;
-                if (route) {
-                    this.passengerData.route_type = reverseRouteTypeMap[route.route_type] || '';
-                    this.passengerData.flight_type = reverseFlightTypeMap[route.flight_type] || '';
+                    this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                    this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+
+                    this.filteredTickets = this.allTickets.filter(t2 =>
+                        t2.route_type === ticket.route_type &&
+                        t2.flight_type === ticket.flight_type
+                    );
+
+                    this.passengerData.route = ticket.route || '';
+                    this.passengerData.airline = ticket.airline || '';
+                    this.passengerData.class = ticket.airline_class || '';
+                } else {
+                    this.filteredTickets = this.allTickets;
                 }
-
-                this.filteredTickets = this.allTickets.filter(t =>
-                    t.route_type === (route ? route.route_type : '') &&
-                    t.flight_type === (route ? route.flight_type : '')
-                );
-
-                this.passengerData.ticket_fare_id = String(ticketFare.id);
-                this.passengerData.route = ticketFare.route || '';
-                this.passengerData.airline = ticketFare.airline || '';
-                this.passengerData.class = ticketFare.airline_class || '';
 
                 if (p.flight_date_from && p.flight_date_to) {
                     this.generateFlightDateRangeForEdit(p.flight_date_from, p.flight_date_to);
@@ -354,7 +357,7 @@ document.addEventListener('alpine:init', () => {
                     this.calculateFlightDateRange();
                 }
             } else {
-                this.filteredTickets = [];
+                this.filteredTickets = this.allTickets;
                 this.populateFlightDateRangeOptions([]);
             }
 
@@ -830,7 +833,13 @@ document.addEventListener('alpine:init', () => {
             }
         },
     }));
-});
+    }
+    if (typeof Alpine !== 'undefined') {
+        registerEditPassengerApp();
+    } else {
+        document.addEventListener('alpine:init', registerEditPassengerApp);
+    }
+})();
 </script>
 @endpush
 @endsection

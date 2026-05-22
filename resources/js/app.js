@@ -1,9 +1,8 @@
 import Alpine from 'alpinejs'
 import './booking.js'
 
-Alpine.start()
-
 window.Alpine = Alpine
+Alpine.start()
 
 Alpine.store('toast', {})
 

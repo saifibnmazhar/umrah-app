@@ -73,7 +73,56 @@ class PassengerController extends Controller
             'documents'
         ]);
 
-        $ticketFares = TicketFare::with(['airline', 'airlineClass.class', 'route', 'baggageAllowances'])->get();
+        $ticketFares = TicketFare::with([
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
+            'airline',
+            'airlineClass.class',
+            'groupTicket',
+            'baggageAllowances',
+        ])->get()->map(function ($fare) {
+            $routeCode = '';
+            $routeType = $fare->route->route_type?->value;
+
+            if ($routeType === 'multi_city') {
+                $segments = $fare->route->multiSegments->map(function ($seg) {
+                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                })->toArray();
+                $routeCode = implode(', ', $segments);
+            } elseif ($routeType === 'round') {
+                $routeCode = $fare->route->fromCity?->code . '-' .
+                    $fare->route->toCity?->code . '-' .
+                    $fare->route->returnCity?->code;
+            } else {
+                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+            }
+
+            return [
+                'id' => $fare->id,
+                'route' => $routeCode,
+                'airline' => $fare->airline?->name ?? '',
+                'airline_class' => $fare->airlineClass?->class?->name ?? '',
+                'ticket_type' => $fare->ticket_type->value,
+                'selling_fare' => $fare->selling_fare,
+                'child_fare_percentage' => $fare->child_fare_percentage,
+                'infant_fare_percentage' => $fare->infant_fare_percentage,
+                'offer_price' => $fare->offer_price,
+                'available_seats' => $fare->groupTicket?->ticket_qty ?? null,
+                'route_type' => $routeType,
+                'flight_type' => $fare->route->flight_type?->value,
+                'baggage_allowances' => $fare->baggageAllowances->map(function ($ba) {
+                    $pt = $ba->passenger_type;
+                    return [
+                        'passenger_type' => $pt instanceof \BackedEnum ? $pt->value : (string) $pt,
+                        'travel_direction' => $ba->travel_direction,
+                        'allowance' => $ba->allowance,
+                    ];
+                })->values()->toArray(),
+            ];
+        });
 
         $packages = Package::with(['ticketFare'])
             ->get()
