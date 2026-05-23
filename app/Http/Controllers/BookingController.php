@@ -181,6 +181,11 @@ class BookingController extends Controller
         ]);
 
         if ($validator->fails()) {
+            \Log::warning('Booking store validation failed', [
+                'errors' => $validator->errors()->toArray(),
+                'input_keys' => array_keys($request->all()),
+                'files' => array_keys($request->allFiles()),
+            ]);
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['errors' => $validator->errors()], 422);
             }
@@ -211,14 +216,17 @@ class BookingController extends Controller
                 'remarks' => $validated['remarks'] ?? null,
             ]);
 
-            if ($request->hasFile('booking_customer_docs')) {
-                foreach ($request->file('booking_customer_docs') as $file) {
-                    $booking->documents()->create([
-                        'owner_type' => 'booking',
-                        'owner_id' => $booking->id,
-                        'file_path' => $file->store('booking-docs', 'public'),
-                        'display_name' => $file->getClientOriginalName(),
-                    ]);
+            $customerDocs = $request->file('booking_customer_docs', []);
+            if (is_array($customerDocs) && count($customerDocs) > 0) {
+                foreach ($customerDocs as $file) {
+                    if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+                        $booking->documents()->create([
+                            'owner_type' => 'booking',
+                            'owner_id' => $booking->id,
+                            'file_path' => $file->store('booking-docs', 'public'),
+                            'display_name' => $file->getClientOriginalName(),
+                        ]);
+                    }
                 }
             }
 
