@@ -118,10 +118,10 @@
                             <th class="px-3 py-2 text-left font-medium">Required Flight Date</th>
                             <th class="px-3 py-2 text-left font-medium">Actual Flight Date</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
-                            <th class="px-3 py-2 text-left font-medium">Package Value</th>
-                            <th class="px-3 py-2 text-left font-medium">Total Cost</th>
-                            <th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>
-                            <th class="px-3 py-2 text-left font-medium">Due</th>
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Package Value</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -172,17 +172,17 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ optional($passenger->actual_flight_date)->format('d M Y') ?: 'N/A' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
-    <td class="px-3 py-2 text-slate-700">{{ $passenger->package_value ? number_format($passenger->package_value, 2) . ' SAR' : '—' }}</td>
-    <td class="px-3 py-2"></td>
-    <td class="px-3 py-2"></td>
-    <td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->invoice?->balance ? number_format($passenger->booking->invoice->balance, 2) . ' SAR' : '—') : '' }}</td>
+    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $passenger->package_value ? number_format($passenger->package_value, 2) . ' SAR' : '—' }}</td>@endif
+    @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
+    @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
+    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->invoice?->balance ? number_format($passenger->booking->invoice->balance, 2) . ' SAR' : '—') : '' }}</td>@endif
     <td class="px-3 py-2">
         <a href="{{ route('passengers.show', $passenger->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
     </td>
 </tr>
 @empty
 <tr>
-    <td colspan="18" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="{{ $canViewFinancialColumns ? 17 : 13 }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 </tr>
 @endforelse
                     </tbody>
