@@ -181,6 +181,11 @@ class BookingController extends Controller
         ]);
 
         if ($validator->fails()) {
+            \Log::warning('Booking store validation failed', [
+                'errors' => $validator->errors()->toArray(),
+                'input_keys' => array_keys($request->all()),
+                'files' => array_keys($request->allFiles()),
+            ]);
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['errors' => $validator->errors()], 422);
             }
@@ -211,14 +216,17 @@ class BookingController extends Controller
                 'remarks' => $validated['remarks'] ?? null,
             ]);
 
-            if ($request->hasFile('booking_customer_docs')) {
-                foreach ($request->file('booking_customer_docs') as $file) {
-                    $booking->documents()->create([
-                        'owner_type' => 'booking',
-                        'owner_id' => $booking->id,
-                        'file_path' => $file->store('booking-docs', 'public'),
-                        'display_name' => $file->getClientOriginalName(),
-                    ]);
+            $customerDocs = $request->file('booking_customer_docs', []);
+            if (is_array($customerDocs) && count($customerDocs) > 0) {
+                foreach ($customerDocs as $file) {
+                    if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+                        $booking->documents()->create([
+                            'owner_type' => 'booking',
+                            'owner_id' => $booking->id,
+                            'file_path' => $file->store('booking-docs', 'public'),
+                            'display_name' => $file->getClientOriginalName(),
+                        ]);
+                    }
                 }
             }
 
@@ -326,6 +334,7 @@ class BookingController extends Controller
         $booking->load([
             'customer',
             'passengers',
+            'passengers.ticketFare',
             'user',
             'district',
             'package',
@@ -333,8 +342,71 @@ class BookingController extends Controller
             'invoice',
             'payments.vouchers',
         ]);
-        
-        return view('bookings.show', compact('booking'));
+
+        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+            return [
+                'id' => $pkg->id,
+                'package_name' => $pkg->package_name,
+                'ticket_fare_id' => $pkg->ticket_fare_id,
+                'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
+                'service_charge' => $pkg->service_charge ?? 0,
+                'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
+            ];
+        });
+
+        $ticketFares = TicketFare::with([
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
+            'airline',
+            'airlineClass.class',
+            'groupTicket',
+            'baggageAllowances',
+        ])->get()->map(function ($fare) {
+            $routeCode = '';
+            $routeType = $fare->route->route_type?->value;
+
+            if ($routeType === 'multi_city') {
+                $segments = $fare->route->multiSegments->map(function ($seg) {
+                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                })->toArray();
+                $routeCode = implode(', ', $segments);
+            } elseif ($routeType === 'round') {
+                $routeCode = $fare->route->fromCity?->code . '-' .
+                    $fare->route->toCity?->code . '-' .
+                    $fare->route->returnCity?->code;
+            } else {
+                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+            }
+
+            return [
+                'id' => $fare->id,
+                'route' => $routeCode,
+                'airline' => $fare->airline->name,
+                'airline_class' => $fare->airlineClass->class?->name,
+                'ticket_type' => $fare->ticket_type->value,
+                'selling_fare' => $fare->selling_fare,
+                'child_fare_percentage' => $fare->child_fare_percentage,
+                'infant_fare_percentage' => $fare->infant_fare_percentage,
+                'offer_price' => $fare->offer_price,
+                'available_seats' => $fare->groupTicket?->ticket_qty ?? null,
+                'route_type' => $routeType,
+                'flight_type' => $fare->route->flight_type?->value,
+                'baggage_allowances' => $fare->baggageAllowances->map(function ($ba) {
+                    return [
+                        'passenger_type' => $ba->passenger_type,
+                        'travel_direction' => $ba->travel_direction,
+                        'allowance' => $ba->allowance,
+                    ];
+                })->toArray(),
+            ];
+        });
+
+        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+
+        return view('bookings.show', compact('booking', 'ticketFares', 'packages', 'currentCurrencyRate'));
     }
 
     public function edit(Booking $booking)
@@ -358,14 +430,22 @@ class BookingController extends Controller
             'route.fromCity',
             'route.toCity',
             'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
             'airline',
             'airlineClass.class',
             'groupTicket',
+            'baggageAllowances',
         ])->get()->map(function ($fare) {
             $routeCode = '';
             $routeType = $fare->route->route_type?->value;
 
-            if ($routeType === 'round') {
+            if ($routeType === 'multi_city') {
+                $segments = $fare->route->multiSegments->map(function ($seg) {
+                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                })->toArray();
+                $routeCode = implode(', ', $segments);
+            } elseif ($routeType === 'round') {
                 $routeCode = $fare->route->fromCity?->code . '-' .
                     $fare->route->toCity?->code . '-' .
                     $fare->route->returnCity?->code;
@@ -378,8 +458,21 @@ class BookingController extends Controller
                 'route' => $routeCode,
                 'airline' => $fare->airline->name,
                 'airline_class' => $fare->airlineClass->class?->name,
+                'ticket_type' => $fare->ticket_type->value,
                 'selling_fare' => $fare->selling_fare,
+                'child_fare_percentage' => $fare->child_fare_percentage,
+                'infant_fare_percentage' => $fare->infant_fare_percentage,
                 'offer_price' => $fare->offer_price,
+                'available_seats' => $fare->groupTicket?->ticket_qty ?? null,
+                'route_type' => $routeType,
+                'flight_type' => $fare->route->flight_type?->value,
+                'baggage_allowances' => $fare->baggageAllowances->map(function ($ba) {
+                    return [
+                        'passenger_type' => $ba->passenger_type,
+                        'travel_direction' => $ba->travel_direction,
+                        'allowance' => $ba->allowance,
+                    ];
+                })->toArray(),
             ];
         });
 
@@ -394,7 +487,7 @@ class BookingController extends Controller
     public function update(Request $request, Booking $booking)
     {
         $validated = $request->validate([
-            'customer_id' => 'required|exists:customers,id',
+            'customer_id' => 'sometimes|required|exists:customers,id',
             'district_id' => 'nullable|exists:districts,id',
             'office_id' => 'nullable|exists:offices,id',
             'package_id' => 'nullable|exists:packages,id',
@@ -403,14 +496,55 @@ class BookingController extends Controller
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:1000',
+            'passengers' => 'nullable|array',
+            'passengers.*.id' => 'nullable|exists:passengers,id',
         ]);
 
         try {
+            $validated['discount_type'] = ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage';
             $booking->update($validated);
+
+            if ($request->has('passengers')) {
+                foreach ($validated['passengers'] as $passengerData) {
+                    $passenger = Passenger::find($passengerData['id'] ?? null);
+                    if (!$passenger) continue;
+
+                    $passenger->update([
+                        'first_name' => $passengerData['first_name'] ?? $passenger->first_name,
+                        'last_name' => $passengerData['last_name'] ?? $passenger->last_name,
+                        'passport_no' => $passengerData['passport_no'] ?? $passenger->passport_no,
+                        'date_of_birth' => $passengerData['date_of_birth'] ?? $passenger->date_of_birth,
+                        'gender' => $passengerData['gender'] ?? $passenger->gender,
+                        'passport_expiry' => $passengerData['passport_expiry'] ?? $passenger->passport_expiry,
+                        'mobile_no' => $passengerData['mobile_no'] ?? $passenger->mobile_no,
+                        'service_required' => $passengerData['service_required'] ?? $passenger->service_required,
+                        'stay_duration' => $passengerData['stay_duration'] ?? $passenger->stay_duration,
+                        'flight_date_from' => $passengerData['flight_date_from'] ?? $passenger->flight_date_from,
+                        'flight_date_to' => $passengerData['flight_date_to'] ?? $passenger->flight_date_to,
+                        'address' => $passengerData['address'] ?? $passenger->address,
+                    ]);
+                }
+            }
+
             $this->bookingService->recalculateBookingTotal($booking->fresh());
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Discount applied successfully',
+                ]);
+            }
+
             return redirect()->route('bookings.show', $booking->id)
                 ->with('success', 'Booking updated successfully');
         } catch (\Exception $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update booking.',
+                ], 500);
+            }
+
             return redirect()->back()->with('error', 'Failed to update booking.')->withInput();
         }
     }
@@ -423,10 +557,25 @@ class BookingController extends Controller
 
         try {
             $booking->update(['fingerprint_location' => $validated['fingerprint_location']]);
+
+            $booking = $booking->fresh();
+            $this->bookingService->recalculateBookingTotal($booking);
+
+            $invoice = $booking->invoice;
+            if ($invoice) {
+                app(InvoiceService::class)->updateTotals($invoice, $booking->total_value);
+                $invoice = $invoice->fresh();
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Fingerprint location updated successfully',
-                'fingerprint_location' => $booking->fresh()->fingerprint_location?->value,
+                'fingerprint_location' => $booking->fingerprint_location?->value,
+                'invoice' => $invoice ? [
+                    'total_amount' => (float) $invoice->total_amount,
+                    'paid_amount' => (float) $invoice->paid_amount,
+                    'balance' => (float) $invoice->balance,
+                ] : null,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -457,7 +606,7 @@ class BookingController extends Controller
             'date_of_birth' => 'required|date|before:today',
             'mobile_no' => 'nullable|string|max:20',
             'passport_expiry' => 'nullable|date',
-            'service_required' => 'nullable|in:All,Visa Only,Ticket Only',
+            'service_required' => 'nullable|in:all,visa_only,ticket_only',
             'stay_duration' => 'nullable|integer|min:1',
             'flight_date_from' => 'nullable|date',
             'flight_date_to' => 'nullable|date',

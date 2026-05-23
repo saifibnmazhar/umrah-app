@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Models\Passenger;
 use App\Models\Booking;
 use App\Models\Document;
+use App\Models\Package;
+use App\Models\TicketFare;
 use App\Enums\PassengerType;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -27,6 +29,7 @@ class PassengerController extends Controller
             'ticketFare',
             'ticketFare.airline',
             'ticketFare.airlineClass',
+            'ticketFare.airlineClass.class',
             'ticketFare.route',
             'documents'
         ]);
@@ -53,6 +56,85 @@ class PassengerController extends Controller
         $paid = $passenger->booking?->invoice?->paid_amount ?? 0;
 
         return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid'));
+    }
+
+    public function edit(Passenger $passenger)
+    {
+        $passenger->load([
+            'booking',
+            'booking.package',
+            'booking.package.visaSellingPrice',
+            'status',
+            'ticketFare',
+            'ticketFare.airline',
+            'ticketFare.airlineClass',
+            'ticketFare.airlineClass.class',
+            'ticketFare.route',
+            'documents'
+        ]);
+
+        $ticketFares = TicketFare::with([
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
+            'airline',
+            'airlineClass.class',
+            'groupTicket',
+            'baggageAllowances',
+        ])->get()->map(function ($fare) {
+            $routeCode = '';
+            $routeType = $fare->route->route_type?->value;
+
+            if ($routeType === 'multi_city') {
+                $segments = $fare->route->multiSegments->map(function ($seg) {
+                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                })->toArray();
+                $routeCode = implode(', ', $segments);
+            } elseif ($routeType === 'round') {
+                $routeCode = $fare->route->fromCity?->code . '-' .
+                    $fare->route->toCity?->code . '-' .
+                    $fare->route->returnCity?->code;
+            } else {
+                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+            }
+
+            return [
+                'id' => $fare->id,
+                'route' => $routeCode,
+                'airline' => $fare->airline?->name ?? '',
+                'airline_class' => $fare->airlineClass?->class?->name ?? '',
+                'ticket_type' => $fare->ticket_type->value,
+                'selling_fare' => $fare->selling_fare,
+                'child_fare_percentage' => $fare->child_fare_percentage,
+                'infant_fare_percentage' => $fare->infant_fare_percentage,
+                'offer_price' => $fare->offer_price,
+                'available_seats' => $fare->groupTicket?->ticket_qty ?? null,
+                'route_type' => $routeType,
+                'flight_type' => $fare->route->flight_type?->value,
+                'baggage_allowances' => $fare->baggageAllowances->map(function ($ba) {
+                    $pt = $ba->passenger_type;
+                    return [
+                        'passenger_type' => $pt instanceof \BackedEnum ? $pt->value : (string) $pt,
+                        'travel_direction' => $ba->travel_direction,
+                        'allowance' => $ba->allowance,
+                    ];
+                })->values()->toArray(),
+            ];
+        });
+
+        $packages = Package::with(['ticketFare'])
+            ->get()
+            ->map(fn($p) => [
+                'id' => $p->id,
+                'package_name' => $p->package_name,
+                'visa_selling_price' => $p->visaSellingPrice?->selling_price ?? 0,
+                'service_charge' => $p->service_charge ?? 0,
+                'ticket_fare_id' => $p->ticket_fare_id,
+            ]);
+
+        return view('passengers.edit', compact('passenger', 'ticketFares', 'packages'));
     }
 
     public function uploadDocument(Request $request, Passenger $passenger)
@@ -145,18 +227,34 @@ class PassengerController extends Controller
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
         ]);
 
+        if (isset($validated['service_required'])) {
+            $map = ['All' => 'all', 'Visa Only' => 'visa_only', 'Ticket Only' => 'ticket_only'];
+            $validated['service_required'] = $map[$validated['service_required']] ?? $validated['service_required'];
+        }
+
         try {
             $passenger->update($validated);
-            return response()->json([
-                'success' => true,
-                'message' => 'Passenger updated successfully',
-                'passenger' => $passenger->fresh()
-            ]);
+
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Passenger updated successfully',
+                    'passenger' => $passenger->fresh()
+                ]);
+            }
+
+            return redirect()->route('passengers.show', $passenger->id)
+                ->with('success', 'Passenger updated successfully.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => 'Failed to update passenger'
-            ], 500);
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update passenger'
+                ], 500);
+            }
+
+            return redirect()->route('passengers.edit', $passenger->id)
+                ->with('error', 'Failed to update passenger: ' . $e->getMessage());
         }
     }
 

@@ -3,13 +3,20 @@
 @section('content')
 <div class="max-w-7xl mx-auto" x-data="bookingIndexApp()">
     <div class="flex justify-between items-center mb-6">
+        @php
+            $canCreateBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
+            $canViewFinancialColumns = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
+            $canEditInline = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
+        @endphp
         <h1 class="text-2xl font-bold text-slate-800">Booking</h1>
+        @if($canCreateBooking)
         <a href="{{ route('bookings.create') }}" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             Add Booking
         </a>
+        @endif
     </div>
 
     @if(session('success'))
@@ -47,9 +54,9 @@
                             <th class="px-3 py-2 text-left font-medium">Office</th>
                             <th class="px-3 py-2 text-left font-medium">District</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
-                            <th class="px-3 py-2 text-left font-medium">Total</th>
-                            <th class="px-3 py-2 text-left font-medium">Paid</th>
-                            <th class="px-3 py-2 text-left font-medium">Due</th>
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Paid</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -62,6 +69,7 @@
                             <td class="px-3 py-2 text-slate-700">{{ $booking->customer->mobile_no ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->passengers->count() }}</td>
                             <td class="px-3 py-2">
+                                @if($canEditInline)
                                 <select
                                     class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
                                     data-original="{{ $booking->fingerprint_location?->value ?? 'office' }}"
@@ -69,20 +77,23 @@
                                     <option value="home" {{ ($booking->fingerprint_location?->value ?? '') === 'home' ? 'selected' : '' }}>Home</option>
                                     <option value="office" {{ ($booking->fingerprint_location?->value ?? '') === 'office' ? 'selected' : '' }}>Office</option>
                                 </select>
+                                @else
+                                <span class="text-slate-700">{{ ucfirst($booking->fingerprint_location?->value ?? 'Office') }}</span>
+                                @endif
                             </td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->office->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->total_amount ?? 0 }} SAR</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->paid_amount ?? 0 }} SAR</td>
-                            <td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->balance ?? 0 }} SAR</td>
+                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->total_amount ?? 0 }} SAR</td>@endif
+                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->paid_amount ?? 0 }} SAR</td>@endif
+                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->balance ?? 0 }} SAR</td>@endif
                             <td class="px-3 py-2">
                                 <a href="{{ route('bookings.show', $booking->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
                             </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="13" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
+                            <td colspan="{{ $canViewFinancialColumns ? 13 : 10 }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -109,14 +120,13 @@
                             <th class="px-3 py-2 text-left font-medium">Current status</th>
                             <th class="px-3 py-2 text-left font-medium">Passport No</th>
                             <th class="px-3 py-2 text-left font-medium">Route</th>
-                            <th class="px-3 py-2 text-left font-medium">Current Status</th>
                             <th class="px-3 py-2 text-left font-medium">Required Flight Date</th>
                             <th class="px-3 py-2 text-left font-medium">Actual Flight Date</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
-                            <th class="px-3 py-2 text-left font-medium">Package Value</th>
-                            <th class="px-3 py-2 text-left font-medium">Total Cost</th>
-                            <th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>
-                            <th class="px-3 py-2 text-left font-medium">Due</th>
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Package Value</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -153,6 +163,7 @@ if ($route) {
     </td>
     <td class="px-3 py-2 text-slate-700">{{ trim($passenger->first_name . ' ' . $passenger->last_name) ?: '—' }}</td>
     <td class="px-3 py-2">
+        @if($canEditInline)
         <select
             class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
             onchange="updatePassengerStatus({{ $passenger->id }}, this.value)">
@@ -161,33 +172,26 @@ if ($route) {
                 <option value="{{ $status->id }}" {{ $passenger->passenger_status_id == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
             @endforeach
         </select>
+        @else
+        <span class="text-slate-700">{{ $passengerStatuses->firstWhere('id', $passenger->passenger_status_id)->name ?? 'None' }}</span>
+        @endif
     </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-600">{{ $routeDisplay }}</td>
-    <td class="px-3 py-2">
-        <select
-            class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
-            onchange="updatePassengerStatus({{ $passenger->id }}, this.value)">
-            <option value="" {{ is_null($passenger->passenger_status_id) ? 'selected' : '' }}>None</option>
-            @foreach($passengerStatuses as $status)
-                <option value="{{ $status->id }}" {{ $passenger->passenger_status_id == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
-            @endforeach
-        </select>
-    </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ optional($passenger->actual_flight_date)->format('d M Y') ?: 'N/A' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
-    <td class="px-3 py-2 text-slate-700">{{ $passenger->package_value ? number_format($passenger->package_value, 2) . ' SAR' : '—' }}</td>
-    <td class="px-3 py-2"></td>
-    <td class="px-3 py-2"></td>
-    <td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->invoice?->balance ? number_format($passenger->booking->invoice->balance, 2) . ' SAR' : '—') : '' }}</td>
+    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $passenger->package_value ? number_format($passenger->package_value, 2) . ' SAR' : '—' }}</td>@endif
+    @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
+    @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
+    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->invoice?->balance ? number_format($passenger->booking->invoice->balance, 2) . ' SAR' : '—') : '' }}</td>@endif
     <td class="px-3 py-2">
         <a href="{{ route('passengers.show', $passenger->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
     </td>
 </tr>
 @empty
 <tr>
-    <td colspan="18" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="{{ $canViewFinancialColumns ? 17 : 13 }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 </tr>
 @endforelse
                     </tbody>
@@ -247,6 +251,17 @@ function updateFingerprintLocation(bookingId, location, select) {
     .then(data => {
         if (data.success) {
             selectEl.dataset.original = location;
+            if (data.invoice) {
+                const row = selectEl.closest('tr');
+                const cells = row.querySelectorAll('td');
+                @if($canViewFinancialColumns)
+                if (cells.length >= 12) {
+                    cells[9].textContent = data.invoice.total_amount + ' SAR';
+                    cells[10].textContent = data.invoice.paid_amount + ' SAR';
+                    cells[11].textContent = data.invoice.balance + ' SAR';
+                }
+                @endif
+            }
         } else {
             alert('Failed to update fingerprint location');
             selectEl.value = originalValue;

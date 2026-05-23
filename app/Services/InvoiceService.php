@@ -54,4 +54,18 @@ class InvoiceService
     {
         return $invoice->total_amount - $invoice->paid_amount;
     }
+
+    public function updateTotals(Invoice $invoice, float $newTotal): void
+    {
+        $invoice->total_amount = $newTotal;
+        $invoice->balance = max(0, $newTotal - $invoice->paid_amount);
+
+        $invoice->status = match (true) {
+            $invoice->balance <= 0 => InvoiceStatus::PAID,
+            $invoice->paid_amount > 0 => InvoiceStatus::PARTIAL,
+            default => InvoiceStatus::PENDING,
+        };
+
+        $invoice->save();
+    }
 }
