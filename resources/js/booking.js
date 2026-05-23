@@ -2300,21 +2300,22 @@ Alpine.data('editBookingApp', () => ({
                 first_name: p.first_name || '',
                 last_name: p.last_name || '',
                 passport_no: p.passport_no || '',
-                date_of_birth: p.date_of_birth || '',
+                date_of_birth: p.date_of_birth ? p.date_of_birth.split('T')[0] : '',
                 passenger_type: p.passenger_type || '',
                 gender: p.gender || '',
                 mobile_no: p.mobile_no || '',
-                passport_expiry: p.passport_expiry || '',
+                passport_expiry: p.passport_expiry ? p.passport_expiry.split('T')[0] : '',
                 service_required: p.service_required || 'all',
                 stay_duration: p.stay_duration ? String(p.stay_duration) : '',
+                stay_duration_int: p.stay_duration ? parseInt(p.stay_duration) : 0,
                 route: p.route || '',
                 airline: p.airline || '',
-                travel_class: p.class || p.travel_class || '',
+                class: p.class || p.travel_class || '',
                 route_type: p.route_type || '',
                 flight_type: p.flight_type || '',
                 ticket_fare_id: p.ticket_fare_id ? String(p.ticket_fare_id) : '',
-                flight_date_from: p.flight_date_from || '',
-                flight_date_to: p.flight_date_to || '',
+                flight_date_from: p.flight_date_from ? p.flight_date_from.split('T')[0] : '',
+                flight_date_to: p.flight_date_to ? p.flight_date_to.split('T')[0] : '',
                 address: p.address || '',
                 baggage_weight: '',
             }));
@@ -2748,8 +2749,8 @@ Alpine.data('editBookingApp', () => ({
         this.passengerData = { ...passenger };
         this.passengerData.ticket_fare_id = this.passengerData.ticket_fare_id ? String(this.passengerData.ticket_fare_id) : '';
 
-        if (typeof this.passengerData.stay_duration === 'number' && this.passengerData.stay_duration >= 30 && this.passengerData.stay_duration <= 89) {
-            this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration} Days)`;
+        if (this.passengerData.stay_duration_int && this.passengerData.stay_duration_int >= 30 && this.passengerData.stay_duration_int <= 89) {
+            this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration_int} Days)`;
             this.$nextTick(() => {
                 const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
                 if (select) {
@@ -2758,9 +2759,9 @@ Alpine.data('editBookingApp', () => ({
                         customOption = document.createElement('option');
                         select.appendChild(customOption);
                     }
-                    customOption.value = `Customized (${this.passengerData.stay_duration} Days)`;
-                    customOption.textContent = `Customized (${this.passengerData.stay_duration} Days)`;
-                    select.value = `Customized (${this.passengerData.stay_duration} Days)`;
+                    customOption.value = `Customized (${this.passengerData.stay_duration_int} Days)`;
+                    customOption.textContent = `Customized (${this.passengerData.stay_duration_int} Days)`;
+                    select.value = `Customized (${this.passengerData.stay_duration_int} Days)`;
                 }
             });
         }
@@ -2792,6 +2793,9 @@ Alpine.data('editBookingApp', () => ({
                 }
             }
         }
+        this.$nextTick(() => {
+            this.updateBaggageWeight();
+        });
         this.passengerModalVisible = true;
     },
 
@@ -2820,6 +2824,11 @@ Alpine.data('editBookingApp', () => ({
 
         if (!found) {
             this.passengerData.flight_date_range = displayText;
+            const option = document.createElement('option');
+            option.value = displayText;
+            option.textContent = displayText;
+            select.appendChild(option);
+            select.value = displayText;
         }
     },
 
