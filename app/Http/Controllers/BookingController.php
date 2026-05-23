@@ -430,14 +430,22 @@ class BookingController extends Controller
             'route.fromCity',
             'route.toCity',
             'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
             'airline',
             'airlineClass.class',
             'groupTicket',
+            'baggageAllowances',
         ])->get()->map(function ($fare) {
             $routeCode = '';
             $routeType = $fare->route->route_type?->value;
 
-            if ($routeType === 'round') {
+            if ($routeType === 'multi_city') {
+                $segments = $fare->route->multiSegments->map(function ($seg) {
+                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                })->toArray();
+                $routeCode = implode(', ', $segments);
+            } elseif ($routeType === 'round') {
                 $routeCode = $fare->route->fromCity?->code . '-' .
                     $fare->route->toCity?->code . '-' .
                     $fare->route->returnCity?->code;
@@ -450,8 +458,21 @@ class BookingController extends Controller
                 'route' => $routeCode,
                 'airline' => $fare->airline->name,
                 'airline_class' => $fare->airlineClass->class?->name,
+                'ticket_type' => $fare->ticket_type->value,
                 'selling_fare' => $fare->selling_fare,
+                'child_fare_percentage' => $fare->child_fare_percentage,
+                'infant_fare_percentage' => $fare->infant_fare_percentage,
                 'offer_price' => $fare->offer_price,
+                'available_seats' => $fare->groupTicket?->ticket_qty ?? null,
+                'route_type' => $routeType,
+                'flight_type' => $fare->route->flight_type?->value,
+                'baggage_allowances' => $fare->baggageAllowances->map(function ($ba) {
+                    return [
+                        'passenger_type' => $ba->passenger_type,
+                        'travel_direction' => $ba->travel_direction,
+                        'allowance' => $ba->allowance,
+                    ];
+                })->toArray(),
             ];
         });
 
@@ -536,10 +557,25 @@ class BookingController extends Controller
 
         try {
             $booking->update(['fingerprint_location' => $validated['fingerprint_location']]);
+
+            $booking = $booking->fresh();
+            $this->bookingService->recalculateBookingTotal($booking);
+
+            $invoice = $booking->invoice;
+            if ($invoice) {
+                app(InvoiceService::class)->updateTotals($invoice, $booking->total_value);
+                $invoice = $invoice->fresh();
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Fingerprint location updated successfully',
-                'fingerprint_location' => $booking->fresh()->fingerprint_location?->value,
+                'fingerprint_location' => $booking->fingerprint_location?->value,
+                'invoice' => $invoice ? [
+                    'total_amount' => (float) $invoice->total_amount,
+                    'paid_amount' => (float) $invoice->paid_amount,
+                    'balance' => (float) $invoice->balance,
+                ] : null,
             ]);
         } catch (\Exception $e) {
             return response()->json([
