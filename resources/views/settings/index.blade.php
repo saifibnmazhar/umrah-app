@@ -320,7 +320,11 @@
                         @forelse($packages as $package)
                             @php
                                 $route = $package->ticketFare?->route;
-                                if ($route && $route->returnCity) {
+                                if ($route && $route->multiSegments && $route->multiSegments->count() > 0) {
+                                    $routeName = $route->multiSegments->map(
+                                        fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?')
+                                    )->implode(', ');
+                                } elseif ($route && $route->returnCity) {
                                     $routeName = ($route->fromCity?->code ?? '?') . ' - ' . ($route->toCity?->code ?? '?') . ' - ' . ($route->returnCity?->code ?? '?');
                                 } else {
                                     $routeName = ($route?->fromCity?->code ?? '?') . ' → ' . ($route?->toCity?->code ?? '?');

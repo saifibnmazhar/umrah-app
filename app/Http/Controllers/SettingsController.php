@@ -26,7 +26,7 @@ class SettingsController extends Controller
 
         $flightDateGap = FlightDateGap::first();
 
-        $packages = Package::with(['ticketFare', 'ticketFare.route', 'ticketFare.airline', 'visaSellingPrice'])
+        $packages = Package::with(['ticketFare', 'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity', 'ticketFare.airline', 'visaSellingPrice'])
             ->orderBy('id', 'desc')
             ->paginate(10)
             ->withQueryString();
