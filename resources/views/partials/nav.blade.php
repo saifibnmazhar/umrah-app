@@ -2,6 +2,7 @@
     @php
         $canAccessFingerprintAdmin = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Fingerprint Admin'])->isNotEmpty();
         $canAccessFingerprintStaff = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Fingerprint Staff'])->isNotEmpty();
+        $canAccessVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
     @endphp
     <div class="w-full mx-auto px-4">
         <div class="flex justify-center items-center h-16 space-x-5">
@@ -14,15 +15,15 @@
                 <a href="{{ route('bookings.index') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="booking">Booking</a>
                 @if($canAccessFingerprintAdmin)<a href="{{ route('fingerprint.admin') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="fingerprintAdmin">Fingerprint Admin</a>@endif
                 @if($canAccessFingerprintStaff)<a href="{{ route('fingerprint.staff') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="fingerprintStaff">Fingerprint Staff</a>@endif
-                <a href="{{ route('visa.admin') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="visaAdmin">Visa Admin</a>
+                @if($canAccessVisa)<a href="{{ route('visa.admin') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="visaAdmin">Visa Admin</a>@endif
                 <a href="{{ route('fare.admin') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="ticketAdmin">Ticket Admin</a>
                 
                 <div class="relative group">
                     <a href="#" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="reports">Reports ▾</a>
                     <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50 min-w-[220px]">
                         <a href="{{ route('report.fingerprint') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Fingerprint Report</a>
-                        <a href="{{ route('report.visa') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>
-                        <a href="{{ route('report.visa-agent') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Report</a>
+                        @if($canAccessVisa)<a href="{{ route('report.visa') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>@endif
+                        @if($canAccessVisa)<a href="{{ route('report.visa-agent') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Report</a>@endif
                         <a href="{{ route('report.statement') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Statement</a>
                         <a href="{{ route('report.pending-ticket') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Pending Outbound Ticket Report</a>
                         <a href="{{ route('report.reissue-refund') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Re-Issue & Refund Report</a>
@@ -49,11 +50,11 @@
                         <a href="{{ route('airline-classes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airline Classes</a>
                         <a href="{{ route('airline-cities.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airline Cities</a>
                         <a href="{{ route('customers.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Customers</a>
-                        <a href="{{ route('visa-agents.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agents</a>
+                        @if($canAccessVisa)<a href="{{ route('visa-agents.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agents</a>@endif
                         <a href="{{ route('ticket-agents.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agents</a>
                         <a href="{{ route('flight-date-gaps.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Flight Date Gap</a>
-                        <a href="{{ route('visa-agent-costs.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Costs</a>
-                        <a href="{{ route('visa-selling-prices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Selling Prices</a>
+                        @if($canAccessVisa)<a href="{{ route('visa-agent-costs.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Costs</a>@endif
+                        @if($canAccessVisa)<a href="{{ route('visa-selling-prices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Selling Prices</a>@endif
                         <a href="{{ route('currency-rates.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Currency Rates</a>
                         <a href="{{ route('transaction-types.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Transaction Types</a>
                         <a href="{{ route('routes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Routes</a>
@@ -88,14 +89,14 @@
             <a href="{{ route('bookings.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</a>
             @if($canAccessFingerprintAdmin)<a href="{{ route('fingerprint.admin') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Admin</a>@endif
             @if($canAccessFingerprintStaff)<a href="{{ route('fingerprint.staff') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</a>@endif
-            <a href="{{ route('visa.admin') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</a>
+            @if($canAccessVisa)<a href="{{ route('visa.admin') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</a>@endif
             <a href="{{ route('fare.admin') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Admin</a>
             
             <div class="border-t border-slate-600 pt-2 mt-2">
                 <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORTS</span>
                 <a href="{{ route('report.fingerprint') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</a>
-                <a href="{{ route('report.visa') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Report</a>
-                <a href="{{ route('report.visa-agent') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Report</a>
+                @if($canAccessVisa)<a href="{{ route('report.visa') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Report</a>@endif
+                @if($canAccessVisa)<a href="{{ route('report.visa-agent') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Report</a>@endif
                 <a href="{{ route('report.statement') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Statement</a>
                 <a href="{{ route('report.pending-ticket') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Pending Outbound Ticket Report</a>
                 <a href="{{ route('report.reissue-refund') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Re-Issue & Refund Report</a>
@@ -120,11 +121,11 @@
                 <a href="{{ route('airline-classes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airline Classes</a>
                 <a href="{{ route('airline-cities.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airline Cities</a>
                 <a href="{{ route('customers.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Customers</a>
-                <a href="{{ route('visa-agents.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agents</a>
+                @if($canAccessVisa)<a href="{{ route('visa-agents.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agents</a>@endif
                 <a href="{{ route('ticket-agents.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agents</a>
                 <a href="{{ route('flight-date-gaps.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Flight Date Gap</a>
-                <a href="{{ route('visa-agent-costs.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Costs</a>
-                <a href="{{ route('visa-selling-prices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Selling Prices</a>
+                @if($canAccessVisa)<a href="{{ route('visa-agent-costs.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agent Costs</a>@endif
+                @if($canAccessVisa)<a href="{{ route('visa-selling-prices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Selling Prices</a>@endif
                 <a href="{{ route('currency-rates.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Currency Rates</a>
                 <a href="{{ route('transaction-types.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Transaction Types</a>
                 <a href="{{ route('routes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Routes</a>

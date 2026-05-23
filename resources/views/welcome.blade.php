@@ -2,6 +2,7 @@
 
 @section('title', 'Welcome')
 
+@php $canAccessVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty(); @endphp
 @section('content')
 <div class="max-w-3xl mx-auto py-12">
     <h1 class="text-3xl font-bold text-slate-800 mb-8">BM Umrah Booking - Laravel UI</h1>
@@ -13,7 +14,7 @@
                 <li><a href="{{ route('dashboard') }}" class="text-blue-600 hover:underline">Dashboard</a></li>
                 <li><a href="{{ route('bookings.index') }}" class="text-blue-600 hover:underline">Booking</a></li>
                 <li><a href="{{ route('fare.admin') }}" class="text-blue-600 hover:underline">Fare Admin</a></li>
-                <li><a href="{{ route('visa.admin') }}" class="text-blue-600 hover:underline">Visa Admin</a></li>
+                @if($canAccessVisa)<li><a href="{{ route('visa.admin') }}" class="text-blue-600 hover:underline">Visa Admin</a></li>@endif
                 <li><a href="{{ route('fingerprint.admin') }}" class="text-blue-600 hover:underline">Fingerprint Admin</a></li>
                 <li><a href="{{ route('fingerprint.staff') }}" class="text-blue-600 hover:underline">Fingerprint Staff</a></li>
                 <li><a href="{{ route('settings') }}" class="text-blue-600 hover:underline">Settings</a></li>
@@ -25,8 +26,8 @@
             <ul class="space-y-2">
                 <li><a href="{{ route('report.statement') }}" class="text-blue-600 hover:underline">Ticket Statement</a></li>
                 <li><a href="{{ route('report.profit-loss') }}" class="text-blue-600 hover:underline">Profit/Loss Report</a></li>
-                <li><a href="{{ route('report.visa') }}" class="text-blue-600 hover:underline">Visa Report</a></li>
-                <li><a href="{{ route('report.visa-agent') }}" class="text-blue-600 hover:underline">Visa Agent Report</a></li>
+                @if($canAccessVisa)<li><a href="{{ route('report.visa') }}" class="text-blue-600 hover:underline">Visa Report</a></li>@endif
+                @if($canAccessVisa)<li><a href="{{ route('report.visa-agent') }}" class="text-blue-600 hover:underline">Visa Agent Report</a></li>@endif
                 <li><a href="{{ route('report.ticket-agent') }}" class="text-blue-600 hover:underline">Ticket Agent Report</a></li>
                 <li><a href="{{ route('report.due') }}" class="text-blue-600 hover:underline">Due Report</a></li>
                 <li><a href="{{ route('report.reissue-refund') }}" class="text-blue-600 hover:underline">Re-Issue & Refund Report</a></li>

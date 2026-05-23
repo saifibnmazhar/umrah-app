@@ -57,7 +57,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('airline-classes', AirlineClassController::class);
     Route::resource('airline-cities', AirlineCityController::class);
     Route::resource('customers', CustomerController::class);
-    Route::resource('visa-agents', VisaAgentController::class);
+    Route::resource('visa-agents', VisaAgentController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::resource('ticket-agents', TicketAgentController::class);
     Route::resource('fingerprint-charges', FingerprintChargeController::class);
     Route::resource('flight-date-gaps', FlightDateGapController::class);
@@ -65,8 +65,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/ticket-fares/baggage', [\App\Http\Controllers\TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
     Route::get('/api/ticket-fares/flight-date-gap', [\App\Http\Controllers\TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
     Route::resource('ticket-fares', \App\Http\Controllers\TicketFareController::class);
-    Route::resource('visa-agent-costs', VisaAgentCostController::class);
-    Route::resource('visa-selling-prices', VisaSellingPriceController::class);
+    Route::resource('visa-agent-costs', VisaAgentCostController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    Route::resource('visa-selling-prices', VisaSellingPriceController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::resource('currency-rates', CurrencyRateController::class);
     Route::resource('packages', PackageController::class);
     Route::resource('users', UserController::class);
@@ -110,7 +110,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/fares/admin/fare', [FareAdminController::class, 'storeFare'])->name('fare.admin.fare.store');
     Route::put('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'updateFare'])->name('fare.admin.fare.update');
     Route::delete('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'destroyFare'])->name('fare.admin.fare.destroy');
-    Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin');
+    Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/fingerprints/admin', fn() => view('fingerprints.admin'))->name('fingerprint.admin')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::get('/fingerprints/staff', fn() => view('fingerprints.staff'))->name('fingerprint.staff')->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
@@ -126,8 +126,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/statement', fn() => view('reports.statement'))->name('report.statement');
     Route::get('/reports/profit-loss', fn() => view('reports.profit-loss'))->name('report.profit-loss');
     Route::get('/reports/fingerprint', fn() => view('reports.fingerprint'))->name('report.fingerprint');
-    Route::get('/reports/visa', fn() => view('reports.visa'))->name('report.visa');
-    Route::get('/reports/visa-agent', fn() => view('reports.visa-agent'))->name('report.visa-agent');
+    Route::get('/reports/visa', fn() => view('reports.visa'))->name('report.visa')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    Route::get('/reports/visa-agent', fn() => view('reports.visa-agent'))->name('report.visa-agent')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/reports/ticket-agent', fn() => view('reports.ticket-agent'))->name('report.ticket-agent');
     Route::get('/reports/due', fn() => view('reports.due'))->name('report.due');
     Route::get('/reports/reissue-refund', fn() => view('reports.reissue-refund'))->name('report.reissue-refund');
