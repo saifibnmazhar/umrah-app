@@ -26,7 +26,7 @@ class SettingsController extends Controller
 
         $flightDateGap = FlightDateGap::first();
 
-        $packages = Package::with(['ticketFare', 'ticketFare.route', 'ticketFare.airline', 'visaSellingPrice'])
+        $packages = Package::with(['ticketFare', 'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity', 'ticketFare.airline', 'visaSellingPrice'])
             ->orderBy('id', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -95,6 +95,7 @@ class SettingsController extends Controller
 
         try {
             $validated['user_id'] = auth()->id() ?? 1;
+            $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;
             Package::create($validated);
             return redirect()->route('settings')->with('success', 'Package created successfully.');
         } catch (\Exception $e) {
@@ -112,6 +113,7 @@ class SettingsController extends Controller
         ]);
 
         try {
+            $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;
             $package->update($validated);
             return redirect()->route('settings')->with('success', 'Package updated successfully.');
         } catch (\Exception $e) {
@@ -121,7 +123,7 @@ class SettingsController extends Controller
 
     public function showPackage(Package $package)
     {
-        $package->load(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.airline', 'ticketFare.airlineClass']);
+        $package->load(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity', 'ticketFare.route.transits.transitCity', 'ticketFare.airline', 'ticketFare.airlineClass', 'ticketFare.groupTicket']);
         
         return view('package-configurations.show', compact('package'));
     }
