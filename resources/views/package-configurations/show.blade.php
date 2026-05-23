@@ -43,7 +43,11 @@
                     <p class="text-sm text-slate-500 mb-1">Ticket Details</p>
                     @php
                         $route = $package->ticketFare?->route;
-                        if ($route) {
+                        if ($route && $route->multiSegments && $route->multiSegments->count() > 0) {
+                            $routeName = $route->multiSegments->map(
+                                fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?')
+                            )->implode(', ');
+                        } elseif ($route) {
                             $fromCode = $route->fromCity?->code ?? '-';
                             $toCode = $route->toCity?->code ?? '-';
                             if ($route->returnCity) {
@@ -52,18 +56,18 @@
                             } else {
                                 $routeName = $fromCode . ' → ' . $toCode;
                             }
-                            $airlineName = $package->ticketFare?->airline?->name ?? '-';
-                            $className = $package->ticketFare?->airlineClass?->class?->name ?? '-';
-                            $ticketDetails = $routeName . ' | ' . $airlineName . ' | ' . $className;
                         } else {
-                            $ticketDetails = '-';
+                            $routeName = '-';
                         }
+                        $airlineName = $package->ticketFare?->airline?->name ?? '-';
+                        $className = $package->ticketFare?->airlineClass?->class?->name ?? '-';
+                        $ticketDetails = $route ? ($routeName . ' | ' . $airlineName . ' | ' . $className) : '-';
                     @endphp
                     <p class="text-slate-800 font-medium">{{ $ticketDetails }}</p>
                 </div>
                 <div class="bg-slate-50 rounded-lg p-4">
                     <p class="text-sm text-slate-500 mb-1">Available Tickets</p>
-                    <p class="text-slate-800 font-medium">-</p>
+                    <p class="text-slate-800 font-medium">{{ $ticketType === 'group' ? ($package->ticketFare?->groupTicket?->ticket_qty ?? 0) . ' tickets' : '-' }}</p>
                 </div>
                 <div class="bg-slate-50 rounded-lg p-4">
                     <p class="text-sm text-slate-500 mb-1">Effective From</p>
