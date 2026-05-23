@@ -879,6 +879,7 @@ Alpine.data('createBookingApp', () => ({
         amount_bdt: ''
     },
     paymentSaved: false,
+    paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
 
     hasPaymentData() {
@@ -1976,12 +1977,6 @@ Alpine.data('createBookingApp', () => ({
         }
 
         const formData = new FormData(e.target);
-        const bookingDocsInput = document.getElementById('booking_customer_docs');
-        if (bookingDocsInput) {
-            Array.from(bookingDocsInput.files).forEach(file => {
-                formData.append('booking_customer_docs[]', file);
-            });
-        }
 
         fetch(e.target.action, {
             method: 'POST',
@@ -1998,7 +1993,15 @@ Alpine.data('createBookingApp', () => ({
                 return;
             }
             if (!resp.ok) {
-                return resp.json().then(data => {
+                return resp.text().then(text => {
+                    let data;
+                    try {
+                        data = JSON.parse(text);
+                    } catch (e) {
+                        console.error('Submit failed (non-JSON):', resp.status, text);
+                        alert('An error occurred while submitting the form. Check console.');
+                        return;
+                    }
                     if (data.errors) {
                         const firstError = Object.values(data.errors)[0];
                         alert(firstError[0] || 'Validation failed');
@@ -2006,11 +2009,6 @@ Alpine.data('createBookingApp', () => ({
                         alert(data.message || 'An error occurred');
                     }
                     console.error('Submit failed:', resp.status, data);
-                }).catch(() => {
-                    return resp.text().then(text => {
-                        alert('An error occurred while submitting the form.');
-                        console.error('Submit failed:', resp.status, text);
-                    });
                 });
             }
             return resp.json().then(data => {
@@ -2142,6 +2140,7 @@ Alpine.data('editBookingApp', () => ({
         amount_bdt: ''
     },
     paymentSaved: false,
+    paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
 
     hasPaymentData() {
