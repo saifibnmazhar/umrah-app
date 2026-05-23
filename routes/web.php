@@ -120,6 +120,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/settings/package', [SettingsController::class, 'storePackage'])->name('settings.package.store')->middleware('role:Super Admin,Co Admin');
     Route::get('/settings/package/{package}', [SettingsController::class, 'showPackage'])->name('settings.package.show')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
     Route::put('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->name('settings.package.update')->middleware('role:Super Admin,Co Admin');
+    Route::post('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->middleware('role:Super Admin,Co Admin');
     Route::delete('/settings/package/{package}', [SettingsController::class, 'destroyPackage'])->name('settings.package.destroy')->middleware('role:Super Admin,Co Admin');
 
     // Reports

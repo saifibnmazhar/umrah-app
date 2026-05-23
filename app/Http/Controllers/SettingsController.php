@@ -95,6 +95,7 @@ class SettingsController extends Controller
 
         try {
             $validated['user_id'] = auth()->id() ?? 1;
+            $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;
             Package::create($validated);
             return redirect()->route('settings')->with('success', 'Package created successfully.');
         } catch (\Exception $e) {
@@ -112,6 +113,7 @@ class SettingsController extends Controller
         ]);
 
         try {
+            $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;
             $package->update($validated);
             return redirect()->route('settings')->with('success', 'Package updated successfully.');
         } catch (\Exception $e) {
