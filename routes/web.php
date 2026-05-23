@@ -111,7 +111,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'updateFare'])->name('fare.admin.fare.update');
     Route::delete('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'destroyFare'])->name('fare.admin.fare.destroy');
     Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin');
-    Route::get('/fingerprints/admin', fn() => view('fingerprints.admin'))->name('fingerprint.admin');
+    Route::get('/fingerprints/admin', fn() => view('fingerprints.admin'))->name('fingerprint.admin')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::get('/fingerprints/staff', fn() => view('fingerprints.staff'))->name('fingerprint.staff');
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     Route::put('/settings/flight-date-gap', [SettingsController::class, 'updateFlightDateGap'])->name('settings.flight-date-gap.update');
