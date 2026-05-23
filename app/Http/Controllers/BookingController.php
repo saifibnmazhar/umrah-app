@@ -549,10 +549,25 @@ class BookingController extends Controller
 
         try {
             $booking->update(['fingerprint_location' => $validated['fingerprint_location']]);
+
+            $booking = $booking->fresh();
+            $this->bookingService->recalculateBookingTotal($booking);
+
+            $invoice = $booking->invoice;
+            if ($invoice) {
+                app(InvoiceService::class)->updateTotals($invoice, $booking->total_value);
+                $invoice = $invoice->fresh();
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Fingerprint location updated successfully',
-                'fingerprint_location' => $booking->fresh()->fingerprint_location?->value,
+                'fingerprint_location' => $booking->fingerprint_location?->value,
+                'invoice' => $invoice ? [
+                    'total_amount' => (float) $invoice->total_amount,
+                    'paid_amount' => (float) $invoice->paid_amount,
+                    'balance' => (float) $invoice->balance,
+                ] : null,
             ]);
         } catch (\Exception $e) {
             return response()->json([
