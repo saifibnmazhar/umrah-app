@@ -78,6 +78,28 @@
                     <p class="text-slate-800 font-medium">{{ $package->ticketFare?->effective_to?->format('d M Y') ?? '-' }}</p>
                 </div>
             </div>
+
+            @php
+                $transits = $route?->transits;
+            @endphp
+            @if($route && $route->flight_type?->value === 'transit' && $transits && $transits->count() > 0)
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
+                    @foreach($transits as $transit)
+                        @php
+                            $cityName = $transit->transitCity?->city_name ?? '-';
+                            $minutes = $transit->transit_time ?? 0;
+                            $hours = intdiv($minutes, 60);
+                            $mins = $minutes % 60;
+                            $timeDisplay = $hours > 0 ? $hours . 'h ' . $mins . 'm' : $mins . 'm';
+                            $direction = ucfirst($transit->route_direction?->value ?? 'Transit');
+                        @endphp
+                        <div class="bg-slate-50 rounded-lg p-4">
+                            <p class="text-sm text-slate-500 mb-1">{{ $direction }} Transit</p>
+                            <p class="text-slate-800 font-medium">{{ $cityName }} · {{ $timeDisplay }}</p>
+                        </div>
+                    @endforeach
+                </div>
+            @endif
         </div>
 
         <div class="border-t border-slate-200 pt-6 mt-6">
