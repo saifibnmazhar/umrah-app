@@ -6,6 +6,7 @@
     $canAccessVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
     $canAccessTicket = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
     $canAccessAdmin = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
+    $canAccessAdminReports = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
 @endphp
 @section('content')
 <div class="max-w-3xl mx-auto py-12">
@@ -29,16 +30,16 @@
             <h2 class="text-xl font-semibold text-slate-700 mb-4">Reports</h2>
             <ul class="space-y-2">
                 @if($canAccessTicket)<li><a href="{{ route('report.statement') }}" class="text-blue-600 hover:underline">Ticket Statement</a></li>@endif
-                <li><a href="{{ route('report.profit-loss') }}" class="text-blue-600 hover:underline">Profit/Loss Report</a></li>
+                @if($canAccessAdminReports)<li><a href="{{ route('report.profit-loss') }}" class="text-blue-600 hover:underline">Profit/Loss Report</a></li>@endif
                 @if($canAccessVisa)<li><a href="{{ route('report.visa') }}" class="text-blue-600 hover:underline">Visa Report</a></li>@endif
                 @if($canAccessVisa)<li><a href="{{ route('report.visa-agent') }}" class="text-blue-600 hover:underline">Visa Agent Report</a></li>@endif
                 @if($canAccessTicket)<li><a href="{{ route('report.ticket-agent') }}" class="text-blue-600 hover:underline">Ticket Agent Report</a></li>@endif
-                <li><a href="{{ route('report.due') }}" class="text-blue-600 hover:underline">Due Report</a></li>
+                @if($canAccessAdminReports)<li><a href="{{ route('report.due') }}" class="text-blue-600 hover:underline">Due Report</a></li>@endif
                 <li><a href="{{ route('report.reissue-refund') }}" class="text-blue-600 hover:underline">Re-Issue & Refund Report</a></li>
-                <li><a href="{{ route('report.user-sales') }}" class="text-blue-600 hover:underline">User-wise Sales Report</a></li>
+                @if($canAccessAdminReports)<li><a href="{{ route('report.user-sales') }}" class="text-blue-600 hover:underline">User-wise Sales Report</a></li>@endif
                 @if($canAccessTicket)<li><a href="{{ route('report.pending-ticket') }}" class="text-blue-600 hover:underline">Pending Outbound Ticket Report</a></li>@endif
-                <li><a href="{{ route('report.payment-receiving') }}" class="text-blue-600 hover:underline">Payment Receiving Report</a></li>
-                <li><a href="{{ route('report.fingerprint') }}" class="text-blue-600 hover:underline">Fingerprint Report</a></li>
+                @if($canAccessAdminReports)<li><a href="{{ route('report.payment-receiving') }}" class="text-blue-600 hover:underline">Payment Receiving Report</a></li>@endif
+                @if($canAccessAdminReports)<li><a href="{{ route('report.fingerprint') }}" class="text-blue-600 hover:underline">Fingerprint Report</a></li>@endif
             </ul>
         </div>
     </div>

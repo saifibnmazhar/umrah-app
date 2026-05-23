@@ -124,17 +124,17 @@ Route::middleware('auth')->group(function () {
 
     // Reports
     Route::get('/reports/statement', fn() => view('reports.statement'))->name('report.statement');
-    Route::get('/reports/profit-loss', fn() => view('reports.profit-loss'))->name('report.profit-loss');
-    Route::get('/reports/fingerprint', fn() => view('reports.fingerprint'))->name('report.fingerprint');
+    Route::get('/reports/profit-loss', fn() => view('reports.profit-loss'))->name('report.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/fingerprint', fn() => view('reports.fingerprint'))->name('report.fingerprint')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/visa', fn() => view('reports.visa'))->name('report.visa')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/reports/visa-agent', fn() => view('reports.visa-agent'))->name('report.visa-agent')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/reports/ticket-agent', fn() => view('reports.ticket-agent'))->name('report.ticket-agent')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::get('/reports/due', fn() => view('reports.due'))->name('report.due');
+    Route::get('/reports/due', fn() => view('reports.due'))->name('report.due')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/reissue-refund', fn() => view('reports.reissue-refund'))->name('report.reissue-refund')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::get('/reports/user-wise-sales', fn() => view('reports.user-wise-sales'))->name('report.user-sales');
+    Route::get('/reports/user-wise-sales', fn() => view('reports.user-wise-sales'))->name('report.user-sales')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/pending-outbound', fn() => view('reports.pending-outbound'))->name('report.pending-ticket')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::get('/reports/payment-receiving', fn() => view('reports.payment-receiving'))->name('report.payment-receiving');
-    Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details');
+    Route::get('/reports/payment-receiving', fn() => view('reports.payment-receiving'))->name('report.payment-receiving')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
 
     // Detail Pages with parameters
     Route::resource('invoices', InvoiceController::class)->middleware('role:Super Admin,Co Admin');
