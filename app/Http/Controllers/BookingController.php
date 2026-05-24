@@ -726,12 +726,33 @@ class BookingController extends Controller
             'payments'
         ])->findOrFail($booking->id);
 
-        $subTotal = $booking->passengers->sum('total') ?? 0;
-        $fingerprintCost = $booking->passengers->first()->fingerprint_cost ?? 200;
-        $totalPackage = $subTotal + $fingerprintCost;
-        $additionalFee = $booking->additional_fee ?? 0;
-        $discount = $booking->discount_value ?? 0;
-        $grandTotal = $totalPackage + $additionalFee - $discount;
+        $subTotal = (float) $booking->passengers->sum('package_value');
+
+        $fingerprintCharge = 0;
+        $fpLocation = $booking->fingerprint_location;
+        if ($fpLocation instanceof \BackedEnum) {
+            $fpLocation = $fpLocation->value;
+        }
+        if ($fpLocation && strtolower($fpLocation) !== 'office') {
+            $fpCharge = FingerprintCharge::where('district_id', $booking->district_id)->first();
+            $fingerprintCharge = $fpCharge ? (float) $fpCharge->fingerprint_charge : 0;
+        }
+
+        $totalPackages = $booking->pax_qty;
+
+        $discount = 0;
+        $baseForDiscount = $subTotal + $fingerprintCharge;
+        if ($booking->discount_value && $booking->discount_value > 0 && $booking->discount_type) {
+            $discountType = $booking->discount_type;
+            if ($discountType instanceof \BackedEnum) {
+                $discountType = $discountType->value;
+            }
+            $discount = $discountType === 'percentage'
+                ? $baseForDiscount * ($booking->discount_value / 100)
+                : min($booking->discount_value, $baseForDiscount);
+        }
+
+        $grandTotal = $subTotal + $fingerprintCharge - $discount;
         $totalPaid = $booking->payments->sum('amount') ?? 0;
         $currentPaid = 0;
         $dueAmount = $grandTotal - $totalPaid;
@@ -739,9 +760,8 @@ class BookingController extends Controller
         return view('bookings.invoice-print', compact(
             'booking',
             'subTotal',
-            'fingerprintCost',
-            'totalPackage',
-            'additionalFee',
+            'fingerprintCharge',
+            'totalPackages',
             'discount',
             'grandTotal',
             'totalPaid',
