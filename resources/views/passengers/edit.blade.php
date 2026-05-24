@@ -351,11 +351,7 @@
                     this.filteredTickets = this.allTickets;
                 }
 
-                if (p.flight_date_from && p.flight_date_to) {
-                    this.generateFlightDateRangeForEdit(p.flight_date_from, p.flight_date_to);
-                } else {
-                    this.calculateFlightDateRange();
-                }
+                this.calculateFlightDateRange();
             } else {
                 this.filteredTickets = this.allTickets;
                 this.populateFlightDateRangeOptions([]);
@@ -641,6 +637,10 @@
                 option.textContent = range.label;
                 select.appendChild(option);
             });
+
+            if (ranges.length > 0 && this.passengerData.flight_date_from && this.passengerData.flight_date_to) {
+                this.generateFlightDateRangeForEdit(this.passengerData.flight_date_from, this.passengerData.flight_date_to);
+            }
         },
 
         generateFlightDateRangeForEdit(fromDate, toDate) {
