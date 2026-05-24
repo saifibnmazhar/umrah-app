@@ -17,6 +17,7 @@ use App\Models\TicketFare;
 use App\Models\VisaSellingPrice;
 use App\Models\PassengerStatus;
 use App\Models\Invoice;
+use App\Models\Payment;
 use App\Models\TransactionType;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
@@ -777,7 +778,7 @@ class BookingController extends Controller
             'amount' => 'nullable|numeric|min:0',
             'amount_bdt' => 'nullable|numeric|min:0',
             'currency' => 'nullable|in:SAR,BDT',
-            'payment_method' => 'nullable|in:Cash,Bank',
+            'payment_method' => 'nullable|in:cash,bank',
             'bank_method' => 'nullable|string|max:255',
             'transaction_id' => 'nullable|string|max:255',
         ]);
@@ -806,8 +807,10 @@ class BookingController extends Controller
             $payment = Payment::create([
                 'booking_id' => $booking->id,
                 'invoice_id' => $invoice->id,
+                'branch_id' => auth()->user()->branch_id,
+                'user_id' => auth()->id(),
                 'payment_date' => now(),
-                'payment_method' => $validated['payment_method'] ?? 'Cash',
+                'payment_method' => $validated['payment_method'] ?? 'cash',
                 'transaction_id' => $validated['transaction_id'] ?? null,
                 'amount' => $amount,
                 'bdt_amount' => $bdtAmount,

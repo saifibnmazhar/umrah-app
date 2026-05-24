@@ -3280,6 +3280,17 @@ Alpine.data('showBookingApp', () => ({
     passengerModalVisible: false,
     editingPassengerIndex: null,
     customDurationModalVisible: false,
+    paymentModalVisible: false,
+    paymentData: {
+        currency: 'SAR',
+        method: 'Cash',
+        bank_method: '',
+        trx_id: '',
+        amount_sar: '',
+        amount_bdt: '',
+    },
+    paymentMaxAmount: 0,
+    exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     passengers: [],
     passengerPackageValues: {},
     passengerData: {
@@ -3872,6 +3883,142 @@ Alpine.data('showBookingApp', () => ({
             total = ticketAmount;
         }
         return total;
+    },
+
+    openPaymentModal() {
+        const totalEl = document.getElementById('paymentTotalPackageValue');
+        const paidEl = document.getElementById('paymentPaid');
+        const dueEl = document.getElementById('paymentDue');
+        const totalText = totalEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        const paidText = paidEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        const dueText = dueEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        this.paymentMaxAmount = parseFloat(dueText) || 0;
+        this.paymentData = {
+            currency: 'SAR',
+            method: 'Cash',
+            bank_method: '',
+            trx_id: '',
+            amount_sar: '',
+            amount_bdt: ''
+        };
+        this.paymentModalVisible = true;
+    },
+
+    closePaymentModal() {
+        this.paymentModalVisible = false;
+    },
+
+    handlePaymentCurrencyChange() {
+        if (this.paymentData.currency === 'BDT') {
+            if (this.paymentData.amount_sar) {
+                this.handleSarAmountInput();
+            }
+        } else {
+            if (this.paymentData.amount_bdt) {
+                this.handleBdtAmountInput();
+            } else if (this.paymentData.amount_sar) {
+                this.handleSarAmountInput();
+            }
+        }
+    },
+
+    handleSarAmountInput() {
+        const sarAmount = parseFloat(this.paymentData.amount_sar) || 0;
+        if (sarAmount > 0 && this.exchangeRate > 0) {
+            this.paymentData.amount_bdt = (sarAmount * this.exchangeRate).toFixed(2);
+        } else {
+            this.paymentData.amount_bdt = '';
+        }
+    },
+
+    handleBdtAmountInput() {
+        const bdtAmount = parseFloat(this.paymentData.amount_bdt) || 0;
+        if (bdtAmount > 0 && this.exchangeRate > 0) {
+            this.paymentData.amount_sar = (bdtAmount / this.exchangeRate).toFixed(2);
+        } else if (bdtAmount > 0 && this.exchangeRate <= 0) {
+            this.paymentData.amount_sar = '';
+        }
+    },
+
+    handlePaymentMethodChange() {},
+
+    savePayment() {
+        const amountSAR = parseFloat(this.paymentData.amount_sar) || 0;
+        const amountBDT = parseFloat(this.paymentData.amount_bdt) || 0;
+
+        if (amountSAR === 0) {
+            if (typeof showToast === 'function') {
+                showToast('Please enter payment amount', 'error');
+            } else {
+                alert('Please enter payment amount');
+            }
+            return;
+        }
+
+        if (amountSAR > this.paymentMaxAmount) {
+            const msg = 'Payment amount cannot exceed the due amount of ' + this.paymentMaxAmount.toFixed(2) + ' SAR';
+            if (typeof showToast === 'function') {
+                showToast(msg, 'error');
+            } else {
+                alert(msg);
+            }
+            return;
+        }
+
+        if (this.paymentData.currency === 'BDT' && amountBDT > 0 && this.exchangeRate <= 0) {
+            const msg = 'Cannot process BDT payment. Exchange rate not available.';
+            if (typeof showToast === 'function') {
+                showToast(msg, 'error');
+            } else {
+                alert(msg);
+            }
+            return;
+        }
+
+        const bookingId = window.__bookingServerData?.bookingId;
+        if (!bookingId) {
+            showToast('Invalid booking ID', 'error');
+            return;
+        }
+
+        fetch('/bookings/' + bookingId + '/payment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                amount: amountSAR,
+                amount_bdt: amountBDT,
+                currency: this.paymentData.currency,
+                payment_method: this.paymentData.method.toLowerCase(),
+                bank_method: this.paymentData.bank_method,
+                transaction_id: this.paymentData.trx_id
+            })
+        })
+        .then(response => response.json())
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || 'Payment request failed');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (typeof showToast === 'function') {
+                showToast('Payment saved successfully');
+            }
+            this.closePaymentModal();
+            setTimeout(() => location.reload(), 500);
+        })
+        .catch(error => {
+            if (typeof showToast === 'function') {
+                showToast(error.message, 'error');
+            } else {
+                alert(error.message);
+            }
+        });
     },
 }));
 
