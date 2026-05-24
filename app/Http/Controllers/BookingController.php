@@ -529,6 +529,20 @@ class BookingController extends Controller
 
             $this->bookingService->recalculateBookingTotal($booking->fresh());
 
+            $customerDocs = $request->file('booking_customer_docs', []);
+            if (is_array($customerDocs) && count($customerDocs) > 0) {
+                foreach ($customerDocs as $file) {
+                    if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+                        $booking->documents()->create([
+                            'owner_type' => 'booking',
+                            'owner_id' => $booking->id,
+                            'file_path' => $file->store('booking-docs', 'public'),
+                            'display_name' => $file->getClientOriginalName(),
+                        ]);
+                    }
+                }
+            }
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,

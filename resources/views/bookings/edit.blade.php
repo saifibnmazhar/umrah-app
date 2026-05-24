@@ -37,7 +37,7 @@
     @endif
 
     <div class="bg-white rounded-xl shadow-lg p-6">
-        <form method="POST" action="{{ route('bookings.update', $booking->id) }}" @submit="submitForm($event)">
+        <form method="POST" action="{{ route('bookings.update', $booking->id) }}" @submit="submitForm($event)" enctype="multipart/form-data">
             @csrf
             @method('PUT')
             <input type="hidden" name="payment[amount]" :value="paymentSaved ? (parseFloat(paymentData.amount_sar) || 0) : 0">

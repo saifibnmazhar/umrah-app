@@ -3846,7 +3846,6 @@ Alpine.data('showBookingApp', () => ({
 window.handleBookingCustomerDocsUpload = function(input) {
     const list = document.getElementById('booking_customer_docs_list');
     if (!list) return;
-    list.innerHTML = '';
     Array.from(input.files).forEach(file => {
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
