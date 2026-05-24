@@ -740,7 +740,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                            <select name="flight_type" x-model="route.flight_type" :disabled="!route.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleTransitFieldsModal()">
+                            <select name="flight_type" x-model="route.flight_type" :disabled="!route.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleTransitFieldsModal(this.value)">
                                 <option value="">Select</option>
                                 <option value="direct">Direct</option>
                                 <option value="transit">Transit</option>
@@ -824,8 +824,8 @@
                         <input type="hidden" name="segments[1][segment_direction]" value="outbound">
                     </div>
 
-                    <div id="transitFieldsModal" class="hidden grid grid-cols-3 gap-4 mt-4">
-                        <div x-show="route.flight_type === 'transit'">
+                    <div id="transitFieldsModal" class="hidden grid grid-cols-2 gap-4 mt-4">
+                        <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_inbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Transit City (Inbound)</label>
                             <select name="transits[0][transit_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                 <option value="">Select</option>
