@@ -561,35 +561,50 @@ function closeRefundModal() {
 }
 
 function handleCustomerDocSelect(event) {
-    const files = event.target.files;
-    if (files.length > 0) {
-        showToast('Uploading ' + files.length + ' file(s)...');
-        const formData = new FormData();
-        for (let i = 0; i < files.length; i++) {
-            formData.append('documents[]', files[i]);
-        }
-        formData.append('booking_id', {{ $booking->id }});
-        
-        fetch('{{ route('documents.upload') }}', {
-            method: 'POST',
-            headers: {
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-            },
-            body: formData
-        })
-        .then(response => response.json())
-        .then(data => {
-            if (data.success) {
-                showToast('Documents uploaded successfully');
-                setTimeout(() => location.reload(), 500);
-            } else {
-                showToast('Upload failed', 'error');
-            }
-        })
-        .catch(error => {
-            showToast('Upload error: ' + error.message, 'error');
-        });
+    const input = event.target;
+    const files = input.files;
+    if (files.length === 0) return;
+
+    const formData = new FormData();
+    for (let i = 0; i < files.length; i++) {
+        formData.append('documents[]', files[i]);
     }
+    formData.append('booking_id', {{ $booking->id }});
+
+    fetch('{{ route('documents.upload') }}', {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        },
+        body: formData
+    })
+    .then(response => {
+        if (!response.ok) {
+            return response.json().then(err => { throw new Error(err.message || 'Upload failed'); });
+        }
+        return response.json();
+    })
+    .then(data => {
+        if (data.success && data.documents && data.documents.length > 0) {
+            showToast('Documents uploaded successfully');
+            const list = document.getElementById('customerDocumentsList');
+            if (!list) return;
+            const emptyState = list.querySelector('p');
+            if (emptyState) emptyState.remove();
+            data.documents.forEach(doc => {
+                const item = document.createElement('div');
+                item.className = 'flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200';
+                item.innerHTML = '<span class="text-sm text-slate-700 truncate">' + (doc.display_name || 'Document') + '</span><button onclick="downloadDoc(' + doc.id + ')" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>';
+                list.appendChild(item);
+            });
+            input.value = '';
+        } else {
+            showToast('Upload failed: no documents returned', 'error');
+        }
+    })
+    .catch(error => {
+        showToast('Upload error: ' + error.message, 'error');
+    });
 }
 
 function downloadAllCustomerDocs() {

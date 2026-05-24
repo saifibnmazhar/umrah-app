@@ -33,6 +33,7 @@ use App\Http\Controllers\VisaAdminController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\FareAdminController;
 use App\Http\Controllers\TicketFareController;
+use App\Http\Controllers\DocumentController;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
