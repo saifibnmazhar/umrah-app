@@ -17,6 +17,8 @@ use App\Models\TicketFare;
 use App\Models\VisaSellingPrice;
 use App\Models\PassengerStatus;
 use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\Bank;
 use App\Models\TransactionType;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
@@ -334,6 +336,7 @@ class BookingController extends Controller
         $booking->load([
             'customer',
             'passengers',
+            'passengers.documents',
             'passengers.ticketFare',
             'user',
             'district',
@@ -528,6 +531,20 @@ class BookingController extends Controller
 
             $this->bookingService->recalculateBookingTotal($booking->fresh());
 
+            $customerDocs = $request->file('booking_customer_docs', []);
+            if (is_array($customerDocs) && count($customerDocs) > 0) {
+                foreach ($customerDocs as $file) {
+                    if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+                        $booking->documents()->create([
+                            'owner_type' => 'booking',
+                            'owner_id' => $booking->id,
+                            'file_path' => $file->store('booking-docs', 'public'),
+                            'display_name' => $file->getClientOriginalName(),
+                        ]);
+                    }
+                }
+            }
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
@@ -708,25 +725,46 @@ class BookingController extends Controller
             'passengers.ticketFare.route.multiSegments.fromCity',
             'passengers.ticketFare.route.multiSegments.toCity',
             'passengers.ticketFare.baggageAllowances',
-            'payments'
+            'payments',
+            'invoice'
         ])->findOrFail($booking->id);
 
-        $subTotal = $booking->passengers->sum('total') ?? 0;
-        $fingerprintCost = $booking->passengers->first()->fingerprint_cost ?? 200;
-        $totalPackage = $subTotal + $fingerprintCost;
-        $additionalFee = $booking->additional_fee ?? 0;
-        $discount = $booking->discount_value ?? 0;
-        $grandTotal = $totalPackage + $additionalFee - $discount;
-        $totalPaid = $booking->payments->sum('amount') ?? 0;
-        $currentPaid = 0;
+        $subTotal = (float) $booking->passengers->sum('package_value');
+
+        $fingerprintCharge = 0;
+        $fpLocation = $booking->fingerprint_location;
+        if ($fpLocation instanceof \BackedEnum) {
+            $fpLocation = $fpLocation->value;
+        }
+        if ($fpLocation && strtolower($fpLocation) !== 'office') {
+            $fpCharge = FingerprintCharge::where('district_id', $booking->district_id)->first();
+            $fingerprintCharge = $fpCharge ? (float) $fpCharge->fingerprint_charge : 0;
+        }
+
+        $totalPackages = $booking->pax_qty;
+
+        $discount = 0;
+        $baseForDiscount = $subTotal + $fingerprintCharge;
+        if ($booking->discount_value && $booking->discount_value > 0 && $booking->discount_type) {
+            $discountType = $booking->discount_type;
+            if ($discountType instanceof \BackedEnum) {
+                $discountType = $discountType->value;
+            }
+            $discount = $discountType === 'percentage'
+                ? $baseForDiscount * ($booking->discount_value / 100)
+                : min($booking->discount_value, $baseForDiscount);
+        }
+
+        $grandTotal = $subTotal + $fingerprintCharge - $discount;
+        $totalPaid = (float) ($booking->invoice->paid_amount ?? 0);
+        $currentPaid = (float) ($booking->payments->last()?->amount ?? 0);
         $dueAmount = $grandTotal - $totalPaid;
 
         return view('bookings.invoice-print', compact(
             'booking',
             'subTotal',
-            'fingerprintCost',
-            'totalPackage',
-            'additionalFee',
+            'fingerprintCharge',
+            'totalPackages',
             'discount',
             'grandTotal',
             'totalPaid',
@@ -741,22 +779,22 @@ class BookingController extends Controller
             'amount' => 'nullable|numeric|min:0',
             'amount_bdt' => 'nullable|numeric|min:0',
             'currency' => 'nullable|in:SAR,BDT',
-            'payment_method' => 'nullable|in:Cash,Bank',
+            'payment_method' => 'nullable|in:cash,bank',
             'bank_method' => 'nullable|string|max:255',
             'transaction_id' => 'nullable|string|max:255',
         ]);
 
+        $amount = $validated['amount'] ?? 0;
+        $bdtAmount = $validated['amount_bdt'] ?? 0;
+
+        if ($amount == 0 && $bdtAmount == 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please enter payment amount'
+            ], 422);
+        }
+
         try {
-            $amount = $validated['amount'] ?? 0;
-            $bdtAmount = $validated['amount_bdt'] ?? 0;
-
-            if ($amount == 0 && $bdtAmount == 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Please enter payment amount'
-                ], 422);
-            }
-
             $invoice = $booking->invoice;
             if (!$invoice) {
                 $invoice = Invoice::create([
@@ -767,24 +805,37 @@ class BookingController extends Controller
                 ]);
             }
 
-            $payment = Payment::create([
-                'booking_id' => $booking->id,
-                'invoice_id' => $invoice->id,
-                'payment_date' => now(),
-                'payment_method' => $validated['payment_method'] ?? 'Cash',
-                'transaction_id' => $validated['transaction_id'] ?? null,
+            $dueCollectionTransactionType = TransactionType::where('name', 'Due Collection')->first();
+            if (!$dueCollectionTransactionType) {
+                throw new \Exception('Due Collection transaction type not found. Please seed transaction types.');
+            }
+
+            $bankId = null;
+            if (($validated['payment_method'] ?? '') === 'bank' && !empty($validated['bank_method'])) {
+                $bank = Bank::where('name', $validated['bank_method'])->first();
+                $bankId = $bank?->id;
+            }
+
+            $paymentData = [
+                'branch_id' => $booking->branch_id,
+                'user_id' => auth()->id(),
+                'payment_date' => now()->toDateString(),
+                'payment_method' => $validated['payment_method'] ?? 'cash',
                 'amount' => $amount,
                 'bdt_amount' => $bdtAmount,
-            ]);
+                'currency' => $validated['currency'] ?? 'SAR',
+                'bank_id' => $bankId,
+                'transaction_id' => $validated['transaction_id'] ?? null,
+                'transaction_type_id' => $dueCollectionTransactionType->id,
+            ];
 
-            $invoice->paid_amount = ($invoice->paid_amount ?? 0) + $amount;
-            $invoice->balance = ($invoice->total_amount ?? 0) - $invoice->paid_amount;
-            $invoice->save();
+            [$payment, $voucher] = app(PaymentService::class)->createCustomerPaymentAndUpdateInvoice($invoice, $paymentData);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Payment saved successfully',
-                'payment' => $payment
+                'payment' => $payment,
+                'voucher' => $voucher,
             ]);
         } catch (\Exception $e) {
             return response()->json([

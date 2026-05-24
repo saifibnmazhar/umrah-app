@@ -13,7 +13,7 @@
     fare: { id: null, airline_id: '', airline_classes_id: '', route_id: '', route_type: '', flight_type: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false },
     showRouteModal: false,
     editRouteMode: false,
-    route: { id: null, airline_id: '', route_type: '', flight_type: '', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '' }
+    route: { id: null, airline_id: '', route_type: '', flight_type: '', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '', transits: [{ transit_city_id: '', transit_hours: '', transit_minutes: '' }, { transit_city_id: '', transit_hours: '', transit_minutes: '' }] }
 }">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Ticket Admin</h1>
 
@@ -221,7 +221,7 @@
     <div x-show="activeTab === 'routes'" x-cloak>
         <div class="flex justify-between items-center mb-6">
             <h1 class="text-2xl font-bold text-slate-800">Routes</h1>
-            <a href="#" @click.prevent="editRouteMode = false; route = { id: null, airline_id: '', route_type: '', flight_type: '', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '' }; showRouteModal = true" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
+            <a href="#" @click.prevent="editRouteMode = false; route = { id: null, airline_id: '', route_type: '', flight_type: '', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '', transits: [{ transit_city_id: '', transit_hours: '', transit_minutes: '' }, { transit_city_id: '', transit_hours: '', transit_minutes: '' }] }; showRouteModal = true" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
                 Add New
             </a>
         </div>
@@ -289,7 +289,7 @@
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-3">
                                         <a href="{{ route('routes.show', $route->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">View</a>
-                                        <button @click="editRouteMode = true; route = { id: {{ $route->id }}, airline_id: '{{ $route->airline_id }}', route_type: '{{ $route->route_type->value }}', flight_type: '{{ $route->flight_type->value }}', from_city_id: '{{ $route->from_city_id ?? '' }}', to_city_id: '{{ $route->to_city_id ?? '' }}', return_city_id: '{{ $route->return_city_id ?? '' }}', additional_gap: '{{ $route->additional_gap ?? '' }}' }; showRouteModal = true; toggleRouteFieldsModal('{{ $route->route_type->value }}'); toggleTransitFieldsModal('{{ $route->flight_type->value }}')" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
+                                        <button @click="editRouteMode = true; route = { id: {{ $route->id }}, airline_id: '{{ $route->airline_id }}', route_type: '{{ $route->route_type->value }}', flight_type: '{{ $route->flight_type->value }}', from_city_id: '{{ $route->from_city_id ?? '' }}', to_city_id: '{{ $route->to_city_id ?? '' }}', return_city_id: '{{ $route->return_city_id ?? '' }}', additional_gap: '{{ $route->additional_gap ?? '' }}', transits: [{ transit_city_id: '{{ $route->transits[0]->transit_city_id ?? '' }}', transit_hours: '{{ isset($route->transits[0]) ? floor($route->transits[0]->transit_time / 60) : '' }}', transit_minutes: '{{ isset($route->transits[0]) ? $route->transits[0]->transit_time % 60 : '' }}' }, { transit_city_id: '{{ $route->transits[1]->transit_city_id ?? '' }}', transit_hours: '{{ isset($route->transits[1]) ? floor($route->transits[1]->transit_time / 60) : '' }}', transit_minutes: '{{ isset($route->transits[1]) ? $route->transits[1]->transit_time % 60 : '' }}' }] }; showRouteModal = true; toggleRouteFieldsModal('{{ $route->route_type->value }}'); toggleTransitFieldsModal('{{ $route->flight_type->value }}')" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
                                         <form method="POST" action="{{ route('routes.destroy', $route->id) }}" onsubmit="return confirm('Are you sure you want to delete this route?')" class="inline">
                                             @csrf
                                             @method('DELETE')
@@ -301,7 +301,7 @@
                         @empty
                             <tr>
                                 <td colspan="7" class="px-4 py-12 text-center text-slate-500">
-                                    No routes found. <button @click="editRouteMode = false; route = { id: null, airline_id: '', route_type: '', flight_type: '', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '' }; showRouteModal = true" class="text-slate-800 underline hover:text-slate-600">Add one?</button>
+                                    No routes found. <button @click="editRouteMode = false; route = { id: null, airline_id: '', route_type: '', flight_type: '', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '', transits: [{ transit_city_id: '', transit_hours: '', transit_minutes: '' }, { transit_city_id: '', transit_hours: '', transit_minutes: '' }] }; showRouteModal = true" class="text-slate-800 underline hover:text-slate-600">Add one?</button>
                                 </td>
                             </tr>
                         @endforelse
@@ -740,7 +740,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                            <select name="flight_type" x-model="route.flight_type" :disabled="!route.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleTransitFieldsModal()">
+                            <select name="flight_type" x-model="route.flight_type" :disabled="!route.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleTransitFieldsModal(this.value)">
                                 <option value="">Select</option>
                                 <option value="direct">Direct</option>
                                 <option value="transit">Transit</option>
@@ -824,10 +824,10 @@
                         <input type="hidden" name="segments[1][segment_direction]" value="outbound">
                     </div>
 
-                    <div id="transitFieldsModal" class="hidden grid grid-cols-3 gap-4 mt-4">
-                        <div x-show="route.flight_type === 'transit'">
+                    <div id="transitFieldsModal" class="hidden grid grid-cols-2 gap-4 mt-4">
+                        <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_inbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Transit City (Inbound)</label>
-                            <select name="transits[0][transit_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                            <select name="transits[0][transit_city_id]" x-model="route.transits[0].transit_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                 <option value="">Select</option>
                                 @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                     <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
@@ -838,14 +838,14 @@
                         <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_inbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time (Inbound)</label>
                             <div class="flex items-center gap-2">
-                                <input type="number" name="transits[0][transit_hours]" min="0" max="23" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="HH">
+                                <input type="number" name="transits[0][transit_hours]" x-model="route.transits[0].transit_hours" min="0" max="23" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="HH">
                                 <span class="text-slate-500 font-medium">:</span>
-                                <input type="number" name="transits[0][transit_minutes]" min="0" max="59" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="MM">
+                                <input type="number" name="transits[0][transit_minutes]" x-model="route.transits[0].transit_minutes" min="0" max="59" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="MM">
                             </div>
                         </div>
                         <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_outbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Transit City (Outbound)</label>
-                            <select name="transits[1][transit_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                            <select name="transits[1][transit_city_id]" x-model="route.transits[1].transit_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                 <option value="">Select</option>
                                 @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                     <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
@@ -856,9 +856,9 @@
                         <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_outbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Transit Time (Outbound)</label>
                             <div class="flex items-center gap-2">
-                                <input type="number" name="transits[1][transit_hours]" min="0" max="23" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="HH">
+                                <input type="number" name="transits[1][transit_hours]" x-model="route.transits[1].transit_hours" min="0" max="23" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="HH">
                                 <span class="text-slate-500 font-medium">:</span>
-                                <input type="number" name="transits[1][transit_minutes]" min="0" max="59" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="MM">
+                                <input type="number" name="transits[1][transit_minutes]" x-model="route.transits[1].transit_minutes" min="0" max="59" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="MM">
                             </div>
                         </div>
                     </div>

@@ -18,7 +18,7 @@ customerModalVisible: false,
 customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
-        method: 'Cash',
+        method: 'cash',
         bank_method: '',
         trx_id: '',
         amount_sar: '',
@@ -114,7 +114,7 @@ customDurationModalVisible: false,
         };
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -624,7 +624,7 @@ customDurationModalVisible: false,
         
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -872,7 +872,7 @@ Alpine.data('createBookingApp', () => ({
     customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
-        method: 'Cash',
+        method: 'cash',
         bank_method: '',
         trx_id: '',
         amount_sar: '',
@@ -1027,7 +1027,7 @@ Alpine.data('createBookingApp', () => ({
         };
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -1842,7 +1842,7 @@ Alpine.data('createBookingApp', () => ({
         this.paymentMaxAmount = due;
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -2133,7 +2133,7 @@ Alpine.data('editBookingApp', () => ({
     customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
-        method: 'Cash',
+        method: 'cash',
         bank_method: '',
         trx_id: '',
         amount_sar: '',
@@ -2318,6 +2318,26 @@ Alpine.data('editBookingApp', () => ({
                 address: p.address || '',
                 baggage_weight: '',
             }));
+
+            this.passengers.forEach(p => {
+                if (p.ticket_fare_id) {
+                    const ticket = this.allTickets.find(t => String(t.id) === String(p.ticket_fare_id));
+                    if (ticket) {
+                        if (!p.route) p.route = ticket.route || '';
+                        if (!p.airline) p.airline = ticket.airline || '';
+                        if (!p.class) p.class = ticket.airline_class || '';
+                        if (!p.route_type) {
+                            const routeTypeMap = { 'oneway_inbound': 'One Way-Inbound', 'oneway_outbound': 'One Way-Outbound', 'round': 'Round', 'multi_city': 'Multi City' };
+                            p.route_type = routeTypeMap[ticket.route_type] || '';
+                        }
+                        if (!p.flight_type) {
+                            const flightTypeMap = { 'transit': 'Transit', 'direct': 'Direct' };
+                            p.flight_type = flightTypeMap[ticket.flight_type] || '';
+                        }
+                    }
+                }
+            });
+
             this.passengerCount = this.passengers.length;
         }
 
@@ -2374,7 +2394,7 @@ Alpine.data('editBookingApp', () => ({
         };
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -2787,9 +2807,7 @@ Alpine.data('editBookingApp', () => ({
                 this.passengerData.airline = ticket.airline || '';
                 this.passengerData.class = ticket.airline_class || '';
 
-                if (this.passengerData.flight_date_from && this.passengerData.flight_date_to) {
-                    this.generateFlightDateRangeForEdit(this.passengerData.flight_date_from, this.passengerData.flight_date_to);
-                }
+                this.calculateFlightDateRange();
             }
         }
         this.$nextTick(() => {
@@ -2833,14 +2851,13 @@ Alpine.data('editBookingApp', () => ({
 
     calculateFlightDateRange() {
         const route = this.passengerData.route;
+        const airline = this.passengerData.airline;
+        const travelClass = this.passengerData.class;
 
-        if (!route) {
-            this.passengerData.flight_date_range = '';
+        if (!route || !airline || !travelClass) {
+            this.populateFlightDateRangeOptions([]);
             return;
         }
-
-        const airline = this.passengerData.airline || '';
-        const travelClass = this.passengerData.travel_class || '';
 
         this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass);
     },
@@ -2854,68 +2871,91 @@ Alpine.data('editBookingApp', () => ({
             if (data.default_gap !== undefined) {
                 const additionalGap = parseInt(data.additional_gap) || 0;
                 const defaultGap = parseInt(data.default_gap) || 30;
-                this.generateFlightDateRangeWithGap(defaultGap, additionalGap);
+                this.generateFlightDateRangeOptions(defaultGap, additionalGap);
             } else {
-                this.passengerData.flight_date_range = '';
+                this.generateFlightDateRangeOptions(30, 0);
             }
         } catch (e) {
             console.error('Error fetching flight date gap:', e);
-            this.passengerData.flight_date_range = '';
+            this.generateFlightDateRangeOptions(30, 0);
         }
     },
 
-    generateFlightDateRangeWithGap(defaultGap, additionalGap) {
+    generateFlightDateRangeOptions(defaultGap, additionalGap) {
         const finalGap = defaultGap + additionalGap;
-        const bookingDate = new Date();
-        const calculatedDate = new Date(bookingDate);
-        calculatedDate.setDate(calculatedDate.getDate() + finalGap);
+        const expectedDate = new Date();
+        expectedDate.setDate(expectedDate.getDate() + finalGap);
 
-        const day = calculatedDate.getDate();
-        let selectedRange = '';
+        const day = expectedDate.getDate();
+        let startMonthOffset = 0;
+        let startSlot = 0;
 
         if (day >= 1 && day <= 5) {
-            selectedRange = '1-10';
-        } else if (day >= 6 && day <= 15) {
-            selectedRange = '11-20';
-        } else if (day >= 16 && day <= 31) {
-            selectedRange = '21-31';
+            startMonthOffset = 0;
+            startSlot = 0;
+        } else if (day >= 6 && day <= 10) {
+            startMonthOffset = 0;
+            startSlot = 1;
+        } else if (day >= 11 && day <= 15) {
+            startMonthOffset = 0;
+            startSlot = 1;
+        } else if (day >= 16 && day <= 20) {
+            startMonthOffset = 0;
+            startSlot = 2;
+        } else if (day >= 21 && day <= 25) {
+            startMonthOffset = 0;
+            startSlot = 2;
+        } else if (day >= 26 && day <= 31) {
+            startMonthOffset = 1;
+            startSlot = 0;
         }
 
-        this.generateFlightDateRangeOptions(selectedRange);
+        const ranges = [];
+        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+
+        const startYear = expectedDate.getFullYear();
+        const startMonth = expectedDate.getMonth();
+
+        for (let i = 0; i < 16; i++) {
+            const slotIndex = (startSlot + i) % 3;
+            const monthIndex = startMonth + startMonthOffset + Math.floor((startSlot + i) / 3);
+
+            let year = startYear + Math.floor(monthIndex / 12);
+            let month = monthIndex % 12;
+            if (month < 0) month += 12;
+
+            let rangeStart, rangeEnd;
+
+            if (slotIndex === 0) {
+                rangeStart = new Date(year, month, 1);
+                rangeEnd = new Date(year, month, 10);
+            } else if (slotIndex === 1) {
+                rangeStart = new Date(year, month, 11);
+                rangeEnd = new Date(year, month, 20);
+            } else {
+                rangeStart = new Date(year, month, 21);
+                const lastDay = new Date(year, month + 1, 0).getDate();
+                rangeEnd = new Date(year, month, lastDay);
+            }
+
+            const startStr = `${months[rangeStart.getMonth()]} ${rangeStart.getDate()}, ${rangeStart.getFullYear()}`;
+            const endStr = `${months[rangeEnd.getMonth()]} ${rangeEnd.getDate()}, ${rangeEnd.getFullYear()}`;
+
+            ranges.push({
+                value: `${startStr} - ${endStr}`,
+                label: `${startStr} - ${endStr}`,
+                dayStart: rangeStart.getDate()
+            });
+        }
+
+        this.populateFlightDateRangeOptions(ranges);
     },
 
-    generateFlightDateRangeOptions(preSelectRange = null) {
+    populateFlightDateRangeOptions(ranges) {
         const select = document.getElementById('passengerFlightDateRange');
         if (!select) return;
 
         select.innerHTML = '<option value="">Select Date Range</option>';
-
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-        const ranges = [];
-
-        const startDate = new Date();
-        startDate.setDate(startDate.getDate() + 30);
-
-        for (let i = 0; i < 4; i++) {
-            for (let week = 0; week < 4; week++) {
-                const rangeStart = new Date(startDate);
-                rangeStart.setDate(rangeStart.getDate() + (i * 40) + (week * 10));
-
-                const rangeEnd = new Date(rangeStart);
-                rangeEnd.setDate(rangeEnd.getDate() + 9);
-
-                const startStr = `${months[rangeStart.getMonth()]} ${rangeStart.getDate()}, ${rangeStart.getFullYear()}`;
-                const endStr = `${months[rangeEnd.getMonth()]} ${rangeEnd.getDate()}, ${rangeEnd.getFullYear()}`;
-                const displayText = `${startStr} - ${endStr}`;
-
-                ranges.push({
-                    value: displayText,
-                    label: displayText,
-                    dayStart: rangeStart.getDate()
-                });
-            }
-        }
 
         ranges.forEach(range => {
             const option = document.createElement('option');
@@ -2924,16 +2964,8 @@ Alpine.data('editBookingApp', () => ({
             select.appendChild(option);
         });
 
-        if (preSelectRange) {
-            const preStart = parseInt(preSelectRange.split('-')[0]);
-            const foundRange = ranges.find(r => r.dayStart === preStart);
-            if (foundRange) {
-                this.passengerData.flight_date_range = foundRange.value;
-            } else {
-                this.passengerData.flight_date_range = '';
-            }
-        } else {
-            this.passengerData.flight_date_range = '';
+        if (this.passengerData.flight_date_from && this.passengerData.flight_date_to) {
+            this.generateFlightDateRangeForEdit(this.passengerData.flight_date_from, this.passengerData.flight_date_to);
         }
     },
 
@@ -3027,7 +3059,7 @@ Alpine.data('editBookingApp', () => ({
 
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -3248,6 +3280,17 @@ Alpine.data('showBookingApp', () => ({
     passengerModalVisible: false,
     editingPassengerIndex: null,
     customDurationModalVisible: false,
+    paymentModalVisible: false,
+    paymentData: {
+        currency: 'SAR',
+        method: 'cash',
+        bank_method: '',
+        trx_id: '',
+        amount_sar: '',
+        amount_bdt: '',
+    },
+    paymentMaxAmount: 0,
+    exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     passengers: [],
     passengerPackageValues: {},
     passengerData: {
@@ -3841,12 +3884,146 @@ Alpine.data('showBookingApp', () => ({
         }
         return total;
     },
+
+    openPaymentModal() {
+        const totalEl = document.getElementById('paymentTotalPackageValue');
+        const paidEl = document.getElementById('paymentPaid');
+        const dueEl = document.getElementById('paymentDue');
+        const totalText = totalEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        const paidText = paidEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        const dueText = dueEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        this.paymentMaxAmount = parseFloat(dueText) || 0;
+        this.paymentData = {
+            currency: 'SAR',
+            method: 'cash',
+            bank_method: '',
+            trx_id: '',
+            amount_sar: '',
+            amount_bdt: ''
+        };
+        this.paymentModalVisible = true;
+    },
+
+    closePaymentModal() {
+        this.paymentModalVisible = false;
+    },
+
+    handlePaymentCurrencyChange() {
+        if (this.paymentData.currency === 'BDT') {
+            if (this.paymentData.amount_sar) {
+                this.handleSarAmountInput();
+            }
+        } else {
+            if (this.paymentData.amount_bdt) {
+                this.handleBdtAmountInput();
+            } else if (this.paymentData.amount_sar) {
+                this.handleSarAmountInput();
+            }
+        }
+    },
+
+    handleSarAmountInput() {
+        const sarAmount = parseFloat(this.paymentData.amount_sar) || 0;
+        if (sarAmount > 0 && this.exchangeRate > 0) {
+            this.paymentData.amount_bdt = (sarAmount * this.exchangeRate).toFixed(2);
+        } else {
+            this.paymentData.amount_bdt = '';
+        }
+    },
+
+    handleBdtAmountInput() {
+        const bdtAmount = parseFloat(this.paymentData.amount_bdt) || 0;
+        if (bdtAmount > 0 && this.exchangeRate > 0) {
+            this.paymentData.amount_sar = (bdtAmount / this.exchangeRate).toFixed(2);
+        } else if (bdtAmount > 0 && this.exchangeRate <= 0) {
+            this.paymentData.amount_sar = '';
+        }
+    },
+
+    handlePaymentMethodChange() {},
+
+    savePayment() {
+        const amountSAR = parseFloat(this.paymentData.amount_sar) || 0;
+        const amountBDT = parseFloat(this.paymentData.amount_bdt) || 0;
+
+        if (amountSAR === 0) {
+            if (typeof showToast === 'function') {
+                showToast('Please enter payment amount', 'error');
+            } else {
+                alert('Please enter payment amount');
+            }
+            return;
+        }
+
+        if (amountSAR > this.paymentMaxAmount) {
+            const msg = 'Payment amount cannot exceed the due amount of ' + this.paymentMaxAmount.toFixed(2) + ' SAR';
+            if (typeof showToast === 'function') {
+                showToast(msg, 'error');
+            } else {
+                alert(msg);
+            }
+            return;
+        }
+
+        if (this.paymentData.currency === 'BDT' && amountBDT > 0 && this.exchangeRate <= 0) {
+            const msg = 'Cannot process BDT payment. Exchange rate not available.';
+            if (typeof showToast === 'function') {
+                showToast(msg, 'error');
+            } else {
+                alert(msg);
+            }
+            return;
+        }
+
+        const bookingId = window.__bookingServerData?.bookingId;
+        if (!bookingId) {
+            showToast('Invalid booking ID', 'error');
+            return;
+        }
+
+        fetch('/bookings/' + bookingId + '/payment', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+            },
+            body: JSON.stringify({
+                amount: amountSAR,
+                amount_bdt: amountBDT,
+                currency: this.paymentData.currency,
+                payment_method: this.paymentData.method,
+                bank_method: this.paymentData.bank_method,
+                transaction_id: this.paymentData.trx_id
+            })
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(data => {
+                    throw new Error(data.message || 'Payment request failed');
+                });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (typeof showToast === 'function') {
+                showToast('Payment saved successfully');
+            }
+            this.closePaymentModal();
+            setTimeout(() => location.reload(), 500);
+        })
+        .catch(error => {
+            if (typeof showToast === 'function') {
+                showToast(error.message, 'error');
+            } else {
+                alert(error.message);
+            }
+        });
+    },
 }));
 
 window.handleBookingCustomerDocsUpload = function(input) {
     const list = document.getElementById('booking_customer_docs_list');
     if (!list) return;
-    list.innerHTML = '';
     Array.from(input.files).forEach(file => {
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';

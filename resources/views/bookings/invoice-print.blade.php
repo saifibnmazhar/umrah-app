@@ -103,20 +103,16 @@
                     <span>{{ number_format($subTotal ?? 0, 0) }}</span>
                 </div>
                 <div class="flex justify-between py-1">
-                    <span class="font-semibold">Total Package:</span>
-                    <span>{{ number_format($totalPackage ?? 0, 0) }}</span>
+                    <span class="font-semibold">Total Packages:</span>
+                    <span>{{ $totalPackages ?? 0 }}</span>
                 </div>
                 <div class="flex justify-between py-1">
-                    <span class="font-semibold">Finger Fee:</span>
-                    <span>{{ number_format($fingerprintCost ?? 200, 0) }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                    <span class="font-semibold">Additional Fee:</span>
-                    <span>{{ number_format($additionalFee ?? 0, 0) }}</span>
+                    <span class="font-semibold">Fingerprint Charge:</span>
+                    <span>{{ number_format($fingerprintCharge ?? 0, 0) }}</span>
                 </div>
                 <div class="flex justify-between py-1">
                     <span class="font-semibold">Discount:</span>
-                    <span>{{ number_format($booking->discount_value ?? 0, 0) }}</span>
+                    <span>{{ number_format($discount ?? 0, 0) }}</span>
                 </div>
                 <div class="flex justify-between py-1 border-t-2 border-slate-800 mt-1 pt-1">
                     <span class="font-bold text-lg">GRAND TOTAL:</span>
@@ -139,7 +135,7 @@
                     <th class="border border-slate-300 px-1 py-1 text-xs">Airlines</th>
                     <th class="border border-slate-300 px-1 py-1 text-xs">Route</th>
                     <th class="border border-slate-300 px-1 py-1 text-xs">Est. Flight Date</th>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Baggage</th>
+                    <th class="border border-slate-300 px-1 py-1 text-xs">Baggage (Kg)</th>
                     <th class="border border-slate-300 px-1 py-1 text-xs">Cabin</th>
                     <th class="border border-slate-300 px-1 py-1 text-xs">Meal</th>
                     <th class="border border-slate-300 px-1 py-1 text-xs">Flight Type</th>
@@ -169,7 +165,7 @@
         </table>
     </div>
 
-    <!-- Group Umrah Features -->
+    <!-- Group Umrah Features 
     <div class="border-2 border-slate-800 mb-3">
         <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
             <h3 class="font-bold text-slate-800">GROUP UMRAH FEATURES</h3>
@@ -191,7 +187,8 @@
             </tbody>
         </table>
     </div>
-
+    -->
+    
     <!-- Payment Summary -->
     <div class="border-2 border-slate-800 mb-3">
         <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">

@@ -140,30 +140,37 @@ class PassengerController extends Controller
     public function uploadDocument(Request $request, Passenger $passenger)
     {
         $request->validate([
-            'file' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
+            'files' => 'required|array',
+            'files.*' => 'file|mimes:pdf,jpg,jpeg,png|max:5120',
         ]);
 
         try {
-            $file = $request->file('file');
-            $filename = Str::slug($passenger->first_name . ' ' . $passenger->last_name) . '_' . time() . '.' . $file->getClientOriginalExtension();
-            $path = $file->storeAs('passenger-documents', $filename);
+            $documents = [];
 
-            $document = Document::create([
-                'owner_type' => Passenger::class,
-                'owner_id' => $passenger->id,
-                'file_path' => $path,
-                'display_name' => $file->getClientOriginalName(),
-            ]);
+            foreach ($request->file('files', []) as $file) {
+                $filename = Str::slug($passenger->first_name . ' ' . $passenger->last_name) . '_' . time() . '_' . Str::random(6) . '.' . $file->getClientOriginalExtension();
+                $path = $file->storeAs('passenger-documents', $filename);
+
+                $documents[] = Document::create([
+                    'owner_type' => Passenger::class,
+                    'owner_id' => $passenger->id,
+                    'file_path' => $path,
+                    'display_name' => $file->getClientOriginalName(),
+                ]);
+            }
+
+            $count = count($documents);
 
             return response()->json([
                 'success' => true,
-                'message' => 'Document uploaded successfully',
-                'document' => $document,
+                'message' => $count . ' document(s) uploaded successfully',
+                'documents' => $documents,
+                'count' => $count,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to upload document: ' . $e->getMessage(),
+                'message' => 'Failed to upload documents: ' . $e->getMessage(),
             ], 500);
         }
     }
