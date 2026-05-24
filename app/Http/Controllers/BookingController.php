@@ -334,6 +334,7 @@ class BookingController extends Controller
         $booking->load([
             'customer',
             'passengers',
+            'passengers.documents',
             'passengers.ticketFare',
             'user',
             'district',
