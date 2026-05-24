@@ -57,6 +57,9 @@ public function store(Request $request)
 
                 if ($validated['flight_type'] === 'transit' && $request->has('transits')) {
                     foreach ($request->transits as $index => $transit) {
+                        if (empty($transit['transit_city_id'])) {
+                            continue;
+                        }
                         $hours = (int) ($transit['transit_hours'] ?? 0);
                         $minutes = (int) ($transit['transit_minutes'] ?? 0);
                         $transit['transit_time'] = ($hours * 60) + $minutes;
@@ -128,6 +131,9 @@ public function store(Request $request)
 
                 if ($validated['flight_type'] === 'transit' && $request->has('transits')) {
                     foreach ($request->transits as $index => $transit) {
+                        if (empty($transit['transit_city_id'])) {
+                            continue;
+                        }
                         $hours = (int) ($transit['transit_hours'] ?? 0);
                         $minutes = (int) ($transit['transit_minutes'] ?? 0);
                         $transit['transit_time'] = ($hours * 60) + $minutes;
