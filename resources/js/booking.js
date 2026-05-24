@@ -2318,6 +2318,26 @@ Alpine.data('editBookingApp', () => ({
                 address: p.address || '',
                 baggage_weight: '',
             }));
+
+            this.passengers.forEach(p => {
+                if (p.ticket_fare_id) {
+                    const ticket = this.allTickets.find(t => String(t.id) === String(p.ticket_fare_id));
+                    if (ticket) {
+                        if (!p.route) p.route = ticket.route || '';
+                        if (!p.airline) p.airline = ticket.airline || '';
+                        if (!p.class) p.class = ticket.airline_class || '';
+                        if (!p.route_type) {
+                            const routeTypeMap = { 'oneway_inbound': 'One Way-Inbound', 'oneway_outbound': 'One Way-Outbound', 'round': 'Round', 'multi_city': 'Multi City' };
+                            p.route_type = routeTypeMap[ticket.route_type] || '';
+                        }
+                        if (!p.flight_type) {
+                            const flightTypeMap = { 'transit': 'Transit', 'direct': 'Direct' };
+                            p.flight_type = flightTypeMap[ticket.flight_type] || '';
+                        }
+                    }
+                }
+            });
+
             this.passengerCount = this.passengers.length;
         }
 
