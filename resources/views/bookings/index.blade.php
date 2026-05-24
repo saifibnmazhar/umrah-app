@@ -127,6 +127,9 @@
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Visa</th>
+                            <th class="px-3 py-2 text-left font-medium">Visa Agent</th>
+                            <th class="px-3 py-2 text-left font-medium">Visa Status</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -136,6 +139,7 @@
 @php
 $isFirstRow = ($lastBookingId !== $passenger->booking_id);
 $lastBookingId = $passenger->booking_id;
+$visaSubmission = $passenger->visaSubmission;
 
 $route = $passenger->ticketFare?->route ?? $passenger->booking?->package?->ticketFare?->route;
 $routeDisplay = '—';
@@ -186,13 +190,31 @@ if ($route) {
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->invoice?->balance ? number_format($passenger->booking->invoice->balance, 2) . ' SAR' : '—') : '' }}</td>@endif
     <td class="px-3 py-2">
+        @if($visaSubmission && $visaSubmission->visa_number)
+            <span class="text-slate-800 font-medium">{{ $visaSubmission->visa_number }}</span>
+        @else
+            <span class="text-slate-400">—</span>
+        @endif
+    </td>
+    <td class="px-3 py-2 text-slate-600">{{ $visaSubmission?->visaAgent?->name ?? '—' }}</td>
+    <td class="px-3 py-2">
+        @php $vs = $passenger->visa_status; @endphp
+        @if($vs)
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                {{ $vs === \App\Enums\VisaStatus::ISSUED ? 'bg-green-100 text-green-700' : ($vs === \App\Enums\VisaStatus::SUBMITTED ? 'bg-blue-100 text-blue-700' : 'bg-yellow-100 text-yellow-700') }}">
+                {{ ucfirst($vs->value) }}
+            </span>
+        @else
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
+        @endif
+    </td>
+    <td class="px-3 py-2">
         <a href="{{ route('passengers.show', $passenger->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
     </td>
 </tr>
 @empty
 <tr>
-    <td colspan="{{ $canViewFinancialColumns ? 17 : 13 }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
-</tr>
+    <td colspan="{{ $canViewFinancialColumns ? 20 : 16 }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 @endforelse
                     </tbody>
                 </table>

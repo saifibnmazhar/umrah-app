@@ -49,7 +49,8 @@ class BookingController extends Controller
             'booking.package.ticketFare.route',
             'booking.invoice',
             'ticketFare.route',
-            'status'
+            'status',
+            'visaSubmission.visaAgent'
         ])
             ->orderBy('created_at', 'desc')
             ->paginate(15)
