@@ -103,20 +103,16 @@
                     <span>{{ number_format($subTotal ?? 0, 0) }}</span>
                 </div>
                 <div class="flex justify-between py-1">
-                    <span class="font-semibold">Total Package:</span>
-                    <span>{{ number_format($totalPackage ?? 0, 0) }}</span>
+                    <span class="font-semibold">Total Packages:</span>
+                    <span>{{ $totalPackages ?? 0 }}</span>
                 </div>
                 <div class="flex justify-between py-1">
-                    <span class="font-semibold">Finger Fee:</span>
-                    <span>{{ number_format($fingerprintCost ?? 200, 0) }}</span>
-                </div>
-                <div class="flex justify-between py-1">
-                    <span class="font-semibold">Additional Fee:</span>
-                    <span>{{ number_format($additionalFee ?? 0, 0) }}</span>
+                    <span class="font-semibold">Fingerprint Charge:</span>
+                    <span>{{ number_format($fingerprintCharge ?? 0, 0) }}</span>
                 </div>
                 <div class="flex justify-between py-1">
                     <span class="font-semibold">Discount:</span>
-                    <span>{{ number_format($booking->discount_value ?? 0, 0) }}</span>
+                    <span>{{ number_format($discount ?? 0, 0) }}</span>
                 </div>
                 <div class="flex justify-between py-1 border-t-2 border-slate-800 mt-1 pt-1">
                     <span class="font-bold text-lg">GRAND TOTAL:</span>
