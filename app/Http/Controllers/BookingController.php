@@ -723,7 +723,8 @@ class BookingController extends Controller
             'passengers.ticketFare.route.multiSegments.fromCity',
             'passengers.ticketFare.route.multiSegments.toCity',
             'passengers.ticketFare.baggageAllowances',
-            'payments'
+            'payments',
+            'invoice'
         ])->findOrFail($booking->id);
 
         $subTotal = (float) $booking->passengers->sum('package_value');
@@ -753,8 +754,8 @@ class BookingController extends Controller
         }
 
         $grandTotal = $subTotal + $fingerprintCharge - $discount;
-        $totalPaid = $booking->payments->sum('amount') ?? 0;
-        $currentPaid = 0;
+        $totalPaid = (float) ($booking->invoice->paid_amount ?? 0);
+        $currentPaid = (float) ($booking->payments->last()?->amount ?? 0);
         $dueAmount = $grandTotal - $totalPaid;
 
         return view('bookings.invoice-print', compact(
