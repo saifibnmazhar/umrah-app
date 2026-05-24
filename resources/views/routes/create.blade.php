@@ -200,6 +200,11 @@
             </div>
         </div>
 
+        <div class="mt-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Additional Gap (Days)</label>
+            <input type="number" name="additional_gap" min="0" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" placeholder="0" value="{{ old('additional_gap') }}">
+        </div>
+
         <div class="pt-4 flex items-center gap-4">
             <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
                 Create Route
