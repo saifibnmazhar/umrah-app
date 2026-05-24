@@ -18,6 +18,7 @@ use App\Models\VisaSellingPrice;
 use App\Models\PassengerStatus;
 use App\Models\Invoice;
 use App\Models\Payment;
+use App\Models\Bank;
 use App\Models\TransactionType;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
@@ -783,17 +784,17 @@ class BookingController extends Controller
             'transaction_id' => 'nullable|string|max:255',
         ]);
 
+        $amount = $validated['amount'] ?? 0;
+        $bdtAmount = $validated['amount_bdt'] ?? 0;
+
+        if ($amount == 0 && $bdtAmount == 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please enter payment amount'
+            ], 422);
+        }
+
         try {
-            $amount = $validated['amount'] ?? 0;
-            $bdtAmount = $validated['amount_bdt'] ?? 0;
-
-            if ($amount == 0 && $bdtAmount == 0) {
-                return response()->json([
-                    'success' => false,
-                    'message' => 'Please enter payment amount'
-                ], 422);
-            }
-
             $invoice = $booking->invoice;
             if (!$invoice) {
                 $invoice = Invoice::create([
@@ -804,26 +805,37 @@ class BookingController extends Controller
                 ]);
             }
 
-            $payment = Payment::create([
-                'booking_id' => $booking->id,
-                'invoice_id' => $invoice->id,
-                'branch_id' => auth()->user()->branch_id,
+            $dueCollectionTransactionType = TransactionType::where('name', 'Due Collection')->first();
+            if (!$dueCollectionTransactionType) {
+                throw new \Exception('Due Collection transaction type not found. Please seed transaction types.');
+            }
+
+            $bankId = null;
+            if (($validated['payment_method'] ?? '') === 'bank' && !empty($validated['bank_method'])) {
+                $bank = Bank::where('name', $validated['bank_method'])->first();
+                $bankId = $bank?->id;
+            }
+
+            $paymentData = [
+                'branch_id' => $booking->branch_id,
                 'user_id' => auth()->id(),
-                'payment_date' => now(),
+                'payment_date' => now()->toDateString(),
                 'payment_method' => $validated['payment_method'] ?? 'cash',
-                'transaction_id' => $validated['transaction_id'] ?? null,
                 'amount' => $amount,
                 'bdt_amount' => $bdtAmount,
-            ]);
+                'currency' => $validated['currency'] ?? 'SAR',
+                'bank_id' => $bankId,
+                'transaction_id' => $validated['transaction_id'] ?? null,
+                'transaction_type_id' => $dueCollectionTransactionType->id,
+            ];
 
-            $invoice->paid_amount = ($invoice->paid_amount ?? 0) + $amount;
-            $invoice->balance = ($invoice->total_amount ?? 0) - $invoice->paid_amount;
-            $invoice->save();
+            [$payment, $voucher] = app(PaymentService::class)->createCustomerPaymentAndUpdateInvoice($invoice, $paymentData);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Payment saved successfully',
-                'payment' => $payment
+                'payment' => $payment,
+                'voucher' => $voucher,
             ]);
         } catch (\Exception $e) {
             return response()->json([

@@ -18,7 +18,7 @@ customerModalVisible: false,
 customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
-        method: 'Cash',
+        method: 'cash',
         bank_method: '',
         trx_id: '',
         amount_sar: '',
@@ -114,7 +114,7 @@ customDurationModalVisible: false,
         };
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -624,7 +624,7 @@ customDurationModalVisible: false,
         
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -872,7 +872,7 @@ Alpine.data('createBookingApp', () => ({
     customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
-        method: 'Cash',
+        method: 'cash',
         bank_method: '',
         trx_id: '',
         amount_sar: '',
@@ -1027,7 +1027,7 @@ Alpine.data('createBookingApp', () => ({
         };
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -1842,7 +1842,7 @@ Alpine.data('createBookingApp', () => ({
         this.paymentMaxAmount = due;
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -2133,7 +2133,7 @@ Alpine.data('editBookingApp', () => ({
     customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
-        method: 'Cash',
+        method: 'cash',
         bank_method: '',
         trx_id: '',
         amount_sar: '',
@@ -2394,7 +2394,7 @@ Alpine.data('editBookingApp', () => ({
         };
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -3059,7 +3059,7 @@ Alpine.data('editBookingApp', () => ({
 
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -3283,7 +3283,7 @@ Alpine.data('showBookingApp', () => ({
     paymentModalVisible: false,
     paymentData: {
         currency: 'SAR',
-        method: 'Cash',
+        method: 'cash',
         bank_method: '',
         trx_id: '',
         amount_sar: '',
@@ -3895,7 +3895,7 @@ Alpine.data('showBookingApp', () => ({
         this.paymentMaxAmount = parseFloat(dueText) || 0;
         this.paymentData = {
             currency: 'SAR',
-            method: 'Cash',
+            method: 'cash',
             bank_method: '',
             trx_id: '',
             amount_sar: '',
@@ -3991,12 +3991,11 @@ Alpine.data('showBookingApp', () => ({
                 amount: amountSAR,
                 amount_bdt: amountBDT,
                 currency: this.paymentData.currency,
-                payment_method: this.paymentData.method.toLowerCase(),
+                payment_method: this.paymentData.method,
                 bank_method: this.paymentData.bank_method,
                 transaction_id: this.paymentData.trx_id
             })
         })
-        .then(response => response.json())
         .then(response => {
             if (!response.ok) {
                 return response.json().then(data => {
