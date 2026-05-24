@@ -131,13 +131,13 @@ class Passenger extends Model
             ->first()?->allowance;
 
         if ($routeType === 'oneway_inbound') {
-            return $inboundBag ? "I:{$inboundBag}" : '-';
+            return $inboundBag ? "In: {$inboundBag}" : '-';
         } elseif ($routeType === 'oneway_outbound') {
-            return $outboundBag ? "O:{$outboundBag}" : '-';
+            return $outboundBag ? "Out: {$outboundBag}" : '-';
         } elseif (in_array($routeType, ['round', 'multi_city'])) {
             $parts = [];
-            if ($inboundBag) $parts[] = "I:{$inboundBag}";
-            if ($outboundBag) $parts[] = "O:{$outboundBag}";
+            if ($inboundBag) $parts[] = "In: {$inboundBag}";
+            if ($outboundBag) $parts[] = "Out: {$outboundBag}";
             return empty($parts) ? '-' : implode("\n", $parts);
         }
 
