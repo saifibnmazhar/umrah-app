@@ -135,7 +135,7 @@
                     <th class="border border-slate-300 px-1 py-1 text-xs">Airlines</th>
                     <th class="border border-slate-300 px-1 py-1 text-xs">Route</th>
                     <th class="border border-slate-300 px-1 py-1 text-xs">Est. Flight Date</th>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Baggage</th>
+                    <th class="border border-slate-300 px-1 py-1 text-xs">Baggage (Kg)</th>
                     <th class="border border-slate-300 px-1 py-1 text-xs">Cabin</th>
                     <th class="border border-slate-300 px-1 py-1 text-xs">Meal</th>
                     <th class="border border-slate-300 px-1 py-1 text-xs">Flight Type</th>
@@ -165,7 +165,7 @@
         </table>
     </div>
 
-    <!-- Group Umrah Features -->
+    <!-- Group Umrah Features 
     <div class="border-2 border-slate-800 mb-3">
         <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
             <h3 class="font-bold text-slate-800">GROUP UMRAH FEATURES</h3>
@@ -187,7 +187,8 @@
             </tbody>
         </table>
     </div>
-
+    -->
+    
     <!-- Payment Summary -->
     <div class="border-2 border-slate-800 mb-3">
         <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
