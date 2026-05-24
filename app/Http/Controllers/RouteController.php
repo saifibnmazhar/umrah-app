@@ -31,6 +31,7 @@ public function store(Request $request)
             'airline_id' => 'required|exists:airlines,id',
             'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
             'flight_type' => 'required|in:direct,transit',
+            'additional_gap' => 'nullable|integer|min:0',
         ];
 
         if ($routeType !== 'multi_city') {
@@ -98,6 +99,7 @@ public function store(Request $request)
             'airline_id' => 'required|exists:airlines,id',
             'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
             'flight_type' => 'required|in:direct,transit',
+            'additional_gap' => 'nullable|integer|min:0',
         ];
 
         if ($routeType !== 'multi_city') {
