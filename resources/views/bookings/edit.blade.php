@@ -43,7 +43,7 @@
             <input type="hidden" name="payment[amount]" :value="paymentSaved ? (parseFloat(paymentData.amount_sar) || 0) : 0">
             <input type="hidden" name="payment[bdt_amount]" :value="paymentSaved ? (parseFloat(paymentData.amount_bdt) || 0) : 0">
             <input type="hidden" name="payment[currency]" :value="paymentSaved ? paymentData.currency : 'SAR'">
-            <input type="hidden" name="payment[payment_method]" :value="paymentSaved && paymentData.method === 'Cash' ? 'cash' : 'bank'">
+            <input type="hidden" name="payment[payment_method]" :value="paymentSaved && paymentData.method === 'cash' ? 'cash' : 'bank'">
             <input type="hidden" name="payment[payment_date]" :value="paymentSaved ? new Date().toISOString().split('T')[0] : ''">
             <input type="hidden" name="payment[transaction_id]" :value="paymentSaved ? (paymentData.trx_id || '') : ''">
             <input type="hidden" name="payment[bank_id]" :value="paymentSaved ? (paymentData.bank_method || '') : ''">
@@ -301,12 +301,12 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Method</label>
                         <select id="paymentMethod" x-model="paymentData.method" @change="handlePaymentMethodChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                            <option value="Cash">Cash</option>
-                            <option value="Bank">Bank</option>
+                            <option value="cash">Cash</option>
+                            <option value="bank">Bank</option>
                         </select>
                     </div>
-
-                    <div x-show="paymentData.method === 'Bank'" x-cloak class="col-span-2">
+                    
+                    <div x-show="paymentData.method === 'bank'" x-cloak class="col-span-2">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
                         <select id="paymentBankMethod" x-model="paymentData.bank_method" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Bank</option>
@@ -317,7 +317,7 @@
                         </select>
                     </div>
 
-                    <div x-show="paymentData.method === 'Bank'" x-cloak>
+                    <div x-show="paymentData.method === 'bank'" x-cloak>
                         <label class="block text-sm font-medium text-slate-700 mb-1">TRX ID</label>
                         <input type="text" id="paymentTRXID" x-model="paymentData.trx_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter TRX ID">
                     </div>

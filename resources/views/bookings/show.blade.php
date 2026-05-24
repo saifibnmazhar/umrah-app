@@ -169,7 +169,7 @@
             <button onclick="downloadAllDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
                 Download All Docs
             </button>
-            <button onclick="openPaymentModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+            <button @click="openPaymentModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                 Payment
             </button>
         </div>
@@ -233,6 +233,91 @@
             </div>
         </div>
     </div>
+
+    {{-- Payment Modal --}}
+    <div x-show="paymentModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="closePaymentModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800">Payment Interface</h3>
+            <p class="text-sm text-slate-500 mb-4">Booking Summary</p>
+
+            <div class="mb-4">
+                <div class="grid grid-cols-2 gap-3 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Total Package Value:</span>
+                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->total_amount ?? 0) }} SAR</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Paid:</span>
+                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->paid_amount ?? 0) }} SAR</span>
+                    </div>
+                    <div class="flex justify-between col-span-2">
+                        <span class="text-slate-600 font-medium">Due:</span>
+                        <span id="paymentDue" class="text-slate-800 font-bold text-right">{{ number_format($booking->invoice?->balance ?? 0) }} SAR</span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-4">
+                <div class="grid grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+                        <select x-model="paymentData.currency" @change="handlePaymentCurrencyChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="SAR">SAR</option>
+                            <option value="BDT">BDT</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Method</label>
+                    <select x-model="paymentData.method" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="cash">Cash</option>
+                        <option value="bank">Bank</option>
+                    </select>
+                    </div>
+
+                    <div x-show="paymentData.method === 'bank'" x-cloak class="col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
+                        <select x-model="paymentData.bank_method" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Bank</option>
+                            <option value="AL-Raji">AL-Raji</option>
+                            <option value="SNB">SNB</option>
+                            <option value="Bkash-BMT">Bkash-BMT</option>
+                            <option value="IBBL-BMT">IBBL-BMT</option>
+                        </select>
+                    </div>
+
+                    <div x-show="paymentData.method === 'bank'" x-cloak>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">TRX ID</label>
+                        <input type="text" x-model="paymentData.trx_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter TRX ID">
+                    </div>
+
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (SAR)</label>
+                        <input type="number" x-model="paymentData.amount_sar" :disabled="paymentData.currency === 'BDT'" @input="handleSarAmountInput()" :max="paymentMaxAmount" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" :class="{'bg-slate-100 cursor-not-allowed': paymentData.currency === 'BDT'}" placeholder="Enter SAR amount">
+                    </div>
+
+                    <div x-show="paymentData.currency === 'BDT'" x-cloak>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Amount (BDT)</label>
+                        <input type="number" x-model="paymentData.amount_bdt" @input="handleBdtAmountInput()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter BDT amount">
+                    </div>
+
+                    <div x-show="paymentData.currency === 'BDT'" class="col-span-2 mt-2">
+                        <template x-if="exchangeRate > 0">
+                            <p class="text-sm text-slate-500">1 SAR = <span x-text="exchangeRate"></span> BDT</p>
+                        </template>
+                        <template x-if="exchangeRate <= 0">
+                            <p class="text-sm text-red-500">Exchange rate not available. Cannot process BDT payment.</p>
+                        </template>
+                    </div>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
+                <button type="button" @click="savePayment()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" @click="closePaymentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 {{-- Discount Modal --}}
@@ -276,97 +361,8 @@
     </div>
 </div>
 
-{{-- Payment Modal --}}
-<div id="paymentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
-    <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closePaymentModal()"></div>
-    <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
-        <h3 class="text-xl font-semibold text-slate-800 mb-4">Payment Interface</h3>
-        
-        <div class="mb-6">
-            <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Booking Information</h4>
-            <div class="grid grid-cols-3 gap-4 text-sm">
-                <div class="flex justify-between">
-                    <span class="text-slate-500">Total Package Value:</span>
-                    <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->total_amount ?? 0) }} SAR</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-500">Paid:</span>
-                    <span id="paymentPaid" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->paid_amount ?? 0) }} SAR</span>
-                </div>
-                <div class="flex justify-between">
-                    <span class="text-slate-500">Due:</span>
-                    <span id="paymentDue" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->balance ?? 0) }} SAR</span>
-                </div>
-            </div>
-            
-            <div class="grid grid-cols-2 gap-4 mt-4">
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Currency</label>
-                    <select id="paymentCurrency" onchange="handlePaymentCurrencyChange()" 
-                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                        <option value="SAR" selected>SAR</option>
-                        <option value="BDT">BDT</option>
-                    </select>
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Method</label>
-                    <select id="paymentMethod" onchange="handlePaymentMethodChange()" 
-                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                        <option value="Cash" selected>Cash</option>
-                        <option value="Bank">Bank</option>
-                    </select>
-                </div>
-            </div>
-            
-            <div id="paymentBankMethod" class="hidden mt-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
-                <select id="paymentBankMethod" 
-                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                    <option value="">Select Bank</option>
-                    <option value="AL-Raji">AL-Raji</option>
-                    <option value="SNB">SNB</option>
-                    <option value="Bkash-BMT">Bkash-BMT</option>
-                    <option value="IBBL-BMT">IBBL-BMT</option>
-                </select>
-            </div>
-            
-            <div id="paymentTRXID" class="hidden mt-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">TRX ID</label>
-                <input type="text" id="paymentTRXID" 
-                    placeholder="Enter TRX ID" 
-                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-            </div>
-            
-            <div id="paymentAmountSAR" class="mt-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Amount (SAR)</label>
-                <input type="number" id="paymentAmountSAR" 
-                    placeholder="Enter SAR amount" min="0" step="0.01"
-                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-            </div>
-            
-            <div id="paymentAmountBDT" class="hidden mt-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Amount (BDT)</label>
-                <input type="number" id="paymentAmountBDT" 
-                    placeholder="Enter BDT amount" min="0" step="0.01"
-                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-            </div>
-        </div>
-        
-        <div class="flex gap-3">
-            <button type="button" onclick="savePayment()" 
-                class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
-                Save
-            </button>
-            <button type="button" onclick="closePaymentModal()" 
-                class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
-                Cancel
-            </button>
-        </div>
-    </div>
-</div>
-
 {{-- Toast Container --}}
-<div id="toastContainer" class="fixed top-4 right-4 z-50 space-y-2"></div>
+<div id="toastContainer" class="fixed top-4 right-4 z-[70] space-y-2"></div>
 
 <style>
 .modal-overlay { transition: opacity 0.2s ease; }
@@ -445,81 +441,6 @@ function applyInvoiceDiscount() {
             setTimeout(() => location.reload(), 500);
         } else {
             showToast('Failed to apply discount', 'error');
-        }
-    })
-    .catch(error => {
-        showToast('Error: ' + error.message, 'error');
-    });
-}
-
-function openPaymentModal() {
-    document.getElementById('paymentModal').classList.remove('hidden');
-    resetPaymentForm();
-}
-
-function closePaymentModal() {
-    document.getElementById('paymentModal').classList.add('hidden');
-}
-
-function resetPaymentForm() {
-    document.getElementById('paymentCurrency').value = 'SAR';
-    document.getElementById('paymentMethod').value = 'Cash';
-    document.getElementById('paymentBankMethod').value = '';
-    document.getElementById('paymentTRXID').value = '';
-    document.getElementById('paymentAmountSAR').value = '';
-    document.getElementById('paymentAmountBDT').value = '';
-    handlePaymentCurrencyChange();
-    handlePaymentMethodChange();
-}
-
-function handlePaymentCurrencyChange() {
-    const currency = document.getElementById('paymentCurrency').value;
-    document.getElementById('paymentAmountSAR').classList.toggle('hidden', currency !== 'SAR');
-    document.getElementById('paymentAmountBDT').classList.toggle('hidden', currency !== 'BDT');
-}
-
-function handlePaymentMethodChange() {
-    const method = document.getElementById('paymentMethod').value;
-    document.getElementById('paymentBankMethod').classList.toggle('hidden', method !== 'Bank');
-    document.getElementById('paymentTRXID').classList.toggle('hidden', method !== 'Bank');
-}
-
-function savePayment() {
-    const currency = document.getElementById('paymentCurrency').value;
-    const method = document.getElementById('paymentMethod').value;
-    const amountSAR = currency === 'SAR' ? parseFloat(document.getElementById('paymentAmountSAR').value) || 0 : 0;
-    const amountBDT = currency === 'BDT' ? parseFloat(document.getElementById('paymentAmountBDT').value) || 0 : 0;
-    const bankMethod = document.getElementById('paymentBankMethod').value;
-    const trxID = document.getElementById('paymentTRXID').value;
-    
-    if (amountSAR === 0 && amountBDT === 0) {
-        showToast('Please enter payment amount', 'error');
-        return;
-    }
-    
-    fetch('{{ route('bookings.payment.store', $booking->id) }}', {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-        },
-        body: JSON.stringify({
-            amount: amountSAR,
-            amount_bdt: amountBDT,
-            currency: currency,
-            payment_method: method,
-            bank_method: bankMethod,
-            transaction_id: trxID
-        })
-    })
-    .then(response => response.json())
-    .then(data => {
-        if (data.success || data.message) {
-            showToast('Payment saved successfully');
-            closePaymentModal();
-            setTimeout(() => location.reload(), 500);
-        } else {
-            showToast('Failed to save payment', 'error');
         }
     })
     .catch(error => {
