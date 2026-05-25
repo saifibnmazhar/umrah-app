@@ -34,6 +34,7 @@ use App\Http\Controllers\PackageController;
 use App\Http\Controllers\FareAdminController;
 use App\Http\Controllers\TicketFareController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\FingerprintController;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -114,6 +115,29 @@ Route::middleware('auth')->group(function () {
     Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/fingerprints/admin', fn() => view('fingerprints.admin'))->name('fingerprint.admin')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::get('/fingerprints/staff', fn() => view('fingerprints.staff'))->name('fingerprint.staff')->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
+
+    Route::get('/api/fingerprints/admin', [FingerprintController::class, 'adminIndex'])
+        ->name('api.fingerprints.admin')
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
+    Route::get('/api/fingerprints/staff', [FingerprintController::class, 'staffIndex'])
+        ->name('api.fingerprints.staff')
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
+    Route::get('/api/fingerprints/staff-list', [FingerprintController::class, 'staffList'])
+        ->name('api.fingerprints.staff-list')
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
+    Route::put('/api/fingerprints/{fingerprint}/staff', [FingerprintController::class, 'assignStaff'])
+        ->name('api.fingerprints.assign-staff')
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
+    Route::put('/api/fingerprints/{fingerprint}/cost', [FingerprintController::class, 'updateCost'])
+        ->name('api.fingerprints.update-cost')
+        ->middleware('role:Super Admin,Fingerprint Staff');
+    Route::put('/api/fingerprints/detail/{fingerprintDetail}/status', [FingerprintController::class, 'updateStatus'])
+        ->name('api.fingerprints.update-status')
+        ->middleware('role:Super Admin,Fingerprint Staff');
+    Route::post('/api/fingerprints/detail/{fingerprintDetail}/hold', [FingerprintController::class, 'hold'])
+        ->name('api.fingerprints.hold')
+        ->middleware('role:Super Admin,Fingerprint Staff');
+
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings')->middleware('role:Super Admin,Co Admin');
     Route::put('/settings/flight-date-gap', [SettingsController::class, 'updateFlightDateGap'])->name('settings.flight-date-gap.update')->middleware('role:Super Admin,Co Admin');
     Route::put('/settings/fingerprint-charge', [SettingsController::class, 'updateFingerprintCharge'])->name('settings.fingerprint-charge.update')->middleware('role:Super Admin,Co Admin');

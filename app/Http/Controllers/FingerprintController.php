@@ -34,6 +34,13 @@ class FingerprintController extends Controller
             $query->where('booking.district_id', $request->district);
         }
 
+        $user = auth()->user();
+        if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+            $query->whereHas('booking', function ($q) use ($user) {
+                $q->where('office_id', $user->office_id);
+            });
+        }
+
         $fingerprints = $query->get();
 
         $data = $fingerprints->map(function ($fingerprint) {
@@ -85,6 +92,11 @@ class FingerprintController extends Controller
             'booking.passengers',
             'fingerprintDetails.passenger'
         ])->orderBy('created_at', 'desc');
+
+        $user = auth()->user();
+        if (!$user->hasRole('Super Admin')) {
+            $query->where('assigned_staff_id', $user->id);
+        }
 
         $fingerprints = $query->get();
 
@@ -168,6 +180,11 @@ class FingerprintController extends Controller
      */
     public function updateCost(Request $request, Fingerprint $fingerprint): JsonResponse
     {
+        $user = auth()->user();
+        if (!$user->hasRole('Super Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'cost' => 'required|numeric|min:0',
         ]);
@@ -186,6 +203,12 @@ class FingerprintController extends Controller
      */
     public function updateStatus(Request $request, FingerprintDetail $fingerprintDetail): JsonResponse
     {
+        $user = auth()->user();
+        $fingerprint = $fingerprintDetail->fingerprint;
+        if (!$user->hasRole('Super Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'status' => 'required|in:none,processing,approved,cancelled',
         ]);
@@ -204,6 +227,12 @@ class FingerprintController extends Controller
      */
     public function hold(Request $request, FingerprintDetail $fingerprintDetail): JsonResponse
     {
+        $user = auth()->user();
+        $fingerprint = $fingerprintDetail->fingerprint;
+        if (!$user->hasRole('Super Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'reason' => 'required|in:rescheduled_by_client,rescheduled_by_bmt,nfc_problem,others',
             'other_reason' => 'nullable|string|max:500',
