@@ -10,6 +10,8 @@ $colorMap = [
     'cancelled' => 'red',
     'return' => 'red',
     'returned' => 'red',
+    're-issued' => 'purple',
+    'refunded' => 'red',
     'none' => 'slate',
     'hold' => 'slate',
 ];

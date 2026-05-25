@@ -127,6 +127,8 @@
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Ticket Fare</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -185,13 +187,33 @@ if ($route) {
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->invoice?->balance ? number_format($passenger->booking->invoice->balance, 2) . ' SAR' : '—') : '' }}</td>@endif
+    @php $ticketFareAmount = $passenger->ticketFare?->selling_fare ?? $passenger->ticketFare?->net_fare; @endphp
+    <td class="px-3 py-2">
+        @if($ticketFareAmount)
+            <span class="text-slate-800 font-medium">{{ number_format((float)$ticketFareAmount, 2) }} SAR</span>
+        @else
+            <span class="text-slate-400">—</span>
+        @endif
+    </td>
+    @php
+        $ts = $passenger->ticket_status?->value;
+        $ticketStatusColorMap = ['pending' => 'bg-yellow-100 text-yellow-700', 'issued' => 'bg-green-100 text-green-700', 're-issued' => 'bg-purple-100 text-purple-700', 'refunded' => 'bg-red-100 text-red-700'];
+        $tsBadgeClass = $ticketStatusColorMap[$ts] ?? 'bg-slate-100 text-slate-600';
+    @endphp
+    <td class="px-3 py-2">
+        @if($ts)
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $tsBadgeClass }}">{{ ucwords(str_replace('-', ' ', $ts)) }}</span>
+        @else
+            <span class="text-slate-400">—</span>
+        @endif
+    </td>
     <td class="px-3 py-2">
         <a href="{{ route('passengers.show', $passenger->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
     </td>
 </tr>
 @empty
 <tr>
-    <td colspan="{{ $canViewFinancialColumns ? 17 : 13 }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="{{ $canViewFinancialColumns ? 19 : 15 }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 </tr>
 @endforelse
                     </tbody>
