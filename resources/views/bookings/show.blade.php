@@ -260,7 +260,27 @@
         {{-- Refund Tab --}}
         <div id="content-refund" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Refund History</h3>
-            <div class="text-center py-8 text-slate-500">Refund history coming soon</div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[1100px] text-sm">
+                    <thead class="bg-slate-50 text-slate-600">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium">Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Passenger Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Passport No.</th>
+                            <th class="px-3 py-2 text-left font-medium">PNR</th>
+                            <th class="px-3 py-2 text-left font-medium">Agent</th>
+                            <th class="px-3 py-2 text-right font-medium">Agent Refund Amount</th>
+                            <th class="px-3 py-2 text-right font-medium">Customer Refund Amount</th>
+                            <th class="px-3 py-2 text-right font-medium">Profit</th>
+                            <th class="px-3 py-2 text-left font-medium">Payment Method</th>
+                            <th class="px-3 py-2 text-left font-medium">Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="refundHistoryBody" class="divide-y divide-slate-200"></tbody>
+                </table>
+                <div id="refundHistoryEmpty" class="text-center py-4 text-slate-500">No refund requests found</div>
+            </div>
         </div>
 
         {{-- Back Button --}}
@@ -448,6 +468,54 @@
             </button>
         </div>
         <div id="reissueDetailsContent"></div>
+    </div>
+</div>
+
+{{-- Request Refund Modal --}}
+<div id="refundModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black/50" onclick="closeRefundModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <h3 class="text-xl font-semibold text-slate-800">Request Refund</h3>
+                <p class="text-slate-500 text-sm mt-1">Select passengers for refund</p>
+            </div>
+            <button onclick="closeRefundModal()" class="text-slate-400 hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="refundPassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
+            @foreach($booking->passengers as $index => $passenger)
+            <div class="border border-slate-200 rounded-lg p-4">
+                <div class="flex items-center gap-3">
+                    <input type="checkbox" id="refund_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded">
+                    <label for="refund_{{ $index }}" class="font-medium text-slate-800">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        <div class="flex gap-3">
+            <button onclick="submitRefundRequest()" class="flex-1 px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium">Submit Request</button>
+            <button onclick="closeRefundModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+        </div>
+    </div>
+</div>
+
+{{-- Refund Details Modal --}}
+<div id="refundDetailsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black/50" onclick="closeRefundDetailsModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-start mb-4">
+            <h3 class="text-xl font-semibold text-slate-800">Refund Details</h3>
+            <button onclick="closeRefundDetailsModal()" class="text-slate-400 hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="refundDetailsContent"></div>
     </div>
 </div>
 
@@ -881,14 +949,182 @@ function closeAddTicketModal() {
 }
 
 function openRefundModal() {
-    showToast('Refund request feature coming soon');
+    document.getElementById('refundModal').classList.remove('hidden');
+    const checkboxes = document.querySelectorAll('#refundPassengers input[type="checkbox"]');
+    checkboxes.forEach(cb => cb.checked = false);
 }
 
 function closeRefundModal() {
-    // Modal close placeholder
+    document.getElementById('refundModal').classList.add('hidden');
+}
+
+function submitRefundRequest() {
+    const selectedPassengers = [];
+    let foundChecked = false;
+
+    document.querySelectorAll('#refundPassengers > div').forEach((row, pIndex) => {
+        const checkbox = document.getElementById('refund_' + pIndex);
+        if (checkbox && checkbox.checked) {
+            foundChecked = true;
+            selectedPassengers.push({
+                name: checkbox.dataset.name,
+                passport: checkbox.dataset.passport,
+            });
+        }
+    });
+
+    if (!foundChecked) {
+        showToast('Please select at least one passenger', 'error');
+        return;
+    }
+
+    const requests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
+    requests.push({
+        id: Date.now(),
+        invoiceId: {{ $booking->id }},
+        invoiceNo: @json($booking->invoice_id ?? ''),
+        customerName: @json($booking->customer->name ?? ''),
+        passengers: selectedPassengers,
+        status: 'Pending',
+        paymentMethod: '-',
+        agentRefund: 0,
+        customerRefund: 0,
+        profit: 0,
+        pnr: '-',
+        agent: '-',
+        requestedAt: new Date().toISOString(),
+    });
+    localStorage.setItem('refundRequests', JSON.stringify(requests));
+
+    showToast('Refund request submitted successfully!', 'success');
+    closeRefundModal();
+    renderRefundHistory();
+}
+
+function renderRefundHistory() {
+    const tbody = document.getElementById('refundHistoryBody');
+    const emptyEl = document.getElementById('refundHistoryEmpty');
+    if (!tbody) return;
+
+    let allRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
+
+    if (allRequests.length === 0) {
+        const seedData = [
+            { id: 'seed_1', date: '2026-03-22', passengerName: 'Rahim Uddin', passport: 'P3344556', pnr: 'STU901', agent: 'Al-Reem', agentRefund: 400, customerRefund: 450, profit: 50, paymentMethod: 'Bank', status: 'Approved' },
+            { id: 'seed_2', date: '2026-03-19', passengerName: 'Nadia Islam', passport: 'P7788990', pnr: 'VWX234', agent: 'Nasser', agentRefund: 550, customerRefund: 600, profit: 50, paymentMethod: 'Cash', status: 'Pending' },
+            { id: 'seed_3', date: '2026-03-16', passengerName: 'Karim Hussein', passport: 'P1122445', pnr: 'YZA567', agent: 'Al-Masria', agentRefund: 300, customerRefund: 300, profit: 0, paymentMethod: 'Bank', status: 'Rejected' },
+            { id: 'seed_4', date: '2026-03-12', passengerName: 'Laila Mohamed', passport: 'P6677889', pnr: 'BCD890', agent: 'Umrah Plus', agentRefund: 700, customerRefund: 800, profit: 100, paymentMethod: 'Bank', status: 'Approved' },
+            { id: 'seed_5', date: '2026-03-08', passengerName: 'Tariq Ahmed', passport: 'P9900112', pnr: 'EFG123', agent: 'Al-Reem', agentRefund: 500, customerRefund: 550, profit: 50, paymentMethod: 'Cash', status: 'Approved' },
+            { id: 'seed_6', date: '2026-03-01', passengerName: 'Sabrina Khan', passport: 'P2233445', pnr: 'HIJ456', agent: 'Nasser', agentRefund: 650, customerRefund: 650, profit: 0, paymentMethod: 'Bank', status: 'Pending' },
+        ];
+
+        const refundRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
+        if (refundRequests.length === 0) {
+            allRequests = seedData;
+            localStorage.setItem('refundRequests_seed', JSON.stringify(seedData));
+        }
+    }
+
+    const bookingRequests = allRequests.filter(r => r.invoiceId === {{ $booking->id }} || !r.invoiceId);
+
+    if (bookingRequests.length === 0) {
+        tbody.innerHTML = '';
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        return;
+    }
+
+    if (emptyEl) emptyEl.classList.add('hidden');
+    tbody.innerHTML = '';
+
+    bookingRequests.forEach((item, index) => {
+        let statusBadge = '';
+        switch(item.status) {
+            case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
+            case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
+            case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
+            default: statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">' + item.status + '</span>';
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50';
+        tr.innerHTML = `
+            <td class="px-3 py-2 text-slate-600">${item.date || new Date(item.requestedAt).toLocaleDateString('en-CA')}</td>
+            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.passengerName || item.passengers?.[0]?.name || '-')}</td>
+            <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
+            <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
+            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.agentRefund || 0} SAR</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.customerRefund || 0} SAR</td>
+            <td class="px-3 py-2 text-green-600 text-right font-medium">${item.profit || 0} SAR</td>
+            <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
+            <td class="px-3 py-2">${statusBadge}</td>
+            <td class="px-3 py-2">
+                <button onclick="openRefundDetails(${item.id || index})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function openRefundDetails(id) {
+    const allRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
+    const seedData = JSON.parse(localStorage.getItem('refundRequests_seed') || '[]');
+    const allItems = [...allRequests, ...seedData];
+    const item = allItems.find(r => r.id === id);
+    if (!item) return;
+
+    const content = document.getElementById('refundDetailsContent');
+    content.innerHTML = generateRefundDetailsHTML(item);
+    document.getElementById('refundDetailsModal').classList.remove('hidden');
+}
+
+function generateRefundDetailsHTML(item) {
+    return `
+        <div class="space-y-4">
+            <div class="bg-slate-50 rounded-lg p-4">
+                <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Summary</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><span class="text-xs text-slate-400">Passenger Name</span><p class="text-slate-800">${escapeHtml(item.passengerName || item.passengers?.[0]?.name || '-')}</p></div>
+                    <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
+                    <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
+                    <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
+                    <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${item.agentRefund || 0} SAR</p></div>
+                    <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${item.customerRefund || 0} SAR</p></div>
+                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${item.profit || 0} SAR</p></div>
+                    <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
+                </div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-4">
+                <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Refund Breakdown</h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Original Ticket Cost</span>
+                        <span class="text-slate-800 font-medium">2,500 SAR</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Cancellation Charges</span>
+                        <span class="text-red-600 font-medium">-500 SAR</span>
+                    </div>
+                    <div class="flex justify-between pt-2 border-t border-slate-200">
+                        <span class="text-slate-500">Refund to Customer</span>
+                        <span class="text-blue-600 font-medium">2,000 SAR</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Agent Refund to Company</span>
+                        <span class="text-green-600 font-medium">1,800 SAR</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function closeRefundDetailsModal() {
+    document.getElementById('refundDetailsModal').classList.add('hidden');
 }
 
 renderReissueHistory();
+renderRefundHistory();
 
 function handleCustomerDocSelect(event) {
     const input = event.target;
