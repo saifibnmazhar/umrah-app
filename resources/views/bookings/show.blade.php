@@ -254,7 +254,27 @@
         {{-- Additional Ticket Tab --}}
         <div id="content-addticket" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Additional Ticket History</h3>
-            <div class="text-center py-8 text-slate-500">Additional ticket history coming soon</div>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[1100px] text-sm">
+                    <thead class="bg-slate-50 text-slate-600">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium">Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Passenger Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Passport No.</th>
+                            <th class="px-3 py-2 text-left font-medium">PNR</th>
+                            <th class="px-3 py-2 text-left font-medium">Agent</th>
+                            <th class="px-3 py-2 text-right font-medium">Additional Ticket Cost</th>
+                            <th class="px-3 py-2 text-right font-medium">Total Customer Payment</th>
+                            <th class="px-3 py-2 text-right font-medium">Profit</th>
+                            <th class="px-3 py-2 text-left font-medium">Payment Method</th>
+                            <th class="px-3 py-2 text-left font-medium">Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="additionalTicketHistoryBody" class="divide-y divide-slate-200"></tbody>
+                </table>
+                <div id="additionalTicketHistoryEmpty" class="text-center py-4 text-slate-500">No additional ticket requests found</div>
+            </div>
         </div>
 
         {{-- Refund Tab --}}
@@ -516,6 +536,81 @@
             </button>
         </div>
         <div id="refundDetailsContent"></div>
+    </div>
+</div>
+
+{{-- Request Additional Ticket Modal --}}
+<div id="addTicketModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black/50" onclick="closeAddTicketModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <h3 class="text-xl font-semibold text-slate-800">Request Additional Ticket</h3>
+                <p class="text-slate-500 text-sm mt-1">Select passengers and enter dates</p>
+            </div>
+            <button onclick="closeAddTicketModal()" class="text-slate-400 hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="addTicketPassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
+            @foreach($booking->passengers as $index => $passenger)
+            <div class="border border-slate-200 rounded-lg p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="addTicket_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('addTicket_{{ $index }}', 'addTicketFields_{{ $index }}')">
+                        <label for="addTicket_{{ $index }}" class="font-medium text-slate-800 whitespace-nowrap">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                    </div>
+                    <div id="addTicketFields_{{ $index }}" class="hidden flex items-center gap-3">
+                        <label for="addTicketOption_{{ $index }}" class="text-sm font-medium text-slate-700">Ticket Option</label>
+                        <select id="addTicketOption_{{ $index }}" onchange="toggleAddTicketOptionFields('{{ $index }}')" class="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="up">Inbound</option>
+                            <option value="down">Outbound</option>
+                            <option value="both">Both</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="addTicketDateFields_{{ $index }}" class="hidden mt-3 pl-7">
+                    <div class="flex gap-6 mb-2">
+                        <div id="addTicketProbableDateUp_{{ $index }}" class="hidden flex flex-col">
+                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Date (Inbound):</label>
+                            <input type="date" id="addTicketProbableDateUp_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div id="addTicketProbableDateDown_{{ $index }}" class="hidden flex flex-col">
+                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Date (Outbound):</label>
+                            <input type="date" id="addTicketProbableDateDown_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div id="addTicketVisaExpiry_{{ $index }}" class="flex flex-col">
+                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Visa Expiry Date:</label>
+                            <input type="date" id="addTicketVisaExpiry_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        <div class="flex gap-3">
+            <button onclick="submitAddTicketRequest()" class="flex-1 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">Submit Request</button>
+            <button onclick="closeAddTicketModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+        </div>
+    </div>
+</div>
+
+{{-- Additional Ticket Details Modal --}}
+<div id="addTicketDetailsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black/50" onclick="closeAddTicketDetailsModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-start mb-4">
+            <h3 class="text-xl font-semibold text-slate-800">Additional Ticket Details</h3>
+            <button onclick="closeAddTicketDetailsModal()" class="text-slate-400 hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="addTicketDetailsContent"></div>
     </div>
 </div>
 
@@ -941,11 +1036,94 @@ function renderReissueHistory() {
 }
 
 function openAddTicketModal() {
-    showToast('Additional ticket request feature coming soon');
+    document.getElementById('addTicketModal').classList.remove('hidden');
+    const checkboxes = document.querySelectorAll('#addTicketPassengers input[type="checkbox"]');
+    checkboxes.forEach((cb, idx) => {
+        cb.checked = false;
+        document.getElementById('addTicketFields_' + idx)?.classList.add('hidden');
+        document.getElementById('addTicketDateFields_' + idx)?.classList.add('hidden');
+        document.getElementById('addTicketProbableDateUp_' + idx)?.classList.add('hidden');
+        document.getElementById('addTicketProbableDateDown_' + idx)?.classList.add('hidden');
+    });
 }
 
 function closeAddTicketModal() {
-    // Modal close placeholder
+    document.getElementById('addTicketModal').classList.add('hidden');
+}
+
+function toggleAddTicketOptionFields(pIndex) {
+    const ticketOption = document.getElementById('addTicketOption_' + pIndex);
+    const dateFields = document.getElementById('addTicketDateFields_' + pIndex);
+    const probableDateUp = document.getElementById('addTicketProbableDateUp_' + pIndex);
+    const probableDateDown = document.getElementById('addTicketProbableDateDown_' + pIndex);
+    const visaExpiry = document.getElementById('addTicketVisaExpiry_' + pIndex);
+
+    if (!ticketOption || !dateFields) return;
+
+    dateFields.classList.remove('hidden');
+    probableDateUp.classList.add('hidden');
+    probableDateDown.classList.add('hidden');
+    visaExpiry.classList.add('hidden');
+
+    if (ticketOption.value === 'up') {
+        probableDateUp.classList.remove('hidden');
+        visaExpiry.classList.remove('hidden');
+    } else if (ticketOption.value === 'down') {
+        probableDateDown.classList.remove('hidden');
+        visaExpiry.classList.remove('hidden');
+    } else if (ticketOption.value === 'both') {
+        probableDateUp.classList.remove('hidden');
+        probableDateDown.classList.remove('hidden');
+        visaExpiry.classList.remove('hidden');
+    }
+}
+
+function submitAddTicketRequest() {
+    const passengerRows = document.querySelectorAll('#addTicketPassengers > div');
+    const selectedPassengers = [];
+    let foundChecked = false;
+
+    passengerRows.forEach((row, pIndex) => {
+        const checkbox = document.getElementById('addTicket_' + pIndex);
+        if (checkbox && checkbox.checked) {
+            foundChecked = true;
+            selectedPassengers.push({
+                name: checkbox.dataset.name,
+                passport: checkbox.dataset.passport,
+                ticketOption: document.getElementById('addTicketOption_' + pIndex)?.value || '',
+                probableDateUp: document.getElementById('addTicketProbableDateUp_' + pIndex)?.value || '',
+                probableDateDown: document.getElementById('addTicketProbableDateDown_' + pIndex)?.value || '',
+                visaExpiry: document.getElementById('addTicketVisaExpiry_' + pIndex)?.value || '',
+            });
+        }
+    });
+
+    if (!foundChecked) {
+        showToast('Please select at least one passenger', 'error');
+        return;
+    }
+
+    const requests = JSON.parse(localStorage.getItem('addTicketRequests') || '[]');
+    requests.push({
+        id: Date.now(),
+        invoiceId: {{ $booking->id }},
+        invoiceNo: @json($booking->invoice_id ?? ''),
+        customerName: @json($booking->customer->name ?? ''),
+        passengers: selectedPassengers,
+        status: 'Pending',
+        paymentMethod: '-',
+        additionalTicketCost: 0,
+        customerPayment: 0,
+        profit: 0,
+        pnr: '-',
+        agent: '-',
+        requestedAt: new Date().toISOString(),
+    });
+    localStorage.setItem('addTicketRequests', JSON.stringify(requests));
+
+    showToast('Additional ticket request submitted successfully!', 'success');
+    closeAddTicketModal();
+    renderAdditionalTicketHistory();
 }
 
 function openRefundModal() {
@@ -1123,8 +1301,125 @@ function closeRefundDetailsModal() {
     document.getElementById('refundDetailsModal').classList.add('hidden');
 }
 
+function renderAdditionalTicketHistory() {
+    const tbody = document.getElementById('additionalTicketHistoryBody');
+    const emptyEl = document.getElementById('additionalTicketHistoryEmpty');
+    if (!tbody) return;
+
+    let allRequests = JSON.parse(localStorage.getItem('addTicketRequests') || '[]');
+
+    if (allRequests.length === 0) {
+        const seedData = [
+            { id: 'at_seed_1', date: '2026-03-25', passengerName: 'Ahmed Hassan', passport: 'P1234567', pnr: 'ABC123', agent: 'Al-Reem', additionalTicketCost: 450, customerPayment: 500, profit: 50, paymentMethod: 'Bank', status: 'Approved' },
+            { id: 'at_seed_2', date: '2026-03-22', passengerName: 'Fatima Rahman', passport: 'P7654321', pnr: 'DEF456', agent: 'Nasser', additionalTicketCost: 600, customerPayment: 650, profit: 50, paymentMethod: 'Cash', status: 'Pending' },
+            { id: 'at_seed_3', date: '2026-03-18', passengerName: 'Mohammed Ali', passport: 'P1122334', pnr: 'GHI789', agent: 'Al-Masria', additionalTicketCost: 350, customerPayment: 350, profit: 0, paymentMethod: 'Bank', status: 'Approved' },
+            { id: 'at_seed_4', date: '2026-03-14', passengerName: 'Sara Ahmed', passport: 'P9988776', pnr: 'JKL012', agent: 'Umrah Plus', additionalTicketCost: 800, customerPayment: 900, profit: 100, paymentMethod: 'Bank', status: 'Pending' },
+        ];
+
+        const addTicketRequests = JSON.parse(localStorage.getItem('addTicketRequests') || '[]');
+        if (addTicketRequests.length === 0) {
+            allRequests = seedData;
+            localStorage.setItem('addTicketRequests_seed', JSON.stringify(seedData));
+        }
+    }
+
+    const bookingRequests = allRequests.filter(r => r.invoiceId === {{ $booking->id }} || !r.invoiceId);
+
+    if (bookingRequests.length === 0) {
+        tbody.innerHTML = '';
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        return;
+    }
+
+    if (emptyEl) emptyEl.classList.add('hidden');
+    tbody.innerHTML = '';
+
+    bookingRequests.forEach((item, index) => {
+        let statusBadge = '';
+        switch(item.status) {
+            case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
+            case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
+            case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
+            default: statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">' + item.status + '</span>';
+        }
+
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50';
+        tr.innerHTML = `
+            <td class="px-3 py-2 text-slate-600">${item.date || new Date(item.requestedAt).toLocaleDateString('en-CA')}</td>
+            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.passengerName || item.passengers?.[0]?.name || '-')}</td>
+            <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
+            <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
+            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.additionalTicketCost || 0} SAR</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.customerPayment || 0} SAR</td>
+            <td class="px-3 py-2 text-green-600 text-right font-medium">${item.profit || 0} SAR</td>
+            <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
+            <td class="px-3 py-2">${statusBadge}</td>
+            <td class="px-3 py-2">
+                <button onclick="openAddTicketDetails(${item.id || index})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
+            </td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+function openAddTicketDetails(id) {
+    const allRequests = JSON.parse(localStorage.getItem('addTicketRequests') || '[]');
+    const seedData = JSON.parse(localStorage.getItem('addTicketRequests_seed') || '[]');
+    const allItems = [...allRequests, ...seedData];
+    const item = allItems.find(r => r.id === id);
+    if (!item) return;
+
+    const content = document.getElementById('addTicketDetailsContent');
+    content.innerHTML = generateAddTicketDetailsHTML(item);
+    document.getElementById('addTicketDetailsModal').classList.remove('hidden');
+}
+
+function generateAddTicketDetailsHTML(item) {
+    return `
+        <div class="space-y-4">
+            <div class="bg-slate-50 rounded-lg p-4">
+                <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Summary</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><span class="text-xs text-slate-400">Passenger Name</span><p class="text-slate-800">${escapeHtml(item.passengerName || item.passengers?.[0]?.name || '-')}</p></div>
+                    <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
+                    <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
+                    <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
+                    <div><span class="text-xs text-slate-400">Additional Ticket Cost</span><p class="text-slate-800 font-medium">${item.additionalTicketCost || 0} SAR</p></div>
+                    <div><span class="text-xs text-slate-400">Customer Payment</span><p class="text-slate-800 font-medium">${item.customerPayment || 0} SAR</p></div>
+                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${item.profit || 0} SAR</p></div>
+                    <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
+                </div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-4">
+                <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Ticket Details</h4>
+                <div class="space-y-3">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Route</span>
+                        <span class="text-slate-800 font-medium">DAC-JED-DAC</span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Travel Date</span>
+                        <span class="text-blue-600 font-medium">${item.probableDateUp || item.date || '-'}</span>
+                    </div>
+                    <div class="flex justify-between pt-2 border-t border-slate-200">
+                        <span class="text-slate-500">Ticket Option</span>
+                        <span class="text-slate-800 font-medium">${item.passengers?.[0]?.ticketOption || '-'}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+}
+
+function closeAddTicketDetailsModal() {
+    document.getElementById('addTicketDetailsModal').classList.add('hidden');
+}
+
 renderReissueHistory();
 renderRefundHistory();
+renderAdditionalTicketHistory();
 
 function handleCustomerDocSelect(event) {
     const input = event.target;
