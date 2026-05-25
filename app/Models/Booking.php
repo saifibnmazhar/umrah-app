@@ -99,4 +99,9 @@ class Booking extends Model
     {
         return $this->hasMany(Payment::class);
     }
+
+    public function fingerprint(): HasOne
+    {
+        return $this->hasOne(Fingerprint::class);
+    }
 }

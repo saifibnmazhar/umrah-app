@@ -10,6 +10,8 @@ use App\Models\Document;
 use App\Models\Package;
 use App\Models\Office;
 use App\Models\FingerprintCharge;
+use App\Models\Fingerprint;
+use App\Models\FingerprintDetail;
 use App\Models\Route;
 use App\Models\Airline;
 use App\Models\TravelClass;
@@ -280,6 +282,25 @@ class BookingController extends Controller
                     'flight_date_to' => $passengerData['flight_date_to'] ?? null,
                     'address' => $passengerData['address'] ?? null,
                     'ticket_fare_id' => $passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id,
+                ]);
+            }
+
+            $fpCharge = FingerprintCharge::find($validated['fingerprint_charge_id']);
+            $fingerprintCost = $fpCharge ? (float) $fpCharge->fingerprint_charge : 0;
+
+            $fingerprint = Fingerprint::create([
+                'booking_id' => $booking->id,
+                'deadline' => now()->addDays(10),
+                'cost' => $fingerprintCost,
+                'assigned_staff_id' => null,
+            ]);
+
+            $booking->load('passengers');
+            foreach ($booking->passengers as $passenger) {
+                FingerprintDetail::create([
+                    'fingerprint_id' => $fingerprint->id,
+                    'passenger_id' => $passenger->id,
+                    'status' => 'none',
                 ]);
             }
 
@@ -673,6 +694,15 @@ class BookingController extends Controller
 
         $passenger = Passenger::create($validated);
 
+        $fingerprint = Fingerprint::where('booking_id', $booking->id)->first();
+        if ($fingerprint) {
+            FingerprintDetail::create([
+                'fingerprint_id' => $fingerprint->id,
+                'passenger_id' => $passenger->id,
+                'status' => 'none',
+            ]);
+        }
+
         $booking->update(['pax_qty' => $booking->passengers()->count()]);
         $booking = $booking->fresh();
 
@@ -696,6 +726,12 @@ class BookingController extends Controller
         }
 
         try {
+            $detail = FingerprintDetail::where('passenger_id', $passenger->id)->first();
+            if ($detail) {
+                $detail->rescheduledFingerprints()->delete();
+                $detail->delete();
+            }
+
             $passenger->delete();
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();
