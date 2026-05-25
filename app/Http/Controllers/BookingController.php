@@ -33,7 +33,32 @@ use Carbon\Carbon;
 
 class BookingController extends Controller
 {
-    public function __construct(private BookingService $bookingService) {}
+    public function __construct(
+        private BookingService $bookingService,
+        private InvoiceService $invoiceService,
+    ) {}
+
+    private function syncBookingFinancials(Booking $booking): array
+    {
+        $this->bookingService->syncFinancials($booking);
+
+        $invoice = $booking->invoice;
+        if ($invoice) {
+            $invoice = $invoice->fresh();
+            return [
+                'total_amount' => (float) $invoice->total_amount,
+                'paid_amount' => (float) $invoice->paid_amount,
+                'balance' => (float) $invoice->balance,
+            ];
+        }
+
+        return [
+            'total_amount' => 0,
+            'paid_amount' => 0,
+            'balance' => 0,
+        ];
+    }
+
     public function index(Request $request)
     {
         $tab = $request->get('tab', 'booking');
@@ -529,7 +554,13 @@ class BookingController extends Controller
                 }
             }
 
-            $this->bookingService->recalculateBookingTotal($booking->fresh());
+            $booking = $booking->fresh();
+            $invoiceData = $this->syncBookingFinancials($booking);
+
+            $discountType = $booking->discount_type;
+            if ($discountType instanceof \BackedEnum) {
+                $discountType = $discountType->value;
+            }
 
             $customerDocs = $request->file('booking_customer_docs', []);
             if (is_array($customerDocs) && count($customerDocs) > 0) {
@@ -549,6 +580,12 @@ class BookingController extends Controller
                 return response()->json([
                     'success' => true,
                     'message' => 'Discount applied successfully',
+                    'invoice' => $invoiceData,
+                    'discount' => [
+                        'type' => $discountType,
+                        'value' => (float) $booking->discount_value,
+                        'amount' => (float) $booking->discount_amount,
+                    ],
                 ]);
             }
 
@@ -576,23 +613,13 @@ class BookingController extends Controller
             $booking->update(['fingerprint_location' => $validated['fingerprint_location']]);
 
             $booking = $booking->fresh();
-            $this->bookingService->recalculateBookingTotal($booking);
-
-            $invoice = $booking->invoice;
-            if ($invoice) {
-                app(InvoiceService::class)->updateTotals($invoice, $booking->total_value);
-                $invoice = $invoice->fresh();
-            }
+            $invoiceData = $this->syncBookingFinancials($booking);
 
             return response()->json([
                 'success' => true,
                 'message' => 'Fingerprint location updated successfully',
                 'fingerprint_location' => $booking->fingerprint_location?->value,
-                'invoice' => $invoice ? [
-                    'total_amount' => (float) $invoice->total_amount,
-                    'paid_amount' => (float) $invoice->paid_amount,
-                    'balance' => (float) $invoice->balance,
-                ] : null,
+                'invoice' => $invoiceData,
             ]);
         } catch (\Exception $e) {
             return response()->json([
@@ -646,12 +673,18 @@ class BookingController extends Controller
         $passenger = Passenger::create($validated);
 
         $booking->update(['pax_qty' => $booking->passengers()->count()]);
-        $this->bookingService->recalculateBookingTotal($booking->fresh());
+        $booking = $booking->fresh();
+
+        $invoiceData = $this->syncBookingFinancials($booking);
+
+        $passenger = $passenger->fresh()->load('ticketFare');
 
         return response()->json([
             'success' => true,
             'message' => 'Passenger added successfully',
-            'passenger' => $passenger
+            'passenger' => $passenger,
+            'display_total' => $passenger->package_value ?? 0,
+            'invoice' => $invoiceData,
         ]);
     }
 
@@ -664,8 +697,15 @@ class BookingController extends Controller
         try {
             $passenger->delete();
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
-            $this->bookingService->recalculateBookingTotal($booking->fresh());
-            return response()->json(['success' => true, 'message' => 'Passenger removed successfully']);
+            $booking = $booking->fresh();
+
+            $invoiceData = $this->syncBookingFinancials($booking);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Passenger removed successfully',
+                'invoice' => $invoiceData,
+            ]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to remove passenger'], 500);
         }
@@ -849,11 +889,14 @@ class BookingController extends Controller
     {
         $packageValue = $this->bookingService->calculatePackageValue($passenger);
         $passenger->update(['package_value' => $packageValue]);
-        $this->bookingService->recalculateBookingTotal($passenger->booking->fresh());
+        $booking = $passenger->booking->fresh();
+
+        $invoiceData = $this->syncBookingFinancials($booking);
 
         return response()->json([
             'package_value' => $packageValue,
-            'total_value' => $passenger->booking->total_value,
+            'total_value' => $booking->total_value,
+            'invoice' => $invoiceData,
         ]);
     }
 }
