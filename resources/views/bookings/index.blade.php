@@ -1,6 +1,23 @@
 @extends('layouts.app')
 @section('title', 'Booking')
 @section('content')
+@php
+$passengersVisaData = $passengers->map(fn($p) => [
+    'id' => $p->id,
+    'visa' => $p->visaSubmission ? [
+        'agent' => $p->visaSubmission?->visaAgent?->name ?? '',
+        'visa_number' => $p->visaSubmission?->visa_number ?? '',
+        'selling_price' => (float)($p->visaSubmission?->selling_price ?? 0),
+        'agent_commission' => (float)($p->visaSubmission?->agent_commission ?? 0),
+        'net_visa_cost' => (float)($p->visaSubmission?->net_visa_cost ?? 0),
+        'additional_cost' => (float)($p->visaSubmission?->additional_cost ?? 0),
+        'remarks' => $p->visaSubmission?->remarks ?? '',
+        'final_cost' => (float)($p->visaSubmission?->final_cost ?? 0),
+        'commission_agent' => $p->visaSubmission?->commissionAgent?->name ?? '',
+    ] : null,
+    'visa_status' => $p->visa_status?->value ?? null,
+])->values();
+@endphp
 <div class="max-w-7xl mx-auto" x-data="bookingIndexApp()">
     <div class="flex justify-between items-center mb-6">
         @php
@@ -190,11 +207,14 @@ if ($route) {
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->invoice?->balance ? number_format($passenger->booking->invoice->balance, 2) . ' SAR' : '—') : '' }}</td>@endif
     <td class="px-3 py-2">
-        @if($visaSubmission && $visaSubmission->visa_number)
-            <span class="text-slate-800 font-medium">{{ $visaSubmission->visa_number }}</span>
-        @else
-            <span class="text-slate-400">—</span>
-        @endif
+        <div class="flex items-center gap-1 flex-wrap">
+            @if($visaSubmission && $visaSubmission->visa_number)
+                <span class="text-slate-800 font-medium text-xs mr-1">{{ $visaSubmission->visa_number }}</span>
+            @endif
+            <button @click="openVisaSubmitModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Submit</button>
+            <button @click="openVisaIssueModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
+            <button @click="openVisaEditModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
+        </div>
     </td>
     <td class="px-3 py-2 text-slate-600">{{ $visaSubmission?->visaAgent?->name ?? '—' }}</td>
     <td class="px-3 py-2">
@@ -224,13 +244,322 @@ if ($route) {
             </div>
         </div>
     </div>
+
+    {{-- Visa Submit Modal --}}
+    <div x-show="visaSubmitModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeVisaSubmitModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeVisaSubmitModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4" x-text="visaSubmitForm.isEdit ? 'Edit Visa Submit' : 'Visa Submit Form'"></h3>
+            <form @submit.prevent="closeVisaSubmitModal()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent *</label>
+                        <select x-model="visaSubmitForm.agent" required @change="updateSubmitCommissionAgents(visaSubmitForm.agent)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Agent</option>
+                            <option value="Visa Agent A">Visa Agent A</option>
+                            <option value="Visa Agent B">Visa Agent B</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Commission Agent *</label>
+                        <select x-model="visaSubmitForm.commissionAgent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Commission Agent</option>
+                            <template x-for="agent in visaSubmitForm.commissionAgents" :key="agent">
+                                <option :value="agent" x-text="agent"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Selling Price (SAR)</label>
+                        <input type="number" x-model="visaSubmitForm.sellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
+                        <input type="number" x-model="visaSubmitForm.agentCommission" min="0" @input="calculateVisaCost()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
+                        <input type="number" x-model="visaSubmitForm.netVisaCost" min="0" @input="calculateVisaCost()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Final Visa Cost (SAR)</label>
+                        <input type="number" x-model="visaSubmitForm.finalCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                    <button type="button" @click="closeVisaSubmitModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Visa Issue Modal --}}
+    <div x-show="visaIssueModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeVisaIssueModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeVisaIssueModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Visa Issue Form</h3>
+            <form @submit.prevent="closeVisaIssueModal()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent</label>
+                        <input type="text" x-model="visaIssueForm.agent" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Number *</label>
+                        <input type="text" x-model="visaIssueForm.visaNumber" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter visa number">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (SAR)</label>
+                        <input type="number" x-model="visaIssueForm.sellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
+                        <input type="number" x-model="visaIssueForm.totalCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (SAR)</label>
+                        <input type="number" x-model="visaIssueForm.additionalCost" min="0" @input="calculateVisaIssueTotal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                        <input type="text" x-model="visaIssueForm.remarks" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter remarks">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Issue</button>
+                    <button type="button" @click="closeVisaIssueModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Visa Edit Modal --}}
+    <div x-show="visaEditModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeVisaEditModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeVisaEditModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Edit Visa</h3>
+            <form @submit.prevent="closeVisaEditModal()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent *</label>
+                        <select x-model="visaEditForm.agent" required @change="updateEditCommissionAgents(visaEditForm.agent)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Agent</option>
+                            <option value="Visa Agent A">Visa Agent A</option>
+                            <option value="Visa Agent B">Visa Agent B</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Number *</label>
+                        <input type="text" x-model="visaEditForm.visaNumber" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter visa number">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Commission Agent *</label>
+                        <select x-model="visaEditForm.commissionAgent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Commission Agent</option>
+                            <template x-for="agent in visaEditForm.commissionAgents" :key="agent">
+                                <option :value="agent" x-text="agent"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Selling Price (SAR)</label>
+                        <input type="number" x-model="visaEditForm.sellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
+                        <input type="number" x-model="visaEditForm.agentCommission" min="0" @input="calculateVisaEditFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
+                        <input type="number" x-model="visaEditForm.netVisaCost" min="0" @input="calculateVisaEditFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (SAR)</label>
+                        <input type="number" x-model="visaEditForm.additionalCost" min="0" @input="calculateVisaEditFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                        <input type="text" x-model="visaEditForm.remarks" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter remarks">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (SAR)</label>
+                        <input type="number" x-model="visaEditForm.finalCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                        <span :class="visaEditForm.issued ? 'bg-green-100 text-green-700' : 'bg-yellow-100 text-yellow-700'" class="inline-flex items-center px-2 py-1 rounded text-xs font-medium" x-text="visaEditForm.issued ? 'Issued' : 'Pending'"></span>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                    <button type="button" @click="closeVisaEditModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
 </div>
+
+<style>
+.modal-overlay { transition: opacity 0.2s ease; }
+.modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
+</style>
 
 <script>
 function bookingIndexApp() {
     return {
         activeTab: '{{ $tab ?? 'booking' }}',
         searchTerm: '',
+
+        passengersVisaData: @json($passengersVisaData),
+
+        visaCommissionAgents: {
+            "Visa Agent A": ["Commission Agent 1", "Commission Agent 2"],
+            "Visa Agent B": ["Commission Agent 3", "Commission Agent 4"]
+        },
+
+        visaSubmitModalVisible: false,
+        visaIssueModalVisible: false,
+        visaEditModalVisible: false,
+        editingVisaIndex: null,
+
+        visaSubmitForm: {
+            agent: '',
+            commissionAgent: '',
+            sellingPrice: 500,
+            agentCommission: 0,
+            netVisaCost: 0,
+            finalCost: 0,
+            commissionAgents: []
+        },
+
+        visaIssueForm: {
+            agent: '',
+            visaNumber: '',
+            sellingPrice: 0,
+            additionalCost: 0,
+            totalCost: 0,
+            remarks: ''
+        },
+
+        visaEditForm: {
+            agent: '',
+            visaNumber: '',
+            commissionAgent: '',
+            sellingPrice: 0,
+            agentCommission: 0,
+            netVisaCost: 0,
+            additionalCost: 0,
+            remarks: '',
+            finalCost: 0,
+            issued: false,
+            commissionAgents: []
+        },
+
+        getCommissionAgents(agentName) {
+            return this.visaCommissionAgents[agentName] || [];
+        },
+
+        openVisaSubmitModal(index) {
+            this.editingVisaIndex = index;
+            const data = this.passengersVisaData[index];
+
+            this.visaSubmitForm.agent = data?.visa?.agent || '';
+            this.visaSubmitForm.commissionAgents = this.getCommissionAgents(data?.visa?.agent);
+            this.visaSubmitForm.sellingPrice = data?.visa?.selling_price || 500;
+            this.visaSubmitForm.agentCommission = data?.visa?.agent_commission || 0;
+            this.visaSubmitForm.netVisaCost = data?.visa?.net_visa_cost || 0;
+
+            this.$nextTick(() => {
+                this.visaSubmitForm.commissionAgent = data?.visa?.commission_agent || '';
+            });
+
+            this.calculateVisaCost();
+            this.visaSubmitModalVisible = true;
+        },
+
+        closeVisaSubmitModal() {
+            this.editingVisaIndex = null;
+            this.visaSubmitModalVisible = false;
+        },
+
+        updateSubmitCommissionAgents(agentName) {
+            this.visaSubmitForm.commissionAgents = this.getCommissionAgents(agentName);
+            this.visaSubmitForm.commissionAgent = '';
+        },
+
+        calculateVisaCost() {
+            const commission = parseFloat(this.visaSubmitForm.agentCommission) || 0;
+            const net = parseFloat(this.visaSubmitForm.netVisaCost) || 0;
+            this.visaSubmitForm.finalCost = commission + net;
+        },
+
+        openVisaIssueModal(index) {
+            this.editingVisaIndex = index;
+            const data = this.passengersVisaData[index];
+            const visa = data?.visa;
+
+            this.visaIssueForm.agent = visa?.agent || '';
+            this.visaIssueForm.visaNumber = visa?.visa_number || '';
+            this.visaIssueForm.sellingPrice = visa?.selling_price || 0;
+            this.visaIssueForm.additionalCost = visa?.additional_cost || 0;
+            this.visaIssueForm.remarks = visa?.remarks || '';
+
+            this.calculateVisaIssueTotal();
+            this.visaIssueModalVisible = true;
+        },
+
+        closeVisaIssueModal() {
+            this.editingVisaIndex = null;
+            this.visaIssueModalVisible = false;
+        },
+
+        calculateVisaIssueTotal() {
+            const selling = parseFloat(this.visaIssueForm.sellingPrice) || 0;
+            const additional = parseFloat(this.visaIssueForm.additionalCost) || 0;
+            this.visaIssueForm.totalCost = selling + additional;
+        },
+
+        openVisaEditModal(index) {
+            this.editingVisaIndex = index;
+            const data = this.passengersVisaData[index];
+            const visa = data?.visa;
+
+            this.visaEditForm.agent = visa?.agent || '';
+            this.visaEditForm.visaNumber = visa?.visa_number || '';
+
+            this.visaEditForm.commissionAgents = visa?.agent ? this.getCommissionAgents(visa.agent) : [];
+            this.$nextTick(() => {
+                this.visaEditForm.commissionAgent = visa?.commission_agent || '';
+            });
+
+            this.visaEditForm.sellingPrice = visa?.selling_price || 0;
+            this.visaEditForm.agentCommission = visa?.agent_commission || 0;
+            this.visaEditForm.netVisaCost = visa?.net_visa_cost || 0;
+            this.visaEditForm.additionalCost = visa?.additional_cost || 0;
+            this.visaEditForm.remarks = visa?.remarks || '';
+            this.visaEditForm.issued = data?.visa_status === 'issued';
+
+            this.calculateVisaEditFinal();
+            this.visaEditModalVisible = true;
+        },
+
+        closeVisaEditModal() {
+            this.editingVisaIndex = null;
+            this.visaEditModalVisible = false;
+        },
+
+        updateEditCommissionAgents(agentName) {
+            this.visaEditForm.commissionAgents = this.getCommissionAgents(agentName);
+            this.visaEditForm.commissionAgent = '';
+        },
+
+        calculateVisaEditFinal() {
+            const commission = parseFloat(this.visaEditForm.agentCommission) || 0;
+            const net = parseFloat(this.visaEditForm.netVisaCost) || 0;
+            const additional = parseFloat(this.visaEditForm.additionalCost) || 0;
+            this.visaEditForm.finalCost = commission + net + additional;
+        }
     }
 }
 
