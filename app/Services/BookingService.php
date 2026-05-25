@@ -11,6 +11,9 @@ use Carbon\Carbon;
 
 class BookingService
 {
+    public function __construct(
+        private InvoiceService $invoiceService,
+    ) {}
     public function calculatePassengerType($dateOfBirth, $stayDuration = null): string
     {
         if (!$dateOfBirth) {
@@ -124,6 +127,33 @@ class BookingService
         $booking->saveQuietly();
 
         return $total;
+    }
+
+    public function syncFinancials(Booking $booking): void
+    {
+        $this->recalculateBookingTotal($booking);
+
+        $discountType = $booking->discount_type;
+        if ($discountType instanceof \BackedEnum) {
+            $discountType = $discountType->value;
+        }
+
+        $discountAmount = $this->calculateDiscount(
+            $booking->total_value,
+            $discountType ?? 'fixed',
+            $booking->discount_value ?? 0
+        );
+
+        if ($booking->discount_amount != $discountAmount) {
+            $booking->discount_amount = $discountAmount;
+            $booking->saveQuietly();
+        }
+
+        $invoice = $booking->invoice;
+        if ($invoice) {
+            $discountedTotal = max(0, $booking->total_value - $discountAmount);
+            $this->invoiceService->updateTotals($invoice, $discountedTotal);
+        }
     }
 
     public function calculateTotal(Booking $booking): array

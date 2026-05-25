@@ -1731,6 +1731,7 @@ Alpine.data('createBookingApp', () => ({
         if (confirm('Are you sure you want to remove this passenger?')) {
             this.passengers.splice(index, 1);
             this.passengerCount = this.passengers.length;
+            this.passengerPackageValues = {};
             this.recalculateAllPassengerValues();
         }
     },
@@ -2974,9 +2975,50 @@ Alpine.data('editBookingApp', () => ({
     },
 
     removePassenger(index) {
-        if (confirm('Are you sure you want to remove this passenger?')) {
+        const passenger = this.passengers[index];
+        if (!passenger) return;
+
+        if (!confirm('Are you sure you want to remove this passenger?')) return;
+
+        if (passenger.id) {
+            const bookingId = window.__bookingServerData?.bookingId
+                || this.existingBooking?.id;
+            if (!bookingId) {
+                this.passengers.splice(index, 1);
+                this.passengerCount = this.passengers.length;
+                this.passengerPackageValues = {};
+                this.recalculateAllPassengerValues();
+                return;
+            }
+
+            fetch('/bookings/' + bookingId + '/passengers/' + passenger.id, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Accept': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.passengers.splice(index, 1);
+                    this.passengerCount = this.passengers.length;
+                    this.passengerPackageValues = {};
+                    this.recalculateAllPassengerValues();
+                    if (typeof showToast === 'function') {
+                        showToast('Passenger removed successfully');
+                    }
+                } else {
+                    alert(data.message || 'Failed to remove passenger');
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error.message);
+            });
+        } else {
             this.passengers.splice(index, 1);
             this.passengerCount = this.passengers.length;
+            this.passengerPackageValues = {};
             this.recalculateAllPassengerValues();
         }
     },
@@ -3475,7 +3517,12 @@ Alpine.data('showBookingApp', () => ({
                 if (typeof showToast === 'function') {
                     showToast('Passenger added successfully');
                 }
-                setTimeout(() => location.reload(), 500);
+                if (data.invoice) {
+                    updateFinancialSummary(data.invoice);
+                }
+                if (data.passenger) {
+                    appendPassengerRow(data.passenger, data.display_total);
+                }
             } else {
                 alert(data.message || 'Failed to add passenger');
             }
@@ -3886,13 +3933,21 @@ Alpine.data('showBookingApp', () => ({
     },
 
     openPaymentModal() {
+        const totalFinEl = document.getElementById('financialTotalValue');
+        const paidFinEl = document.getElementById('financialTotalPaid');
+        const dueFinEl = document.getElementById('financialDue');
+        const totalText = totalFinEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        const paidText = paidFinEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        const dueText = dueFinEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        this.paymentMaxAmount = parseFloat(dueText) || 0;
+
         const totalEl = document.getElementById('paymentTotalPackageValue');
         const paidEl = document.getElementById('paymentPaid');
         const dueEl = document.getElementById('paymentDue');
-        const totalText = totalEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
-        const paidText = paidEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
-        const dueText = dueEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
-        this.paymentMaxAmount = parseFloat(dueText) || 0;
+        if (totalEl) totalEl.textContent = totalFinEl?.textContent || totalEl.textContent;
+        if (paidEl) paidEl.textContent = paidFinEl?.textContent || paidEl.textContent;
+        if (dueEl) dueEl.textContent = dueFinEl?.textContent || dueEl.textContent;
+
         this.paymentData = {
             currency: 'SAR',
             method: 'cash',

@@ -61,15 +61,15 @@
             <div class="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-200">
                 <div>
                     <span class="text-slate-500 text-sm">Total Value</span>
-                    <p class="text-xl font-bold text-slate-800">{{ number_format($booking->invoice?->total_amount ?? 0) }} SAR</p>
+                    <p id="financialTotalValue" class="text-xl font-bold text-slate-800">{{ number_format($booking->invoice?->total_amount ?? 0) }} SAR</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Total Paid</span>
-                    <p class="text-xl font-bold text-green-600">{{ number_format($booking->invoice?->paid_amount ?? 0) }} SAR</p>
+                    <p id="financialTotalPaid" class="text-xl font-bold text-green-600">{{ number_format($booking->invoice?->paid_amount ?? 0) }} SAR</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Due</span>
-                    <p class="text-xl font-bold text-red-600">{{ number_format($booking->invoice?->balance ?? 0) }} SAR</p>
+                    <p id="financialDue" class="text-xl font-bold text-red-600">{{ number_format($booking->invoice?->balance ?? 0) }} SAR</p>
                 </div>
             </div>
             <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
@@ -321,7 +321,9 @@
 </div>
 
 {{-- Discount Modal --}}
-<div id="discountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+<div id="discountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center"
+    data-discount-type="{{ $booking->discount_type?->value ?? 'fixed' }}"
+    data-discount-value="{{ $booking->discount_value ?? 0 }}">
     <div class="fixed inset-0 bg-black/50" onclick="closeDiscountModal()"></div>
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
         <div class="flex justify-between items-start mb-4">
@@ -336,8 +338,8 @@
             <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
             <select id="discountType" onchange="calculateInvoiceDiscount()" 
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                <option value="fixed" {{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'selected' : '' }}>Fixed (SAR)</option>
-                <option value="percentage" {{ $booking->discount_type?->value === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
+                <option value="fixed" data-current="{{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'true' : 'false' }}" {{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'selected' : '' }}>Fixed (SAR)</option>
+                <option value="percentage" data-current="{{ $booking->discount_type?->value === 'percentage' ? 'true' : 'false' }}" {{ $booking->discount_type?->value === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
             </select>
         </div>
         <div class="mb-4">
@@ -345,6 +347,7 @@
             <input type="number" id="discountValue" 
                 value="{{ $booking->discount_value ?? 0 }}" 
                 min="0" step="0.01"
+                data-current="{{ $booking->discount_value ?? 0 }}"
                 oninput="validateDiscountValue(); calculateInvoiceDiscount()" 
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
         </div>
@@ -372,6 +375,11 @@
 
 @push('scripts')
 <script>
+var currentDiscountState = {
+    type: '{{ $booking->discount_type?->value === 'fixed_amount' ? 'fixed' : ($booking->discount_type?->value ?? 'fixed') }}',
+    value: {{ $booking->discount_value ?? 0 }}
+};
+
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
@@ -385,11 +393,8 @@ function showToast(message, type = 'success') {
 }
 
 function openDiscountModal() {
-    const existingDiscount = {{ $booking->discount_value ?? 0 }};
-    const discountType = '{{ $booking->discount_type?->value === 'fixed_amount' ? 'fixed' : ($booking->discount_type?->value ?? 'fixed') }}';
-    
-    document.getElementById('discountType').value = discountType;
-    document.getElementById('discountValue').value = existingDiscount;
+    document.getElementById('discountType').value = currentDiscountState.type;
+    document.getElementById('discountValue').value = currentDiscountState.value;
     
     document.getElementById('discountModal').classList.remove('hidden');
 }
@@ -414,7 +419,33 @@ function closeDiscountModal() {
 }
 
 function calculateInvoiceDiscount() {
-    // Function kept for compatibility - calculations are now visual only in this simplified modal
+    const type = document.getElementById('discountType').value;
+    const value = parseFloat(document.getElementById('discountValue').value) || 0;
+    const totalEl = document.getElementById('financialTotalValue');
+    const totalText = totalEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+    const total = parseFloat(totalText) || 0;
+
+    let discountAmount = 0;
+    if (type === 'percentage') {
+        discountAmount = total * value / 100;
+    } else {
+        discountAmount = value;
+    }
+
+    const dueEl = document.getElementById('financialDue');
+    const paidEl = document.getElementById('financialTotalPaid');
+    const paidText = paidEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+    const paid = parseFloat(paidText) || 0;
+    const newDue = Math.max(0, total - discountAmount - paid);
+
+    if (dueEl) {
+        dueEl.textContent = newDue.toLocaleString() + ' SAR';
+        if (newDue <= 0) {
+            dueEl.className = 'text-xl font-bold text-green-600';
+        } else {
+            dueEl.className = 'text-xl font-bold text-red-600';
+        }
+    }
 }
 
 function applyInvoiceDiscount() {
@@ -435,17 +466,70 @@ function applyInvoiceDiscount() {
     })
     .then(response => response.json())
     .then(data => {
-        if (data.success || data.message) {
+        if (data.success) {
             showToast('Discount applied successfully');
+            currentDiscountState.type = discountType;
+            currentDiscountState.value = discountValue;
             closeDiscountModal();
-            setTimeout(() => location.reload(), 500);
+            if (data.invoice) {
+                updateFinancialSummary(data.invoice);
+            }
+            if (data.discount) {
+                currentDiscountState.type = data.discount.type === 'fixed_amount' ? 'fixed' : data.discount.type;
+                currentDiscountState.value = data.discount.value;
+            }
         } else {
-            showToast('Failed to apply discount', 'error');
+            showToast(data.message || 'Failed to apply discount', 'error');
         }
     })
     .catch(error => {
         showToast('Error: ' + error.message, 'error');
     });
+}
+
+function updateFinancialSummary(invoice) {
+    const totalEl = document.getElementById('financialTotalValue');
+    const paidEl = document.getElementById('financialTotalPaid');
+    const dueEl = document.getElementById('financialDue');
+
+    if (totalEl) totalEl.textContent = Number(invoice.total_amount).toLocaleString() + ' SAR';
+    if (paidEl) paidEl.textContent = Number(invoice.paid_amount).toLocaleString() + ' SAR';
+    if (dueEl) {
+        dueEl.textContent = Number(invoice.balance).toLocaleString() + ' SAR';
+        dueEl.className = 'text-xl font-bold ' + (invoice.balance <= 0 ? 'text-green-600' : 'text-red-600');
+    }
+}
+
+function appendPassengerRow(passenger, displayTotal) {
+    const container = document.getElementById('invoicePassengers');
+    if (!container) return;
+
+    const emptyState = container.querySelector('p');
+    if (emptyState) emptyState.remove();
+
+    const total = displayTotal || 0;
+    const name = [passenger.first_name, passenger.last_name].filter(Boolean).join(' ') || 'N/A';
+    const passport = passenger.passport_no || 'N/A';
+
+    const div = document.createElement('div');
+    div.className = 'flex justify-between items-center p-3 bg-slate-50 rounded-lg';
+    div.innerHTML =
+        '<div>' +
+            '<span class="font-medium text-slate-800">' + escapeHtml(name) + '</span>' +
+            '<span class="text-slate-500 text-sm ml-2">(' + escapeHtml(passport) + ')</span>' +
+        '</div>' +
+        '<div class="flex items-center gap-3">' +
+            '<span class="text-slate-800 font-medium">' + Number(total).toLocaleString() + ' SAR</span>' +
+            '<button onclick="viewPassengerDetails(' + passenger.id + ')" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-1 rounded">View</button>' +
+        '</div>';
+
+    container.appendChild(div);
+}
+
+function escapeHtml(str) {
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
 }
 
 function downloadAllDocs() {

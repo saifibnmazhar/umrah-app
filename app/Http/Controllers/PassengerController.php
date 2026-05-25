@@ -8,6 +8,8 @@ use App\Models\Document;
 use App\Models\Package;
 use App\Models\TicketFare;
 use App\Enums\PassengerType;
+use App\Services\BookingService;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -15,6 +17,11 @@ use Illuminate\Support\Str;
 
 class PassengerController extends Controller
 {
+    public function __construct(
+        private BookingService $bookingService,
+        private InvoiceService $invoiceService,
+    ) {}
+
     public function show(Passenger $passenger)
     {
         $passenger->load([
@@ -242,11 +249,28 @@ class PassengerController extends Controller
         try {
             $passenger->update($validated);
 
+            $booking = $passenger->booking;
+            if ($booking) {
+                $booking = $booking->fresh();
+                $this->bookingService->syncFinancials($booking);
+
+                $invoice = $booking->invoice;
+                if ($invoice) {
+                    $invoice = $invoice->fresh();
+                    $invoiceData = [
+                        'total_amount' => (float) $invoice->total_amount,
+                        'paid_amount' => (float) $invoice->paid_amount,
+                        'balance' => (float) $invoice->balance,
+                    ];
+                }
+            }
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => true,
                     'message' => 'Passenger updated successfully',
-                    'passenger' => $passenger->fresh()
+                    'passenger' => $passenger->fresh(),
+                    'invoice' => $invoiceData ?? null,
                 ]);
             }
 
@@ -273,11 +297,24 @@ class PassengerController extends Controller
             
             if ($booking) {
                 $booking->update(['pax_qty' => $booking->passengers()->count()]);
+                $booking = $booking->fresh();
+                $this->bookingService->syncFinancials($booking);
+
+                $invoice = $booking->invoice;
+                if ($invoice) {
+                    $invoice = $invoice->fresh();
+                    $invoiceData = [
+                        'total_amount' => (float) $invoice->total_amount,
+                        'paid_amount' => (float) $invoice->paid_amount,
+                        'balance' => (float) $invoice->balance,
+                    ];
+                }
             }
 
             return response()->json([
                 'success' => true,
-                'message' => 'Passenger deleted successfully'
+                'message' => 'Passenger deleted successfully',
+                'invoice' => $invoiceData ?? null,
             ]);
         } catch (\Exception $e) {
             return response()->json([
