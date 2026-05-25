@@ -144,11 +144,11 @@ $passengersVisaData = $passengers->map(fn($p) => [
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Ticket Fare</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Visa</th>
                             <th class="px-3 py-2 text-left font-medium">Visa Agent</th>
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Ticket Fare</th>
-                            <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -424,7 +424,10 @@ if ($route) {
                 <div class="flex gap-3 mt-6">
                     <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
                     <button type="button" @click="closeVisaEditModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
-
+                </div>
+            </form>
+        </div>
+    </div>        
     <!-- Ticket Fare Modal -->
     <div x-show="isTicketFareModalOpen" x-cloak
         x-transition:enter="transition ease-out duration-200"
