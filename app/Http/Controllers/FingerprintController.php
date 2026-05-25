@@ -75,7 +75,7 @@ class FingerprintController extends Controller
                     'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
                 ];
             });
-        })->flatten();
+        })->flatten(1);
 
         return response()->json(['data' => $data]);
     }
@@ -128,7 +128,7 @@ class FingerprintController extends Controller
                     'fingerprint_status_display' => $statusDisplay,
                 ];
             });
-        })->flatten();
+        })->flatten(1);
 
         return response()->json(['data' => $data]);
     }
