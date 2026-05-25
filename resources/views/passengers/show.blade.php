@@ -189,10 +189,117 @@
                 </div>
             </div>
 
+            {{-- Visa Submission History --}}
+            <div class="mt-6 pt-4 border-t border-slate-200">
+                <div class="bg-white rounded-xl shadow-lg p-6">
+                    <div class="flex justify-between items-center mb-4">
+                        <h3 class="text-lg font-semibold text-slate-800">Visa Submission History</h3>
+                        <div class="flex gap-2">
+                            <button onclick="openCancellationModal()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium text-sm">Cancel</button>
+                            <button onclick="openVisaResubmitModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">Visa Re-Submit</button>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full min-w-[800px] text-sm">
+                            <thead class="bg-slate-50 text-slate-600">
+                                <tr>
+                                    <th class="px-3 py-2 text-left font-medium">Date</th>
+                                    <th class="px-3 py-2 text-left font-medium">Agent</th>
+                                    <th class="px-3 py-2 text-right font-medium">Agent Cost</th>
+                                    <th class="px-3 py-2 text-left font-medium">Flight Date</th>
+                                    <th class="px-3 py-2 text-left font-medium">Status</th>
+                                    <th class="px-3 py-2 text-right font-medium">Cancellation Fee</th>
+                                </tr>
+                            </thead>
+                            <tbody id="visaSubmissionHistoryBody" class="divide-y divide-slate-200"></tbody>
+                        </table>
+                    </div>
+                </div>
+            </div>
+
             <div class="mt-6 pt-4 border-t border-slate-200 flex gap-3">
                 <a href="{{ route('bookings.index', ['tab' => 'passenger']) }}" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Back to List</a>
             </div>
         </div>
+    </div>
+</div>
+
+<style>
+.modal-overlay { transition: opacity 0.2s ease; }
+.modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
+</style>
+
+{{-- Cancellation Modal --}}
+<div id="cancellationModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeCancellationModal()"></div>
+    <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <h3 class="text-xl font-semibold text-slate-800 mb-4">Cancellation</h3>
+        <form id="cancellationForm" onsubmit="handleCancellation(event)">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Agent Name</label>
+                    <input type="text" id="cancelAgentName" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Agent Cost (SAR)</label>
+                    <input type="number" id="cancelAgentCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Cancellation Fee (SAR) *</label>
+                    <input type="number" id="cancellationFee" required min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter cancellation fee">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button type="submit" class="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">Submit Cancellation</button>
+                <button type="button" onclick="closeCancellationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+
+{{-- Visa Re-Submit Modal --}}
+<div id="visaResubmitModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeVisaResubmitModal()"></div>
+    <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+        <h3 class="text-xl font-semibold text-slate-800 mb-4">Visa Re-Submit</h3>
+        <form id="visaResubmitForm" onsubmit="handleVisaResubmit(event)">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent *</label>
+                    <select id="visaResubmitAgent" required onchange="updateResubmitCommissionAgentOptions()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select Agent</option>
+                        <option value="Visa Agent A">Visa Agent A</option>
+                        <option value="Visa Agent B">Visa Agent B</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Commission Agent *</label>
+                    <select id="visaResubmitCommissionAgent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select Commission Agent</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Visa Selling Price (SAR)</label>
+                    <input type="number" id="visaResubmitSellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
+                    <input type="number" id="visaResubmitAgentCommission" oninput="updateVisaResubmitFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
+                    <input type="number" id="visaResubmitNetVisaCost" oninput="updateVisaResubmitFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Final Visa Cost (SAR)</label>
+                    <input type="number" id="visaResubmitFinal" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold" value="0">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" onclick="closeVisaResubmitModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </form>
     </div>
 </div>
 
@@ -292,5 +399,160 @@ function downloadAllDocuments() {
         window.open(`/passengers/${passengerId}/documents/${doc.id}/download`, '_blank');
     });
 }
+
+// ============================================
+// Visa Submission History
+// ============================================
+const visaHistoryData = [
+    { date: '2026-02-01', agent: 'Visa Agent A', agentCost: 2500, flightDate: '2026-04-20', status: 'Submitted', cancellationFee: 0 },
+    { date: '2026-02-15', agent: 'Visa Agent A', agentCost: 1800, flightDate: '2026-04-05', status: 'Cancelled', cancellationFee: 500 },
+    { date: '2026-03-01', agent: 'Visa Agent B', agentCost: 2200, flightDate: '2026-04-15', status: 'Submitted', cancellationFee: 0 },
+    { date: '2026-03-10', agent: 'Visa Agent B', agentCost: 3000, flightDate: '2026-04-20', status: 'Issued', cancellationFee: 0 }
+];
+
+function renderVisaSubmissionHistory() {
+    const tbody = document.getElementById('visaSubmissionHistoryBody');
+    if (!tbody) return;
+
+    tbody.innerHTML = '';
+
+    visaHistoryData.forEach(item => {
+        const tr = document.createElement('tr');
+        tr.className = 'hover:bg-slate-50';
+
+        let statusBadge = '';
+        switch(item.status) {
+            case 'Submitted':
+                statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Submitted</span>';
+                break;
+            case 'Cancelled':
+                statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>';
+                break;
+            case 'Issued':
+                statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Issued</span>';
+                break;
+        }
+
+        tr.innerHTML = `
+            <td class="px-3 py-2 text-slate-600">${item.date}</td>
+            <td class="px-3 py-2 text-slate-800">${item.agent}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.agentCost.toLocaleString()} SAR</td>
+            <td class="px-3 py-2 text-slate-600">${item.flightDate}</td>
+            <td class="px-3 py-2">${statusBadge}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.cancellationFee ? item.cancellationFee.toLocaleString() + ' SAR' : '-'}</td>
+        `;
+        tbody.appendChild(tr);
+    });
+}
+
+let currentHistoryItem = null;
+
+function openCancellationModal() {
+    currentHistoryItem = visaHistoryData[0];
+
+    document.getElementById('cancelAgentName').value = currentHistoryItem?.agent || '';
+    document.getElementById('cancelAgentCost').value = currentHistoryItem?.agentCost || 0;
+    document.getElementById('cancellationFee').value = '';
+
+    document.getElementById('cancellationModal').classList.remove('hidden');
+}
+
+function closeCancellationModal() {
+    document.getElementById('cancellationModal').classList.add('hidden');
+    currentHistoryItem = null;
+}
+
+function handleCancellation(e) {
+    e.preventDefault();
+
+    const cancellationFee = parseFloat(document.getElementById('cancellationFee').value) || 0;
+
+    const newRow = {
+        date: new Date().toISOString().split('T')[0],
+        agent: currentHistoryItem.agent,
+        agentCost: currentHistoryItem.agentCost,
+        flightDate: currentHistoryItem.flightDate,
+        status: 'Cancelled',
+        cancellationFee: cancellationFee
+    };
+
+    visaHistoryData.push(newRow);
+    renderVisaSubmissionHistory();
+    closeCancellationModal();
+}
+
+function openVisaResubmitModal() {
+    document.getElementById('visaResubmitAgent').value = '';
+    document.getElementById('visaResubmitCommissionAgent').innerHTML = '<option value="">Select Commission Agent</option>';
+    document.getElementById('visaResubmitSellingPrice').value = 500;
+    document.getElementById('visaResubmitAgentCommission').value = 0;
+    document.getElementById('visaResubmitNetVisaCost').value = 0;
+    document.getElementById('visaResubmitFinal').value = 500;
+
+    document.getElementById('visaResubmitModal').classList.remove('hidden');
+}
+
+function closeVisaResubmitModal() {
+    document.getElementById('visaResubmitModal').classList.add('hidden');
+}
+
+function updateResubmitCommissionAgentOptions() {
+    const agent = document.getElementById('visaResubmitAgent').value;
+    const commissionSelect = document.getElementById('visaResubmitCommissionAgent');
+
+    const agents = {
+        "Visa Agent A": ["Commission Agent 1", "Commission Agent 2"],
+        "Visa Agent B": ["Commission Agent 3", "Commission Agent 4"]
+    };
+
+    commissionSelect.innerHTML = '<option value="">Select Commission Agent</option>';
+    if (agents[agent]) {
+        agents[agent].forEach(a => {
+            const option = document.createElement('option');
+            option.value = a;
+            option.textContent = a;
+            commissionSelect.appendChild(option);
+        });
+    }
+}
+
+function updateVisaResubmitFinal() {
+    const sellingPrice = parseFloat(document.getElementById('visaResubmitSellingPrice').value) || 0;
+    const commission = parseFloat(document.getElementById('visaResubmitAgentCommission').value) || 0;
+    const netCost = parseFloat(document.getElementById('visaResubmitNetVisaCost').value) || 0;
+    document.getElementById('visaResubmitFinal').value = sellingPrice + commission + netCost;
+}
+
+function handleVisaResubmit(e) {
+    e.preventDefault();
+
+    const agentCommission = parseFloat(document.getElementById('visaResubmitAgentCommission').value) || 0;
+    const netVisaCost = parseFloat(document.getElementById('visaResubmitNetVisaCost').value) || 0;
+
+    const visaData = {
+        agent: document.getElementById('visaResubmitAgent').value,
+        commissionAgent: document.getElementById('visaResubmitCommissionAgent').value,
+        sellingPrice: parseFloat(document.getElementById('visaResubmitSellingPrice').value) || 0,
+        agentCommission: agentCommission,
+        netVisaCost: netVisaCost,
+        finalCost: agentCommission + netVisaCost,
+        resubmittedAt: new Date().toISOString()
+    };
+
+    const newRow = {
+        date: new Date().toISOString().split('T')[0],
+        agent: visaData.agent,
+        agentCost: visaData.finalCost,
+        flightDate: '-',
+        status: 'Submitted',
+        cancellationFee: 0
+    };
+
+    visaHistoryData.push(newRow);
+    renderVisaSubmissionHistory();
+    closeVisaResubmitModal();
+}
+
+renderVisaSubmissionHistory();
 </script>
 @endsection
