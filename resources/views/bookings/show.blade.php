@@ -174,8 +174,26 @@
             </button>
         </div>
 
+        {{-- Tab Navigation --}}
+        <div class="bg-white rounded-xl shadow-lg mb-6">
+            <div class="flex border-b border-slate-200">
+                <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
+                    Payment History
+                </button>
+                <button onclick="switchTab('reissue')" id="tab-reissue" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
+                    Re-issue History
+                </button>
+                <button onclick="switchTab('addticket')" id="tab-addticket" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
+                    Additional Ticket
+                </button>
+                <button onclick="switchTab('refund')" id="tab-refund" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
+                    Refund History
+                </button>
+            </div>
+        </div>
+
         {{-- Payment History Tab --}}
-        <div class="bg-white rounded-xl shadow-lg p-6">
+        <div id="content-payment" class="tab-content block bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Payment History</h3>
             <div class="overflow-x-auto">
                 <table class="w-full text-sm">
@@ -205,6 +223,44 @@
                     </tbody>
                 </table>
             </div>
+        </div>
+
+        {{-- Re-issue History Tab --}}
+        <div id="content-reissue" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-slate-700 mb-4">Re-issue History</h3>
+            <div class="overflow-x-auto">
+                <table class="w-full min-w-[1100px] text-sm">
+                    <thead class="bg-slate-50 text-slate-600">
+                        <tr>
+                            <th class="px-3 py-2 text-left font-medium">Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Passenger Name</th>
+                            <th class="px-3 py-2 text-left font-medium">Passport No.</th>
+                            <th class="px-3 py-2 text-left font-medium">PNR</th>
+                            <th class="px-3 py-2 text-left font-medium">Agent</th>
+                            <th class="px-3 py-2 text-right font-medium">Total Reissue Cost</th>
+                            <th class="px-3 py-2 text-right font-medium">Total Customer Payment</th>
+                            <th class="px-3 py-2 text-right font-medium">Profit</th>
+                            <th class="px-3 py-2 text-left font-medium">Payment Method</th>
+                            <th class="px-3 py-2 text-left font-medium">Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Action</th>
+                        </tr>
+                    </thead>
+                    <tbody id="reissueHistoryBody" class="divide-y divide-slate-200"></tbody>
+                </table>
+                <div id="reissueHistoryEmpty" class="text-center py-4 text-slate-500">No re-issue requests found</div>
+            </div>
+        </div>
+
+        {{-- Additional Ticket Tab --}}
+        <div id="content-addticket" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-slate-700 mb-4">Additional Ticket History</h3>
+            <div class="text-center py-8 text-slate-500">Additional ticket history coming soon</div>
+        </div>
+
+        {{-- Refund Tab --}}
+        <div id="content-refund" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
+            <h3 class="text-lg font-semibold text-slate-700 mb-4">Refund History</h3>
+            <div class="text-center py-8 text-slate-500">Refund history coming soon</div>
         </div>
 
         {{-- Back Button --}}
@@ -317,6 +373,81 @@
                 <button type="button" @click="closePaymentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </div>
+    </div>
+</div>
+
+{{-- Request Re-Issue Modal --}}
+<div id="reIssueModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black/50" onclick="closeReIssueModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-start mb-4">
+            <div>
+                <h3 class="text-xl font-semibold text-slate-800">Request Re-Issue</h3>
+                <p class="text-slate-500 text-sm mt-1">Select passengers and enter dates</p>
+            </div>
+            <button onclick="closeReIssueModal()" class="text-slate-400 hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="reIssuePassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
+            @foreach($booking->passengers as $index => $passenger)
+            <div class="border border-slate-200 rounded-lg p-4">
+                <div class="flex items-center justify-between gap-3">
+                    <div class="flex items-center gap-3">
+                        <input type="checkbox" id="reIssue_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('reIssue_{{ $index }}', 'reIssueFields_{{ $index }}')">
+                        <label for="reIssue_{{ $index }}" class="font-medium text-slate-800 whitespace-nowrap">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                    </div>
+                    <div id="reIssueFields_{{ $index }}" class="hidden flex items-center gap-3">
+                        <label for="ticketOption_{{ $index }}" class="text-sm font-medium text-slate-700">Ticket Option</label>
+                        <select id="ticketOption_{{ $index }}" onchange="toggleTicketOptionFields('{{ $index }}')" class="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="up">Inbound</option>
+                            <option value="down">Outbound</option>
+                            <option value="both">Both</option>
+                        </select>
+                    </div>
+                </div>
+                <div id="reIssueDateFields_{{ $index }}" class="hidden mt-3 pl-7">
+                    <div class="flex gap-6 mb-2">
+                        <div id="probableDateUp_{{ $index }}" class="hidden flex flex-col">
+                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Inbound):</label>
+                            <input type="date" id="probableDateUp_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div id="probableDateDown_{{ $index }}" class="hidden flex flex-col">
+                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Outbound):</label>
+                            <input type="date" id="probableDateDown_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div id="visaExpiry_{{ $index }}" class="flex flex-col">
+                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Visa Expiry Date:</label>
+                            <input type="date" id="visaExpiry_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                    </div>
+                </div>
+            </div>
+            @endforeach
+        </div>
+        <div class="flex gap-3">
+            <button onclick="submitReIssueRequest()" class="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Submit Request</button>
+            <button onclick="closeReIssueModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+        </div>
+    </div>
+</div>
+
+{{-- Re-Issue Details Modal --}}
+<div id="reissueDetailsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="fixed inset-0 bg-black/50" onclick="closeReissueDetailsModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <div class="flex justify-between items-start mb-4">
+            <h3 class="text-xl font-semibold text-slate-800">Re-Issue Details</h3>
+            <button onclick="closeReissueDetailsModal()" class="text-slate-400 hover:text-slate-600">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                </svg>
+            </button>
+        </div>
+        <div id="reissueDetailsContent"></div>
     </div>
 </div>
 
@@ -541,12 +672,204 @@ function viewPassengerDetails(passengerId) {
     window.location.href = '/passengers/' + passengerId;
 }
 
+function switchTab(tabName) {
+    document.querySelectorAll('.tab-content').forEach(el => {
+        el.classList.remove('block');
+        el.classList.add('hidden');
+    });
+    document.querySelectorAll('.tab-btn').forEach(btn => {
+        btn.classList.remove('border-blue-600', 'text-blue-600');
+        btn.classList.add('border-transparent', 'text-slate-500');
+    });
+    document.getElementById('content-' + tabName).classList.remove('hidden');
+    document.getElementById('content-' + tabName).classList.add('block');
+    const activeTab = document.getElementById('tab-' + tabName);
+    activeTab.classList.remove('border-transparent', 'text-slate-500');
+    activeTab.classList.add('border-blue-600', 'text-blue-600');
+}
+
+function toggleReIssueFields(checkboxId, fieldsId) {
+    const checkbox = document.getElementById(checkboxId);
+    const fields = document.getElementById(fieldsId);
+    if (checkbox.checked) {
+        fields.classList.remove('hidden');
+    } else {
+        fields.classList.add('hidden');
+        const idx = checkboxId.replace('reIssue_', '');
+        document.getElementById('reIssueDateFields_' + idx)?.classList.add('hidden');
+    }
+}
+
+function toggleTicketOptionFields(pIndex) {
+    const ticketOption = document.getElementById('ticketOption_' + pIndex);
+    const dateFields = document.getElementById('reIssueDateFields_' + pIndex);
+    const probableDateUp = document.getElementById('probableDateUp_' + pIndex);
+    const probableDateDown = document.getElementById('probableDateDown_' + pIndex);
+    const visaExpiry = document.getElementById('visaExpiry_' + pIndex);
+
+    if (!ticketOption || !dateFields) return;
+
+    dateFields.classList.remove('hidden');
+    probableDateUp.classList.add('hidden');
+    probableDateDown.classList.add('hidden');
+    visaExpiry.classList.add('hidden');
+
+    if (ticketOption.value === 'up') {
+        probableDateUp.classList.remove('hidden');
+        visaExpiry.classList.remove('hidden');
+    } else if (ticketOption.value === 'down') {
+        probableDateDown.classList.remove('hidden');
+        visaExpiry.classList.remove('hidden');
+    } else if (ticketOption.value === 'both') {
+        probableDateUp.classList.remove('hidden');
+        probableDateDown.classList.remove('hidden');
+        visaExpiry.classList.remove('hidden');
+    }
+}
+
 function openReIssueModal() {
-    showToast('Re-Issue request feature coming soon');
+    document.getElementById('reIssueModal').classList.remove('hidden');
+    const checkboxes = document.querySelectorAll('#reIssuePassengers input[type="checkbox"]');
+    checkboxes.forEach((cb, idx) => {
+        cb.checked = false;
+        document.getElementById('reIssueFields_' + idx)?.classList.add('hidden');
+        document.getElementById('reIssueDateFields_' + idx)?.classList.add('hidden');
+        document.getElementById('probableDateUp_' + idx)?.classList.add('hidden');
+        document.getElementById('probableDateDown_' + idx)?.classList.add('hidden');
+    });
 }
 
 function closeReIssueModal() {
-    // Modal close placeholder
+    document.getElementById('reIssueModal').classList.add('hidden');
+}
+
+function submitReIssueRequest() {
+    const passengerRows = document.querySelectorAll('#reIssuePassengers > div');
+    const selectedPassengers = [];
+    let foundChecked = false;
+
+    passengerRows.forEach((row, pIndex) => {
+        const checkbox = document.getElementById('reIssue_' + pIndex);
+        if (checkbox && checkbox.checked) {
+            foundChecked = true;
+            selectedPassengers.push({
+                name: checkbox.dataset.name,
+                passport: checkbox.dataset.passport,
+                ticketOption: document.getElementById('ticketOption_' + pIndex)?.value || '',
+                probableDateUp: document.getElementById('probableDateUp_' + pIndex)?.value || '',
+                probableDateDown: document.getElementById('probableDateDown_' + pIndex)?.value || '',
+                visaExpiry: document.getElementById('visaExpiry_' + pIndex)?.value || '',
+            });
+        }
+    });
+
+    if (!foundChecked) {
+        showToast('Please select at least one passenger', 'error');
+        return;
+    }
+
+    const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
+    requests.push({
+        id: Date.now(),
+        invoiceId: {{ $booking->id }},
+        invoiceNo: @json($booking->invoice_id ?? ''),
+        customerName: @json($booking->customer->name ?? ''),
+        passengers: selectedPassengers,
+        status: 'Pending',
+        requestedAt: new Date().toISOString(),
+    });
+    localStorage.setItem('reIssueRequests', JSON.stringify(requests));
+
+    showToast('Re-issue request submitted successfully!', 'success');
+    closeReIssueModal();
+    renderReissueHistory();
+}
+
+function openReissueDetails(requestId) {
+    const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
+    const request = requests.find(r => r.id === requestId);
+    if (!request) return;
+
+    const content = document.getElementById('reissueDetailsContent');
+    content.innerHTML = `
+        <div class="space-y-4">
+            <div class="bg-slate-50 rounded-lg p-4">
+                <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Request Summary</h4>
+                <div class="grid grid-cols-2 gap-3">
+                    <div><span class="text-xs text-slate-400">Invoice No</span><p class="text-slate-800">${escapeHtml(request.invoiceNo)}</p></div>
+                    <div><span class="text-xs text-slate-400">Customer</span><p class="text-slate-800">${escapeHtml(request.customerName)}</p></div>
+                    <div><span class="text-xs text-slate-400">Status</span><p class="text-slate-800">${request.status}</p></div>
+                    <div><span class="text-xs text-slate-400">Requested At</span><p class="text-slate-800">${new Date(request.requestedAt).toLocaleString()}</p></div>
+                </div>
+            </div>
+            <div class="bg-slate-50 rounded-lg p-4">
+                <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Passengers</h4>
+                ${request.passengers.map((p, i) => `
+                    <div class="flex justify-between py-2 ${i < request.passengers.length - 1 ? 'border-b border-slate-200' : ''}">
+                        <div>
+                            <span class="text-slate-800 font-medium">${escapeHtml(p.name)}</span>
+                            <span class="text-slate-500 text-sm ml-2">(${escapeHtml(p.passport)})</span>
+                        </div>
+                        <span class="text-slate-600 text-sm">${p.ticketOption ? 'Ticket: ' + p.ticketOption : '-'}</span>
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+    document.getElementById('reissueDetailsModal').classList.remove('hidden');
+}
+
+function closeReissueDetailsModal() {
+    document.getElementById('reissueDetailsModal').classList.add('hidden');
+}
+
+function renderReissueHistory() {
+    const tbody = document.getElementById('reissueHistoryBody');
+    const emptyEl = document.getElementById('reissueHistoryEmpty');
+    if (!tbody) return;
+
+    const allRequests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
+    const bookingRequests = allRequests.filter(r => r.invoiceId === {{ $booking->id }});
+
+    if (bookingRequests.length === 0) {
+        tbody.innerHTML = '';
+        if (emptyEl) emptyEl.classList.remove('hidden');
+        return;
+    }
+
+    if (emptyEl) emptyEl.classList.add('hidden');
+    tbody.innerHTML = '';
+
+    bookingRequests.forEach((request) => {
+        request.passengers.forEach((p) => {
+            let statusBadge = '';
+            switch(request.status) {
+                case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
+                case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
+                case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
+                default: statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>';
+            }
+
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50';
+            tr.innerHTML = `
+                <td class="px-3 py-2 text-slate-600">${new Date(request.requestedAt).toLocaleDateString('en-CA')}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(p.name)}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport)}</td>
+                <td class="px-3 py-2 text-slate-600">-</td>
+                <td class="px-3 py-2 text-slate-800">-</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">-</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">-</td>
+                <td class="px-3 py-2 text-green-600 text-right font-medium">-</td>
+                <td class="px-3 py-2 text-slate-600">-</td>
+                <td class="px-3 py-2">${statusBadge}</td>
+                <td class="px-3 py-2">
+                    <button onclick="openReissueDetails(${request.id})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    });
 }
 
 function openAddTicketModal() {
@@ -564,6 +887,8 @@ function openRefundModal() {
 function closeRefundModal() {
     // Modal close placeholder
 }
+
+renderReissueHistory();
 
 function handleCustomerDocSelect(event) {
     const input = event.target;
