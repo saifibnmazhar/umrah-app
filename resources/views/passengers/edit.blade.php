@@ -597,6 +597,7 @@
                         this.$nextTick(() => {
                             this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
                             this.calculateFlightDateRange();
+                            this.updateBaggageWeight();
                         });
                     }
                 }

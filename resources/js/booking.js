@@ -1613,6 +1613,7 @@ Alpine.data('createBookingApp', () => ({
                     this.$nextTick(() => {
                         this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
                         this.calculateFlightDateRange();
+                        this.updateBaggageWeight();
                     });
                 }
             }
@@ -3341,6 +3342,7 @@ Alpine.data('editBookingApp', () => ({
                     this.$nextTick(() => {
                         this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
                         this.calculateFlightDateRange();
+                        this.updateBaggageWeight();
                     });
                 }
             }
@@ -3864,6 +3866,7 @@ Alpine.data('showBookingApp', () => ({
                     this.$nextTick(() => {
                         this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
                         this.calculateFlightDateRange();
+                        this.updateBaggageWeight();
                     });
                 }
             }
