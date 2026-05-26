@@ -99,12 +99,12 @@
                                     <span class="px-2 py-1 rounded-full text-xs font-medium"
                                           :class="getStatusClass(row.fingerprint_status_display)"
                                           x-text="row.fingerprint_status_display"></span>
-                                    <button @click="openHoldModal(row.fingerprint_detail_id, rowIndex)"
+                                    {{-- <button @click="openHoldModal(row.fingerprint_detail_id, rowIndex)"
                                             class="text-xs text-slate-500 hover:text-slate-700 underline"
                                             x-show="row.fingerprint_detail_id"
                                             title="Hold by BMT/Client">
                                         Hold
-                                    </button>
+                                    </button> --}}
                                 </div>
                             </td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.flight_date_from || '-'"></td>
@@ -116,7 +116,7 @@
         </div>
     </div>
 
-    <div x-show="showHoldModal"
+    {{-- <div x-show="showHoldModal"
          class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
          style="display: none;">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
@@ -153,7 +153,7 @@
                 <button @click="saveHold()" class="px-4 py-2 text-sm font-medium text-white bg-slate-700 rounded-lg hover:bg-slate-800">Save</button>
             </div>
         </div>
-    </div>
+    </div> --}}
 </div>
 @endsection
 
@@ -168,14 +168,14 @@ function fingerprintAdmin() {
             division: '',
             district: '',
         },
-        showHoldModal: false,
-        currentHoldDetailId: null,
-        currentHoldRowIndex: null,
-        holdForm: {
-            reason: '',
-            next_date: '',
-            remarks: '',
-        },
+        // showHoldModal: false,
+        // currentHoldDetailId: null,
+        // currentHoldRowIndex: null,
+        // holdForm: {
+        //     reason: '',
+        //     next_date: '',
+        //     remarks: '',
+        // },
 
         async init() {
             await this.loadStaffList();
@@ -272,50 +272,50 @@ function fingerprintAdmin() {
             return classes[status] || 'bg-gray-100 text-gray-800';
         },
 
-        openHoldModal(detailId, rowIndex) {
-            if (!detailId) return;
-            this.currentHoldDetailId = detailId;
-            this.currentHoldRowIndex = rowIndex;
-            this.holdForm = { reason: '', next_date: '', remarks: '' };
-            this.showHoldModal = true;
-        },
+        // openHoldModal(detailId, rowIndex) {
+        //     if (!detailId) return;
+        //     this.currentHoldDetailId = detailId;
+        //     this.currentHoldRowIndex = rowIndex;
+        //     this.holdForm = { reason: '', next_date: '', remarks: '' };
+        //     this.showHoldModal = true;
+        // },
 
-        hideHoldModal() {
-            this.showHoldModal = false;
-            this.currentHoldDetailId = null;
-            this.currentHoldRowIndex = null;
-        },
+        // hideHoldModal() {
+        //     this.showHoldModal = false;
+        //     this.currentHoldDetailId = null;
+        //     this.currentHoldRowIndex = null;
+        // },
 
-        async saveHold() {
-            if (!this.holdForm.reason) {
-                window.showToast('Please select a reason', 'error');
-                return;
-            }
-            if (!this.holdForm.next_date) {
-                window.showToast('Please select next finger date', 'error');
-                return;
-            }
+        // async saveHold() {
+        //     if (!this.holdForm.reason) {
+        //         window.showToast('Please select a reason', 'error');
+        //         return;
+        //     }
+        //     if (!this.holdForm.next_date) {
+        //         window.showToast('Please select next finger date', 'error');
+        //         return;
+        //     }
 
-            try {
-                const response = await fetch(`/api/fingerprints/detail/${this.currentHoldDetailId}/hold`, {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                    },
-                    body: JSON.stringify(this.holdForm),
-                });
-                const result = await response.json();
-                if (result.success) {
-                    window.showToast('Hold created successfully', 'success');
-                    this.hideHoldModal();
-                    await this.loadData();
-                }
-            } catch (error) {
-                console.error('Failed to save hold:', error);
-                window.showToast('Failed to save hold', 'error');
-            }
-        },
+        //     try {
+        //         const response = await fetch(`/api/fingerprints/detail/${this.currentHoldDetailId}/hold`, {
+        //             method: 'POST',
+        //             headers: {
+        //                 'Content-Type': 'application/json',
+        //                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        //             },
+        //             body: JSON.stringify(this.holdForm),
+        //         });
+        //         const result = await response.json();
+        //         if (result.success) {
+        //             window.showToast('Hold created successfully', 'success');
+        //             this.hideHoldModal();
+        //             await this.loadData();
+        //         }
+        //     } catch (error) {
+        //         console.error('Failed to save hold:', error);
+        //         window.showToast('Failed to save hold', 'error');
+        //     }
+        // },
     };
 }
 </script>
