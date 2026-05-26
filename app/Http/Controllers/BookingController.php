@@ -285,13 +285,10 @@ class BookingController extends Controller
                 ]);
             }
 
-            $fpCharge = FingerprintCharge::find($validated['fingerprint_charge_id']);
-            $fingerprintCost = $fpCharge ? (float) $fpCharge->fingerprint_charge : 0;
-
             $fingerprint = Fingerprint::create([
                 'booking_id' => $booking->id,
                 'deadline' => now()->addDays(10),
-                'cost' => $fingerprintCost,
+                'cost' => 0,
                 'assigned_staff_id' => null,
             ]);
 

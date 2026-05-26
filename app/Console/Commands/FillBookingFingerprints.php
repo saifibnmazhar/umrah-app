@@ -5,18 +5,23 @@ namespace App\Console\Commands;
 use App\Models\Booking;
 use App\Models\Fingerprint;
 use App\Models\FingerprintDetail;
-use App\Models\FingerprintCharge;
 use Illuminate\Console\Command;
 
 class FillBookingFingerprints extends Command
 {
     protected $signature = 'bookings:fill-fingerprints
-                            {--chunk=100 : Number of bookings to process per chunk}';
+                            {--chunk=100 : Number of bookings to process per chunk}
+                            {--reset-cost : Reset existing fingerprint costs to 0}';
 
     protected $description = 'Backfill fingerprint records for existing bookings that lack them';
 
     public function handle(): int
     {
+        if ($this->option('reset-cost')) {
+            $count = Fingerprint::where('cost', '>', 0)->update(['cost' => 0]);
+            $this->info("Reset {$count} existing fingerprint record(s) cost to 0.");
+        }
+
         $chunkSize = (int) $this->option('chunk');
 
         $bookings = Booking::whereDoesntHave('fingerprint')
@@ -41,13 +46,10 @@ class FillBookingFingerprints extends Command
 
         foreach ($bookings as $booking) {
             try {
-                $fpCharge = FingerprintCharge::find($booking->fingerprint_charge_id);
-                $cost = $fpCharge ? (float) $fpCharge->fingerprint_charge : 0;
-
                 $fingerprint = Fingerprint::create([
                     'booking_id' => $booking->id,
                     'deadline' => $booking->created_at->addDays(10),
-                    'cost' => $cost,
+                    'cost' => 0,
                     'assigned_staff_id' => null,
                 ]);
 
