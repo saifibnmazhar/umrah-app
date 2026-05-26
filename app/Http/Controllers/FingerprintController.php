@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Fingerprint;
 use App\Models\FingerprintDetail;
 use App\Models\RescheduledFingerprint;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -281,7 +282,17 @@ class FingerprintController extends Controller
      */
     public function staffList(): JsonResponse
     {
-        $users = \App\Models\User::select('id', 'name')->orderBy('name')->get();
+        $user = auth()->user();
+
+        $query = User::select('id', 'name')
+            ->whereHas('roles', fn($q) => $q->where('name', 'Fingerprint Staff'));
+
+        if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+            $query->where('office_id', $user->office_id);
+        }
+
+        $users = $query->orderBy('name')->get();
+
         return response()->json(['data' => $users]);
     }
 }
