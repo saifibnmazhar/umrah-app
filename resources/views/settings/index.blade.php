@@ -356,12 +356,17 @@
                                 </td>
                                 <td class="px-3 py-2 text-center">
                                     <a href="{{ route('settings.package.show', $package->id) }}" class="text-xs text-slate-600 hover:text-slate-800 mr-3">View</a>
-                                    <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
-                                    <form method="POST" action="{{ route('settings.package.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-xs text-red-500 hover:text-red-700">Delete</button>
-                                    </form>
+                                    @if($package->is_locked)
+                                        <button class="text-xs text-slate-400 cursor-not-allowed mr-3" title="Has existing bookings" disabled>Edit</button>
+                                        <button class="text-xs text-red-400 cursor-not-allowed" title="Has existing bookings" disabled>Delete</button>
+                                    @else
+                                        <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
+                                        <form method="POST" action="{{ route('settings.package.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs text-red-500 hover:text-red-700">Delete</button>
+                                        </form>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
@@ -436,17 +441,15 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (BDT) *</label>
                             <input type="number" id="modalRegularPrice" name="regular_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="0.01" required readonly>
+                        </div> 
+                        <div id="modalOfferPriceContainer" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
+                            <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
                         </div>
-                        <div>
-                            <div id="modalOfferPriceContainer" class="hidden">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
-                                <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
-                            </div>
-                            <div id="modalServiceChargeContainer">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
-                                <input type="number" id="modalServiceCharge" name="service_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0">
-                            </div>
-                        </div>
+                        <div id="modalServiceChargeContainer">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                            <input type="number" id="modalServiceCharge" name="service_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0">
+                        </div>                       
                     </div>
 
                     <div class="mt-4 p-4 bg-slate-50 rounded-lg">
@@ -494,6 +497,10 @@
         function editPackage(id) {
             const pkg = packages.find(p => p.id === id);
             if (!pkg) return;
+            if (pkg.is_locked) {
+                alert('This package cannot be edited because it has existing bookings.');
+                return;
+            }
 
             document.getElementById('modalTitle').textContent = 'Edit Package';
             document.getElementById('packageForm').action = '/settings/package/' + id;
