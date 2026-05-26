@@ -39,7 +39,7 @@
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-2 text-slate-800 font-medium">{{ $type->name }}</td>
                             <td class="px-3 py-2">
-                                @if($type->type === 'debit')
+                                @if($type->type->value === 'debit')
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Debit</span>
                                 @else
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-teal-100 text-teal-700">Credit</span>
