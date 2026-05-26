@@ -45,7 +45,7 @@
                         <th class="px-3 py-2 text-left font-medium">Mobile</th>
                         <th class="px-3 py-2 text-left font-medium">District</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Deadline</th>
-                        <th class="px-3 py-2 text-right font-medium">Fingerprint Cost</th>
+                        <th class="px-3 py-2 text-right font-medium">Fingerprint Charge</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Location</th>
                         <th class="px-3 py-2 text-left font-medium">Assign Staff</th>
                         <th class="px-3 py-2 text-left font-medium">Passenger</th>
