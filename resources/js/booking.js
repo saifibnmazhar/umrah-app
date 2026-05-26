@@ -1586,6 +1586,36 @@ Alpine.data('createBookingApp', () => ({
             this.passengerData.class = '';
             this.passengerData.baggage_weight = 'Visa Only - No ticket required';
             this.filteredTickets = [];
+        } else if (this.bookingData.package_id) {
+            const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+            if (pkg && pkg.ticket_fare_id) {
+                const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
+                if (ticket) {
+                    const reverseRouteTypeMap = {
+                        'oneway_inbound': 'One Way-Inbound',
+                        'oneway_outbound': 'One Way-Outbound',
+                        'round': 'Round',
+                        'multi_city': 'Multi City',
+                    };
+                    const reverseFlightTypeMap = {
+                        'transit': 'Transit',
+                        'direct': 'Direct',
+                    };
+                    this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                    this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+                    this.filteredTickets = this.allTickets.filter(t =>
+                        t.route_type === ticket.route_type &&
+                        t.flight_type === ticket.flight_type
+                    );
+                    this.passengerData.route = ticket.route;
+                    this.passengerData.airline = ticket.airline || '';
+                    this.passengerData.class = ticket.airline_class || '';
+                    this.$nextTick(() => {
+                        this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
+                        this.calculateFlightDateRange();
+                    });
+                }
+            }
         }
     },
 
@@ -3284,6 +3314,36 @@ Alpine.data('editBookingApp', () => ({
             this.passengerData.class = '';
             this.passengerData.baggage_weight = 'Visa Only - No ticket required';
             this.filteredTickets = [];
+        } else if (this.bookingData.package_id) {
+            const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+            if (pkg && pkg.ticket_fare_id) {
+                const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
+                if (ticket) {
+                    const reverseRouteTypeMap = {
+                        'oneway_inbound': 'One Way-Inbound',
+                        'oneway_outbound': 'One Way-Outbound',
+                        'round': 'Round',
+                        'multi_city': 'Multi City',
+                    };
+                    const reverseFlightTypeMap = {
+                        'transit': 'Transit',
+                        'direct': 'Direct',
+                    };
+                    this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                    this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+                    this.filteredTickets = this.allTickets.filter(t =>
+                        t.route_type === ticket.route_type &&
+                        t.flight_type === ticket.flight_type
+                    );
+                    this.passengerData.route = ticket.route;
+                    this.passengerData.airline = ticket.airline || '';
+                    this.passengerData.class = ticket.airline_class || '';
+                    this.$nextTick(() => {
+                        this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
+                        this.calculateFlightDateRange();
+                    });
+                }
+            }
         }
     },
 
@@ -3293,6 +3353,7 @@ Alpine.data('editBookingApp', () => ({
             this.passengerData.route = '';
             this.passengerData.airline = '';
             this.passengerData.class = '';
+            this.passengerData.flight_date_range = '';
             return;
         }
 
@@ -3776,6 +3837,36 @@ Alpine.data('showBookingApp', () => ({
             this.passengerData.class = '';
             this.passengerData.baggage_weight = 'Visa Only - No ticket required';
             this.filteredTickets = [];
+        } else if (window.__bookingServerData?.preSelectedPackageId) {
+            const pkg = this.allPackages.find(p => String(p.id) === String(window.__bookingServerData.preSelectedPackageId));
+            if (pkg && pkg.ticket_fare_id) {
+                const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
+                if (ticket) {
+                    const reverseRouteTypeMap = {
+                        'oneway_inbound': 'One Way-Inbound',
+                        'oneway_outbound': 'One Way-Outbound',
+                        'round': 'Round',
+                        'multi_city': 'Multi City',
+                    };
+                    const reverseFlightTypeMap = {
+                        'transit': 'Transit',
+                        'direct': 'Direct',
+                    };
+                    this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                    this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+                    this.filteredTickets = this.allTickets.filter(t =>
+                        t.route_type === ticket.route_type &&
+                        t.flight_type === ticket.flight_type
+                    );
+                    this.passengerData.route = ticket.route;
+                    this.passengerData.airline = ticket.airline || '';
+                    this.passengerData.class = ticket.airline_class || '';
+                    this.$nextTick(() => {
+                        this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
+                        this.calculateFlightDateRange();
+                    });
+                }
+            }
         }
     },
 
