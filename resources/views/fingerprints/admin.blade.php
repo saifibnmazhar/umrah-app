@@ -43,10 +43,10 @@
                         <th class="px-3 py-2 text-left font-medium">Customer Name</th>
                         <th class="px-3 py-2 text-left font-medium">PAX Qty</th>
                         <th class="px-3 py-2 text-left font-medium">Mobile</th>
-                        <th class="px-3 py-2 text-left font-medium">District</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Deadline</th>
                         <th class="px-3 py-2 text-right font-medium">Fingerprint Charge</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Location</th>
+                        <th class="px-3 py-2 text-left font-medium">District</th>
                         <th class="px-3 py-2 text-left font-medium">Assign Staff</th>
                         <th class="px-3 py-2 text-left font-medium">Passenger</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
@@ -73,8 +73,7 @@
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.booking_date : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.customer_name : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.pax_qty : ''"></td>
-                            <td class="px-3 py-2 text-slate-600 whitespace-pre-line" x-text="row._isFirstPassenger ? (row.customer_mobile || '') + '\n' + (row.passenger_mobile || '') : ''"></td>
-                            <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.district : ''"></td>
+                            <td class="px-3 py-2 text-slate-600 whitespace-pre-line" x-text="(row.customer_mobile || '') + '\n' + (row.passenger_mobile || '')"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? (row.deadline || '-') : ''"></td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">
                                 <span x-show="row._isFirstPassenger" x-text="row.cost != null && row.cost != '' ? row.cost + ' SAR' : 'N/A'"></span>
@@ -82,6 +81,7 @@
                             <td class="px-3 py-2 text-slate-600">
                                 <span x-show="row._isFirstPassenger" x-text="row.fingerprint_location || '-'"></span>
                             </td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.district : ''"></td>
                             <td class="px-3 py-2">
                                 <span x-show="row._isFirstPassenger">
                                     <select @change="canAssignStaff && row.fingerprint_location !== 'office' && assignStaff(row.fingerprint_id, $event.target.value)"

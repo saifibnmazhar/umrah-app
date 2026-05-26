@@ -43,14 +43,14 @@
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.district || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.deadline || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.passenger_name || '-'"></td>
-                            <td class="px-3 py-2 text-right" x-show="row.isFirstInGroup">
+                            <td class="px-3 py-2 text-right">
                                 <input type="number"
-                                       x-show="canEditCost"
+                                       x-show="row.isFirstInGroup && canEditCost"
                                        :value="row.cost"
                                        @change="updateCost(row.fingerprint_id, $event.target.value)"
                                        class="w-20 text-right text-sm border border-slate-300 rounded px-2 py-1"
                                        min="0">
-                                <span x-show="!canEditCost"
+                                <span x-show="row.isFirstInGroup && !canEditCost"
                                       class="text-sm text-slate-700 font-medium"
                                       x-text="row.cost != null && row.cost !== '' ? row.cost + ' SAR' : ''"></span>
                             </td>
