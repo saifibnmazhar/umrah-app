@@ -91,6 +91,7 @@ class SettingsController extends Controller
             'ticket_fare_id' => 'required|exists:ticket_fares,id',
             'regular_price' => 'required|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -110,6 +111,7 @@ class SettingsController extends Controller
             'ticket_fare_id' => 'required|exists:ticket_fares,id',
             'regular_price' => 'required|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
         ]);
 
         try {

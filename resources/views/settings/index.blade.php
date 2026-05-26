@@ -564,7 +564,7 @@
             const serviceChargeRow = document.getElementById('modalServiceChargeRow');
 
             if (ticketType === 'offer') {
-                document.getElementById('modalRegularPrice').value = (offerFare + latestVisaPrice).toFixed(2);
+                document.getElementById('modalRegularPrice').value = (sellingFare + latestVisaPrice).toFixed(2);
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
                 document.getElementById('modalOfferPrice').value = (offerFare + latestVisaPrice).toFixed(2);
                 serviceChargeContainer.classList.add('hidden');
