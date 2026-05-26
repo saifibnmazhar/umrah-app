@@ -112,6 +112,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/fares/admin/fare', [FareAdminController::class, 'storeFare'])->name('fare.admin.fare.store')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::put('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'updateFare'])->name('fare.admin.fare.update')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::delete('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'destroyFare'])->name('fare.admin.fare.destroy')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'showFare'])->name('fare.admin.fare.show')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/fingerprints/admin', function () {
         $canAssignStaff = auth()->user()->hasRole('Fingerprint Admin');
