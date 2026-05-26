@@ -189,21 +189,4 @@ class FareAdminController extends Controller
         }
     }
 
-    public function showFare(TicketFare $ticketFare)
-    {
-        $ticketFare->load([
-            'airline',
-            'airlineClass.travelClass',
-            'route.fromCity',
-            'route.toCity',
-            'route.returnCity',
-            'route.multiSegments.fromCity',
-            'route.multiSegments.toCity',
-            'user',
-            'groupTicket',
-            'baggageAllowances'
-        ]);
-
-        return view('fares.show', compact('ticketFare'));
-    }
 }
