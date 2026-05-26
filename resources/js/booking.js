@@ -1278,14 +1278,16 @@ Alpine.data('createBookingApp', () => ({
         const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
         if (!ticket) return 0;
 
-        const sellingFare = parseFloat(ticket.selling_fare) || 0;
-        let ticketAmount = sellingFare;
+        const baseFare = ticket.ticket_type === 'offer'
+            ? (parseFloat(ticket.offer_price) || 0)
+            : (parseFloat(ticket.selling_fare) || 0);
+        let ticketAmount = baseFare;
         if (passengerType === 'child') {
             const pct = parseFloat(ticket.child_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
+            ticketAmount = baseFare * pct / 100;
         } else if (passengerType === 'infant') {
             const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
+            ticketAmount = baseFare * pct / 100;
         }
 
         const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
@@ -1311,7 +1313,6 @@ Alpine.data('createBookingApp', () => ({
     },
 
     recalculateCurrentPassenger(index) {
-        // Skip recalculation if passenger doesn't exist yet (adding new passenger)
         if (index === null || index === undefined || !this.passengers[index]) {
             return;
         }
@@ -2645,14 +2646,16 @@ Alpine.data('editBookingApp', () => ({
         const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
         if (!ticket) return 0;
 
-        const sellingFare = parseFloat(ticket.selling_fare) || 0;
-        let ticketAmount = sellingFare;
+        const baseFare = ticket.ticket_type === 'offer'
+            ? (parseFloat(ticket.offer_price) || 0)
+            : (parseFloat(ticket.selling_fare) || 0);
+        let ticketAmount = baseFare;
         if (passengerType === 'child') {
             const pct = parseFloat(ticket.child_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
+            ticketAmount = baseFare * pct / 100;
         } else if (passengerType === 'infant') {
             const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
+            ticketAmount = baseFare * pct / 100;
         }
 
         const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
@@ -3910,14 +3913,16 @@ Alpine.data('showBookingApp', () => ({
         const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
         const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
         if (!ticket) return 0;
-        const sellingFare = parseFloat(ticket.selling_fare) || 0;
-        let ticketAmount = sellingFare;
+        const baseFare = ticket.ticket_type === 'offer'
+            ? (parseFloat(ticket.offer_price) || 0)
+            : (parseFloat(ticket.selling_fare) || 0);
+        let ticketAmount = baseFare;
         if (passengerType === 'child') {
             const pct = parseFloat(ticket.child_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
+            ticketAmount = baseFare * pct / 100;
         } else if (passengerType === 'infant') {
             const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
+            ticketAmount = baseFare * pct / 100;
         }
         const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
         const serviceCharge = parseFloat(selectedPackage?.service_charge) || 0;

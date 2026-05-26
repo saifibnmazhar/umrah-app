@@ -7,6 +7,7 @@ use App\Models\Passenger;
 use App\Models\District;
 use App\Models\FingerprintCharge;
 use App\Enums\PassengerType;
+use App\Enums\TicketType;
 use Carbon\Carbon;
 
 class BookingService
@@ -82,7 +83,9 @@ class BookingService
         $serviceChargeAmount = 0;
 
         if ($ticketFare) {
-            $baseFare = (float) $ticketFare->selling_fare;
+            $baseFare = $ticketFare->ticket_type === TicketType::OFFER
+                ? (float) ($ticketFare->offer_price ?? $ticketFare->selling_fare)
+                : (float) $ticketFare->selling_fare;
             $ticketAmount = match ($passengerType) {
                 'child'  => $baseFare * ((float) $ticketFare->child_fare_percentage) / 100,
                 'infant' => $baseFare * ((float) $ticketFare->infant_fare_percentage) / 100,
