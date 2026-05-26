@@ -449,11 +449,6 @@
                         </div>
                     </div>
 
-                    <div id="modalServiceChargeRow" class="mt-4 hidden">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
-                        <input type="number" id="modalServiceChargeRowInput" name="service_charge_row" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0">
-                    </div>
-
                     <div class="mt-4 p-4 bg-slate-50 rounded-lg">
                         <p class="text-sm text-slate-600">
                             <span class="font-medium">Visa Selling Price (Latest):</span>
@@ -517,19 +512,12 @@
             document.getElementById('modalRegularPrice').value = pkg.regular_price;
             document.getElementById('modalOfferPrice').value = pkg.offer_price || '';
             document.getElementById('modalServiceCharge').value = pkg.service_charge || 0;
-            document.getElementById('modalServiceChargeRowInput').value = pkg.service_charge || 0;
-            
-            const serviceChargeContainer = document.getElementById('modalServiceChargeContainer');
-            const serviceChargeRow = document.getElementById('modalServiceChargeRow');
             
             if (ticketOption && ticketOption.dataset.ticketType === 'offer') {
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
-                serviceChargeContainer.classList.add('hidden');
-                serviceChargeRow.classList.remove('hidden');
             } else {
                 document.getElementById('modalOfferPriceContainer').classList.add('hidden');
-                serviceChargeContainer.classList.remove('hidden');
-                serviceChargeRow.classList.add('hidden');
+                document.getElementById('modalOfferPrice').value = '';
             }
             
             document.getElementById('packageModal').classList.remove('hidden');
@@ -560,23 +548,14 @@
             const offerFare = parseFloat(selectedOption.dataset.offerPrice) || 0;
             const ticketType = selectedOption.dataset.ticketType;
             
-            const serviceChargeContainer = document.getElementById('modalServiceChargeContainer');
-            const serviceChargeRow = document.getElementById('modalServiceChargeRow');
-
             if (ticketType === 'offer') {
                 document.getElementById('modalRegularPrice').value = (sellingFare + latestVisaPrice).toFixed(2);
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
                 document.getElementById('modalOfferPrice').value = (offerFare + latestVisaPrice).toFixed(2);
-                serviceChargeContainer.classList.add('hidden');
-                serviceChargeRow.classList.remove('hidden');
-                document.getElementById('modalServiceChargeRowInput').value = document.getElementById('modalServiceCharge').value;
             } else {
                 document.getElementById('modalRegularPrice').value = (sellingFare + latestVisaPrice).toFixed(2);
                 document.getElementById('modalOfferPriceContainer').classList.add('hidden');
                 document.getElementById('modalOfferPrice').value = '';
-                serviceChargeContainer.classList.remove('hidden');
-                serviceChargeRow.classList.add('hidden');
-                document.getElementById('modalServiceCharge').value = document.getElementById('modalServiceChargeRowInput').value || 0;
             }
         }
 
@@ -586,18 +565,12 @@
         function toggleModalOfferPriceField() {
             const ticketType = document.getElementById('modalTicketTypeSelect').value;
             const offerPriceContainer = document.getElementById('modalOfferPriceContainer');
-            const serviceChargeContainer = document.getElementById('modalServiceChargeContainer');
-            const serviceChargeRow = document.getElementById('modalServiceChargeRow');
             
             if (ticketType === 'offer') {
                 offerPriceContainer.classList.remove('hidden');
-                serviceChargeContainer.classList.add('hidden');
-                serviceChargeRow.classList.remove('hidden');
             } else {
                 offerPriceContainer.classList.add('hidden');
                 document.getElementById('modalOfferPrice').value = '';
-                serviceChargeContainer.classList.remove('hidden');
-                serviceChargeRow.classList.add('hidden');
             }
         }
         </script>
