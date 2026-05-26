@@ -76,16 +76,21 @@
             Back to List
         </a>
         <div class="flex gap-3">
-            <a href="{{ route('packages.edit', $package) }}" class="px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-800 transition">
-                Edit
-            </a>
-            <form method="POST" action="{{ route('packages.destroy', $package) }}" onsubmit="return confirm('Are you sure you want to delete this package?')">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">
-                    Delete
-                </button>
-            </form>
+            @if($package->isLocked())
+                <span class="px-4 py-2 bg-slate-400 text-white rounded-md cursor-not-allowed" title="Has existing bookings">Edit</span>
+                <span class="px-4 py-2 bg-red-400 text-white rounded-md cursor-not-allowed" title="Has existing bookings">Delete</span>
+            @else
+                <a href="{{ route('packages.edit', $package) }}" class="px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-800 transition">
+                    Edit
+                </a>
+                <form method="POST" action="{{ route('packages.destroy', $package) }}" onsubmit="return confirm('Are you sure you want to delete this package?')">
+                    @csrf
+                    @method('DELETE')
+                    <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">
+                        Delete
+                    </button>
+                </form>
+            @endif
         </div>
     </div>
 </div>
