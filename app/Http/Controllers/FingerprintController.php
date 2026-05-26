@@ -101,7 +101,7 @@ class FingerprintController extends Controller
         ])->orderBy('created_at', 'desc');
 
         $user = auth()->user();
-        if (!$user->hasRole('Super Admin')) {
+        if ($user->hasRole('Fingerprint Staff')) {
             $query->where('assigned_staff_id', $user->id);
         }
 
@@ -222,7 +222,7 @@ class FingerprintController extends Controller
     {
         $user = auth()->user();
         $fingerprint = $fingerprintDetail->fingerprint;
-        if (!$user->hasRole('Super Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
         }
 
@@ -246,7 +246,7 @@ class FingerprintController extends Controller
     {
         $user = auth()->user();
         $fingerprint = $fingerprintDetail->fingerprint;
-        if (!$user->hasRole('Super Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
         }
 

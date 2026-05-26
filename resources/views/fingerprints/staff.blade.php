@@ -3,7 +3,7 @@
 @section('title', 'Fingerprint Staff')
 
 @section('content')
-<div class="w-full mx-auto pt-6" x-data="fingerprintStaff()">
+<div class="w-full mx-auto pt-6" x-data="fingerprintStaff({ isFingerprintStaff: @json($isFingerprintStaff), canEditCost: @json($canEditCost) })">
     <div class="bg-white rounded-xl shadow-lg p-6">
         <h2 class="text-xl font-semibold text-slate-700 mb-6">Fingerprint Staff</h2>
         <div class="overflow-x-auto">
@@ -43,16 +43,20 @@
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.district || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.deadline || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.passenger_name || '-'"></td>
-                            <td class="px-3 py-2 text-right">
+                            <td class="px-3 py-2 text-right" x-show="row.isFirstInGroup">
                                 <input type="number"
+                                       x-show="canEditCost"
                                        :value="row.cost"
                                        @change="updateCost(row.fingerprint_id, $event.target.value)"
                                        class="w-20 text-right text-sm border border-slate-300 rounded px-2 py-1"
-                                       min="0"
-                                       x-show="row.isFirstInGroup">
+                                       min="0">
+                                <span x-show="!canEditCost"
+                                      class="text-sm text-slate-700 font-medium"
+                                      x-text="row.cost != null && row.cost !== '' ? row.cost + ' SAR' : ''"></span>
                             </td>
                             <td class="px-3 py-2">
-                                <select @change="handleStatusChange(row.fingerprint_detail_id, $event.target.value)"
+                                <select x-show="canEditStatus"
+                                        @change="handleStatusChange(row.fingerprint_detail_id, $event.target.value)"
                                         class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
                                     <template x-for="opt in displayStatuses" :key="opt">
                                         <option :value="opt"
@@ -60,6 +64,10 @@
                                                 x-text="opt"></option>
                                     </template>
                                 </select>
+                                <span x-show="!canEditStatus"
+                                      class="px-2 py-1 rounded-full text-xs font-medium"
+                                      :class="getStatusClass(row.fingerprint_status_display)"
+                                      x-text="row.fingerprint_status_display"></span>
                             </td>
                         </tr>
                     </template>
@@ -112,10 +120,12 @@
 
 @push('scripts')
 <script>
-function fingerprintStaff() {
+function fingerprintStaff(options = {}) {
     return {
         data: [],
         loading: true,
+        canEditStatus: options.isFingerprintStaff ?? false,
+        canEditCost: options.canEditCost ?? false,
         showHoldModal: false,
         currentFingerprintDetailId: null,
         holdForm: {
