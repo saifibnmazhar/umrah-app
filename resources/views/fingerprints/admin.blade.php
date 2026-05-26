@@ -43,10 +43,10 @@
                         <th class="px-3 py-2 text-left font-medium">Customer Name</th>
                         <th class="px-3 py-2 text-left font-medium">PAX Qty</th>
                         <th class="px-3 py-2 text-left font-medium">Mobile</th>
-                        <th class="px-3 py-2 text-left font-medium">District</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Deadline</th>
                         <th class="px-3 py-2 text-right font-medium">Fingerprint Charge</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Location</th>
+                        <th class="px-3 py-2 text-left font-medium">District</th>
                         <th class="px-3 py-2 text-left font-medium">Assign Staff</th>
                         <th class="px-3 py-2 text-left font-medium">Passenger</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
@@ -73,8 +73,7 @@
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.booking_date : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.customer_name : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.pax_qty : ''"></td>
-                            <td class="px-3 py-2 text-slate-600 whitespace-pre-line" x-text="row._isFirstPassenger ? (row.customer_mobile || '') + '\n' + (row.passenger_mobile || '') : ''"></td>
-                            <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.district : ''"></td>
+                            <td class="px-3 py-2 text-slate-600 whitespace-pre-line" x-text="(row.customer_mobile || '') + '\n' + (row.passenger_mobile || '')"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? (row.deadline || '-') : ''"></td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">
                                 <span x-show="row._isFirstPassenger" x-text="row.cost != null && row.cost != '' ? row.cost + ' SAR' : 'N/A'"></span>
@@ -82,6 +81,7 @@
                             <td class="px-3 py-2 text-slate-600">
                                 <span x-show="row._isFirstPassenger" x-text="row.fingerprint_location || '-'"></span>
                             </td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.district : ''"></td>
                             <td class="px-3 py-2">
                                 <span x-show="row._isFirstPassenger">
                                     <select @change="canAssignStaff && row.fingerprint_location !== 'office' && assignStaff(row.fingerprint_id, $event.target.value)"
@@ -97,17 +97,21 @@
                             </td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.passenger_name"></td>
                             <td class="px-3 py-2">
-                                <div class="flex items-center gap-2">
+                                <template x-if="canAssignStaff && row.fingerprint_location === 'office'">
+                                    <select @change="handleStatusChange(row.fingerprint_detail_id, $event.target.value)"
+                                            class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
+                                        <template x-for="opt in displayStatuses" :key="opt">
+                                            <option :value="opt"
+                                                    :selected="getSelectedStatus(row) === opt"
+                                                    x-text="opt"></option>
+                                        </template>
+                                    </select>
+                                </template>
+                                <template x-if="!canAssignStaff || row.fingerprint_location !== 'office'">
                                     <span class="px-2 py-1 rounded-full text-xs font-medium"
                                           :class="getStatusClass(row.fingerprint_status_display)"
                                           x-text="row.fingerprint_status_display"></span>
-                                    {{-- <button @click="openHoldModal(row.fingerprint_detail_id, rowIndex)"
-                                            class="text-xs text-slate-500 hover:text-slate-700 underline"
-                                            x-show="row.fingerprint_detail_id"
-                                            title="Hold by BMT/Client">
-                                        Hold
-                                    </button> --}}
-                                </div>
+                                </template>
                             </td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.required_flight_date || '-'"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.actual_flight_date || '-'"></td>
@@ -147,9 +151,8 @@
         </div>
     </div>
 
-    {{-- <div x-show="showHoldModal"
-         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
-         style="display: none;">
+    <div x-show="showHoldModal"
+         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
             <div class="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl">
                 <h3 class="text-lg font-bold text-slate-800">Hold by BMT/Client</h3>
@@ -184,7 +187,7 @@
                 <button @click="saveHold()" class="px-4 py-2 text-sm font-medium text-white bg-slate-700 rounded-lg hover:bg-slate-800">Save</button>
             </div>
         </div>
-    </div> --}}
+    </div>
 </div>
 @endsection
 
@@ -199,6 +202,14 @@ function fingerprintAdmin(options = {}) {
         lastPage: 1,
         totalRecords: 0,
         canAssignStaff: options.canAssignStaff ?? false,
+        showHoldModal: false,
+        currentFingerprintDetailId: null,
+        holdForm: {
+            reason: '',
+            next_date: '',
+            remarks: '',
+        },
+        displayStatuses: ['None', 'Processing', 'Approved', 'Partially Approved', 'Cancel', 'Hold & Ask for next Finger date?'],
         filters: {
             division: '',
             district: '',
@@ -318,45 +329,100 @@ function fingerprintAdmin(options = {}) {
             return classes[status] || 'bg-gray-100 text-gray-800';
         },
 
-        // openHoldModal(detailId, rowIndex) {
-        //     if (!detailId) return;
-        //     this.currentHoldDetailId = detailId;
-        //     this.currentHoldRowIndex = rowIndex;
-        //     this.holdForm = { reason: '', next_date: '', remarks: '' };
-        //     this.showHoldModal = true;
-        // },
+        getSelectedStatus(row) {
+            if (row.fingerprint_status_display === 'Partially Approved') {
+                return 'Partially Approved';
+            }
+            const map = {
+                'none': 'None',
+                'processing': 'Processing',
+                'approved': 'Approved',
+                'cancelled': 'Cancel',
+            };
+            return map[row.fingerprint_status] || 'None';
+        },
 
-        // hideHoldModal() {
-        //     this.showHoldModal = false;
-        //     this.currentHoldDetailId = null;
-        //     this.currentHoldRowIndex = null;
-        // },
+        mapDisplayToBackend(displayValue) {
+            const map = {
+                'None': 'none',
+                'Processing': 'processing',
+                'Approved': 'approved',
+                'Partially Approved': 'approved',
+                'Cancel': 'cancelled',
+            };
+            return map[displayValue] || 'none';
+        },
 
-        // async saveHold() {
-        //     if (!this.holdForm.reason) {
-        //         window.showToast('Please select a reason', 'error');
-        //         return;
-        //     }
-        //     if (!this.holdForm.next_date) {
-        //         window.showToast('Please select next finger date', 'error');
-        //         return;
-        //     }
+        handleStatusChange(fingerprintDetailId, value) {
+            if (value === 'Hold & Ask for next Finger date?') {
+                this.currentFingerprintDetailId = fingerprintDetailId;
+                this.showHoldModal = true;
+                this.holdForm = { reason: '', next_date: '', remarks: '' };
+                return;
+            }
+            this.updateStatus(fingerprintDetailId, this.mapDisplayToBackend(value));
+        },
 
-        //     try {
-        //         const response = await fetch(`/api/fingerprints/detail/${this.currentHoldDetailId}/hold`, {
-        //             method: 'POST',
-        //             headers: {
-        //                 'Content-Type': 'application/json',
-        //                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-        //             },
-        //             body: JSON.stringify(this.holdForm),
-        //         });
-        //         const result = await response.json();
-        //         if (result.success) {
-        //             window.showToast('Hold created successfully', 'success');
-        //             this.hideHoldModal();
-        //             await this.loadData();
-        //         }
+        async updateStatus(fingerprintDetailId, status) {
+            if (!fingerprintDetailId) {
+                window.showToast('Cannot update: no fingerprint detail record', 'error');
+                return;
+            }
+            try {
+                const response = await fetch(`/api/fingerprints/detail/${fingerprintDetailId}/status`, {
+                    method: 'PUT',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({ status }),
+                });
+                const result = await response.json();
+                if (result.success) {
+                    window.showToast('Status updated successfully', 'success');
+                    await this.loadData();
+                }
+            } catch (error) {
+                console.error('Failed to update status:', error);
+                window.showToast('Failed to update status', 'error');
+            }
+        },
+
+        hideHoldModal() {
+            this.showHoldModal = false;
+            this.currentFingerprintDetailId = null;
+        },
+
+        async saveHold() {
+            if (!this.holdForm.reason) {
+                window.showToast('Please select a reason', 'error');
+                return;
+            }
+            if (!this.holdForm.next_date) {
+                window.showToast('Please select next finger date', 'error');
+                return;
+            }
+
+            try {
+                const response = await fetch(`/api/fingerprints/detail/${this.currentFingerprintDetailId}/hold`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify(this.holdForm),
+                });
+                const result = await response.json();
+                if (result.success) {
+                    window.showToast('Hold created successfully', 'success');
+                    this.hideHoldModal();
+                    await this.loadData();
+                }
+            } catch (error) {
+                console.error('Failed to save hold:', error);
+                window.showToast('Failed to save hold', 'error');
+            }
+        },
         //     } catch (error) {
         //         console.error('Failed to save hold:', error);
         //         window.showToast('Failed to save hold', 'error');
