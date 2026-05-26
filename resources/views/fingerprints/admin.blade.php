@@ -3,7 +3,7 @@
 @section('title', 'Fingerprint Admin')
 
 @section('content')
-<div class="w-full mx-auto pt-6" x-data="fingerprintAdmin()">
+<div class="w-full mx-auto pt-6" x-data="fingerprintAdmin({ canAssignStaff: @json($canAssignStaff) })">
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
@@ -84,8 +84,10 @@
                             </td>
                             <td class="px-3 py-2">
                                 <span x-show="row._isFirstPassenger">
-                                    <select @change="assignStaff(row.fingerprint_id, $event.target.value)"
-                                            class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
+                                    <select @change="canAssignStaff && row.fingerprint_location !== 'office' && assignStaff(row.fingerprint_id, $event.target.value)"
+                                            :disabled="!canAssignStaff || row.fingerprint_location === 'office'"
+                                            class="text-xs border border-slate-300 rounded px-2 py-1 bg-white"
+                                            :class="!canAssignStaff || row.fingerprint_location === 'office' ? 'opacity-60 cursor-not-allowed' : ''">
                                         <option value="">Select Staff</option>
                                         <template x-for="staff in staffList" :key="staff.id">
                                             <option :value="staff.id" :selected="staff.id == row.assigned_staff_id" x-text="staff.name"></option>
@@ -188,7 +190,7 @@
 
 @push('scripts')
 <script>
-function fingerprintAdmin() {
+function fingerprintAdmin(options = {}) {
     return {
         data: [],
         loading: true,
@@ -196,6 +198,7 @@ function fingerprintAdmin() {
         currentPage: 1,
         lastPage: 1,
         totalRecords: 0,
+        canAssignStaff: options.canAssignStaff ?? false,
         filters: {
             division: '',
             district: '',

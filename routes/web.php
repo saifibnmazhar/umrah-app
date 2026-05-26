@@ -113,7 +113,10 @@ Route::middleware('auth')->group(function () {
     Route::put('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'updateFare'])->name('fare.admin.fare.update')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::delete('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'destroyFare'])->name('fare.admin.fare.destroy')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
-    Route::get('/fingerprints/admin', fn() => view('fingerprints.admin'))->name('fingerprint.admin')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
+    Route::get('/fingerprints/admin', function () {
+        $canAssignStaff = auth()->user()->hasRole('Fingerprint Admin');
+        return view('fingerprints.admin', compact('canAssignStaff'));
+    })->name('fingerprint.admin')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::get('/fingerprints/staff', fn() => view('fingerprints.staff'))->name('fingerprint.staff')->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
 
     Route::get('/api/fingerprints/admin', [FingerprintController::class, 'adminIndex'])
@@ -127,7 +130,7 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
     Route::put('/api/fingerprints/{fingerprint}/staff', [FingerprintController::class, 'assignStaff'])
         ->name('api.fingerprints.assign-staff')
-        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
+        ->middleware('role:Fingerprint Admin');
     Route::put('/api/fingerprints/{fingerprint}/cost', [FingerprintController::class, 'updateCost'])
         ->name('api.fingerprints.update-cost')
         ->middleware('role:Super Admin,Fingerprint Staff');

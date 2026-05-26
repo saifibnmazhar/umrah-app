@@ -551,6 +551,10 @@ class BookingController extends Controller
             $validated['discount_type'] = ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage';
             $booking->update($validated);
 
+            if (($validated['fingerprint_location'] ?? null) === 'office' && $booking->fingerprint) {
+                $booking->fingerprint->update(['assigned_staff_id' => null]);
+            }
+
             if ($request->has('passengers')) {
                 foreach ($validated['passengers'] as $passengerData) {
                     $passenger = Passenger::find($passengerData['id'] ?? null);
@@ -630,6 +634,10 @@ class BookingController extends Controller
 
         try {
             $booking->update(['fingerprint_location' => $validated['fingerprint_location']]);
+
+            if ($validated['fingerprint_location'] === 'office' && $booking->fingerprint) {
+                $booking->fingerprint->update(['assigned_staff_id' => null]);
+            }
 
             $booking = $booking->fresh();
             $invoiceData = $this->syncBookingFinancials($booking);
