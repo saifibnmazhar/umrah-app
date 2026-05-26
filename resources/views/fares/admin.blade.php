@@ -109,9 +109,9 @@
     <div x-show="activeTab === 'fares'" x-cloak>
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-semibold text-slate-700">Ticket Fares</h2>
-            <button @click="editFareMode = false; fare = { id: null, airline_id: '', airline_classes_id: '', route_id: '', route_type: '', ticket_type: 'regular', effective_from: '', effective_to: '', net_fare: '', selling_fare: '', child_fare_percentage: 75, infant_fare_percentage: 10, offer_price: '', with_meal: false }; showFareModal = true; setTimeout(toggleFareFieldsModal, 100)" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition text-sm font-medium">
+            <a href="{{ route('ticket-fares.create') }}" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition text-sm font-medium">
                 Add New
-            </button>
+            </a>
         </div>
 
         <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mb-6">
