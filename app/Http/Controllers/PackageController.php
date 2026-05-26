@@ -114,6 +114,7 @@ class PackageController extends Controller
             ],
             'regular_price' => 'required|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
         ]);
 
         $latestVisa = VisaSellingPrice::latest()->first();
@@ -172,6 +173,7 @@ class PackageController extends Controller
             ],
             'regular_price' => 'required|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
         ]);
 
         $latestVisa = VisaSellingPrice::latest()->first();
