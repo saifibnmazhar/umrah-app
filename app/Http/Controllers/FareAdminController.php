@@ -124,10 +124,21 @@ class FareAdminController extends Controller
         $validated = $request->validate($rules);
 
         try {
-            TicketFare::create(array_merge($validated, [
-                'user_id' => auth()->id() ?? 1,
+            TicketFare::create([
+                'airline_id' => $validated['airline_id'],
+                'airline_classes_id' => $validated['airline_classes_id'],
+                'route_id' => $validated['route_id'],
+                'ticket_type' => $validated['ticket_type'],
+                'effective_from' => $validated['effective_from'],
+                'effective_to' => $validated['effective_to'],
+                'net_fare' => $validated['net_fare'],
+                'selling_fare' => $validated['selling_fare'],
+                'offer_price' => $validated['offer_price'] ?? null,
+                'child_fare_percentage' => $validated['child_fare_percentage'],
+                'infant_fare_percentage' => $validated['infant_fare_percentage'],
                 'with_meal' => $request->has('with_meal') ? 1 : 0,
-            ]));
+                'user_id' => auth()->id() ?? 1,
+            ]);
 
             return redirect()->route('fare.admin')->with('success', 'Ticket fare created successfully.');
         } catch (\Exception $e) {

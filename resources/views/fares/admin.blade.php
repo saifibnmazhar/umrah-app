@@ -43,6 +43,16 @@
         </div>
     @endif
 
+    @if($errors->any())
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+            <ul class="list-disc list-inside">
+                @foreach($errors->all() as $error)
+                    <li>{{ $error }}</li>
+                @endforeach
+            </ul>
+        </div>
+    @endif
+
     <div x-show="activeTab === 'agents'" x-cloak>
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-semibold text-slate-700">Ticket Agents</h2>
@@ -368,7 +378,7 @@
                             </div> --}}
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                                <select name="route_type" x-model="fare.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="handleModalRouteTypeChange()">
+                                <select name="route_type" id="modalRouteType" x-model="fare.route_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="handleModalRouteTypeChange()">
                                     <option value="">Select Type</option>
                                     <option value="oneway_inbound">One Way - Inbound</option>
                                     <option value="oneway_outbound">One Way - Outbound</option>
@@ -378,7 +388,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                                <select name="flight_type" x-model="fare.flight_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="handleModalFlightTypeChange()">
+                                <select name="flight_type" id="modalFlightType" x-model="fare.flight_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="handleModalFlightTypeChange()">
                                     <option value="">Select Flight Type</option>
                                     <option value="direct">Direct</option>
                                     <option value="transit">Transit</option>
@@ -421,7 +431,7 @@
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type *</label>
-                                <select name="ticket_type" x-model="fare.ticket_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleFareFieldsModal()">
+                                <select name="ticket_type" id="modalTicketType" x-model="fare.ticket_type" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border" required onchange="toggleFareFieldsModal()">
                                     <option value="">Select Type</option>
                                     <option value="regular">Regular</option>
                                     <option value="offer">Offer</option>
@@ -438,7 +448,7 @@
                             </div>
                             <div class="flex items-center">
                                 <label class="flex items-center cursor-pointer">
-                                    <input type="checkbox" name="with_meal" x-model="fare.with_meal" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-500">
+                                    <input type="checkbox" name="with_meal" value="1" x-model="fare.with_meal" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-500">
                                     <span class="ml-2 text-sm text-slate-700">With Meal</span>
                                 </label>
                             </div>
@@ -556,8 +566,8 @@
 
     <script>
     function toggleFareFieldsModal() {
-        const ticketType = document.querySelector('select[name="ticket_type"]').value;
-        const routeType = document.querySelector('select[name="route_type"]').value;
+        const ticketType = document.getElementById('modalTicketType').value;
+        const routeType = document.getElementById('modalRouteType').value;
 
         const offerField = document.getElementById('modalOfferPriceField');
         const groupSection = document.getElementById('modalGroupTicketSection');
@@ -612,8 +622,8 @@
     }
 
     function filterModalRoutes() {
-        const routeType = document.querySelector('select[name="route_type"]').value;
-        const flightType = document.querySelector('select[name="flight_type"]').value;
+        const routeType = document.getElementById('modalRouteType').value;
+        const flightType = document.getElementById('modalFlightType').value;
         const routeSelect = document.getElementById('modalRouteId');
         const options = routeSelect.querySelectorAll('option');
 
@@ -640,7 +650,7 @@
 
             if ((routeType && selectedRouteType !== routeType) || (flightType && selectedFlightType !== flightType)) {
                 routeSelect.value = '';
-                document.querySelector('select[name="flight_type"]').value = '';
+                document.getElementById('modalFlightType').value = '';
             }
         }
     }
@@ -656,7 +666,7 @@
 
     function handleModalRouteChange() {
         const routeSelect = document.getElementById('modalRouteId');
-        const flightTypeSelect = document.querySelector('select[name="flight_type"]');
+        const flightTypeSelect = document.getElementById('modalFlightType');
 
         if (routeSelect.value) {
             const selectedOption = routeSelect.options[routeSelect.selectedIndex];
