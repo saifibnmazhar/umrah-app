@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Package extends Model
 {
@@ -22,6 +23,8 @@ class Package extends Model
         'service_charge' => 'decimal:2',
     ];
 
+    protected $appends = ['is_locked'];
+
     public function ticketFare(): BelongsTo
     {
         return $this->belongsTo(TicketFare::class);
@@ -30,5 +33,20 @@ class Package extends Model
     public function visaSellingPrice(): BelongsTo
     {
         return $this->belongsTo(VisaSellingPrice::class);
+    }
+
+    public function bookings(): HasMany
+    {
+        return $this->hasMany(Booking::class);
+    }
+
+    public function getIsLockedAttribute(): bool
+    {
+        return ($this->bookings_count ?? 0) > 0;
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->bookings()->exists();
     }
 }

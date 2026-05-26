@@ -69,12 +69,17 @@
                                 @endif
                             </td>
                             <td class="px-3 py-2 text-center">
-                                <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
-                                <form method="POST" action="{{ route('packages.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
-                                    @csrf
-                                    @method('DELETE')
-                                    <button type="submit" class="text-xs text-red-500 hover:text-red-700">Delete</button>
-                                </form>
+                                @if($package->bookings_count > 0)
+                                    <button class="text-xs text-slate-400 cursor-not-allowed mr-3" title="Has existing bookings" disabled>Edit</button>
+                                    <button class="text-xs text-red-400 cursor-not-allowed" title="Has existing bookings" disabled>Delete</button>
+                                @else
+                                    <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
+                                    <form method="POST" action="{{ route('packages.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
+                                        @csrf
+                                        @method('DELETE')
+                                        <button type="submit" class="text-xs text-red-500 hover:text-red-700">Delete</button>
+                                    </form>
+                                @endif
                             </td>
                         </tr>
                     @empty
@@ -170,6 +175,7 @@
 const ticketFares = @json($ticketFares);
 const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
 const packages = @json($packagesArray);
+const usedFareIds = @json($usedFareIds);
 
 function buildDisplay(fare) {
     let disp = fare.route + ' | ' + fare.ticket_type.toUpperCase() + ' | BDT ' + fare.selling_fare;
@@ -201,7 +207,7 @@ function hidePackageModal() {
     document.getElementById('packageModal').classList.add('hidden');
 }
 
-function populateModalTickets() {
+function populateModalTickets(includeFareId = null) {
     const select = document.getElementById('modalTicketSelect');
     const typeSelect = document.getElementById('modalTicketTypeSelect');
     const selectedType = typeSelect.value;
@@ -209,6 +215,7 @@ function populateModalTickets() {
     select.innerHTML = '<option value="">Select Ticket</option>';
     ticketFares.forEach(fare => {
         if (selectedType && fare.ticket_type !== selectedType) return;
+        if (usedFareIds.includes(fare.id) && fare.id !== includeFareId) return;
         const option = document.createElement('option');
         option.value = fare.id;
         option.dataset.ticketType = fare.ticket_type;
@@ -245,6 +252,10 @@ function calculateModalPrices() {
 function editPackage(id) {
     const pkg = packages.find(p => p.id === id);
     if (!pkg) return;
+    if (pkg.is_locked) {
+        alert('This package cannot be edited because it has existing bookings.');
+        return;
+    }
 
     document.getElementById('packageModal').classList.remove('hidden');
     document.getElementById('modalTitle').textContent = 'Edit Package';
@@ -253,7 +264,7 @@ function editPackage(id) {
     document.getElementById('packageForm').action = '/packages/' + id;
     document.getElementById('packageName').value = pkg.package_name;
 
-    populateModalTickets();
+    populateModalTickets(pkg.ticket_fare_id);
     document.getElementById('modalTicketSelect').value = pkg.ticket_fare_id;
     calculateModalPrices();
 }

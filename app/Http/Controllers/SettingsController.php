@@ -27,6 +27,7 @@ class SettingsController extends Controller
         $flightDateGap = FlightDateGap::first();
 
         $packages = Package::with(['ticketFare', 'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity', 'ticketFare.airline', 'visaSellingPrice'])
+            ->withCount('bookings')
             ->orderBy('id', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -71,6 +72,8 @@ class SettingsController extends Controller
                 ];
             });
 
+        $usedFareIds = Package::pluck('ticket_fare_id')->toArray();
+
         $latestVisa = VisaSellingPrice::latest()->first();
 
         return view('settings.index', compact(
@@ -80,7 +83,8 @@ class SettingsController extends Controller
             'flightDateGap',
             'packages',
             'ticketFares',
-            'latestVisa'
+            'latestVisa',
+            'usedFareIds'
         ));
     }
 
@@ -128,6 +132,10 @@ class SettingsController extends Controller
 
     public function updatePackage(Request $request, Package $package)
     {
+        if ($package->isLocked()) {
+            return redirect()->back()->with('error', 'This package cannot be edited because it has existing bookings.');
+        }
+
         $validated = $request->validate([
             'package_name' => 'required|string|max:255',
             'ticket_fare_id' => 'required|exists:ticket_fares,id',
@@ -154,6 +162,10 @@ class SettingsController extends Controller
 
     public function destroyPackage(Package $package)
     {
+        if ($package->isLocked()) {
+            return redirect()->back()->with('error', 'This package cannot be deleted because it has existing bookings.');
+        }
+
         try {
             $package->delete();
             return redirect()->route('settings')->with('success', 'Package deleted successfully.');
