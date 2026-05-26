@@ -231,7 +231,7 @@ class PassengerController extends Controller
             'date_of_birth' => 'required|date|before:today',
             'mobile_no' => 'nullable|string|max:20',
             'passport_expiry' => 'nullable|date',
-            'service_required' => 'nullable|in:All,Visa Only,Ticket Only',
+            'service_required' => 'nullable|in:all,visa_only,ticket_only',
             'stay_duration' => 'nullable|integer|min:1',
             'flight_date_from' => 'nullable|date',
             'flight_date_to' => 'nullable|date',
@@ -240,11 +240,6 @@ class PassengerController extends Controller
             'gender' => 'nullable|in:male,female',
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
         ]);
-
-        if (isset($validated['service_required'])) {
-            $map = ['All' => 'all', 'Visa Only' => 'visa_only', 'Ticket Only' => 'ticket_only'];
-            $validated['service_required'] = $map[$validated['service_required']] ?? $validated['service_required'];
-        }
 
         try {
             $passenger->update($validated);

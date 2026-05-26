@@ -71,6 +71,9 @@ class BookingService
         $booking = $passenger->booking;
         $package = $booking->package;
         $serviceRequired = $passenger->service_required;
+        if ($serviceRequired instanceof \BackedEnum) {
+            $serviceRequired = $serviceRequired->value;
+        }
         
         $passengerType = $passenger->passenger_type;
         if ($passengerType instanceof \BackedEnum) {
@@ -82,7 +85,7 @@ class BookingService
         $visaAmount = 0;
         $serviceChargeAmount = 0;
 
-        if ($ticketFare) {
+        if ($ticketFare && $serviceRequired !== 'visa_only') {
             $baseFare = $ticketFare->ticket_type === TicketType::OFFER
                 ? (float) ($ticketFare->offer_price ?? $ticketFare->selling_fare)
                 : (float) $ticketFare->selling_fare;

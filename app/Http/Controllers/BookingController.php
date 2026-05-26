@@ -281,7 +281,9 @@ class BookingController extends Controller
                     'flight_date_from' => $passengerData['flight_date_from'] ?? null,
                     'flight_date_to' => $passengerData['flight_date_to'] ?? null,
                     'address' => $passengerData['address'] ?? null,
-                    'ticket_fare_id' => $passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id,
+                    'ticket_fare_id' => ($passengerData['service_required'] ?? '') === 'visa_only'
+                        ? null
+                        : ($passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id),
                 ]);
             }
 
@@ -695,7 +697,9 @@ class BookingController extends Controller
         $validated['passenger_type'] = $passengerType;
         $validated['service_required'] = $validated['service_required'] ?? 'All';
         $validated['stay_duration'] = $validated['stay_duration'] ?? 14;
-        $validated['ticket_fare_id'] = $validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id;
+        $validated['ticket_fare_id'] = ($validated['service_required'] ?? '') === 'visa_only'
+            ? null
+            : ($validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id);
 
         $passenger = Passenger::create($validated);
 

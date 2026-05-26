@@ -1275,19 +1275,22 @@ Alpine.data('createBookingApp', () => ({
         const serviceRequired = passenger.service_required || 'all';
         const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
 
-        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
-        if (!ticket) return 0;
-
-        const baseFare = ticket.ticket_type === 'offer'
-            ? (parseFloat(ticket.offer_price) || 0)
-            : (parseFloat(ticket.selling_fare) || 0);
-        let ticketAmount = baseFare;
-        if (passengerType === 'child') {
-            const pct = parseFloat(ticket.child_fare_percentage) || 0;
-            ticketAmount = baseFare * pct / 100;
-        } else if (passengerType === 'infant') {
-            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-            ticketAmount = baseFare * pct / 100;
+        let ticketAmount = 0;
+        if (serviceRequired !== 'visa_only') {
+            const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+            if (ticket) {
+                const baseFare = ticket.ticket_type === 'offer'
+                    ? (parseFloat(ticket.offer_price) || 0)
+                    : (parseFloat(ticket.selling_fare) || 0);
+                ticketAmount = baseFare;
+                if (passengerType === 'child') {
+                    const pct = parseFloat(ticket.child_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                } else if (passengerType === 'infant') {
+                    const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                }
+            }
         }
 
         const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
@@ -1571,6 +1574,19 @@ Alpine.data('createBookingApp', () => ({
             this.passengerData.ticket_fare_id = '';
         }
         this.updateRouteAirlineClass();
+    },
+
+    onServiceRequiredChange() {
+        if (this.passengerData.service_required === 'visa_only') {
+            this.passengerData.route_type = '';
+            this.passengerData.flight_type = '';
+            this.passengerData.ticket_fare_id = '';
+            this.passengerData.route = '';
+            this.passengerData.airline = '';
+            this.passengerData.class = '';
+            this.passengerData.baggage_weight = 'Visa Only - No ticket required';
+            this.filteredTickets = [];
+        }
     },
 
     calculateFlightDateRange() {
@@ -2643,19 +2659,22 @@ Alpine.data('editBookingApp', () => ({
         const serviceRequired = passenger.service_required || 'all';
         const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
 
-        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
-        if (!ticket) return 0;
-
-        const baseFare = ticket.ticket_type === 'offer'
-            ? (parseFloat(ticket.offer_price) || 0)
-            : (parseFloat(ticket.selling_fare) || 0);
-        let ticketAmount = baseFare;
-        if (passengerType === 'child') {
-            const pct = parseFloat(ticket.child_fare_percentage) || 0;
-            ticketAmount = baseFare * pct / 100;
-        } else if (passengerType === 'infant') {
-            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-            ticketAmount = baseFare * pct / 100;
+        let ticketAmount = 0;
+        if (serviceRequired !== 'visa_only') {
+            const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+            if (ticket) {
+                const baseFare = ticket.ticket_type === 'offer'
+                    ? (parseFloat(ticket.offer_price) || 0)
+                    : (parseFloat(ticket.selling_fare) || 0);
+                ticketAmount = baseFare;
+                if (passengerType === 'child') {
+                    const pct = parseFloat(ticket.child_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                } else if (passengerType === 'infant') {
+                    const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                }
+            }
         }
 
         const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
@@ -3255,6 +3274,19 @@ Alpine.data('editBookingApp', () => ({
         );
     },
 
+    onServiceRequiredChange() {
+        if (this.passengerData.service_required === 'visa_only') {
+            this.passengerData.route_type = '';
+            this.passengerData.flight_type = '';
+            this.passengerData.ticket_fare_id = '';
+            this.passengerData.route = '';
+            this.passengerData.airline = '';
+            this.passengerData.class = '';
+            this.passengerData.baggage_weight = 'Visa Only - No ticket required';
+            this.filteredTickets = [];
+        }
+    },
+
     onTicketChange() {
         const ticketFareId = this.passengerData.ticket_fare_id;
         if (!ticketFareId) {
@@ -3734,6 +3766,19 @@ Alpine.data('showBookingApp', () => ({
         });
     },
 
+    onServiceRequiredChange() {
+        if (this.passengerData.service_required === 'visa_only') {
+            this.passengerData.route_type = '';
+            this.passengerData.flight_type = '';
+            this.passengerData.ticket_fare_id = '';
+            this.passengerData.route = '';
+            this.passengerData.airline = '';
+            this.passengerData.class = '';
+            this.passengerData.baggage_weight = 'Visa Only - No ticket required';
+            this.filteredTickets = [];
+        }
+    },
+
     onTicketChange() {
         const ticketFareId = this.passengerData.ticket_fare_id;
         if (!ticketFareId) {
@@ -3911,18 +3956,22 @@ Alpine.data('showBookingApp', () => ({
         const ticketFareId = passenger.ticket_fare_id;
         const serviceRequired = passenger.service_required || 'all';
         const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
-        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
-        if (!ticket) return 0;
-        const baseFare = ticket.ticket_type === 'offer'
-            ? (parseFloat(ticket.offer_price) || 0)
-            : (parseFloat(ticket.selling_fare) || 0);
-        let ticketAmount = baseFare;
-        if (passengerType === 'child') {
-            const pct = parseFloat(ticket.child_fare_percentage) || 0;
-            ticketAmount = baseFare * pct / 100;
-        } else if (passengerType === 'infant') {
-            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-            ticketAmount = baseFare * pct / 100;
+        let ticketAmount = 0;
+        if (serviceRequired !== 'visa_only') {
+            const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+            if (ticket) {
+                const baseFare = ticket.ticket_type === 'offer'
+                    ? (parseFloat(ticket.offer_price) || 0)
+                    : (parseFloat(ticket.selling_fare) || 0);
+                ticketAmount = baseFare;
+                if (passengerType === 'child') {
+                    const pct = parseFloat(ticket.child_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                } else if (passengerType === 'infant') {
+                    const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                }
+            }
         }
         const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
         const serviceCharge = parseFloat(selectedPackage?.service_charge) || 0;
@@ -3930,9 +3979,9 @@ Alpine.data('showBookingApp', () => ({
         if (serviceRequired === 'all') {
             total = ticketAmount + visaPrice + serviceCharge;
         } else if (serviceRequired === 'visa_only') {
-            total = visaPrice;
+            total = visaPrice + serviceCharge;
         } else if (serviceRequired === 'ticket_only') {
-            total = ticketAmount;
+            total = ticketAmount + serviceCharge;
         }
         return total;
     },
