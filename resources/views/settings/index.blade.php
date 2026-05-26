@@ -430,7 +430,8 @@
                                 <option value="{{ $fare['id'] }}"
                                     data-ticket-type="{{ $fare['ticket_type'] }}"
                                     data-selling-fare="{{ $fare['selling_fare'] }}"
-                                    data-offer-price="{{ $fare['offer_price'] ?? 0 }}">
+                                    data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
+                                    data-used="{{ in_array($fare['id'], $usedFareIds) ? 'true' : 'false' }}">
                                     {{ $display }}
                                 </option>
                             @endforeach
@@ -477,6 +478,7 @@
         const ticketFares = @json($ticketFares);
         const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
         const packages = @json($packages->items());
+        const usedFareIds = @json($usedFareIds);
 
         function showPackageModal() {
             document.getElementById('modalTitle').textContent = 'Add Package';
@@ -512,7 +514,7 @@
             const ticketOption = Array.from(document.getElementById('modalTicketSelect').options).find(opt => opt.value == pkg.ticket_fare_id);
             if (ticketOption) {
                 document.getElementById('modalTicketTypeSelect').value = ticketOption.dataset.ticketType || '';
-                filterModalTickets();
+                filterModalTickets(pkg.ticket_fare_id);
                 document.getElementById('modalTicketSelect').value = pkg.ticket_fare_id;
             }
             
@@ -534,12 +536,18 @@
             document.getElementById('packageModal').classList.add('hidden');
         }
 
-        function filterModalTickets() {
+        function filterModalTickets(exceptFareId = null) {
             const selectedType = document.getElementById('modalTicketTypeSelect').value;
             Array.from(document.getElementById('modalTicketSelect').options).forEach(option => {
                 if (option.value === '') return;
                 const ticketType = option.dataset.ticketType;
-                option.style.display = (selectedType === '' || ticketType === selectedType) ? '' : 'none';
+                const isUsed = option.dataset.used === 'true';
+                const isExcepted = exceptFareId && option.value == exceptFareId;
+                let show = (selectedType === '' || ticketType === selectedType);
+                if (show && isUsed && !isExcepted) {
+                    show = false;
+                }
+                option.style.display = show ? '' : 'none';
             });
         }
 
