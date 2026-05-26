@@ -18,7 +18,8 @@ class TicketFareController extends Controller
 {
     public function index(Request $request)
     {
-        $query = TicketFare::with(['airline', 'airlineClass', 'route', 'user', 'groupTicket', 'baggageAllowances']);
+        $query = TicketFare::with(['airline', 'airlineClass', 'route', 'user', 'groupTicket', 'baggageAllowances'])
+            ->withCount(['packages', 'passengers']);
 
         if ($request->has('airline_id') && $request->airline_id) {
             $query->where('airline_id', $request->airline_id);
@@ -143,6 +144,10 @@ class TicketFareController extends Controller
 
     public function edit(TicketFare $ticketFare)
     {
+        if ($ticketFare->isLocked()) {
+            return redirect()->route('ticket-fares.index')->with('error', 'This ticket fare cannot be edited because it is in use by packages or passengers.');
+        }
+
         $ticketFare->load(['airline', 'airlineClass', 'route', 'groupTicket', 'baggageAllowances']);
 
         $airlines = Airline::orderBy('name')->get();
@@ -154,6 +159,10 @@ class TicketFareController extends Controller
 
     public function update(Request $request, TicketFare $ticketFare)
     {
+        if ($ticketFare->isLocked()) {
+            return redirect()->back()->with('error', 'This ticket fare cannot be edited because it is in use by packages or passengers.');
+        }
+
         $rules = [
             'airline_id' => 'required|exists:airlines,id',
             'airline_classes_id' => 'required|exists:airline_classes,id',
@@ -240,6 +249,10 @@ class TicketFareController extends Controller
 
     public function destroy(TicketFare $ticketFare)
     {
+        if ($ticketFare->isLocked()) {
+            return redirect()->back()->with('error', 'This ticket fare cannot be deleted because it is in use by packages or passengers.');
+        }
+
         try {
             $ticketFare->delete();
             return redirect()->route('fare.admin')->with('success', 'Ticket fare deleted successfully.');

@@ -213,12 +213,17 @@
                                 <td class="px-4 py-3 text-slate-600">{{ $fare->effective_to->format('Y-m-d') }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-3">
-                                        <button @click="editFareMode = true; fare = { id: {{ $fare->id }}, airline_id: '{{ $fare->airline_id }}', airline_classes_id: '{{ $fare->airline_classes_id }}', route_id: '{{ $fare->route_id }}', route_type: '{{ $fare->route_type ?? 'oneway_outbound' }}', flight_type: '{{ $fare->route->flight_type->value ?? '' }}', ticket_type: '{{ $fare->ticket_type->value }}', effective_from: '{{ $fare->effective_from->format('Y-m-d') }}', effective_to: '{{ $fare->effective_to->format('Y-m-d') }}', net_fare: '{{ $fare->net_fare }}', selling_fare: '{{ $fare->selling_fare }}', child_fare_percentage: '{{ $fare->child_fare_percentage }}', infant_fare_percentage: '{{ $fare->infant_fare_percentage }}', offer_price: '{{ $fare->offer_price ?? '' }}', with_meal: {{ $fare->with_meal ? 'true' : 'false' }} }; showFareModal = true; setTimeout(function() { toggleFareFieldsModal(); filterModalRoutes(); }, 100)" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
-                                        <form method="POST" action="{{ route('fare.admin.fare.destroy', $fare->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket fare?')" class="inline">
-                                            @csrf
-                                            @method('DELETE')
-                                            <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
-                                        </form>
+                                        @if($fare->is_locked)
+                                            <span class="text-slate-400 cursor-not-allowed" title="In use by packages or passengers">Edit</span>
+                                            <span class="text-red-400 cursor-not-allowed" title="In use by packages or passengers">Delete</span>
+                                        @else
+                                            <button @click="editFareMode = true; fare = { id: {{ $fare->id }}, airline_id: '{{ $fare->airline_id }}', airline_classes_id: '{{ $fare->airline_classes_id }}', route_id: '{{ $fare->route_id }}', route_type: '{{ $fare->route_type ?? 'oneway_outbound' }}', flight_type: '{{ $fare->route->flight_type->value ?? '' }}', ticket_type: '{{ $fare->ticket_type->value }}', effective_from: '{{ $fare->effective_from->format('Y-m-d') }}', effective_to: '{{ $fare->effective_to->format('Y-m-d') }}', net_fare: '{{ $fare->net_fare }}', selling_fare: '{{ $fare->selling_fare }}', child_fare_percentage: '{{ $fare->child_fare_percentage }}', infant_fare_percentage: '{{ $fare->infant_fare_percentage }}', offer_price: '{{ $fare->offer_price ?? '' }}', with_meal: {{ $fare->with_meal ? 'true' : 'false' }} }; showFareModal = true; setTimeout(function() { toggleFareFieldsModal(); filterModalRoutes(); }, 100)" class="text-slate-600 hover:text-slate-800 font-medium">Edit</button>
+                                            <form method="POST" action="{{ route('fare.admin.fare.destroy', $fare->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket fare?')" class="inline">
+                                                @csrf
+                                                @method('DELETE')
+                                                <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
+                                            </form>
+                                        @endif
                                     </div>
                                 </td>
                             </tr>

@@ -16,7 +16,8 @@ class FareAdminController extends Controller
         $ticketAgentsQuery = TicketAgent::orderBy('name');
         $ticketAgents = $ticketAgentsQuery->paginate(10)->withQueryString();
 
-        $ticketFaresQuery = TicketFare::with(['airline', 'airlineClass.travelClass', 'route.fromCity', 'route.toCity', 'route.returnCity', 'route.multiSegments.fromCity', 'route.multiSegments.toCity', 'user']);
+        $ticketFaresQuery = TicketFare::with(['airline', 'airlineClass.travelClass', 'route.fromCity', 'route.toCity', 'route.returnCity', 'route.multiSegments.fromCity', 'route.multiSegments.toCity', 'user'])
+            ->withCount(['packages', 'passengers']);
 
         if ($request->has('airline_id') && $request->airline_id) {
             $ticketFaresQuery->where('airline_id', $request->airline_id);
@@ -148,6 +149,10 @@ class FareAdminController extends Controller
 
     public function updateFare(Request $request, TicketFare $ticketFare)
     {
+        if ($ticketFare->isLocked()) {
+            return redirect()->back()->with('error', 'This ticket fare cannot be edited because it is in use by packages or passengers.');
+        }
+
         $rules = [
             'airline_id' => 'required|exists:airlines,id',
             'airline_classes_id' => 'required|exists:airline_classes,id',
@@ -181,6 +186,10 @@ class FareAdminController extends Controller
 
     public function destroyFare(TicketFare $ticketFare)
     {
+        if ($ticketFare->isLocked()) {
+            return redirect()->back()->with('error', 'This ticket fare cannot be deleted because it is in use by packages or passengers.');
+        }
+
         try {
             $ticketFare->delete();
             return redirect()->route('fare.admin')->with('success', 'Ticket fare deleted successfully.');
