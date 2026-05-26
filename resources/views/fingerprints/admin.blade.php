@@ -108,7 +108,7 @@
                                 </div>
                             </td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.required_flight_date || '-'"></td>
-                            <td class="px-3 py-2 text-slate-600" x-text="row.flight_date_to || '-'"></td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row.actual_flight_date || '-'"></td>
                         </tr>
                     </template>
                 </tbody>

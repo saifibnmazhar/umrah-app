@@ -77,6 +77,7 @@ class FingerprintController extends Controller
                     'required_flight_date' => $passenger->flight_date_from && $passenger->flight_date_to
                         ? $passenger->flight_date_from->format('d M Y') . ' → ' . $passenger->flight_date_to->format('d M Y')
                         : ($passenger->flight_date_from?->format('d M Y') ?? $passenger->flight_date_to?->format('d M Y') ?? '-'),
+                    'actual_flight_date' => $passenger->actual_flight_date?->format('d M Y') ?? '-',
                 ];
             });
         })->flatten(1);
