@@ -18,7 +18,7 @@ $passengersVisaData = $passengers->map(fn($p) => [
     'visa_status' => $p->visa_status?->value ?? null,
 ])->values();
 @endphp
-<div class="max-w-7xl mx-auto" x-data="bookingIndexApp()">
+<div class="w-full mx-auto" x-data="bookingIndexApp()">
     <div class="flex justify-between items-center mb-6">
         @php
             $canCreateBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();

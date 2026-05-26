@@ -3,7 +3,7 @@
 @section('title', 'Fingerprint Staff')
 
 @section('content')
-<div class="max-w-7xl mx-auto pt-6" x-data="fingerprintStaff()">
+<div class="w-full mx-auto pt-6" x-data="fingerprintStaff()">
     <div class="bg-white rounded-xl shadow-lg p-6">
         <h2 class="text-xl font-semibold text-slate-700 mb-6">Fingerprint Staff</h2>
         <div class="overflow-x-auto">

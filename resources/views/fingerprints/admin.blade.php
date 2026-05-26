@@ -3,7 +3,7 @@
 @section('title', 'Fingerprint Admin')
 
 @section('content')
-<div class="max-w-7xl mx-auto pt-6" x-data="fingerprintAdmin()">
+<div class="w-full mx-auto pt-6" x-data="fingerprintAdmin()">
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
