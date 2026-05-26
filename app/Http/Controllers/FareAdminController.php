@@ -188,4 +188,5 @@ class FareAdminController extends Controller
             return redirect()->back()->with('error', 'Failed to delete ticket fare.');
         }
     }
+
 }
