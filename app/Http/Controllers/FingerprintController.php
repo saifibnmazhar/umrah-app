@@ -89,6 +89,7 @@ class FingerprintController extends Controller
         $query = Fingerprint::with([
             'booking.customer',
             'booking.district',
+            'booking.office',
             'booking.passengers',
             'fingerprintDetails.passenger'
         ])->orderBy('created_at', 'desc');
@@ -102,6 +103,8 @@ class FingerprintController extends Controller
 
         $data = $fingerprints->map(function ($fingerprint) {
             $booking = $fingerprint->booking;
+            if (!$booking) return collect([]);
+
             $passengers = $booking->passengers;
 
             return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers) {
@@ -111,21 +114,29 @@ class FingerprintController extends Controller
 
                 $statusDisplay = $this->computePartiallyApprovedStatus($detail, $passengers);
 
+                $firstName = $passenger->first_name ?? '';
+                $lastName = $passenger->last_name ?? '';
+                $passengerName = trim($firstName . ' ' . $lastName) ?: '-';
+
                 return [
                     'fingerprint_id' => $fingerprint->id,
                     'fingerprint_detail_id' => $detail?->id,
                     'invoice_id' => $booking->invoice_id,
-                    'customer_name' => $booking->customer->name,
-                    'pax_qty' => $booking->pax_qty,
-                    'customer_mobile' => $booking->customer->mobile_no,
-                    'passenger_mobile' => $passenger->mobile_no,
-                    'office' => $booking->fingerprint_office ?? '-',
-                    'district' => $booking->district->name ?? '-',
+                    'booking_date' => $booking->created_at?->format('Y-m-d'),
+                    'customer_name' => $booking->customer?->name ?? '-',
+                    'pax_qty' => $passengers->count(),
+                    'customer_mobile' => $booking->customer?->mobile_no ?? '',
+                    'passenger_mobile' => $passenger->mobile_no ?? '',
+                    'office' => $booking->office?->name ?? '-',
+                    'district' => $booking->district?->name ?? '-',
                     'deadline' => $fingerprint->deadline?->format('Y-m-d'),
-                    'passenger_name' => $passenger->first_name . ' ' . $passenger->last_name,
+                    'passenger_name' => $passengerName,
                     'cost' => $fingerprint->cost,
                     'fingerprint_status' => $detail?->status?->value ?? 'none',
                     'fingerprint_status_display' => $statusDisplay,
+                    'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
+                    'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
+                    'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
                 ];
             });
         })->flatten(1);
