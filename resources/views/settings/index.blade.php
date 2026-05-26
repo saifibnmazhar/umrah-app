@@ -436,17 +436,15 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (BDT) *</label>
                             <input type="number" id="modalRegularPrice" name="regular_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="0.01" required readonly>
+                        </div> 
+                        <div id="modalOfferPriceContainer" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
+                            <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
                         </div>
-                        <div>
-                            <div id="modalOfferPriceContainer" class="hidden">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
-                                <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
-                            </div>
-                            <div id="modalServiceChargeContainer">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
-                                <input type="number" id="modalServiceCharge" name="service_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0">
-                            </div>
-                        </div>
+                        <div id="modalServiceChargeContainer">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                            <input type="number" id="modalServiceCharge" name="service_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0">
+                        </div>                       
                     </div>
 
                     <div class="mt-4 p-4 bg-slate-50 rounded-lg">
