@@ -53,9 +53,11 @@ class PackageController extends Controller
             'route' => $this->buildRouteDisplay($f),
         ]);
 
+        $usedFareIds = Package::pluck('ticket_fare_id')->toArray();
+
         $latestVisa = VisaSellingPrice::latest()->first();
 
-        return view('packages.index', compact('packages', 'packagesArray', 'ticketFares', 'latestVisa'));
+        return view('packages.index', compact('packages', 'packagesArray', 'ticketFares', 'latestVisa', 'usedFareIds'));
     }
 
     private function buildRouteDisplay($fare)
@@ -81,6 +83,8 @@ class PackageController extends Controller
 
     public function create()
     {
+        $usedFareIds = Package::pluck('ticket_fare_id')->toArray();
+
         $ticketFares = TicketFare::with([
             'route.fromCity',
             'route.toCity',
@@ -88,7 +92,7 @@ class PackageController extends Controller
             'route.multiSegments.fromCity',
             'route.multiSegments.toCity',
             'groupTicket'
-        ])->orderBy('id')->get()->map(fn($f) => [
+        ])->whereNotIn('id', $usedFareIds)->orderBy('id')->get()->map(fn($f) => [
             'id' => $f->id,
             'ticket_type' => $f->ticket_type?->value,
             'selling_fare' => $f->selling_fare,
@@ -145,6 +149,7 @@ class PackageController extends Controller
             return redirect()->route('packages.index')->with('error', 'This package cannot be edited because it has existing bookings.');
         }
 
+        $usedFareIds = Package::where('id', '!=', $package->id)->pluck('ticket_fare_id')->toArray();
         $ticketFares = TicketFare::with([
             'route.fromCity',
             'route.toCity',
@@ -152,7 +157,7 @@ class PackageController extends Controller
             'route.multiSegments.fromCity',
             'route.multiSegments.toCity',
             'groupTicket'
-        ])->orderBy('id')->get()->map(fn($f) => [
+        ])->whereNotIn('id', $usedFareIds)->orderBy('id')->get()->map(fn($f) => [
             'id' => $f->id,
             'ticket_type' => $f->ticket_type?->value,
             'selling_fare' => $f->selling_fare,

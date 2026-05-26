@@ -175,6 +175,7 @@
 const ticketFares = @json($ticketFares);
 const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
 const packages = @json($packagesArray);
+const usedFareIds = @json($usedFareIds);
 
 function buildDisplay(fare) {
     let disp = fare.route + ' | ' + fare.ticket_type.toUpperCase() + ' | BDT ' + fare.selling_fare;
@@ -206,7 +207,7 @@ function hidePackageModal() {
     document.getElementById('packageModal').classList.add('hidden');
 }
 
-function populateModalTickets() {
+function populateModalTickets(includeFareId = null) {
     const select = document.getElementById('modalTicketSelect');
     const typeSelect = document.getElementById('modalTicketTypeSelect');
     const selectedType = typeSelect.value;
@@ -214,6 +215,7 @@ function populateModalTickets() {
     select.innerHTML = '<option value="">Select Ticket</option>';
     ticketFares.forEach(fare => {
         if (selectedType && fare.ticket_type !== selectedType) return;
+        if (usedFareIds.includes(fare.id) && fare.id !== includeFareId) return;
         const option = document.createElement('option');
         option.value = fare.id;
         option.dataset.ticketType = fare.ticket_type;
@@ -262,7 +264,7 @@ function editPackage(id) {
     document.getElementById('packageForm').action = '/packages/' + id;
     document.getElementById('packageName').value = pkg.package_name;
 
-    populateModalTickets();
+    populateModalTickets(pkg.ticket_fare_id);
     document.getElementById('modalTicketSelect').value = pkg.ticket_fare_id;
     calculateModalPrices();
 }

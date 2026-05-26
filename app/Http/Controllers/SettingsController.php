@@ -72,6 +72,8 @@ class SettingsController extends Controller
                 ];
             });
 
+        $usedFareIds = Package::pluck('ticket_fare_id')->toArray();
+
         $latestVisa = VisaSellingPrice::latest()->first();
 
         return view('settings.index', compact(
@@ -81,7 +83,8 @@ class SettingsController extends Controller
             'flightDateGap',
             'packages',
             'ticketFares',
-            'latestVisa'
+            'latestVisa',
+            'usedFareIds'
         ));
     }
 
