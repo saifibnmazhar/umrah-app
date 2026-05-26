@@ -346,10 +346,10 @@
                                 </td>
                                 <td class="px-3 py-2 text-right text-slate-600">BDT {{ number_format($visaSellingPrice, 0) }}</td>
                                 <td class="px-3 py-2 text-right text-slate-600">BDT {{ number_format($package->service_charge ?? 0, 0) }}</td>
-                                <td class="px-3 py-2 text-right text-slate-800 font-medium">BDT {{ number_format($package->regular_price, 0) }}</td>
+                                <td class="px-3 py-2 text-right text-slate-800 font-medium">BDT {{ number_format(($package->regular_price ?? 0) + ($package->service_charge ?? 0), 0) }}</td>
                                 <td class="px-3 py-2 text-right text-slate-600">
                                     @if($package->offer_price)
-                                        BDT {{ number_format($package->offer_price, 0) }}
+                                        BDT {{ number_format(($package->offer_price ?? 0) + ($package->service_charge ?? 0), 0) }}
                                     @else
                                         -
                                     @endif
