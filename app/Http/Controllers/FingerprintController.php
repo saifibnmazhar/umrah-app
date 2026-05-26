@@ -74,6 +74,9 @@ class FingerprintController extends Controller
                     'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
                     'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
                     'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
+                    'required_flight_date' => $passenger->flight_date_from && $passenger->flight_date_to
+                        ? $passenger->flight_date_from->format('d M Y') . ' → ' . $passenger->flight_date_to->format('d M Y')
+                        : ($passenger->flight_date_from?->format('d M Y') ?? $passenger->flight_date_to?->format('d M Y') ?? '-'),
                 ];
             });
         })->flatten(1);
