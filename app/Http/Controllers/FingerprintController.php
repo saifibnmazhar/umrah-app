@@ -71,6 +71,7 @@ class FingerprintController extends Controller
                     'passenger_name' => $passenger->first_name . ' ' . $passenger->last_name,
                     'fingerprint_status' => $detail?->status?->value ?? 'none',
                     'fingerprint_status_display' => $statusDisplay,
+                    'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
                     'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
                     'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
                 ];

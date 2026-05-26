@@ -80,7 +80,7 @@
                                 <span x-show="row._isFirstPassenger" x-text="row.cost != null && row.cost != '' ? row.cost + ' SAR' : 'N/A'"></span>
                             </td>
                             <td class="px-3 py-2 text-slate-600">
-                                <span x-show="row._isFirstPassenger">-</span>
+                                <span x-show="row._isFirstPassenger" x-text="row.fingerprint_location || '-'"></span>
                             </td>
                             <td class="px-3 py-2">
                                 <span x-show="row._isFirstPassenger">
