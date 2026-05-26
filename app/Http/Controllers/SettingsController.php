@@ -32,13 +32,35 @@ class SettingsController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $ticketFares = TicketFare::with(['airline', 'route', 'airlineClass.travelClass'])
+        $ticketFares = TicketFare::with([
+                'airline',
+                'route.fromCity',
+                'route.toCity',
+                'route.returnCity',
+                'route.multiSegments.fromCity',
+                'route.multiSegments.toCity',
+                'airlineClass.travelClass',
+            ])
             ->orderBy('id', 'desc')
             ->get()
             ->map(function ($fare) {
-                $routeDisplay = $fare->route 
-                    ? ($fare->route->fromCity->code ?? '-') . '-' . ($fare->route->toCity->code ?? '-')
-                    : '-';
+                $routeDisplay = '-';
+                if ($fare->route) {
+                    $route = $fare->route;
+                    if ($route->route_type->value === 'multi_city' && $route->multiSegments && $route->multiSegments->count() > 0) {
+                        $segments = $route->multiSegments->map(fn($s) =>
+                            ($s->fromCity?->code ?? '?') . ' - ' . ($s->toCity?->code ?? '?')
+                        );
+                        $routeDisplay = $segments->implode(', ');
+                    } elseif ($route->route_type->value === 'round') {
+                        $routeDisplay = ($route->fromCity?->code ?? '?')
+                            . ' - ' . ($route->toCity?->code ?? '?')
+                            . ' - ' . ($route->returnCity?->code ?? '?');
+                    } else {
+                        $routeDisplay = ($route->fromCity?->code ?? '?')
+                            . ' - ' . ($route->toCity?->code ?? '?');
+                    }
+                }
                 $type = $fare->ticket_type->value ?? 'regular';
                 return [
                     'id' => $fare->id,

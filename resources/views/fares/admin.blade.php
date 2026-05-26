@@ -177,7 +177,18 @@
                                 <td class="px-4 py-3 text-slate-600">{{ $fare->airlineClass->travelClass->name ?? '-' }}</td>
                                 <td class="px-4 py-3 text-slate-700 font-medium">
                                     @if($fare->route)
-                                        {{ $fare->route->fromCity->code ?? '-' }}-{{ $fare->route->toCity->code ?? '-' }}
+                                        @if($fare->route->route_type->value === 'multi_city')
+                                            @if($fare->route->multiSegments->count() > 0)
+                                                {{ $fare->route->multiSegments->first()->fromCity->code ?? '-' }}-{{ $fare->route->multiSegments->first()->toCity->code ?? '-' }} ...
+                                            @else
+                                                -
+                                            @endif
+                                        @else
+                                            {{ $fare->route->fromCity->code ?? '-' }}-{{ $fare->route->toCity->code ?? '-' }}
+                                            @if($fare->route->route_type->value === 'round')
+                                                -{{ $fare->route->returnCity->code ?? '-' }}
+                                            @endif
+                                        @endif
                                     @else
                                         -
                                     @endif
