@@ -39,6 +39,8 @@ class TicketFare extends Model
         'with_meal' => 'boolean',
     ];
 
+    protected $appends = ['is_locked'];
+
     public function airline(): BelongsTo
     {
         return $this->belongsTo(Airline::class);
@@ -67,5 +69,25 @@ class TicketFare extends Model
     public function baggageAllowances(): HasMany
     {
         return $this->hasMany(BaggageAllowance::class);
+    }
+
+    public function packages(): HasMany
+    {
+        return $this->hasMany(Package::class, 'ticket_fare_id');
+    }
+
+    public function passengers(): HasMany
+    {
+        return $this->hasMany(Passenger::class, 'ticket_fare_id');
+    }
+
+    public function getIsLockedAttribute(): bool
+    {
+        return ($this->packages_count ?? 0) > 0 || ($this->passengers_count ?? 0) > 0;
+    }
+
+    public function isLocked(): bool
+    {
+        return $this->packages()->exists() || $this->passengers()->exists();
     }
 }

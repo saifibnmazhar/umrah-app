@@ -7,10 +7,14 @@ use App\Models\Passenger;
 use App\Models\District;
 use App\Models\FingerprintCharge;
 use App\Enums\PassengerType;
+use App\Enums\TicketType;
 use Carbon\Carbon;
 
 class BookingService
 {
+    public function __construct(
+        private InvoiceService $invoiceService,
+    ) {}
     public function calculatePassengerType($dateOfBirth, $stayDuration = null): string
     {
         if (!$dateOfBirth) {
@@ -67,6 +71,9 @@ class BookingService
         $booking = $passenger->booking;
         $package = $booking->package;
         $serviceRequired = $passenger->service_required;
+        if ($serviceRequired instanceof \BackedEnum) {
+            $serviceRequired = $serviceRequired->value;
+        }
         
         $passengerType = $passenger->passenger_type;
         if ($passengerType instanceof \BackedEnum) {
@@ -78,8 +85,10 @@ class BookingService
         $visaAmount = 0;
         $serviceChargeAmount = 0;
 
-        if ($ticketFare) {
-            $baseFare = (float) $ticketFare->selling_fare;
+        if ($ticketFare && $serviceRequired !== 'visa_only') {
+            $baseFare = $ticketFare->ticket_type === TicketType::OFFER
+                ? (float) ($ticketFare->offer_price ?? $ticketFare->selling_fare)
+                : (float) $ticketFare->selling_fare;
             $ticketAmount = match ($passengerType) {
                 'child'  => $baseFare * ((float) $ticketFare->child_fare_percentage) / 100,
                 'infant' => $baseFare * ((float) $ticketFare->infant_fare_percentage) / 100,
@@ -124,6 +133,33 @@ class BookingService
         $booking->saveQuietly();
 
         return $total;
+    }
+
+    public function syncFinancials(Booking $booking): void
+    {
+        $this->recalculateBookingTotal($booking);
+
+        $discountType = $booking->discount_type;
+        if ($discountType instanceof \BackedEnum) {
+            $discountType = $discountType->value;
+        }
+
+        $discountAmount = $this->calculateDiscount(
+            $booking->total_value,
+            $discountType ?? 'fixed',
+            $booking->discount_value ?? 0
+        );
+
+        if ($booking->discount_amount != $discountAmount) {
+            $booking->discount_amount = $discountAmount;
+            $booking->saveQuietly();
+        }
+
+        $invoice = $booking->invoice;
+        if ($invoice) {
+            $discountedTotal = max(0, $booking->total_value - $discountAmount);
+            $this->invoiceService->updateTotals($invoice, $discountedTotal);
+        }
     }
 
     public function calculateTotal(Booking $booking): array

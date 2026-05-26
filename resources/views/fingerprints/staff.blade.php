@@ -3,27 +3,26 @@
 @section('title', 'Fingerprint Staff')
 
 @section('content')
-<div class="max-w-7xl mx-auto pt-6" x-data="fingerprintStaff()">
-    <h1 class="text-2xl font-bold text-slate-800 mb-6">Fingerprint Staff</h1>
-
-    <div class="bg-white rounded-lg shadow-md">
+<div class="w-full mx-auto pt-6" x-data="fingerprintStaff({ isFingerprintStaff: @json($isFingerprintStaff), canEditCost: @json($canEditCost) })">
+    <div class="bg-white rounded-xl shadow-lg p-6">
+        <h2 class="text-xl font-semibold text-slate-700 mb-6">Fingerprint Staff</h2>
         <div class="overflow-x-auto">
-            <table class="w-full text-sm text-left">
-                <thead class="bg-slate-100 text-slate-700 uppercase text-xs">
+            <table class="w-full text-sm border-collapse">
+                <thead class="bg-slate-50 text-slate-600">
                     <tr>
-                        <th class="px-3 py-3">Invoice ID</th>
-                        <th class="px-3 py-3">Customer Name</th>
-                        <th class="px-3 py-3">PAX</th>
-                        <th class="px-3 py-3">Mobile</th>
-                        <th class="px-3 py-3">Office</th>
-                        <th class="px-3 py-3">District</th>
-                        <th class="px-3 py-3">Deadline</th>
-                        <th class="px-3 py-3">Passenger</th>
-                        <th class="px-3 py-3 text-right">Cost (SAR)</th>
-                        <th class="px-3 py-3">Fingerprint Status</th>
+                        <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
+                        <th class="px-3 py-2 text-left font-medium">Customer Name</th>
+                        <th class="px-3 py-2 text-left font-medium">PAX Qty</th>
+                        <th class="px-3 py-2 text-left font-medium">Mobile</th>
+                        <th class="px-3 py-2 text-left font-medium">Office</th>
+                        <th class="px-3 py-2 text-left font-medium">District</th>
+                        <th class="px-3 py-2 text-left font-medium">Fingerprint Deadline</th>
+                        <th class="px-3 py-2 text-left font-medium">Passenger</th>
+                        <th class="px-3 py-2 text-right font-medium">Cost (SAR)</th>
+                        <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
                     </tr>
                 </thead>
-                <tbody class="divide-y divide-slate-200" id="tableBody">
+                <tbody>
                     <template x-if="loading">
                         <tr>
                             <td colspan="10" class="px-3 py-8 text-center text-slate-500">Loading...</td>
@@ -31,42 +30,78 @@
                     </template>
                     <template x-if="!loading && data.length === 0">
                         <tr>
-                            <td colspan="10" class="px-3 py-8 text-center text-slate-500">No fingerprint tasks found</td>
+                            <td colspan="10" class="px-3 py-8 text-center text-slate-500">No fingerprint tasks assigned</td>
                         </tr>
                     </template>
-                    <template x-for="(row, index) in data" :key="row.fingerprint_detail_id">
-                        <tr class="hover:bg-slate-50"
-                            :class="index % 2 !== 0 ? 'bg-slate-50' : 'bg-white'"
-                            :style="index === data.length - 1 || (index < data.length - 1 && data[index + 1]?.invoice_id !== row.invoice_id) ? 'border-bottom: 2px solid #94a3b8;' : ''">
-                            <td class="px-3 py-2 font-medium text-slate-800" x-text="row.invoice_id"></td>
-                            <td class="px-3 py-2 text-slate-600" x-text="row.customer_name"></td>
-                            <td class="px-3 py-2 text-slate-600" x-text="row.pax_qty"></td>
-                            <td class="px-3 py-2 text-slate-600 whitespace-pre-line" x-text="row.customer_mobile + '\n' + row.passenger_mobile"></td>
-                            <td class="px-3 py-2 text-slate-600" x-text="row.office"></td>
-                            <td class="px-3 py-2 text-slate-600" x-text="row.district"></td>
-                            <td class="px-3 py-2 text-slate-600" x-text="row.deadline"></td>
-                            <td class="px-3 py-2 text-slate-600" x-text="row.passenger_name"></td>
-                            <td class="px-3 py-2">
+                    <template x-for="(row, index) in data" :key="row.fingerprint_detail_id || index">
+                        <tr :class="getRowClass(row)">
+                            <td class="px-3 py-2 text-slate-800 font-medium" x-text="row.isFirstInGroup ? (row.invoice_id || '-') : ''"></td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.customer_name || '-') : ''"></td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? row.pax_qty : ''"></td>
+                            <td class="px-3 py-2 text-slate-600 whitespace-pre-line" x-text="getMobileDisplay(row)"></td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.office || '-') : ''"></td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.district || '-') : ''"></td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.deadline || '-') : ''"></td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row.passenger_name || '-'"></td>
+                            <td class="px-3 py-2 text-right">
                                 <input type="number"
+                                       x-show="row.isFirstInGroup && canEditCost"
                                        :value="row.cost"
                                        @change="updateCost(row.fingerprint_id, $event.target.value)"
                                        class="w-20 text-right text-sm border border-slate-300 rounded px-2 py-1"
                                        min="0">
+                                <span x-show="row.isFirstInGroup && !canEditCost"
+                                      class="text-sm text-slate-700 font-medium"
+                                      x-text="row.cost != null && row.cost !== '' ? row.cost + ' SAR' : ''"></span>
                             </td>
                             <td class="px-3 py-2">
-                                <select @change="handleStatusChange(row.fingerprint_detail_id, $event.target.value)"
+                                <select x-show="canEditStatus"
+                                        @change="handleStatusChange(row.fingerprint_detail_id, $event.target.value)"
                                         class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
-                                    <option value="none" :selected="row.fingerprint_status === 'none'">none</option>
-                                    <option value="processing" :selected="row.fingerprint_status === 'processing'">processing</option>
-                                    <option value="approved" :selected="row.fingerprint_status === 'approved'">approved</option>
-                                    <option value="cancelled" :selected="row.fingerprint_status === 'cancelled'">cancelled</option>
-                                    <option value="hold">Hold and ask for next fingerprint date?</option>
+                                    <template x-for="opt in displayStatuses" :key="opt">
+                                        <option :value="opt"
+                                                :selected="getSelectedStatus(row) === opt"
+                                                x-text="opt"></option>
+                                    </template>
                                 </select>
+                                <span x-show="!canEditStatus"
+                                      class="px-2 py-1 rounded-full text-xs font-medium"
+                                      :class="getStatusClass(row.fingerprint_status_display)"
+                                      x-text="row.fingerprint_status_display"></span>
                             </td>
                         </tr>
                     </template>
                 </tbody>
             </table>
+        </div>
+
+        <div x-show="lastPage > 1" class="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 px-1">
+            <div class="text-sm text-slate-600">
+                Showing <span class="font-medium" x-text="((currentPage - 1) * 10 + 1)"></span>
+                to <span class="font-medium" x-text="Math.min(currentPage * 10, totalRecords)"></span>
+                of <span class="font-medium" x-text="totalRecords"></span> results
+            </div>
+            <nav class="flex items-center gap-1">
+                <button @click="changePage(currentPage - 1)"
+                        :disabled="currentPage === 1"
+                        :class="currentPage === 1 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'"
+                        class="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white transition-colors">
+                    Previous
+                </button>
+                <template x-for="page in Array.from({ length: lastPage }, (_, i) => i + 1)" :key="page">
+                    <button @click="changePage(page)"
+                            :class="page === currentPage ? 'bg-slate-700 text-white border-slate-700' : 'text-slate-600 hover:bg-slate-100 border-slate-300'"
+                            class="px-3 py-1.5 text-sm font-medium rounded-lg border bg-white transition-colors"
+                            x-text="page">
+                    </button>
+                </template>
+                <button @click="changePage(currentPage + 1)"
+                        :disabled="currentPage === lastPage"
+                        :class="currentPage === lastPage ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'"
+                        class="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white transition-colors">
+                    Next
+                </button>
+            </nav>
         </div>
     </div>
 
@@ -114,10 +149,15 @@
 
 @push('scripts')
 <script>
-function fingerprintStaff() {
+function fingerprintStaff(options = {}) {
     return {
         data: [],
         loading: true,
+        currentPage: 1,
+        lastPage: 1,
+        totalRecords: 0,
+        canEditStatus: options.isFingerprintStaff ?? false,
+        canEditCost: options.canEditCost ?? false,
         showHoldModal: false,
         currentFingerprintDetailId: null,
         holdForm: {
@@ -125,6 +165,14 @@ function fingerprintStaff() {
             next_date: '',
             remarks: '',
         },
+        displayStatuses: [
+            'None',
+            'Processing',
+            'Approved',
+            'Partially Approved',
+            'Cancel',
+            'Hold & Ask for next Finger date?'
+        ],
 
         async init() {
             await this.loadData();
@@ -133,9 +181,16 @@ function fingerprintStaff() {
         async loadData() {
             this.loading = true;
             try {
-                const response = await fetch('/api/fingerprints/staff');
+                const params = new URLSearchParams({ page: this.currentPage });
+                const response = await fetch(`/api/fingerprints/staff?${params}`);
                 const result = await response.json();
-                this.data = result.data || [];
+                const rawData = result.data || [];
+                this.data = this.enrichData(rawData);
+                if (result.pagination) {
+                    this.currentPage = result.pagination.current_page;
+                    this.lastPage = result.pagination.last_page;
+                    this.totalRecords = result.pagination.total;
+                }
             } catch (error) {
                 console.error('Failed to load fingerprint data:', error);
                 this.data = [];
@@ -144,21 +199,101 @@ function fingerprintStaff() {
             }
         },
 
+        changePage(page) {
+            if (page < 1 || page > this.lastPage || page === this.currentPage) return;
+            this.currentPage = page;
+            this.loadData();
+        },
+
+        enrichData(data) {
+            if (!data || !data.length) return [];
+
+            const groups = {};
+            const groupOrder = [];
+
+            data.forEach(row => {
+                const groupKey = row.invoice_id || `fp_${row.fingerprint_id}`;
+                if (!groups[groupKey]) {
+                    groups[groupKey] = { invoice_id: row.invoice_id, rows: [] };
+                    groupOrder.push(groupKey);
+                }
+                groups[groupKey].rows.push(row);
+            });
+
+            const result = [];
+            groupOrder.forEach((groupKey, invIdx) => {
+                const group = groups[groupKey];
+                group.rows.forEach((row, paxIdx) => {
+                    result.push({
+                        ...row,
+                        isFirstInGroup: paxIdx === 0,
+                        isLastInGroup: paxIdx === group.rows.length - 1,
+                        invoiceIndex: invIdx,
+                    });
+                });
+            });
+
+            return result;
+        },
+
+        getRowClass(row) {
+            const isOddInvoice = row.invoiceIndex % 2 !== 0;
+            let cls = 'hover:bg-slate-100 ';
+            cls += isOddInvoice ? 'bg-slate-50 ' : 'bg-white ';
+            cls += 'border-l-4 ';
+            cls += isOddInvoice ? 'border-l-blue-500' : 'border-l-orange-500';
+            if (row.isLastInGroup) {
+                cls += ' border-b-2 border-slate-400';
+            }
+            return cls;
+        },
+
+        getMobileDisplay(row) {
+            const parts = [];
+            if (row.customer_mobile) parts.push(row.customer_mobile);
+            if (row.passenger_mobile) parts.push(row.passenger_mobile);
+            return parts.join('\n') || '-';
+        },
+
+        getSelectedStatus(row) {
+            if (row.fingerprint_status_display === 'Partially Approved') {
+                return 'Partially Approved';
+            }
+            const map = {
+                'none': 'None',
+                'processing': 'Processing',
+                'approved': 'Approved',
+                'cancelled': 'Cancel',
+            };
+            return map[row.fingerprint_status] || 'None';
+        },
+
+        mapDisplayToBackend(displayValue) {
+            const map = {
+                'None': 'none',
+                'Processing': 'processing',
+                'Approved': 'approved',
+                'Partially Approved': 'approved',
+                'Cancel': 'cancelled',
+            };
+            return map[displayValue] || 'none';
+        },
+
         handleStatusChange(fingerprintDetailId, value) {
-            if (value === 'hold') {
+            if (value === 'Hold & Ask for next Finger date?') {
                 this.currentFingerprintDetailId = fingerprintDetailId;
                 this.showHoldModal = true;
-                this.holdForm = {
-                    reason: '',
-                    next_date: '',
-                    remarks: '',
-                };
-            } else {
-                this.updateStatus(fingerprintDetailId, value);
+                this.holdForm = { reason: '', next_date: '', remarks: '' };
+                return;
             }
+            this.updateStatus(fingerprintDetailId, this.mapDisplayToBackend(value));
         },
 
         async updateStatus(fingerprintDetailId, status) {
+            if (!fingerprintDetailId) {
+                this.showToast('Cannot update: no fingerprint detail record', 'error');
+                return;
+            }
             try {
                 const response = await fetch(`/api/fingerprints/detail/${fingerprintDetailId}/status`, {
                     method: 'PUT',
@@ -171,11 +306,7 @@ function fingerprintStaff() {
                 const result = await response.json();
                 if (result.success) {
                     this.showToast('Status updated successfully');
-                    const row = this.data.find(r => r.fingerprint_detail_id === fingerprintDetailId);
-                    if (row) {
-                        row.fingerprint_status = status;
-                        row.fingerprint_status_display = this.computeStatusDisplay(status, row.invoice_id);
-                    }
+                    await this.loadData();
                 }
             } catch (error) {
                 console.error('Failed to update status:', error);
@@ -184,6 +315,7 @@ function fingerprintStaff() {
         },
 
         async updateCost(fingerprintId, cost) {
+            if (!fingerprintId) return;
             try {
                 const response = await fetch(`/api/fingerprints/${fingerprintId}/cost`, {
                     method: 'PUT',
@@ -191,16 +323,17 @@ function fingerprintStaff() {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
-                    body: JSON.stringify({ cost: parseFloat(cost) }),
+                    body: JSON.stringify({ cost: parseFloat(cost) || 0 }),
                 });
                 const result = await response.json();
                 if (result.success) {
                     this.showToast('Cost updated successfully');
                     this.data.forEach(row => {
                         if (row.fingerprint_id === fingerprintId) {
-                            row.cost = parseFloat(cost);
+                            row.cost = parseFloat(cost) || 0;
                         }
                     });
+                    this.data = this.enrichData(this.data);
                 }
             } catch (error) {
                 console.error('Failed to update cost:', error);
@@ -244,38 +377,10 @@ function fingerprintStaff() {
             }
         },
 
-        computeStatusDisplay(status, invoiceId) {
-            if (status !== 'approved') {
-                return status;
-            }
-
-            const invoiceRows = this.data.filter(r => r.invoice_id === invoiceId);
-            const allApproved = invoiceRows.every(r => r.fingerprint_status === 'approved');
-
-            if (allApproved) {
-                return 'approved';
-            }
-
-            return 'Partially Approved';
-        },
-
-        getStatusClass(status) {
-            const classes = {
-                'none': 'bg-gray-100 text-gray-800',
-                'processing': 'bg-yellow-100 text-yellow-800',
-                'approved': 'bg-green-100 text-green-800',
-                'Partially Approved': 'bg-green-100 text-green-800',
-                'cancelled': 'bg-red-100 text-red-800',
-            };
-            return classes[status] || 'bg-gray-100 text-gray-800';
-        },
-
         showToast(message, type = 'success') {
-            const toast = document.createElement('div');
-            toast.className = `fixed top-4 right-4 px-4 py-2 rounded shadow-lg ${type === 'error' ? 'bg-red-500 text-white' : 'bg-green-500 text-white'}`;
-            toast.textContent = message;
-            document.body.appendChild(toast);
-            setTimeout(() => toast.remove(), 3000);
+            if (window.Alpine) {
+                window.Alpine.store('toast', { message, type });
+            }
         },
     };
 }

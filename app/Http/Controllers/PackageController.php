@@ -22,7 +22,7 @@ class PackageController extends Controller
             'ticketFare.route.multiSegments.toCity',
             'ticketFare.groupTicket',
             'visaSellingPrice'
-        ])->orderBy('id')->paginate(10);
+        ])->withCount('bookings')->orderBy('id')->paginate(10);
 
         $packagesArray = $packages->map(fn($p) => [
             'id' => $p->id,
@@ -34,6 +34,7 @@ class PackageController extends Controller
             'selling_fare' => $p->ticketFare?->selling_fare,
             'ticket_offer_price' => $p->ticketFare?->offer_price,
             'ticket_seats' => $p->ticketFare?->groupTicket?->ticket_qty,
+            'is_locked' => $p->is_locked,
         ]);
 
         $ticketFares = TicketFare::with([
@@ -52,9 +53,11 @@ class PackageController extends Controller
             'route' => $this->buildRouteDisplay($f),
         ]);
 
+        $usedFareIds = Package::pluck('ticket_fare_id')->toArray();
+
         $latestVisa = VisaSellingPrice::latest()->first();
 
-        return view('packages.index', compact('packages', 'packagesArray', 'ticketFares', 'latestVisa'));
+        return view('packages.index', compact('packages', 'packagesArray', 'ticketFares', 'latestVisa', 'usedFareIds'));
     }
 
     private function buildRouteDisplay($fare)
@@ -80,6 +83,8 @@ class PackageController extends Controller
 
     public function create()
     {
+        $usedFareIds = Package::pluck('ticket_fare_id')->toArray();
+
         $ticketFares = TicketFare::with([
             'route.fromCity',
             'route.toCity',
@@ -87,7 +92,7 @@ class PackageController extends Controller
             'route.multiSegments.fromCity',
             'route.multiSegments.toCity',
             'groupTicket'
-        ])->orderBy('id')->get()->map(fn($f) => [
+        ])->whereNotIn('id', $usedFareIds)->orderBy('id')->get()->map(fn($f) => [
             'id' => $f->id,
             'ticket_type' => $f->ticket_type?->value,
             'selling_fare' => $f->selling_fare,
@@ -114,6 +119,7 @@ class PackageController extends Controller
             ],
             'regular_price' => 'required|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
         ]);
 
         $latestVisa = VisaSellingPrice::latest()->first();
@@ -132,12 +138,18 @@ class PackageController extends Controller
     public function show(Package $package)
     {
         $package->load(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.groupTicket', 'visaSellingPrice']);
+        $package->loadCount('bookings');
 
         return view('packages.details', compact('package'));
     }
 
     public function edit(Package $package)
     {
+        if ($package->isLocked()) {
+            return redirect()->route('packages.index')->with('error', 'This package cannot be edited because it has existing bookings.');
+        }
+
+        $usedFareIds = Package::where('id', '!=', $package->id)->pluck('ticket_fare_id')->toArray();
         $ticketFares = TicketFare::with([
             'route.fromCity',
             'route.toCity',
@@ -145,7 +157,7 @@ class PackageController extends Controller
             'route.multiSegments.fromCity',
             'route.multiSegments.toCity',
             'groupTicket'
-        ])->orderBy('id')->get()->map(fn($f) => [
+        ])->whereNotIn('id', $usedFareIds)->orderBy('id')->get()->map(fn($f) => [
             'id' => $f->id,
             'ticket_type' => $f->ticket_type?->value,
             'selling_fare' => $f->selling_fare,
@@ -160,6 +172,10 @@ class PackageController extends Controller
 
     public function update(Request $request, Package $package)
     {
+        if ($package->isLocked()) {
+            return redirect()->route('packages.index')->with('error', 'This package cannot be edited because it has existing bookings.');
+        }
+
         $validated = $request->validate([
             'package_name' => 'required|string|max:255',
             'ticket_fare_id' => [
@@ -172,6 +188,7 @@ class PackageController extends Controller
             ],
             'regular_price' => 'required|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
         ]);
 
         $latestVisa = VisaSellingPrice::latest()->first();
@@ -189,6 +206,10 @@ class PackageController extends Controller
 
     public function destroy(Package $package)
     {
+        if ($package->isLocked()) {
+            return redirect()->route('packages.index')->with('error', 'This package cannot be deleted because it has existing bookings.');
+        }
+
         try {
             $package->delete();
             return redirect()->route('packages.index')->with('success', 'Package deleted successfully.');

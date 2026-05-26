@@ -27,17 +27,40 @@ class SettingsController extends Controller
         $flightDateGap = FlightDateGap::first();
 
         $packages = Package::with(['ticketFare', 'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity', 'ticketFare.airline', 'visaSellingPrice'])
+            ->withCount('bookings')
             ->orderBy('id', 'desc')
             ->paginate(10)
             ->withQueryString();
 
-        $ticketFares = TicketFare::with(['airline', 'route', 'airlineClass.travelClass'])
+        $ticketFares = TicketFare::with([
+                'airline',
+                'route.fromCity',
+                'route.toCity',
+                'route.returnCity',
+                'route.multiSegments.fromCity',
+                'route.multiSegments.toCity',
+                'airlineClass.travelClass',
+            ])
             ->orderBy('id', 'desc')
             ->get()
             ->map(function ($fare) {
-                $routeDisplay = $fare->route 
-                    ? ($fare->route->fromCity->code ?? '-') . '-' . ($fare->route->toCity->code ?? '-')
-                    : '-';
+                $routeDisplay = '-';
+                if ($fare->route) {
+                    $route = $fare->route;
+                    if ($route->route_type->value === 'multi_city' && $route->multiSegments && $route->multiSegments->count() > 0) {
+                        $segments = $route->multiSegments->map(fn($s) =>
+                            ($s->fromCity?->code ?? '?') . ' - ' . ($s->toCity?->code ?? '?')
+                        );
+                        $routeDisplay = $segments->implode(', ');
+                    } elseif ($route->route_type->value === 'round') {
+                        $routeDisplay = ($route->fromCity?->code ?? '?')
+                            . ' - ' . ($route->toCity?->code ?? '?')
+                            . ' - ' . ($route->returnCity?->code ?? '?');
+                    } else {
+                        $routeDisplay = ($route->fromCity?->code ?? '?')
+                            . ' - ' . ($route->toCity?->code ?? '?');
+                    }
+                }
                 $type = $fare->ticket_type->value ?? 'regular';
                 return [
                     'id' => $fare->id,
@@ -49,6 +72,8 @@ class SettingsController extends Controller
                 ];
             });
 
+        $usedFareIds = Package::pluck('ticket_fare_id')->toArray();
+
         $latestVisa = VisaSellingPrice::latest()->first();
 
         return view('settings.index', compact(
@@ -58,7 +83,8 @@ class SettingsController extends Controller
             'flightDateGap',
             'packages',
             'ticketFares',
-            'latestVisa'
+            'latestVisa',
+            'usedFareIds'
         ));
     }
 
@@ -91,6 +117,7 @@ class SettingsController extends Controller
             'ticket_fare_id' => 'required|exists:ticket_fares,id',
             'regular_price' => 'required|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -105,11 +132,16 @@ class SettingsController extends Controller
 
     public function updatePackage(Request $request, Package $package)
     {
+        if ($package->isLocked()) {
+            return redirect()->back()->with('error', 'This package cannot be edited because it has existing bookings.');
+        }
+
         $validated = $request->validate([
             'package_name' => 'required|string|max:255',
             'ticket_fare_id' => 'required|exists:ticket_fares,id',
             'regular_price' => 'required|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
         ]);
 
         try {
@@ -130,6 +162,10 @@ class SettingsController extends Controller
 
     public function destroyPackage(Package $package)
     {
+        if ($package->isLocked()) {
+            return redirect()->back()->with('error', 'This package cannot be deleted because it has existing bookings.');
+        }
+
         try {
             $package->delete();
             return redirect()->route('settings')->with('success', 'Package deleted successfully.');

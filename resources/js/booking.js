@@ -1275,17 +1275,22 @@ Alpine.data('createBookingApp', () => ({
         const serviceRequired = passenger.service_required || 'all';
         const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
 
-        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
-        if (!ticket) return 0;
-
-        const sellingFare = parseFloat(ticket.selling_fare) || 0;
-        let ticketAmount = sellingFare;
-        if (passengerType === 'child') {
-            const pct = parseFloat(ticket.child_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
-        } else if (passengerType === 'infant') {
-            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
+        let ticketAmount = 0;
+        if (serviceRequired !== 'visa_only') {
+            const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+            if (ticket) {
+                const baseFare = ticket.ticket_type === 'offer'
+                    ? (parseFloat(ticket.offer_price) || 0)
+                    : (parseFloat(ticket.selling_fare) || 0);
+                ticketAmount = baseFare;
+                if (passengerType === 'child') {
+                    const pct = parseFloat(ticket.child_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                } else if (passengerType === 'infant') {
+                    const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                }
+            }
         }
 
         const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
@@ -1311,7 +1316,6 @@ Alpine.data('createBookingApp', () => ({
     },
 
     recalculateCurrentPassenger(index) {
-        // Skip recalculation if passenger doesn't exist yet (adding new passenger)
         if (index === null || index === undefined || !this.passengers[index]) {
             return;
         }
@@ -1572,6 +1576,50 @@ Alpine.data('createBookingApp', () => ({
         this.updateRouteAirlineClass();
     },
 
+    onServiceRequiredChange() {
+        if (this.passengerData.service_required === 'visa_only') {
+            this.passengerData.route_type = '';
+            this.passengerData.flight_type = '';
+            this.passengerData.ticket_fare_id = '';
+            this.passengerData.route = '';
+            this.passengerData.airline = '';
+            this.passengerData.class = '';
+            this.passengerData.baggage_weight = 'Visa Only - No ticket required';
+            this.filteredTickets = [];
+        } else if (this.bookingData.package_id) {
+            const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+            if (pkg && pkg.ticket_fare_id) {
+                const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
+                if (ticket) {
+                    const reverseRouteTypeMap = {
+                        'oneway_inbound': 'One Way-Inbound',
+                        'oneway_outbound': 'One Way-Outbound',
+                        'round': 'Round',
+                        'multi_city': 'Multi City',
+                    };
+                    const reverseFlightTypeMap = {
+                        'transit': 'Transit',
+                        'direct': 'Direct',
+                    };
+                    this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                    this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+                    this.filteredTickets = this.allTickets.filter(t =>
+                        t.route_type === ticket.route_type &&
+                        t.flight_type === ticket.flight_type
+                    );
+                    this.passengerData.route = ticket.route;
+                    this.passengerData.airline = ticket.airline || '';
+                    this.passengerData.class = ticket.airline_class || '';
+                    this.$nextTick(() => {
+                        this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
+                        this.calculateFlightDateRange();
+                        this.updateBaggageWeight();
+                    });
+                }
+            }
+        }
+    },
+
     calculateFlightDateRange() {
         const route = this.passengerData.route;
         const airline = this.passengerData.airline;
@@ -1731,6 +1779,7 @@ Alpine.data('createBookingApp', () => ({
         if (confirm('Are you sure you want to remove this passenger?')) {
             this.passengers.splice(index, 1);
             this.passengerCount = this.passengers.length;
+            this.passengerPackageValues = {};
             this.recalculateAllPassengerValues();
         }
     },
@@ -2641,17 +2690,22 @@ Alpine.data('editBookingApp', () => ({
         const serviceRequired = passenger.service_required || 'all';
         const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
 
-        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
-        if (!ticket) return 0;
-
-        const sellingFare = parseFloat(ticket.selling_fare) || 0;
-        let ticketAmount = sellingFare;
-        if (passengerType === 'child') {
-            const pct = parseFloat(ticket.child_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
-        } else if (passengerType === 'infant') {
-            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
+        let ticketAmount = 0;
+        if (serviceRequired !== 'visa_only') {
+            const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+            if (ticket) {
+                const baseFare = ticket.ticket_type === 'offer'
+                    ? (parseFloat(ticket.offer_price) || 0)
+                    : (parseFloat(ticket.selling_fare) || 0);
+                ticketAmount = baseFare;
+                if (passengerType === 'child') {
+                    const pct = parseFloat(ticket.child_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                } else if (passengerType === 'infant') {
+                    const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                }
+            }
         }
 
         const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
@@ -2974,9 +3028,50 @@ Alpine.data('editBookingApp', () => ({
     },
 
     removePassenger(index) {
-        if (confirm('Are you sure you want to remove this passenger?')) {
+        const passenger = this.passengers[index];
+        if (!passenger) return;
+
+        if (!confirm('Are you sure you want to remove this passenger?')) return;
+
+        if (passenger.id) {
+            const bookingId = window.__bookingServerData?.bookingId
+                || this.existingBooking?.id;
+            if (!bookingId) {
+                this.passengers.splice(index, 1);
+                this.passengerCount = this.passengers.length;
+                this.passengerPackageValues = {};
+                this.recalculateAllPassengerValues();
+                return;
+            }
+
+            fetch('/bookings/' + bookingId + '/passengers/' + passenger.id, {
+                method: 'DELETE',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                    'Accept': 'application/json',
+                }
+            })
+            .then(response => response.json())
+            .then(data => {
+                if (data.success) {
+                    this.passengers.splice(index, 1);
+                    this.passengerCount = this.passengers.length;
+                    this.passengerPackageValues = {};
+                    this.recalculateAllPassengerValues();
+                    if (typeof showToast === 'function') {
+                        showToast('Passenger removed successfully');
+                    }
+                } else {
+                    alert(data.message || 'Failed to remove passenger');
+                }
+            })
+            .catch(error => {
+                alert('Error: ' + error.message);
+            });
+        } else {
             this.passengers.splice(index, 1);
             this.passengerCount = this.passengers.length;
+            this.passengerPackageValues = {};
             this.recalculateAllPassengerValues();
         }
     },
@@ -3210,12 +3305,57 @@ Alpine.data('editBookingApp', () => ({
         );
     },
 
+    onServiceRequiredChange() {
+        if (this.passengerData.service_required === 'visa_only') {
+            this.passengerData.route_type = '';
+            this.passengerData.flight_type = '';
+            this.passengerData.ticket_fare_id = '';
+            this.passengerData.route = '';
+            this.passengerData.airline = '';
+            this.passengerData.class = '';
+            this.passengerData.baggage_weight = 'Visa Only - No ticket required';
+            this.filteredTickets = [];
+        } else if (this.bookingData.package_id) {
+            const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+            if (pkg && pkg.ticket_fare_id) {
+                const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
+                if (ticket) {
+                    const reverseRouteTypeMap = {
+                        'oneway_inbound': 'One Way-Inbound',
+                        'oneway_outbound': 'One Way-Outbound',
+                        'round': 'Round',
+                        'multi_city': 'Multi City',
+                    };
+                    const reverseFlightTypeMap = {
+                        'transit': 'Transit',
+                        'direct': 'Direct',
+                    };
+                    this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                    this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+                    this.filteredTickets = this.allTickets.filter(t =>
+                        t.route_type === ticket.route_type &&
+                        t.flight_type === ticket.flight_type
+                    );
+                    this.passengerData.route = ticket.route;
+                    this.passengerData.airline = ticket.airline || '';
+                    this.passengerData.class = ticket.airline_class || '';
+                    this.$nextTick(() => {
+                        this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
+                        this.calculateFlightDateRange();
+                        this.updateBaggageWeight();
+                    });
+                }
+            }
+        }
+    },
+
     onTicketChange() {
         const ticketFareId = this.passengerData.ticket_fare_id;
         if (!ticketFareId) {
             this.passengerData.route = '';
             this.passengerData.airline = '';
             this.passengerData.class = '';
+            this.passengerData.flight_date_range = '';
             return;
         }
 
@@ -3475,7 +3615,12 @@ Alpine.data('showBookingApp', () => ({
                 if (typeof showToast === 'function') {
                     showToast('Passenger added successfully');
                 }
-                setTimeout(() => location.reload(), 500);
+                if (data.invoice) {
+                    updateFinancialSummary(data.invoice);
+                }
+                if (data.passenger) {
+                    appendPassengerRow(data.passenger, data.display_total);
+                }
             } else {
                 alert(data.message || 'Failed to add passenger');
             }
@@ -3684,6 +3829,50 @@ Alpine.data('showBookingApp', () => ({
         });
     },
 
+    onServiceRequiredChange() {
+        if (this.passengerData.service_required === 'visa_only') {
+            this.passengerData.route_type = '';
+            this.passengerData.flight_type = '';
+            this.passengerData.ticket_fare_id = '';
+            this.passengerData.route = '';
+            this.passengerData.airline = '';
+            this.passengerData.class = '';
+            this.passengerData.baggage_weight = 'Visa Only - No ticket required';
+            this.filteredTickets = [];
+        } else if (window.__bookingServerData?.preSelectedPackageId) {
+            const pkg = this.allPackages.find(p => String(p.id) === String(window.__bookingServerData.preSelectedPackageId));
+            if (pkg && pkg.ticket_fare_id) {
+                const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
+                if (ticket) {
+                    const reverseRouteTypeMap = {
+                        'oneway_inbound': 'One Way-Inbound',
+                        'oneway_outbound': 'One Way-Outbound',
+                        'round': 'Round',
+                        'multi_city': 'Multi City',
+                    };
+                    const reverseFlightTypeMap = {
+                        'transit': 'Transit',
+                        'direct': 'Direct',
+                    };
+                    this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                    this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+                    this.filteredTickets = this.allTickets.filter(t =>
+                        t.route_type === ticket.route_type &&
+                        t.flight_type === ticket.flight_type
+                    );
+                    this.passengerData.route = ticket.route;
+                    this.passengerData.airline = ticket.airline || '';
+                    this.passengerData.class = ticket.airline_class || '';
+                    this.$nextTick(() => {
+                        this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
+                        this.calculateFlightDateRange();
+                        this.updateBaggageWeight();
+                    });
+                }
+            }
+        }
+    },
+
     onTicketChange() {
         const ticketFareId = this.passengerData.ticket_fare_id;
         if (!ticketFareId) {
@@ -3861,16 +4050,22 @@ Alpine.data('showBookingApp', () => ({
         const ticketFareId = passenger.ticket_fare_id;
         const serviceRequired = passenger.service_required || 'all';
         const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
-        const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
-        if (!ticket) return 0;
-        const sellingFare = parseFloat(ticket.selling_fare) || 0;
-        let ticketAmount = sellingFare;
-        if (passengerType === 'child') {
-            const pct = parseFloat(ticket.child_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
-        } else if (passengerType === 'infant') {
-            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-            ticketAmount = sellingFare * pct / 100;
+        let ticketAmount = 0;
+        if (serviceRequired !== 'visa_only') {
+            const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+            if (ticket) {
+                const baseFare = ticket.ticket_type === 'offer'
+                    ? (parseFloat(ticket.offer_price) || 0)
+                    : (parseFloat(ticket.selling_fare) || 0);
+                ticketAmount = baseFare;
+                if (passengerType === 'child') {
+                    const pct = parseFloat(ticket.child_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                } else if (passengerType === 'infant') {
+                    const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                }
+            }
         }
         const visaPrice = parseFloat(selectedPackage?.visa_selling_price) || 0;
         const serviceCharge = parseFloat(selectedPackage?.service_charge) || 0;
@@ -3878,21 +4073,29 @@ Alpine.data('showBookingApp', () => ({
         if (serviceRequired === 'all') {
             total = ticketAmount + visaPrice + serviceCharge;
         } else if (serviceRequired === 'visa_only') {
-            total = visaPrice;
+            total = visaPrice + serviceCharge;
         } else if (serviceRequired === 'ticket_only') {
-            total = ticketAmount;
+            total = ticketAmount + serviceCharge;
         }
         return total;
     },
 
     openPaymentModal() {
+        const totalFinEl = document.getElementById('financialTotalValue');
+        const paidFinEl = document.getElementById('financialTotalPaid');
+        const dueFinEl = document.getElementById('financialDue');
+        const totalText = totalFinEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        const paidText = paidFinEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        const dueText = dueFinEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
+        this.paymentMaxAmount = parseFloat(dueText) || 0;
+
         const totalEl = document.getElementById('paymentTotalPackageValue');
         const paidEl = document.getElementById('paymentPaid');
         const dueEl = document.getElementById('paymentDue');
-        const totalText = totalEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
-        const paidText = paidEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
-        const dueText = dueEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
-        this.paymentMaxAmount = parseFloat(dueText) || 0;
+        if (totalEl) totalEl.textContent = totalFinEl?.textContent || totalEl.textContent;
+        if (paidEl) paidEl.textContent = paidFinEl?.textContent || paidEl.textContent;
+        if (dueEl) dueEl.textContent = dueFinEl?.textContent || dueEl.textContent;
+
         this.paymentData = {
             currency: 'SAR',
             method: 'cash',

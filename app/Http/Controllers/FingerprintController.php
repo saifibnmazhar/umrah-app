@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Fingerprint;
 use App\Models\FingerprintDetail;
 use App\Models\RescheduledFingerprint;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -34,43 +35,64 @@ class FingerprintController extends Controller
             $query->where('booking.district_id', $request->district);
         }
 
-        $fingerprints = $query->get();
-
-        $data = $fingerprints->map(function ($fingerprint) {
-            $booking = $fingerprint->booking;
-            $passengers = $booking->passengers;
-
-            return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers) {
-                $detail = $fingerprint->fingerprintDetails()
-                    ->where('passenger_id', $passenger->id)
-                    ->first();
-
-                $statusDisplay = $this->computePartiallyApprovedStatus($detail, $passengers);
-
-                return [
-                    'fingerprint_id' => $fingerprint->id,
-                    'fingerprint_detail_id' => $detail?->id,
-                    'invoice_id' => $booking->invoice_id,
-                    'booking_date' => $booking->created_at->format('Y-m-d'),
-                    'customer_name' => $booking->customer->name,
-                    'pax_qty' => $booking->pax_qty,
-                    'customer_mobile' => $booking->customer->mobile_no,
-                    'passenger_mobile' => $passenger->mobile_no,
-                    'district' => $booking->district->name ?? '-',
-                    'deadline' => $fingerprint->deadline?->format('Y-m-d'),
-                    'cost' => $fingerprint->cost,
-                    'assigned_staff_id' => $fingerprint->assigned_staff_id,
-                    'assigned_staff_name' => $fingerprint->assignedStaff->name ?? null,
-                    'passenger_name' => $passenger->first_name . ' ' . $passenger->last_name,
-                    'fingerprint_status' => $detail?->status?->value ?? 'none',
-                    'fingerprint_status_display' => $statusDisplay,
-                    'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
-                    'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
-                ];
+        $user = auth()->user();
+        if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+            $query->whereHas('booking', function ($q) use ($user) {
+                $q->where('office_id', $user->office_id);
             });
-        })->flatten();
+        }
 
-        return response()->json(['data' => $data]);
+        $fingerprints = $query->paginate(10);
+
+        $items = collect($fingerprints->items())
+            ->map(function ($fingerprint) {
+                $booking = $fingerprint->booking;
+                $passengers = $booking->passengers;
+
+                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers) {
+                    $detail = $fingerprint->fingerprintDetails()
+                        ->where('passenger_id', $passenger->id)
+                        ->first();
+
+                    $statusDisplay = $this->computePartiallyApprovedStatus($detail, $passengers);
+
+                    return [
+                        'fingerprint_id' => $fingerprint->id,
+                        'fingerprint_detail_id' => $detail?->id,
+                        'invoice_id' => $booking->invoice_id,
+                        'booking_date' => $booking->created_at->format('Y-m-d'),
+                        'customer_name' => $booking->customer->name,
+                        'pax_qty' => $booking->pax_qty,
+                        'customer_mobile' => $booking->customer->mobile_no,
+                        'passenger_mobile' => $passenger->mobile_no,
+                        'district' => $booking->district->name ?? '-',
+                        'deadline' => $fingerprint->deadline?->format('Y-m-d'),
+                        'cost' => $fingerprint->cost,
+                        'assigned_staff_id' => $fingerprint->assigned_staff_id,
+                        'assigned_staff_name' => $fingerprint->assignedStaff->name ?? null,
+                        'passenger_name' => $passenger->first_name . ' ' . $passenger->last_name,
+                        'fingerprint_status' => $detail?->status?->value ?? 'none',
+                        'fingerprint_status_display' => $statusDisplay,
+                        'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
+                        'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
+                        'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
+                        'required_flight_date' => $passenger->flight_date_from && $passenger->flight_date_to
+                            ? $passenger->flight_date_from->format('d M Y') . ' → ' . $passenger->flight_date_to->format('d M Y')
+                            : ($passenger->flight_date_from?->format('d M Y') ?? $passenger->flight_date_to?->format('d M Y') ?? '-'),
+                        'actual_flight_date' => $passenger->actual_flight_date?->format('d M Y') ?? '-',
+                    ];
+                });
+            })->flatten(1);
+
+        return response()->json([
+            'data' => $items,
+            'pagination' => [
+                'current_page' => $fingerprints->currentPage(),
+                'last_page'    => $fingerprints->lastPage(),
+                'per_page'     => $fingerprints->perPage(),
+                'total'        => $fingerprints->total(),
+            ],
+        ]);
     }
 
     /**
@@ -82,43 +104,68 @@ class FingerprintController extends Controller
         $query = Fingerprint::with([
             'booking.customer',
             'booking.district',
+            'booking.office',
             'booking.passengers',
             'fingerprintDetails.passenger'
         ])->orderBy('created_at', 'desc');
 
-        $fingerprints = $query->get();
+        $user = auth()->user();
+        if ($user->hasRole('Fingerprint Staff')) {
+            $query->where('assigned_staff_id', $user->id);
+        }
 
-        $data = $fingerprints->map(function ($fingerprint) {
-            $booking = $fingerprint->booking;
-            $passengers = $booking->passengers;
+        $fingerprints = $query->paginate(10);
 
-            return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers) {
-                $detail = $fingerprint->fingerprintDetails()
-                    ->where('passenger_id', $passenger->id)
-                    ->first();
+        $items = collect($fingerprints->items())
+            ->map(function ($fingerprint) {
+                $booking = $fingerprint->booking;
+                if (!$booking) return collect([]);
 
-                $statusDisplay = $this->computePartiallyApprovedStatus($detail, $passengers);
+                $passengers = $booking->passengers;
 
-                return [
-                    'fingerprint_id' => $fingerprint->id,
-                    'fingerprint_detail_id' => $detail?->id,
-                    'invoice_id' => $booking->invoice_id,
-                    'customer_name' => $booking->customer->name,
-                    'pax_qty' => $booking->pax_qty,
-                    'customer_mobile' => $booking->customer->mobile_no,
-                    'passenger_mobile' => $passenger->mobile_no,
-                    'office' => $booking->fingerprint_office ?? '-',
-                    'district' => $booking->district->name ?? '-',
-                    'deadline' => $fingerprint->deadline?->format('Y-m-d'),
-                    'passenger_name' => $passenger->first_name . ' ' . $passenger->last_name,
-                    'cost' => $fingerprint->cost,
-                    'fingerprint_status' => $detail?->status?->value ?? 'none',
-                    'fingerprint_status_display' => $statusDisplay,
-                ];
-            });
-        })->flatten();
+                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers) {
+                    $detail = $fingerprint->fingerprintDetails()
+                        ->where('passenger_id', $passenger->id)
+                        ->first();
 
-        return response()->json(['data' => $data]);
+                    $statusDisplay = $this->computePartiallyApprovedStatus($detail, $passengers);
+
+                    $firstName = $passenger->first_name ?? '';
+                    $lastName = $passenger->last_name ?? '';
+                    $passengerName = trim($firstName . ' ' . $lastName) ?: '-';
+
+                    return [
+                        'fingerprint_id' => $fingerprint->id,
+                        'fingerprint_detail_id' => $detail?->id,
+                        'invoice_id' => $booking->invoice_id,
+                        'booking_date' => $booking->created_at?->format('Y-m-d'),
+                        'customer_name' => $booking->customer?->name ?? '-',
+                        'pax_qty' => $passengers->count(),
+                        'customer_mobile' => $booking->customer?->mobile_no ?? '',
+                        'passenger_mobile' => $passenger->mobile_no ?? '',
+                        'office' => $booking->office?->name ?? '-',
+                        'district' => $booking->district?->name ?? '-',
+                        'deadline' => $fingerprint->deadline?->format('Y-m-d'),
+                        'passenger_name' => $passengerName,
+                        'cost' => $fingerprint->cost,
+                        'fingerprint_status' => $detail?->status?->value ?? 'none',
+                        'fingerprint_status_display' => $statusDisplay,
+                        'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
+                        'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
+                        'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
+                    ];
+                });
+            })->flatten(1);
+
+        return response()->json([
+            'data' => $items,
+            'pagination' => [
+                'current_page' => $fingerprints->currentPage(),
+                'last_page'    => $fingerprints->lastPage(),
+                'per_page'     => $fingerprints->perPage(),
+                'total'        => $fingerprints->total(),
+            ],
+        ]);
     }
 
     /**
@@ -168,6 +215,11 @@ class FingerprintController extends Controller
      */
     public function updateCost(Request $request, Fingerprint $fingerprint): JsonResponse
     {
+        $user = auth()->user();
+        if (!$user->hasRole('Super Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'cost' => 'required|numeric|min:0',
         ]);
@@ -186,6 +238,12 @@ class FingerprintController extends Controller
      */
     public function updateStatus(Request $request, FingerprintDetail $fingerprintDetail): JsonResponse
     {
+        $user = auth()->user();
+        $fingerprint = $fingerprintDetail->fingerprint;
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'status' => 'required|in:none,processing,approved,cancelled',
         ]);
@@ -204,6 +262,12 @@ class FingerprintController extends Controller
      */
     public function hold(Request $request, FingerprintDetail $fingerprintDetail): JsonResponse
     {
+        $user = auth()->user();
+        $fingerprint = $fingerprintDetail->fingerprint;
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'reason' => 'required|in:rescheduled_by_client,rescheduled_by_bmt,nfc_problem,others',
             'other_reason' => 'nullable|string|max:500',
@@ -236,7 +300,17 @@ class FingerprintController extends Controller
      */
     public function staffList(): JsonResponse
     {
-        $users = \App\Models\User::select('id', 'name')->orderBy('name')->get();
+        $user = auth()->user();
+
+        $query = User::select('id', 'name')
+            ->whereHas('roles', fn($q) => $q->where('name', 'Fingerprint Staff'));
+
+        if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+            $query->where('office_id', $user->office_id);
+        }
+
+        $users = $query->orderBy('name')->get();
+
         return response()->json(['data' => $users]);
     }
 }

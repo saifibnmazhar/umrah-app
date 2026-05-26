@@ -71,6 +71,11 @@ class Passenger extends Model
         return $this->belongsTo(TicketFare::class);
     }
 
+    public function visaSubmission()
+    {
+        return $this->hasOne(VisaSubmission::class)->latestOfMany();
+    }
+
     public function getRouteDisplayAttribute(): string
     {
         $route = $this->ticketFare?->route;

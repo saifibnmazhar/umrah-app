@@ -346,22 +346,27 @@
                                 </td>
                                 <td class="px-3 py-2 text-right text-slate-600">BDT {{ number_format($visaSellingPrice, 0) }}</td>
                                 <td class="px-3 py-2 text-right text-slate-600">BDT {{ number_format($package->service_charge ?? 0, 0) }}</td>
-                                <td class="px-3 py-2 text-right text-slate-800 font-medium">BDT {{ number_format($package->regular_price, 0) }}</td>
+                                <td class="px-3 py-2 text-right text-slate-800 font-medium">BDT {{ number_format(($package->regular_price ?? 0) + ($package->service_charge ?? 0), 0) }}</td>
                                 <td class="px-3 py-2 text-right text-slate-600">
                                     @if($package->offer_price)
-                                        BDT {{ number_format($package->offer_price, 0) }}
+                                        BDT {{ number_format(($package->offer_price ?? 0) + ($package->service_charge ?? 0), 0) }}
                                     @else
                                         -
                                     @endif
                                 </td>
                                 <td class="px-3 py-2 text-center">
                                     <a href="{{ route('settings.package.show', $package->id) }}" class="text-xs text-slate-600 hover:text-slate-800 mr-3">View</a>
-                                    <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
-                                    <form method="POST" action="{{ route('settings.package.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-xs text-red-500 hover:text-red-700">Delete</button>
-                                    </form>
+                                    @if($package->is_locked)
+                                        <button class="text-xs text-slate-400 cursor-not-allowed mr-3" title="Has existing bookings" disabled>Edit</button>
+                                        <button class="text-xs text-red-400 cursor-not-allowed" title="Has existing bookings" disabled>Delete</button>
+                                    @else
+                                        <button onclick="editPackage({{ $package->id }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
+                                        <form method="POST" action="{{ route('settings.package.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs text-red-500 hover:text-red-700">Delete</button>
+                                        </form>
+                                    @endif
                                 </td>
                             </tr>
                         @empty
@@ -425,7 +430,8 @@
                                 <option value="{{ $fare['id'] }}"
                                     data-ticket-type="{{ $fare['ticket_type'] }}"
                                     data-selling-fare="{{ $fare['selling_fare'] }}"
-                                    data-offer-price="{{ $fare['offer_price'] ?? 0 }}">
+                                    data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
+                                    data-used="{{ in_array($fare['id'], $usedFareIds) ? 'true' : 'false' }}">
                                     {{ $display }}
                                 </option>
                             @endforeach
@@ -436,22 +442,15 @@
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (BDT) *</label>
                             <input type="number" id="modalRegularPrice" name="regular_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="0.01" required readonly>
+                        </div> 
+                        <div id="modalOfferPriceContainer" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
+                            <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
                         </div>
-                        <div>
-                            <div id="modalOfferPriceContainer" class="hidden">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
-                                <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
-                            </div>
-                            <div id="modalServiceChargeContainer">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
-                                <input type="number" id="modalServiceCharge" name="service_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0">
-                            </div>
-                        </div>
-                    </div>
-
-                    <div id="modalServiceChargeRow" class="mt-4 hidden">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
-                        <input type="number" id="modalServiceChargeRowInput" name="service_charge_row" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0">
+                        <div id="modalServiceChargeContainer">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                            <input type="number" id="modalServiceCharge" name="service_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0">
+                        </div>                       
                     </div>
 
                     <div class="mt-4 p-4 bg-slate-50 rounded-lg">
@@ -479,6 +478,7 @@
         const ticketFares = @json($ticketFares);
         const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
         const packages = @json($packages->items());
+        const usedFareIds = @json($usedFareIds);
 
         function showPackageModal() {
             document.getElementById('modalTitle').textContent = 'Add Package';
@@ -499,6 +499,10 @@
         function editPackage(id) {
             const pkg = packages.find(p => p.id === id);
             if (!pkg) return;
+            if (pkg.is_locked) {
+                alert('This package cannot be edited because it has existing bookings.');
+                return;
+            }
 
             document.getElementById('modalTitle').textContent = 'Edit Package';
             document.getElementById('packageForm').action = '/settings/package/' + id;
@@ -510,26 +514,19 @@
             const ticketOption = Array.from(document.getElementById('modalTicketSelect').options).find(opt => opt.value == pkg.ticket_fare_id);
             if (ticketOption) {
                 document.getElementById('modalTicketTypeSelect').value = ticketOption.dataset.ticketType || '';
-                filterModalTickets();
+                filterModalTickets(pkg.ticket_fare_id);
                 document.getElementById('modalTicketSelect').value = pkg.ticket_fare_id;
             }
             
             document.getElementById('modalRegularPrice').value = pkg.regular_price;
             document.getElementById('modalOfferPrice').value = pkg.offer_price || '';
             document.getElementById('modalServiceCharge').value = pkg.service_charge || 0;
-            document.getElementById('modalServiceChargeRowInput').value = pkg.service_charge || 0;
-            
-            const serviceChargeContainer = document.getElementById('modalServiceChargeContainer');
-            const serviceChargeRow = document.getElementById('modalServiceChargeRow');
             
             if (ticketOption && ticketOption.dataset.ticketType === 'offer') {
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
-                serviceChargeContainer.classList.add('hidden');
-                serviceChargeRow.classList.remove('hidden');
             } else {
                 document.getElementById('modalOfferPriceContainer').classList.add('hidden');
-                serviceChargeContainer.classList.remove('hidden');
-                serviceChargeRow.classList.add('hidden');
+                document.getElementById('modalOfferPrice').value = '';
             }
             
             document.getElementById('packageModal').classList.remove('hidden');
@@ -539,12 +536,18 @@
             document.getElementById('packageModal').classList.add('hidden');
         }
 
-        function filterModalTickets() {
+        function filterModalTickets(exceptFareId = null) {
             const selectedType = document.getElementById('modalTicketTypeSelect').value;
             Array.from(document.getElementById('modalTicketSelect').options).forEach(option => {
                 if (option.value === '') return;
                 const ticketType = option.dataset.ticketType;
-                option.style.display = (selectedType === '' || ticketType === selectedType) ? '' : 'none';
+                const isUsed = option.dataset.used === 'true';
+                const isExcepted = exceptFareId && option.value == exceptFareId;
+                let show = (selectedType === '' || ticketType === selectedType);
+                if (show && isUsed && !isExcepted) {
+                    show = false;
+                }
+                option.style.display = show ? '' : 'none';
             });
         }
 
@@ -560,23 +563,14 @@
             const offerFare = parseFloat(selectedOption.dataset.offerPrice) || 0;
             const ticketType = selectedOption.dataset.ticketType;
             
-            const serviceChargeContainer = document.getElementById('modalServiceChargeContainer');
-            const serviceChargeRow = document.getElementById('modalServiceChargeRow');
-
             if (ticketType === 'offer') {
-                document.getElementById('modalRegularPrice').value = (offerFare + latestVisaPrice).toFixed(2);
+                document.getElementById('modalRegularPrice').value = (sellingFare + latestVisaPrice).toFixed(2);
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
                 document.getElementById('modalOfferPrice').value = (offerFare + latestVisaPrice).toFixed(2);
-                serviceChargeContainer.classList.add('hidden');
-                serviceChargeRow.classList.remove('hidden');
-                document.getElementById('modalServiceChargeRowInput').value = document.getElementById('modalServiceCharge').value;
             } else {
                 document.getElementById('modalRegularPrice').value = (sellingFare + latestVisaPrice).toFixed(2);
                 document.getElementById('modalOfferPriceContainer').classList.add('hidden');
                 document.getElementById('modalOfferPrice').value = '';
-                serviceChargeContainer.classList.remove('hidden');
-                serviceChargeRow.classList.add('hidden');
-                document.getElementById('modalServiceCharge').value = document.getElementById('modalServiceChargeRowInput').value || 0;
             }
         }
 
@@ -586,18 +580,12 @@
         function toggleModalOfferPriceField() {
             const ticketType = document.getElementById('modalTicketTypeSelect').value;
             const offerPriceContainer = document.getElementById('modalOfferPriceContainer');
-            const serviceChargeContainer = document.getElementById('modalServiceChargeContainer');
-            const serviceChargeRow = document.getElementById('modalServiceChargeRow');
             
             if (ticketType === 'offer') {
                 offerPriceContainer.classList.remove('hidden');
-                serviceChargeContainer.classList.add('hidden');
-                serviceChargeRow.classList.remove('hidden');
             } else {
                 offerPriceContainer.classList.add('hidden');
                 document.getElementById('modalOfferPrice').value = '';
-                serviceChargeContainer.classList.remove('hidden');
-                serviceChargeRow.classList.add('hidden');
             }
         }
         </script>

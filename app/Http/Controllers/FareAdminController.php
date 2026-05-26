@@ -16,7 +16,8 @@ class FareAdminController extends Controller
         $ticketAgentsQuery = TicketAgent::orderBy('name');
         $ticketAgents = $ticketAgentsQuery->paginate(10)->withQueryString();
 
-        $ticketFaresQuery = TicketFare::with(['airline', 'airlineClass.travelClass', 'route.fromCity', 'route.toCity', 'route.returnCity', 'user']);
+        $ticketFaresQuery = TicketFare::with(['airline', 'airlineClass.travelClass', 'route.fromCity', 'route.toCity', 'route.returnCity', 'route.multiSegments.fromCity', 'route.multiSegments.toCity', 'user'])
+            ->withCount(['packages', 'passengers']);
 
         if ($request->has('airline_id') && $request->airline_id) {
             $ticketFaresQuery->where('airline_id', $request->airline_id);
@@ -124,10 +125,21 @@ class FareAdminController extends Controller
         $validated = $request->validate($rules);
 
         try {
-            TicketFare::create(array_merge($validated, [
-                'user_id' => auth()->id() ?? 1,
+            TicketFare::create([
+                'airline_id' => $validated['airline_id'],
+                'airline_classes_id' => $validated['airline_classes_id'],
+                'route_id' => $validated['route_id'],
+                'ticket_type' => $validated['ticket_type'],
+                'effective_from' => $validated['effective_from'],
+                'effective_to' => $validated['effective_to'],
+                'net_fare' => $validated['net_fare'],
+                'selling_fare' => $validated['selling_fare'],
+                'offer_price' => $validated['offer_price'] ?? null,
+                'child_fare_percentage' => $validated['child_fare_percentage'],
+                'infant_fare_percentage' => $validated['infant_fare_percentage'],
                 'with_meal' => $request->has('with_meal') ? 1 : 0,
-            ]));
+                'user_id' => auth()->id() ?? 1,
+            ]);
 
             return redirect()->route('fare.admin')->with('success', 'Ticket fare created successfully.');
         } catch (\Exception $e) {
@@ -137,6 +149,10 @@ class FareAdminController extends Controller
 
     public function updateFare(Request $request, TicketFare $ticketFare)
     {
+        if ($ticketFare->isLocked()) {
+            return redirect()->back()->with('error', 'This ticket fare cannot be edited because it is in use by packages or passengers.');
+        }
+
         $rules = [
             'airline_id' => 'required|exists:airlines,id',
             'airline_classes_id' => 'required|exists:airline_classes,id',
@@ -170,6 +186,10 @@ class FareAdminController extends Controller
 
     public function destroyFare(TicketFare $ticketFare)
     {
+        if ($ticketFare->isLocked()) {
+            return redirect()->back()->with('error', 'This ticket fare cannot be deleted because it is in use by packages or passengers.');
+        }
+
         try {
             $ticketFare->delete();
             return redirect()->route('fare.admin')->with('success', 'Ticket fare deleted successfully.');
@@ -177,4 +197,5 @@ class FareAdminController extends Controller
             return redirect()->back()->with('error', 'Failed to delete ticket fare.');
         }
     }
+
 }
