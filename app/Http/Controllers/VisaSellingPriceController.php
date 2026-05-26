@@ -11,6 +11,7 @@ class VisaSellingPriceController extends Controller
     public function index()
     {
         $visaSellingPrices = VisaSellingPrice::with(['user'])
+            ->withCount(['packages', 'visaSubmissions'])
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -45,11 +46,19 @@ class VisaSellingPriceController extends Controller
 
     public function edit(VisaSellingPrice $visaSellingPrice)
     {
+        if ($visaSellingPrice->isLocked()) {
+            return redirect()->route('visa-selling-prices.index')->with('error', 'This visa price cannot be edited because it is in use by packages or visa submissions.');
+        }
+
         return view('visa-selling-prices.edit', compact('visaSellingPrice'));
     }
 
     public function update(Request $request, VisaSellingPrice $visaSellingPrice)
     {
+        if ($visaSellingPrice->isLocked()) {
+            return redirect()->back()->with('error', 'This visa price cannot be edited because it is in use by packages or visa submissions.');
+        }
+
         $validated = $request->validate([
             'selling_price' => 'required|numeric|min:0',
         ]);
@@ -71,6 +80,10 @@ class VisaSellingPriceController extends Controller
 
     public function destroy(VisaSellingPrice $visaSellingPrice)
     {
+        if ($visaSellingPrice->isLocked()) {
+            return redirect()->back()->with('error', 'This visa price cannot be deleted because it is in use by packages or visa submissions.');
+        }
+
         try {
             $visaSellingPrice->delete();
             return redirect()->route('visa.admin')->with('success', 'Visa selling price deleted successfully.');

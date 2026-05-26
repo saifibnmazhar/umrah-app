@@ -124,15 +124,20 @@
                             <td class="px-4 py-3 text-slate-600">{{ $fare->offer_price ? number_format($fare->offer_price, 2) . ' SAR' : '-' }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $fare->effective_from->format('Y-m-d') }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $fare->effective_to->format('Y-m-d') }}</td>
-                            <td class="px-4 py-3 text-right">
+                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
                                     <a href="{{ route('ticket-fares.show', $fare->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">View</a>
-                                    <a href="{{ route('ticket-fares.edit', $fare->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
-                                    <form method="POST" action="{{ route('ticket-fares.destroy', $fare->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket fare?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
-                                    </form>
+                                    @if($fare->is_locked)
+                                        <span class="text-slate-400 cursor-not-allowed" title="In use by packages or passengers">Edit</span>
+                                        <span class="text-red-400 cursor-not-allowed" title="In use by packages or passengers">Delete</span>
+                                    @else
+                                        <a href="{{ route('ticket-fares.edit', $fare->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
+                                        <form method="POST" action="{{ route('ticket-fares.destroy', $fare->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket fare?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

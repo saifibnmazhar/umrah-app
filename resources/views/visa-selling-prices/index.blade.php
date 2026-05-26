@@ -39,14 +39,19 @@
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-2 text-slate-600">{{ $price->created_at->format('Y-m-d') }}</td>
                             <td class="px-3 py-2 text-slate-800 font-medium">{{ number_format($price->selling_price, 2) }}</td>
-                            <td class="px-3 py-2">
+                             <td class="px-3 py-2">
                                 <div class="flex gap-2">
-                                    <button onclick="editPrice({{ $price->id }}, {{ $price->selling_price }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">Edit</button>
-                                    <form method="POST" action="{{ route('visa-selling-prices.destroy', $price->id) }}" onsubmit="return confirm('Are you sure you want to delete this visa price record?')" class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded">Delete</button>
-                                    </form>
+                                    @if($price->is_locked)
+                                        <span class="text-xs bg-slate-100 text-slate-400 px-2 py-1 rounded cursor-not-allowed" title="In use by packages or visa submissions">Edit</span>
+                                        <span class="text-xs bg-red-100 text-red-400 px-2 py-1 rounded cursor-not-allowed" title="In use by packages or visa submissions">Delete</span>
+                                    @else
+                                        <button onclick="editPrice({{ $price->id }}, {{ $price->selling_price }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">Edit</button>
+                                        <form method="POST" action="{{ route('visa-selling-prices.destroy', $price->id) }}" onsubmit="return confirm('Are you sure you want to delete this visa price record?')" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded">Delete</button>
+                                        </form>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

@@ -10,7 +10,8 @@ class VisaAdminController extends Controller
 {
     public function index()
     {
-        $visaSellingPrices = VisaSellingPrice::orderBy('created_at', 'desc')
+        $visaSellingPrices = VisaSellingPrice::withCount(['packages', 'visaSubmissions'])
+            ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
 
