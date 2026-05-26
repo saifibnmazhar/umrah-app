@@ -8,16 +8,16 @@
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Division</label>
-                <select x-model="filters.division" @change="loadData()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white">
-                    <option value="">All Divisions</option>
-                    @foreach($divisions ?? [] as $division)
-                    <option value="{{ $division }}">{{ $division }}</option>
-                    @endforeach
-                </select>
-            </div>
-            <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">District</label>
-                <select x-model="filters.district" @change="loadData()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white">
+                    <select x-model="filters.division" @change="currentPage = 1; loadData()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white">
+                        <option value="">All Divisions</option>
+                        @foreach($divisions ?? [] as $division)
+                        <option value="{{ $division }}">{{ $division }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">District</label>
+                    <select x-model="filters.district" @change="currentPage = 1; loadData()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white">
                     <option value="">All Districts</option>
                     @foreach($districts ?? [] as $district)
                     <option value="{{ $district->id }}">{{ $district->name }}</option>
@@ -25,7 +25,7 @@
                 </select>
             </div>
             <div class="flex items-end">
-                <button @click="loadData()" class="px-4 py-2 text-sm font-medium text-white bg-slate-700 rounded-lg hover:bg-slate-800">
+                    <button @click="currentPage = 1; loadData()" class="px-4 py-2 text-sm font-medium text-white bg-slate-700 rounded-lg hover:bg-slate-800">
                     Filter
                 </button>
             </div>
@@ -114,6 +114,35 @@
                 </tbody>
             </table>
         </div>
+
+        <div x-show="lastPage > 1" class="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 px-1">
+            <div class="text-sm text-slate-600">
+                Showing <span class="font-medium" x-text="((currentPage - 1) * 10 + 1)"></span>
+                to <span class="font-medium" x-text="Math.min(currentPage * 10, totalRecords)"></span>
+                of <span class="font-medium" x-text="totalRecords"></span> results
+            </div>
+            <nav class="flex items-center gap-1">
+                <button @click="changePage(currentPage - 1)"
+                        :disabled="currentPage === 1"
+                        :class="currentPage === 1 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'"
+                        class="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white transition-colors">
+                    Previous
+                </button>
+                <template x-for="page in Array.from({ length: lastPage }, (_, i) => i + 1)" :key="page">
+                    <button @click="changePage(page)"
+                            :class="page === currentPage ? 'bg-slate-700 text-white border-slate-700' : 'text-slate-600 hover:bg-slate-100 border-slate-300'"
+                            class="px-3 py-1.5 text-sm font-medium rounded-lg border bg-white transition-colors"
+                            x-text="page">
+                    </button>
+                </template>
+                <button @click="changePage(currentPage + 1)"
+                        :disabled="currentPage === lastPage"
+                        :class="currentPage === lastPage ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'"
+                        class="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white transition-colors">
+                    Next
+                </button>
+            </nav>
+        </div>
     </div>
 
     {{-- <div x-show="showHoldModal"
@@ -164,6 +193,9 @@ function fingerprintAdmin() {
         data: [],
         loading: true,
         staffList: [],
+        currentPage: 1,
+        lastPage: 1,
+        totalRecords: 0,
         filters: {
             division: '',
             district: '',
@@ -196,17 +228,28 @@ function fingerprintAdmin() {
         async loadData() {
             this.loading = true;
             try {
-                const params = new URLSearchParams(this.filters);
+                const params = new URLSearchParams({ ...this.filters, page: this.currentPage });
                 const response = await fetch(`/api/fingerprints/admin?${params}`);
                 const result = await response.json();
                 const rawData = result.data || [];
                 this.data = this.processData(rawData);
+                if (result.pagination) {
+                    this.currentPage = result.pagination.current_page;
+                    this.lastPage = result.pagination.last_page;
+                    this.totalRecords = result.pagination.total;
+                }
             } catch (error) {
                 console.error('Failed to load fingerprint data:', error);
                 this.data = [];
             } finally {
                 this.loading = false;
             }
+        },
+
+        changePage(page) {
+            if (page < 1 || page > this.lastPage || page === this.currentPage) return;
+            this.currentPage = page;
+            this.loadData();
         },
 
         processData(rawData) {
