@@ -202,7 +202,6 @@
                     <h3 class="text-lg font-semibold text-slate-700">Summary Card</h3>
                     <div class="flex gap-2">
                         <button type="button" @click="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
-                        <button type="button" @click="openPaymentModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Payment</button>
                     </div>
                 </div>
                 <div class="flex justify-between text-sm text-slate-500 mb-2">
@@ -221,6 +220,10 @@
                     <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center" x-text="(grandTotalValue ?? 0).toFixed(2) + ' SAR'">0 SAR</span>
                     <span id="summaryTotalValue" class="w-1/6 text-center" x-text="discountedTotal !== null ? discountedTotal.toFixed(2) + ' SAR' : 'N/A'">0 SAR</span>
                 </div>
+            </div>
+
+            <div class="flex justify-end">
+                <button type="button" @click="openPaymentModal()" class="px-8 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Payment</button>
             </div>
 
             <div class="flex justify-end gap-3 pt-6 border-t border-slate-200">
