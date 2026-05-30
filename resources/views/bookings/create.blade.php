@@ -222,7 +222,7 @@
                 </div>
             </div>
 
-            <div class="flex justify-end">
+            <div class="flex justify-end mb-6">
                 <button type="button" @click="openPaymentModal()" class="px-8 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Payment</button>
             </div>
 
