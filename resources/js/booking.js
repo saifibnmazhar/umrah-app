@@ -959,6 +959,11 @@ Alpine.data('createBookingApp', () => ({
         return grand - discAmt;
     },
 
+    serviceLabel(value) {
+        const labels = { all: 'Visa + Ticket', visa_only: 'Visa', ticket_only: 'Ticket' };
+        return labels[value] || value;
+    },
+
     init() {
         const serverData = window.__bookingServerData || {};
         this.packages = serverData.packages || [];
@@ -2271,6 +2276,11 @@ Alpine.data('editBookingApp', () => ({
         const discType = this.bookingData.discount_type;
         const discAmt = discType === 'percentage' ? grand * disc / 100 : disc;
         return grand - discAmt;
+    },
+
+    serviceLabel(value) {
+        const labels = { all: 'Visa + Ticket', visa_only: 'Visa', ticket_only: 'Ticket' };
+        return labels[value] || value;
     },
 
     init() {
