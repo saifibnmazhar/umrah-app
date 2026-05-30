@@ -1523,6 +1523,16 @@ Alpine.data('createBookingApp', () => ({
         }
     },
 
+    getPassengerFare(passenger) {
+        if (!passenger.ticket_fare_id) return '-';
+        const ticket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_id));
+        if (!ticket) return '-';
+        const fare = ticket.ticket_type === 'offer'
+            ? (parseFloat(ticket.offer_price) || 0)
+            : (parseFloat(ticket.selling_fare) || 0);
+        return fare > 0 ? fare.toLocaleString() : '-';
+    },
+
     parseFlightDateRange(rangeString) {
         if (!rangeString) return null;
         const parts = rangeString.split(' - ');
@@ -3413,6 +3423,16 @@ Alpine.data('editBookingApp', () => ({
             default:
                 return `${ticket.route || ''} | ${type} | ${price}`;
         }
+    },
+
+    getPassengerFare(passenger) {
+        if (!passenger.ticket_fare_id) return '-';
+        const ticket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_id));
+        if (!ticket) return '-';
+        const fare = ticket.ticket_type === 'offer'
+            ? (parseFloat(ticket.offer_price) || 0)
+            : (parseFloat(ticket.selling_fare) || 0);
+        return fare > 0 ? fare.toLocaleString() : '-';
     }
 }));
 
