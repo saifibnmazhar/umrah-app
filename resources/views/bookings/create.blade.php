@@ -160,7 +160,7 @@
                                     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                                         <div><span class="text-slate-500">Passport:</span> <span class="text-slate-700 ml-1" x-text="passenger.passport_no"></span></div>
                                         <div><span class="text-slate-500">Type:</span> <span class="text-slate-700 ml-1" x-text="passenger.passenger_type"></span></div>
-                                        <div><span class="text-slate-500">Service:</span> <span class="text-slate-700 ml-1" x-text="passenger.service_required"></span></div>
+                                        <div><span class="text-slate-500">Service:</span> <span class="text-slate-700 ml-1" x-text="serviceLabel(passenger.service_required)"></span></div>
                                         <div><span class="text-slate-500">DOB:</span> <span class="text-slate-700 ml-1" x-text="passenger.date_of_birth"></span></div>
                                         <div><span class="text-slate-500">Route:</span> <span class="text-slate-700 ml-1" x-text="passenger.route || '-'"></span></div>
                                         <div><span class="text-slate-500">Airline:</span> <span class="text-slate-700 ml-1" x-text="passenger.airline || '-'"></span></div>

@@ -77,7 +77,7 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1">Service Required *</label>
                         <select x-model="passengerData.service_required" @change="onServiceRequiredChange(); recalculateCurrentPassenger(editingPassengerIndex ?? passengers.length)" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Service</option>
-                            <option value="all">All</option>
+                            <option value="all">Visa + Ticket</option>
                             <option value="visa_only">Visa Only</option>
                             <option value="ticket_only">Ticket Only</option>
                         </select>
