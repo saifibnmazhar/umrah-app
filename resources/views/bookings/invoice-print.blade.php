@@ -242,16 +242,20 @@
     </div>
 
     {{-- Signatures --}}
-    <div class="flex justify-between mt-8 px-4 text-xs">
+    <div class="flex justify-between mt-10 px-4 text-xs" style="page-break-inside: avoid;">
         <div class="text-center">
-            <p class="font-semibold text-slate-700 mb-6">Representative Signature</p>
-            <p class="border-t border-slate-400 pt-1 w-48">________________________</p>
+            <p class="font-semibold text-slate-700 mb-7">Representative Signature</p>
+            <p class="border-t border-slate-400 pt-1.5 w-52">________________________</p>
         </div>
         <div class="text-center">
-            <p class="font-semibold text-slate-700 mb-6">Customer Signature</p>
-            <p class="border-t border-slate-400 pt-1 w-48">________________________</p>
+            <p class="font-semibold text-slate-700 mb-7">Customer Signature</p>
+            <p class="border-t border-slate-400 pt-1.5 w-52">________________________</p>
         </div>
     </div>
+
+    <p class="text-center text-[9px] text-slate-400 mt-8 border-t border-slate-200 pt-4">
+        This is a computer-generated invoice. No signature is required.
+    </p>
 </div>
 
 {{-- Print Buttons --}}
