@@ -1,0 +1,281 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Booking Invoice UMH</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <style>
+        @media print {
+            .no-print { display: none !important; }
+            body { margin: 0; padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .invoice-card { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+        }
+    </style>
+</head>
+<body class="bg-[#f8fafc] min-h-screen py-6">
+
+    <!-- ====== INVOICE CONTAINER ====== -->
+    <div id="invoiceContent" class="max-w-[1200px] mx-auto p-4" style="font-size: 10px;">
+
+        <!-- ============================================================ -->
+        <!-- STEP 2: HEADER                                                -->
+        <!-- ============================================================ -->
+        <div class="bg-white rounded-lg shadow-sm p-5 mb-6 invoice-card">
+            <div class="text-center">
+                <h1 class="text-xl font-bold text-slate-800 tracking-tight">BOOKING INVOICE UMH</h1>
+                <p class="text-xs text-slate-500 mt-1.5">
+                    Phone: +9660XXX-XXXXXXX &nbsp;|&nbsp; Location: BMT-Dak
+                </p>
+            </div>
+            <div class="text-right mt-2">
+                <span class="text-sm font-bold text-slate-800">Invoice No: INV001K526</span>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- STEP 3: TWO SIDE-BY-SIDE TABLES                               -->
+        <!-- ============================================================ -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
+
+            <!-- LEFT: Customer Information -->
+            <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+                <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">
+                    Customer Information
+                </div>
+                <table class="w-full text-xs border-collapse">
+                    <tbody>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Booking Date</td>
+                            <td class="px-4 py-2.5 border-b border-slate-100">2026-05-31 02:46:26</td>
+                        </tr>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Passenger Number (BD)</td>
+                            <td class="px-4 py-2.5 border-b border-slate-100">948783</td>
+                        </tr>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Name</td>
+                            <td class="px-4 py-2.5 border-b border-slate-100">all hasan</td>
+                        </tr>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Address</td>
+                            <td class="px-4 py-2.5 border-b border-slate-100">lalkli</td>
+                        </tr>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Phone Number</td>
+                            <td class="px-4 py-2.5 border-b border-slate-100">89374379</td>
+                        </tr>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5">Address (KSA)</td>
+                            <td class="px-4 py-2.5">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+            <!-- RIGHT: Invoice Information -->
+            <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+                <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">
+                    Invoice Information
+                </div>
+                <table class="w-full text-xs border-collapse">
+                    <tbody>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Invoice Number</td>
+                            <td class="px-4 py-2.5 border-b border-slate-100">INV001K526</td>
+                        </tr>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Branch</td>
+                            <td class="px-4 py-2.5 border-b border-slate-100">BD agency</td>
+                        </tr>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Office</td>
+                            <td class="px-4 py-2.5 border-b border-slate-100">BMT-Dak</td>
+                        </tr>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Representative</td>
+                            <td class="px-4 py-2.5 border-b border-slate-100">Admin</td>
+                        </tr>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Offer</td>
+                            <td class="px-4 py-2.5 border-b border-slate-100">NO</td>
+                        </tr>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Finger Location</td>
+                            <td class="px-4 py-2.5 border-b border-slate-100">office</td>
+                        </tr>
+                        <tr class="even:bg-[#f1f5f9]">
+                            <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5">Finger Deadline</td>
+                            <td class="px-4 py-2.5">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- STEP 4: PASSENGER & FLIGHT DETAILS TABLE (16 columns)         -->
+        <!-- ============================================================ -->
+        <div class="bg-white rounded-lg shadow-sm invoice-card mb-6 overflow-hidden">
+            <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">
+                Passenger & Flight Details
+            </div>
+            <div class="overflow-x-auto">
+                <table class="w-full text-[10px] border-collapse whitespace-nowrap">
+                    <thead>
+                        <tr class="bg-[#1e40af] text-white">
+                            <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Pax No.</th>
+                            <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Name of passengers</th>
+                            <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Gender</th>
+                            <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Passport number</th>
+                            <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Package</th>
+                            <th class="px-1.5 py-2 text-center font-semibold border-r border-[#2563eb]">Duration (Days)</th>
+                            <th class="px-1.5 py-2 text-right font-semibold border-r border-[#2563eb]">Package Value (BDT)</th>
+                            <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Trip</th>
+                            <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Airline</th>
+                            <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Route</th>
+                            <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Est.Flight Date</th>
+                            <th class="px-1.5 py-2 text-center font-semibold border-r border-[#2563eb]">Baggage(KG)</th>
+                            <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Cabin</th>
+                            <th class="px-1.5 py-2 text-center font-semibold border-r border-[#2563eb]">Meal</th>
+                            <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Flight Type</th>
+                            <th class="px-1.5 py-2 text-left font-semibold">Remarks</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr class="bg-[#f1f5f9]">
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">1</td>
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">liklikwzs aaa</td>
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">-</td>
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">3456789</td>
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">pro</td>
+                            <td class="px-1.5 py-1.5 text-center border-b border-slate-100">85</td>
+                            <td class="px-1.5 py-1.5 text-right border-b border-slate-100">1,200.00</td>
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">Out Bound</td>
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">Us-Bangla</td>
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">JED-MED</td>
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">11 Jul 2026 → 20 Jul 2026</td>
+                            <td class="px-1.5 py-1.5 text-center border-b border-slate-100">Out 50</td>
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">Economy</td>
+                            <td class="px-1.5 py-1.5 text-center border-b border-slate-100">Yes</td>
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">direct</td>
+                            <td class="px-1.5 py-1.5 border-b border-slate-100">-</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- STEP 5: THREE SIDE-BY-SIDE TABLES                             -->
+        <!-- ============================================================ -->
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-6">
+
+            <!-- LEFT: Package Calculation -->
+            <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+                <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">
+                    Package Calculation
+                </div>
+                <div class="p-4 text-xs">
+                    <div class="flex justify-between py-2 border-b border-slate-100">
+                        <span class="font-semibold text-slate-700">Sub Total:</span>
+                        <span>1,200</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-slate-100">
+                        <span class="font-semibold text-slate-700">Total Pax:</span>
+                        <span>1</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-slate-100">
+                        <span class="font-semibold text-slate-700">Fingerprint Charge:</span>
+                        <span>0</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-slate-100">
+                        <span class="font-semibold text-slate-700">Discount:</span>
+                        <span>0</span>
+                    </div>
+                    <div class="flex justify-between py-2.5 mt-1">
+                        <span class="font-bold text-slate-800">Grand Total (BDT):</span>
+                        <span class="font-bold text-slate-800">1,200</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- CENTER: Payment Summary -->
+            <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+                <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">
+                    Payment Summary
+                </div>
+                <div class="p-4 text-xs">
+                    <div class="flex justify-between py-2 border-b border-slate-100">
+                        <span class="font-semibold text-slate-700">Total Amount:</span>
+                        <span class="font-bold">1,200</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-slate-100">
+                        <span class="font-semibold text-slate-700">Previous Paid Amount:</span>
+                        <span>0</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-slate-100">
+                        <span class="font-semibold text-slate-700">Current Paid Amount:</span>
+                        <span>1,200</span>
+                    </div>
+                    <div class="flex justify-between py-2 border-b border-slate-100">
+                        <span class="font-semibold text-slate-700">Total Paid Amount:</span>
+                        <span>1,200</span>
+                    </div>
+                    <div class="flex justify-between py-2.5 mt-1">
+                        <span class="font-bold text-red-700">Due Amount:</span>
+                        <span class="font-bold text-red-700">0</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- RIGHT: Important Note -->
+            <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+                <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">
+                    Important Note / Conditions
+                </div>
+                <div class="p-4 text-xs text-slate-400 italic">
+                    N/A
+                </div>
+            </div>
+
+        </div>
+
+        <!-- ============================================================ -->
+        <!-- STEP 6: SIGNATURES                                            -->
+        <!-- ============================================================ -->
+        <div class="flex justify-between mt-10 px-4 text-xs">
+            <div class="text-center">
+                <p class="font-semibold text-slate-700 mb-7">Representative Signature</p>
+                <p class="border-t border-slate-400 pt-1.5 w-52">________________________</p>
+            </div>
+            <div class="text-center">
+                <p class="font-semibold text-slate-700 mb-7">Customer Signature</p>
+                <p class="border-t border-slate-400 pt-1.5 w-52">________________________</p>
+            </div>
+        </div>
+
+        <!-- Footer note -->
+        <p class="text-center text-[9px] text-slate-400 mt-8 border-t border-slate-200 pt-4">
+            This is a computer-generated invoice. No signature is required.
+        </p>
+
+    </div>
+
+    <!-- ============================================================ -->
+    <!-- PRINT BUTTON                                                  -->
+    <!-- ============================================================ -->
+    <div class="no-print flex justify-center gap-4 py-6">
+        <button onclick="window.print()"
+                class="px-7 py-2.5 bg-[#1e40af] text-white rounded-lg hover:bg-[#1e3a8a] transition font-medium text-sm shadow-sm">
+            Print Invoice
+        </button>
+        <button onclick="window.close()"
+                class="px-7 py-2.5 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">
+            Close
+        </button>
+    </div>
+
+</body>
+</html>
