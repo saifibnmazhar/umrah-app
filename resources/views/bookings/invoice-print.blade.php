@@ -26,51 +26,65 @@
 <div class="invoice-container invoice-bg p-4" style="background: #f8fafc;" id="invoiceContent">
 
     {{-- Header --}}
-    <div class="bg-white rounded-lg shadow-sm p-4 mb-5 invoice-card">
+    <div class="bg-white rounded-lg shadow-sm p-5 mb-6 invoice-card">
         <div class="text-center">
             <h1 class="text-lg font-bold text-slate-800">BOOKING INVOICE UMH</h1>
-            <p class="text-xs text-slate-500 mt-1">Phone: +966XXX-XXXXXXX | Location: {{ $booking->office->name ?? 'BMT-Dak' }}</p>
+            <p class="text-xs text-slate-500 mt-1.5">Phone: +966XXX-XXXXXXX</p>
+            <p class="text-xs text-slate-500">{{ $booking->office->name ?? 'BMT-Dak' }}</p>
         </div>
         <div class="text-right mt-2">
-            <span class="text-sm font-bold text-slate-800">Invoice No: {{ $booking->invoice_id ?? '-' }}</span>
+            <span class="text-sm font-bold text-slate-800">Invoice Number : {{ $booking->invoice_id ?? '-' }}</span>
         </div>
     </div>
+
+    @php
+        $fpLocation = $booking->fingerprint_location;
+        if ($fpLocation instanceof \BackedEnum) { $fpLocation = $fpLocation->value; }
+    @endphp
 
     {{-- Customer Information & Invoice Information --}}
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
 
         {{-- Customer Information --}}
         <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
-            <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Customer Information</div>
+            <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Customer Information</div>
             <table class="w-full text-xs border-collapse">
                 <tbody>
-                    @php
-                        $fpLocation = $booking->fingerprint_location;
-                        if ($fpLocation instanceof \BackedEnum) { $fpLocation = $fpLocation->value; }
-                    @endphp
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Booking Date</td>
-                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->booking_date ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Booking Date</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">{{ $booking->booking_date ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Passenger Number (BD)</td>
-                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->customer->iqama_no ?? '-' }}</td>
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Name</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">{{ $booking->customer->name ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Name</td>
-                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->customer->name ?? '-' }}</td>
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Iqama Number</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">{{ $booking->customer->iqama_no ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Address</td>
-                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->customer->address ?? '-' }}</td>
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Phone Number</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">{{ $booking->customer->mobile_no ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Phone Number</td>
-                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->customer->mobile_no ?? '-' }}</td>
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Address (KSA)</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">-</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5">Address (KSA)</td>
-                        <td class="px-3 py-2">-</td>
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Passenger Number (BD)</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">{{ $booking->customer->iqama_no ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Address</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">{{ $booking->customer->address ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Finger Location</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">{{ $fpLocation ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5">Finger Deadline</td>
+                        <td class="px-4 py-2.5">{{ $fingerprintDeadline ?? '-' }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -78,36 +92,28 @@
 
         {{-- Invoice Information --}}
         <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
-            <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Invoice Information</div>
+            <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Invoice Information</div>
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Invoice Number</td>
-                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->invoice_id ?? '-' }}</td>
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Invoice Date</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">{{ $invoiceDate ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Branch</td>
-                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->branch->name ?? '-' }}</td>
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Branch (Booking By)</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">{{ $booking->branch->name ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Office</td>
-                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->office->name ?? '-' }}</td>
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Branch (Operating By)</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">{{ $booking->office->name ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Representative</td>
-                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->user->name ?? '-' }}</td>
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Sale Representative</td>
+                        <td class="px-4 py-2.5 border-b border-slate-100">{{ $booking->user->name ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Offer</td>
-                        <td class="px-3 py-2 border-b border-slate-100">{{ $offer ?? 'NO' }}</td>
-                    </tr>
-                    <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Finger Location</td>
-                        <td class="px-3 py-2 border-b border-slate-100">{{ $fpLocation ?? '-' }}</td>
-                    </tr>
-                    <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5">Finger Deadline</td>
-                        <td class="px-3 py-2">{{ $fingerprintDeadline ?? '-' }}</td>
+                        <td class="px-4 py-2.5 font-semibold text-slate-700 w-2/5">Remarks</td>
+                        <td class="px-4 py-2.5">{{ $booking->remarks ?? '-' }}</td>
                     </tr>
                 </tbody>
             </table>
