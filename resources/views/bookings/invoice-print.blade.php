@@ -238,7 +238,7 @@
 
         {{-- Important Note --}}
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
-            <div class="bg-[#00A651] text-white text-center px-3 py-1 font-bold text-xs uppercase tracking-wider">Important Note / Conditions</div>
+            <div class="bg-[#F4B183] text-slate-800 text-center px-3 py-1 font-bold text-xs uppercase tracking-wider">Important Note / Conditions</div>
             <div class="p-2 text-xs text-slate-400 italic">
                 <p>N/A</p>
             </div>
