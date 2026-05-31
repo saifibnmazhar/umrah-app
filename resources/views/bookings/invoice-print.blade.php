@@ -122,52 +122,52 @@
 
     {{-- Passenger & Flight Details --}}
     <div class="bg-white rounded-lg shadow-sm invoice-card mb-5 overflow-hidden">
-        <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Passenger & Flight Details</div>
+        <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Passenger & Flight Details</div>
         <div class="overflow-x-auto">
             <table class="w-full text-[10px] border-collapse whitespace-nowrap">
                 <thead>
                     <tr class="bg-[#1e40af] text-white">
-                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Pax No.</th>
-                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Name of passengers</th>
-                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Gender</th>
-                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Passport number</th>
-                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Package</th>
-                        <th class="px-1.5 py-1.5 text-center font-semibold border-r border-[#2563eb]">Duration (Days)</th>
-                        <th class="px-1.5 py-1.5 text-right font-semibold border-r border-[#2563eb]">Package Value (BDT)</th>
-                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Trip</th>
-                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Airline</th>
-                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Route</th>
-                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Est.Flight Date</th>
-                        <th class="px-1.5 py-1.5 text-center font-semibold border-r border-[#2563eb]">Baggage(KG)</th>
-                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Cabin</th>
-                        <th class="px-1.5 py-1.5 text-center font-semibold border-r border-[#2563eb]">Meal</th>
-                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Flight Type</th>
-                        <th class="px-1.5 py-1.5 text-left font-semibold">Remarks</th>
+                        <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Pax No.</th>
+                        <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Name of passengers</th>
+                        <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Gender</th>
+                        <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Passport number</th>
+                        <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Package</th>
+                        <th class="px-1.5 py-2 text-center font-semibold border-r border-[#2563eb]">Duration (Days)</th>
+                        <th class="px-1.5 py-2 text-right font-semibold border-r border-[#2563eb]">Package Value (BDT)</th>
+                        <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Trip</th>
+                        <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Airline</th>
+                        <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Route</th>
+                        <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Est.Flight Date</th>
+                        <th class="px-1.5 py-2 text-center font-semibold border-r border-[#2563eb]">Baggage(KG)</th>
+                        <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Cabin</th>
+                        <th class="px-1.5 py-2 text-center font-semibold border-r border-[#2563eb]">Meal</th>
+                        <th class="px-1.5 py-2 text-left font-semibold border-r border-[#2563eb]">Flight Type</th>
+                        <th class="px-1.5 py-2 text-left font-semibold">Remarks</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($booking->passengers as $index => $passenger)
                     <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-[#f1f5f9]' }}">
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $index + 1 }}</td>
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</td>
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->gender ?? '-' }}</td>
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->passport_no ?? '-' }}</td>
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $booking->package->package_name ?? 'Package' }}</td>
-                        <td class="px-1.5 py-1 text-center border-b border-slate-100">{{ $passenger->stay_duration ?? '-' }}</td>
-                        <td class="px-1.5 py-1 text-right border-b border-slate-100">{{ number_format($passenger->package_value ?? 0, 2) }}</td>
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->trip_display }}</td>
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->route_display }}</td>
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->flight_date_display }}</td>
-                        <td class="px-1.5 py-1 text-center border-b border-slate-100 whitespace-pre-line">{{ $passenger->baggage_display }}</td>
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-' }}</td>
-                        <td class="px-1.5 py-1 text-center border-b border-slate-100">{{ $passenger->meal_display }}</td>
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->flight_type_display }}</td>
-                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $booking->remarks ?? '-' }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $index + 1 }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $passenger->gender ?? '-' }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $passenger->passport_no ?? '-' }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $booking->package?->package_name ?? 'Package' }}</td>
+                        <td class="px-1.5 py-1.5 text-center border-b border-slate-100">{{ $passenger->stay_duration ?? '-' }}</td>
+                        <td class="px-1.5 py-1.5 text-right border-b border-slate-100">{{ number_format($passenger->package_value ?? 0, 2) }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $passenger->trip_display }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $passenger->route_display }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $passenger->flight_date_display }}</td>
+                        <td class="px-1.5 py-1.5 text-center border-b border-slate-100 whitespace-pre-line">{{ $passenger->baggage_display }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-' }}</td>
+                        <td class="px-1.5 py-1.5 text-center border-b border-slate-100">{{ $passenger->meal_display }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $passenger->flight_type_display }}</td>
+                        <td class="px-1.5 py-1.5 border-b border-slate-100">{{ $booking->remarks ?? '-' }}</td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="16" class="px-3 py-3 text-center text-slate-500">No passenger data</td>
+                        <td colspan="16" class="px-3 py-4 text-center text-slate-500">No passenger data</td>
                     </tr>
                     @endforelse
                 </tbody>
