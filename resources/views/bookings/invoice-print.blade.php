@@ -47,7 +47,7 @@
 
         {{-- Customer Information --}}
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
-            <div class="bg-[#1e40af] text-white px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Customer Information</div>
+            <div class="bg-[#00A651] text-white text-center px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Customer Information</div>
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr class="even:bg-[#f1f5f9]">
@@ -92,7 +92,7 @@
 
         {{-- Invoice Information --}}
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
-            <div class="bg-[#1e40af] text-white px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Invoice Information</div>
+            <div class="bg-[#00A651] text-white text-center px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Invoice Information</div>
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr class="even:bg-[#f1f5f9]">
@@ -122,11 +122,11 @@
 
     {{-- Passenger & Flight Details --}}
     <div class="bg-white border border-slate-300 invoice-card mb-4 overflow-hidden">
-        <div class="bg-[#1e40af] text-white px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Passenger & Flight Details</div>
+        <div class="bg-[#00A651] text-white text-center px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Passenger & Flight Details</div>
         <div class="overflow-x-auto">
             <table class="w-full text-[10px] border-collapse whitespace-nowrap">
                 <thead>
-                    <tr class="bg-[#1e40af] text-white">
+                    <tr class="bg-[#00A651] text-white">
                         <th class="px-1 py-1.5 text-left font-semibold border-r border-[#2563eb]">Pax No.</th>
                         <th class="px-1 py-1.5 text-left font-semibold border-r border-[#2563eb]">Name of passengers</th>
                         <th class="px-1 py-1.5 text-left font-semibold border-r border-[#2563eb]">Gender</th>
@@ -180,7 +180,7 @@
 
         {{-- Package Calculation --}}
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
-            <div class="bg-[#1e40af] text-white px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Package Calculation</div>
+            <div class="bg-[#00A651] text-white text-center px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Package Calculation</div>
             <div class="p-3 text-xs">
                 <div class="flex justify-between py-1.5 border-b border-slate-100">
                     <span class="font-semibold text-slate-700">Sub Total:</span>
@@ -207,7 +207,7 @@
 
         {{-- Payment Summary --}}
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
-            <div class="bg-[#1e40af] text-white px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Payment Summary</div>
+            <div class="bg-[#00A651] text-white text-center px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Payment Summary</div>
             <div class="p-3 text-xs">
                 <div class="flex justify-between py-1.5 border-b border-slate-100">
                     <span class="font-semibold text-slate-700">Total Amount:</span>
@@ -234,7 +234,7 @@
 
         {{-- Important Note --}}
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
-            <div class="bg-[#1e40af] text-white px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Important Note / Conditions</div>
+            <div class="bg-[#00A651] text-white text-center px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Important Note / Conditions</div>
             <div class="p-3 text-xs text-slate-400 italic">
                 <p>N/A</p>
             </div>
