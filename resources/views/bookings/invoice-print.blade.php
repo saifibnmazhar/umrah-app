@@ -12,7 +12,7 @@
         .no-print { display: none !important; }
         body { margin: 0; padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .invoice-container { max-width: 100%; }
-        .invoice-card { box-shadow: none !important; border: 1px solid #e2e8f0 !important; page-break-inside: avoid; }
+        .invoice-card { box-shadow: none !important; border: 1px solid #cbd5e1 !important; page-break-inside: avoid; }
         .invoice-bg { background: white !important; }
         .text-\[10px\] { font-size: 10px !important; }
     }
@@ -26,14 +26,14 @@
 <div class="invoice-container invoice-bg p-4" style="background: #f8fafc;" id="invoiceContent">
 
     {{-- Header --}}
-    <div class="bg-white rounded-lg shadow-sm p-5 mb-6 invoice-card">
+    <div class="bg-white border border-slate-300 p-5 mb-6 invoice-card">
         <div class="text-center">
             <h1 class="text-lg font-bold text-slate-800">BOOKING INVOICE UMH</h1>
-            <p class="text-xs text-slate-500 mt-1.5">Phone: +966XXX-XXXXXXX</p>
-            <p class="text-xs text-slate-500">{{ $booking->office->name ?? 'BMT-Dak' }}</p>
-        </div>
-        <div class="text-right mt-2">
-            <span class="text-sm font-bold text-slate-800">Invoice Number : {{ $booking->invoice_id ?? '-' }}</span>
+            <div class="flex justify-center gap-6 text-xs text-slate-500 mt-1.5">
+                <span>Phone: +966XXX-XXXXXXX</span>
+                <span>{{ $booking->office->name ?? 'BMT-Dak' }}</span>
+                <span class="font-semibold text-slate-700">Invoice No: {{ $booking->invoice_id ?? '-' }}</span>
+            </div>
         </div>
     </div>
 
@@ -46,7 +46,7 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
 
         {{-- Customer Information --}}
-        <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+        <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
             <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Customer Information</div>
             <table class="w-full text-xs border-collapse">
                 <tbody>
@@ -91,7 +91,7 @@
         </div>
 
         {{-- Invoice Information --}}
-        <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+        <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
             <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Invoice Information</div>
             <table class="w-full text-xs border-collapse">
                 <tbody>
@@ -121,7 +121,7 @@
     </div>
 
     {{-- Passenger & Flight Details --}}
-    <div class="bg-white rounded-lg shadow-sm invoice-card mb-6 overflow-hidden">
+    <div class="bg-white border border-slate-300 invoice-card mb-6 overflow-hidden">
         <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Passenger & Flight Details</div>
         <div class="overflow-x-auto">
             <table class="w-full text-[10px] border-collapse whitespace-nowrap">
@@ -179,7 +179,7 @@
     <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.5fr] gap-5 mb-6">
 
         {{-- Package Calculation --}}
-        <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+        <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
             <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Package Calculation</div>
             <div class="p-4 text-xs">
                 <div class="flex justify-between py-2 border-b border-slate-100">
@@ -206,7 +206,7 @@
         </div>
 
         {{-- Payment Summary --}}
-        <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+        <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
             <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Payment Summary</div>
             <div class="p-4 text-xs">
                 <div class="flex justify-between py-2 border-b border-slate-100">
@@ -233,7 +233,7 @@
         </div>
 
         {{-- Important Note --}}
-        <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+        <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
             <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Important Note / Conditions</div>
             <div class="p-4 text-xs text-slate-400 italic">
                 <p>N/A</p>
