@@ -176,29 +176,29 @@
     </div>
 
     {{-- Package Calculation, Payment Summary, Important Note --}}
-    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+    <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.5fr] gap-5 mb-6">
 
         {{-- Package Calculation --}}
         <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
-            <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Package Calculation</div>
-            <div class="p-3 text-xs">
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+            <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Package Calculation</div>
+            <div class="p-4 text-xs">
+                <div class="flex justify-between py-2 border-b border-slate-100">
                     <span class="font-semibold text-slate-700">Sub Total:</span>
                     <span>{{ number_format($subTotal ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-2 border-b border-slate-100">
                     <span class="font-semibold text-slate-700">Total Pax:</span>
                     <span>{{ $totalPackages ?? 0 }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-2 border-b border-slate-100">
                     <span class="font-semibold text-slate-700">Fingerprint Charge:</span>
                     <span>{{ number_format($fingerprintCharge ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-2 border-b border-slate-100">
                     <span class="font-semibold text-slate-700">Discount:</span>
                     <span>{{ number_format($discount ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-2 mt-1">
+                <div class="flex justify-between py-2.5 mt-1">
                     <span class="font-bold text-slate-800">Grand Total (BDT):</span>
                     <span class="font-bold text-slate-800">{{ number_format($grandTotal ?? 0, 0) }}</span>
                 </div>
@@ -207,25 +207,25 @@
 
         {{-- Payment Summary --}}
         <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
-            <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Payment Summary</div>
-            <div class="p-3 text-xs">
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+            <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Payment Summary</div>
+            <div class="p-4 text-xs">
+                <div class="flex justify-between py-2 border-b border-slate-100">
                     <span class="font-semibold text-slate-700">Total Amount:</span>
                     <span class="font-bold">{{ number_format($grandTotal ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-2 border-b border-slate-100">
                     <span class="font-semibold text-slate-700">Previous Paid Amount:</span>
                     <span>{{ number_format(max(0, ($totalPaid ?? 0) - ($currentPaid ?? 0)), 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-2 border-b border-slate-100">
                     <span class="font-semibold text-slate-700">Current Paid Amount:</span>
                     <span>{{ number_format($currentPaid ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-2 border-b border-slate-100">
                     <span class="font-semibold text-slate-700">Total Paid Amount:</span>
                     <span>{{ number_format($totalPaid ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-2 mt-1">
+                <div class="flex justify-between py-2.5 mt-1">
                     <span class="font-bold text-red-700">Due Amount:</span>
                     <span class="font-bold text-red-700">{{ number_format($dueAmount ?? 0, 0) }}</span>
                 </div>
@@ -234,8 +234,8 @@
 
         {{-- Important Note --}}
         <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
-            <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Important Note / Conditions</div>
-            <div class="p-3 text-xs text-slate-500">
+            <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Important Note / Conditions</div>
+            <div class="p-4 text-xs text-slate-400 italic">
                 <p>N/A</p>
             </div>
         </div>
