@@ -51,32 +51,32 @@
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%] border border-slate-300">Booking Date :</td>
-                        <td class="px-2 py-1 border border-slate-300 w-[20%]">{{ $booking->booking_date ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%] border border-slate-300">Passenger Number (BD) :</td>
-                        <td class="px-2 py-1 border border-slate-300 w-[20%]">{{ $booking->customer->iqama_no ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Booking Date :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $booking->booking_date ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Passenger Number (BD) :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $booking->customer->iqama_no ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%] border border-slate-300">Customer Name :</td>
-                        <td class="px-2 py-1 border border-slate-300 w-[20%]">{{ $booking->customer->name ?? '-' }}</td>
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%] border border-slate-300">Customer Address :</td>
-                        <td class="px-2 py-1 border border-slate-300 w-[20%]">{{ $booking->customer->address ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Customer Name :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $booking->customer->name ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Customer Address :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $booking->customer->address ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%] border border-slate-300">Iqama Number :</td>
-                        <td class="px-2 py-1 border border-slate-300 w-[20%]">{{ $booking->customer->iqama_no ?? '-' }}</td>
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%] border border-slate-300">Finger Location :</td>
-                        <td class="px-2 py-1 border border-slate-300 w-[20%]">{{ $fpLocation ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Iqama Number :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $booking->customer->iqama_no ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Finger Location :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $fpLocation ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%] border border-slate-300">Phone Number :</td>
-                        <td class="px-2 py-1 border border-slate-300 w-[20%]">{{ $booking->customer->mobile_no ?? '-' }}</td>
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%] border border-slate-300">Finger Deadline :</td>
-                        <td class="px-2 py-1 border border-slate-300 w-[20%]">{{ $fingerprintDeadline ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Phone Number :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $booking->customer->mobile_no ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Finger Deadline :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $fingerprintDeadline ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%] border border-slate-300">Address (KSA) :</td>
-                        <td class="px-2 py-1 border border-slate-300" colspan="3">-</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Address (KSA) :</td>
+                        <td class="px-2 py-1 " colspan="3">-</td>
                     </tr>
                 </tbody>
             </table>
@@ -88,24 +88,24 @@
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5 border border-slate-300">Invoice Date :</td>
-                        <td class="px-2 py-1 border border-slate-300">{{ $invoiceDate ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Invoice Date :</td>
+                        <td class="px-2 py-1">{{ $invoiceDate ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5 border border-slate-300">Branch (Booking By) :</td>
-                        <td class="px-2 py-1 border border-slate-300">{{ $booking->branch->name ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Branch (Booking By) :</td>
+                        <td class="px-2 py-1">{{ $booking->branch->name ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5 border border-slate-300">Branch (Operating By) :</td>
-                        <td class="px-2 py-1 border border-slate-300">{{ $booking->office->name ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Branch (Operating By) :</td>
+                        <td class="px-2 py-1">{{ $booking->office->name ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5 border border-slate-300">Sale Representative :</td>
-                        <td class="px-2 py-1 border border-slate-300">{{ $booking->user->name ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Sale Representative :</td>
+                        <td class="px-2 py-1">{{ $booking->user->name ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5 border border-slate-300">Remarks :</td>
-                        <td class="px-2 py-1 border border-slate-300">{{ $booking->remarks ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Remarks :</td>
+                        <td class="px-2 py-1">{{ $booking->remarks ?? '-' }}</td>
                     </tr>
                 </tbody>
             </table>
