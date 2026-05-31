@@ -26,7 +26,7 @@
 <div class="invoice-container invoice-bg p-1" style="background: #f8fafc;" id="invoiceContent">
 
     {{-- Header --}}
-    <div class="bg-white border border-slate-300 p-2 mb-3 invoice-card">
+    <div class="bg-white border border-slate-300 p-2 mb-2 invoice-card">
         <div class="flex justify-end mb-0">
             <span class="text-xs font-semibold text-slate-700">Invoice No: {{ $booking->invoice_id ?? '-' }}</span>
         </div>
@@ -43,7 +43,7 @@
     @endphp
 
     {{-- Customer Information & Invoice Information --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-3">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
 
         {{-- Customer Information --}}
         <div class="bg-white border border-slate-500 invoice-card overflow-hidden">
@@ -121,7 +121,7 @@
     </div>
 
     {{-- Passenger & Flight Details --}}
-    <div class="bg-white border border-slate-300 invoice-card mb-3 overflow-hidden">
+    <div class="bg-white border border-slate-300 invoice-card mb-2 overflow-hidden">
         <div class="bg-[#00A651] text-white text-center px-3 py-1 font-bold text-xs uppercase tracking-wider">Passenger & Flight Details</div>
         <div class="overflow-x-auto">
             <table class="w-full text-[10px] border-collapse whitespace-nowrap">
@@ -176,7 +176,7 @@
     </div>
 
     {{-- Package Calculation, Payment Summary, Important Note --}}
-    <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.5fr] gap-3 mb-3">
+    <div class="grid grid-cols-1 md:grid-cols-[1fr_1fr_1.5fr] gap-3 mb-2">
 
         {{-- Package Calculation --}}
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
@@ -246,18 +246,18 @@
     </div>
 
     {{-- Signatures --}}
-    <div class="flex justify-between mt-4 px-3 text-xs" style="page-break-inside: avoid;">
+    <div class="flex justify-between mt-3 px-3 text-xs" style="page-break-inside: avoid;">
         <div class="text-center">
-            <p class="font-semibold text-slate-700 mb-3">Representative Signature</p>
+            <p class="font-semibold text-slate-700 mb-2">Representative Signature</p>
             <p class="border-t border-slate-400 pt-1.5 w-52">________________________</p>
         </div>
         <div class="text-center">
-            <p class="font-semibold text-slate-700 mb-3">Customer Signature</p>
+            <p class="font-semibold text-slate-700 mb-2">Customer Signature</p>
             <p class="border-t border-slate-400 pt-1.5 w-52">________________________</p>
         </div>
     </div>
 
-    <p class="text-center text-[9px] text-slate-400 mt-4 border-t border-slate-200 pt-2">
+    <p class="text-center text-[9px] text-slate-400 mt-3 border-t border-slate-200 pt-2">
         This is a computer-generated invoice. No signature is required.
     </p>
 </div>
