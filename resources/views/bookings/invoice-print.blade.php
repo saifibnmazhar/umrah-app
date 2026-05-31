@@ -210,28 +210,30 @@
         {{-- Payment Summary --}}
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
             <div class="bg-[#00A651] text-white text-center px-3 py-1 font-bold text-xs uppercase tracking-wider">Payment Summary</div>
-            <div class="p-2 text-xs">
-                <div class="flex justify-between py-1 border border-slate-300">
-                    <span class="font-semibold text-slate-700">Total Amount:</span>
-                    <span class="font-bold">{{ number_format($grandTotal ?? 0, 0) }}</span>
-                </div>
-                <div class="flex justify-between py-1 border border-slate-300">
-                    <span class="font-semibold text-slate-700">Previous Paid Amount:</span>
-                    <span>{{ number_format(max(0, ($totalPaid ?? 0) - ($currentPaid ?? 0)), 0) }}</span>
-                </div>
-                <div class="flex justify-between py-1 border border-slate-300">
-                    <span class="font-semibold text-slate-700">Current Paid Amount:</span>
-                    <span>{{ number_format($currentPaid ?? 0, 0) }}</span>
-                </div>
-                <div class="flex justify-between py-1 border border-slate-300">
-                    <span class="font-semibold text-slate-700">Total Paid Amount:</span>
-                    <span>{{ number_format($totalPaid ?? 0, 0) }}</span>
-                </div>
-                <div class="flex justify-between py-1.5 mt-0">
-                    <span class="font-bold text-red-700">Due Amount:</span>
-                    <span class="font-bold text-red-700">{{ number_format($dueAmount ?? 0, 0) }}</span>
-                </div>
-            </div>
+            <table class="w-full text-xs border-collapse">
+                <tbody>
+                    <tr>
+                        <td class="px-2 py-1 font-semibold text-slate-700 border border-slate-300">Total Amount:</td>
+                        <td class="px-2 py-1 text-right font-bold border border-slate-300">{{ number_format($grandTotal ?? 0, 0) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-2 py-1 font-semibold text-slate-700 border border-slate-300">Previous Paid Amount:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, ($totalPaid ?? 0) - ($currentPaid ?? 0)), 0) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-2 py-1 font-semibold text-slate-700 border border-slate-300">Current Paid Amount:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($currentPaid ?? 0, 0) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-2 py-1 font-semibold text-slate-700 border border-slate-300">Total Paid Amount:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($totalPaid ?? 0, 0) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-2 py-1.5 font-bold text-red-700 border border-red-400">Due Amount:</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-red-700 border border-red-400">{{ number_format($dueAmount ?? 0, 0) }}</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         {{-- Important Note --}}
