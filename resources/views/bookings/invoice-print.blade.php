@@ -46,44 +46,44 @@
     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
 
         {{-- Customer Information --}}
-        <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
+        <div class="bg-white border border-slate-500 invoice-card overflow-hidden">
             <div class="bg-[#00A651] text-white text-center px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Customer Information</div>
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Booking Date</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">{{ $booking->booking_date ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Booking Date :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">{{ $booking->booking_date ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Name</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">{{ $booking->customer->name ?? '-' }}</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Customer Name :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">{{ $booking->customer->name ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Iqama Number</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">{{ $booking->customer->iqama_no ?? '-' }}</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Iqama Number :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">{{ $booking->customer->iqama_no ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Phone Number</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">{{ $booking->customer->mobile_no ?? '-' }}</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Phone Number :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">{{ $booking->customer->mobile_no ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Address (KSA)</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">-</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Address (KSA) :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">-</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Passenger Number (BD)</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">{{ $booking->customer->iqama_no ?? '-' }}</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Passenger Number (BD) :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">{{ $booking->customer->iqama_no ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Address</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">{{ $booking->customer->address ?? '-' }}</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Customer Address :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">{{ $booking->customer->address ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Finger Location</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">{{ $fpLocation ?? '-' }}</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Finger Location :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">{{ $fpLocation ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5">Finger Deadline</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5">Finger Deadline :</td>
                         <td class="px-3 py-1.5">{{ $fingerprintDeadline ?? '-' }}</td>
                     </tr>
                 </tbody>
@@ -91,28 +91,28 @@
         </div>
 
         {{-- Invoice Information --}}
-        <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
+        <div class="bg-white border border-slate-500 invoice-card overflow-hidden">
             <div class="bg-[#00A651] text-white text-center px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Invoice Information</div>
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Invoice Date</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">{{ $invoiceDate ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Invoice Date :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">{{ $invoiceDate ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Branch (Booking By)</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">{{ $booking->branch->name ?? '-' }}</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Branch (Booking By) :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">{{ $booking->branch->name ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Branch (Operating By)</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">{{ $booking->office->name ?? '-' }}</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Branch (Operating By) :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">{{ $booking->office->name ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Sale Representative</td>
-                        <td class="px-3 py-1.5 border-b border-slate-100">{{ $booking->user->name ?? '-' }}</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5 border-b border-slate-300">Sale Representative :</td>
+                        <td class="px-3 py-1.5 border-b border-slate-300">{{ $booking->user->name ?? '-' }}</td>
                     </tr>
                     <tr class="even:bg-[#f1f5f9]">
-                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5">Remarks</td>
+                        <td class="px-3 py-1.5 font-semibold text-slate-700 w-2/5">Remarks :</td>
                         <td class="px-3 py-1.5">{{ $booking->remarks ?? '-' }}</td>
                     </tr>
                 </tbody>
@@ -148,22 +148,22 @@
                 <tbody>
                     @forelse($booking->passengers as $index => $passenger)
                     <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-[#f1f5f9]' }}">
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $index + 1 }}</td>
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</td>
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $passenger->gender ?? '-' }}</td>
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $passenger->passport_no ?? '-' }}</td>
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $booking->package?->package_name ?? 'Package' }}</td>
-                        <td class="px-1 py-1 text-center border-b border-slate-100">{{ $passenger->stay_duration ?? '-' }}</td>
-                        <td class="px-1 py-1 text-right border-b border-slate-100">{{ number_format($passenger->package_value ?? 0, 2) }}</td>
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $passenger->trip_display }}</td>
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $passenger->route_display }}</td>
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $passenger->flight_date_display }}</td>
-                        <td class="px-1 py-1 text-center border-b border-slate-100 whitespace-pre-line">{{ $passenger->baggage_display }}</td>
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-' }}</td>
-                        <td class="px-1 py-1 text-center border-b border-slate-100">{{ $passenger->meal_display }}</td>
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $passenger->flight_type_display }}</td>
-                        <td class="px-1 py-1 border-b border-slate-100">{{ $booking->remarks ?? '-' }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $index + 1 }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $passenger->gender ?? '-' }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $passenger->passport_no ?? '-' }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $booking->package?->package_name ?? 'Package' }}</td>
+                        <td class="px-1 py-1 text-center border-b border-slate-300">{{ $passenger->stay_duration ?? '-' }}</td>
+                        <td class="px-1 py-1 text-right border-b border-slate-300">{{ number_format($passenger->package_value ?? 0, 2) }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $passenger->trip_display }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $passenger->route_display }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $passenger->flight_date_display }}</td>
+                        <td class="px-1 py-1 text-center border-b border-slate-300 whitespace-pre-line">{{ $passenger->baggage_display }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-' }}</td>
+                        <td class="px-1 py-1 text-center border-b border-slate-300">{{ $passenger->meal_display }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $passenger->flight_type_display }}</td>
+                        <td class="px-1 py-1 border-b border-slate-300">{{ $booking->remarks ?? '-' }}</td>
                     </tr>
                     @empty
                     <tr>
@@ -182,19 +182,19 @@
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
             <div class="bg-[#00A651] text-white text-center px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Package Calculation</div>
             <div class="p-3 text-xs">
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-1.5 border-b border-slate-300">
                     <span class="font-semibold text-slate-700">Sub Total:</span>
                     <span>{{ number_format($subTotal ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-1.5 border-b border-slate-300">
                     <span class="font-semibold text-slate-700">Total Pax:</span>
                     <span>{{ $totalPackages ?? 0 }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-1.5 border-b border-slate-300">
                     <span class="font-semibold text-slate-700">Fingerprint Charge:</span>
                     <span>{{ number_format($fingerprintCharge ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-1.5 border-b border-slate-300">
                     <span class="font-semibold text-slate-700">Discount:</span>
                     <span>{{ number_format($discount ?? 0, 0) }}</span>
                 </div>
@@ -209,19 +209,19 @@
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
             <div class="bg-[#00A651] text-white text-center px-3 py-1.5 font-bold text-xs uppercase tracking-wider">Payment Summary</div>
             <div class="p-3 text-xs">
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-1.5 border-b border-slate-300">
                     <span class="font-semibold text-slate-700">Total Amount:</span>
                     <span class="font-bold">{{ number_format($grandTotal ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-1.5 border-b border-slate-300">
                     <span class="font-semibold text-slate-700">Previous Paid Amount:</span>
                     <span>{{ number_format(max(0, ($totalPaid ?? 0) - ($currentPaid ?? 0)), 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-1.5 border-b border-slate-300">
                     <span class="font-semibold text-slate-700">Current Paid Amount:</span>
                     <span>{{ number_format($currentPaid ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                <div class="flex justify-between py-1.5 border-b border-slate-300">
                     <span class="font-semibold text-slate-700">Total Paid Amount:</span>
                     <span>{{ number_format($totalPaid ?? 0, 0) }}</span>
                 </div>
