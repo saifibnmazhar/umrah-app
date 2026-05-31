@@ -38,7 +38,7 @@
                 <p class="font-semibold"><strong>Customer Name:</strong> {{ $booking->customer->name ?? '-' }}</p>
                 <p class="font-semibold"><strong>Iqama No:</strong> {{ $booking->customer->iqama_no ?? '-' }}</p>
                 <p class="font-semibold"><strong>Phone Number:</strong> {{ $booking->customer->mobile_no ?? '-' }}</p>
-                <p class="font-semibold"><strong>Address:</strong> {{ $booking->customer->address ?? '-' }}</p>
+                <p class="font-semibold"><strong>Address (KSA):</strong> {{ $booking->customer->address ?? '-' }}</p>
             </div>
             <div class="w-1/2 p-3">
                 <p class="font-semibold"><strong>Invoice Date:</strong> {{ $invoiceDate ?? ($booking->created_at ?? '-') }}</p>

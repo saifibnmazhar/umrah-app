@@ -363,7 +363,7 @@
                         <input type="text" x-model="newCustomer.mobile_no" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Address</label>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Address (KSA)</label>
                         <input type="text" x-model="newCustomer.address" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>

@@ -28,7 +28,7 @@
                     <h3 class="text-sm font-semibold text-gray-500 uppercase mb-2">Bill To</h3>
                     <p class="font-medium text-gray-900">{{ $customerName ?? 'Customer Name' }}</p>
                     <p class="text-sm text-gray-600">{{ $customerEmail ?? 'email@example.com' }}</p>
-                    <p class="text-sm text-gray-600">{{ $customerAddress ?? 'Customer Address' }}</p>
+                    <p class="text-sm text-gray-600">{{ $customerAddress ?? 'Customer Address (KSA)' }}</p>
                 </div>
                 <div class="text-right">
                     <p class="text-sm text-gray-500">Invoice Date</p>
