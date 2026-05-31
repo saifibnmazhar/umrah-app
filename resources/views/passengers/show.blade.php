@@ -111,7 +111,7 @@
                             </div>
                         </div>
                         <div>
-                            <span class="text-xs text-slate-400">Address</span>
+                            <span class="text-xs text-slate-400">Address (BD)</span>
                             <p class="text-slate-800">{{ $passenger->address ?? '-' }}</p>
                         </div>
                     </div>
