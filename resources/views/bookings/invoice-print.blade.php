@@ -181,28 +181,30 @@
         {{-- Package Calculation --}}
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
             <div class="bg-[#00A651] text-white text-center px-3 py-1 font-bold text-xs uppercase tracking-wider">Package Calculation</div>
-            <div class="p-2 text-xs">
-                <div class="flex justify-between py-1 border border-slate-300">
-                    <span class="font-semibold text-slate-700">Sub Total:</span>
-                    <span>{{ number_format($subTotal ?? 0, 0) }}</span>
-                </div>
-                <div class="flex justify-between py-1 border border-slate-300">
-                    <span class="font-semibold text-slate-700">Total Pax:</span>
-                    <span>{{ $totalPackages ?? 0 }}</span>
-                </div>
-                <div class="flex justify-between py-1 border border-slate-300">
-                    <span class="font-semibold text-slate-700">Fingerprint Charge:</span>
-                    <span>{{ number_format($fingerprintCharge ?? 0, 0) }}</span>
-                </div>
-                <div class="flex justify-between py-1 border border-slate-300">
-                    <span class="font-semibold text-slate-700">Discount:</span>
-                    <span>{{ number_format($discount ?? 0, 0) }}</span>
-                </div>
-                <div class="flex justify-between py-1.5 mt-0">
-                    <span class="font-bold text-slate-800">Grand Total (BDT):</span>
-                    <span class="font-bold text-slate-800">{{ number_format($grandTotal ?? 0, 0) }}</span>
-                </div>
-            </div>
+            <table class="w-full text-xs border-collapse">
+                <tbody>
+                    <tr>
+                        <td class="px-2 py-1 font-semibold text-slate-700 border border-slate-300">Sub Total:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($subTotal ?? 0, 0) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-2 py-1 font-semibold text-slate-700 border border-slate-300">Total Pax:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ $totalPackages ?? 0 }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-2 py-1 font-semibold text-slate-700 border border-slate-300">Fingerprint Charge:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($fingerprintCharge ?? 0, 0) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-2 py-1 font-semibold text-slate-700 border border-slate-300">Discount:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($discount ?? 0, 0) }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-2 py-1.5 font-bold text-slate-800 border border-slate-600">Grand Total (BDT):</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-slate-800 border border-slate-600">{{ number_format($grandTotal ?? 0, 0) }}</td>
+                    </tr>
+                </tbody>
+            </table>
         </div>
 
         {{-- Payment Summary --}}
