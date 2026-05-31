@@ -10,231 +10,248 @@
     }
     @media print {
         .no-print { display: none !important; }
-        body { margin: 0; padding: 0; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-        .invoice-container {
-            width: 100%;
-            max-width: 11in;
-            margin: 0 auto;
-            font-size: 10px;
-        }
+        body { margin: 0; padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        .invoice-container { max-width: 100%; }
+        .invoice-card { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+        .invoice-bg { background: white !important; }
+        .text-\[10px\] { font-size: 10px !important; }
     }
     .invoice-container {
-        width: 100%;
-        max-width: 11in;
+        max-width: 1200px;
         margin: 0 auto;
         font-size: 10px;
     }
 </style>
 
-<div class="invoice-container bg-white p-4" id="invoiceContent">
-    <!-- Header -->
-    <div class="border-2 border-slate-800 mb-3">
-        <div class="bg-yellow-300 px-3 py-2 border-b-2 border-slate-800">
-            <h2 class="text-lg font-bold text-slate-800 text-center">BOOKING INVOICE UMH</h2>
+<div class="invoice-container invoice-bg p-4" style="background: #f8fafc;" id="invoiceContent">
+
+    {{-- Header --}}
+    <div class="bg-white rounded-lg shadow-sm p-4 mb-5 invoice-card">
+        <div class="text-center">
+            <h1 class="text-lg font-bold text-slate-800">BOOKING INVOICE UMH</h1>
+            <p class="text-xs text-slate-500 mt-1">Phone: +966XXX-XXXXXXX | Location: {{ $booking->office->name ?? 'BMT-Dak' }}</p>
         </div>
-        <div class="flex">
-            <div class="w-1/2 p-3 border-r-2 border-slate-800">
-                <p class="font-semibold"><strong>Booking Date:</strong> {{ $booking->booking_date ?? $booking->created_at ?? '-' }}</p>
-                <p class="font-semibold"><strong>Customer Name:</strong> {{ $booking->customer->name ?? '-' }}</p>
-                <p class="font-semibold"><strong>Iqama No:</strong> {{ $booking->customer->iqama_no ?? '-' }}</p>
-                <p class="font-semibold"><strong>Phone Number:</strong> {{ $booking->customer->mobile_no ?? '-' }}</p>
-                <p class="font-semibold"><strong>Address:</strong> {{ $booking->customer->address ?? '-' }}</p>
-            </div>
-            <div class="w-1/2 p-3">
-                <p class="font-semibold"><strong>Invoice Date:</strong> {{ $invoiceDate ?? ($booking->created_at ?? '-') }}</p>
-                <p class="font-semibold"><strong>Invoice Number:</strong> {{ $booking->invoice_id ?? '-' }}</p>
-                <p class="font-semibold"><strong>Branch:</strong> {{ $booking->branch->name ?? 'RUH' }}</p>
-                <p class="font-semibold"><strong>Office:</strong> {{ $booking->office->name ?? 'RUH' }}</p>
-                <p class="font-semibold"><strong>Representative:</strong> {{ $booking->user->name ?? '-' }}</p>
-                <p class="font-semibold"><strong>Offer:</strong> {{ $offer ?? 'NO' }}</p>
-                <p class="font-semibold"><strong>Finger Location:</strong> {{ $booking->fingerprint_location ?? '-' }}</p>
-                <p class="font-semibold"><strong>Finger Deadline:</strong> <span class="bg-red-600 text-white px-2 py-0.5">{{ $fingerprintDeadline ?? '-' }}</span></p>
-            </div>
+        <div class="text-right mt-2">
+            <span class="text-sm font-bold text-slate-800">Invoice No: {{ $booking->invoice_id ?? '-' }}</span>
         </div>
     </div>
 
-    <!-- Passenger & Package Details + Package Calculation -->
-    <div class="flex mb-3">
-        <!-- Passenger & Package Details Table -->
-        <div class="w-[65%] border-2 border-slate-800 mr-2">
-            <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
-                <h3 class="font-bold text-slate-800">PASSENGER & PACKAGE DETAILS</h3>
-            </div>
-            <table class="w-full text-sm border-collapse">
-                <thead class="bg-yellow-200">
-                    <tr>
-                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Pax No</th>
-                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Name of Passengers</th>
-                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Gender</th>
-                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Passport Number</th>
-                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Package</th>
-                        <th class="border border-slate-300 px-1 py-1 text-left text-xs">Duration</th>
-                        <th class="border border-slate-300 px-1 py-1 text-right text-xs">Package Value</th>
+    {{-- Customer Information & Invoice Information --}}
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+
+        {{-- Customer Information --}}
+        <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+            <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Customer Information</div>
+            <table class="w-full text-xs border-collapse">
+                <tbody>
+                    @php
+                        $fpLocation = $booking->fingerprint_location;
+                        if ($fpLocation instanceof \BackedEnum) { $fpLocation = $fpLocation->value; }
+                    @endphp
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Booking Date</td>
+                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->booking_date ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Passenger Number (BD)</td>
+                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->customer->iqama_no ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Name</td>
+                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->customer->name ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Address</td>
+                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->customer->address ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Phone Number</td>
+                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->customer->mobile_no ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5">Address (KSA)</td>
+                        <td class="px-3 py-2">-</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+
+        {{-- Invoice Information --}}
+        <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+            <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Invoice Information</div>
+            <table class="w-full text-xs border-collapse">
+                <tbody>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Invoice Number</td>
+                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->invoice_id ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Branch</td>
+                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->branch->name ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Office</td>
+                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->office->name ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Representative</td>
+                        <td class="px-3 py-2 border-b border-slate-100">{{ $booking->user->name ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Offer</td>
+                        <td class="px-3 py-2 border-b border-slate-100">{{ $offer ?? 'NO' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Finger Location</td>
+                        <td class="px-3 py-2 border-b border-slate-100">{{ $fpLocation ?? '-' }}</td>
+                    </tr>
+                    <tr class="even:bg-[#f1f5f9]">
+                        <td class="px-3 py-2 font-semibold text-slate-700 w-2/5">Finger Deadline</td>
+                        <td class="px-3 py-2">{{ $fingerprintDeadline ?? '-' }}</td>
+                    </tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    {{-- Passenger & Flight Details --}}
+    <div class="bg-white rounded-lg shadow-sm invoice-card mb-5 overflow-hidden">
+        <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Passenger & Flight Details</div>
+        <div class="overflow-x-auto">
+            <table class="w-full text-[10px] border-collapse whitespace-nowrap">
+                <thead>
+                    <tr class="bg-[#1e40af] text-white">
+                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Pax No.</th>
+                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Name of passengers</th>
+                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Gender</th>
+                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Passport number</th>
+                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Package</th>
+                        <th class="px-1.5 py-1.5 text-center font-semibold border-r border-[#2563eb]">Duration (Days)</th>
+                        <th class="px-1.5 py-1.5 text-right font-semibold border-r border-[#2563eb]">Package Value (BDT)</th>
+                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Trip</th>
+                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Airline</th>
+                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Route</th>
+                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Est.Flight Date</th>
+                        <th class="px-1.5 py-1.5 text-center font-semibold border-r border-[#2563eb]">Baggage(KG)</th>
+                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Cabin</th>
+                        <th class="px-1.5 py-1.5 text-center font-semibold border-r border-[#2563eb]">Meal</th>
+                        <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Flight Type</th>
+                        <th class="px-1.5 py-1.5 text-left font-semibold">Remarks</th>
                     </tr>
                 </thead>
                 <tbody>
                     @forelse($booking->passengers as $index => $passenger)
-                    <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-gray-50' }}">
-                        <td class="border border-slate-300 px-1 py-1">{{ $index + 1 }}</td>
-                        <td class="border border-slate-300 px-1 py-1">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</td>
-                        <td class="border border-slate-300 px-1 py-1">{{ $passenger->gender ?? '-' }}</td>
-                        <td class="border border-slate-300 px-1 py-1">{{ $passenger->passport_no ?? '-' }}</td>
-                        <td class="border border-slate-300 px-1 py-1">{{ $booking->package->package_name ?? 'Package' }}</td>
-                        <td class="border border-slate-300 px-1 py-1">{{ $passenger->stay_duration ?? '-' }}</td>
-                        <td class="border border-slate-300 px-1 py-1 text-right">{{ $passenger->package_value ?? '-' }}</td>
+                    <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-[#f1f5f9]' }}">
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $index + 1 }}</td>
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</td>
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->gender ?? '-' }}</td>
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->passport_no ?? '-' }}</td>
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $booking->package->package_name ?? 'Package' }}</td>
+                        <td class="px-1.5 py-1 text-center border-b border-slate-100">{{ $passenger->stay_duration ?? '-' }}</td>
+                        <td class="px-1.5 py-1 text-right border-b border-slate-100">{{ number_format($passenger->package_value ?? 0, 2) }}</td>
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->trip_display }}</td>
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->route_display }}</td>
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->flight_date_display }}</td>
+                        <td class="px-1.5 py-1 text-center border-b border-slate-100 whitespace-pre-line">{{ $passenger->baggage_display }}</td>
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-' }}</td>
+                        <td class="px-1.5 py-1 text-center border-b border-slate-100">{{ $passenger->meal_display }}</td>
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $passenger->flight_type_display }}</td>
+                        <td class="px-1.5 py-1 border-b border-slate-100">{{ $booking->remarks ?? '-' }}</td>
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="7" class="border border-slate-300 px-1 py-1 text-center">No passengers</td>
+                        <td colspan="16" class="px-3 py-3 text-center text-slate-500">No passenger data</td>
                     </tr>
                     @endforelse
                 </tbody>
             </table>
         </div>
+    </div>
 
-        <!-- Package Calculation -->
-        <div class="w-[35%] border-2 border-slate-800">
-            <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
-                <h3 class="font-bold text-slate-800">PACKAGE CALCULATION</h3>
-            </div>
-            <div class="p-2">
-                <div class="flex justify-between py-1">
-                    <span class="font-semibold">Sub Total:</span>
+    {{-- Package Calculation, Payment Summary, Important Note --}}
+    <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
+
+        {{-- Package Calculation --}}
+        <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+            <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Package Calculation</div>
+            <div class="p-3 text-xs">
+                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                    <span class="font-semibold text-slate-700">Sub Total:</span>
                     <span>{{ number_format($subTotal ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1">
-                    <span class="font-semibold">Total Packages:</span>
+                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                    <span class="font-semibold text-slate-700">Total Pax:</span>
                     <span>{{ $totalPackages ?? 0 }}</span>
                 </div>
-                <div class="flex justify-between py-1">
-                    <span class="font-semibold">Fingerprint Charge:</span>
+                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                    <span class="font-semibold text-slate-700">Fingerprint Charge:</span>
                     <span>{{ number_format($fingerprintCharge ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1">
-                    <span class="font-semibold">Discount:</span>
+                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                    <span class="font-semibold text-slate-700">Discount:</span>
                     <span>{{ number_format($discount ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1 border-t-2 border-slate-800 mt-1 pt-1">
-                    <span class="font-bold text-lg">GRAND TOTAL:</span>
-                    <span class="font-bold text-lg">{{ number_format($grandTotal ?? 0, 0) }}</span>
+                <div class="flex justify-between py-2 mt-1">
+                    <span class="font-bold text-slate-800">Grand Total (BDT):</span>
+                    <span class="font-bold text-slate-800">{{ number_format($grandTotal ?? 0, 0) }}</span>
                 </div>
             </div>
         </div>
-    </div>
 
-    <!-- Flight Details Table -->
-    <div class="border-2 border-slate-800 mb-3">
-        <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
-            <h3 class="font-bold text-slate-800">FLIGHT DETAILS</h3>
-        </div>
-        <table class="w-full text-sm border-collapse">
-            <thead class="bg-yellow-200">
-                <tr>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Pax</th>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Type</th>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Airlines</th>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Route</th>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Est. Flight Date</th>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Baggage (Kg)</th>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Cabin</th>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Meal</th>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Flight Type</th>
-                    <th class="border border-slate-300 px-1 py-1 text-xs">Remarks</th>
-                </tr>
-            </thead>
-            <tbody>
-                @forelse($booking->passengers as $index => $passenger)
-                <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-gray-50' }}">
-                    <td class="border border-slate-300 px-1 py-1">{{ $index + 1 }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->passenger_type?->value ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->route_display }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->flight_date_display }}</td>
-                    <td class="border border-slate-300 px-1 py-1 whitespace-pre-line">{{ $passenger->baggage_display }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-' }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->meal_display }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $passenger->flight_type_display }}</td>
-                    <td class="border border-slate-300 px-1 py-1">{{ $booking->remarks ?? '-' }}</td>
-                </tr>
-                @empty
-                <tr>
-                    <td colspan="10" class="border border-slate-300 px-1 py-1 text-center">No flight details</td>
-                </tr>
-                @endforelse
-            </tbody>
-        </table>
-    </div>
-
-    <!-- Group Umrah Features 
-    <div class="border-2 border-slate-800 mb-3">
-        <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
-            <h3 class="font-bold text-slate-800">GROUP UMRAH FEATURES</h3>
-        </div>
-        <table class="w-full text-sm border-collapse">
-            <tbody>
-                <tr class="bg-white">
-                    <td class="border border-slate-300 px-2 py-1 font-semibold w-1/4">Accommodation</td>
-                    <td class="border border-slate-300 px-2 py-1">N/A</td>
-                    <td class="border border-slate-300 px-2 py-1 font-semibold w-1/4">Meal Facilities</td>
-                    <td class="border border-slate-300 px-2 py-1">N/A</td>
-                </tr>
-                <tr class="bg-gray-50">
-                    <td class="border border-slate-300 px-2 py-1 font-semibold">Transport</td>
-                    <td class="border border-slate-300 px-2 py-1">N/A</td>
-                    <td class="border border-slate-300 px-2 py-1 font-semibold">Site Visit</td>
-                    <td class="border border-slate-300 px-2 py-1">N/A</td>
-                </tr>
-            </tbody>
-        </table>
-    </div>
-    -->
-    
-    <!-- Payment Summary -->
-    <div class="border-2 border-slate-800 mb-3">
-        <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
-            <h3 class="font-bold text-slate-800">PAYMENT SUMMARY</h3>
-        </div>
-        <div class="flex">
-            <div class="w-1/2 p-2 border-r-2 border-slate-800">
-                <div class="flex justify-between py-1">
-                    <span class="font-semibold">Total Amount:</span>
+        {{-- Payment Summary --}}
+        <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+            <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Payment Summary</div>
+            <div class="p-3 text-xs">
+                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                    <span class="font-semibold text-slate-700">Total Amount:</span>
                     <span class="font-bold">{{ number_format($grandTotal ?? 0, 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1">
-                    <span class="font-semibold">Previous Paid Amount:</span>
-                    <span>{{ number_format($totalPaid ?? 0, 0) }}</span>
+                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                    <span class="font-semibold text-slate-700">Previous Paid Amount:</span>
+                    <span>{{ number_format(max(0, ($totalPaid ?? 0) - ($currentPaid ?? 0)), 0) }}</span>
                 </div>
-                <div class="flex justify-between py-1">
-                    <span class="font-semibold">Current Paid Amount:</span>
+                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                    <span class="font-semibold text-slate-700">Current Paid Amount:</span>
                     <span>{{ number_format($currentPaid ?? 0, 0) }}</span>
                 </div>
-            </div>
-            <div class="w-1/2 p-2">
-                <div class="flex justify-between py-1 bg-red-100 px-2 -mx-2">
+                <div class="flex justify-between py-1.5 border-b border-slate-100">
+                    <span class="font-semibold text-slate-700">Total Paid Amount:</span>
+                    <span>{{ number_format($totalPaid ?? 0, 0) }}</span>
+                </div>
+                <div class="flex justify-between py-2 mt-1">
                     <span class="font-bold text-red-700">Due Amount:</span>
                     <span class="font-bold text-red-700">{{ number_format($dueAmount ?? 0, 0) }}</span>
                 </div>
             </div>
         </div>
+
+        {{-- Important Note --}}
+        <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+            <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Important Note / Conditions</div>
+            <div class="p-3 text-xs text-slate-500">
+                <p>N/A</p>
+            </div>
+        </div>
     </div>
 
-    <!-- Footer -->
-    <div class="border-2 border-slate-800">
-        <div class="flex">
-            <div class="w-1/2 p-2 border-r-2 border-slate-800">
-                <p class="font-semibold">Offer: {{ $offer ?? 'N/A' }}</p>
-            </div>
-            <div class="w-1/2 p-2">
-                <p class="font-semibold">Conditions: ________________________</p>
-            </div>
+    {{-- Signatures --}}
+    <div class="flex justify-between mt-8 px-4 text-xs">
+        <div class="text-center">
+            <p class="font-semibold text-slate-700 mb-6">Representative Signature</p>
+            <p class="border-t border-slate-400 pt-1 w-48">________________________</p>
+        </div>
+        <div class="text-center">
+            <p class="font-semibold text-slate-700 mb-6">Customer Signature</p>
+            <p class="border-t border-slate-400 pt-1 w-48">________________________</p>
         </div>
     </div>
 </div>
 
-<!-- Print Buttons -->
-<div class="no-print flex justify-center gap-4 py-4" style="width: 7in; margin: 0 auto;">
-    <button onclick="window.print()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Print</button>
-    <button onclick="window.close()" class="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Close</button>
-    <a href="{{ route('bookings.index') }}" class="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Back</a>
+{{-- Print Buttons --}}
+<div class="no-print flex justify-center gap-4 py-4">
+    <button onclick="window.print()" class="px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">Print</button>
+    <button onclick="window.close()" class="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">Close</button>
+    <a href="{{ route('bookings.index') }}" class="px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">Back</a>
 </div>
 @endsection
