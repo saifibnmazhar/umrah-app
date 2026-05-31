@@ -12,7 +12,7 @@
         .no-print { display: none !important; }
         body { margin: 0; padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .invoice-container { max-width: 100%; }
-        .invoice-card { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
+        .invoice-card { box-shadow: none !important; border: 1px solid #e2e8f0 !important; page-break-inside: avoid; }
         .invoice-bg { background: white !important; }
         .text-\[10px\] { font-size: 10px !important; }
     }
@@ -43,7 +43,7 @@
     @endphp
 
     {{-- Customer Information & Invoice Information --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-6">
 
         {{-- Customer Information --}}
         <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
@@ -121,7 +121,7 @@
     </div>
 
     {{-- Passenger & Flight Details --}}
-    <div class="bg-white rounded-lg shadow-sm invoice-card mb-5 overflow-hidden">
+    <div class="bg-white rounded-lg shadow-sm invoice-card mb-6 overflow-hidden">
         <div class="bg-[#1e40af] text-white px-4 py-2.5 font-bold text-xs uppercase tracking-wider">Passenger & Flight Details</div>
         <div class="overflow-x-auto">
             <table class="w-full text-[10px] border-collapse whitespace-nowrap">
