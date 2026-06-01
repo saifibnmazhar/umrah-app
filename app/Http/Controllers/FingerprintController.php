@@ -6,6 +6,7 @@ use App\Models\Fingerprint;
 use App\Models\FingerprintDetail;
 use App\Models\RescheduledFingerprint;
 use App\Models\User;
+use App\Enums\FingerprintLocation;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -33,6 +34,12 @@ class FingerprintController extends Controller
 
         if ($request->has('district') && $request->district) {
             $query->where('booking.district_id', $request->district);
+        }
+
+        if ($request->has('fingerprint_location') && $request->fingerprint_location) {
+            $query->whereHas('booking', function ($q) use ($request) {
+                $q->where('fingerprint_location', $request->fingerprint_location);
+            });
         }
 
         $user = auth()->user();
@@ -220,8 +227,11 @@ class FingerprintController extends Controller
             abort(403);
         }
 
+        $location = $fingerprint->booking->fingerprint_location;
+        $minCost = $location === FingerprintLocation::HOME ? 1 : 0;
+
         $validated = $request->validate([
-            'cost' => 'required|numeric|min:0',
+            'cost' => 'required|numeric|min:' . $minCost,
         ]);
 
         $fingerprint->update(['cost' => $validated['cost']]);
@@ -247,6 +257,14 @@ class FingerprintController extends Controller
         $validated = $request->validate([
             'status' => 'required|in:none,processing,approved,cancelled',
         ]);
+
+        $location = $fingerprint->booking->fingerprint_location;
+        if ($location === FingerprintLocation::HOME && (is_null($fingerprint->cost) || $fingerprint->cost <= 0)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Fingerprint cost must be set before updating status'
+            ], 422);
+        }
 
         $fingerprintDetail->update(['status' => $validated['status']]);
 

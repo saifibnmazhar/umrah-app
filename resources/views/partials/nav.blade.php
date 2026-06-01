@@ -1,4 +1,4 @@
-<nav class="bg-slate-800 text-white sticky top-0 z-40 shadow-lg -mx-4 pb-8" x-data="{ mobileOpen: false }">
+<nav class="bg-slate-800 text-white sticky top-0 z-40 shadow-lg -mx-4 pb-8" x-data="{ mobileOpen: false, userMenuOpen: false }">
     @php
         $canAccessFingerprintAdmin = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Fingerprint Admin'])->isNotEmpty();
         $canAccessFingerprintStaff = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Fingerprint Staff'])->isNotEmpty();
@@ -70,12 +70,25 @@
                     </div>
                 </div>
 
-                <form method="POST" action="{{ route('logout') }}" class="inline">
-                    @csrf
-                    <button type="submit" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition">
-                        Logout
+                <div class="relative">
+                    <button @click="userMenuOpen = !userMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap">
+                        {{ auth()->user()->name }} ▾
                     </button>
-                </form>
+                    <div x-show="userMenuOpen" @click.away="userMenuOpen = false"
+                         class="absolute right-0 mt-2 bg-slate-700 rounded-md py-2 shadow-lg z-50 min-w-[200px]">
+                        <div class="px-4 py-1 text-sm text-slate-300">{{ auth()->user()->email }}</div>
+                        <div class="px-4 py-1 text-sm text-slate-400">
+                            {{ auth()->user()->roles->pluck('name')->implode(', ') ?: 'No Role' }}
+                        </div>
+                        <hr class="border-slate-600 my-1">
+                        <form method="POST" action="{{ route('logout') }}">
+                            @csrf
+                            <button type="submit" class="block w-full text-left px-4 py-2 text-sm text-slate-300 hover:bg-slate-600 hover:text-white">
+                                Logout
+                            </button>
+                        </form>
+                    </div>
+                </div>
             </div>
 
             <button @click="mobileOpen = !mobileOpen" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
@@ -140,12 +153,17 @@
                 @if($canAccessAdmin)<a href="{{ route('users.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Users</a>@endif
             </div>
 
-            <form method="POST" action="{{ route('logout') }}" class="border-t border-slate-600 mt-2 pt-2">
-                @csrf
-                <button type="submit" class="block w-full text-left px-3 py-2 rounded-md font-medium text-red-400 hover:text-red-300 hover:bg-slate-600">
-                    Logout
-                </button>
-            </form>
+            <div class="border-t border-slate-600 mt-2 pt-2">
+                <div class="px-3 py-1 text-sm font-medium text-slate-200">{{ auth()->user()->name }}</div>
+                <div class="px-3 py-1 text-xs text-slate-400">{{ auth()->user()->email }}</div>
+                <div class="px-3 py-1 text-xs text-slate-500">{{ auth()->user()->roles->pluck('name')->implode(', ') ?: 'No Role' }}</div>
+                <form method="POST" action="{{ route('logout') }}" class="mt-2">
+                    @csrf
+                    <button type="submit" class="block w-full text-left px-3 py-2 rounded-md font-medium text-red-400 hover:text-red-300 hover:bg-slate-600">
+                        Logout
+                    </button>
+                </form>
+            </div>
         </div>
     </div>
 </nav>
