@@ -390,6 +390,8 @@ function fingerprintAdmin(options = {}) {
                 if (result.success) {
                     window.showToast('Status updated successfully', 'success');
                     await this.loadData();
+                } else {
+                    window.showToast(result.message || 'Failed to update status', 'error');
                 }
             } catch (error) {
                 console.error('Failed to update status:', error);
