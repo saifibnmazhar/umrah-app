@@ -13,7 +13,7 @@ class UserController extends Controller
 {
     public function index()
     {
-        $users = User::with(['branch', 'office'])
+        $users = User::with(['branch', 'office', 'roles'])
             ->orderBy('name')
             ->paginate(10)
             ->withQueryString();
