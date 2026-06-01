@@ -83,9 +83,9 @@
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Office *</label>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Branch(BD) *</label>
                     <select x-model="bookingData.fingerprint_office" name="office_id" @change="$el.blur()" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
-                        <option value="">Select Office</option>
+                        <option value="">Select Branch(BD)</option>
                         @foreach(\App\Models\Office::orderBy('name')->get() as $office)
                         <option value="{{ $office->id }}">{{ $office->name }}</option>
                         @endforeach
@@ -160,12 +160,13 @@
                                     <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
                                         <div><span class="text-slate-500">Passport:</span> <span class="text-slate-700 ml-1" x-text="passenger.passport_no"></span></div>
                                         <div><span class="text-slate-500">Type:</span> <span class="text-slate-700 ml-1" x-text="passenger.passenger_type"></span></div>
-                                        <div><span class="text-slate-500">Service:</span> <span class="text-slate-700 ml-1" x-text="passenger.service_required"></span></div>
+                                        <div><span class="text-slate-500">Service:</span> <span class="text-slate-700 ml-1" x-text="serviceLabel(passenger.service_required)"></span></div>
                                         <div><span class="text-slate-500">DOB:</span> <span class="text-slate-700 ml-1" x-text="passenger.date_of_birth"></span></div>
                                         <div><span class="text-slate-500">Route:</span> <span class="text-slate-700 ml-1" x-text="passenger.route || '-'"></span></div>
                                         <div><span class="text-slate-500">Airline:</span> <span class="text-slate-700 ml-1" x-text="passenger.airline || '-'"></span></div>
                                         <div><span class="text-slate-500">Flight:</span> <span class="text-slate-700 ml-1" x-text="passenger.flight_type || '-'"></span></div>
                                         <div><span class="text-slate-500">Duration:</span> <span class="text-slate-700 ml-1" x-text="passenger.stay_duration || '-'"></span></div>
+                                        <div><span class="text-slate-500">Passenger Fare:</span> <span class="text-slate-700 ml-1" x-text="getPassengerFare(passenger)"></span></div>
                                     </div>
                                     <input type="hidden" :name="'passengers[' + index + '][first_name]'" :value="passenger.first_name">
                                     <input type="hidden" :name="'passengers[' + index + '][last_name]'" :value="passenger.last_name">
@@ -202,7 +203,6 @@
                     <h3 class="text-lg font-semibold text-slate-700">Summary Card</h3>
                     <div class="flex gap-2">
                         <button type="button" @click="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
-                        <button type="button" @click="openPaymentModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Payment</button>
                     </div>
                 </div>
                 <div class="flex justify-between text-sm text-slate-500 mb-2">
@@ -215,12 +215,30 @@
                 </div>
                 <div class="flex justify-between font-medium text-slate-800">
                     <span id="summaryPackage" class="w-1/6 text-center" x-text="allPackages.find(p => String(p.id) === String(bookingData.package_id))?.package_name ?? '-'">-</span>
-                    <span class="w-1/6 text-center" x-text="fingerprintCharge > 0 ? fingerprintCharge + ' SAR' : '-'">-</span>
-                    <span class="w-1/6 text-center" x-text="passengerCount">0</span>
-                    <span class="w-1/6 text-center" x-text="bookingData.discount_value > 0 ? '-' + bookingData.discount_value + (bookingData.discount_type === 'percentage' ? '%' : ' SAR') : '-'">-</span>
-                    <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center" x-text="(grandTotalValue ?? 0).toFixed(2) + ' SAR'">0 SAR</span>
-                    <span id="summaryTotalValue" class="w-1/6 text-center" x-text="discountedTotal !== null ? discountedTotal.toFixed(2) + ' SAR' : 'N/A'">0 SAR</span>
+                    <span class="w-1/6 text-center">
+                        <div x-text="fingerprintCharge > 0 ? fingerprintCharge + ' SAR' : '-'">-</div>
+                        <div class="text-xs text-slate-800" x-show="fingerprintCharge > 0 && exchangeRateValue > 0" x-text="'≈ ' + fingerprintChargeBDT + ' BDT'"></div>
+                    </span>
+                    <span class="w-1/6 text-center">
+                        <div x-text="passengerCount">0</div>
+                    </span>
+                    <span class="w-1/6 text-center">
+                        <div x-text="bookingData.discount_value > 0 ? '-' + bookingData.discount_value + (bookingData.discount_type === 'percentage' ? '%' : ' SAR') : '-'">-</div>
+                        <div class="text-xs text-slate-800" x-show="bookingData.discount_value > 0 && bookingData.discount_type === 'fixed' && exchangeRateValue > 0" x-text="'≈ -' + discountAmountBDT + ' BDT'"></div>
+                    </span>
+                    <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center">
+                        <div x-text="(grandTotalValue ?? 0).toFixed(2) + ' SAR'">0 SAR</div>
+                        <div class="text-xs text-slate-800" x-show="grandTotalValue > 0 && exchangeRateValue > 0" x-text="'≈ ' + grandTotalValueBDT + ' BDT'">0 BDT</div>
+                    </span>
+                    <span id="summaryTotalValue" class="w-1/6 text-center">
+                        <div x-text="discountedTotal !== null ? discountedTotal.toFixed(2) + ' SAR' : 'N/A'">0 SAR</div>
+                        <div class="text-xs text-slate-800" x-show="discountedTotal !== null && exchangeRateValue > 0" x-text="'≈ ' + discountedTotalBDT + ' BDT'">0 BDT</div>
+                    </span>
                 </div>
+            </div>
+
+            <div class="flex justify-end mb-6">
+                <button type="button" @click="openPaymentModal()" class="px-8 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Payment</button>
             </div>
 
             <div class="flex justify-end gap-3 pt-6 border-t border-slate-200">
@@ -363,7 +381,7 @@
                         <input type="text" x-model="newCustomer.mobile_no" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Address</label>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Address (KSA)</label>
                         <input type="text" x-model="newCustomer.address" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
@@ -374,6 +392,23 @@
                             <option value="self">Self</option>
                             <option value="referral">Referral</option>
                         </select>
+                    </div>
+                    <div x-show="newCustomer.iqama_type !== 'none'&& newCustomer.iqama_type !== ''">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No. (Self)</label>
+                        <input type="text" x-model="newCustomer.iqama_no" x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Customer Docs (Self)</label>
+                        <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('customer_docs').click()">
+                            <input type="file" id="customer_docs" name="customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleCustomerDocUpload(this)">
+                            <div class="text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <span>click to upload</span>
+                            </div>
+                        </div>
+                        <div id="customer_docs_list" class="mt-2 space-y-1"></div>
                     </div>
                     <div x-show="newCustomer.iqama_type === 'referral'">
                         <label class="block text-sm font-medium text-slate-600 mb-1">Referral Iqama No.</label>
@@ -394,23 +429,6 @@
                                 <span id="ref_iqama_doc_filename">click to upload</span>
                             </div>
                         </div>
-                    </div>
-                    <div x-show="newCustomer.iqama_type !== 'none'&& newCustomer.iqama_type !== ''">
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No.</label>
-                        <input type="text" x-model="newCustomer.iqama_no" x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Customer Docs</label>
-                        <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('customer_docs').click()">
-                            <input type="file" id="customer_docs" name="customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleCustomerDocUpload(this)">
-                            <div class="text-slate-500">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                                </svg>
-                                <span>click to upload</span>
-                            </div>
-                        </div>
-                        <div id="customer_docs_list" class="mt-2 space-y-1"></div>
                     </div>
                 </div>
                 <div class="flex gap-3 pt-4 border-t border-slate-200">

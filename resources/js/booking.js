@@ -62,7 +62,7 @@ customDurationModalVisible: false,
         gender: '',
         mobile_no: '',
         passport_expiry: '',
-        service_required: 'All',
+        service_required: 'all',
         stay_duration: '14',
         stay_duration_int: 14,
         stay_duration_display: '',
@@ -537,7 +537,7 @@ customDurationModalVisible: false,
                 gender: '',
                 mobile_no: '',
                 passport_expiry: '',
-                service_required: 'All',
+                service_required: 'all',
                 stay_duration: '14',
                 stay_duration_int: 14,
                 stay_duration_display: '',
@@ -957,6 +957,34 @@ Alpine.data('createBookingApp', () => ({
         const discType = this.bookingData.discount_type;
         const discAmt = discType === 'percentage' ? grand * disc / 100 : disc;
         return grand - discAmt;
+    },
+    get exchangeRateValue() {
+        return parseFloat(this.exchangeRate) || 0;
+    },
+    get fingerprintChargeBDT() {
+        const rate = this.exchangeRateValue;
+        return rate > 0 ? (parseFloat(this.fingerprintCharge || 0) * rate).toFixed(2) : '0.00';
+    },
+    get grandTotalValueBDT() {
+        const rate = this.exchangeRateValue;
+        return rate > 0 && this.grandTotalValue > 0 ? (this.grandTotalValue * rate).toFixed(2) : '0.00';
+    },
+    get discountedTotalBDT() {
+        const rate = this.exchangeRateValue;
+        if (rate <= 0) return null;
+        const dt = this.discountedTotal;
+        return dt !== null ? (dt * rate).toFixed(2) : null;
+    },
+    get discountAmountBDT() {
+        const rate = this.exchangeRateValue;
+        if (rate <= 0 || this.bookingData.discount_type !== 'fixed') return null;
+        const dv = parseFloat(this.bookingData.discount_value) || 0;
+        return dv > 0 ? (dv * rate).toFixed(2) : null;
+    },
+
+    serviceLabel(value) {
+        const labels = { all: 'Visa + Ticket', visa_only: 'Visa', ticket_only: 'Ticket' };
+        return labels[value] || value;
     },
 
     init() {
@@ -1398,6 +1426,9 @@ Alpine.data('createBookingApp', () => ({
         } else {
             this.filteredTickets = [];
         }
+        if (this.passengers.length > 0 && this.passengers[0].mobile_no) {
+            this.passengerData.mobile_no = this.passengers[0].mobile_no;
+        }
         this.passengerModalVisible = true;
     },
 
@@ -1521,6 +1552,18 @@ Alpine.data('createBookingApp', () => ({
             default:
                 return `${ticket.route} | ${type} | ${price}`;
         }
+    },
+
+    getPassengerFare(passenger) {
+        let ticket = passenger.ticket_fare || null;
+        if (!ticket && passenger.ticket_fare_id) {
+            ticket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_id));
+        }
+        if (!ticket) return '-';
+        const fare = ticket.ticket_type === 'offer'
+            ? (parseFloat(ticket.offer_price) || 0)
+            : (parseFloat(ticket.selling_fare) || 0);
+        return fare > 0 ? fare.toLocaleString() : '-';
     },
 
     parseFlightDateRange(rangeString) {
@@ -2272,6 +2315,34 @@ Alpine.data('editBookingApp', () => ({
         const discAmt = discType === 'percentage' ? grand * disc / 100 : disc;
         return grand - discAmt;
     },
+    get exchangeRateValue() {
+        return parseFloat(this.exchangeRate) || 0;
+    },
+    get fingerprintChargeBDT() {
+        const rate = this.exchangeRateValue;
+        return rate > 0 ? (parseFloat(this.fingerprintCharge || 0) * rate).toFixed(2) : '0.00';
+    },
+    get grandTotalValueBDT() {
+        const rate = this.exchangeRateValue;
+        return rate > 0 && this.grandTotalValue > 0 ? (this.grandTotalValue * rate).toFixed(2) : '0.00';
+    },
+    get discountedTotalBDT() {
+        const rate = this.exchangeRateValue;
+        if (rate <= 0) return null;
+        const dt = this.discountedTotal;
+        return dt !== null ? (dt * rate).toFixed(2) : null;
+    },
+    get discountAmountBDT() {
+        const rate = this.exchangeRateValue;
+        if (rate <= 0 || this.bookingData.discount_type !== 'fixed') return null;
+        const dv = parseFloat(this.bookingData.discount_value) || 0;
+        return dv > 0 ? (dv * rate).toFixed(2) : null;
+    },
+
+    serviceLabel(value) {
+        const labels = { all: 'Visa + Ticket', visa_only: 'Visa', ticket_only: 'Ticket' };
+        return labels[value] || value;
+    },
 
     init() {
         const serverData = window.__bookingServerData || {};
@@ -2362,6 +2433,7 @@ Alpine.data('editBookingApp', () => ({
                 route_type: p.route_type || '',
                 flight_type: p.flight_type || '',
                 ticket_fare_id: p.ticket_fare_id ? String(p.ticket_fare_id) : '',
+                ticket_fare: p.ticket_fare || null,
                 flight_date_from: p.flight_date_from ? p.flight_date_from.split('T')[0] : '',
                 flight_date_to: p.flight_date_to ? p.flight_date_to.split('T')[0] : '',
                 address: p.address || '',
@@ -2812,6 +2884,9 @@ Alpine.data('editBookingApp', () => ({
             }
         } else {
             this.filteredTickets = [];
+        }
+        if (this.passengers.length > 0 && this.passengers[0].mobile_no) {
+            this.passengerData.mobile_no = this.passengers[0].mobile_no;
         }
         this.passengerModalVisible = true;
     },
@@ -3413,6 +3488,18 @@ Alpine.data('editBookingApp', () => ({
             default:
                 return `${ticket.route || ''} | ${type} | ${price}`;
         }
+    },
+
+    getPassengerFare(passenger) {
+        let ticket = passenger.ticket_fare || null;
+        if (!ticket && passenger.ticket_fare_id) {
+            ticket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_id));
+        }
+        if (!ticket) return '-';
+        const fare = ticket.ticket_type === 'offer'
+            ? (parseFloat(ticket.offer_price) || 0)
+            : (parseFloat(ticket.selling_fare) || 0);
+        return fare > 0 ? fare.toLocaleString() : '-';
     }
 }));
 
@@ -3546,6 +3633,11 @@ Alpine.data('showBookingApp', () => ({
             }
         } else {
             this.filteredTickets = [];
+        }
+        if (this.passengers.length > 0 && this.passengers[0].mobile_no) {
+            this.passengerData.mobile_no = this.passengers[0].mobile_no;
+        } else if (window.__bookingServerData?.firstPassengerMobile) {
+            this.passengerData.mobile_no = window.__bookingServerData.firstPassengerMobile;
         }
         this.passengerModalVisible = true;
     },

@@ -1,27 +1,27 @@
 @extends('layouts.app')
-@section('title', 'Edit Office')
+@section('title', 'Edit Branch(BD)')
 @section('content')
 <div class="max-w-2xl mx-auto">
     <div class="mb-6">
         <a href="{{ route('offices.index') }}" class="text-slate-600 hover:text-slate-800 text-sm">
-            ← Back to Offices
+            ← Back to Branches(BD)
         </a>
     </div>
 
-    <h1 class="text-2xl font-bold text-slate-800 mb-6">Edit Office</h1>
+    <h1 class="text-2xl font-bold text-slate-800 mb-6">Edit Branch(BD)</h1>
 
     <form method="POST" action="{{ route('offices.update', $office->id) }}" class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 space-y-5">
         @csrf
         @method('PUT')
 
         <div>
-            <label for="name" class="block text-sm font-medium text-slate-700 mb-1">Office Name</label>
+            <label for="name" class="block text-sm font-medium text-slate-700 mb-1">Branch(BD) Name</label>
             <input 
                 type="text" 
                 name="name" 
                 id="name" 
                 value="{{ old('name', $office->name) }}" 
-                placeholder="Enter office name"
+                placeholder="Enter Branch(BD) name"
                 aria-describedby="name-error"
                 class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('name') border-red-500 @enderror"
             >
@@ -64,7 +64,7 @@
 
         <div class="pt-4 flex items-center gap-4">
             <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
-                Update Office
+                Update Branch(BD)
             </button>
             <a href="{{ route('offices.index') }}" class="text-slate-600 hover:text-slate-800 text-sm">
                 Cancel

@@ -158,4 +158,16 @@ class Passenger extends Model
     {
         return $this->ticketFare?->route?->flight_type?->value ?? '-';
     }
+
+    public function getTripDisplayAttribute(): string
+    {
+        $routeType = $this->ticketFare?->route?->route_type?->value;
+        return match ($routeType) {
+            'oneway_outbound' => 'Out Bound',
+            'oneway_inbound' => 'In Bound',
+            'round' => 'Round Trip',
+            'multi_city' => 'Multi City',
+            default => '-',
+        };
+    }
 }

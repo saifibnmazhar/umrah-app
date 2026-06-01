@@ -68,7 +68,7 @@
                         </div>
                         <div>
                             <span class="text-xs text-slate-400">Service Required</span>
-                            <p class="text-slate-800">{{ match($passenger->service_required?->value) { 'all' => 'All', 'visa_only' => 'Visa Only', 'ticket_only' => 'Ticket Only', default => '-' } }}</p>
+                            <p class="text-slate-800">{{ match($passenger->service_required?->value) { 'all' => 'Visa + Ticket', 'visa_only' => 'Visa Only', 'ticket_only' => 'Ticket Only', default => '-' } }}</p>
                         </div>
                         <div>
                             <span class="text-xs text-slate-400">Status</span>
@@ -111,7 +111,7 @@
                             </div>
                         </div>
                         <div>
-                            <span class="text-xs text-slate-400">Address</span>
+                            <span class="text-xs text-slate-400">Address (BD)</span>
                             <p class="text-slate-800">{{ $passenger->address ?? '-' }}</p>
                         </div>
                     </div>

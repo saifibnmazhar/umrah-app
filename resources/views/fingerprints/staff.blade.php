@@ -14,7 +14,7 @@
                         <th class="px-3 py-2 text-left font-medium">Customer Name</th>
                         <th class="px-3 py-2 text-left font-medium">PAX Qty</th>
                         <th class="px-3 py-2 text-left font-medium">Mobile</th>
-                        <th class="px-3 py-2 text-left font-medium">Office</th>
+                        <th class="px-3 py-2 text-left font-medium">Branch(BD)</th>
                         <th class="px-3 py-2 text-left font-medium">District</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Deadline</th>
                         <th class="px-3 py-2 text-left font-medium">Passenger</th>
@@ -56,7 +56,7 @@
                             </td>
                             <td class="px-3 py-2">
                                 <select x-show="canEditStatus"
-                                        @change="handleStatusChange(row.fingerprint_detail_id, $event.target.value)"
+                                        @change="handleStatusChange(row.fingerprint_detail_id, $event, row.cost, row.fingerprint_location)"
                                         class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
                                     <template x-for="opt in displayStatuses" :key="opt">
                                         <option :value="opt"
@@ -144,6 +144,23 @@
             </div>
         </div>
     </div>
+
+    <div x-show="toastVisible"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="translate-x-full opacity-0"
+         x-transition:enter-end="translate-x-0 opacity-100"
+         x-transition:leave="transition ease-in duration-300"
+         x-transition:leave-start="translate-x-0 opacity-100"
+         x-transition:leave-end="translate-x-full opacity-0"
+         class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white font-medium"
+         :class="{
+             'bg-slate-700': toastType === 'info',
+             'bg-emerald-600': toastType === 'success',
+             'bg-red-500': toastType === 'error',
+             'bg-amber-500': toastType === 'warning'
+         }">
+        <span x-text="toastMessage"></span>
+    </div>
 </div>
 @endsection
 
@@ -160,6 +177,9 @@ function fingerprintStaff(options = {}) {
         canEditCost: options.canEditCost ?? false,
         showHoldModal: false,
         currentFingerprintDetailId: null,
+        toastMessage: '',
+        toastType: 'error',
+        toastVisible: false,
         holdForm: {
             reason: '',
             next_date: '',
@@ -279,13 +299,36 @@ function fingerprintStaff(options = {}) {
             return map[displayValue] || 'none';
         },
 
-        handleStatusChange(fingerprintDetailId, value) {
+        getStatusClass(status) {
+            const classes = {
+                'none': 'bg-gray-100 text-gray-800',
+                'processing': 'bg-yellow-100 text-yellow-800',
+                'approved': 'bg-green-100 text-green-800',
+                'Partially Approved': 'bg-green-100 text-green-800',
+                'cancelled': 'bg-red-100 text-red-800',
+            };
+            return classes[status] || 'bg-gray-100 text-gray-800';
+        },
+
+        handleStatusChange(fingerprintDetailId, event, cost, fingerprintLocation) {
+            const value = event.target.value;
+
             if (value === 'Hold & Ask for next Finger date?') {
                 this.currentFingerprintDetailId = fingerprintDetailId;
                 this.showHoldModal = true;
                 this.holdForm = { reason: '', next_date: '', remarks: '' };
                 return;
             }
+
+            if (fingerprintLocation === 'home' && (!cost || parseFloat(cost) <= 0)) {
+                const row = this.data.find(r => r.fingerprint_detail_id === fingerprintDetailId);
+                if (row) {
+                    event.target.value = this.getSelectedStatus(row);
+                }
+                this.showToast('Please set the fingerprint cost first', 'error');
+                return;
+            }
+
             this.updateStatus(fingerprintDetailId, this.mapDisplayToBackend(value));
         },
 
@@ -307,6 +350,8 @@ function fingerprintStaff(options = {}) {
                 if (result.success) {
                     this.showToast('Status updated successfully');
                     await this.loadData();
+                } else {
+                    this.showToast(result.message || 'Failed to update status', 'error');
                 }
             } catch (error) {
                 console.error('Failed to update status:', error);
@@ -378,9 +423,11 @@ function fingerprintStaff(options = {}) {
         },
 
         showToast(message, type = 'success') {
-            if (window.Alpine) {
-                window.Alpine.store('toast', { message, type });
-            }
+            this.toastMessage = message;
+            this.toastType = type;
+            this.toastVisible = true;
+            if (this._toastTimer) clearTimeout(this._toastTimer);
+            this._toastTimer = setTimeout(() => this.toastVisible = false, 3000);
         },
     };
 }

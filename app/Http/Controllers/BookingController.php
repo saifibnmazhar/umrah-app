@@ -455,7 +455,18 @@ class BookingController extends Controller
 
         $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
 
-        return view('bookings.show', compact('booking', 'ticketFares', 'packages', 'currentCurrencyRate'));
+        $rate = $currentCurrencyRate?->rate ?? 0;
+        $totalAmount = $booking->invoice?->total_amount ?? 0;
+        $paidAmount = $booking->invoice?->paid_amount ?? 0;
+        $balance = $booking->invoice?->balance ?? 0;
+        $totalAmountBdt = $rate > 0 ? $totalAmount * $rate : 0;
+        $paidAmountBdt = $rate > 0 ? $paidAmount * $rate : 0;
+        $balanceBdt = $rate > 0 ? $balance * $rate : 0;
+
+        return view('bookings.show', compact(
+            'booking', 'ticketFares', 'packages', 'currentCurrencyRate',
+            'totalAmountBdt', 'paidAmountBdt', 'balanceBdt'
+        ));
     }
 
     public function edit(Booking $booking)

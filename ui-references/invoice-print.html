@@ -31,12 +31,13 @@
     <style>
         @media print {
             .no-print { display: none !important; }
-            body { margin: 0; padding: 0; }
+            body { margin: 0; padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .invoice-card { box-shadow: none !important; border: 1px solid #e2e8f0 !important; }
         }
     </style>
 </head>
-<body class="bg-white">
-    <div id="invoiceContent" class="p-4" style="font-size: 11px; width: 7in; margin: 0 auto;">
+<body class="bg-[#f8fafc]">
+    <div id="invoiceContent" class="p-4" style="font-size: 10px; max-width: 1200px; margin: 0 auto;">
         <!-- Invoice content will be loaded here -->
     </div>
 
@@ -51,23 +52,39 @@
             bookings: [
                 {
                     id: 1,
-                    invoiceNo: 'INV-1001',
+                    invoiceNo: 'INV001K526',
                     bookingDate: '2026-03-15',
-                    customerName: 'Ahmed Al-Rashid',
-                    customerMobile: '0501234567',
-                    customerIqama: '123456789',
-                    customerAddress: 'Riyadh, Saudi Arabia',
-                    branch: 'RUH',
-                    representative: 'Saddam',
+                    customerName: 'all hasan',
+                    customerMobile: '89374379',
+                    customerIqama: '948783',
+                    customerAddress: 'lalkli',
+                    branch: 'BD agency',
+                    office: 'BMT-Dak',
+                    representative: 'Admin',
                     offer: 'NO',
-                    fingerLocation: 'Home Address',
-                    fingerDeadline: '2026-04-01',
+                    fingerLocation: 'office',
+                    fingerDeadline: '',
                     passengers: [
-                        { name: 'Ahmed Al-Rashid', gender: 'Male', passport: 'P123456', package: 'VIP', duration: '7 Days', total: 3200 },
-                        { name: 'Sara Khan', gender: 'Female', passport: 'P654321', package: 'VIP', duration: '7 Days', total: 3200 }
+                        {
+                            name: 'liklikwzs aaa',
+                            gender: '-',
+                            passport: '3456789',
+                            packageName: 'pro',
+                            duration: 85,
+                            total: 1200.00,
+                            trip: 'Out Bound',
+                            airline: 'Us-Bangla',
+                            route: 'JED-MED',
+                            flightDate: '11 Jul 2026 → 20 Jul 2026',
+                            baggage: '50',
+                            cabin: 'Economy',
+                            meal: 'Yes',
+                            flightType: 'direct',
+                            remarks: '-',
+                        }
                     ],
                     payments: [
-                        { amount: 5000 }
+                        { amount: 1200 }
                     ]
                 }
             ],
@@ -101,209 +118,228 @@
             }
 
             const content = getElement('invoiceContent');
-            const total = booking.passengers.reduce((sum, p) => sum + (p.total || 0), 0);
-            const paid = booking.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
-            const due = total - paid;
-            const fingerprintCost = booking.passengers[0]?.fingerprintCost || 200;
-            const packageValue = booking.passengers[0]?.packageValue || total - fingerprintCost;
-            const additionalFee = booking.additionalFee || 0;
-            const discount = booking.discountValue || 0;
+            const grandTotal = booking.passengers.reduce((sum, p) => sum + (p.total || 0), 0);
+            const totalPaid = booking.payments.reduce((sum, p) => sum + (p.amount || 0), 0);
+            const currentPaid = booking.payments.length > 0 ? booking.payments[booking.payments.length - 1].amount : 0;
+            const previousPaid = Math.max(0, totalPaid - currentPaid);
+            const due = grandTotal - totalPaid;
+            const subTotal = grandTotal;
+            const totalPackages = booking.passengers.length;
+            const fingerprintCharge = 0;
+            const discount = 0;
 
             content.innerHTML = `
                 <!-- Header -->
-                <div class="border-2 border-slate-800 mb-3">
-                    <div class="bg-yellow-300 px-3 py-2 border-b-2 border-slate-800">
-                        <h2 class="text-lg font-bold text-slate-800 text-center">BOOKING INVOICE UMH</h2>
+                <div class="bg-white rounded-lg shadow-sm p-4 mb-5 invoice-card">
+                    <div class="text-center">
+                        <h1 class="text-lg font-bold text-slate-800">BOOKING INVOICE UMH</h1>
+                        <p class="text-xs text-slate-500 mt-1">Phone: +966XXX-XXXXXXX | Location: ${booking.office || 'BMT-Dak'}</p>
                     </div>
-                    <div class="flex">
-                        <div class="w-1/2 p-3 border-r-2 border-slate-800">
-                            <p class="font-semibold"><strong>Booking Date:</strong> ${booking.bookingDate || '-'}</p>
-                            <p class="font-semibold"><strong>Guardian Name:</strong> ${booking.customerName || '-'}</p>
-                            <p class="font-semibold"><strong>Iqama No:</strong> ${booking.customerIqama || '-'}</p>
-                            <p class="font-semibold"><strong>Phone Number:</strong> ${booking.customerMobile || '-'}</p>
-                            <p class="font-semibold"><strong>Address:</strong> ${booking.customerAddress || '-'}</p>
-                        </div>
-                        <div class="w-1/2 p-3">
-                            <p class="font-semibold"><strong>Invoice Date:</strong> ${booking.invoiceDate || booking.bookingDate || '-'}</p>
-                            <p class="font-semibold"><strong>Invoice Number:</strong> ${booking.invoiceNo || '-'}</p>
-                            <p class="font-semibold"><strong>Branch:</strong> ${booking.branch || 'RUH'}</p>
-                            <p class="font-semibold"><strong>Representative:</strong> ${booking.representative || '-'}</p>
-                            <p class="font-semibold"><strong>Offer:</strong> ${booking.offer || 'NO'}</p>
-                            <p class="font-semibold"><strong>Finger Location:</strong> ${booking.fingerLocation || '-'}</p>
-                            <p class="font-semibold"><strong>Finger Deadline:</strong> <span class="bg-red-600 text-white px-2 py-0.5">${booking.fingerDeadline || '-'}</span></p>
-                        </div>
+                    <div class="text-right mt-2">
+                        <span class="text-sm font-bold text-slate-800">Invoice No: ${booking.invoiceNo || '-'}</span>
                     </div>
                 </div>
 
-                <!-- Passenger & Package Details + Package Calculation -->
-                <div class="flex mb-3">
-                    <!-- Passenger & Package Details Table -->
-                    <div class="w-[65%] border-2 border-slate-800 mr-2">
-                        <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
-                            <h3 class="font-bold text-slate-800">PASSENGER & PACKAGE DETAILS</h3>
-                        </div>
-                        <table class="w-full text-sm border-collapse">
-                            <thead class="bg-yellow-200">
-                                <tr>
-                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Pax No</th>
-                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Name of Passengers</th>
-                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Gender</th>
-                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Passport Number</th>
-                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Package</th>
-                                    <th class="border border-slate-300 px-1 py-1 text-left text-xs">Duration</th>
-                                    <th class="border border-slate-300 px-1 py-1 text-right text-xs">Package Value</th>
+                <!-- Customer Information & Invoice Information -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-5">
+
+                    <!-- Customer Information -->
+                    <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+                        <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Customer Information</div>
+                        <table class="w-full text-xs border-collapse">
+                            <tbody>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Booking Date</td>
+                                    <td class="px-3 py-2 border-b border-slate-100">${booking.bookingDate || '-'}</td>
+                                </tr>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Passenger Number (BD)</td>
+                                    <td class="px-3 py-2 border-b border-slate-100">${booking.customerIqama || '-'}</td>
+                                </tr>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Name</td>
+                                    <td class="px-3 py-2 border-b border-slate-100">${booking.customerName || '-'}</td>
+                                </tr>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Customer Address</td>
+                                    <td class="px-3 py-2 border-b border-slate-100">${booking.customerAddress || '-'}</td>
+                                </tr>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Phone Number</td>
+                                    <td class="px-3 py-2 border-b border-slate-100">${booking.customerMobile || '-'}</td>
+                                </tr>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5">Address (KSA)</td>
+                                    <td class="px-3 py-2">-</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+
+                    <!-- Invoice Information -->
+                    <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+                        <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Invoice Information</div>
+                        <table class="w-full text-xs border-collapse">
+                            <tbody>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Invoice Number</td>
+                                    <td class="px-3 py-2 border-b border-slate-100">${booking.invoiceNo || '-'}</td>
+                                </tr>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Branch</td>
+                                    <td class="px-3 py-2 border-b border-slate-100">${booking.branch || '-'}</td>
+                                </tr>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Office</td>
+                                    <td class="px-3 py-2 border-b border-slate-100">${booking.office || '-'}</td>
+                                </tr>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Representative</td>
+                                    <td class="px-3 py-2 border-b border-slate-100">${booking.representative || '-'}</td>
+                                </tr>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Offer</td>
+                                    <td class="px-3 py-2 border-b border-slate-100">${booking.offer || 'NO'}</td>
+                                </tr>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5 border-b border-slate-100">Finger Location</td>
+                                    <td class="px-3 py-2 border-b border-slate-100">${booking.fingerLocation || '-'}</td>
+                                </tr>
+                                <tr class="even:bg-[#f1f5f9]">
+                                    <td class="px-3 py-2 font-semibold text-slate-700 w-2/5">Finger Deadline</td>
+                                    <td class="px-3 py-2">${booking.fingerDeadline || '-'}</td>
+                                </tr>
+                            </tbody>
+                        </table>
+                    </div>
+                </div>
+
+                <!-- Passenger & Flight Details -->
+                <div class="bg-white rounded-lg shadow-sm invoice-card mb-5 overflow-hidden">
+                    <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Passenger & Flight Details</div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-[10px] border-collapse whitespace-nowrap">
+                            <thead>
+                                <tr class="bg-[#1e40af] text-white">
+                                    <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Pax No.</th>
+                                    <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Name of passengers</th>
+                                    <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Gender</th>
+                                    <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Passport number</th>
+                                    <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Package</th>
+                                    <th class="px-1.5 py-1.5 text-center font-semibold border-r border-[#2563eb]">Duration (Days)</th>
+                                    <th class="px-1.5 py-1.5 text-right font-semibold border-r border-[#2563eb]">Package Value (BDT)</th>
+                                    <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Trip</th>
+                                    <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Airline</th>
+                                    <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Route</th>
+                                    <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Est.Flight Date</th>
+                                    <th class="px-1.5 py-1.5 text-center font-semibold border-r border-[#2563eb]">Baggage(KG)</th>
+                                    <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Cabin</th>
+                                    <th class="px-1.5 py-1.5 text-center font-semibold border-r border-[#2563eb]">Meal</th>
+                                    <th class="px-1.5 py-1.5 text-left font-semibold border-r border-[#2563eb]">Flight Type</th>
+                                    <th class="px-1.5 py-1.5 text-left font-semibold">Remarks</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 ${booking.passengers.map((p, i) => `
-                                    <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
-                                        <td class="border border-slate-300 px-1 py-1">${i + 1}</td>
-                                        <td class="border border-slate-300 px-1 py-1">${p.name || '-'}</td>
-                                        <td class="border border-slate-300 px-1 py-1">${p.gender || '-'}</td>
-                                        <td class="border border-slate-300 px-1 py-1">${p.passport || '-'}</td>
-                                        <td class="border border-slate-300 px-1 py-1">${p.package || '-'}</td>
-                                        <td class="border border-slate-300 px-1 py-1">${p.duration || '-'}</td>
-                                        <td class="border border-slate-300 px-1 py-1 text-right">${p.total || 0}</td>
+                                    <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-[#f1f5f9]'}">
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${i + 1}</td>
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${p.name || '-'}</td>
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${p.gender || '-'}</td>
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${p.passport || '-'}</td>
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${p.packageName || '-'}</td>
+                                        <td class="px-1.5 py-1 text-center border-b border-slate-100">${p.duration ?? '-'}</td>
+                                        <td class="px-1.5 py-1 text-right border-b border-slate-100">${(p.total || 0).toFixed(2)}</td>
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${p.trip || '-'}</td>
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${p.airline || '-'}</td>
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${p.route || '-'}</td>
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${p.flightDate || '-'}</td>
+                                        <td class="px-1.5 py-1 text-center border-b border-slate-100">${p.baggage || '-'}</td>
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${p.cabin || '-'}</td>
+                                        <td class="px-1.5 py-1 text-center border-b border-slate-100">${p.meal || '-'}</td>
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${p.flightType || '-'}</td>
+                                        <td class="px-1.5 py-1 border-b border-slate-100">${p.remarks || '-'}</td>
                                     </tr>
                                 `).join('')}
                             </tbody>
                         </table>
                     </div>
+                </div>
+
+                <!-- Package Calculation, Payment Summary, Important Note -->
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-5 mb-5">
 
                     <!-- Package Calculation -->
-                    <div class="w-[35%] border-2 border-slate-800">
-                        <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
-                            <h3 class="font-bold text-slate-800">PACKAGE CALCULATION</h3>
-                        </div>
-                        <div class="p-2">
-                            <div class="flex justify-between py-1">
-                                <span class="font-semibold">Sub Total:</span>
-                                <span>${packageValue}</span>
+                    <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+                        <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Package Calculation</div>
+                        <div class="p-3 text-xs">
+                            <div class="flex justify-between py-1.5 border-b border-slate-100">
+                                <span class="font-semibold text-slate-700">Sub Total:</span>
+                                <span>${subTotal.toLocaleString()}</span>
                             </div>
-                            <div class="flex justify-between py-1">
-                                <span class="font-semibold">Total Package:</span>
-                                <span>${total}</span>
+                            <div class="flex justify-between py-1.5 border-b border-slate-100">
+                                <span class="font-semibold text-slate-700">Total Pax:</span>
+                                <span>${totalPackages}</span>
                             </div>
-                            <div class="flex justify-between py-1">
-                                <span class="font-semibold">Finger Fee:</span>
-                                <span>${fingerprintCost}</span>
+                            <div class="flex justify-between py-1.5 border-b border-slate-100">
+                                <span class="font-semibold text-slate-700">Fingerprint Charge:</span>
+                                <span>${fingerprintCharge}</span>
                             </div>
-                            <div class="flex justify-between py-1">
-                                <span class="font-semibold">Additional Fee:</span>
-                                <span>${additionalFee}</span>
-                            </div>
-                            <div class="flex justify-between py-1">
-                                <span class="font-semibold">Discount:</span>
+                            <div class="flex justify-between py-1.5 border-b border-slate-100">
+                                <span class="font-semibold text-slate-700">Discount:</span>
                                 <span>${discount}</span>
                             </div>
-                            <div class="flex justify-between py-1 border-t-2 border-slate-800 mt-1 pt-1">
-                                <span class="font-bold text-lg">GRAND TOTAL:</span>
-                                <span class="font-bold text-lg">${total + additionalFee - discount}</span>
+                            <div class="flex justify-between py-2 mt-1">
+                                <span class="font-bold text-slate-800">Grand Total (BDT):</span>
+                                <span class="font-bold text-slate-800">${grandTotal.toLocaleString()}</span>
                             </div>
                         </div>
                     </div>
-                </div>
 
-                <!-- Flight Details Table -->
-                <div class="border-2 border-slate-800 mb-3">
-                    <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
-                        <h3 class="font-bold text-slate-800">FLIGHT DETAILS</h3>
-                    </div>
-                    <table class="w-full text-sm border-collapse">
-                        <thead class="bg-yellow-200">
-                            <tr>
-                                <th class="border border-slate-300 px-1 py-1 text-xs">Pax</th>
-                                <th class="border border-slate-300 px-1 py-1 text-xs">Type</th>
-                                <th class="border border-slate-300 px-1 py-1 text-xs">Airlines</th>
-                                <th class="border border-slate-300 px-1 py-1 text-xs">Route</th>
-                                <th class="border border-slate-300 px-1 py-1 text-xs">Est. Flight Date</th>
-                                <th class="border border-slate-300 px-1 py-1 text-xs">Baggage</th>
-                                <th class="border border-slate-300 px-1 py-1 text-xs">Cabin</th>
-                                <th class="border border-slate-300 px-1 py-1 text-xs">Meal</th>
-                                <th class="border border-slate-300 px-1 py-1 text-xs">Flight Type</th>
-                                <th class="border border-slate-300 px-1 py-1 text-xs">Remarks</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            ${booking.passengers.map((p, i) => `
-                                <tr class="${i % 2 === 0 ? 'bg-white' : 'bg-gray-50'}">
-                                    <td class="border border-slate-300 px-1 py-1">${i + 1}</td>
-                                    <td class="border border-slate-300 px-1 py-1">${p.flightType || '-'}</td>
-                                    <td class="border border-slate-300 px-1 py-1">${p.airline || '-'}</td>
-                                    <td class="border border-slate-300 px-1 py-1">${p.route || '-'}</td>
-                                    <td class="border border-slate-300 px-1 py-1">${p.flightDate || '-'}</td>
-                                    <td class="border border-slate-300 px-1 py-1">${p.baggage || '20kg'}</td>
-                                    <td class="border border-slate-300 px-1 py-1">${p.cabin || '-'}</td>
-                                    <td class="border border-slate-300 px-1 py-1">${p.meal || 'Yes'}</td>
-                                    <td class="border border-slate-300 px-1 py-1">${p.tripType || '-'}</td>
-                                    <td class="border border-slate-300 px-1 py-1">${p.remarks || '-'}</td>
-                                </tr>
-                            `).join('')}
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Group Umrah Features -->
-                <div class="border-2 border-slate-800 mb-3">
-                    <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
-                        <h3 class="font-bold text-slate-800">GROUP UMRAH FEATURES</h3>
-                    </div>
-                    <table class="w-full text-sm border-collapse">
-                        <tbody>
-                            <tr class="bg-white">
-                                <td class="border border-slate-300 px-2 py-1 font-semibold w-1/4">Accommodation</td>
-                                <td class="border border-slate-300 px-2 py-1">N/A</td>
-                                <td class="border border-slate-300 px-2 py-1 font-semibold w-1/4">Meal Facilities</td>
-                                <td class="border border-slate-300 px-2 py-1">N/A</td>
-                            </tr>
-                            <tr class="bg-gray-50">
-                                <td class="border border-slate-300 px-2 py-1 font-semibold">Transport</td>
-                                <td class="border border-slate-300 px-2 py-1">N/A</td>
-                                <td class="border border-slate-300 px-2 py-1 font-semibold">Site Visit</td>
-                                <td class="border border-slate-300 px-2 py-1">N/A</td>
-                            </tr>
-                        </tbody>
-                    </table>
-                </div>
-
-                <!-- Payment Summary -->
-                <div class="border-2 border-slate-800 mb-3">
-                    <div class="bg-yellow-300 px-2 py-1 border-b-2 border-slate-800">
-                        <h3 class="font-bold text-slate-800">PAYMENT SUMMARY</h3>
-                    </div>
-                    <div class="flex">
-                        <div class="w-1/2 p-2 border-r-2 border-slate-800">
-                            <div class="flex justify-between py-1">
-                                <span class="font-semibold">Total Amount:</span>
-                                <span class="font-bold">${total + additionalFee - discount}</span>
+                    <!-- Payment Summary -->
+                    <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+                        <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Payment Summary</div>
+                        <div class="p-3 text-xs">
+                            <div class="flex justify-between py-1.5 border-b border-slate-100">
+                                <span class="font-semibold text-slate-700">Total Amount:</span>
+                                <span class="font-bold">${grandTotal.toLocaleString()}</span>
                             </div>
-                            <div class="flex justify-between py-1">
-                                <span class="font-semibold">Previous Paid Amount:</span>
-                                <span>${paid}</span>
+                            <div class="flex justify-between py-1.5 border-b border-slate-100">
+                                <span class="font-semibold text-slate-700">Previous Paid Amount:</span>
+                                <span>${previousPaid.toLocaleString()}</span>
                             </div>
-                            <div class="flex justify-between py-1">
-                                <span class="font-semibold">Current Paid Amount:</span>
-                                <span>0</span>
+                            <div class="flex justify-between py-1.5 border-b border-slate-100">
+                                <span class="font-semibold text-slate-700">Current Paid Amount:</span>
+                                <span>${currentPaid.toLocaleString()}</span>
                             </div>
-                        </div>
-                        <div class="w-1/2 p-2">
-                            <div class="flex justify-between py-1 bg-red-100 px-2 -mx-2">
+                            <div class="flex justify-between py-1.5 border-b border-slate-100">
+                                <span class="font-semibold text-slate-700">Total Paid Amount:</span>
+                                <span>${totalPaid.toLocaleString()}</span>
+                            </div>
+                            <div class="flex justify-between py-2 mt-1">
                                 <span class="font-bold text-red-700">Due Amount:</span>
-                                <span class="font-bold text-red-700">${due}</span>
+                                <span class="font-bold text-red-700">${due.toLocaleString()}</span>
                             </div>
+                        </div>
+                    </div>
+
+                    <!-- Important Note -->
+                    <div class="bg-white rounded-lg shadow-sm invoice-card overflow-hidden">
+                        <div class="bg-[#1e40af] text-white px-4 py-2 font-bold text-xs uppercase tracking-wide">Important Note / Conditions</div>
+                        <div class="p-3 text-xs text-slate-500">
+                            <p>N/A</p>
                         </div>
                     </div>
                 </div>
 
-                <!-- Footer -->
-                <div class="border-2 border-slate-800">
-                    <div class="flex">
-                        <div class="w-1/2 p-2 border-r-2 border-slate-800">
-                            <p class="font-semibold">Offer: N/A</p>
-                        </div>
-                        <div class="w-1/2 p-2">
-                            <p class="font-semibold">Conditions: ________________________</p>
-                        </div>
+                <!-- Signatures -->
+                <div class="flex justify-between mt-8 px-4 text-xs">
+                    <div class="text-center">
+                        <p class="font-semibold text-slate-700 mb-6">Representative Signature</p>
+                        <p class="border-t border-slate-400 pt-1 w-48">________________________</p>
+                    </div>
+                    <div class="text-center">
+                        <p class="font-semibold text-slate-700 mb-6">Customer Signature</p>
+                        <p class="border-t border-slate-400 pt-1 w-48">________________________</p>
                     </div>
                 </div>
             `;

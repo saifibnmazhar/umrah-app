@@ -104,7 +104,7 @@
             </div>
 
             <div>
-                <label for="address" class="block text-sm font-medium text-slate-700 mb-1">Address *</label>
+                <label for="address" class="block text-sm font-medium text-slate-700 mb-1">Address (KSA) *</label>
                 <textarea name="address" id="address" rows="3" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition @error('address') border-red-500 @enderror">{{ old('address') ?? $customer->address }}</textarea>
                 @error('address')
                     <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
