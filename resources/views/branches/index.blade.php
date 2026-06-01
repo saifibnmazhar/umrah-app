@@ -1,9 +1,9 @@
 @extends('layouts.app')
-@section('title', 'Branches')
+@section('title', 'Branches(KSA)')
 @section('content')
 <div class="max-w-4xl mx-auto">
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-slate-800">Branches</h1>
+        <h1 class="text-2xl font-bold text-slate-800">Branches(KSA)</h1>
         <a href="{{ route('branches.create') }}" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
             Add New
         </a>
