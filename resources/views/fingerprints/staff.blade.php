@@ -14,7 +14,7 @@
                         <th class="px-3 py-2 text-left font-medium">Customer Name</th>
                         <th class="px-3 py-2 text-left font-medium">PAX Qty</th>
                         <th class="px-3 py-2 text-left font-medium">Mobile</th>
-                        <th class="px-3 py-2 text-left font-medium">Office</th>
+                        <th class="px-3 py-2 text-left font-medium">Branch(BD)</th>
                         <th class="px-3 py-2 text-left font-medium">District</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Deadline</th>
                         <th class="px-3 py-2 text-left font-medium">Passenger</th>
