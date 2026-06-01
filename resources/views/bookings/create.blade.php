@@ -380,11 +380,11 @@
                         </select>
                     </div>
                     <div x-show="newCustomer.iqama_type !== 'none'&& newCustomer.iqama_type !== ''">
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No.</label>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No. (Self)</label>
                         <input type="text" x-model="newCustomer.iqama_no" x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Customer Docs</label>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Customer Docs (Self)</label>
                         <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('customer_docs').click()">
                             <input type="file" id="customer_docs" name="customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleCustomerDocUpload(this)">
                             <div class="text-slate-500">
