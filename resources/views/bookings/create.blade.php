@@ -78,7 +78,7 @@
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Fingerprint Location *</label>
                     <select x-model="bookingData.fingerprint_location" @change="updateFingerprintCharge(); $el.blur()" name="fingerprint_location" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
-                        <option value="office">Branch(BD)</option>
+                        <option value="office">Office</option>
                         <option value="home">Home</option>
                     </select>
                 </div>
