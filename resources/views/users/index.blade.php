@@ -29,8 +29,8 @@
                         <th class="px-4 py-3 text-left">ID</th>
                         <th class="px-4 py-3 text-left">Name</th>
                         <th class="px-4 py-3 text-left">Email</th>
-                        <th class="px-4 py-3 text-left">Branch</th>
-                        <th class="px-4 py-3 text-left">Office</th>
+                        <th class="px-4 py-3 text-left">Branch(KSA)</th>
+                        <th class="px-4 py-3 text-left">Branch(BD)</th>
                         <th class="px-4 py-3 text-left">Roles</th>
                         <th class="px-4 py-3 text-right">Actions</th>
                     </tr>
