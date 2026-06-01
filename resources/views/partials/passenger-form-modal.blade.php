@@ -1,6 +1,6 @@
 {{-- Passenger Modal --}}
 <div x-show="passengerModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
-    <div class="fixed inset-0 bg-black/50" @click="closePassengerModal()"></div>
+    <div class="fixed inset-0 bg-black/50"></div>
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
         <h3 class="text-xl font-semibold text-slate-800 mb-4" x-text="editingPassengerIndex !== null ? 'Edit Passenger' : 'Add Passenger'">Add Passenger</h3>
         <form @submit.prevent="savePassenger()">
