@@ -15,7 +15,7 @@
         @method('PUT')
 
         <div>
-            <label for="name" class="block text-sm font-medium text-slate-700 mb-1">Office Name</label>
+            <label for="name" class="block text-sm font-medium text-slate-700 mb-1">Branch(BD) Name</label>
             <input 
                 type="text" 
                 name="name" 
