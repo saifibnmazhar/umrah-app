@@ -45,8 +45,8 @@
                     <div class="absolute hidden group-hover:block bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50 min-w-[200px]">
                         @if($canAccessAdmin)<a href="{{ route('districts.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Districts</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('banks.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Banks</a>@endif
-                        @if($canAccessAdmin)<a href="{{ route('branches.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Branches</a>@endif
-                        @if($canAccessAdmin)<a href="{{ route('offices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Offices</a>@endif
+                        @if($canAccessAdmin)<a href="{{ route('branches.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Branches (KSA)</a>@endif
+                        @if($canAccessAdmin)<a href="{{ route('offices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Branches (BD)</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('city-codes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">City Codes</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('airlines.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airlines</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('classes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Travel Classes</a>@endif
@@ -116,8 +116,8 @@
                 <span class="block px-3 py-1 text-xs text-slate-400 font-medium">APP MANAGEMENT</span>
                 @if($canAccessAdmin)<a href="{{ route('districts.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Districts</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('banks.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Banks</a>@endif
-                @if($canAccessAdmin)<a href="{{ route('branches.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Branches</a>@endif
-                @if($canAccessAdmin)<a href="{{ route('offices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Offices</a>@endif
+                @if($canAccessAdmin)<a href="{{ route('branches.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Branches (KSA)</a>@endif
+                @if($canAccessAdmin)<a href="{{ route('offices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Branches (BD)</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('city-codes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">City Codes</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('airlines.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airlines</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('classes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Travel Classes</a>@endif

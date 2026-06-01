@@ -68,7 +68,7 @@ $passengersVisaData = $passengers->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Mobile</th>
                             <th class="px-3 py-2 text-left font-medium">Passengers</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Location</th>
-                            <th class="px-3 py-2 text-left font-medium">Office</th>
+                            <th class="px-3 py-2 text-left font-medium">Branch(BD)</th>
                             <th class="px-3 py-2 text-left font-medium">District</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total</th>@endif
