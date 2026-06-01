@@ -35,6 +35,12 @@ class FingerprintController extends Controller
             $query->where('booking.district_id', $request->district);
         }
 
+        if ($request->has('fingerprint_location') && $request->fingerprint_location) {
+            $query->whereHas('booking', function ($q) use ($request) {
+                $q->where('fingerprint_location', $request->fingerprint_location);
+            });
+        }
+
         $user = auth()->user();
         if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
             $query->whereHas('booking', function ($q) use ($user) {
