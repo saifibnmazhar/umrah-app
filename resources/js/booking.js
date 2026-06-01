@@ -977,7 +977,7 @@ Alpine.data('createBookingApp', () => ({
     },
     get discountAmountBDT() {
         const rate = this.exchangeRateValue;
-        if (rate <= 0 || this.bookingData.discount_type !== 'fixed_amount') return null;
+        if (rate <= 0 || this.bookingData.discount_type !== 'fixed') return null;
         const dv = parseFloat(this.bookingData.discount_value) || 0;
         return dv > 0 ? (dv * rate).toFixed(2) : null;
     },
@@ -2334,7 +2334,7 @@ Alpine.data('editBookingApp', () => ({
     },
     get discountAmountBDT() {
         const rate = this.exchangeRateValue;
-        if (rate <= 0 || this.bookingData.discount_type !== 'fixed_amount') return null;
+        if (rate <= 0 || this.bookingData.discount_type !== 'fixed') return null;
         const dv = parseFloat(this.bookingData.discount_value) || 0;
         return dv > 0 ? (dv * rate).toFixed(2) : null;
     },
