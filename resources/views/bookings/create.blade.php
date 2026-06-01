@@ -215,11 +215,25 @@
                 </div>
                 <div class="flex justify-between font-medium text-slate-800">
                     <span id="summaryPackage" class="w-1/6 text-center" x-text="allPackages.find(p => String(p.id) === String(bookingData.package_id))?.package_name ?? '-'">-</span>
-                    <span class="w-1/6 text-center" x-text="fingerprintCharge > 0 ? fingerprintCharge + ' SAR' : '-'">-</span>
-                    <span class="w-1/6 text-center" x-text="passengerCount">0</span>
-                    <span class="w-1/6 text-center" x-text="bookingData.discount_value > 0 ? '-' + bookingData.discount_value + (bookingData.discount_type === 'percentage' ? '%' : ' SAR') : '-'">-</span>
-                    <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center" x-text="(grandTotalValue ?? 0).toFixed(2) + ' SAR'">0 SAR</span>
-                    <span id="summaryTotalValue" class="w-1/6 text-center" x-text="discountedTotal !== null ? discountedTotal.toFixed(2) + ' SAR' : 'N/A'">0 SAR</span>
+                    <span class="w-1/6 text-center">
+                        <div x-text="fingerprintCharge > 0 ? fingerprintCharge + ' SAR' : '-'">-</div>
+                        <div class="text-xs text-slate-800" x-show="fingerprintCharge > 0 && exchangeRateValue > 0" x-text="'≈ ' + fingerprintChargeBDT + ' BDT'"></div>
+                    </span>
+                    <span class="w-1/6 text-center">
+                        <div x-text="passengerCount">0</div>
+                    </span>
+                    <span class="w-1/6 text-center">
+                        <div x-text="bookingData.discount_value > 0 ? '-' + bookingData.discount_value + (bookingData.discount_type === 'percentage' ? '%' : ' SAR') : '-'">-</div>
+                        <div class="text-xs text-slate-800" x-show="bookingData.discount_value > 0 && bookingData.discount_type === 'fixed' && exchangeRateValue > 0" x-text="'≈ -' + discountAmountBDT + ' BDT'"></div>
+                    </span>
+                    <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center">
+                        <div x-text="(grandTotalValue ?? 0).toFixed(2) + ' SAR'">0 SAR</div>
+                        <div class="text-xs text-slate-800" x-show="grandTotalValue > 0 && exchangeRateValue > 0" x-text="'≈ ' + grandTotalValueBDT + ' BDT'">0 BDT</div>
+                    </span>
+                    <span id="summaryTotalValue" class="w-1/6 text-center">
+                        <div x-text="discountedTotal !== null ? discountedTotal.toFixed(2) + ' SAR' : 'N/A'">0 SAR</div>
+                        <div class="text-xs text-slate-800" x-show="discountedTotal !== null && exchangeRateValue > 0" x-text="'≈ ' + discountedTotalBDT + ' BDT'">0 BDT</div>
+                    </span>
                 </div>
             </div>
 
@@ -380,11 +394,11 @@
                         </select>
                     </div>
                     <div x-show="newCustomer.iqama_type !== 'none'&& newCustomer.iqama_type !== ''">
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No.</label>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No. (Self)</label>
                         <input type="text" x-model="newCustomer.iqama_no" x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Customer Docs</label>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Customer Docs (Self)</label>
                         <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('customer_docs').click()">
                             <input type="file" id="customer_docs" name="customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleCustomerDocUpload(this)">
                             <div class="text-slate-500">
