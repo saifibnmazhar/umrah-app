@@ -31,6 +31,7 @@
                         <th class="px-4 py-3 text-left">Email</th>
                         <th class="px-4 py-3 text-left">Branch</th>
                         <th class="px-4 py-3 text-left">Office</th>
+                        <th class="px-4 py-3 text-left">Roles</th>
                         <th class="px-4 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -42,6 +43,14 @@
                             <td class="px-4 py-3 text-slate-600">{{ $user->email }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $user->branch?->name ?? '-' }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $user->office?->name ?? '-' }}</td>
+                            <td class="px-4 py-3">
+                                @foreach($user->roles as $role)
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 mr-1">{{ $role->name }}</span>
+                                @endforeach
+                                @if($user->roles->isEmpty())
+                                    <span class="text-slate-400">-</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
                                     <a href="{{ route('users.edit', $user->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
@@ -55,7 +64,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="6" class="px-4 py-12 text-center text-slate-500">
+                            <td colspan="7" class="px-4 py-12 text-center text-slate-500">
                                 No users found.
                             </td>
                         </tr>
