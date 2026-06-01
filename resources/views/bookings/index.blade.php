@@ -144,11 +144,11 @@ $passengersVisaData = $passengers->map(fn($p) => [
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
-                            <th class="px-3 py-2 text-left font-medium">Ticket Fare</th>
-                            <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Visa</th>
                             <th class="px-3 py-2 text-left font-medium">Visa Agent</th>
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket Fare</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
