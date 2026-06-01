@@ -63,14 +63,17 @@
                 <div>
                     <span class="text-slate-500 text-sm">Total Value</span>
                     <p id="financialTotalValue" class="text-xl font-bold text-slate-800">{{ number_format($booking->invoice?->total_amount ?? 0) }} SAR</p>
+                    <p id="financialTotalValueBdt" class="text-xs text-slate-500">≈ {{ number_format($totalAmountBdt, 2) }} BDT</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Total Paid</span>
                     <p id="financialTotalPaid" class="text-xl font-bold text-green-600">{{ number_format($booking->invoice?->paid_amount ?? 0) }} SAR</p>
+                    <p id="financialTotalPaidBdt" class="text-xs text-slate-500">≈ {{ number_format($paidAmountBdt, 2) }} BDT</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Due</span>
                     <p id="financialDue" class="text-xl font-bold text-red-600">{{ number_format($booking->invoice?->balance ?? 0) }} SAR</p>
+                    <p id="financialDueBdt" class="text-xs text-slate-500">≈ {{ number_format($balanceBdt, 2) }} BDT</p>
                 </div>
             </div>
             <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
@@ -786,6 +789,10 @@ function updateFinancialSummary(invoice) {
     const totalEl = document.getElementById('financialTotalValue');
     const paidEl = document.getElementById('financialTotalPaid');
     const dueEl = document.getElementById('financialDue');
+    const totalBdtEl = document.getElementById('financialTotalValueBdt');
+    const paidBdtEl = document.getElementById('financialTotalPaidBdt');
+    const dueBdtEl = document.getElementById('financialDueBdt');
+    const rate = window.__bookingServerData?.currentCurrencyRate || 0;
 
     if (totalEl) totalEl.textContent = Number(invoice.total_amount).toLocaleString() + ' SAR';
     if (paidEl) paidEl.textContent = Number(invoice.paid_amount).toLocaleString() + ' SAR';
@@ -793,6 +800,9 @@ function updateFinancialSummary(invoice) {
         dueEl.textContent = Number(invoice.balance).toLocaleString() + ' SAR';
         dueEl.className = 'text-xl font-bold ' + (invoice.balance <= 0 ? 'text-green-600' : 'text-red-600');
     }
+    if (totalBdtEl && rate > 0) totalBdtEl.textContent = '≈ ' + (invoice.total_amount * rate).toLocaleString() + ' BDT';
+    if (paidBdtEl && rate > 0) paidBdtEl.textContent = '≈ ' + (invoice.paid_amount * rate).toLocaleString() + ' BDT';
+    if (dueBdtEl && rate > 0) dueBdtEl.textContent = '≈ ' + (invoice.balance * rate).toLocaleString() + ' BDT';
 }
 
 function appendPassengerRow(passenger, displayTotal) {

@@ -958,6 +958,29 @@ Alpine.data('createBookingApp', () => ({
         const discAmt = discType === 'percentage' ? grand * disc / 100 : disc;
         return grand - discAmt;
     },
+    get exchangeRateValue() {
+        return parseFloat(this.exchangeRate) || 0;
+    },
+    get fingerprintChargeBDT() {
+        const rate = this.exchangeRateValue;
+        return rate > 0 ? (parseFloat(this.fingerprintCharge || 0) * rate).toFixed(2) : '0.00';
+    },
+    get grandTotalValueBDT() {
+        const rate = this.exchangeRateValue;
+        return rate > 0 && this.grandTotalValue > 0 ? (this.grandTotalValue * rate).toFixed(2) : '0.00';
+    },
+    get discountedTotalBDT() {
+        const rate = this.exchangeRateValue;
+        if (rate <= 0) return null;
+        const dt = this.discountedTotal;
+        return dt !== null ? (dt * rate).toFixed(2) : null;
+    },
+    get discountAmountBDT() {
+        const rate = this.exchangeRateValue;
+        if (rate <= 0 || this.bookingData.discount_type !== 'fixed_amount') return null;
+        const dv = parseFloat(this.bookingData.discount_value) || 0;
+        return dv > 0 ? (dv * rate).toFixed(2) : null;
+    },
 
     serviceLabel(value) {
         const labels = { all: 'Visa + Ticket', visa_only: 'Visa', ticket_only: 'Ticket' };
@@ -2291,6 +2314,29 @@ Alpine.data('editBookingApp', () => ({
         const discType = this.bookingData.discount_type;
         const discAmt = discType === 'percentage' ? grand * disc / 100 : disc;
         return grand - discAmt;
+    },
+    get exchangeRateValue() {
+        return parseFloat(this.exchangeRate) || 0;
+    },
+    get fingerprintChargeBDT() {
+        const rate = this.exchangeRateValue;
+        return rate > 0 ? (parseFloat(this.fingerprintCharge || 0) * rate).toFixed(2) : '0.00';
+    },
+    get grandTotalValueBDT() {
+        const rate = this.exchangeRateValue;
+        return rate > 0 && this.grandTotalValue > 0 ? (this.grandTotalValue * rate).toFixed(2) : '0.00';
+    },
+    get discountedTotalBDT() {
+        const rate = this.exchangeRateValue;
+        if (rate <= 0) return null;
+        const dt = this.discountedTotal;
+        return dt !== null ? (dt * rate).toFixed(2) : null;
+    },
+    get discountAmountBDT() {
+        const rate = this.exchangeRateValue;
+        if (rate <= 0 || this.bookingData.discount_type !== 'fixed_amount') return null;
+        const dv = parseFloat(this.bookingData.discount_value) || 0;
+        return dv > 0 ? (dv * rate).toFixed(2) : null;
     },
 
     serviceLabel(value) {
