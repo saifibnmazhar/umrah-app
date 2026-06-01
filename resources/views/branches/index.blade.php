@@ -43,7 +43,7 @@
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
                                     <a href="{{ route('branches.edit', $branch->id) }}" class="text-slate-600 hover:text-slate-800 font-medium" aria-label="Edit {{ $branch->name }}">Edit</a>
-                                    <form method="POST" action="{{ route('branches.destroy', $branch->id) }}" onsubmit="return confirm('Are you sure you want to delete this branch?')">
+                                    <form method="POST" action="{{ route('branches.destroy', $branch->id) }}" onsubmit="return confirm('Are you sure you want to delete this branch(KSA)?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600 hover:text-red-800 font-medium" aria-label="Delete {{ $branch->name }}">Delete</button>
@@ -54,7 +54,7 @@
                     @empty
                         <tr>
                             <td colspan="5" class="px-4 py-12 text-center text-slate-500">
-                                No branches found.
+                                No branches(KSA) found.
                             </td>
                         </tr>
                     @endforelse
