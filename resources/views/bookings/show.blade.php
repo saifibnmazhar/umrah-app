@@ -6,7 +6,8 @@
     packages: @json($packages ?? []),
     preSelectedPackageId: {{ $booking->package_id ?? 'null' }},
     currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }},
-    bookingId: {{ $booking->id }}
+    bookingId: {{ $booking->id }},
+    firstPassengerMobile: '{{ $booking->passengers->first()?->mobile_no ?? '' }}'
 };</script>
 <div class="max-w-5xl mx-auto" x-data="showBookingApp()" x-init="init()">
     <div id="invoiceDetailsContent" class="space-y-6">

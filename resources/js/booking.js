@@ -1403,6 +1403,9 @@ Alpine.data('createBookingApp', () => ({
         } else {
             this.filteredTickets = [];
         }
+        if (this.passengers.length > 0 && this.passengers[0].mobile_no) {
+            this.passengerData.mobile_no = this.passengers[0].mobile_no;
+        }
         this.passengerModalVisible = true;
     },
 
@@ -2836,6 +2839,9 @@ Alpine.data('editBookingApp', () => ({
         } else {
             this.filteredTickets = [];
         }
+        if (this.passengers.length > 0 && this.passengers[0].mobile_no) {
+            this.passengerData.mobile_no = this.passengers[0].mobile_no;
+        }
         this.passengerModalVisible = true;
     },
 
@@ -3581,6 +3587,11 @@ Alpine.data('showBookingApp', () => ({
             }
         } else {
             this.filteredTickets = [];
+        }
+        if (this.passengers.length > 0 && this.passengers[0].mobile_no) {
+            this.passengerData.mobile_no = this.passengers[0].mobile_no;
+        } else if (window.__bookingServerData?.firstPassengerMobile) {
+            this.passengerData.mobile_no = window.__bookingServerData.firstPassengerMobile;
         }
         this.passengerModalVisible = true;
     },
