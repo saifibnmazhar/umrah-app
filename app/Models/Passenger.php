@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use App\Enums\Gender;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
@@ -74,6 +75,11 @@ class Passenger extends Model
     public function visaSubmission()
     {
         return $this->hasOne(VisaSubmission::class)->latestOfMany();
+    }
+
+    public function fingerprintDetail(): HasOne
+    {
+        return $this->hasOne(FingerprintDetail::class);
     }
 
     public function getRouteDisplayAttribute(): string
