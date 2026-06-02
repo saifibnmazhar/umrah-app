@@ -62,17 +62,17 @@
             <div class="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-200">
                 <div>
                     <span class="text-slate-500 text-sm">Total Value</span>
-                    <p id="financialTotalValue" class="text-xl font-bold text-slate-800">{{ number_format($booking->invoice?->total_amount ?? 0) }} SAR</p>
+                    <p id="financialTotalValue" class="text-xl font-bold text-slate-800">{{ number_format($booking->invoice?->total_amount ?? 0, 2) }} SAR</p>
                     <p id="financialTotalValueBdt" class="text-xs text-slate-800">≈ {{ number_format($totalAmountBdt, 2) }} BDT</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Total Paid</span>
-                    <p id="financialTotalPaid" class="text-xl font-bold text-green-600">{{ number_format($booking->invoice?->paid_amount ?? 0) }} SAR</p>
+                    <p id="financialTotalPaid" class="text-xl font-bold text-green-600">{{ number_format($booking->invoice?->paid_amount ?? 0, 2) }} SAR</p>
                     <p id="financialTotalPaidBdt" class="text-xs text-green-600">≈ {{ number_format($paidAmountBdt, 2) }} BDT</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Due</span>
-                    <p id="financialDue" class="text-xl font-bold text-red-600">{{ number_format($booking->invoice?->balance ?? 0) }} SAR</p>
+                    <p id="financialDue" class="text-xl font-bold text-red-600">{{ number_format($booking->invoice?->balance ?? 0, 2) }} SAR</p>
                     <p id="financialDueBdt" class="text-xs text-red-600">≈ {{ number_format($balanceBdt, 2) }} BDT</p>
                 </div>
             </div>
@@ -100,7 +100,7 @@
                     <span class="text-slate-500 text-sm ml-2">({{ $passenger->passport_no ?? 'N/A' }})</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="text-slate-800 font-medium">{{ number_format($passengerTotal) }} SAR</span>
+                    <span class="text-slate-800 font-medium">{{ number_format($passengerTotal, 2) }} SAR</span>
                     <button onclick="viewPassengerDetails({{ $passenger->id }})" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-1 rounded">View</button>
                 </div>
             </div>
@@ -217,7 +217,7 @@
                             <td class="px-3 py-2 text-slate-600">{{ $payment->vouchers->first()?->voucher_id ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->payment_method?->value ?? 'Cash' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->transaction_id ?? '-' }}</td>
-                            <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->amount) }} SAR</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->amount, 2) }} SAR</td>
                         </tr>
                         @empty
                         <tr>
@@ -345,15 +345,15 @@
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div class="flex justify-between">
                         <span class="text-slate-500">Total Package Value:</span>
-                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->total_amount ?? 0) }} SAR</span>
+                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->total_amount ?? 0, 2) }} SAR</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-500">Paid:</span>
-                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->paid_amount ?? 0) }} SAR</span>
+                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->paid_amount ?? 0, 2) }} SAR</span>
                     </div>
                     <div class="flex justify-between col-span-2">
                         <span class="text-slate-600 font-medium">Due:</span>
-                        <span id="paymentDue" class="text-slate-800 font-bold text-right">{{ number_format($booking->invoice?->balance ?? 0) }} SAR</span>
+                        <span id="paymentDue" class="text-slate-800 font-bold text-right">{{ number_format($booking->invoice?->balance ?? 0, 2) }} SAR</span>
                     </div>
                 </div>
             </div>
