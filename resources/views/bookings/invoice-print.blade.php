@@ -152,7 +152,11 @@
                         <td class="px-1 py-0.5 border border-slate-300">{{ $booking->package?->package_name ?? 'Package' }}</td>
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->stay_duration ?? '-' }}</td>
                         <td class="px-1 py-0.5 text-right border border-slate-300">{{ number_format($passenger->package_value ?? 0, 2) }}</td>
-                        <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->trip_display }}</td>
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">In Bound</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">Out Bound</div>
+                        </td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->route_display }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->flight_date_display }}</td>
