@@ -98,6 +98,8 @@ Schema::create('banks', function (Blueprint $table) {
 });
 ```
 
+**Latest Update**: `currency` field was added via a new migration (see [Banks Schema Update](#banks-schema-update) section).
+
 ### 4. districts table
 ```php
 Schema::create('districts', function (Blueprint $table) {
@@ -3256,3 +3258,107 @@ php artisan migrate:fresh
 
 *Plan Version: 9.0*
 *Updated: May 2026*
+
+---
+
+## Banks Schema Update
+
+### Overview
+
+Add a `currency` enum field to the existing `banks` table to track which currency a bank operates in.
+
+### Migration File
+
+**File**: `database/migrations/2026_06_02_040955_add_currency_to_banks_table.php`
+
+### Artisan Command
+
+```bash
+php artisan make:migration add_currency_to_banks_table
+```
+
+### Schema Change
+
+#### UP Method
+```php
+public function up(): void
+{
+    Schema::table('banks', function (Blueprint $table) {
+        $table->enum('currency', ['SAR', 'BDT'])->nullable()->after('description');
+    });
+}
+```
+
+#### DOWN Method
+```php
+public function down(): void
+{
+    Schema::table('banks', function (Blueprint $table) {
+        $table->dropColumn('currency');
+    });
+}
+```
+
+### New Enum File
+
+**File**: `app/Enums/Currency.php`
+
+```php
+<?php
+
+namespace App\Enums;
+
+enum Currency: string
+{
+    case SAR = 'SAR';
+    case BDT = 'BDT';
+}
+```
+
+### Model Update
+
+**File**: `app/Models/Bank.php`
+
+| Change | Detail |
+|--------|--------|
+| `$fillable` | Added `'currency'` |
+| `$casts` | Added `'currency' => Currency::class` |
+
+### SQL Schema Update
+
+**File**: `database/schema/mariadb-schema.sql`
+
+Added `currency` column after `description`:
+```sql
+`currency` enum('SAR','BDT') DEFAULT NULL,
+```
+
+### Design Decisions
+
+| Decision | Justification |
+|----------|---------------|
+| Enum type (`'SAR', 'BDT'`) | Matches existing enum patterns in the project (e.g., `iqama_type`) |
+| Nullable | Not all banks may have a currency assigned initially |
+| No default value | Explicit assignment required to avoid silent assumptions |
+| New migration (not edit existing) | The `banks` table already exists; new migration is the standard Laravel approach |
+| `after('description')` | Logical column placement in schema |
+| Enum cast in Model | Enables type-safe access (`$bank->currency === Currency::SAR`) |
+
+### Safe Execution Steps
+
+```bash
+# Step 1: Create migration (already done)
+php artisan make:migration add_currency_to_banks_table
+
+# Step 2: Run migration
+php artisan migrate
+
+# Step 3: Verify column added
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('banks');
+```
+
+### Rollback
+
+```bash
+php artisan migrate:rollback --step=1
+```
