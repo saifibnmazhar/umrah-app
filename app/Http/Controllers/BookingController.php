@@ -77,7 +77,8 @@ class BookingController extends Controller
             'booking.invoice',
             'ticketFare.route',
             'status',
-            'visaSubmission.visaAgent'
+            'visaSubmission.visaAgent',
+            'fingerprintDetail.fingerprint.fingerprintDetails'
         ])
             ->orderBy('created_at', 'desc')
             ->paginate(15)
