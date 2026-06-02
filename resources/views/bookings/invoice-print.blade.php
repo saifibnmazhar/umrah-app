@@ -119,7 +119,7 @@
         <div class="overflow-x-auto">
             <table class="w-full text-[11px] border-collapse whitespace-nowrap">
                 <thead>
-                    <tr class="bg-[#00A651] text-white">
+                    <tr class="bg-[#FFE699]">
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Pax No.</th>
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Name of passengers</th>
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Gender</th>
@@ -137,7 +137,7 @@
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Flight Type</th>
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Remarks</th>
                     </tr>
-                    <tr class="bg-[#00A651] text-white">
+                    <tr class="bg-[#FFE699]">
                         <th class="px-1 py-1 text-center font-semibold border border-[#00853e]">In</th>
                         <th class="px-1 py-1 text-center font-semibold border border-[#00853e]">Out</th>
                     </tr>
