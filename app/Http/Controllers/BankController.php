@@ -23,6 +23,7 @@ class BankController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:banks,name',
             'description' => 'nullable|string|max:255',
+            'currency' => 'nullable|in:SAR,BDT',
         ]);
 
         try {
@@ -43,6 +44,7 @@ class BankController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255|unique:banks,name,' . $bank->id,
             'description' => 'nullable|string|max:255',
+            'currency' => 'nullable|in:SAR,BDT',
         ]);
 
         try {
