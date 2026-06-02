@@ -261,13 +261,19 @@
 
     {{-- Signatures --}}
     <div class="flex justify-between mt-3 px-3 text-xs" style="page-break-inside: avoid;">
-        <div class="text-center">
-            <p class="font-bold text-slate-800 mb-2">Representative Signature</p>
-            <p class="border-t border-slate-400 pt-1.5 w-52">________________________</p>
+        <div class="text-center w-52">
+            <div class="h-20"></div>
+            <div class="border-t-2 border-black"></div>
+            <div class="h-0.5"></div>
+            <div class="border-t-2 border-black"></div>
+            <p class="font-bold text-slate-800 mt-1">Representative Signature</p>
         </div>
-        <div class="text-center">
-            <p class="font-bold text-slate-800 mb-2">Customer Signature</p>
-            <p class="border-t border-slate-400 pt-1.5 w-52">________________________</p>
+        <div class="text-center w-52">
+            <div class="h-20"></div>
+            <div class="border-t-2 border-black"></div>
+            <div class="h-0.5"></div>
+            <div class="border-t-2 border-black"></div>
+            <p class="font-bold text-slate-800 mt-1">Customer Signature</p>
         </div>
     </div>
 
