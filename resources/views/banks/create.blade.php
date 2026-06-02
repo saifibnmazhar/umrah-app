@@ -45,6 +45,23 @@
             @enderror
         </div>
 
+        <div>
+            <label for="currency" class="block text-sm font-medium text-slate-700 mb-1">Currency</label>
+            <select
+                name="currency"
+                id="currency"
+                aria-describedby="currency-error"
+                class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border bg-white @error('currency') border-red-500 @enderror"
+            >
+                <option value="">Select Currency</option>
+                <option value="SAR" @selected(old('currency') == 'SAR')>SAR</option>
+                <option value="BDT" @selected(old('currency') == 'BDT')>BDT</option>
+            </select>
+            @error('currency')
+                <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
+            @enderror
+        </div>
+
         <div class="pt-4 flex items-center gap-4">
             <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
                 Create Bank

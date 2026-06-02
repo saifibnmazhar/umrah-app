@@ -71,7 +71,13 @@ Route::middleware('auth')->group(function () {
     Route::resource('visa-selling-prices', VisaSellingPriceController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::resource('currency-rates', CurrencyRateController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('packages', PackageController::class)->middleware('role:Super Admin,Co Admin');
-    Route::resource('users', UserController::class)->middleware('role:Super Admin,Co Admin');
+    Route::get('/users', [UserController::class, 'index'])->name('users.index')->middleware('role:Super Admin,Co Admin');
+    Route::get('/users/create', [UserController::class, 'create'])->name('users.create')->middleware('role:Super Admin');
+    Route::post('/users', [UserController::class, 'store'])->name('users.store')->middleware('role:Super Admin');
+    Route::get('/users/{user}/edit', [UserController::class, 'edit'])->name('users.edit')->middleware('role:Super Admin');
+    Route::put('/users/{user}', [UserController::class, 'update'])->name('users.update')->middleware('role:Super Admin');
+    Route::delete('/users/{user}', [UserController::class, 'destroy'])->name('users.destroy')->middleware('role:Super Admin');
+    Route::patch('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle-active')->middleware('role:Super Admin');
     Route::resource('transaction-types', TransactionTypeController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('passenger-statuses', PassengerStatusController::class);
     Route::get('/bookings', fn() => view('bookings.index'))->name('bookings.index');

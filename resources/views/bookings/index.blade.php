@@ -2,7 +2,7 @@
 @section('title', 'Booking')
 @section('content')
 @php
-$passengersVisaData = $passengers->map(fn($p) => [
+$passengersVisaData = ($passengers ?? collect())->map(fn($p) => [
     'id' => $p->id,
     'visa' => $p->visaSubmission ? [
         'agent' => $p->visaSubmission?->visaAgent?->name ?? '',
@@ -16,6 +16,54 @@ $passengersVisaData = $passengers->map(fn($p) => [
         'commission_agent' => $p->visaSubmission?->commissionAgent?->name ?? '',
     ] : null,
     'visa_status' => $p->visa_status?->value ?? null,
+])->values();
+
+$passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
+    'id' => $p->id,
+    'booking_date' => $p->booking?->created_at?->format('Y-m-d') ?? '',
+    'invoice_no' => $p->booking?->invoice_id ?? '',
+    'passenger_name' => trim($p->first_name . ' ' . $p->last_name),
+    'passport' => $p->passport_no ?? '',
+    'route' => $p->route_display ?? '',
+    'airline' => $p->ticketFare?->airline?->name ?? $p->booking?->package?->ticketFare?->airline?->name ?? '',
+    'travel_class' => $p->ticketFare?->airlineClass?->name ?? '',
+    'passenger_type' => $p->passenger_type?->value ?? 'adult',
+    'mobile_no' => $p->mobile_no ?? '',
+    'guardian' => '',
+
+    'ticket_status' => $p->ticket_status?->value ?? null,
+    'due' => $p->booking?->invoice?->balance ?? 0,
+    'required_flight_date' => $p->flight_date_from?->format('Y-m-d') ?? '',
+    'actual_flight_date' => $p->actual_flight_date?->format('Y-m-d') ?? '',
+    'fingerprint_location' => $p->booking?->fingerprint_location?->value ?? 'None',
+    'status' => $p->passengerStatus?->name ?? 'None',
+    'documents' => [],
+    'passenger_data' => null,
+
+    'ticket_fare' => $p->ticketFare ? [
+        'ticket_type' => $p->ticketFare->ticket_type?->value ?? 'regular',
+        'route_type' => $p->ticketFare->route_type ?? '',
+        'flight_type' => $p->ticketFare->route?->flight_type?->value ?? '',
+        'group_ticket_id' => $p->ticketFare->groupTicket?->id ?? null,
+        'inbound_date' => $p->ticketFare->groupTicket?->inbound_date ?? '',
+        'outbound_date' => $p->ticketFare->groupTicket?->outbound_date ?? '',
+        'pnr' => $p->ticketFare->groupTicket?->pnr ?? '',
+        'ticket_number' => '',
+        'date' => $p->ticketFare->created_at?->format('Y-m-d') ?? '',
+        'ticket_agent' => '',
+        'selling_fare' => (float)($p->ticketFare->selling_fare ?? 0),
+        'net_fare' => (float)($p->ticketFare->net_fare ?? 0),
+        'with_offer' => (bool)($p->ticketFare->ticket_type?->value === 'offer'),
+        'refundable' => false,
+        'non_refundable' => false,
+        'non_exchangeable' => false,
+        'baggage_inbound_adult' => 30,
+        'baggage_inbound_child' => 30,
+        'baggage_inbound_infant' => 0,
+        'baggage_outbound_adult' => 50,
+        'baggage_outbound_child' => 50,
+        'baggage_outbound_infant' => 0,
+    ] : null,
 ])->values();
 @endphp
 <div class="w-full mx-auto" x-data="bookingIndexApp()">
@@ -149,6 +197,7 @@ $passengersVisaData = $passengers->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
                             <th class="px-3 py-2 text-left font-medium">Ticket Fare</th>
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -242,16 +291,38 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 flex-wrap">
             <span class="font-medium text-sm">{{ $fareAmount > 0 ? number_format($fareAmount, 2) . ' SAR' : '—' }}</span>
-            <button @click="openTicketFareModal({{ $passenger->id }}, 'issue')" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
-            <button @click="openTicketFareModal({{ $passenger->id }}, 'edit')" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
+            <button @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
+            <button @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
         </div>
     </td>
     <td class="px-3 py-2">
-        @php $ticketStatus = $passenger->ticketFare?->ticketStatus; @endphp
+        @php $ticketStatus = $passenger->ticket_status; @endphp
         @if($ticketStatus)
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
                 {{ $ticketStatus->value === 'issued' ? 'bg-green-100 text-green-700' : ($ticketStatus->value === 're-issued' ? 'bg-purple-100 text-purple-700' : ($ticketStatus->value === 'refunded' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600')) }}">
                 {{ ucfirst($ticketStatus->value) }}
+            </span>
+        @else
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
+        @endif
+    </td>
+    <td class="px-3 py-2">
+        @php
+            $detail = $passenger->fingerprintDetail;
+            $rawStatus = $detail?->status?->value;
+            $displayStatus = $rawStatus;
+            if ($rawStatus === 'approved') {
+                $allDetails = $detail->fingerprint?->fingerprintDetails;
+                $allApproved = $allDetails && $allDetails->every(fn($d) => $d->status->value === 'approved');
+                if (!$allApproved) {
+                    $displayStatus = 'Partially Approved';
+                }
+            }
+        @endphp
+        @if($displayStatus)
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
+                {{ $rawStatus === 'approved' ? 'bg-green-100 text-green-700' : ($rawStatus === 'processing' ? 'bg-blue-100 text-blue-700' : ($rawStatus === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600')) }}">
+                {{ $displayStatus === 'Partially Approved' ? 'Partially Approved' : ucfirst($rawStatus) }}
             </span>
         @else
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
@@ -263,7 +334,7 @@ if ($route) {
 </tr>
 @empty
 <tr>
-    <td colspan="{{ $canViewFinancialColumns ? 22 : 18 }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="{{ $canViewFinancialColumns ? 23 : 19 }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 @endforelse
                     </tbody>
                 </table>
@@ -431,134 +502,173 @@ if ($route) {
     {{-- Ticket Fare Modal --}}
     <div x-show="isTicketFareModalOpen" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeTicketFareModal()">
         <div class="fixed inset-0 bg-black/50" @click="closeTicketFareModal()"></div>
-        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
-            <div class="flex justify-between items-start mb-4">
-                <h3 class="text-xl font-semibold text-slate-800" x-text="ticketFareModalMode === 'issue' ? 'Issue Ticket' : 'Edit Ticket'"></h3>
-                <button @click="closeTicketFareModal()" class="text-slate-400 hover:text-slate-600">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                    </svg>
-                </button>
-            </div>
-            <form @submit.prevent="closeTicketFareModal()">
-                <div class="space-y-5">
-                    {{-- Ticket Type --}}
-                    <div class="bg-slate-50 rounded-lg p-4">
-                        <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Ticket Type</h4>
+        <div x-show="isTicketFareModalOpen" x-cloak class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4" id="ticketFareModalTitle" x-text="ticketFareModalTitle"></h3>
+            <form @submit.prevent="handleTicketFareSubmit()">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                    <select x-model="ticketFareForm.ticket_type" @change="handleTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select</option>
+                        <option value="regular">Regular</option>
+                        <option value="offer">Offer</option>
+                        <option value="group">Group</option>
+                    </select>
+                </div>
+
+                <div x-show="ticketFareForm.ticket_type === 'group'" class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Group Ticket</label>
+                    <select x-model="ticketFareForm.group_ticket_id" @change="handleGroupTicketSelect()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select Ticket</option>
+                        <template x-for="gt in groupTickets" :key="gt.id">
+                            <option :value="gt.id" x-text="gt.pnr + ' • ' + gt.date + ' • ' + gt.remainingSeats + ' seats'"></option>
+                        </template>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <select x-model="ticketFareForm.ticket_type" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="new">New Ticket</option>
-                                <option value="reissue">Reissue</option>
-                                <option value="exchange">Exchange</option>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
+                            <select x-model="ticketFareForm.route_type" @change="handleTicketFareRouteTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select</option>
+                                <option value="One Way-Inbound">One Way-Inbound</option>
+                                <option value="One Way-Outbound">One Way-Outbound</option>
+                                <option value="Round">Round</option>
+                                <option value="Multi City">Multi City</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                            <select x-model="ticketFareForm.flight_type" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select</option>
+                                <option value="Transit">Transit</option>
+                                <option value="Direct">Direct</option>
+                            </select>
+                        </div>
+                        <div x-show="ticketFareForm.showInboundDate">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
+                            <input type="date" x-model="ticketFareForm.inbound_date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div x-show="ticketFareForm.showOutboundDate">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
+                            <input type="date" x-model="ticketFareForm.outbound_date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">PNR</label>
+                            <input type="text" x-model="ticketFareForm.pnr" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter PNR">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Number *</label>
+                            <input type="text" x-model="ticketFareForm.ticket_number" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter Ticket Number">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+                            <input type="date" x-model="ticketFareForm.date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
+                            <select x-model="ticketFareForm.ticket_agent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Agent</option>
+                                <option value="Al-Reem">Al-Reem</option>
+                                <option value="Nasser">Nasser</option>
+                                <option value="Al-Masria">Al-Masria</option>
+                                <option value="Umrah Plus">Umrah Plus</option>
                             </select>
                         </div>
                     </div>
+                </div>
 
-                    {{-- Ticket Information --}}
-                    <div class="bg-slate-50 rounded-lg p-4">
-                        <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Ticket Information</h4>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">PNR</label>
-                                <input type="text" x-model="ticketFareForm.pnr" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter PNR">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Number</label>
-                                <input type="text" x-model="ticketFareForm.ticket_number" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter ticket number">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Airline</label>
-                                <input type="text" x-model="ticketFareForm.airline" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter airline">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Flight No</label>
-                                <input type="text" x-model="ticketFareForm.flight_no" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter flight no">
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Travel Details --}}
-                    <div class="bg-slate-50 rounded-lg p-4">
-                        <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Departure</label>
-                                <input type="text" x-model="ticketFareForm.departure" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-600" readonly placeholder="Departure city">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Arrival</label>
-                                <input type="text" x-model="ticketFareForm.arrival" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-600" readonly placeholder="Arrival city">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Departure Time</label>
-                                <input type="text" x-model="ticketFareForm.departure_time" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-600" readonly placeholder="Departure time">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Arrival Time</label>
-                                <input type="text" x-model="ticketFareForm.arrival_time" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-600" readonly placeholder="Arrival time">
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Fare Calculation --}}
-                    <div class="bg-slate-50 rounded-lg p-4">
-                        <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
-                        <div class="grid grid-cols-3 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Amount (SAR)</label>
-                                <input type="number" x-model="ticketFareForm.fare_amount" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Tax (SAR)</label>
-                                <input type="number" x-model="ticketFareForm.tax_amount" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Total (SAR)</label>
-                                <input type="number" x-model="ticketFareForm.total_amount" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold" readonly placeholder="Auto-calculated">
-                            </div>
-                        </div>
-                    </div>
-
-                    {{-- Baggage Info --}}
-                    <div class="bg-slate-50 rounded-lg p-4">
-                        <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Allowance</label>
-                            <input type="text" x-model="ticketFareForm.baggage_allowance" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="e.g. 20kg">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
+                            <input type="text" x-model="ticketFareForm.route" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                         </div>
-                    </div>
-
-                    {{-- Ticket Options --}}
-                    <div class="bg-slate-50 rounded-lg p-4">
-                        <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Ticket Options</h4>
-                        <div class="grid grid-cols-2 gap-4">
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Option</label>
-                                <select x-model="ticketFareForm.ticket_option" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                    <option value="">Select</option>
-                                    <option value="inbound">Inbound</option>
-                                    <option value="outbound">Outbound</option>
-                                    <option value="both">Both</option>
-                                </select>
-                            </div>
-                            <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
-                                <select x-model="ticketFareForm.status" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                    <option value="">Select</option>
-                                    <option value="issued">Issued</option>
-                                    <option value="pending">Pending</option>
-                                    <option value="cancelled">Cancelled</option>
-                                </select>
-                            </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
+                            <input type="text" x-model="ticketFareForm.airline" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                         </div>
-                        <div class="mt-3">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
-                            <textarea x-model="ticketFareForm.remarks" rows="2" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter remarks"></textarea>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
+                            <input type="text" x-model="ticketFareForm.travel_class" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
+                            <input type="text" x-model="ticketFareForm.passenger_type" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                         </div>
                     </div>
                 </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
+                            <input type="number" x-model="ticketFareForm.selling_fare" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
+                            <input type="number" x-model="ticketFareForm.net_fare" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="ticketFareForm.showBaggage" class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
+                    <div x-show="ticketFareForm.showInboundBaggage" id="ticketFareInboundBaggage" class="mb-4">
+                        <h5 class="text-sm font-medium text-slate-700 mb-2">Inbound</h5>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm text-slate-600 mb-1">Adult</label>
+                                <input type="number" x-model="ticketFareForm.baggage_inbound_adult" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="30">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-slate-600 mb-1">Child</label>
+                                <input type="number" x-model="ticketFareForm.baggage_inbound_child" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="30">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-slate-600 mb-1">Infant</label>
+                                <input type="number" x-model="ticketFareForm.baggage_inbound_infant" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                            </div>
+                        </div>
+                    </div>
+                    <div x-show="ticketFareForm.showOutboundBaggage" id="ticketFareOutboundBaggage">
+                        <h5 class="text-sm font-medium text-slate-700 mb-2">Outbound</h5>
+                        <div class="grid grid-cols-3 gap-4">
+                            <div>
+                                <label class="block text-sm text-slate-600 mb-1">Adult</label>
+                                <input type="number" x-model="ticketFareForm.baggage_outbound_adult" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="50">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-slate-600 mb-1">Child</label>
+                                <input type="number" x-model="ticketFareForm.baggage_outbound_child" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="50">
+                            </div>
+                            <div>
+                                <label class="block text-sm text-slate-600 mb-1">Infant</label>
+                                <input type="number" x-model="ticketFareForm.baggage_outbound_infant" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Options</h4>
+                    <div class="flex flex-wrap gap-6">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" x-model="ticketFareForm.non_refundable" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                            <span class="text-sm text-slate-700">Non-Refundable</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" x-model="ticketFareForm.non_exchangeable" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                            <span class="text-sm text-slate-700">Non-Exchangeable</span>
+                        </label>
+                    </div>
+                </div>
+
                 <div class="flex gap-3 mt-6">
-                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" x-text="ticketFareModalMode === 'issue' ? 'Save' : 'Update'"></button>
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
                     <button type="button" @click="closeTicketFareModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
                 </div>
             </form>
@@ -578,6 +688,9 @@ function bookingIndexApp() {
         searchTerm: '',
 
         passengersVisaData: @json($passengersVisaData),
+        passengersTicketData: @json($passengersTicketData),
+
+        groupTickets: [],
 
         visaCommissionAgents: {
             "Visa Agent A": ["Commission Agent 1", "Commission Agent 2"],
@@ -728,43 +841,213 @@ function bookingIndexApp() {
         },
 
         isTicketFareModalOpen: false,
-        ticketFareModalMode: 'issue',
-        selectedPassengerId: null,
+        editingPassengerIndex: null,
+        ticketFareModalTitle: 'Issue Ticket',
 
         ticketFareForm: {
-            ticket_type: 'new',
-            ticket_number: '',
+            ticket_type: '',
+            group_ticket_id: '',
+            route_type: '',
+            flight_type: '',
+            inbound_date: '',
+            outbound_date: '',
             pnr: '',
+            ticket_number: '',
+            date: '',
+            ticket_agent: '',
+            route: '',
             airline: '',
-            flight_no: '',
-            departure: '',
-            arrival: '',
-            departure_time: '',
-            arrival_time: '',
-            fare_amount: '',
-            tax_amount: '',
-            total_amount: '',
-            baggage_allowance: '',
-            ticket_option: '',
-            status: '',
-            remarks: ''
+            travel_class: '',
+            passenger_type: '',
+            selling_fare: 0,
+            net_fare: 0,
+            baggage_inbound_adult: 30,
+            baggage_inbound_child: 30,
+            baggage_inbound_infant: 0,
+            baggage_outbound_adult: 50,
+            baggage_outbound_child: 50,
+            baggage_outbound_infant: 0,
+            non_refundable: false,
+            non_exchangeable: false,
+            showInboundDate: false,
+            showOutboundDate: false,
+            showBaggage: false,
+            showInboundBaggage: false,
+            showOutboundBaggage: false,
         },
 
-        openTicketFareModal(passengerId, mode) {
-            this.selectedPassengerId = passengerId;
-            this.ticketFareModalMode = mode;
-            this.isTicketFareModalOpen = true;
-            for (let key in this.ticketFareForm) {
-                if (key !== 'ticket_type') {
-                    this.ticketFareForm[key] = '';
-                }
+        openTicketFareModal(rowIndex) {
+            this.editingPassengerIndex = rowIndex;
+            const row = this.passengersTicketData[rowIndex];
+            if (!row) return;
+
+            const isAlreadyIssued = row.ticket_status === 'issued' || row.ticket_status === 're-issued';
+            this.ticketFareModalTitle = isAlreadyIssued ? 'Edit Ticket' : 'Issue Ticket';
+
+            this.ticketFareForm.route = row.route || '';
+            this.ticketFareForm.airline = row.airline || '';
+            this.ticketFareForm.travel_class = row.travel_class || '';
+            this.ticketFareForm.passenger_type = row.passenger_type || '';
+
+            if (row.ticket_fare) {
+                this.ticketFareForm.ticket_type = row.ticket_fare.ticket_type || '';
+                this.ticketFareForm.route_type = row.ticket_fare.route_type || '';
+                this.ticketFareForm.flight_type = row.ticket_fare.flight_type || '';
+                this.ticketFareForm.group_ticket_id = row.ticket_fare.group_ticket_id || '';
+                this.ticketFareForm.inbound_date = row.ticket_fare.inbound_date || '';
+                this.ticketFareForm.outbound_date = row.ticket_fare.outbound_date || '';
+                this.ticketFareForm.pnr = row.ticket_fare.pnr || '';
+                this.ticketFareForm.ticket_number = row.ticket_fare.ticket_number || '';
+                this.ticketFareForm.date = row.ticket_fare.date || '';
+                this.ticketFareForm.ticket_agent = row.ticket_fare.ticket_agent || '';
+                this.ticketFareForm.selling_fare = row.ticket_fare.selling_fare || 0;
+                this.ticketFareForm.net_fare = row.ticket_fare.net_fare || 0;
+                this.ticketFareForm.non_refundable = row.ticket_fare.non_refundable || false;
+                this.ticketFareForm.non_exchangeable = row.ticket_fare.non_exchangeable || false;
+                this.ticketFareForm.baggage_inbound_adult = row.ticket_fare.baggage_inbound_adult || 30;
+                this.ticketFareForm.baggage_inbound_child = row.ticket_fare.baggage_inbound_child || 30;
+                this.ticketFareForm.baggage_inbound_infant = row.ticket_fare.baggage_inbound_infant || 0;
+                this.ticketFareForm.baggage_outbound_adult = row.ticket_fare.baggage_outbound_adult || 50;
+                this.ticketFareForm.baggage_outbound_child = row.ticket_fare.baggage_outbound_child || 50;
+                this.ticketFareForm.baggage_outbound_infant = row.ticket_fare.baggage_outbound_infant || 0;
+            } else {
+                this.ticketFareForm.ticket_type = '';
+                this.ticketFareForm.route_type = '';
+                this.ticketFareForm.flight_type = '';
+                this.ticketFareForm.group_ticket_id = '';
+                this.ticketFareForm.inbound_date = '';
+                this.ticketFareForm.outbound_date = '';
+                this.ticketFareForm.pnr = '';
+                this.ticketFareForm.ticket_number = '';
+                this.ticketFareForm.date = '';
+                this.ticketFareForm.ticket_agent = '';
+                this.ticketFareForm.selling_fare = 0;
+                this.ticketFareForm.net_fare = 0;
+                this.ticketFareForm.non_refundable = false;
+                this.ticketFareForm.non_exchangeable = false;
+                this.ticketFareForm.baggage_inbound_adult = 30;
+                this.ticketFareForm.baggage_inbound_child = 30;
+                this.ticketFareForm.baggage_inbound_infant = 0;
+                this.ticketFareForm.baggage_outbound_adult = 50;
+                this.ticketFareForm.baggage_outbound_child = 50;
+                this.ticketFareForm.baggage_outbound_infant = 0;
             }
-            this.ticketFareForm.ticket_type = 'new';
+
+            this.handleTicketFareRouteTypeChange();
+            this.handleTicketTypeChange();
+            this.isTicketFareModalOpen = true;
         },
 
         closeTicketFareModal() {
             this.isTicketFareModalOpen = false;
-            this.selectedPassengerId = null;
+            this.editingPassengerIndex = null;
+        },
+
+        handleTicketFareRouteTypeChange() {
+            const routeType = this.ticketFareForm.route_type;
+            const f = this.ticketFareForm;
+            f.showBaggage = false;
+            f.showInboundBaggage = false;
+            f.showOutboundBaggage = false;
+            f.showInboundDate = false;
+            f.showOutboundDate = false;
+
+            switch (routeType) {
+                case 'One Way-Inbound':
+                    f.showBaggage = true;
+                    f.showInboundBaggage = true;
+                    f.showInboundDate = true;
+                    break;
+                case 'One Way-Outbound':
+                    f.showBaggage = true;
+                    f.showOutboundBaggage = true;
+                    f.showOutboundDate = true;
+                    break;
+                case 'Round':
+                case 'Multi City':
+                    f.showBaggage = true;
+                    f.showInboundBaggage = true;
+                    f.showOutboundBaggage = true;
+                    f.showInboundDate = true;
+                    f.showOutboundDate = true;
+                    break;
+            }
+        },
+
+        handleTicketTypeChange() {
+            const isGroup = this.ticketFareForm.ticket_type === 'group';
+            if (!isGroup) {
+                this.ticketFareForm.group_ticket_id = '';
+            }
+        },
+
+        handleGroupTicketSelect() {
+            const selectedId = this.ticketFareForm.group_ticket_id;
+            const selected = this.groupTickets.find(gt => gt.id === selectedId);
+            if (selected) {
+                this.ticketFareForm.pnr = selected.pnr;
+                this.ticketFareForm.date = selected.date;
+            }
+        },
+
+        handleTicketFareSubmit() {
+            if (this.editingPassengerIndex === null) return;
+
+            const row = this.passengersTicketData[this.editingPassengerIndex];
+            if (!row) return;
+
+            const ticketFareData = {
+                ticket_type: this.ticketFareForm.ticket_type || 'regular',
+                route_type: this.ticketFareForm.route_type || '',
+                flight_type: this.ticketFareForm.flight_type || '',
+                group_ticket_id: this.ticketFareForm.group_ticket_id || '',
+                inbound_date: this.ticketFareForm.inbound_date || '',
+                outbound_date: this.ticketFareForm.outbound_date || '',
+                pnr: this.ticketFareForm.pnr || '',
+                ticket_number: this.ticketFareForm.ticket_number || '',
+                date: this.ticketFareForm.date || '',
+                ticket_agent: this.ticketFareForm.ticket_agent || '',
+                selling_fare: parseFloat(this.ticketFareForm.selling_fare) || 0,
+                net_fare: parseFloat(this.ticketFareForm.net_fare) || 0,
+                non_refundable: this.ticketFareForm.non_refundable || false,
+                non_exchangeable: this.ticketFareForm.non_exchangeable || false,
+                baggage_inbound_adult: parseInt(this.ticketFareForm.baggage_inbound_adult) || 30,
+                baggage_inbound_child: parseInt(this.ticketFareForm.baggage_inbound_child) || 30,
+                baggage_inbound_infant: parseInt(this.ticketFareForm.baggage_inbound_infant) || 0,
+                baggage_outbound_adult: parseInt(this.ticketFareForm.baggage_outbound_adult) || 50,
+                baggage_outbound_child: parseInt(this.ticketFareForm.baggage_outbound_child) || 50,
+                baggage_outbound_infant: parseInt(this.ticketFareForm.baggage_outbound_infant) || 0,
+            };
+
+            row.ticket_fare = ticketFareData;
+            row.ticket_status = 'issued';
+
+            this.showToast('Ticket fare saved successfully');
+            this.closeTicketFareModal();
+        },
+
+        showToast(message) {
+            const container = document.getElementById('toastContainer') || (() => {
+                const el = document.createElement('div');
+                el.id = 'toastContainer';
+                el.className = 'fixed top-4 right-4 z-50 space-y-2';
+                document.body.appendChild(el);
+                return el;
+            })();
+
+            const toast = document.createElement('div');
+            toast.className = 'toast px-4 py-3 rounded-lg shadow-lg text-white font-medium bg-slate-700 translate-x-full opacity-0';
+            toast.textContent = message;
+            container.appendChild(toast);
+
+            requestAnimationFrame(() => {
+                toast.classList.remove('translate-x-full', 'opacity-0');
+            });
+
+            setTimeout(() => {
+                toast.classList.add('translate-x-full', 'opacity-0');
+                setTimeout(() => toast.remove(), 300);
+            }, 3000);
         }
     }
 }

@@ -29,6 +29,7 @@
                         <th class="px-4 py-3 text-left">ID</th>
                         <th class="px-4 py-3 text-left">Name</th>
                         <th class="px-4 py-3 text-left">Description</th>
+                        <th class="px-4 py-3 text-left">Currency</th>
                         <th class="px-4 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -38,6 +39,13 @@
                             <td class="px-4 py-3 text-slate-700">{{ $bank->id }}</td>
                             <td class="px-4 py-3 text-slate-700 font-medium">{{ $bank->name }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $bank->description ?? '-' }}</td>
+                            <td class="px-4 py-3">
+                                @if($bank->currency)
+                                    <span class="text-slate-700">{{ $bank->currency->value }}</span>
+                                @else
+                                    <span class="text-slate-400 italic text-xs">Not Set</span>
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
                                     <a href="{{ route('banks.edit', $bank->id) }}" class="text-slate-600 hover:text-slate-800 font-medium" aria-label="Edit {{ $bank->name }}">Edit</a>
@@ -51,7 +59,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-4 py-12 text-center text-slate-500">
+                            <td colspan="5" class="px-4 py-12 text-center text-slate-500">
                                 No banks found.
                             </td>
                         </tr>

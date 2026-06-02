@@ -98,6 +98,8 @@ Schema::create('banks', function (Blueprint $table) {
 });
 ```
 
+**Latest Update**: `currency` field was added via a new migration (see [Banks Schema Update](#banks-schema-update) section).
+
 ### 4. districts table
 ```php
 Schema::create('districts', function (Blueprint $table) {
@@ -3256,3 +3258,268 @@ php artisan migrate:fresh
 
 *Plan Version: 9.0*
 *Updated: May 2026*
+
+---
+
+## Banks Schema Update
+
+### Overview
+
+Add a `currency` enum field to the existing `banks` table to track which currency a bank operates in.
+
+### Migration File
+
+**File**: `database/migrations/2026_06_02_040955_add_currency_to_banks_table.php`
+
+### Artisan Command
+
+```bash
+php artisan make:migration add_currency_to_banks_table
+```
+
+### Schema Change
+
+#### UP Method
+```php
+public function up(): void
+{
+    Schema::table('banks', function (Blueprint $table) {
+        $table->enum('currency', ['SAR', 'BDT'])->nullable()->after('description');
+    });
+}
+```
+
+#### DOWN Method
+```php
+public function down(): void
+{
+    Schema::table('banks', function (Blueprint $table) {
+        $table->dropColumn('currency');
+    });
+}
+```
+
+### New Enum File
+
+**File**: `app/Enums/Currency.php`
+
+```php
+<?php
+
+namespace App\Enums;
+
+enum Currency: string
+{
+    case SAR = 'SAR';
+    case BDT = 'BDT';
+}
+```
+
+### Model Update
+
+**File**: `app/Models/Bank.php`
+
+| Change | Detail |
+|--------|--------|
+| `$fillable` | Added `'currency'` |
+| `$casts` | Added `'currency' => Currency::class` |
+
+### SQL Schema Update
+
+**File**: `database/schema/mariadb-schema.sql`
+
+Added `currency` column after `description`:
+```sql
+`currency` enum('SAR','BDT') DEFAULT NULL,
+```
+
+### Design Decisions
+
+| Decision | Justification |
+|----------|---------------|
+| Enum type (`'SAR', 'BDT'`) | Matches existing enum patterns in the project (e.g., `iqama_type`) |
+| Nullable | Not all banks may have a currency assigned initially |
+| No default value | Explicit assignment required to avoid silent assumptions |
+| New migration (not edit existing) | The `banks` table already exists; new migration is the standard Laravel approach |
+| `after('description')` | Logical column placement in schema |
+| Enum cast in Model | Enables type-safe access (`$bank->currency === Currency::SAR`) |
+
+### Safe Execution Steps
+
+```bash
+# Step 1: Create migration (already done)
+php artisan make:migration add_currency_to_banks_table
+
+# Step 2: Run migration
+php artisan migrate
+
+# Step 3: Verify column added
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('banks');
+```
+
+### Rollback
+
+```bash
+php artisan migrate:rollback --step=1
+```
+
+---
+
+## Phase 9: Users Table - Active Status
+
+### Overview
+
+Add `is_active` boolean column to the existing `users` table to support active/inactive user toggling.
+
+### Dependency Analysis
+
+This is a **column addition** to the existing `users` table. No new tables, no foreign key dependencies.
+
+### Artisan Command
+
+```bash
+php artisan make:migration add_is_active_to_users_table
+```
+
+### Schema Change
+
+#### UP Method
+```php
+public function up(): void
+{
+    Schema::table('users', function (Blueprint $table) {
+        $table->boolean('is_active')
+            ->default(true)
+            ->after('office_id');
+    });
+}
+```
+
+#### DOWN Method
+```php
+public function down(): void
+{
+    Schema::table('users', function (Blueprint $table) {
+        $table->dropColumn('is_active');
+    });
+}
+```
+
+### Design Decisions
+
+| Decision | Justification |
+|----------|---------------|
+| `boolean` type | Simple true/false toggle — no need for an enum |
+| `default(true)` | Existing users should be active by default when column is added |
+| `after('office_id')` | Logical column placement — `branch_id`, `office_id`, then `is_active` |
+| New migration (not edit existing) | Standard Laravel approach — the `users` table already exists |
+| `boolean` cast in Model | Enables type-safe access (`$user->is_active` returns `bool`) |
+
+### Safe Execution Steps
+
+```bash
+# Step 1: Create migration
+php artisan make:migration add_is_active_to_users_table
+
+# Step 2: Run migration
+php artisan migrate
+
+# Step 3: Verify column added
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('users');
+```
+
+### Risks & Edge Cases
+
+| Risk | Mitigation |
+|------|------------|
+| Existing users without active status | `default(true)` ensures all existing users become active |
+| User deactivated while logged in | Handled by global middleware (`CheckActive`) on every request |
+| Super Admin accidentally deactivated | Blocked at controller + route level (Super Admin route restriction + `hasRole` guard) |
+
+---
+
+## Invoice Print BDT Display — Add currency_rate_id to bookings
+
+### Overview
+
+Add `currency_rate_id` to the `bookings` table to capture the exchange rate at booking creation time, enabling accurate BDT amount display on invoice prints.
+
+### Migration File
+
+**File**: `database/migrations/2026_06_02_XXXXXX_add_currency_rate_id_to_bookings_table.php`
+
+### Artisan Command
+
+```bash
+php artisan make:migration add_currency_rate_id_to_bookings_table
+```
+
+### Schema Change
+
+#### UP Method
+```php
+public function up(): void
+{
+    Schema::table('bookings', function (Blueprint $table) {
+        $table->foreignId('currency_rate_id')
+            ->nullable()
+            ->constrained('currency_rates')
+            ->nullOnDelete()
+            ->onUpdate('cascade')
+            ->after('fingerprint_office');
+    });
+}
+```
+
+#### DOWN Method
+```php
+public function down(): void
+{
+    Schema::table('bookings', function (Blueprint $table) {
+        $table->dropForeign(['currency_rate_id']);
+        $table->dropColumn('currency_rate_id');
+    });
+}
+```
+
+### Design Decisions
+
+| Decision | Justification |
+|----------|---------------|
+| Nullable | Existing bookings after migration have no rate; fallback logic handles it |
+| `nullOnDelete()` | If a CurrencyRate is deleted, booking is preserved with NULL (falls back to rate-at-creation lookup) |
+| `onUpdate('cascade')` | Auto-update FK if referenced rate ID changes |
+| Column placement | `after('fingerprint_office')` — logical grouping with booking details |
+| New migration (not edit existing) | Standard Laravel approach — the `bookings` table already exists |
+
+### Fallback Logic (in `BookingController::print()`)
+
+```
+1. booking.currencyRate (rate stored at booking creation)
+   └── if null → fallback
+2. CurrencyRate where created_at <= booking.created_at (latest at booking time)
+   └── if null or rate <= 0 → fallback
+3. Display SAR amounts with "(SAR)" suffix, formatted to 2 decimal places
+```
+
+### Safe Execution Steps
+
+```bash
+# Step 1: Create migration
+php artisan make:migration add_currency_rate_id_to_bookings_table
+
+# Step 2: Run migration
+php artisan migrate
+
+# Step 3: Verify column added
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('bookings');
+```
+
+### Risks & Edge Cases
+
+| Risk | Mitigation |
+|------|------------|
+| Existing bookings have null `currency_rate_id` | Fallback #2 queries rate-at-creation-time by `created_at` |
+| No CurrencyRate record exists | Fallback #3 shows SAR with `(SAR)` suffix |
+| Rate deleted from currency_rates | `nullOnDelete()` preserves booking; fallback handles gracefully |
+| Rate is 0 (edge case) | `$rate > 0` guard prevents division-by-zero; falls to SAR display |

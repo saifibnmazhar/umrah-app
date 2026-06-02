@@ -119,23 +119,27 @@
         <div class="overflow-x-auto">
             <table class="w-full text-[11px] border-collapse whitespace-nowrap">
                 <thead>
-                    <tr class="bg-[#00A651] text-white">
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Pax No.</th>
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Name of passengers</th>
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Gender</th>
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Passport number</th>
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Package</th>
-                        <th class="px-1 py-1 text-center font-semibold border border-[#00853e]">Duration (Days)</th>
-                        <th class="px-1 py-1 text-right font-semibold border border-[#00853e]">Package Value (BDT)</th>
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Trip</th>
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Airline</th>
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Route</th>
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Est.Flight Date</th>
-                        <th class="px-1 py-1 text-center font-semibold border border-[#00853e]">Baggage(KG)</th>
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Cabin</th>
-                        <th class="px-1 py-1 text-center font-semibold border border-[#00853e]">Meal</th>
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Flight Type</th>
-                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]">Remarks</th>
+                    <tr class="bg-[#FFE699]">
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Pax No.</th>
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Name of passengers</th>
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Gender</th>
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Passport number</th>
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Package</th>
+                        <th class="px-1 py-1 text-center font-semibold border border-[#00853e]" rowspan="2">Duration (Days)</th>
+                        <th class="px-1 py-1 text-right font-semibold border border-[#00853e]" rowspan="2">Package Value ({{ $currencySuffix }})</th>
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Trip</th>
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Airline</th>
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Route</th>
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Est.Flight Date</th>
+                        <th class="px-1 py-1 text-center font-semibold border border-[#00853e]" colspan="2">Baggage</th>
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Cabin</th>
+                        <th class="px-1 py-1 text-center font-semibold border border-[#00853e]" rowspan="2">Meal</th>
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Flight Type</th>
+                        <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Remarks</th>
+                    </tr>
+                    <tr class="bg-[#FFE699]">
+                        <th class="px-1 py-1 text-center font-semibold border border-[#00853e]">In</th>
+                        <th class="px-1 py-1 text-center font-semibold border border-[#00853e]">Out</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -147,12 +151,29 @@
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->passport_no ?? '-' }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $booking->package?->package_name ?? 'Package' }}</td>
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->stay_duration ?? '-' }}</td>
-                        <td class="px-1 py-0.5 text-right border border-slate-300">{{ number_format($passenger->package_value ?? 0, 2) }}</td>
+                        <td class="px-1 py-0.5 text-right border border-slate-300">{{ number_format($useBdt ? ($passenger->package_value * $displayRate) : ($passenger->package_value ?? 0), 2) }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->trip_display }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->route_display }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->flight_date_display }}</td>
-                        <td class="px-1 py-0.5 text-center border border-slate-300 whitespace-pre-line">{{ $passenger->baggage_display }}</td>
+                        @php
+                            $_bd = $passenger->baggage_display;
+                            $_in = 'N/A';
+                            $_out = 'N/A';
+                            if ($_bd !== '-' && $_bd !== '') {
+                                foreach (explode("\n", $_bd) as $_line) {
+                                    if (str_starts_with($_line, 'In:')) {
+                                        $_raw = trim(substr($_line, 3));
+                                        $_in = preg_replace('/[^0-9]/', '', $_raw) ?: 'N/A';
+                                    } elseif (str_starts_with($_line, 'Out:')) {
+                                        $_raw = trim(substr($_line, 4));
+                                        $_out = preg_replace('/[^0-9]/', '', $_raw) ?: 'N/A';
+                                    }
+                                }
+                            }
+                        @endphp
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $_in }}</td>
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $_out }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-' }}</td>
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->meal_display }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->flight_type_display }}</td>
@@ -160,7 +181,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="16" class="px-3 py-2 text-center text-slate-500 border border-slate-300">No passenger data</td>
+                        <td colspan="17" class="px-3 py-2 text-center text-slate-500 border border-slate-300">No passenger data</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -177,27 +198,30 @@
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Sub Total:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($subTotal ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Sub Total ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($displaySubTotal ?? 0, 2) }}</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Pax:</td>
                         <td class="px-2 py-1 text-right border border-slate-300">{{ $totalPackages ?? 0 }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Fingerprint Charge:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($fingerprintCharge ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Fingerprint Charge ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($displayFingerprintCharge ?? 0, 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Discount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($discount ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Discount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($displayDiscount ?? 0, 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1.5 font-bold text-slate-800 border border-slate-600">Grand Total (BDT):</td>
-                        <td class="px-2 py-1.5 text-right font-bold text-slate-800 border border-slate-600">{{ number_format($grandTotal ?? 0, 0) }}</td>
+                        <td class="px-2 py-1.5 font-bold text-slate-800 border border-slate-600">Grand Total ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-slate-800 border border-slate-600">{{ number_format($displayGrandTotal ?? 0, 2) }}</td>
                     </tr>
                 </tbody>
             </table>
+            @if($useBdt)
+                <p class="text-[10px] text-slate-400 px-2 pb-1 mt-1">Exchange Rate: 1 SAR = {{ number_format($displayRate, 4) }} BDT</p>
+            @endif
         </div>
 
         {{-- Payment Summary --}}
@@ -206,24 +230,24 @@
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Amount:</td>
-                        <td class="px-2 py-1 text-right font-bold border border-slate-300">{{ number_format($grandTotal ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Amount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right font-bold border border-slate-300">{{ number_format($displayGrandTotal ?? 0, 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Previous Paid Amount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, ($totalPaid ?? 0) - ($currentPaid ?? 0)), 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Previous Paid Amount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, $displayPreviousPaid ?? 0), 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Current Paid Amount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($currentPaid ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Current Paid Amount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, $displayCurrentPaid ?? 0), 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Paid Amount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($totalPaid ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Paid Amount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, $displayTotalPaid ?? 0), 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1.5 font-bold text-red-700 border border-red-400">Due Amount:</td>
-                        <td class="px-2 py-1.5 text-right font-bold text-red-700 border border-red-400">{{ number_format($dueAmount ?? 0, 0) }}</td>
+                        <td class="px-2 py-1.5 font-bold text-red-700 border border-red-400">Due Amount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-red-700 border border-red-400">{{ number_format(max(0, $displayDueAmount ?? 0), 2) }}</td>
                     </tr>
                 </tbody>
             </table>

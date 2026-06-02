@@ -23,12 +23,14 @@ class Booking extends Model
         'invoice_id',
         'date_gap_id',
         'fingerprint_location',
+        'fingerprint_office',
         'pax_qty',
         'discount_type',
         'discount_value',
         'discount_amount',
         'total_value',
         'remarks',
+        'currency_rate_id',
     ];
 
     protected $casts = [
@@ -103,5 +105,10 @@ class Booking extends Model
     public function fingerprint(): HasOne
     {
         return $this->hasOne(Fingerprint::class);
+    }
+
+    public function currencyRate(): BelongsTo
+    {
+        return $this->belongsTo(CurrencyRate::class);
     }
 }
