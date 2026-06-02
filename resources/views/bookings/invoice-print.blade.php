@@ -126,7 +126,7 @@
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Passport number</th>
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Package</th>
                         <th class="px-1 py-1 text-center font-semibold border border-[#00853e]" rowspan="2">Duration (Days)</th>
-                        <th class="px-1 py-1 text-right font-semibold border border-[#00853e]" rowspan="2">Package Value (BDT)</th>
+                        <th class="px-1 py-1 text-right font-semibold border border-[#00853e]" rowspan="2">Package Value ({{ $currencySuffix }})</th>
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Trip</th>
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Airline</th>
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Route</th>
@@ -151,7 +151,7 @@
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->passport_no ?? '-' }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $booking->package?->package_name ?? 'Package' }}</td>
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->stay_duration ?? '-' }}</td>
-                        <td class="px-1 py-0.5 text-right border border-slate-300">{{ number_format($passenger->package_value ?? 0, 2) }}</td>
+                        <td class="px-1 py-0.5 text-right border border-slate-300">{{ number_format($useBdt ? ($passenger->package_value * $displayRate) : ($passenger->package_value ?? 0), 2) }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->trip_display }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->route_display }}</td>
@@ -198,27 +198,30 @@
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Sub Total:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($subTotal ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Sub Total ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($displaySubTotal ?? 0, 2) }}</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Pax:</td>
                         <td class="px-2 py-1 text-right border border-slate-300">{{ $totalPackages ?? 0 }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Fingerprint Charge:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($fingerprintCharge ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Fingerprint Charge ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($displayFingerprintCharge ?? 0, 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Discount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($discount ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Discount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($displayDiscount ?? 0, 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1.5 font-bold text-slate-800 border border-slate-600">Grand Total (BDT):</td>
-                        <td class="px-2 py-1.5 text-right font-bold text-slate-800 border border-slate-600">{{ number_format($grandTotal ?? 0, 0) }}</td>
+                        <td class="px-2 py-1.5 font-bold text-slate-800 border border-slate-600">Grand Total ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-slate-800 border border-slate-600">{{ number_format($displayGrandTotal ?? 0, 2) }}</td>
                     </tr>
                 </tbody>
             </table>
+            @if($useBdt)
+                <p class="text-[10px] text-slate-400 px-2 pb-1 mt-1">Exchange Rate: 1 SAR = {{ number_format($displayRate, 4) }} BDT</p>
+            @endif
         </div>
 
         {{-- Payment Summary --}}
@@ -227,24 +230,24 @@
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Amount:</td>
-                        <td class="px-2 py-1 text-right font-bold border border-slate-300">{{ number_format($grandTotal ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Amount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right font-bold border border-slate-300">{{ number_format($displayGrandTotal ?? 0, 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Previous Paid Amount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, ($totalPaid ?? 0) - ($currentPaid ?? 0)), 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Previous Paid Amount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, $displayPreviousPaid ?? 0), 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Current Paid Amount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($currentPaid ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Current Paid Amount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, $displayCurrentPaid ?? 0), 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Paid Amount:</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($totalPaid ?? 0, 0) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Paid Amount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, $displayTotalPaid ?? 0), 2) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1.5 font-bold text-red-700 border border-red-400">Due Amount:</td>
-                        <td class="px-2 py-1.5 text-right font-bold text-red-700 border border-red-400">{{ number_format($dueAmount ?? 0, 0) }}</td>
+                        <td class="px-2 py-1.5 font-bold text-red-700 border border-red-400">Due Amount ({{ $currencySuffix }}):</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-red-700 border border-red-400">{{ number_format(max(0, $displayDueAmount ?? 0), 2) }}</td>
                     </tr>
                 </tbody>
             </table>

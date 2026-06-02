@@ -22,6 +22,7 @@ use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Bank;
 use App\Models\TransactionType;
+use App\Models\CurrencyRate;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\FingerprintLocation;
@@ -228,6 +229,8 @@ class BookingController extends Controller
         try {
             DB::beginTransaction();
 
+            $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
+
             $booking = Booking::create([
                 'user_id' => auth()->id(),
                 'branch_id' => auth()->user()->branch_id ?? 1,
@@ -245,6 +248,7 @@ class BookingController extends Controller
                 'discount_value' => $validated['discount_value'] ?? 0,
                 'discount_amount' => 0,
                 'remarks' => $validated['remarks'] ?? null,
+                'currency_rate_id' => $currentCurrencyRate?->id,
             ]);
 
             $customerDocs = $request->file('booking_customer_docs', []);
@@ -814,6 +818,7 @@ class BookingController extends Controller
             'customer',
             'office',
             'package',
+            'currencyRate',
             'passengers.ticketFare.airline',
             'passengers.ticketFare.airlineClass.travelClass',
             'passengers.ticketFare.route',
@@ -854,6 +859,38 @@ class BookingController extends Controller
         }
 
         $grandTotal = $subTotal + $fingerprintCharge - $discount;
+
+        // Currency rate resolution
+        $currencyRate = $booking->currencyRate;
+        if (!$currencyRate) {
+            $currencyRate = CurrencyRate::where('created_at', '<=', $booking->created_at)
+                ->orderBy('created_at', 'desc')
+                ->first();
+        }
+        $rate = $currencyRate?->rate;
+        $useBdt = $rate && $rate > 0;
+        $currencySuffix = $useBdt ? 'BDT' : 'SAR';
+
+        if ($useBdt) {
+            $displayRate = (float) $rate;
+            $displaySubTotal = $subTotal * $rate;
+            $displayFingerprintCharge = $fingerprintCharge * $rate;
+            $displayDiscount = $discount * $rate;
+            $displayGrandTotal = $grandTotal * $rate;
+            $displayCurrentPaid = (float) ($booking->payments->last()?->bdt_amount ?? 0);
+            $displayTotalPaid = (float) $booking->payments->sum('bdt_amount');
+        } else {
+            $displayRate = 0;
+            $displaySubTotal = $subTotal;
+            $displayFingerprintCharge = $fingerprintCharge;
+            $displayDiscount = $discount;
+            $displayGrandTotal = $grandTotal;
+            $displayCurrentPaid = (float) ($booking->payments->last()?->amount ?? 0);
+            $displayTotalPaid = (float) ($booking->payments->sum('amount'));
+        }
+
+        $displayPreviousPaid = $displayTotalPaid - $displayCurrentPaid;
+        $displayDueAmount = $displayGrandTotal - $displayTotalPaid;
         $totalPaid = (float) ($booking->invoice->paid_amount ?? 0);
         $currentPaid = (float) ($booking->payments->last()?->amount ?? 0);
         $dueAmount = $grandTotal - $totalPaid;
@@ -867,7 +904,18 @@ class BookingController extends Controller
             'grandTotal',
             'totalPaid',
             'currentPaid',
-            'dueAmount'
+            'dueAmount',
+            'useBdt',
+            'currencySuffix',
+            'displayRate',
+            'displaySubTotal',
+            'displayFingerprintCharge',
+            'displayDiscount',
+            'displayGrandTotal',
+            'displayCurrentPaid',
+            'displayTotalPaid',
+            'displayPreviousPaid',
+            'displayDueAmount'
         ));
     }
 
