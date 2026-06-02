@@ -32,6 +32,7 @@
                         <th class="px-4 py-3 text-left">Branch(KSA)</th>
                         <th class="px-4 py-3 text-left">Branch(BD)</th>
                         <th class="px-4 py-3 text-left">Roles</th>
+                        <th class="px-4 py-3 text-center">Status</th>
                         <th class="px-4 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -51,6 +52,27 @@
                                     <span class="text-slate-400">-</span>
                                 @endif
                             </td>
+                            <td class="px-4 py-3 text-center">
+                                @if($user->roles->contains('name', 'Super Admin'))
+                                    <span class="inline-flex items-center gap-1 px-2 py-0.5 rounded text-xs font-medium bg-emerald-100 text-emerald-700">
+                                        Always Active
+                                    </span>
+                                @else
+                                    @if(auth()->user()->hasRole('Super Admin'))
+                                        <form method="POST" action="{{ route('users.toggle-active', $user->id) }}">
+                                            @csrf
+                                            @method('PATCH')
+                                            <button type="submit" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none {{ $user->is_active ? 'bg-emerald-500' : 'bg-slate-300' }}">
+                                                <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $user->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                            </button>
+                                        </form>
+                                    @else
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $user->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' }}">
+                                            {{ $user->is_active ? 'Active' : 'Inactive' }}
+                                        </span>
+                                    @endif
+                                @endif
+                            </td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
                                     <a href="{{ route('users.edit', $user->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
@@ -64,7 +86,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-4 py-12 text-center text-slate-500">
+                            <td colspan="8" class="px-4 py-12 text-center text-slate-500">
                                 No users found.
                             </td>
                         </tr>

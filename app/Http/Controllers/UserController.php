@@ -104,4 +104,17 @@ class UserController extends Controller
         return redirect()->route('users.index')
             ->with('success', 'User deleted successfully.');
     }
+
+    public function toggleActive(User $user)
+    {
+        if ($user->hasRole('Super Admin')) {
+            return back()->with('error', 'Super Admin cannot be deactivated.');
+        }
+
+        $user->is_active = !$user->is_active;
+        $user->save();
+
+        $status = $user->is_active ? 'activated' : 'deactivated';
+        return back()->with('success', "User {$status} successfully.");
+    }
 }

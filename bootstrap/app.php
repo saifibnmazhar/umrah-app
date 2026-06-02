@@ -16,6 +16,8 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'role' => \App\Http\Middleware\CheckRole::class,
         ]);
+
+        $middleware->appendToGroup('auth', \App\Http\Middleware\CheckActive::class);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         //

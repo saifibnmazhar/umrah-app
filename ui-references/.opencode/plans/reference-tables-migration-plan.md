@@ -3362,3 +3362,76 @@ php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('banks');
 ```bash
 php artisan migrate:rollback --step=1
 ```
+
+---
+
+## Phase 9: Users Table - Active Status
+
+### Overview
+
+Add `is_active` boolean column to the existing `users` table to support active/inactive user toggling.
+
+### Dependency Analysis
+
+This is a **column addition** to the existing `users` table. No new tables, no foreign key dependencies.
+
+### Artisan Command
+
+```bash
+php artisan make:migration add_is_active_to_users_table
+```
+
+### Schema Change
+
+#### UP Method
+```php
+public function up(): void
+{
+    Schema::table('users', function (Blueprint $table) {
+        $table->boolean('is_active')
+            ->default(true)
+            ->after('office_id');
+    });
+}
+```
+
+#### DOWN Method
+```php
+public function down(): void
+{
+    Schema::table('users', function (Blueprint $table) {
+        $table->dropColumn('is_active');
+    });
+}
+```
+
+### Design Decisions
+
+| Decision | Justification |
+|----------|---------------|
+| `boolean` type | Simple true/false toggle — no need for an enum |
+| `default(true)` | Existing users should be active by default when column is added |
+| `after('office_id')` | Logical column placement — `branch_id`, `office_id`, then `is_active` |
+| New migration (not edit existing) | Standard Laravel approach — the `users` table already exists |
+| `boolean` cast in Model | Enables type-safe access (`$user->is_active` returns `bool`) |
+
+### Safe Execution Steps
+
+```bash
+# Step 1: Create migration
+php artisan make:migration add_is_active_to_users_table
+
+# Step 2: Run migration
+php artisan migrate
+
+# Step 3: Verify column added
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('users');
+```
+
+### Risks & Edge Cases
+
+| Risk | Mitigation |
+|------|------------|
+| Existing users without active status | `default(true)` ensures all existing users become active |
+| User deactivated while logged in | Handled by global middleware (`CheckActive`) on every request |
+| Super Admin accidentally deactivated | Blocked at controller + route level (Super Admin route restriction + `hasRole` guard) |

@@ -72,6 +72,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('currency-rates', CurrencyRateController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('packages', PackageController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('users', UserController::class)->middleware('role:Super Admin,Co Admin');
+    Route::patch('/users/{user}/toggle-active', [UserController::class, 'toggleActive'])->name('users.toggle-active')->middleware('role:Super Admin');
     Route::resource('transaction-types', TransactionTypeController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('passenger-statuses', PassengerStatusController::class);
     Route::get('/bookings', fn() => view('bookings.index'))->name('bookings.index');

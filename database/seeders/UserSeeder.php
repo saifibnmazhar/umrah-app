@@ -15,6 +15,7 @@ class UserSeeder extends Seeder
             [
                 'name' => 'Admin',
                 'password' => 'password',
+                'is_active' => true,
             ]
         );
 
