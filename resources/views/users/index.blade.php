@@ -4,9 +4,11 @@
 <div class="max-w-4xl mx-auto">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Users</h1>
-        <a href="{{ route('users.create') }}" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
-            Add New
-        </a>
+        @if(auth()->user()->hasRole('Super Admin'))
+            <a href="{{ route('users.create') }}" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
+                Add New
+            </a>
+        @endif
     </div>
 
     @if(session('success'))
@@ -33,7 +35,9 @@
                         <th class="px-4 py-3 text-left">Branch(BD)</th>
                         <th class="px-4 py-3 text-left">Roles</th>
                         <th class="px-4 py-3 text-center">Status</th>
-                        <th class="px-4 py-3 text-right">Actions</th>
+                        @if(auth()->user()->hasRole('Super Admin'))
+                            <th class="px-4 py-3 text-right">Actions</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
@@ -73,20 +77,22 @@
                                     @endif
                                 @endif
                             </td>
-                            <td class="px-4 py-3 text-right">
-                                <div class="flex items-center justify-end gap-3">
-                                    <a href="{{ route('users.edit', $user->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
-                                    <form method="POST" action="{{ route('users.destroy', $user->id) }}" onsubmit="return confirm('Are you sure you want to delete this user?')">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
-                                    </form>
-                                </div>
-                            </td>
+                            @if(auth()->user()->hasRole('Super Admin'))
+                                <td class="px-4 py-3 text-right">
+                                    <div class="flex items-center justify-end gap-3">
+                                        <a href="{{ route('users.edit', $user->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
+                                        <form method="POST" action="{{ route('users.destroy', $user->id) }}" onsubmit="return confirm('Are you sure you want to delete this user?')">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                            @endif
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-4 py-12 text-center text-slate-500">
+                            <td colspan="{{ auth()->user()->hasRole('Super Admin') ? 8 : 7 }}" class="px-4 py-12 text-center text-slate-500">
                                 No users found.
                             </td>
                         </tr>

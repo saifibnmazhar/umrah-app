@@ -11,6 +11,13 @@ use Illuminate\Support\Str;
 
 class UserController extends Controller
 {
+    private function ensureSuperAdmin(): void
+    {
+        if (!auth()->user()->hasRole('Super Admin')) {
+            abort(403, 'Unauthorized action.');
+        }
+    }
+
     public function index()
     {
         $users = User::with(['branch', 'office', 'roles'])
@@ -22,6 +29,7 @@ class UserController extends Controller
 
     public function create()
     {
+        $this->ensureSuperAdmin();
         $branches = Branch::orderBy('name')->get();
         $offices = Office::orderBy('name')->get();
         $roles = Role::orderBy('name')->get();
@@ -30,6 +38,7 @@ class UserController extends Controller
 
     public function store(Request $request)
     {
+        $this->ensureSuperAdmin();
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email',
@@ -58,6 +67,7 @@ class UserController extends Controller
 
     public function edit(User $user)
     {
+        $this->ensureSuperAdmin();
         $branches = Branch::orderBy('name')->get();
         $offices = Office::orderBy('name')->get();
         $roles = Role::orderBy('name')->get();
@@ -67,6 +77,7 @@ class UserController extends Controller
 
     public function update(Request $request, User $user)
     {
+        $this->ensureSuperAdmin();
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'email' => 'required|email|unique:users,email,' . $user->id,
@@ -100,6 +111,7 @@ class UserController extends Controller
 
     public function destroy(User $user)
     {
+        $this->ensureSuperAdmin();
         $user->delete();
         return redirect()->route('users.index')
             ->with('success', 'User deleted successfully.');
