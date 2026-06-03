@@ -26,16 +26,14 @@
 <div class="invoice-container invoice-bg p-1" style="background: #f8fafc;" id="invoiceContent">
 
     {{-- Header --}}
-    <div class="bg-white border border-slate-300 p-2 mb-2 invoice-card">
-        <div class="flex justify-end mb-0">
-            <span class="text-xs font-bold text-slate-800">Invoice No: {{ $booking->invoice_id ?? '-' }}</span>
-        </div>
-        <div class="text-center">
-            <h1 class="text-lg font-bold text-slate-800">BOOKING INVOICE UMH</h1>
-            <p class="text-xs text-slate-500 mt-0">Phone: +966XXX-XXXXXXX</p>
-            <p class="text-xs text-slate-500">{{ $booking->office->name ?? 'BMT-Dak' }}</p>
-        </div>
-        </div>
+    <div class="text-center mb-2">
+        <h1 class="text-lg font-bold text-slate-800">BOOKING INVOICE UMH</h1>
+        <p class="text-xs text-slate-500 mt-0">Phone: +966XXX-XXXXXXX</p>
+        <p class="text-xs text-slate-500">{{ $booking->office->name ?? 'BMT-Dak' }}</p>
+    </div>
+
+    <div class="text-right mb-2">
+        <span class="text-xs font-bold text-slate-800">Invoice No: {{ $booking->invoice_id ?? '-' }}</span>
     </div>
 
     @php
