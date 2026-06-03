@@ -157,8 +157,61 @@
                             <div class="border-t border-slate-300"></div>
                             <div class="py-0.5 leading-tight">Out Bound</div>
                         </td>
-                        <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->ticketFare?->airline?->code ?? '-' }}</td>
-                        <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->route_display }}</td>
+                        @php
+                            $_alCode = $passenger->ticketFare?->airline?->code ?? null;
+                            $_rt = $passenger->ticketFare?->route?->route_type?->value;
+                            $_airIn = 'N/A';
+                            $_airOut = 'N/A';
+                            if ($_alCode) {
+                                if ($_rt === 'oneway_inbound') {
+                                    $_airIn = $_alCode;
+                                } elseif ($_rt === 'oneway_outbound') {
+                                    $_airOut = $_alCode;
+                                } else {
+                                    $_airIn = $_alCode;
+                                    $_airOut = $_alCode;
+                                }
+                            }
+                        @endphp
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">{{ $_airIn }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">{{ $_airOut }}</div>
+                        </td>
+                        @php
+                            $_routeType = $passenger->ticketFare?->route?->route_type?->value;
+                            $_routeTop = 'N/A';
+                            $_routeBottom = 'N/A';
+                            $_isSplit = false;
+
+                            if ($_routeType === 'oneway_inbound') {
+                                $_routeTop = $passenger->route_display;
+                                $_isSplit = true;
+                            } elseif ($_routeType === 'oneway_outbound') {
+                                $_routeBottom = $passenger->route_display;
+                                $_isSplit = true;
+                            } elseif ($_routeType === 'multi_city') {
+                                $_segments = $passenger->ticketFare?->route?->multiSegments ?? collect();
+                                $_inSegment = $_segments->first(fn($s) => $s->segment_direction?->value === 'inbound');
+                                $_outSegment = $_segments->first(fn($s) => $s->segment_direction?->value === 'outbound');
+                                if ($_inSegment && $_inSegment->fromCity && $_inSegment->toCity) {
+                                    $_routeTop = $_inSegment->fromCity->code . ' → ' . $_inSegment->toCity->code;
+                                }
+                                if ($_outSegment && $_outSegment->fromCity && $_outSegment->toCity) {
+                                    $_routeBottom = $_outSegment->fromCity->code . ' → ' . $_outSegment->toCity->code;
+                                }
+                                $_isSplit = true;
+                            }
+                        @endphp
+                        @if($_isSplit)
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">{{ $_routeTop }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">{{ $_routeBottom }}</div>
+                        </td>
+                        @else
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->route_display }}</td>
+                        @endif
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->flight_date_display }}</td>
                         @php
                             $_bd = $passenger->baggage_display;
