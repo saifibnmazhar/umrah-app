@@ -4,6 +4,7 @@
 @php
     $isVisaPersonnel = auth()->user()->roles->pluck('name')->intersect(['Visa Admin', 'Visa Staff'])->isNotEmpty();
     $isTicketPersonnel = auth()->user()->roles->pluck('name')->intersect(['Ticket Admin', 'Ticket Staff'])->isNotEmpty();
+    $isBranchPersonnel = auth()->user()->roles->pluck('name')->intersect(['Branch Manager', 'Branch Staff'])->isNotEmpty();
 @endphp
 <div class="max-w-3xl mx-auto pt-6">
     <div id="passengerDetailsContent" class="space-y-6">
@@ -197,7 +198,7 @@
                 </div>
             </div>
 
-            @if(!$isTicketPersonnel)
+            @if(!$isTicketPersonnel && !$isBranchPersonnel)
             {{-- Visa Submission History --}}
             <div class="mt-6 pt-4 border-t border-slate-200">
                 <div class="bg-white rounded-xl shadow-lg p-6">
@@ -239,7 +240,7 @@
 .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
 </style>
 
-@if(!$isTicketPersonnel)
+@if(!$isTicketPersonnel && !$isBranchPersonnel)
 {{-- Cancellation Modal --}}
 <div id="cancellationModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
     <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeCancellationModal()"></div>
