@@ -210,7 +210,11 @@
                         @else
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->route_display }}</td>
                         @endif
-                        <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->flight_date_display }}</td>
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">{{ $passenger->flight_date_display }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">After {{ $passenger->stay_duration ?? '-' }} Days</div>
+                        </td>
                         @php
                             $_bd = $passenger->baggage_display;
                             $_in = 'N/A';
