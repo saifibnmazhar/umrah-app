@@ -24,6 +24,7 @@ use App\Models\Payment;
 use App\Models\Bank;
 use App\Models\TransactionType;
 use App\Models\CurrencyRate;
+use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\FingerprintLocation;
@@ -72,7 +73,7 @@ class BookingController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $passengers = Passenger::with([
+        $passengers = Passenger::approvedFingerprint()->with([
             'booking',
             'booking.customer',
             'booking.package.ticketFare.route',
@@ -387,7 +388,7 @@ class BookingController extends Controller
     {
         $booking->load([
             'customer',
-            'passengers',
+            'passengers' => fn($q) => $q->approvedFingerprint(),
             'passengers.documents',
             'passengers.ticketFare',
             'user',
@@ -477,7 +478,7 @@ class BookingController extends Controller
 
     public function edit(Booking $booking)
     {
-        $booking->load(['customer', 'passengers', 'district', 'office', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
+        $booking->load(['customer', 'passengers' => fn($q) => $q->approvedFingerprint(), 'district', 'office', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
 
         $districts = District::orderBy('name')->get();
         $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
@@ -820,6 +821,7 @@ class BookingController extends Controller
             'office',
             'package',
             'currencyRate',
+            'passengers' => fn($q) => $q->approvedFingerprint(),
             'passengers.ticketFare.airline',
             'passengers.ticketFare.airlineClass.travelClass',
             'passengers.ticketFare.route',
