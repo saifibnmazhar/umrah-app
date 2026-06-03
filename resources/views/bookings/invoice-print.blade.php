@@ -42,7 +42,7 @@
     @endphp
 
     {{-- Customer Information & Invoice Information --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-2">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-0 mb-2">
 
         {{-- Customer Information --}}
         <div class="bg-white border border-slate-500 invoice-card overflow-hidden">
@@ -82,7 +82,7 @@
         </div>
 
         {{-- Invoice Information --}}
-        <div class="bg-white border border-slate-500 invoice-card overflow-hidden">
+        <div class="bg-white border border-slate-500 invoice-card overflow-hidden ml-10">
             <div class="bg-[#00A651] text-white text-center px-3 py-1 font-bold text-xs uppercase tracking-wider">Invoice Information</div>
             <table class="w-full text-xs border-collapse">
                 <tbody>
