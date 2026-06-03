@@ -13,7 +13,10 @@
     <div id="invoiceDetailsContent" class="space-y-6">
         {{-- Header Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
-            @php $canEditBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty(); @endphp
+            @php
+                $canEditBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
+                $isVisaPersonnel = auth()->user()->roles->pluck('name')->intersect(['Visa Admin', 'Visa Staff'])->isNotEmpty();
+            @endphp
         <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
                 <div class="flex items-center gap-3">
                     <a href="{{ route('bookings.index') }}" class="text-slate-400 hover:text-slate-600">
@@ -161,6 +164,7 @@
 
         {{-- Action Buttons Row --}}
         <div class="flex justify-end gap-3 mt-8">
+            @if(!$isVisaPersonnel)
             <button onclick="openReIssueModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                 Request Re-Issue
             </button>
@@ -170,6 +174,7 @@
             <button onclick="openRefundModal()" class="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium">
                 Request Refund
             </button>
+            @endif
             <button onclick="downloadAllDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
                 Download All Docs
             </button>
@@ -184,6 +189,7 @@
                 <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
                     Payment History
                 </button>
+                @if(!$isVisaPersonnel)
                 <button onclick="switchTab('reissue')" id="tab-reissue" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
                     Re-issue History
                 </button>
@@ -193,6 +199,7 @@
                 <button onclick="switchTab('refund')" id="tab-refund" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
                     Refund History
                 </button>
+                @endif
             </div>
         </div>
 
@@ -229,6 +236,7 @@
             </div>
         </div>
 
+        @if(!$isVisaPersonnel)
         {{-- Re-issue History Tab --}}
         <div id="content-reissue" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Re-issue History</h3>
@@ -306,6 +314,7 @@
                 <div id="refundHistoryEmpty" class="text-center py-4 text-slate-500">No refund requests found</div>
             </div>
         </div>
+        @endif
 
         {{-- Back Button --}}
         <div class="mt-6 pt-4 border-t border-slate-200">
@@ -420,6 +429,7 @@
     </div>
 </div>
 
+@if(!$isVisaPersonnel)
 {{-- Request Re-Issue Modal --}}
 <div id="reIssueModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
     <div class="fixed inset-0 bg-black/50" onclick="closeReIssueModal()"></div>
@@ -617,6 +627,7 @@
         <div id="addTicketDetailsContent"></div>
     </div>
 </div>
+@endif
 
 {{-- Discount Modal --}}
 <div id="discountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center"

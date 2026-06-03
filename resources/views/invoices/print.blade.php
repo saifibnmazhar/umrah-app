@@ -2,6 +2,9 @@
 
 @section('title', 'Print Invoice')
 
+@section('navigation')
+@endsection
+
 @section('content')
 <div class="max-w-3xl mx-auto container py-8" x-data="{ printing: false }">
     <div class="mb-6">

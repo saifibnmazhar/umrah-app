@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Document;
 use App\Models\Package;
 use App\Models\TicketFare;
+use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Services\BookingService;
 use App\Services\InvoiceService;
@@ -22,8 +23,21 @@ class PassengerController extends Controller
         private InvoiceService $invoiceService,
     ) {}
 
+    private function authorizeFingerprintAccess(Passenger $passenger): void
+    {
+        $user = auth()->user();
+        if ($user && ($user->hasRole('Visa Staff') || $user->hasRole('Ticket Staff'))) {
+            $passenger->load('fingerprintDetail');
+            if (!$passenger->fingerprintDetail || $passenger->fingerprintDetail->status !== FingerprintStatus::APPROVED) {
+                abort(403, 'Passenger data requires fingerprint approval.');
+            }
+        }
+    }
+
     public function show(Passenger $passenger)
     {
+        $this->authorizeFingerprintAccess($passenger);
+
         $passenger->load([
             'booking',
             'booking.customer',
@@ -67,6 +81,8 @@ class PassengerController extends Controller
 
     public function edit(Passenger $passenger)
     {
+        $this->authorizeFingerprintAccess($passenger);
+
         $passenger->load([
             'booking',
             'booking.package',
@@ -146,6 +162,8 @@ class PassengerController extends Controller
 
     public function uploadDocument(Request $request, Passenger $passenger)
     {
+        $this->authorizeFingerprintAccess($passenger);
+
         $request->validate([
             'files' => 'required|array',
             'files.*' => 'file|mimes:pdf,jpg,jpeg,png|max:5120',
@@ -184,6 +202,8 @@ class PassengerController extends Controller
 
     public function downloadDocument(Passenger $passenger, Document $document)
     {
+        $this->authorizeFingerprintAccess($passenger);
+
         if ($document->owner_id !== $passenger->id || $document->owner_type !== Passenger::class) {
             abort(403, 'Unauthorized');
         }
@@ -197,6 +217,8 @@ class PassengerController extends Controller
 
     public function destroyDocument(Passenger $passenger, Document $document)
     {
+        $this->authorizeFingerprintAccess($passenger);
+
         if ($document->owner_id !== $passenger->id || $document->owner_type !== Passenger::class) {
             return response()->json([
                 'success' => false,
@@ -224,6 +246,8 @@ class PassengerController extends Controller
 
     public function update(Request $request, Passenger $passenger)
     {
+        $this->authorizeFingerprintAccess($passenger);
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -286,6 +310,8 @@ class PassengerController extends Controller
 
     public function destroy(Passenger $passenger)
     {
+        $this->authorizeFingerprintAccess($passenger);
+
         try {
             $booking = $passenger->booking;
             $passenger->delete();
@@ -354,10 +380,13 @@ class PassengerController extends Controller
             return response()->json([]);
         }
 
-        $passengers = Passenger::where('passport_no', 'like', "%{$query}%")
-            ->orWhere('first_name', 'like', "%{$query}%")
-            ->orWhere('last_name', 'like', "%{$query}%")
-            ->orWhere('mobile_no', 'like', "%{$query}%")
+        $passengers = Passenger::approvedFingerprint()
+            ->where(function ($q) use ($query) {
+                $q->where('passport_no', 'like', "%{$query}%")
+                    ->orWhere('first_name', 'like', "%{$query}%")
+                    ->orWhere('last_name', 'like', "%{$query}%")
+                    ->orWhere('mobile_no', 'like', "%{$query}%");
+            })
             ->with(['booking', 'booking.customer'])
             ->limit(20)
             ->get();
@@ -367,6 +396,8 @@ class PassengerController extends Controller
 
     public function updateStatus(Request $request, Passenger $passenger)
     {
+        $this->authorizeFingerprintAccess($passenger);
+
         $validated = $request->validate([
             'passenger_status_id' => 'nullable|exists:passenger_statuses,id',
         ]);

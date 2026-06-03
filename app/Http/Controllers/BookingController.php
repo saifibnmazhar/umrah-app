@@ -11,6 +11,7 @@ use App\Models\Package;
 use App\Models\Office;
 use App\Models\FingerprintCharge;
 use App\Models\Fingerprint;
+use App\Models\BookingCondition;
 use App\Models\FingerprintDetail;
 use App\Models\Route;
 use App\Models\Airline;
@@ -23,6 +24,7 @@ use App\Models\Payment;
 use App\Models\Bank;
 use App\Models\TransactionType;
 use App\Models\CurrencyRate;
+use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\FingerprintLocation;
@@ -71,7 +73,7 @@ class BookingController extends Controller
             ->paginate(10)
             ->withQueryString();
 
-        $passengers = Passenger::with([
+        $passengers = Passenger::approvedFingerprint()->with([
             'booking',
             'booking.customer',
             'booking.package.ticketFare.route',
@@ -386,7 +388,7 @@ class BookingController extends Controller
     {
         $booking->load([
             'customer',
-            'passengers',
+            'passengers' => fn($q) => $q->approvedFingerprint(),
             'passengers.documents',
             'passengers.ticketFare',
             'user',
@@ -476,7 +478,7 @@ class BookingController extends Controller
 
     public function edit(Booking $booking)
     {
-        $booking->load(['customer', 'passengers', 'district', 'office', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
+        $booking->load(['customer', 'passengers' => fn($q) => $q->approvedFingerprint(), 'district', 'office', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
 
         $districts = District::orderBy('name')->get();
         $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
@@ -819,6 +821,7 @@ class BookingController extends Controller
             'office',
             'package',
             'currencyRate',
+            'passengers' => fn($q) => $q->approvedFingerprint(),
             'passengers.ticketFare.airline',
             'passengers.ticketFare.airlineClass.travelClass',
             'passengers.ticketFare.route',
@@ -895,6 +898,11 @@ class BookingController extends Controller
         $currentPaid = (float) ($booking->payments->last()?->amount ?? 0);
         $dueAmount = $grandTotal - $totalPaid;
 
+        $conditions = BookingCondition::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('title')
+            ->get();
+
         return view('bookings.invoice-print', compact(
             'booking',
             'subTotal',
@@ -905,6 +913,7 @@ class BookingController extends Controller
             'totalPaid',
             'currentPaid',
             'dueAmount',
+            'conditions',
             'useBdt',
             'currencySuffix',
             'displayRate',

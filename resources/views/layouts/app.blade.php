@@ -9,7 +9,9 @@
 </head>
 <body class="bg-slate-100 min-h-screen px-4">
     @auth
-        @include('partials.nav')
+        @section('navigation')
+            @include('partials.nav')
+        @show
     @endauth
 
     <main class="py-6">
