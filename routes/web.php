@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\BookingConditionController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\PassengerController;
 use App\Http\Controllers\Auth\LoginController;
@@ -51,6 +52,7 @@ Route::middleware('auth')->group(function () {
     // Main Pages
     Route::resource('districts', DistrictController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('banks', BankController::class)->middleware('role:Super Admin,Co Admin');
+    Route::resource('booking-conditions', BookingConditionController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('branches', BranchController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('offices', OfficeController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('city-codes', CityCodeController::class)->middleware('role:Super Admin,Co Admin');

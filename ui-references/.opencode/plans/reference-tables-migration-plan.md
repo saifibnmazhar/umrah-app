@@ -3523,3 +3523,107 @@ php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('bookings');
 | No CurrencyRate record exists | Fallback #3 shows SAR with `(SAR)` suffix |
 | Rate deleted from currency_rates | `nullOnDelete()` preserves booking; fallback handles gracefully |
 | Rate is 0 (edge case) | `$rate > 0` guard prevents division-by-zero; falls to SAR display |
+
+---
+
+## Booking Conditions Table
+
+### Overview
+
+This phase adds the `booking_conditions` table for managing terms and conditions text associated with bookings.
+
+### Dependency Analysis
+
+**Independent table** — no foreign key dependencies.
+
+### Migration Order
+
+| Step | Table | Dependencies | Artisan Command |
+|------|-------|--------------|-----------------|
+| 1 | booking_conditions | none | `php artisan make:migration create_booking_conditions_table` |
+
+### Design Decisions
+
+#### 1. ID Configuration
+- Primary key uses `bigIncrements()` for consistency
+
+#### 2. Nullable Fields
+| Column | Nullable | Justification |
+|--------|----------|---------------|
+| description | YES | Condition details may be optional; some conditions may only need a title |
+| sort_order | YES | Sorting not required initially; conditions will default to insertion order |
+
+#### 3. Default Values
+- `is_active` defaults to `true` — new conditions are active by default
+
+#### 4. Timestamps
+- Include `timestamps()` (created_at, updated_at) for audit purposes
+
+### Migration File Details
+
+#### booking_conditions table
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('booking_conditions', function (Blueprint $table) {
+        $table->id();
+        $table->string('title');
+        $table->text('description')->nullable();
+        $table->boolean('is_active')->default(true);
+        $table->unsignedInteger('sort_order')->nullable();
+        $table->timestamps();
+    });
+}
+
+// DOWN
+public function down(): void
+{
+    Schema::dropIfExists('booking_conditions');
+}
+```
+
+### Safe Execution Plan
+
+```bash
+# Step 1: Create migration file
+php artisan make:migration create_booking_conditions_table
+
+# Step 2: Run migration
+php artisan migrate
+
+# Step 3: Verify table created
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('booking_conditions');
+```
+
+### Rollback Considerations
+
+| Table | Delete Behavior | Rollback Risk |
+|-------|-----------------|---------------|
+| booking_conditions | N/A (independent) | Low — safe to drop |
+
+### Summary
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 1 |
+| Boolean Columns | 1 |
+
+### Combined Summary (All Phases)
+
+| Category | Before | After |
+|----------|--------|-------|
+| Total Tables | 33 | 34 |
+
+---
+
+### Model Configuration (Post-Migration)
+
+**BookingCondition Model:**
+```php
+protected $casts = [
+    'is_active' => 'boolean',
+    'sort_order' => 'integer',
+];
+```
