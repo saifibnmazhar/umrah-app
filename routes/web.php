@@ -53,6 +53,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('districts', DistrictController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('banks', BankController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('booking-conditions', BookingConditionController::class)->middleware('role:Super Admin,Co Admin');
+    Route::patch('/booking-conditions/{bookingCondition}/toggle-active', [BookingConditionController::class, 'toggleActive'])->name('booking-conditions.toggle-active')->middleware('role:Super Admin,Co Admin');
     Route::resource('branches', BranchController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('offices', OfficeController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('city-codes', CityCodeController::class)->middleware('role:Super Admin,Co Admin');

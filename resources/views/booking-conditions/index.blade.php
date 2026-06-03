@@ -49,11 +49,13 @@
                                     <span class="text-xs text-slate-400 ml-1" x-text="open ? '▲' : '▼'"></span>
                                 </td>
                                 <td class="px-4 py-3 text-right">
-                                    @if($bookingCondition->is_active)
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-emerald-100 text-emerald-800">Active</span>
-                                    @else
-                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">Inactive</span>
-                                    @endif
+                                    <form method="POST" action="{{ route('booking-conditions.toggle-active', $bookingCondition->id) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none {{ $bookingCondition->is_active ? 'bg-emerald-500' : 'bg-slate-300' }}">
+                                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $bookingCondition->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                        </button>
+                                    </form>
                                 </td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-3">

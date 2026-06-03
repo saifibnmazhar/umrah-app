@@ -57,6 +57,15 @@ class BookingConditionController extends Controller
         }
     }
 
+    public function toggleActive(BookingCondition $bookingCondition)
+    {
+        $bookingCondition->is_active = !$bookingCondition->is_active;
+        $bookingCondition->save();
+
+        $status = $bookingCondition->is_active ? 'activated' : 'deactivated';
+        return back()->with('success', "Booking condition {$status} successfully.");
+    }
+
     public function destroy(BookingCondition $bookingCondition)
     {
         try {
