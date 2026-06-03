@@ -281,7 +281,49 @@
                         @else
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $_mealVal }}</td>
                         @endif
-                        <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->flight_type_display }}</td>
+                        @php
+                            $_ftRt = $passenger->ticketFare?->route?->route_type?->value;
+                            $_ftType = $passenger->ticketFare?->route?->flight_type?->value;
+                            $_transits = $passenger->ticketFare?->route?->transits ?? collect();
+                            $_inMins = $_transits->filter(fn($t) => $t->route_direction?->value === 'inbound')->sum('transit_time');
+                            $_outMins = $_transits->filter(fn($t) => $t->route_direction?->value === 'outbound')->sum('transit_time');
+
+                            $_fmt = function($mins) {
+                                if (!$mins || $mins <= 0) return 'Direct';
+                                $h = intdiv($mins, 60);
+                                $m = $mins % 60;
+                                return sprintf('Transit: %02d hr %02d min', $h, $m);
+                            };
+
+                            $_ftTop = 'N/A';
+                            $_ftBottom = 'N/A';
+                            $_ftSplit = false;
+
+                            if ($_ftRt === 'oneway_inbound') {
+                                $_ftTop = $_ftType === 'transit' ? $_fmt($_inMins) : 'Direct';
+                                $_ftSplit = true;
+                            } elseif ($_ftRt === 'oneway_outbound') {
+                                $_ftBottom = $_ftType === 'transit' ? $_fmt($_outMins) : 'Direct';
+                                $_ftSplit = true;
+                            } elseif (in_array($_ftRt, ['round', 'multi_city'])) {
+                                if ($_ftType === 'transit') {
+                                    $_ftTop = $_fmt($_inMins);
+                                    $_ftBottom = $_fmt($_outMins);
+                                    $_ftSplit = true;
+                                } else {
+                                    $_ftTop = 'Direct';
+                                }
+                            }
+                        @endphp
+                        @if($_ftSplit)
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">{{ $_ftTop }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">{{ $_ftBottom }}</div>
+                        </td>
+                        @else
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $_ftTop }}</td>
+                        @endif
                         <td class="px-1 py-0.5 border border-slate-300">{{ $booking->remarks ?? '-' }}</td>
                     </tr>
                     @empty
