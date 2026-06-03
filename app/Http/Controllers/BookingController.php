@@ -11,6 +11,7 @@ use App\Models\Package;
 use App\Models\Office;
 use App\Models\FingerprintCharge;
 use App\Models\Fingerprint;
+use App\Models\BookingCondition;
 use App\Models\FingerprintDetail;
 use App\Models\Route;
 use App\Models\Airline;
@@ -895,6 +896,11 @@ class BookingController extends Controller
         $currentPaid = (float) ($booking->payments->last()?->amount ?? 0);
         $dueAmount = $grandTotal - $totalPaid;
 
+        $conditions = BookingCondition::where('is_active', true)
+            ->orderBy('sort_order')
+            ->orderBy('title')
+            ->get();
+
         return view('bookings.invoice-print', compact(
             'booking',
             'subTotal',
@@ -905,6 +911,7 @@ class BookingController extends Controller
             'totalPaid',
             'currentPaid',
             'dueAmount',
+            'conditions',
             'useBdt',
             'currencySuffix',
             'displayRate',

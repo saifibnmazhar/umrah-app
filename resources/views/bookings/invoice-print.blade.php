@@ -256,8 +256,19 @@
         {{-- Important Note --}}
         <div class="bg-white border border-slate-300 invoice-card overflow-hidden">
             <div class="bg-[#F4B183] text-slate-800 text-center px-3 py-1 font-bold text-xs uppercase tracking-wider">Important Note / Conditions</div>
-            <div class="p-2 text-xs text-slate-400 italic">
-                <p>N/A</p>
+            <div class="p-2 text-xs text-slate-600">
+                <ul class="list-disc list-inside space-y-1">
+                    @forelse($conditions as $condition)
+                        <li>
+                            <span class="font-semibold text-slate-700">{{ $condition->title }}</span>
+                            @if($condition->description)
+                                : {{ $condition->description }}
+                            @endif
+                        </li>
+                    @empty
+                        <li class="text-slate-400 italic">N/A</li>
+                    @endforelse
+                </ul>
             </div>
         </div>
     </div>
