@@ -233,8 +233,54 @@
                         @endphp
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $_in }}</td>
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $_out }}</td>
-                        <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-' }}</td>
-                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->meal_display }}</td>
+                        @php
+                            $_cabinVal = $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-';
+                            $_cabinRt = $passenger->ticketFare?->route?->route_type?->value;
+                            $_cabinTop = $_cabinVal;
+                            $_cabinBottom = $_cabinVal;
+                            $_cabinSplit = false;
+
+                            if ($_cabinRt === 'oneway_inbound') {
+                                $_cabinBottom = 'N/A';
+                                $_cabinSplit = true;
+                            } elseif ($_cabinRt === 'oneway_outbound') {
+                                $_cabinTop = 'N/A';
+                                $_cabinSplit = true;
+                            }
+                        @endphp
+                        @if($_cabinSplit)
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">{{ $_cabinTop }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">{{ $_cabinBottom }}</div>
+                        </td>
+                        @else
+                        <td class="px-1 py-0.5 border border-slate-300">{{ $_cabinVal }}</td>
+                        @endif
+                        @php
+                            $_mealVal = $passenger->meal_display;
+                            $_mealRt = $passenger->ticketFare?->route?->route_type?->value;
+                            $_mealTop = $_mealVal;
+                            $_mealBottom = $_mealVal;
+                            $_mealSplit = false;
+
+                            if ($_mealRt === 'oneway_inbound') {
+                                $_mealBottom = 'N/A';
+                                $_mealSplit = true;
+                            } elseif ($_mealRt === 'oneway_outbound') {
+                                $_mealTop = 'N/A';
+                                $_mealSplit = true;
+                            }
+                        @endphp
+                        @if($_mealSplit)
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">{{ $_mealTop }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">{{ $_mealBottom }}</div>
+                        </td>
+                        @else
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $_mealVal }}</td>
+                        @endif
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->flight_type_display }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $booking->remarks ?? '-' }}</td>
                     </tr>
