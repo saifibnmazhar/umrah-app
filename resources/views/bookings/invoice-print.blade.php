@@ -42,38 +42,38 @@
     @endphp
 
     {{-- Customer Information & Invoice Information --}}
-    <div class="grid grid-cols-1 md:grid-cols-2 gap-3 mb-2">
+    <div class="grid grid-cols-1 md:grid-cols-2 gap-5 mb-2">
 
         {{-- Customer Information --}}
         <div class="bg-white border border-slate-500 invoice-card overflow-hidden">
             <div class="bg-[#00A651] text-white text-center px-3 py-1 font-bold text-xs uppercase tracking-wider">Customer Information</div>
             <table class="w-full text-xs border-collapse">
                 <tbody>
-                    <tr class="even:bg-[#f1f5f9]">
+                    <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Booking Date :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $booking->booking_date ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Passenger Number (BD) :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $booking->customer->iqama_no ?? '-' }}</td>
                     </tr>
-                    <tr class="even:bg-[#f1f5f9]">
+                    <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Customer Name :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $booking->customer->name ?? '-' }}</td>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Customer Address :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $booking->customer->address ?? '-' }}</td>
                     </tr>
-                    <tr class="even:bg-[#f1f5f9]">
+                    <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Iqama Number :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $booking->customer->iqama_no ?? '-' }}</td>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Finger Location :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $fpLocation ?? '-' }}</td>
                     </tr>
-                    <tr class="even:bg-[#f1f5f9]">
+                    <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Phone Number :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $booking->customer->mobile_no ?? '-' }}</td>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Finger Deadline :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $fingerprintDeadline ?? '-' }}</td>
                     </tr>
-                    <tr class="even:bg-[#f1f5f9]">
+                    <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Address (KSA) :</td>
                         <td class="px-2 py-1 " colspan="3">-</td>
                     </tr>
@@ -86,23 +86,23 @@
             <div class="bg-[#00A651] text-white text-center px-3 py-1 font-bold text-xs uppercase tracking-wider">Invoice Information</div>
             <table class="w-full text-xs border-collapse">
                 <tbody>
-                    <tr class="even:bg-[#f1f5f9]">
+                    <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Invoice Date :</td>
                         <td class="px-2 py-1">{{ $invoiceDate ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
                     </tr>
-                    <tr class="even:bg-[#f1f5f9]">
+                    <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Branch (Booking By) :</td>
                         <td class="px-2 py-1">{{ $booking->branch->name ?? '-' }}</td>
                     </tr>
-                    <tr class="even:bg-[#f1f5f9]">
+                    <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Branch (Operating By) :</td>
                         <td class="px-2 py-1">{{ $booking->office->name ?? '-' }}</td>
                     </tr>
-                    <tr class="even:bg-[#f1f5f9]">
+                    <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Sale Representative :</td>
                         <td class="px-2 py-1">{{ $booking->user->name ?? '-' }}</td>
                     </tr>
-                    <tr class="even:bg-[#f1f5f9]">
+                    <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Remarks :</td>
                         <td class="px-2 py-1">{{ $booking->remarks ?? '-' }}</td>
                     </tr>
@@ -142,7 +142,7 @@
                 </thead>
                 <tbody>
                     @forelse($booking->passengers as $index => $passenger)
-                    <tr class="{{ $index % 2 === 0 ? 'bg-white' : 'bg-[#f1f5f9]' }}">
+                    <tr>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $index + 1 }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->first_name ?? '' }} {{ $passenger->last_name ?? '' }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->gender ?? '-' }}</td>
@@ -269,8 +269,8 @@
                         <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($discount ?? 0, 0) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1.5 font-bold text-slate-800 border border-slate-600">Grand Total (BDT):</td>
-                        <td class="px-2 py-1.5 text-right font-bold text-slate-800 border border-slate-600">{{ number_format($grandTotal ?? 0, 0) }}</td>
+                        <td class="px-2 py-1.5 font-bold text-slate-800 border-4 border-double border-[#FFE699]">Grand Total (BDT):</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-slate-800 border-4 border-double border-[#FFE699]">{{ number_format($grandTotal ?? 0, 0) }}</td>
                     </tr>
                 </tbody>
             </table>
@@ -298,8 +298,8 @@
                         <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($totalPaid ?? 0, 0) }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1.5 font-bold text-red-700 border border-red-400">Due Amount:</td>
-                        <td class="px-2 py-1.5 text-right font-bold text-red-700 border border-red-400">{{ number_format($dueAmount ?? 0, 0) }}</td>
+                        <td class="px-2 py-1.5 font-bold text-red-700 border-4 border-double border-[#FFE699]">Due Amount:</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-red-700 border-4 border-double border-[#FFE699]">{{ number_format($dueAmount ?? 0, 0) }}</td>
                     </tr>
                 </tbody>
             </table>
