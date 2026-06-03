@@ -157,7 +157,7 @@
                             <div class="border-t border-slate-300"></div>
                             <div class="py-0.5 leading-tight">Out Bound</div>
                         </td>
-                        <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</td>
+                        <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->ticketFare?->airline?->code ?? '-' }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->route_display }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->flight_date_display }}</td>
                         @php
