@@ -6,6 +6,7 @@
         $canAccessTicket = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
         $canAccessAdmin = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
         $canAccessAdminReports = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
+        $canAccessBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff', 'Auditor', 'Visa Admin', 'Visa Staff', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
     @endphp
     <div class="w-full mx-auto px-4">
         <div class="flex justify-center items-center h-16 space-x-5">
@@ -15,12 +16,13 @@
             
             <div class="hidden md:flex md:justify-center md:items-center space-x-1" id="desktopNav">
                 <a href="{{ route('dashboard') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="dashboard">Dashboard</a>
-                <a href="{{ route('bookings.index') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="booking">Booking</a>
+                @if($canAccessBooking)<a href="{{ route('bookings.index') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="booking">Booking</a>@endif
                 @if($canAccessFingerprintAdmin)<a href="{{ route('fingerprint.admin') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="fingerprintAdmin">Fingerprint Admin</a>@endif
                 @if($canAccessFingerprintStaff)<a href="{{ route('fingerprint.staff') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="fingerprintStaff">Fingerprint Staff</a>@endif
                 @if($canAccessVisa)<a href="{{ route('visa.admin') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="visaAdmin">Visa Admin</a>@endif
                 @if($canAccessTicket)<a href="{{ route('fare.admin') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="ticketAdmin">Ticket Admin</a>@endif
                 
+                @if($canAccessAdminReports || $canAccessVisa || $canAccessTicket)
                 <div class="relative">
                     <button @click="reportMenuOpen = !reportMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap">
                         Reports ▾
@@ -39,9 +41,11 @@
                         @if($canAccessAdminReports)<a href="{{ route('report.user-sales') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">User-wise Sales Report</a>@endif
                     </div>
                 </div>
+                @endif
                 
                 @if($canAccessAdmin)<a href="{{ route('settings') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="settings">Settings</a>@endif
                 
+                @if($canAccessAdmin || $canAccessVisa || $canAccessTicket)
                 <div class="relative">
                     <button @click="appMenuOpen = !appMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap">
                         App Management ▾
@@ -74,6 +78,7 @@
                         @if($canAccessAdmin)<a href="{{ route('users.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Users</a>@endif
                     </div>
                 </div>
+                @endif
 
                 <div class="relative">
                     <button @click="userMenuOpen = !userMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap">
@@ -107,12 +112,13 @@
     <div class="hidden md:hidden bg-slate-700" :class="{ 'hidden': !mobileOpen }" id="mobileMenu">
         <div class="px-2 pt-2 pb-3 space-y-1">
             <a href="{{ route('dashboard') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Dashboard</a>
-            <a href="{{ route('bookings.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</a>
+            @if($canAccessBooking)<a href="{{ route('bookings.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</a>@endif
             @if($canAccessFingerprintAdmin)<a href="{{ route('fingerprint.admin') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Admin</a>@endif
             @if($canAccessFingerprintStaff)<a href="{{ route('fingerprint.staff') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</a>@endif
             @if($canAccessVisa)<a href="{{ route('visa.admin') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</a>@endif
             @if($canAccessTicket)<a href="{{ route('fare.admin') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Admin</a>@endif
             
+            @if($canAccessAdminReports || $canAccessVisa || $canAccessTicket)
             <div class="border-t border-slate-600 pt-2 mt-2">
                 <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORTS</span>
                 @if($canAccessAdminReports)<a href="{{ route('report.fingerprint') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</a>@endif
@@ -127,9 +133,11 @@
                 @if($canAccessAdminReports)<a href="{{ route('report.profit-loss') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</a>@endif
                 @if($canAccessAdminReports)<a href="{{ route('report.user-sales') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">User-wise Sales Report</a>@endif
             </div>
+            @endif
             
             @if($canAccessAdmin)<a href="{{ route('settings') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600 border-t border-slate-600 mt-2 pt-3">Settings</a>@endif
             
+            @if($canAccessAdmin || $canAccessVisa || $canAccessTicket)
             <div class="border-t border-slate-600 pt-2 mt-2">
                 <span class="block px-3 py-1 text-xs text-slate-400 font-medium">APP MANAGEMENT</span>
                 @if($canAccessAdmin)<a href="{{ route('districts.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Districts</a>@endif
@@ -158,6 +166,7 @@
                 @if($canAccessAdmin)<a href="{{ route('packages.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Packages</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('users.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Users</a>@endif
             </div>
+            @endif
 
             <div class="border-t border-slate-600 mt-2 pt-2">
                 <div class="px-3 py-1 text-sm font-medium text-slate-200">{{ auth()->user()->name }}</div>
