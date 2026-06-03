@@ -2,19 +2,26 @@
 
 @section('title', 'Print Invoice')
 
+@section('navigation')
+@endsection
+
 @section('content')
 <style>
     @page {
         size: landscape;
-        margin: 0.3cm;
+        margin: 0.1cm;
     }
     @media print {
         .no-print { display: none !important; }
-        body { margin: 0; padding: 0; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+        body { margin: 0; padding: 0 !important; background: white !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
         .invoice-container { max-width: 100%; }
         .invoice-card { box-shadow: none !important; border: 1px solid #cbd5e1 !important; page-break-inside: avoid; }
         .invoice-bg { background: white !important; }
-        .text-\[11px\] { font-size: 11px !important; }
+        .text-\[11px\] { font-size: 9px !important; }
+        .overflow-x-auto { overflow: visible !important; }
+        table { page-break-inside: auto; white-space: normal !important; }
+        tr { page-break-inside: avoid; }
+        table th, table td { padding: 1px 2px !important; }
     }
     .invoice-container {
         max-width: 1200px;
