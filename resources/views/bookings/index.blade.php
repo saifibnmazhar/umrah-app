@@ -72,6 +72,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             $canCreateBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
             $canViewFinancialColumns = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
             $canEditInline = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
+            $isVisaPersonnel = auth()->user()->roles->pluck('name')->intersect(['Visa Admin', 'Visa Staff'])->isNotEmpty();
+            $isTicketPersonnel = auth()->user()->roles->pluck('name')->intersect(['Ticket Admin', 'Ticket Staff'])->isNotEmpty();
         @endphp
         <h1 class="text-2xl font-bold text-slate-800">Booking</h1>
         @if($canCreateBooking)
@@ -192,10 +194,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
-                            <th class="px-3 py-2 text-left font-medium">Visa</th>
-                            <th class="px-3 py-2 text-left font-medium">Visa Agent</th>
+                            @if(!$isTicketPersonnel)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
+                            @if(!$isTicketPersonnel)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Ticket Fare</th>
+                            @if(!$isVisaPersonnel)<th class="px-3 py-2 text-left font-medium">Ticket Fare</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
@@ -266,6 +268,7 @@ if ($route) {
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->invoice?->balance ? number_format($passenger->booking->invoice->balance, 2) . ' SAR' : '—') : '' }}</td>@endif
+    @if(!$isTicketPersonnel)
     <td class="px-3 py-2">
         <div class="flex items-center gap-1 flex-wrap">
             @if($visaSubmission && $visaSubmission->visa_number)
@@ -277,6 +280,7 @@ if ($route) {
         </div>
     </td>
     <td class="px-3 py-2 text-slate-600">{{ $visaSubmission?->visaAgent?->name ?? '—' }}</td>
+    @endif
     <td class="px-3 py-2">
         @php $vs = $passenger->visa_status; @endphp
         @if($vs)
@@ -288,6 +292,7 @@ if ($route) {
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
         @endif
     </td>
+    @if(!$isVisaPersonnel)
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 flex-wrap">
             <span class="font-medium text-sm">{{ $fareAmount > 0 ? number_format($fareAmount, 2) . ' SAR' : '—' }}</span>
@@ -295,6 +300,7 @@ if ($route) {
             <button @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
         </div>
     </td>
+    @endif
     <td class="px-3 py-2">
         @php $ticketStatus = $passenger->ticket_status; @endphp
         @if($ticketStatus)
@@ -334,7 +340,7 @@ if ($route) {
 </tr>
 @empty
 <tr>
-    <td colspan="{{ $canViewFinancialColumns ? 23 : 19 }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="{{ 16 + ($canViewFinancialColumns ? 4 : 0) + ($isTicketPersonnel ? 0 : 2) + ($isVisaPersonnel ? 0 : 1) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 @endforelse
                     </tbody>
                 </table>

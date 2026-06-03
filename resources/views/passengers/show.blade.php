@@ -1,6 +1,10 @@
 @extends('layouts.app')
 @section('title', 'Passenger Details')
 @section('content')
+@php
+    $isVisaPersonnel = auth()->user()->roles->pluck('name')->intersect(['Visa Admin', 'Visa Staff'])->isNotEmpty();
+    $isTicketPersonnel = auth()->user()->roles->pluck('name')->intersect(['Ticket Admin', 'Ticket Staff'])->isNotEmpty();
+@endphp
 <div class="max-w-3xl mx-auto pt-6">
     <div id="passengerDetailsContent" class="space-y-6">
         <div class="bg-white rounded-xl shadow-lg p-6">
@@ -121,14 +125,18 @@
                     <h3 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Financial Details</h3>
                     <div class="space-y-3">
                         <div class="grid grid-cols-2 gap-3">
+                            @if(!$isVisaPersonnel)
                             <div>
                                 <span class="text-xs text-slate-400">Ticket Fare (SAR)</span>
                                 <p class="text-slate-800 font-medium">{{ number_format($ticketFare, 2) }}</p>
                             </div>
+                            @endif
+                            @if(!$isTicketPersonnel)
                             <div>
                                 <span class="text-xs text-slate-400">Visa Cost (SAR)</span>
                                 <p class="text-slate-800 font-medium">{{ number_format($visaCost, 2) }}</p>
                             </div>
+                            @endif
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -189,6 +197,7 @@
                 </div>
             </div>
 
+            @if(!$isTicketPersonnel)
             {{-- Visa Submission History --}}
             <div class="mt-6 pt-4 border-t border-slate-200">
                 <div class="bg-white rounded-xl shadow-lg p-6">
@@ -216,6 +225,7 @@
                     </div>
                 </div>
             </div>
+            @endif
 
             <div class="mt-6 pt-4 border-t border-slate-200 flex gap-3">
                 <a href="{{ route('bookings.index', ['tab' => 'passenger']) }}" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Back to List</a>
@@ -229,6 +239,7 @@
 .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
 </style>
 
+@if(!$isTicketPersonnel)
 {{-- Cancellation Modal --}}
 <div id="cancellationModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
     <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeCancellationModal()"></div>
@@ -302,6 +313,7 @@
         </form>
     </div>
 </div>
+@endif
 
 <script>
 const passengerId = {{ $passenger->id }};
