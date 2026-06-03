@@ -46,7 +46,7 @@
                     <button @click="appMenuOpen = !appMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap">
                         App Management ▾
                     </button>
-                    <div x-show="appMenuOpen" @click.away="appMenuOpen = false" class="absolute right-0 bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50 min-w-[200px]">
+                    <div x-show="appMenuOpen" @click.away="appMenuOpen = false" class="absolute right-0 bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50 min-w-[200px] max-h-[75vh] overflow-y-auto">
                         @if($canAccessAdmin)<a href="{{ route('districts.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Districts</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('banks.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Banks</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('branches.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Branches (KSA)</a>@endif
