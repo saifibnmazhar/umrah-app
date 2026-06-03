@@ -134,14 +134,14 @@
                             @endif
                             @if(!$isTicketPersonnel)
                             <div>
-                                <span class="text-xs text-slate-400">Visa Cost (SAR)</span>
+                                <span class="text-xs text-slate-400">Visa Price (SAR)</span>
                                 <p class="text-slate-800 font-medium">{{ number_format($visaCost, 2) }}</p>
                             </div>
                             @endif
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
-                                <span class="text-xs text-slate-400">Fingerprint Cost (SAR)</span>
+                                <span class="text-xs text-slate-400">Fingerprint Charge (SAR)</span>
                                 <p class="text-slate-800 font-medium">{{ number_format($fingerprintCost, 2) }}</p>
                             </div>
                         </div>
