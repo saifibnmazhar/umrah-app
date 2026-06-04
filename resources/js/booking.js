@@ -2814,169 +2814,7 @@ Alpine.data('editBookingApp', () => ({
         this.recalculateAllPassengerValues();
     },
 
-    openPassengerModal() {
-        this.editingPassengerIndex = null;
-        let packageTicketFareId = null;
-        if (this.bookingData.package_id) {
-            const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
-            if (pkg && pkg.ticket_fare_id) {
-                packageTicketFareId = pkg.ticket_fare_id;
-            }
-        }
-        this.passengerData = {
-            first_name: '',
-            last_name: '',
-            passport_no: '',
-            date_of_birth: '',
-            passenger_type: '',
-            gender: '',
-            mobile_no: '',
-            passport_expiry: '',
-            service_required: '',
-            stay_duration: '',
-            stay_duration_display: '',
-            route_type: '',
-            flight_type: '',
-            route: '',
-            airline: '',
-            class: '',
-            ticket_fare_id: '',
-            flight_date_range: '',
-            flight_date_from: '',
-            flight_date_to: '',
-            baggage_weight: '',
-            address: '',
-            with_offer: false,
-            refundable: false,
-            customDurationDays: ''
-        };
-        if (packageTicketFareId) {
-            this.passengerData.baggage_weight = 'Define Passenger Type';
-        } else {
-            this.passengerData.baggage_weight = 'Select a Ticket and Define Passenger Type';
-        }
-        if (packageTicketFareId) {
-            const ticket = this.allTickets.find(t => t.id == packageTicketFareId);
-            if (ticket) {
-                const reverseRouteTypeMap = {
-                    'oneway_inbound': 'One Way-Inbound',
-                    'oneway_outbound': 'One Way-Outbound',
-                    'round': 'Round',
-                    'multi_city': 'Multi City',
-                };
-                const reverseFlightTypeMap = {
-                    'transit': 'Transit',
-                    'direct': 'Direct',
-                };
-                this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
-                this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
-                this.filteredTickets = this.allTickets.filter(t =>
-                    t.route_type === ticket.route_type &&
-                    t.flight_type === ticket.flight_type
-                );
-                this.passengerData.route = ticket.route;
-                this.passengerData.airline = ticket.airline || '';
-                this.passengerData.class = ticket.airline_class || '';
-                this.$nextTick(() => {
-                    this.passengerData.ticket_fare_id = String(packageTicketFareId);
-                    this.calculateFlightDateRange();
-                });
-            }
-        } else {
-            this.filteredTickets = [];
-        }
-        if (this.passengers.length > 0 && this.passengers[0].mobile_no) {
-            this.passengerData.mobile_no = this.passengers[0].mobile_no;
-        }
-        this.passengerModalVisible = true;
-    },
 
-    editPassenger(index) {
-        this.editingPassengerIndex = index;
-        const passenger = this.passengers[index];
-        this.passengerData = { ...passenger };
-        this.passengerData.ticket_fare_id = this.passengerData.ticket_fare_id ? String(this.passengerData.ticket_fare_id) : '';
-
-        if (this.passengerData.stay_duration_int && this.passengerData.stay_duration_int >= 30 && this.passengerData.stay_duration_int <= 89) {
-            this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration_int} Days)`;
-            this.$nextTick(() => {
-                const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
-                if (select) {
-                    let customOption = Array.from(select.options).find(opt => opt.value.startsWith('Customized'));
-                    if (!customOption) {
-                        customOption = document.createElement('option');
-                        select.appendChild(customOption);
-                    }
-                    customOption.value = `Customized (${this.passengerData.stay_duration_int} Days)`;
-                    customOption.textContent = `Customized (${this.passengerData.stay_duration_int} Days)`;
-                    select.value = `Customized (${this.passengerData.stay_duration_int} Days)`;
-                }
-            });
-        }
-        if (this.passengerData.ticket_fare_id) {
-            const ticket = this.allTickets.find(t => t.id == this.passengerData.ticket_fare_id);
-            if (ticket) {
-                const reverseRouteTypeMap = {
-                    'oneway_inbound': 'One Way-Inbound',
-                    'oneway_outbound': 'One Way-Outbound',
-                    'round': 'Round',
-                    'multi_city': 'Multi City',
-                };
-                const reverseFlightTypeMap = {
-                    'transit': 'Transit',
-                    'direct': 'Direct',
-                };
-                this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
-                this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
-                this.filteredTickets = this.allTickets.filter(t =>
-                    t.route_type === ticket.route_type &&
-                    t.flight_type === ticket.flight_type
-                );
-                this.passengerData.route = ticket.route;
-                this.passengerData.airline = ticket.airline || '';
-                this.passengerData.class = ticket.airline_class || '';
-
-                this.calculateFlightDateRange();
-            }
-        }
-        this.$nextTick(() => {
-            this.updateBaggageWeight();
-        });
-        this.passengerModalVisible = true;
-    },
-
-    generateFlightDateRangeForEdit(dateFrom, dateTo) {
-        const select = document.getElementById('passengerFlightDateRange');
-        if (!select) return;
-
-        const fromParts = dateFrom.split('-');
-        const toParts = dateTo.split('-');
-        const startDate = new Date(parseInt(fromParts[0]), parseInt(fromParts[1]) - 1, parseInt(fromParts[2]));
-        const endDate = new Date(parseInt(toParts[0]), parseInt(toParts[1]) - 1, parseInt(toParts[2]));
-
-        const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-
-        const startStr = `${months[startDate.getMonth()]} ${startDate.getDate()}, ${startDate.getFullYear()}`;
-        const endStr = `${months[endDate.getMonth()]} ${endDate.getDate()}, ${endDate.getFullYear()}`;
-        const displayText = `${startStr} - ${endStr}`;
-
-        let found = false;
-        Array.from(select.options).forEach(opt => {
-            if (opt.value === displayText) {
-                this.passengerData.flight_date_range = displayText;
-                found = true;
-            }
-        });
-
-        if (!found) {
-            this.passengerData.flight_date_range = displayText;
-            const option = document.createElement('option');
-            option.value = displayText;
-            option.textContent = displayText;
-            select.appendChild(option);
-            select.value = displayText;
-        }
-    },
 
     calculateFlightDateRange() {
         const route = this.passengerData.route;
@@ -3098,10 +2936,6 @@ Alpine.data('editBookingApp', () => ({
         }
     },
 
-    closePassengerModal() {
-        this.passengerModalVisible = false;
-    },
-
     removePassenger(index) {
         const passenger = this.passengers[index];
         if (!passenger) return;
@@ -3193,15 +3027,10 @@ Alpine.data('editBookingApp', () => ({
             }
         }
 
-        if (this.editingPassengerIndex !== null) {
-            this.passengers[this.editingPassengerIndex] = { ...this.passengerData };
-            this.recalculateCurrentPassenger(this.editingPassengerIndex);
-        } else {
-            this.passengers.push({ ...this.passengerData });
-            this.recalculateAllPassengerValues();
-        }
+        this.passengers.push({ ...this.passengerData });
+        this.recalculateAllPassengerValues();
         this.passengerCount = this.passengers.length;
-        this.closePassengerModal();
+        this.passengerModalVisible = false;
         return true;
     },
 
@@ -3421,6 +3250,8 @@ Alpine.data('editBookingApp', () => ({
                     });
                 }
             }
+        } else {
+            this.passengerData.baggage_weight = '';
         }
     },
 
