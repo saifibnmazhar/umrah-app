@@ -193,10 +193,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     </div>
 
     <div x-show="activeTab === 'passenger'" x-cloak>
-        <div class="bg-white rounded-xl shadow-lg p-6">
-            <div class="overflow-x-auto">
+        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col" style="max-height: calc(100vh - 200px);">
+            <div class="overflow-auto flex-1 min-h-0">
                 <table class="w-full min-w-[1800px] text-sm">
-                    <thead class="bg-slate-50 text-slate-600">
+                    <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Booking Date</th>
                             <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
@@ -365,7 +365,7 @@ if ($route) {
                     </tbody>
                 </table>
             </div>
-            <div class="mt-4">
+            <div class="mt-4 flex-shrink-0">
                 {{ $passengers->links() }}
             </div>
         </div>
@@ -711,6 +711,15 @@ function bookingIndexApp() {
     return {
         activeTab: '{{ $tab ?? 'booking' }}',
         searchTerm: '',
+
+        init() {
+            if (this.activeTab === 'passenger') {
+                document.body.style.overflow = 'hidden';
+            }
+            this.$watch('activeTab', (newVal) => {
+                document.body.style.overflow = newVal === 'passenger' ? 'hidden' : '';
+            });
+        },
 
         passengersVisaData: @json($passengersVisaData),
         passengersTicketData: @json($passengersTicketData),
