@@ -18,6 +18,13 @@ $passengersVisaData = ($passengers ?? collect())->map(fn($p) => [
     'visa_status' => $p->visa_status?->value ?? null,
 ])->values();
 
+$groupTickets = \App\Models\GroupTicket::with('ticketFare')->get()->map(fn($gt) => [
+    'id' => $gt->id,
+    'pnr' => $gt->pnr,
+    'date' => $gt->inbound_date?->format('Y-m-d') ?? $gt->outbound_date?->format('Y-m-d') ?? '',
+    'remainingSeats' => $gt->ticket_qty ?? 0,
+])->values();
+
 $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'id' => $p->id,
     'booking_date' => $p->booking?->created_at?->format('Y-m-d') ?? '',
@@ -26,7 +33,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'passport' => $p->passport_no ?? '',
     'route' => $p->route_display ?? '',
     'airline' => $p->ticketFare?->airline?->name ?? $p->booking?->package?->ticketFare?->airline?->name ?? '',
-    'travel_class' => $p->ticketFare?->airlineClass?->name ?? '',
+    'travel_class' => $p->ticketFare?->airlineClass?->class?->name ?? $p->booking?->package?->ticketFare?->airlineClass?->class?->name ?? '',
     'passenger_type' => $p->passenger_type?->value ?? 'adult',
     'mobile_no' => $p->mobile_no ?? '',
     'guardian' => '',
@@ -42,8 +49,18 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     'ticket_fare' => $p->ticketFare ? [
         'ticket_type' => $p->ticketFare->ticket_type?->value ?? 'regular',
-        'route_type' => $p->ticketFare->route_type ?? '',
-        'flight_type' => $p->ticketFare->route?->flight_type?->value ?? '',
+        'route_type' => match($p->ticketFare?->route?->route_type?->value) {
+            'oneway_inbound' => 'One Way-Inbound',
+            'oneway_outbound' => 'One Way-Outbound',
+            'round' => 'Round',
+            'multi_city' => 'Multi City',
+            default => '',
+        },
+        'flight_type' => match($p->ticketFare?->route?->flight_type?->value) {
+            'direct' => 'Direct',
+            'transit' => 'Transit',
+            default => '',
+        },
         'group_ticket_id' => $p->ticketFare->groupTicket?->id ?? null,
         'inbound_date' => $p->ticketFare->groupTicket?->inbound_date ?? '',
         'outbound_date' => $p->ticketFare->groupTicket?->outbound_date ?? '',
@@ -697,7 +714,7 @@ function bookingIndexApp() {
         passengersVisaData: @json($passengersVisaData),
         passengersTicketData: @json($passengersTicketData),
 
-        groupTickets: [],
+        groupTickets: @json($groupTickets),
 
         visaCommissionAgents: {
             "Visa Agent A": ["Commission Agent 1", "Commission Agent 2"],
