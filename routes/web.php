@@ -169,10 +169,10 @@ Route::middleware('auth')->group(function () {
     // Reports
     Route::get('/reports/statement', fn() => view('reports.statement'))->name('report.statement');
     Route::get('/reports/profit-loss', fn() => view('reports.profit-loss'))->name('report.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/reports/fingerprint', [FingerprintReportController::class, 'index'])->name('report.fingerprint')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/reports/fingerprint/print', [FingerprintReportController::class, 'print'])->name('report.fingerprint.print')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/api/reports/fingerprint', [FingerprintReportController::class, 'data'])->name('api.reports.fingerprint')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/api/reports/fingerprint/details/{fingerprintDetail}', [FingerprintReportController::class, 'details'])->name('api.reports.fingerprint.details')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/fingerprint', [FingerprintReportController::class, 'index'])->name('report.fingerprint')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
+    Route::get('/reports/fingerprint/print', [FingerprintReportController::class, 'print'])->name('report.fingerprint.print')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
+    Route::get('/api/reports/fingerprint', [FingerprintReportController::class, 'data'])->name('api.reports.fingerprint')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
+    Route::get('/api/reports/fingerprint/details/{fingerprintDetail}', [FingerprintReportController::class, 'details'])->name('api.reports.fingerprint.details')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
     Route::get('/reports/visa', fn() => view('reports.visa'))->name('report.visa')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/reports/visa-agent', fn() => view('reports.visa-agent'))->name('report.visa-agent')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/reports/ticket-agent', fn() => view('reports.ticket-agent'))->name('report.ticket-agent')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');

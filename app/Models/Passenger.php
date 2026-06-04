@@ -102,10 +102,9 @@ class Passenger extends Model
 
         if ($routeType === 'multi_city') {
             if ($route->multiSegments && $route->multiSegments->count() > 0) {
-                $firstSegment = $route->multiSegments->first();
-                $from = $firstSegment->fromCity?->code ?? '-';
-                $to = $firstSegment->toCity?->code ?? '-';
-                return "{$from}-{$to} ...";
+                return $route->multiSegments
+                    ->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))
+                    ->implode(', ');
             }
             return '-';
         }

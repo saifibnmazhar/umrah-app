@@ -16,6 +16,6 @@ class Airline extends Model
 
     public function travelClasses(): BelongsToMany
     {
-        return $this->belongsToMany(TravelClass::class, 'airline_classes');
+        return $this->belongsToMany(TravelClass::class, 'airline_classes', 'airline_id', 'class_id');
     }
 }
