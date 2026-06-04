@@ -76,10 +76,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'non_exchangeable' => false,
         'baggage_inbound_adult' => 30,
         'baggage_inbound_child' => 30,
-        'baggage_inbound_infant' => 0,
+        'baggage_inbound_infant' => 10,
         'baggage_outbound_adult' => 50,
         'baggage_outbound_child' => 50,
-        'baggage_outbound_infant' => 0,
+        'baggage_outbound_infant' => 10,
     ] : null,
 ])->values();
 @endphp
@@ -654,7 +654,7 @@ if ($route) {
                             </div>
                             <div>
                                 <label class="block text-sm text-slate-600 mb-1">Infant</label>
-                                <input type="number" x-model="ticketFareForm.baggage_inbound_infant" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                                <input type="number" x-model="ticketFareForm.baggage_inbound_infant" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="10">
                             </div>
                         </div>
                     </div>
@@ -671,7 +671,7 @@ if ($route) {
                             </div>
                             <div>
                                 <label class="block text-sm text-slate-600 mb-1">Infant</label>
-                                <input type="number" x-model="ticketFareForm.baggage_outbound_infant" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                                <input type="number" x-model="ticketFareForm.baggage_outbound_infant" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="10">
                             </div>
                         </div>
                     </div>
@@ -887,10 +887,10 @@ function bookingIndexApp() {
             net_fare: 0,
             baggage_inbound_adult: 30,
             baggage_inbound_child: 30,
-            baggage_inbound_infant: 0,
+            baggage_inbound_infant: 10,
             baggage_outbound_adult: 50,
             baggage_outbound_child: 50,
-            baggage_outbound_infant: 0,
+            baggage_outbound_infant: 10,
             non_refundable: false,
             non_exchangeable: false,
             showInboundDate: false,
@@ -930,10 +930,10 @@ function bookingIndexApp() {
                 this.ticketFareForm.non_exchangeable = row.ticket_fare.non_exchangeable || false;
                 this.ticketFareForm.baggage_inbound_adult = row.ticket_fare.baggage_inbound_adult || 30;
                 this.ticketFareForm.baggage_inbound_child = row.ticket_fare.baggage_inbound_child || 30;
-                this.ticketFareForm.baggage_inbound_infant = row.ticket_fare.baggage_inbound_infant || 0;
+                this.ticketFareForm.baggage_inbound_infant = row.ticket_fare.baggage_inbound_infant || 10;
                 this.ticketFareForm.baggage_outbound_adult = row.ticket_fare.baggage_outbound_adult || 50;
                 this.ticketFareForm.baggage_outbound_child = row.ticket_fare.baggage_outbound_child || 50;
-                this.ticketFareForm.baggage_outbound_infant = row.ticket_fare.baggage_outbound_infant || 0;
+                this.ticketFareForm.baggage_outbound_infant = row.ticket_fare.baggage_outbound_infant || 10;
             } else {
                 this.ticketFareForm.ticket_type = '';
                 this.ticketFareForm.route_type = '';
@@ -951,10 +951,10 @@ function bookingIndexApp() {
                 this.ticketFareForm.non_exchangeable = false;
                 this.ticketFareForm.baggage_inbound_adult = 30;
                 this.ticketFareForm.baggage_inbound_child = 30;
-                this.ticketFareForm.baggage_inbound_infant = 0;
+                this.ticketFareForm.baggage_inbound_infant = 10;
                 this.ticketFareForm.baggage_outbound_adult = 50;
                 this.ticketFareForm.baggage_outbound_child = 50;
-                this.ticketFareForm.baggage_outbound_infant = 0;
+                this.ticketFareForm.baggage_outbound_infant = 10;
             }
 
             this.handleTicketFareRouteTypeChange();
@@ -1037,10 +1037,10 @@ function bookingIndexApp() {
                 non_exchangeable: this.ticketFareForm.non_exchangeable || false,
                 baggage_inbound_adult: parseInt(this.ticketFareForm.baggage_inbound_adult) || 30,
                 baggage_inbound_child: parseInt(this.ticketFareForm.baggage_inbound_child) || 30,
-                baggage_inbound_infant: parseInt(this.ticketFareForm.baggage_inbound_infant) || 0,
+                baggage_inbound_infant: parseInt(this.ticketFareForm.baggage_inbound_infant) || 10,
                 baggage_outbound_adult: parseInt(this.ticketFareForm.baggage_outbound_adult) || 50,
                 baggage_outbound_child: parseInt(this.ticketFareForm.baggage_outbound_child) || 50,
-                baggage_outbound_infant: parseInt(this.ticketFareForm.baggage_outbound_infant) || 0,
+                baggage_outbound_infant: parseInt(this.ticketFareForm.baggage_outbound_infant) || 10,
             };
 
             row.ticket_fare = ticketFareData;
