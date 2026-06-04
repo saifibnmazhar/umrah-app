@@ -27,6 +27,29 @@ $groupTickets = \App\Models\GroupTicket::with('ticketFare')->get()->map(fn($gt) 
 
 $ticketAgents = \App\Models\TicketAgent::orderBy('name')->get();
 
+$routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])->get()->map(fn($r) => [
+    'id' => $r->id,
+    'display' => match($r->route_type?->value) {
+        'multi_city' => $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', '),
+        'round' => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?') . '-' . ($r->returnCity?->code ?? '?'),
+        default => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?'),
+    },
+    'route_type' => $r->route_type?->value,
+    'flight_type' => $r->flight_type?->value,
+    'airline_id' => $r->airline_id,
+])->values();
+
+$airlinesList = \App\Models\Airline::with('travelClasses')->get()->map(fn($a) => [
+    'id' => $a->id,
+    'name' => $a->name,
+    'class_ids' => $a->travelClasses->pluck('id'),
+])->values();
+
+$classesList = \App\Models\TravelClass::all()->map(fn($c) => [
+    'id' => $c->id,
+    'name' => $c->name,
+])->values();
+
 $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'id' => $p->id,
     'booking_date' => $p->booking?->created_at?->format('Y-m-d') ?? '',
@@ -556,7 +579,7 @@ if ($route) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                            <select x-model="ticketFareForm.route_type" @change="handleTicketFareRouteTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="ticketFareForm.route_type" @change="handleTicketFareRouteTypeChange(); handleRouteTypeOrFlightTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select</option>
                                 <option value="One Way-Inbound">One Way-Inbound</option>
                                 <option value="One Way-Outbound">One Way-Outbound</option>
@@ -566,7 +589,7 @@ if ($route) {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                            <select x-model="ticketFareForm.flight_type" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="ticketFareForm.flight_type" @change="handleRouteTypeOrFlightTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select</option>
                                 <option value="Transit">Transit</option>
                                 <option value="Direct">Direct</option>
@@ -609,15 +632,30 @@ if ($route) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
-                            <input type="text" x-model="ticketFareForm.route" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                            <select x-model="ticketFareForm.route" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Route</option>
+                                <template x-for="r in filteredRoutes" :key="r.id">
+                                    <option :value="r.display" x-text="r.display"></option>
+                                </template>
+                            </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
-                            <input type="text" x-model="ticketFareForm.airline" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                            <select x-model="ticketFareForm.airline" required @change="handleAirlineChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Airline</option>
+                                <template x-for="a in filteredAirlines" :key="a.id">
+                                    <option :value="a.name" x-text="a.name"></option>
+                                </template>
+                            </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
-                            <input type="text" x-model="ticketFareForm.travel_class" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                            <select x-model="ticketFareForm.travel_class" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Class</option>
+                                <template x-for="c in filteredClasses" :key="c.id">
+                                    <option :value="c.name" x-text="c.name"></option>
+                                </template>
+                            </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
@@ -718,6 +756,10 @@ function bookingIndexApp() {
         groupTickets: @json($groupTickets),
 
         ticketAgents: @json($ticketAgents),
+
+        routesList: @json($routesList),
+        airlinesList: @json($airlinesList),
+        classesList: @json($classesList),
 
         visaCommissionAgents: {
             "Visa Agent A": ["Commission Agent 1", "Commission Agent 2"],
@@ -1051,6 +1093,47 @@ function bookingIndexApp() {
 
             this.showToast('Ticket fare saved successfully');
             this.closeTicketFareModal();
+        },
+
+        handleRouteTypeOrFlightTypeChange() {
+            this.ticketFareForm.route = '';
+            this.ticketFareForm.airline = '';
+            this.ticketFareForm.travel_class = '';
+        },
+
+        handleAirlineChange() {
+            const current = this.ticketFareForm.travel_class;
+            const available = this.filteredClasses.map(c => c.name);
+            if (!available.includes(current)) {
+                this.ticketFareForm.travel_class = '';
+            }
+        },
+
+        get filteredRoutes() {
+            const rt = this.ticketFareForm.route_type;
+            const ft = this.ticketFareForm.flight_type;
+            if (!rt || !ft) return this.routesList;
+            const rtMap = {'One Way-Inbound':'oneway_inbound','One Way-Outbound':'oneway_outbound','Round':'round','Multi City':'multi_city'};
+            const ftMap = {'Transit':'transit','Direct':'direct'};
+            return this.routesList.filter(r => r.route_type === (rtMap[rt]||rt) && r.flight_type === (ftMap[ft]||ft));
+        },
+
+        get filteredAirlines() {
+            const rt = this.ticketFareForm.route_type;
+            const ft = this.ticketFareForm.flight_type;
+            if (!rt || !ft) return this.airlinesList;
+            const rtMap = {'One Way-Inbound':'oneway_inbound','One Way-Outbound':'oneway_outbound','Round':'round','Multi City':'multi_city'};
+            const ftMap = {'Transit':'transit','Direct':'direct'};
+            const ids = this.routesList.filter(r => r.route_type === (rtMap[rt]||rt) && r.flight_type === (ftMap[ft]||ft)).map(r => r.airline_id);
+            return this.airlinesList.filter(a => ids.includes(a.id));
+        },
+
+        get filteredClasses() {
+            const name = this.ticketFareForm.airline;
+            if (!name) return this.classesList;
+            const airline = this.airlinesList.find(a => a.name === name);
+            if (!airline) return this.classesList;
+            return this.classesList.filter(c => airline.class_ids.includes(c.id));
         },
 
         showToast(message) {
