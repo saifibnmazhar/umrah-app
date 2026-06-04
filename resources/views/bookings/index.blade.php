@@ -25,6 +25,8 @@ $groupTickets = \App\Models\GroupTicket::with('ticketFare')->get()->map(fn($gt) 
     'remainingSeats' => $gt->ticket_qty ?? 0,
 ])->values();
 
+$ticketAgents = \App\Models\TicketAgent::orderBy('name')->get();
+
 $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'id' => $p->id,
     'booking_date' => $p->booking?->created_at?->format('Y-m-d') ?? '',
@@ -594,10 +596,9 @@ if ($route) {
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
                             <select x-model="ticketFareForm.ticket_agent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Agent</option>
-                                <option value="Al-Reem">Al-Reem</option>
-                                <option value="Nasser">Nasser</option>
-                                <option value="Al-Masria">Al-Masria</option>
-                                <option value="Umrah Plus">Umrah Plus</option>
+                                <template x-for="agent in ticketAgents" :key="agent.id">
+                                    <option :value="agent.name" x-text="agent.name"></option>
+                                </template>
                             </select>
                         </div>
                     </div>
@@ -715,6 +716,8 @@ function bookingIndexApp() {
         passengersTicketData: @json($passengersTicketData),
 
         groupTickets: @json($groupTickets),
+
+        ticketAgents: @json($ticketAgents),
 
         visaCommissionAgents: {
             "Visa Agent A": ["Commission Agent 1", "Commission Agent 2"],
