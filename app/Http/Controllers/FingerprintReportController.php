@@ -125,7 +125,8 @@ class FingerprintReportController extends Controller
             'fingerprint_deadline' => $fingerprint->deadline?->format('Y-m-d'),
             'fingerprint_charge' => $canViewFinancials ? (float)($booking->fingerprintCharge?->fingerprint_charge ?? 0) : null,
             'fingerprint_cost' => (float)($fingerprint->cost ?? 0),
-            'profit_loss' => $canViewFinancials ? ((float)($booking->fingerprintCharge?->fingerprint_charge ?? 0) - (float)($fingerprint->cost ?? 0)) : null,
+            'profit' => $canViewFinancials ? max(0, (float)($booking->fingerprintCharge?->fingerprint_charge ?? 0) - (float)($fingerprint->cost ?? 0)) : null,
+            'loss' => $canViewFinancials ? abs(min(0, (float)($booking->fingerprintCharge?->fingerprint_charge ?? 0) - (float)($fingerprint->cost ?? 0))) : null,
             'passenger' => [
                 'name' => trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')),
                 'passport_no' => $passenger->passport_no ?? '-',
@@ -205,7 +206,8 @@ class FingerprintReportController extends Controller
                     'required_flight' => $passenger->flight_date_display ?? '-',
                     'actual_flight' => $passenger->actual_flight_date?->format('Y-m-d') ?? '-',
                     'remarks' => $remarks ?? '-',
-                    'profit_loss' => $canViewFinancials ? (float)$profitLoss : null,
+                    'profit' => $canViewFinancials ? max(0, (float)$profitLoss) : null,
+                    'loss' => $canViewFinancials ? abs(min(0, (float)$profitLoss)) : null,
                 ];
             }
         }
@@ -220,12 +222,17 @@ class FingerprintReportController extends Controller
 
         $firstRows = collect($items)->filter(fn($r) => $r['_isFirstPassenger']);
 
+        $totalProfit = $firstRows->sum('profit');
+        $totalLoss = $firstRows->sum('loss');
+
         return [
             'total_invoices' => $uniqueInvoices->count(),
             'total_pax' => $totalPAX,
             'total_fingerprint_charge' => $firstRows->sum('fingerprint_charge'),
             'total_fingerprint_cost' => $firstRows->sum('fingerprint_cost'),
-            'total_profit_loss' => $firstRows->sum('profit_loss'),
+            'total_profit' => $totalProfit,
+            'total_loss' => $totalLoss,
+            'total_profit_loss' => $totalProfit - $totalLoss,
         ];
     }
 

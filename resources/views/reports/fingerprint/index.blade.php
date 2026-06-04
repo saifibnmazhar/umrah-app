@@ -140,7 +140,7 @@
                         <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Flight Status</th>
                         <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Remarks & Status</th>
                         @if($canViewFinancials)
-                        <th colspan="1" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Profit/Loss</th>
+                        <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Profit & Loss</th>
                         @endif
                     </tr>
                     <tr class="table-header">
@@ -159,19 +159,20 @@
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-center border-r border-b border-gray-300">Status</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-b border-gray-300">Remarks</th>
                         @if($canViewFinancials)
-                        <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-b border-gray-300">Profit/Loss</th>
+                        <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-b border-gray-300">Profit</th>
+                        <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-b border-gray-300">Loss</th>
                         @endif
                     </tr>
                 </thead>
                 <tbody id="reportTableBody">
                     <template x-if="loading">
                         <tr>
-                            <td :colspan="canViewFinancials ? 15 : 14" class="px-3 py-8 text-center text-slate-500">Loading...</td>
+                            <td :colspan="canViewFinancials ? 16 : 14" class="px-3 py-8 text-center text-slate-500">Loading...</td>
                         </tr>
                     </template>
                     <template x-if="!loading && data.length === 0">
                         <tr>
-                            <td :colspan="canViewFinancials ? 15 : 14" class="px-3 py-8 text-center text-slate-500">No fingerprint records found</td>
+                            <td :colspan="canViewFinancials ? 16 : 14" class="px-3 py-8 text-center text-slate-500">No fingerprint records found</td>
                         </tr>
                     </template>
                     <template x-for="(row, rowIndex) in data" :key="row.fingerprint_detail_id || rowIndex">
@@ -208,9 +209,10 @@
                                 x-text="row.status_display"
                                 :class="getStatusClass(row.status_display)"></td>
                             <td class="px-2 py-2 text-xs text-left border-r border-gray-200" x-text="row.remarks || '-'"></td>
-                            <td x-show="canViewFinancials" class="px-2 py-2 text-xs text-right font-semibold"
-                                :class="row._isFirstPassenger ? (row.profit_loss >= 0 ? 'text-green-600' : 'text-red-600') : ''"
-                                x-text="row._isFirstPassenger ? formatCurrency(row.profit_loss) : ''"></td>
+                            <td x-show="canViewFinancials" class="px-2 py-2 text-xs text-right font-semibold text-green-600"
+                                x-text="row._isFirstPassenger && row.profit ? formatCurrency(row.profit) : ''"></td>
+                            <td x-show="canViewFinancials" class="px-2 py-2 text-xs text-right font-semibold text-red-600"
+                                x-text="row._isFirstPassenger && row.loss ? formatCurrency(row.loss) : ''"></td>
                         </tr>
                     </template>
                 </tbody>
@@ -275,15 +277,11 @@
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Profit:</span>
-                            <span class="text-xs font-bold text-green-700" x-show="canViewFinancials && summary.total_profit_loss >= 0" x-text="formatCurrency(summary.total_profit_loss)"></span>
-                            <span class="text-xs font-bold text-green-700" x-show="canViewFinancials && summary.total_profit_loss < 0">-</span>
-                            <span class="text-xs font-bold text-green-700" x-show="!canViewFinancials">-</span>
+                            <span class="text-xs font-bold text-green-700" x-text="canViewFinancials ? formatCurrency(summary.total_profit) : '-'"></span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Loss:</span>
-                            <span class="text-xs font-bold text-red-700" x-show="canViewFinancials && summary.total_profit_loss < 0" x-text="formatCurrency(Math.abs(summary.total_profit_loss))"></span>
-                            <span class="text-xs font-bold text-red-700" x-show="canViewFinancials && summary.total_profit_loss >= 0">-</span>
-                            <span class="text-xs font-bold text-red-700" x-show="!canViewFinancials">-</span>
+                            <span class="text-xs font-bold text-red-700" x-text="canViewFinancials ? formatCurrency(summary.total_loss) : '-'"></span>
                         </div>
                         <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
                             <span class="text-xs font-bold text-gray-700">Net Profit/Loss:</span>
@@ -438,7 +436,11 @@
                                     </div>
                                     <div>
                                         <label class="text-xs font-medium text-gray-500">Profit/Loss</label>
-                                        <p class="text-sm font-semibold" :class="details.profit_loss >= 0 ? 'text-green-700' : 'text-red-700'" x-text="formatCurrency(details.profit_loss)"></p>
+                                        <p class="text-sm font-semibold">
+                                            <span x-show="details.profit > 0" class="text-green-700" x-text="'Profit: ' + formatCurrency(details.profit)"></span>
+                                            <span x-show="details.loss > 0" class="text-red-700" x-text="'Loss: ' + formatCurrency(details.loss)"></span>
+                                            <span x-show="!details.profit && !details.loss">-</span>
+                                        </p>
                                     </div>
                                 </div>
                             </div>
