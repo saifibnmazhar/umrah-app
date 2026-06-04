@@ -129,6 +129,10 @@
                         <option value="others">Others</option>
                     </select>
                 </div>
+                <div x-show="holdForm.reason === 'others'">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Other Reason</label>
+                    <input type="text" x-model="holdForm.other_reason" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" placeholder="Enter other reason">
+                </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Next Finger Date</label>
                     <input type="date" x-model="holdForm.next_date" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2">
@@ -184,6 +188,7 @@ function fingerprintStaff(options = {}) {
             reason: '',
             next_date: '',
             remarks: '',
+            other_reason: '',
         },
         displayStatuses: [
             'None',
@@ -316,7 +321,7 @@ function fingerprintStaff(options = {}) {
             if (value === 'Hold & Ask for next Finger date?') {
                 this.currentFingerprintDetailId = fingerprintDetailId;
                 this.showHoldModal = true;
-                this.holdForm = { reason: '', next_date: '', remarks: '' };
+                this.holdForm = { reason: '', next_date: '', remarks: '', other_reason: '' };
                 return;
             }
 
@@ -394,6 +399,10 @@ function fingerprintStaff(options = {}) {
         async saveHold() {
             if (!this.holdForm.reason) {
                 this.showToast('Please select a reason', 'error');
+                return;
+            }
+            if (this.holdForm.reason === 'others' && !this.holdForm.other_reason) {
+                this.showToast('Please enter other reason', 'error');
                 return;
             }
             if (!this.holdForm.next_date) {
