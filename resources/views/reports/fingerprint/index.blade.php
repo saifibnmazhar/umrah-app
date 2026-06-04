@@ -138,9 +138,9 @@
                         <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Finger Charge Calculation</th>
                         <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Finger Status</th>
                         <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Flight Status</th>
-                        <th colspan="1" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Remarks</th>
+                        <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Remarks & Status</th>
                         @if($canViewFinancials)
-                        <th colspan="1" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Profit</th>
+                        <th colspan="1" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Profit/Loss</th>
                         @endif
                     </tr>
                     <tr class="table-header">
@@ -166,12 +166,12 @@
                 <tbody id="reportTableBody">
                     <template x-if="loading">
                         <tr>
-                            <td colspan="15" class="px-3 py-8 text-center text-slate-500">Loading...</td>
+                            <td :colspan="canViewFinancials ? 15 : 14" class="px-3 py-8 text-center text-slate-500">Loading...</td>
                         </tr>
                     </template>
                     <template x-if="!loading && data.length === 0">
                         <tr>
-                            <td colspan="15" class="px-3 py-8 text-center text-slate-500">No fingerprint records found</td>
+                            <td :colspan="canViewFinancials ? 15 : 14" class="px-3 py-8 text-center text-slate-500">No fingerprint records found</td>
                         </tr>
                     </template>
                     <template x-for="(row, rowIndex) in data" :key="row.fingerprint_detail_id || rowIndex">

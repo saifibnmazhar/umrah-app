@@ -151,4 +151,14 @@ class FingerprintReportQuery
         }
         return $this;
     }
+
+    public function applyOfficeFilter(?int $officeId): static
+    {
+        if ($officeId) {
+            $this->query->whereHas('booking', function ($q) use ($officeId) {
+                $q->where('office_id', $officeId);
+            });
+        }
+        return $this;
+    }
 }

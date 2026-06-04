@@ -35,12 +35,19 @@ class FingerprintReportController extends Controller
     public function data(Request $request): JsonResponse
     {
         $query = (new FingerprintReportQuery($request))->getQuery();
+        $officeId = $this->getOfficeFilter();
+        if ($officeId) {
+            $query->whereHas('booking', fn($q) => $q->where('office_id', $officeId));
+        }
         $fingerprints = $query->paginate(self::PER_PAGE);
 
         $canViewFinancials = $this->canViewFinancials();
         $items = $this->mapReportData($fingerprints->items(), $canViewFinancials);
 
         $allQuery = (new FingerprintReportQuery($request))->getQuery();
+        if ($officeId) {
+            $allQuery->whereHas('booking', fn($q) => $q->where('office_id', $officeId));
+        }
         $allFingerprints = $allQuery->get();
         $allItems = $this->mapReportData($allFingerprints->all(), $canViewFinancials);
         $summary = $this->computeTotals($allItems);
@@ -60,6 +67,10 @@ class FingerprintReportController extends Controller
     public function print(Request $request): View
     {
         $query = (new FingerprintReportQuery($request))->getQuery();
+        $officeId = $this->getOfficeFilter();
+        if ($officeId) {
+            $query->whereHas('booking', fn($q) => $q->where('office_id', $officeId));
+        }
         $fingerprints = $query->get();
 
         $canViewFinancials = $this->canViewFinancials();
@@ -82,6 +93,11 @@ class FingerprintReportController extends Controller
 
         $fingerprint = $fingerprintDetail->fingerprint;
         $booking = $fingerprint->booking;
+
+        $officeId = $this->getOfficeFilter();
+        if ($officeId && $booking->office_id !== $officeId) {
+            abort(403, 'Unauthorized access to booking data from another office.');
+        }
         $passenger = $fingerprintDetail->passenger;
 
         $rescheduledBy = $this->resolveRescheduledBy($fingerprint, $booking);
@@ -277,5 +293,14 @@ class FingerprintReportController extends Controller
             $user->hasRole('Co Admin') ||
             $user->hasRole('Auditor')
         );
+    }
+
+    protected function getOfficeFilter(): ?int
+    {
+        $user = auth()->user();
+        if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+            return $user->office_id;
+        }
+        return null;
     }
 }
