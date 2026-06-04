@@ -95,7 +95,8 @@
                 <th>Status</th>
                 <th>Remarks</th>
                 @if($canViewFinancials)
-                <th>Profit/Loss</th>
+                <th>Profit</th>
+                <th>Loss</th>
                 @endif
             </tr>
         </thead>
@@ -119,12 +120,13 @@
                 <td class="text-center">{{ $row['status_display'] ?? '-' }}</td>
                 <td class="text-left">{{ $row['remarks'] ?? '-' }}</td>
                 @if($canViewFinancials)
-                <td class="text-right {{ ($row['profit_loss'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ $row['_isFirstPassenger'] ? number_format($row['profit_loss'], 2) : '' }}</td>
+                <td class="text-right text-green">{{ $row['_isFirstPassenger'] && ($row['profit'] ?? 0) > 0 ? number_format($row['profit'], 2) : '' }}</td>
+                <td class="text-right text-red">{{ $row['_isFirstPassenger'] && ($row['loss'] ?? 0) > 0 ? number_format($row['loss'], 2) : '' }}</td>
                 @endif
             </tr>
             @empty
             <tr>
-                <td colspan="15" class="text-center" style="padding: 20px;">No records found.</td>
+                <td colspan="{{ $canViewFinancials ? 16 : 14 }}" class="text-center" style="padding: 20px;">No records found.</td>
             </tr>
             @endforelse
         </tbody>
@@ -153,11 +155,11 @@
             @if($canViewFinancials)
             <div class="summary-row">
                 <span class="label">Total Profit:</span>
-                <span class="value {{ $totals['total_profit_loss'] >= 0 ? 'text-green' : '' }}">{{ $totals['total_profit_loss'] >= 0 ? number_format($totals['total_profit_loss'], 2) . ' SAR' : '-' }}</span>
+                <span class="value text-green">{{ $totals['total_profit'] > 0 ? number_format($totals['total_profit'], 2) . ' SAR' : '-' }}</span>
             </div>
             <div class="summary-row">
                 <span class="label">Total Loss:</span>
-                <span class="value text-red">{{ $totals['total_profit_loss'] < 0 ? number_format(abs($totals['total_profit_loss']), 2) . ' SAR' : '-' }}</span>
+                <span class="value text-red">{{ $totals['total_loss'] > 0 ? number_format($totals['total_loss'], 2) . ' SAR' : '-' }}</span>
             </div>
             <div class="summary-row bordered">
                 <span class="label">Net Profit/Loss:</span>

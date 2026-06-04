@@ -35,12 +35,19 @@ class FingerprintReportController extends Controller
     public function data(Request $request): JsonResponse
     {
         $query = (new FingerprintReportQuery($request))->getQuery();
+        $officeId = $this->getOfficeFilter();
+        if ($officeId) {
+            $query->whereHas('booking', fn($q) => $q->where('office_id', $officeId));
+        }
         $fingerprints = $query->paginate(self::PER_PAGE);
 
         $canViewFinancials = $this->canViewFinancials();
         $items = $this->mapReportData($fingerprints->items(), $canViewFinancials);
 
         $allQuery = (new FingerprintReportQuery($request))->getQuery();
+        if ($officeId) {
+            $allQuery->whereHas('booking', fn($q) => $q->where('office_id', $officeId));
+        }
         $allFingerprints = $allQuery->get();
         $allItems = $this->mapReportData($allFingerprints->all(), $canViewFinancials);
         $summary = $this->computeTotals($allItems);
@@ -60,6 +67,10 @@ class FingerprintReportController extends Controller
     public function print(Request $request): View
     {
         $query = (new FingerprintReportQuery($request))->getQuery();
+        $officeId = $this->getOfficeFilter();
+        if ($officeId) {
+            $query->whereHas('booking', fn($q) => $q->where('office_id', $officeId));
+        }
         $fingerprints = $query->get();
 
         $canViewFinancials = $this->canViewFinancials();
@@ -82,6 +93,11 @@ class FingerprintReportController extends Controller
 
         $fingerprint = $fingerprintDetail->fingerprint;
         $booking = $fingerprint->booking;
+
+        $officeId = $this->getOfficeFilter();
+        if ($officeId && $booking->office_id !== $officeId) {
+            abort(403, 'Unauthorized access to booking data from another office.');
+        }
         $passenger = $fingerprintDetail->passenger;
 
         $rescheduledBy = $this->resolveRescheduledBy($fingerprint, $booking);
@@ -109,7 +125,8 @@ class FingerprintReportController extends Controller
             'fingerprint_deadline' => $fingerprint->deadline?->format('Y-m-d'),
             'fingerprint_charge' => $canViewFinancials ? (float)($booking->fingerprintCharge?->fingerprint_charge ?? 0) : null,
             'fingerprint_cost' => (float)($fingerprint->cost ?? 0),
-            'profit_loss' => $canViewFinancials ? ((float)($booking->fingerprintCharge?->fingerprint_charge ?? 0) - (float)($fingerprint->cost ?? 0)) : null,
+            'profit' => $canViewFinancials ? max(0, (float)($booking->fingerprintCharge?->fingerprint_charge ?? 0) - (float)($fingerprint->cost ?? 0)) : null,
+            'loss' => $canViewFinancials ? abs(min(0, (float)($booking->fingerprintCharge?->fingerprint_charge ?? 0) - (float)($fingerprint->cost ?? 0))) : null,
             'passenger' => [
                 'name' => trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')),
                 'passport_no' => $passenger->passport_no ?? '-',
@@ -189,7 +206,8 @@ class FingerprintReportController extends Controller
                     'required_flight' => $passenger->flight_date_display ?? '-',
                     'actual_flight' => $passenger->actual_flight_date?->format('Y-m-d') ?? '-',
                     'remarks' => $remarks ?? '-',
-                    'profit_loss' => $canViewFinancials ? (float)$profitLoss : null,
+                    'profit' => $canViewFinancials ? max(0, (float)$profitLoss) : null,
+                    'loss' => $canViewFinancials ? abs(min(0, (float)$profitLoss)) : null,
                 ];
             }
         }
@@ -204,12 +222,17 @@ class FingerprintReportController extends Controller
 
         $firstRows = collect($items)->filter(fn($r) => $r['_isFirstPassenger']);
 
+        $totalProfit = $firstRows->sum('profit');
+        $totalLoss = $firstRows->sum('loss');
+
         return [
             'total_invoices' => $uniqueInvoices->count(),
             'total_pax' => $totalPAX,
             'total_fingerprint_charge' => $firstRows->sum('fingerprint_charge'),
             'total_fingerprint_cost' => $firstRows->sum('fingerprint_cost'),
-            'total_profit_loss' => $firstRows->sum('profit_loss'),
+            'total_profit' => $totalProfit,
+            'total_loss' => $totalLoss,
+            'total_profit_loss' => $totalProfit - $totalLoss,
         ];
     }
 
@@ -277,5 +300,14 @@ class FingerprintReportController extends Controller
             $user->hasRole('Co Admin') ||
             $user->hasRole('Auditor')
         );
+    }
+
+    protected function getOfficeFilter(): ?int
+    {
+        $user = auth()->user();
+        if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+            return $user->office_id;
+        }
+        return null;
     }
 }
