@@ -149,15 +149,6 @@
                 </div>
             </div>
 
-            <div class="mb-6" x-show="passengers.length === 0">
-                <button type="button" @click="openPassengerModal()" class="px-6 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
-                    <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
-                    </svg>
-                    Add Passenger
-                </button>
-            </div>
-
             <div x-show="passengers.length > 0" class="mb-6">
                 <h3 class="text-lg font-semibold text-slate-700 mb-4">Passengers</h3>
                 <div class="space-y-4">
@@ -169,7 +160,7 @@
                                         <span class="bg-slate-700 text-white text-xs font-medium px-2 py-1 rounded" x-text="'P' + (index + 1)"></span>
                                         <h4 class="font-semibold text-slate-800" x-text="passenger.first_name + ' ' + passenger.last_name"></h4>
                                     </div>
-                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
                                         <div><span class="text-slate-500">Passport:</span> <span class="text-slate-700 ml-1" x-text="passenger.passport_no"></span></div>
                                         <div><span class="text-slate-500">Type:</span> <span class="text-slate-700 ml-1" x-text="passenger.passenger_type"></span></div>
                                         <div><span class="text-slate-500">Service:</span> <span class="text-slate-700 ml-1" x-text="serviceLabel(passenger.service_required)"></span></div>
@@ -180,35 +171,14 @@
                                         <div><span class="text-slate-500">Duration:</span> <span class="text-slate-700 ml-1" x-text="passenger.stay_duration || '-'"></span></div>
                                         <div><span class="text-slate-500">Passenger Fare:</span> <span class="text-slate-700 ml-1" x-text="getPassengerFare(passenger)"></span></div>
                                     </div>
-                                    <input type="hidden" :name="'passengers[' + index + '][id]'" :value="passenger.id">
-                                    <input type="hidden" :name="'passengers[' + index + '][first_name]'" :value="passenger.first_name">
-                                    <input type="hidden" :name="'passengers[' + index + '][last_name]'" :value="passenger.last_name">
-                                    <input type="hidden" :name="'passengers[' + index + '][passport_no]'" :value="passenger.passport_no">
-                                    <input type="hidden" :name="'passengers[' + index + '][date_of_birth]'" :value="passenger.date_of_birth">
-                                    <input type="hidden" :name="'passengers[' + index + '][mobile_no]'" :value="passenger.mobile_no">
-                                    <input type="hidden" :name="'passengers[' + index + '][passport_expiry]'" :value="passenger.passport_expiry">
-                                    <input type="hidden" :name="'passengers[' + index + '][service_required]'" :value="passenger.service_required">
-                                    <input type="hidden" :name="'passengers[' + index + '][stay_duration]'" :value="passenger.stay_duration_int || passenger.stay_duration">
-                                    <input type="hidden" :name="'passengers[' + index + '][gender]'" :value="passenger.gender">
-                                    <input type="hidden" :name="'passengers[' + index + '][route_type]'" :value="passenger.route_type">
-                                    <input type="hidden" :name="'passengers[' + index + '][flight_type]'" :value="passenger.flight_type">
-                                    <input type="hidden" :name="'passengers[' + index + '][ticket_fare_id]'" :value="passenger.ticket_fare_id">
-                                    <input type="hidden" :name="'passengers[' + index + '][route]'" :value="passenger.route">
-                                    <input type="hidden" :name="'passengers[' + index + '][airline]'" :value="passenger.airline">
-                                    <input type="hidden" :name="'passengers[' + index + '][class]'" :value="passenger.class">
-                                    <input type="hidden" :name="'passengers[' + index + '][flight_date_from]'" :value="passenger.flight_date_from">
-                                    <input type="hidden" :name="'passengers[' + index + '][flight_date_to]'" :value="passenger.flight_date_to">
-                                    <input type="hidden" :name="'passengers[' + index + '][address]'" :value="passenger.address">
                                 </div>
                                 <div class="flex items-center gap-2 ml-4">
-                                    <button type="button" @click="editPassenger(index)" class="px-3 py-1.5 text-sm border border-slate-300 text-slate-600 rounded hover:bg-slate-100 transition">Edit</button>
                                     <button type="button" @click="removePassenger(index)" class="px-3 py-1.5 text-sm border border-red-300 text-red-600 rounded hover:bg-red-100 transition">Delete</button>
                                 </div>
                             </div>
                         </div>
                     </template>
                 </div>
-                <button type="button" @click="openPassengerModal()" class="mt-4 px-6 py-3 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">+ Add More</button>
             </div>
 
             <div class="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
@@ -254,8 +224,6 @@
             </div>
         </form>
     </div>
-
-    @include('partials.passenger-form-modal')
 
     {{-- Discount Modal --}}
     <div x-show="discountModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
