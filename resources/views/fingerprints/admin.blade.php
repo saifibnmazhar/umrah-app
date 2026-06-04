@@ -171,10 +171,6 @@
                 </button>
             </div>
             <div class="p-6 space-y-4">
-                <div x-show="holdForm.reason === 'others'">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Other Reason</label>
-                    <input type="text" x-model="holdForm.other_reason" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" placeholder="Enter other reason">
-                </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Reason</label>
                     <select x-model="holdForm.reason" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white">
@@ -184,6 +180,10 @@
                         <option value="nfc_problem">NFC Problem</option>
                         <option value="others">Others</option>
                     </select>
+                </div>
+                <div x-show="holdForm.reason === 'others'">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Other Reason</label>
+                    <input type="text" x-model="holdForm.other_reason" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2" placeholder="Enter other reason">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Next Finger Date</label>
