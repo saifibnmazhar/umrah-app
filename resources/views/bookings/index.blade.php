@@ -644,15 +644,15 @@ if ($route) {
                     <div x-show="ticketFareForm.showInboundBaggage" id="ticketFareInboundBaggage" class="mb-4">
                         <h5 class="text-sm font-medium text-slate-700 mb-2">Inbound</h5>
                         <div class="grid grid-cols-3 gap-4">
-                            <div>
+                            <div x-show="ticketFareForm.passenger_type === 'adult'">
                                 <label class="block text-sm text-slate-600 mb-1">Adult</label>
                                 <input type="number" x-model="ticketFareForm.baggage_inbound_adult" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="30">
                             </div>
-                            <div>
+                            <div x-show="ticketFareForm.passenger_type === 'child'">
                                 <label class="block text-sm text-slate-600 mb-1">Child</label>
                                 <input type="number" x-model="ticketFareForm.baggage_inbound_child" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="30">
                             </div>
-                            <div>
+                            <div x-show="ticketFareForm.passenger_type === 'infant'">
                                 <label class="block text-sm text-slate-600 mb-1">Infant</label>
                                 <input type="number" x-model="ticketFareForm.baggage_inbound_infant" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="10">
                             </div>
@@ -661,15 +661,15 @@ if ($route) {
                     <div x-show="ticketFareForm.showOutboundBaggage" id="ticketFareOutboundBaggage">
                         <h5 class="text-sm font-medium text-slate-700 mb-2">Outbound</h5>
                         <div class="grid grid-cols-3 gap-4">
-                            <div>
+                            <div x-show="ticketFareForm.passenger_type === 'adult'">
                                 <label class="block text-sm text-slate-600 mb-1">Adult</label>
                                 <input type="number" x-model="ticketFareForm.baggage_outbound_adult" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="50">
                             </div>
-                            <div>
+                            <div x-show="ticketFareForm.passenger_type === 'child'">
                                 <label class="block text-sm text-slate-600 mb-1">Child</label>
                                 <input type="number" x-model="ticketFareForm.baggage_outbound_child" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="50">
                             </div>
-                            <div>
+                            <div x-show="ticketFareForm.passenger_type === 'infant'">
                                 <label class="block text-sm text-slate-600 mb-1">Infant</label>
                                 <input type="number" x-model="ticketFareForm.baggage_outbound_infant" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="10">
                             </div>
