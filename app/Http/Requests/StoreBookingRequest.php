@@ -19,7 +19,6 @@ class StoreBookingRequest extends FormRequest
             'office_id' => 'nullable|exists:offices,id',
             'package_id' => 'nullable|exists:packages,id',
             'fingerprint_location' => 'nullable|in:Office,Home',
-            'fingerprint_office' => 'nullable|string|max:255',
             'pax_qty' => 'nullable|integer|min:1',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',

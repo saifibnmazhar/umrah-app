@@ -243,7 +243,6 @@ class BookingService
             'office_id' => $data['office_id'] ?? null,
             'package_id' => $data['package_id'] ?? null,
             'fingerprint_location' => $data['fingerprint_location'] ?? 'Office',
-            'fingerprint_office' => $data['fingerprint_office'] ?? null,
             'pax_qty' => count($data['passengers']),
             'discount_type' => $data['discount_type'] ?? null,
             'discount_value' => $data['discount_value'] ?? 0,
