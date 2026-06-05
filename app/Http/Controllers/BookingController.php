@@ -321,6 +321,11 @@ class BookingController extends Controller
             $booking->discount_amount = $discountAmount;
             $booking->saveQuietly();
 
+            $discountedTotal = max(0, $booking->total_value - $discountAmount);
+            $invoice->total_amount = $discountedTotal;
+            $invoice->balance = $discountedTotal;
+            $invoice->save();
+
             $paymentAmount = (float) ($validated['payment']['amount'] ?? 0);
             $paymentBdtAmount = (float) ($validated['payment']['bdt_amount'] ?? 0);
 
