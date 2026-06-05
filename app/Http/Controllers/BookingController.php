@@ -183,7 +183,6 @@ class BookingController extends Controller
             'package_id' => 'nullable|exists:packages,id',
             'fingerprint_charge_id' => 'required|exists:fingerprint_charges,id',
             'fingerprint_location' => 'nullable|in:office,home',
-            'fingerprint_office' => 'nullable|string|max:255',
             'pax_qty' => 'nullable|integer|min:1',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
@@ -244,7 +243,6 @@ class BookingController extends Controller
                 'package_id' => $validated['package_id'] ?? null,
                 'fingerprint_charge_id' => $validated['fingerprint_charge_id'] ?? null,
                 'fingerprint_location' => $validated['fingerprint_location'] ?? 'Office',
-                'fingerprint_office' => $validated['fingerprint_office'] ?? null,
                 'pax_qty' => count($validated['passengers']),
                 'discount_type' => ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage',
                 'discount_value' => $validated['discount_value'] ?? 0,
@@ -314,6 +312,14 @@ class BookingController extends Controller
             $this->bookingService->recalculateBookingTotal($booking);
 
             $invoice = $this->bookingService->createInvoiceForBooking($booking);
+
+            $discountAmount = $this->bookingService->calculateDiscount(
+                $booking->total_value,
+                $validated['discount_type'] ?? 'fixed',
+                $validated['discount_value'] ?? 0
+            );
+            $booking->discount_amount = $discountAmount;
+            $booking->saveQuietly();
 
             $paymentAmount = (float) ($validated['payment']['amount'] ?? 0);
             $paymentBdtAmount = (float) ($validated['payment']['bdt_amount'] ?? 0);
@@ -559,7 +565,6 @@ class BookingController extends Controller
             'office_id' => 'nullable|exists:offices,id',
             'package_id' => 'nullable|exists:packages,id',
             'fingerprint_location' => 'nullable|in:office,home',
-            'fingerprint_office' => 'nullable|string|max:255',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:1000',

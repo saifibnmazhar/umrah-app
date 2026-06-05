@@ -91,7 +91,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Office *</label>
-                    <select x-model="bookingData.fingerprint_office" name="office_id" @change="$el.blur()" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                    <select x-model="bookingData.office_id" name="office_id" @change="$el.blur()" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                         <option value="">Select Office</option>
                         @foreach(\App\Models\Office::orderBy('name')->get() as $office)
                         <option value="{{ $office->id }}">{{ $office->name }}</option>
@@ -216,6 +216,9 @@
                     </span>
                 </div>
             </div>
+
+            <input type="hidden" name="discount_type" :value="bookingData.discount_type">
+            <input type="hidden" name="discount_value" :value="bookingData.discount_value">
 
             <div class="flex justify-end gap-3 pt-6 border-t border-slate-200">
                 <button type="submit" class="w-64 px-8 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" :disabled="passengers.length === 0">Save Changes</button>
