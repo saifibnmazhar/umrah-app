@@ -7,7 +7,8 @@
     preSelectedPackageId: {{ $booking->package_id ?? 'null' }},
     currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }},
     bookingId: {{ $booking->id }},
-    firstPassengerMobile: '{{ $booking->passengers->first()?->mobile_no ?? '' }}'
+    firstPassengerMobile: '{{ $booking->passengers->first()?->mobile_no ?? '' }}',
+    lastPassenger: @json($booking->passengers->sortByDesc('id')->first()?->toArray() ?? null)
 };</script>
 <div class="max-w-5xl mx-auto" x-data="showBookingApp()" x-init="init()">
     <div id="invoiceDetailsContent" class="space-y-6">

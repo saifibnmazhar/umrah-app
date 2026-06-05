@@ -1429,6 +1429,61 @@ Alpine.data('createBookingApp', () => ({
         if (this.passengers.length > 0 && this.passengers[0].mobile_no) {
             this.passengerData.mobile_no = this.passengers[0].mobile_no;
         }
+        if (this.passengers.length > 0) {
+            const last = this.passengers[this.passengers.length - 1];
+
+            if (last.service_required) {
+                this.passengerData.service_required = last.service_required;
+            }
+
+            const durInt = parseInt(last.stay_duration_int ?? last.stay_duration, 10);
+            if (!isNaN(durInt) && durInt > 0) {
+                this.passengerData.stay_duration_int = durInt;
+                if (durInt >= 30 && durInt <= 89) {
+                    const customText = `Customized (${durInt} Days)`;
+                    this.passengerData.stay_duration = customText;
+                    this.passengerData.stay_duration_display = customText;
+                    this.$nextTick(() => {
+                        const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
+                        if (select) {
+                            let opt = Array.from(select.options).find(o => o.value.startsWith('Customized'));
+                            if (!opt) {
+                                opt = document.createElement('option');
+                                select.appendChild(opt);
+                            }
+                            opt.value = customText;
+                            opt.textContent = customText;
+                            select.value = customText;
+                        }
+                    });
+                } else {
+                    this.passengerData.stay_duration = String(durInt);
+                }
+            }
+
+            if (last.flight_date_range) {
+                this.passengerData.flight_date_range = last.flight_date_range;
+                this.passengerData.flight_date_from = last.flight_date_from || '';
+                this.passengerData.flight_date_to = last.flight_date_to || '';
+                this.$nextTick(() => {
+                    const select = document.getElementById('passengerFlightDateRange');
+                    if (select) {
+                        let opt = Array.from(select.options).find(o => o.value === last.flight_date_range);
+                        if (!opt) {
+                            opt = document.createElement('option');
+                            opt.value = last.flight_date_range;
+                            opt.textContent = last.flight_date_range;
+                            select.appendChild(opt);
+                        }
+                        select.value = last.flight_date_range;
+                    }
+                });
+            }
+
+            if (last.address) {
+                this.passengerData.address = last.address;
+            }
+        }
         this.passengerModalVisible = true;
     },
 
@@ -3350,6 +3405,7 @@ Alpine.data('showBookingApp', () => ({
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     passengers: [],
+    lastAddedPassenger: null,
     passengerPackageValues: {},
     passengerData: {
         first_name: '',
@@ -3392,6 +3448,7 @@ Alpine.data('showBookingApp', () => ({
         }));
         this.allTickets = data.ticketFares || [];
         this.filteredTickets = this.allTickets;
+        this.lastAddedPassenger = data.lastPassenger || null;
     },
 
     openPassengerModal() {
@@ -3470,6 +3527,72 @@ Alpine.data('showBookingApp', () => ({
         } else if (window.__bookingServerData?.firstPassengerMobile) {
             this.passengerData.mobile_no = window.__bookingServerData.firstPassengerMobile;
         }
+        if (this.lastAddedPassenger) {
+            const last = this.lastAddedPassenger;
+
+            if (last.service_required) {
+                this.passengerData.service_required = last.service_required;
+            }
+
+            const durInt = parseInt(last.stay_duration, 10);
+            if (!isNaN(durInt) && durInt > 0) {
+                this.passengerData.stay_duration_int = durInt;
+                if (durInt >= 30 && durInt <= 89) {
+                    const customText = `Customized (${durInt} Days)`;
+                    this.passengerData.stay_duration = customText;
+                    this.passengerData.stay_duration_display = customText;
+                    this.$nextTick(() => {
+                        const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
+                        if (select) {
+                            let opt = Array.from(select.options).find(o => o.value.startsWith('Customized'));
+                            if (!opt) {
+                                opt = document.createElement('option');
+                                select.appendChild(opt);
+                            }
+                            opt.value = customText;
+                            opt.textContent = customText;
+                            select.value = customText;
+                        }
+                    });
+                } else {
+                    this.passengerData.stay_duration = String(durInt);
+                }
+            }
+
+            if (last.flight_date_from && last.flight_date_to) {
+                const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+                const fmt = (d) => {
+                    const date = new Date(d);
+                    if (isNaN(date.getTime())) return '';
+                    return `${months[date.getMonth()]} ${date.getDate()}, ${date.getFullYear()}`;
+                };
+                const fromStr = fmt(last.flight_date_from);
+                const toStr = fmt(last.flight_date_to);
+                if (fromStr && toStr) {
+                    const rangeStr = `${fromStr} - ${toStr}`;
+                    this.passengerData.flight_date_range = rangeStr;
+                    this.passengerData.flight_date_from = fromStr;
+                    this.passengerData.flight_date_to = toStr;
+                    this.$nextTick(() => {
+                        const select = document.getElementById('passengerFlightDateRange');
+                        if (select) {
+                            let opt = Array.from(select.options).find(o => o.value === rangeStr);
+                            if (!opt) {
+                                opt = document.createElement('option');
+                                opt.value = rangeStr;
+                                opt.textContent = rangeStr;
+                                select.appendChild(opt);
+                            }
+                            select.value = rangeStr;
+                        }
+                    });
+                }
+            }
+
+            if (last.address) {
+                this.passengerData.address = last.address;
+            }
+        }
         this.passengerModalVisible = true;
     },
 
@@ -3543,6 +3666,7 @@ Alpine.data('showBookingApp', () => ({
                 }
                 if (data.passenger) {
                     appendPassengerRow(data.passenger, data.display_total);
+                    this.lastAddedPassenger = data.passenger;
                 }
             } else {
                 alert(data.message || 'Failed to add passenger');
