@@ -15,15 +15,14 @@
         @method('PUT')
 
         @php
-        $fields = ['name', 'division'];
+        $fields = ['name'];
         $fieldLabels = [
             'name' => 'District Name',
-            'division' => 'Division',
         ];
         $placeholders = [
             'name' => 'Enter district name',
-            'division' => 'Enter division name',
         ];
+        $divisions = ['Barishal', 'Chattogram', 'Dhaka', 'Khulna', 'Mymensingh', 'Rajshahi', 'Rangpur', 'Sylhet'];
         @endphp
 
         @foreach($fields as $field)
@@ -31,10 +30,10 @@
                 <label for="{{ $field }}" class="block text-sm font-medium text-slate-700 mb-1">
                     {{ $fieldLabels[$field] ?? ucfirst($field) }}
                 </label>
-                <input 
-                    type="text" 
-                    name="{{ $field }}" 
-                    id="{{ $field }}" 
+                <input
+                    type="text"
+                    name="{{ $field }}"
+                    id="{{ $field }}"
                     value="{{ old($field, $district->$field) }}"
                     placeholder="{{ $placeholders[$field] ?? '' }}"
                     class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error($field) border-red-500 @enderror"
@@ -44,6 +43,23 @@
                 @enderror
             </div>
         @endforeach
+
+        <div>
+            <label for="division" class="block text-sm font-medium text-slate-700 mb-1">Division</label>
+            <select
+                name="division"
+                id="division"
+                class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border bg-white @error('division') border-red-500 @enderror"
+            >
+                <option value="">Select Division</option>
+                @foreach($divisions as $division)
+                    <option value="{{ $division }}" @selected(old('division', $district->division) === $division)>{{ $division }}</option>
+                @endforeach
+            </select>
+            @error('division')
+                <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
+            @enderror
+        </div>
 
         <div class="pt-4 flex items-center gap-4">
             <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
