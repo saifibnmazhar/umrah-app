@@ -6,7 +6,7 @@
         <form @submit.prevent="savePassenger()">
             <div class="mb-4">
                 <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Basic Information</h4>
-                <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">First Name *</label>
                         <input type="text" x-model="passengerData.first_name" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="First Name">
@@ -21,7 +21,9 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Mobile No.</label>
-                        <input type="tel" x-model="passengerData.mobile_no" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="05XXXXXXXX">
+                        <div class="flex w-full border border-slate-300 rounded-lg focus-within:ring-2 focus-within:ring-slate-400 focus-within:border-slate-400 overflow-hidden">
+                            <input type="tel" x-model="passengerData.mobile_no" class="w-full px-4 py-2 outline-none border-0" placeholder="+8801XXXXXXXXX">
+                        </div>
                     </div>
                 </div>
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
