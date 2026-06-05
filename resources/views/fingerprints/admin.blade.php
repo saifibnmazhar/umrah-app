@@ -8,7 +8,7 @@
         <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Division</label>
-                    <select x-model="filters.division" @change="currentPage = 1; loadData()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white">
+                    <select x-model="filters.division" @change="filters.district=''; currentPage = 1; loadData()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white">
                         <option value="">All Divisions</option>
                         @foreach($divisions ?? [] as $division)
                         <option value="{{ $division }}">{{ $division }}</option>
@@ -19,9 +19,9 @@
                     <label class="block text-sm font-medium text-slate-700 mb-1">District</label>
                     <select x-model="filters.district" @change="currentPage = 1; loadData()" class="w-full text-sm border border-slate-300 rounded-lg px-3 py-2 bg-white">
                     <option value="">All Districts</option>
-                    @foreach($districts ?? [] as $district)
-                    <option value="{{ $district->id }}">{{ $district->name }}</option>
-                    @endforeach
+                    <template x-for="d in districtsList.filter(x => !filters.division || x.division === filters.division)" :key="d.id">
+                        <option :value="d.id" x-text="d.name"></option>
+                    </template>
                 </select>
             </div>
             <div>
@@ -223,6 +223,7 @@ function fingerprintAdmin(options = {}) {
             other_reason: '',
         },
         displayStatuses: ['None', 'Processing', 'Approved', 'Partially Approved', 'Cancel', 'Hold & Ask for next Finger date?'],
+        districtsList: @json($districts->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'division' => $d->division])),
         filters: {
             division: '',
             district: '',

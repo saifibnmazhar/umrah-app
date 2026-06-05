@@ -126,7 +126,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/fingerprints/admin', function () {
         $canAssignStaff = auth()->user()->hasRole('Fingerprint Admin');
-        return view('fingerprints.admin', compact('canAssignStaff'));
+        $divisions = \App\Models\District::distinct()->pluck('division')->sort()->values();
+        $districts = \App\Models\District::orderBy('division')->orderBy('name')->get(['id', 'name', 'division']);
+        return view('fingerprints.admin', compact('canAssignStaff', 'divisions', 'districts'));
     })->name('fingerprint.admin')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::get('/fingerprints/staff', function () {
         $user = auth()->user();
