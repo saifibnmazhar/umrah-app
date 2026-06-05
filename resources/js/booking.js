@@ -1602,9 +1602,21 @@ Alpine.data('createBookingApp', () => ({
             ticket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_id));
         }
         if (!ticket) return '-';
-        const fare = ticket.ticket_type === 'offer'
+
+        const baseFare = ticket.ticket_type === 'offer'
             ? (parseFloat(ticket.offer_price) || 0)
             : (parseFloat(ticket.selling_fare) || 0);
+
+        const type = (passenger.passenger_type || 'adult').toLowerCase();
+        let fare = baseFare;
+        if (type === 'child') {
+            const pct = parseFloat(ticket.child_fare_percentage) || 0;
+            fare = baseFare * pct / 100;
+        } else if (type === 'infant') {
+            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+            fare = baseFare * pct / 100;
+        }
+
         return fare > 0 ? fare.toLocaleString() : '-';
     },
 
@@ -3381,9 +3393,21 @@ Alpine.data('editBookingApp', () => ({
             ticket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_id));
         }
         if (!ticket) return '-';
-        const fare = ticket.ticket_type === 'offer'
+
+        const baseFare = ticket.ticket_type === 'offer'
             ? (parseFloat(ticket.offer_price) || 0)
             : (parseFloat(ticket.selling_fare) || 0);
+
+        const type = (passenger.passenger_type || 'adult').toLowerCase();
+        let fare = baseFare;
+        if (type === 'child') {
+            const pct = parseFloat(ticket.child_fare_percentage) || 0;
+            fare = baseFare * pct / 100;
+        } else if (type === 'infant') {
+            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+            fare = baseFare * pct / 100;
+        }
+
         return fare > 0 ? fare.toLocaleString() : '-';
     }
 }));
