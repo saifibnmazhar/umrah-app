@@ -91,6 +91,17 @@
                         @endforeach
                     </select>
                 </div>
+                @if(isset($branches) && $branches->isNotEmpty())
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Branch *</label>
+                    <select name="branch_id" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                        <option value="">Select Branch</option>
+                        @foreach($branches as $branch)
+                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                @endif
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">District *</label>
                     <select x-model="bookingData.district_id" @change="updateFingerprintCharge(); $el.blur()" name="district_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">

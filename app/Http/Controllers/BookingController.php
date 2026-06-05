@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Branch;
 use App\Models\Passenger;
 use App\Models\Customer;
 use App\Models\District;
@@ -43,6 +44,38 @@ class BookingController extends Controller
         private InvoiceService $invoiceService,
     ) {}
 
+    private function isAdminRole(): bool
+    {
+        $user = auth()->user();
+        return $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
+    }
+
+    private function isBranchScoped(): bool
+    {
+        $user = auth()->user();
+        return ! $this->isAdminRole()
+            && ($user->hasRole('Branch Manager') || $user->hasRole('Branch Staff'));
+    }
+
+    private function resolveBookingBranch(Request $request, bool $forUpdate): int
+    {
+        if ($this->isAdminRole() && $request->filled('branch_id')) {
+            return (int) $request->input('branch_id');
+        }
+        $branchId = auth()->user()->branch_id;
+        if (! $branchId) {
+            abort(422, 'Your account is not assigned to a branch. Contact an administrator.');
+        }
+        return (int) $branchId;
+    }
+
+    private function ensureBranchAccess(Booking $booking): void
+    {
+        if ($this->isBranchScoped() && auth()->user()->branch_id !== $booking->branch_id) {
+            abort(403);
+        }
+    }
+
     private function syncBookingFinancials(Booking $booking): array
     {
         $this->bookingService->syncFinancials($booking);
@@ -77,6 +110,9 @@ class BookingController extends Controller
         $tab = $request->get('tab', 'booking');
         
         $bookings = Booking::with(['customer', 'passengers', 'office', 'invoice', 'district', 'package'])
+            ->when($this->isBranchScoped(), fn ($q) =>
+                $q->where('branch_id', auth()->user()->branch_id)
+            )
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -104,6 +140,8 @@ class BookingController extends Controller
     {
         $packageId = $request->query('package_id');
         $preSelectedPackageId = null;
+
+        $branches = $this->isAdminRole() ? Branch::orderBy('name')->get(['id', 'name']) : collect();
 
         if ($packageId) {
             $package = Package::find($packageId);
@@ -178,7 +216,7 @@ class BookingController extends Controller
 
         return view('bookings.create', compact(
             'districts', 'packages', 'offices', 'preSelectedPackageId', 'ticketFares',
-            'currencyRates', 'currentCurrencyRate'
+            'currencyRates', 'currentCurrencyRate', 'branches'
         ));
     }
 
@@ -240,10 +278,12 @@ class BookingController extends Controller
 
             $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
 
+            $branchId = $this->resolveBookingBranch($request, forUpdate: false);
+
             $booking = Booking::create([
                 'user_id' => auth()->id(),
-                'branch_id' => auth()->user()->branch_id ?? 1,
-                'invoice_id' => $this->bookingService->generateInvoiceId(auth()->user()->branch_id ?? 1),
+                'branch_id' => $branchId,
+                'invoice_id' => $this->bookingService->generateInvoiceId($branchId),
                 'date_gap_id' => \App\Models\FlightDateGap::getOrCreate()->id,
                 'customer_id' => $validated['customer_id'],
                 'district_id' => $validated['district_id'] ?? null,
@@ -343,7 +383,7 @@ class BookingController extends Controller
                 \Log::info('Processing payment...');
                 try {
                     $initialPaymentTransactionType = TransactionType::where('name', 'Initial Payment')->first();
-                    
+
                     if (!$initialPaymentTransactionType) {
                         throw new \Exception('Initial Payment transaction type not found. Please seed transaction types.');
                     }
@@ -405,6 +445,8 @@ class BookingController extends Controller
 
     public function show(Booking $booking)
     {
+        $this->ensureBranchAccess($booking);
+
         $booking->load([
             'customer',
             'passengers' => fn($q) => $q->approvedFingerprint(),
@@ -502,7 +544,11 @@ class BookingController extends Controller
 
     public function edit(Booking $booking)
     {
+        $this->ensureBranchAccess($booking);
+
         $booking->load(['customer', 'passengers' => fn($q) => $q->approvedFingerprint(), 'district', 'office', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
+
+        $branches = $this->isAdminRole() ? Branch::orderBy('name')->get(['id', 'name']) : collect();
 
         $districts = District::orderBy('name')->get();
         $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
@@ -571,17 +617,20 @@ class BookingController extends Controller
         $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
 
         return view('bookings.edit', compact(
-            'booking', 'districts', 'packages', 'offices', 'ticketFares', 'customers', 'currentCurrencyRate'
+            'booking', 'districts', 'packages', 'offices', 'ticketFares', 'customers', 'currentCurrencyRate', 'branches'
         ));
     }
 
     public function update(Request $request, Booking $booking)
     {
+        $this->ensureBranchAccess($booking);
+
         $validated = $request->validate([
             'customer_id' => 'sometimes|required|exists:customers,id',
             'district_id' => 'nullable|exists:districts,id',
             'office_id' => 'nullable|exists:offices,id',
             'package_id' => 'nullable|exists:packages,id',
+            'branch_id' => 'nullable|exists:branches,id',
             'fingerprint_location' => 'nullable|in:office,home',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
@@ -592,6 +641,9 @@ class BookingController extends Controller
 
         try {
             $validated['discount_type'] = ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage';
+            if (! $this->isAdminRole()) {
+                unset($validated['branch_id']);
+            }
             $booking->update($validated);
 
             if (($validated['fingerprint_location'] ?? null) === 'office' && $booking->fingerprint) {
@@ -649,6 +701,8 @@ class BookingController extends Controller
 
     public function updateFingerprintLocation(Request $request, Booking $booking)
     {
+        $this->ensureBranchAccess($booking);
+
         $validated = $request->validate([
             'fingerprint_location' => 'required|in:home,office',
         ]);
@@ -679,6 +733,8 @@ class BookingController extends Controller
 
     public function destroy(Booking $booking)
     {
+        $this->ensureBranchAccess($booking);
+
         try {
             $booking->passengers()->delete();
             $booking->delete();
@@ -691,6 +747,8 @@ class BookingController extends Controller
 
     public function addPassenger(Request $request, Booking $booking)
     {
+        $this->ensureBranchAccess($booking);
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -749,6 +807,8 @@ class BookingController extends Controller
 
     public function removePassenger(Booking $booking, Passenger $passenger)
     {
+        $this->ensureBranchAccess($booking);
+
         if ($passenger->booking_id !== $booking->id) {
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
         }
@@ -817,6 +877,8 @@ class BookingController extends Controller
 
     public function print(Booking $booking)
     {
+        $this->ensureBranchAccess($booking);
+
         $booking = Booking::with([
             'customer',
             'office',
@@ -931,6 +993,8 @@ class BookingController extends Controller
 
     public function storePayment(Request $request, Booking $booking)
     {
+        $this->ensureBranchAccess($booking);
+
         $validated = $request->validate([
             'amount' => 'nullable|numeric|min:0',
             'amount_bdt' => 'nullable|numeric|min:0',
@@ -1003,6 +1067,8 @@ class BookingController extends Controller
 
     public function recalculatePassengerValue(Passenger $passenger)
     {
+        $this->ensureBranchAccess($passenger->booking);
+
         $packageValue = $this->bookingService->calculatePackageValue($passenger);
         $passenger->update(['package_value' => $packageValue]);
         $booking = $passenger->booking->fresh();
