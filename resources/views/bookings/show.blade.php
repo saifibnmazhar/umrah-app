@@ -8,6 +8,7 @@
     currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }},
     bookingId: {{ $booking->id }},
     firstPassengerMobile: '{{ $booking->passengers->first()?->mobile_no ?? '' }}',
+    firstPassenger: @json($booking->passengers->sortBy('id')->first()?->toArray() ?? null),
     lastPassenger: @json($booking->passengers->sortByDesc('id')->first()?->toArray() ?? null)
 };</script>
 <div class="max-w-5xl mx-auto" x-data="showBookingApp()" x-init="init()">
