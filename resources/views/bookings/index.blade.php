@@ -216,7 +216,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     </div>
 
     <div x-show="activeTab === 'passenger'" x-cloak>
-        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col" style="max-height: calc(100vh - 200px);">
+        <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col" style="max-height: calc(95vh - 200px);">
             <div class="overflow-auto flex-1 min-h-0">
                 <table class="w-full min-w-[1800px] text-sm">
                     <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
