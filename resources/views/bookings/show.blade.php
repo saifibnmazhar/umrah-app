@@ -7,7 +7,8 @@
     preSelectedPackageId: {{ $booking->package_id ?? 'null' }},
     currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }},
     bookingId: {{ $booking->id }},
-    firstPassengerMobile: '{{ $booking->passengers->first()?->mobile_no ?? '' }}'
+    firstPassengerMobile: '{{ $booking->passengers->first()?->mobile_no ?? '' }}',
+    lastPassenger: @json($booking->passengers->sortByDesc('id')->first()?->toArray() ?? null)
 };</script>
 <div class="max-w-5xl mx-auto" x-data="showBookingApp()" x-init="init()">
     <div id="invoiceDetailsContent" class="space-y-6">
@@ -62,11 +63,22 @@
                 </div>
             </div>
 
-            <div class="grid grid-cols-3 gap-4 mt-6 pt-4 border-t border-slate-200">
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-200">
                 <div>
-                    <span class="text-slate-500 text-sm">Total Value</span>
+                    <span class="text-slate-500 text-sm">Original Total</span>
+                    <p id="financialOriginalTotal" class="text-xl font-bold text-slate-800">{{ number_format($originalTotal, 2) }} SAR</p>
+                    <p id="financialOriginalTotalBdt" class="text-xs text-slate-500">≈ {{ number_format($originalTotalBdt, 2) }} BDT</p>
+                    <p id="financialDiscountIndicator" class="text-xs text-orange-600 mt-1 {{ ($booking->discount_amount ?? 0) > 0 ? '' : 'hidden' }}">
+                        −{{ number_format($booking->discount_amount ?? 0, 2) }} SAR discount
+                        @if($booking->discount_type?->value === 'percentage')
+                            ({{ rtrim(rtrim(number_format((float) $booking->discount_value, 2), '0'), '.') }}%)
+                        @endif
+                    </p>
+                </div>
+                <div>
+                    <span class="text-slate-500 text-sm">Discounted Total</span>
                     <p id="financialTotalValue" class="text-xl font-bold text-slate-800">{{ number_format($booking->invoice?->total_amount ?? 0, 2) }} SAR</p>
-                    <p id="financialTotalValueBdt" class="text-xs text-slate-800">≈ {{ number_format($totalAmountBdt, 2) }} BDT</p>
+                    <p id="financialTotalValueBdt" class="text-xs text-slate-800">≈ {{ number_format($discountedTotalBdt, 2) }} BDT</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Total Paid</span>
@@ -803,17 +815,39 @@ function updateFinancialSummary(invoice) {
     const totalBdtEl = document.getElementById('financialTotalValueBdt');
     const paidBdtEl = document.getElementById('financialTotalPaidBdt');
     const dueBdtEl = document.getElementById('financialDueBdt');
+    const originalEl = document.getElementById('financialOriginalTotal');
+    const originalBdtEl = document.getElementById('financialOriginalTotalBdt');
+    const discountIndicatorEl = document.getElementById('financialDiscountIndicator');
     const rate = window.__bookingServerData?.currentCurrencyRate || 0;
 
-    if (totalEl) totalEl.textContent = Number(invoice.total_amount).toLocaleString() + ' SAR';
-    if (paidEl) paidEl.textContent = Number(invoice.paid_amount).toLocaleString() + ' SAR';
+    const fmt = (n) => Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    if (originalEl && invoice.original_total != null) {
+        originalEl.textContent = fmt(invoice.original_total) + ' SAR';
+    }
+    if (originalBdtEl && invoice.original_total != null && rate > 0) {
+        originalBdtEl.textContent = '≈ ' + fmt(invoice.original_total * rate) + ' BDT';
+    }
+    if (discountIndicatorEl) {
+        if (invoice.discount_amount > 0) {
+            const type = invoice.discount_type === 'fixed_amount' ? 'fixed' : invoice.discount_type;
+            const pct = (type === 'percentage') ? ' (' + Number(invoice.discount_value).toString().replace(/\.?0+$/, '') + '%)' : '';
+            discountIndicatorEl.innerHTML = '−' + fmt(invoice.discount_amount) + ' SAR discount' + pct;
+            discountIndicatorEl.classList.remove('hidden');
+        } else {
+            discountIndicatorEl.classList.add('hidden');
+        }
+    }
+
+    if (totalEl) totalEl.textContent = fmt(invoice.total_amount) + ' SAR';
+    if (paidEl) paidEl.textContent = fmt(invoice.paid_amount) + ' SAR';
     if (dueEl) {
-        dueEl.textContent = Number(invoice.balance).toLocaleString() + ' SAR';
+        dueEl.textContent = fmt(invoice.balance) + ' SAR';
         dueEl.className = 'text-xl font-bold ' + (invoice.balance <= 0 ? 'text-green-600' : 'text-red-600');
     }
-    if (totalBdtEl && rate > 0) totalBdtEl.textContent = '≈ ' + (invoice.total_amount * rate).toLocaleString() + ' BDT';
-    if (paidBdtEl && rate > 0) paidBdtEl.textContent = '≈ ' + (invoice.paid_amount * rate).toLocaleString() + ' BDT';
-    if (dueBdtEl && rate > 0) dueBdtEl.textContent = '≈ ' + (invoice.balance * rate).toLocaleString() + ' BDT';
+    if (totalBdtEl && rate > 0) totalBdtEl.textContent = '≈ ' + fmt(invoice.total_amount * rate) + ' BDT';
+    if (paidBdtEl && rate > 0) paidBdtEl.textContent = '≈ ' + fmt(invoice.paid_amount * rate) + ' BDT';
+    if (dueBdtEl && rate > 0) dueBdtEl.textContent = '≈ ' + fmt(invoice.balance * rate) + ' BDT';
 }
 
 function appendPassengerRow(passenger, displayTotal) {

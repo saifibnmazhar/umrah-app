@@ -54,6 +54,10 @@ class BookingController extends Controller
                 'total_amount' => (float) $invoice->total_amount,
                 'paid_amount' => (float) $invoice->paid_amount,
                 'balance' => (float) $invoice->balance,
+                'original_total' => (float) $booking->total_value,
+                'discount_amount' => (float) $booking->discount_amount,
+                'discount_type' => $booking->discount_type?->value,
+                'discount_value' => (float) $booking->discount_value,
             ];
         }
 
@@ -61,6 +65,10 @@ class BookingController extends Controller
             'total_amount' => 0,
             'paid_amount' => 0,
             'balance' => 0,
+            'original_total' => (float) $booking->total_value,
+            'discount_amount' => (float) $booking->discount_amount,
+            'discount_type' => $booking->discount_type?->value,
+            'discount_value' => (float) $booking->discount_value,
         ];
     }
 
@@ -321,6 +329,11 @@ class BookingController extends Controller
             $booking->discount_amount = $discountAmount;
             $booking->saveQuietly();
 
+            $discountedTotal = max(0, $booking->total_value - $discountAmount);
+            $invoice->total_amount = $discountedTotal;
+            $invoice->balance = $discountedTotal;
+            $invoice->save();
+
             $paymentAmount = (float) ($validated['payment']['amount'] ?? 0);
             $paymentBdtAmount = (float) ($validated['payment']['bdt_amount'] ?? 0);
 
@@ -476,9 +489,14 @@ class BookingController extends Controller
         $paidAmountBdt = $rate > 0 ? $paidAmount * $rate : 0;
         $balanceBdt = $rate > 0 ? $balance * $rate : 0;
 
+        $originalTotal = (float) ($booking->total_value ?? 0);
+        $originalTotalBdt = $rate > 0 ? $originalTotal * $rate : 0;
+        $discountedTotalBdt = $totalAmountBdt;
+
         return view('bookings.show', compact(
             'booking', 'ticketFares', 'packages', 'currentCurrencyRate',
-            'totalAmountBdt', 'paidAmountBdt', 'balanceBdt'
+            'totalAmountBdt', 'paidAmountBdt', 'balanceBdt',
+            'originalTotal', 'originalTotalBdt', 'discountedTotalBdt'
         ));
     }
 
