@@ -14,7 +14,7 @@ return new class extends Migration
                 ->constrained('currency_rates')
                 ->nullOnDelete()
                 ->onUpdate('cascade')
-                ->after('fingerprint_office');
+                ->after('fingerprint_location');
         });
     }
 

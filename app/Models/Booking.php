@@ -23,7 +23,6 @@ class Booking extends Model
         'invoice_id',
         'date_gap_id',
         'fingerprint_location',
-        'fingerprint_office',
         'pax_qty',
         'discount_type',
         'discount_value',
