@@ -93,9 +93,9 @@
                 </div>
                 @if(isset($branches) && $branches->isNotEmpty())
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-2">Branch *</label>
+                    <label class="block text-sm font-medium text-slate-700 mb-2">Branch(KSA) *</label>
                     <select name="branch_id" required class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
-                        <option value="">Select Branch</option>
+                        <option value="">Select Branch(KSA)</option>
                         @foreach($branches as $branch)
                             <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                         @endforeach
@@ -168,7 +168,7 @@
                                         <span class="bg-slate-700 text-white text-xs font-medium px-2 py-1 rounded" x-text="'P' + (index + 1)"></span>
                                         <h4 class="font-semibold text-slate-800" x-text="passenger.first_name + ' ' + passenger.last_name"></h4>
                                     </div>
-                                    <div class="grid grid-cols-2 md:grid-cols-4 gap-2 text-sm">
+                                    <div class="grid grid-cols-2 md:grid-cols-5 gap-2 text-sm">
                                         <div><span class="text-slate-500">Passport:</span> <span class="text-slate-700 ml-1" x-text="passenger.passport_no"></span></div>
                                         <div><span class="text-slate-500">Type:</span> <span class="text-slate-700 ml-1" x-text="passenger.passenger_type"></span></div>
                                         <div><span class="text-slate-500">Service:</span> <span class="text-slate-700 ml-1" x-text="serviceLabel(passenger.service_required)"></span></div>
