@@ -30,7 +30,6 @@
                 <thead class="bg-slate-50 text-slate-600">
                     <tr>
                         <th class="px-3 py-2 text-left font-medium">Agent Name</th>
-                        <th class="px-3 py-2 text-left font-medium">Saudi Address</th>
                         <th class="px-3 py-2 text-left font-medium">Agent Visa Price (SAR)</th>
                         <th class="px-3 py-2 text-left font-medium">Actions</th>
                     </tr>
@@ -39,11 +38,10 @@
                     @forelse($visaAgentCosts as $cost)
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-2 text-slate-800 font-medium">{{ $cost->visaAgent->name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-slate-600">{{ $cost->visaAgent->address ?? '-' }}</td>
                             <td class="px-3 py-2 text-slate-800 font-medium">{{ number_format($cost->visa_agent_cost, 2) }}</td>
                             <td class="px-3 py-2">
                                 <div class="flex gap-2">
-                                    <button onclick="editCost({{ $cost->id }}, {{ $cost->visa_agent_id }}, '{{ $cost->visaAgent->address ?? '' }}', {{ $cost->visa_agent_cost }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">Edit</button>
+                                    <button onclick="editCost({{ $cost->id }}, {{ $cost->visa_agent_id }}, {{ $cost->visa_agent_cost }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">Edit</button>
                                     <form method="POST" action="{{ route('visa-agent-costs.destroy', $cost->id) }}" onsubmit="return confirm('Are you sure you want to delete this agent price record?')" class="inline">
                                         @csrf
                                         @method('DELETE')
@@ -54,7 +52,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="4" class="px-3 py-8 text-center text-slate-500">
+                            <td colspan="3" class="px-3 py-8 text-center text-slate-500">
                                 No agent visa price records.
                             </td>
                         </tr>
@@ -91,10 +89,6 @@
                     @enderror
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Saudi Address</label>
-                    <input type="text" id="agentAddress" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Saudi address" value="{{ old('agentAddress') }}">
-                </div>
-                <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Agent Visa Price (SAR)</label>
                     <input type="number" id="costInput" name="visa_agent_cost" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none @error('visa_agent_cost') border-red-500 @enderror" value="{{ old('visa_agent_cost', 0) }}" min="0" required>
                     @error('visa_agent_cost')
@@ -118,21 +112,19 @@ function openModal() {
     document.getElementById('modalTitle').textContent = 'Agent Visa Price';
     document.getElementById('costInput').value = '{{ old('visa_agent_cost', 0) }}';
     document.getElementById('visaAgentSelect').value = '{{ old('visa_agent_id', '') }}';
-    document.getElementById('agentAddress').value = '{{ old('agentAddress', '') }}';
 }
 
 function closeModal() {
     document.getElementById('agentPriceModal').classList.add('hidden');
 }
 
-function editCost(id, agentId, agentAddress, cost) {
+function editCost(id, agentId, cost) {
     document.getElementById('agentPriceModal').classList.remove('hidden');
     document.getElementById('formMethod').value = 'PUT';
     document.getElementById('costForm').action = '/visa-agent-costs/' + id;
     document.getElementById('modalTitle').textContent = 'Edit Agent Visa Price';
     document.getElementById('costInput').value = cost;
     document.getElementById('visaAgentSelect').value = agentId;
-    document.getElementById('agentAddress').value = agentAddress;
 }
 
 // Auto-open modal if there are validation errors
