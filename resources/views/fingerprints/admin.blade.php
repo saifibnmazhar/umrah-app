@@ -97,7 +97,7 @@
                                             class="text-xs border border-slate-300 rounded px-2 py-1 bg-white"
                                             :class="!canAssignStaff || row.fingerprint_location === 'office' ? 'opacity-60 cursor-not-allowed' : ''">
                                         <option value="">Select Staff</option>
-                                        <template x-for="staff in staffList" :key="staff.id">
+                                        <template x-for="staff in getStaffOptionsForRow(row)" :key="staff.id">
                                             <option :value="staff.id" :selected="staff.id == row.assigned_staff_id" x-text="staff.name"></option>
                                         </template>
                                     </select>
@@ -209,7 +209,7 @@ function fingerprintAdmin(options = {}) {
     return {
         data: [],
         loading: true,
-        staffList: [],
+        staffListsByOffice: {},
         currentPage: 1,
         lastPage: 1,
         totalRecords: 0,
@@ -239,19 +239,29 @@ function fingerprintAdmin(options = {}) {
         // },
 
         async init() {
-            await this.loadStaffList();
             await this.loadData();
         },
 
-        async loadStaffList() {
-            try {
-                const response = await fetch('/api/fingerprints/staff-list');
-                const result = await response.json();
-                this.staffList = result.data || [];
-            } catch (error) {
-                console.error('Failed to load staff list:', error);
-                this.staffList = [];
-            }
+        async loadStaffListsForOffices(data) {
+            const items = data || this.data;
+            const officeIds = [...new Set(
+                (items || [])
+                    .map(r => r && r.booking_office_id)
+                    .filter(id => id !== null && id !== undefined && id !== '')
+            )];
+
+            await Promise.all(officeIds.map(async (officeId) => {
+                const key = String(officeId);
+                if (this.staffListsByOffice[key]) return;
+                try {
+                    const response = await fetch(`/api/fingerprints/staff-list?office_id=${encodeURIComponent(officeId)}`);
+                    const result = await response.json();
+                    this.staffListsByOffice[key] = result.data || [];
+                } catch (error) {
+                    console.error(`Failed to load staff list for office ${officeId}:`, error);
+                    this.staffListsByOffice[key] = [];
+                }
+            }));
         },
 
         async loadData() {
@@ -261,7 +271,12 @@ function fingerprintAdmin(options = {}) {
                 const response = await fetch(`/api/fingerprints/admin?${params}`);
                 const result = await response.json();
                 const rawData = result.data || [];
-                this.data = this.processData(rawData);
+                const processedData = this.processData(rawData);
+
+                await this.loadStaffListsForOffices(processedData);
+
+                this.data = processedData;
+
                 if (result.pagination) {
                     this.currentPage = result.pagination.current_page;
                     this.lastPage = result.pagination.last_page;
@@ -322,7 +337,8 @@ function fingerprintAdmin(options = {}) {
                     this.data.forEach(row => {
                         if (row.fingerprint_id === fingerprintId) {
                             row.assigned_staff_id = staffId;
-                            const staff = this.staffList.find(s => s.id == staffId);
+                            const options = this.getStaffOptionsForRow(row);
+                            const staff = options.find(s => s.id == staffId);
                             row.assigned_staff_name = staff?.name;
                         }
                     });
@@ -331,6 +347,21 @@ function fingerprintAdmin(options = {}) {
                 console.error('Failed to assign staff:', error);
                 window.showToast('Failed to assign staff', 'error');
             }
+        },
+
+        getStaffOptionsForRow(row) {
+            const officeKey = row && row.booking_office_id != null ? String(row.booking_office_id) : '';
+            const list = (officeKey && this.staffListsByOffice[officeKey]) || [];
+            if (!row || !row.assigned_staff_id) return list;
+            const exists = list.some(s => s.id == row.assigned_staff_id);
+            if (exists) return list;
+            const pinned = {
+                id: row.assigned_staff_id,
+                name: row.assigned_staff_name || `Staff #${row.assigned_staff_id}`,
+                office_id: row.booking_office_id,
+                _pinned: true,
+            };
+            return [pinned, ...list];
         },
 
         getStatusClass(status) {
