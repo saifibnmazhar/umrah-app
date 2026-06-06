@@ -23,6 +23,7 @@ use App\Models\PassengerStatus;
 use App\Models\Invoice;
 use App\Models\Payment;
 use App\Models\Bank;
+use App\Models\Voucher;
 use App\Models\TransactionType;
 use App\Models\CurrencyRate;
 use App\Enums\FingerprintStatus;
@@ -738,11 +739,28 @@ class BookingController extends Controller
         $this->ensureBranchAccess($booking);
 
         try {
-            $booking->passengers()->delete();
-            $booking->delete();
+            DB::transaction(function () use ($booking) {
+                $passengerIds = $booking->passengers()->pluck('id');
+
+                $fingerprintDetailIds = \App\Models\FingerprintDetail::whereIn('passenger_id', $passengerIds)->pluck('id');
+
+                \App\Models\RescheduledFingerprint::whereIn('fingerprint_detail_id', $fingerprintDetailIds)->delete();
+                \App\Models\CancelledSubmission::whereIn('visa_submission_id', \App\Models\VisaSubmission::whereIn('passenger_id', $passengerIds)->pluck('id'))->delete();
+                \App\Models\VisaSubmission::whereIn('passenger_id', $passengerIds)->delete();
+                \App\Models\FingerprintDetail::whereIn('passenger_id', $passengerIds)->delete();
+                \App\Models\Voucher::where('booking_id', $booking->id)->delete();
+                $booking->payments()->delete();
+                $booking->invoice()->delete();
+                $booking->fingerprint()->delete();
+                $booking->passengers()->delete();
+                $booking->documents()->delete();
+                $booking->delete();
+            });
+
             return redirect()->route('bookings.index')
                 ->with('success', 'Booking deleted successfully');
         } catch (\Exception $e) {
+            \Log::error('Failed to delete booking: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to delete booking.');
         }
     }
