@@ -248,8 +248,8 @@ $refundRequests = [];
         </div>
 
         <div x-show="activeTab === 'reissue'" class="space-y-3">
-            @forelse($reissueRequests ?? [] as $request)
-            <a href="{{ route('re-issues.confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-blue-500">
+            {{-- @forelse($reissueRequests ?? [] as $request)  --}}
+            {{-- <a href="{{ route('re-issues.confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-blue-500">
                 <div class="flex justify-between items-center">
                     <div>
                         <span class="font-medium text-slate-800">Invoice ID: {{ $request['invoiceId'] }}</span>
@@ -260,10 +260,10 @@ $refundRequests = [];
                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
                     </div>
                 </div>
-            </a>
-            @empty
+            </a> --}}
+            {{-- @empty --}}
             <div class="text-center py-8 text-slate-500">No pending re-issue requests</div>
-            @endforelse
+            {{-- @endforelse --}}
         </div>
 
         <div x-show="activeTab === 'addticket'" class="space-y-3" style="display: none;">
@@ -279,7 +279,7 @@ $refundRequests = [];
                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
                     </div>
                 </div>
-            </a>
+            </a> 
             @empty
             <div class="text-center py-8 text-slate-500">No pending additional ticket requests</div>
             @endforelse
