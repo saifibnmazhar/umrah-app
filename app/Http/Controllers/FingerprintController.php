@@ -80,6 +80,7 @@ class FingerprintController extends Controller
                         'assigned_staff_id' => $fingerprint->assigned_staff_id,
                         'assigned_staff_name' => $fingerprint->assignedStaff->name ?? null,
                         'booking_branch_id' => $booking->branch_id,
+                        'booking_office_id' => $booking->office_id,
                         'passenger_name' => $passenger->first_name . ' ' . $passenger->last_name,
                         'fingerprint_status' => $detail?->status?->value ?? 'none',
                         'fingerprint_status_display' => $statusDisplay,
@@ -326,8 +327,8 @@ class FingerprintController extends Controller
         $query = User::select('id', 'name', 'branch_id')
             ->whereHas('roles', fn($q) => $q->where('name', 'Fingerprint Staff'));
 
-        if ($request->filled('branch_id')) {
-            $query->where('branch_id', (int) $request->branch_id);
+        if ($request->filled('office_id')) {
+            $query->where('office_id', (int) $request->office_id);
         }
 
         if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {

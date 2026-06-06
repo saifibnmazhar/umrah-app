@@ -209,7 +209,7 @@ function fingerprintAdmin(options = {}) {
     return {
         data: [],
         loading: true,
-        staffListsByBranch: {},
+        staffListsByOffice: {},
         currentPage: 1,
         lastPage: 1,
         totalRecords: 0,
@@ -242,23 +242,24 @@ function fingerprintAdmin(options = {}) {
             await this.loadData();
         },
 
-        async loadStaffListsForBranches() {
-            const branchIds = [...new Set(
-                (this.data || [])
-                    .map(r => r && r.booking_branch_id)
+        async loadStaffListsForOffices(data) {
+            const items = data || this.data;
+            const officeIds = [...new Set(
+                (items || [])
+                    .map(r => r && r.booking_office_id)
                     .filter(id => id !== null && id !== undefined && id !== '')
             )];
 
-            await Promise.all(branchIds.map(async (branchId) => {
-                const key = String(branchId);
-                if (this.staffListsByBranch[key]) return;
+            await Promise.all(officeIds.map(async (officeId) => {
+                const key = String(officeId);
+                if (this.staffListsByOffice[key]) return;
                 try {
-                    const response = await fetch(`/api/fingerprints/staff-list?branch_id=${encodeURIComponent(branchId)}`);
+                    const response = await fetch(`/api/fingerprints/staff-list?office_id=${encodeURIComponent(officeId)}`);
                     const result = await response.json();
-                    this.staffListsByBranch[key] = result.data || [];
+                    this.staffListsByOffice[key] = result.data || [];
                 } catch (error) {
-                    console.error(`Failed to load staff list for branch ${branchId}:`, error);
-                    this.staffListsByBranch[key] = [];
+                    console.error(`Failed to load staff list for office ${officeId}:`, error);
+                    this.staffListsByOffice[key] = [];
                 }
             }));
         },
@@ -270,13 +271,17 @@ function fingerprintAdmin(options = {}) {
                 const response = await fetch(`/api/fingerprints/admin?${params}`);
                 const result = await response.json();
                 const rawData = result.data || [];
-                this.data = this.processData(rawData);
+                const processedData = this.processData(rawData);
+
+                await this.loadStaffListsForOffices(processedData);
+
+                this.data = processedData;
+
                 if (result.pagination) {
                     this.currentPage = result.pagination.current_page;
                     this.lastPage = result.pagination.last_page;
                     this.totalRecords = result.pagination.total;
                 }
-                await this.loadStaffListsForBranches();
             } catch (error) {
                 console.error('Failed to load fingerprint data:', error);
                 this.data = [];
@@ -345,15 +350,15 @@ function fingerprintAdmin(options = {}) {
         },
 
         getStaffOptionsForRow(row) {
-            const branchKey = row && row.booking_branch_id != null ? String(row.booking_branch_id) : '';
-            const list = (branchKey && this.staffListsByBranch[branchKey]) || [];
+            const officeKey = row && row.booking_office_id != null ? String(row.booking_office_id) : '';
+            const list = (officeKey && this.staffListsByOffice[officeKey]) || [];
             if (!row || !row.assigned_staff_id) return list;
             const exists = list.some(s => s.id == row.assigned_staff_id);
             if (exists) return list;
             const pinned = {
                 id: row.assigned_staff_id,
                 name: row.assigned_staff_name || `Staff #${row.assigned_staff_id}`,
-                branch_id: row.booking_branch_id,
+                office_id: row.booking_office_id,
                 _pinned: true,
             };
             return [pinned, ...list];
