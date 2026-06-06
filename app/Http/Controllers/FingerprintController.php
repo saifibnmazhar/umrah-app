@@ -79,6 +79,7 @@ class FingerprintController extends Controller
                         'cost' => $fingerprint->cost,
                         'assigned_staff_id' => $fingerprint->assigned_staff_id,
                         'assigned_staff_name' => $fingerprint->assignedStaff->name ?? null,
+                        'booking_branch_id' => $booking->branch_id,
                         'passenger_name' => $passenger->first_name . ' ' . $passenger->last_name,
                         'fingerprint_status' => $detail?->status?->value ?? 'none',
                         'fingerprint_status_display' => $statusDisplay,
@@ -318,12 +319,16 @@ class FingerprintController extends Controller
      * Get staff list for dropdown
      * GET /api/fingerprints/staff-list
      */
-    public function staffList(): JsonResponse
+    public function staffList(Request $request): JsonResponse
     {
         $user = auth()->user();
 
-        $query = User::select('id', 'name')
+        $query = User::select('id', 'name', 'branch_id')
             ->whereHas('roles', fn($q) => $q->where('name', 'Fingerprint Staff'));
+
+        if ($request->filled('branch_id')) {
+            $query->where('branch_id', (int) $request->branch_id);
+        }
 
         if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
             $query->where('office_id', $user->office_id);

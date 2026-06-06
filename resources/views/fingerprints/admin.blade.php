@@ -97,7 +97,7 @@
                                             class="text-xs border border-slate-300 rounded px-2 py-1 bg-white"
                                             :class="!canAssignStaff || row.fingerprint_location === 'office' ? 'opacity-60 cursor-not-allowed' : ''">
                                         <option value="">Select Staff</option>
-                                        <template x-for="staff in staffList" :key="staff.id">
+                                        <template x-for="staff in getStaffOptionsForRow(row)" :key="staff.id">
                                             <option :value="staff.id" :selected="staff.id == row.assigned_staff_id" x-text="staff.name"></option>
                                         </template>
                                     </select>
@@ -209,7 +209,7 @@ function fingerprintAdmin(options = {}) {
     return {
         data: [],
         loading: true,
-        staffList: [],
+        staffListsByBranch: {},
         currentPage: 1,
         lastPage: 1,
         totalRecords: 0,
@@ -239,19 +239,28 @@ function fingerprintAdmin(options = {}) {
         // },
 
         async init() {
-            await this.loadStaffList();
             await this.loadData();
         },
 
-        async loadStaffList() {
-            try {
-                const response = await fetch('/api/fingerprints/staff-list');
-                const result = await response.json();
-                this.staffList = result.data || [];
-            } catch (error) {
-                console.error('Failed to load staff list:', error);
-                this.staffList = [];
-            }
+        async loadStaffListsForBranches() {
+            const branchIds = [...new Set(
+                (this.data || [])
+                    .map(r => r && r.booking_branch_id)
+                    .filter(id => id !== null && id !== undefined && id !== '')
+            )];
+
+            await Promise.all(branchIds.map(async (branchId) => {
+                const key = String(branchId);
+                if (this.staffListsByBranch[key]) return;
+                try {
+                    const response = await fetch(`/api/fingerprints/staff-list?branch_id=${encodeURIComponent(branchId)}`);
+                    const result = await response.json();
+                    this.staffListsByBranch[key] = result.data || [];
+                } catch (error) {
+                    console.error(`Failed to load staff list for branch ${branchId}:`, error);
+                    this.staffListsByBranch[key] = [];
+                }
+            }));
         },
 
         async loadData() {
@@ -267,6 +276,7 @@ function fingerprintAdmin(options = {}) {
                     this.lastPage = result.pagination.last_page;
                     this.totalRecords = result.pagination.total;
                 }
+                await this.loadStaffListsForBranches();
             } catch (error) {
                 console.error('Failed to load fingerprint data:', error);
                 this.data = [];
@@ -322,7 +332,8 @@ function fingerprintAdmin(options = {}) {
                     this.data.forEach(row => {
                         if (row.fingerprint_id === fingerprintId) {
                             row.assigned_staff_id = staffId;
-                            const staff = this.staffList.find(s => s.id == staffId);
+                            const options = this.getStaffOptionsForRow(row);
+                            const staff = options.find(s => s.id == staffId);
                             row.assigned_staff_name = staff?.name;
                         }
                     });
@@ -331,6 +342,21 @@ function fingerprintAdmin(options = {}) {
                 console.error('Failed to assign staff:', error);
                 window.showToast('Failed to assign staff', 'error');
             }
+        },
+
+        getStaffOptionsForRow(row) {
+            const branchKey = row && row.booking_branch_id != null ? String(row.booking_branch_id) : '';
+            const list = (branchKey && this.staffListsByBranch[branchKey]) || [];
+            if (!row || !row.assigned_staff_id) return list;
+            const exists = list.some(s => s.id == row.assigned_staff_id);
+            if (exists) return list;
+            const pinned = {
+                id: row.assigned_staff_id,
+                name: row.assigned_staff_name || `Staff #${row.assigned_staff_id}`,
+                branch_id: row.booking_branch_id,
+                _pinned: true,
+            };
+            return [pinned, ...list];
         },
 
         getStatusClass(status) {
