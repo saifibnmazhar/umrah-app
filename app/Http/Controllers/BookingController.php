@@ -115,6 +115,7 @@ class BookingController extends Controller
             )
             ->orderBy('created_at', 'desc')
             ->paginate(10)
+            ->appends(['tab' => $tab])
             ->withQueryString();
 
         $passengers = Passenger::approvedFingerprint()->with([
@@ -129,6 +130,7 @@ class BookingController extends Controller
         ])
             ->orderBy('created_at', 'desc')
             ->paginate(15)
+            ->appends(['tab' => $tab])
             ->withQueryString();
 
         $passengerStatuses = PassengerStatus::all();
