@@ -125,7 +125,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/fares/admin/fare/{ticketFare}', [FareAdminController::class, 'destroyFare'])->name('fare.admin.fare.destroy')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/fingerprints/admin', function () {
-        $canAssignStaff = auth()->user()->hasRole('Fingerprint Admin');
+        $canAssignStaff = auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin', 'Fingerprint Admin'])->isNotEmpty();
         $divisions = \App\Models\District::distinct()->pluck('division')->sort()->values();
         $districts = \App\Models\District::orderBy('division')->orderBy('name')->get(['id', 'name', 'division']);
         return view('fingerprints.admin', compact('canAssignStaff', 'divisions', 'districts'));
@@ -148,7 +148,7 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
     Route::put('/api/fingerprints/{fingerprint}/staff', [FingerprintController::class, 'assignStaff'])
         ->name('api.fingerprints.assign-staff')
-        ->middleware('role:Fingerprint Admin');
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::put('/api/fingerprints/{fingerprint}/cost', [FingerprintController::class, 'updateCost'])
         ->name('api.fingerprints.update-cost')
         ->middleware('role:Super Admin,Fingerprint Staff');
