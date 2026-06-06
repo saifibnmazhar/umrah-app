@@ -54,7 +54,8 @@ class FingerprintChargeController extends Controller
         try {
             $division = $request->query('division');
             FingerprintCharge::create($validated);
-            return redirect()->route('settings')->with('success', 'Fingerprint charge created successfully.')->with('division', $division);
+            $tab = $request->input('tab', 'fingerprint-charge');
+            return redirect()->route('settings', ['tab' => $tab])->with('success', 'Fingerprint charge created successfully.')->with('division', $division);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create fingerprint charge.')->withInput();
         }
@@ -82,17 +83,19 @@ class FingerprintChargeController extends Controller
 
         try {
             $fingerprintCharge->update($validated);
-            return redirect()->route('settings')->with('success', 'Fingerprint charge updated successfully.');
+            $tab = $request->input('tab', 'fingerprint-charge');
+            return redirect()->route('settings', ['tab' => $tab])->with('success', 'Fingerprint charge updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update fingerprint charge.')->withInput();
         }
     }
 
-    public function destroy(FingerprintCharge $fingerprintCharge)
+    public function destroy(Request $request, FingerprintCharge $fingerprintCharge)
     {
         try {
             $fingerprintCharge->delete();
-            return redirect()->route('settings')->with('success', 'Fingerprint charge deleted successfully.');
+            $tab = $request->input('tab', 'fingerprint-charge');
+            return redirect()->route('settings', ['tab' => $tab])->with('success', 'Fingerprint charge deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete fingerprint charge.');
         }

@@ -102,12 +102,14 @@ class SettingsController extends Controller
             FlightDateGap::create(['gap' => $validated['gap']]);
         }
 
-        return redirect()->route('settings')->with('success', 'Flight date gap updated successfully');
+        $tab = $request->input('tab', 'flight-date-gap');
+        return redirect()->route('settings', ['tab' => $tab])->with('success', 'Flight date gap updated successfully');
     }
 
     public function updateFingerprintCharge(Request $request)
     {
-        return redirect()->route('settings')->with('success', 'Fingerprint charge settings updated');
+        $tab = $request->input('tab', 'fingerprint-charge');
+        return redirect()->route('settings', ['tab' => $tab])->with('success', 'Fingerprint charge settings updated');
     }
 
     public function storePackage(Request $request)
@@ -124,7 +126,8 @@ class SettingsController extends Controller
             $validated['user_id'] = auth()->id() ?? 1;
             $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;
             Package::create($validated);
-            return redirect()->route('settings')->with('success', 'Package created successfully.');
+            $tab = $request->input('tab', 'package-configuration');
+            return redirect()->route('settings', ['tab' => $tab])->with('success', 'Package created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create package: ' . $e->getMessage())->withInput();
         }
@@ -147,7 +150,8 @@ class SettingsController extends Controller
         try {
             $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;
             $package->update($validated);
-            return redirect()->route('settings')->with('success', 'Package updated successfully.');
+            $tab = $request->input('tab', 'package-configuration');
+            return redirect()->route('settings', ['tab' => $tab])->with('success', 'Package updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update package: ' . $e->getMessage())->withInput();
         }
@@ -160,7 +164,7 @@ class SettingsController extends Controller
         return view('package-configurations.show', compact('package'));
     }
 
-    public function destroyPackage(Package $package)
+    public function destroyPackage(Request $request, Package $package)
     {
         if ($package->isLocked()) {
             return redirect()->back()->with('error', 'This package cannot be deleted because it has existing bookings.');
@@ -168,7 +172,8 @@ class SettingsController extends Controller
 
         try {
             $package->delete();
-            return redirect()->route('settings')->with('success', 'Package deleted successfully.');
+            $tab = $request->input('tab', 'package-configuration');
+            return redirect()->route('settings', ['tab' => $tab])->with('success', 'Package deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete package.');
         }

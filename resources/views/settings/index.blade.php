@@ -3,7 +3,16 @@
 @section('title', 'Settings')
 
 @section('content')
-<div class="w-full pt-6 px-4 md:px-6" x-data="{ activeTab: 'flight-date-gap' }">
+<div class="w-full pt-6 px-4 md:px-6"
+     x-data="{
+         activeTab: (new URLSearchParams(window.location.search).get('tab')) || 'flight-date-gap',
+         syncTabToUrl(val) {
+             const url = new URL(window.location);
+             url.searchParams.set('tab', val);
+             window.history.replaceState({}, '', url);
+         }
+     }"
+     x-init="$watch('activeTab', val => syncTabToUrl(val))">
     <h1 class="text-2xl font-bold mb-6">Admin Settings</h1>
 
     <div class="border-b border-gray-200 mb-6">
@@ -59,6 +68,7 @@
             <form method="POST" action="{{ route('settings.flight-date-gap.update') }}">
                 @csrf
                 @method('PUT')
+                <input type="hidden" name="tab" :value="activeTab">
 
                 <div class="space-y-4">
                     <div>
@@ -135,6 +145,7 @@
                                     <form method="POST" action="{{ route('fingerprint-charges.destroy', $charge->id) }}" onsubmit="return confirm('Are you sure you want to delete this fingerprint charge?')" class="inline">
                                         @csrf
                                         @method('DELETE')
+                                        <input type="hidden" name="tab" :value="activeTab">
                                         <button type="submit" class="text-xs text-red-500 hover:text-red-700">Delete</button>
                                     </form>
                                 </td>
@@ -171,6 +182,7 @@
                 @csrf
                 <input type="hidden" id="chargeId" name="charge_id">
                 <input type="hidden" id="formMethod" name="_method" value="POST">
+                <input type="hidden" name="tab" :value="activeTab">
                 <div class="space-y-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">District *</label>
@@ -364,6 +376,7 @@
                                         <form method="POST" action="{{ route('settings.package.destroy', $package->id) }}" onsubmit="return confirm('Are you sure you want to delete this package?')" class="inline">
                                             @csrf
                                             @method('DELETE')
+                                            <input type="hidden" name="tab" :value="activeTab">
                                             <button type="submit" class="text-xs text-red-500 hover:text-red-700">Delete</button>
                                         </form>
                                     @endif
@@ -398,6 +411,7 @@
                     @csrf
                     <input type="hidden" id="packageId" name="id">
                     <input type="hidden" id="formMethod" name="_method" value="POST">
+                    <input type="hidden" name="tab" :value="activeTab">
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
