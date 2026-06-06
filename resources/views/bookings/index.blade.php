@@ -142,8 +142,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     @endif
 
     <div class="flex gap-2 mb-4">
-        <button @click="activeTab = 'booking'" :class="activeTab === 'booking' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'" class="px-4 py-2 rounded-lg font-medium transition">Booking Index</button>
-        <button @click="activeTab = 'passenger'" :class="activeTab === 'passenger' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'" class="px-4 py-2 rounded-lg font-medium transition">Passenger Index</button>
+        <button @click="navigateToTab('booking')" :class="activeTab === 'booking' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'" class="px-4 py-2 rounded-lg font-medium transition">Booking Index</button>
+        <button @click="navigateToTab('passenger')" :class="activeTab === 'passenger' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'" class="px-4 py-2 rounded-lg font-medium transition">Passenger Index</button>
     </div>
 
     <div x-show="activeTab === 'booking'" x-cloak>
@@ -757,6 +757,17 @@ function bookingIndexApp() {
             this.$watch('activeTab', (newVal) => {
                 document.body.style.overflow = newVal === 'passenger' ? 'hidden' : '';
             });
+        },
+
+        navigateToTab(tab) {
+            if (this.activeTab === tab) return;
+            const url = new URL(window.location);
+            if (tab === 'booking') {
+                url.searchParams.delete('tab');
+            } else {
+                url.searchParams.set('tab', tab);
+            }
+            window.location.href = url.toString();
         },
 
         passengersVisaData: @json($passengersVisaData),
