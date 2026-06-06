@@ -69,7 +69,8 @@ class FlightDateGapController extends Controller
 
         try {
             $flightDateGap->update($validated);
-            return redirect()->route('settings')->with('success', 'Flight date gap updated successfully.');
+            $tab = $request->input('tab', 'flight-date-gap');
+            return redirect()->route('settings', ['tab' => $tab])->with('success', 'Flight date gap updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update flight date gap.')->withInput();
         }

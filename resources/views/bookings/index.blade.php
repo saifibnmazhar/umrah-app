@@ -117,6 +117,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             $isVisaPersonnel = auth()->user()->roles->pluck('name')->intersect(['Visa Admin', 'Visa Staff'])->isNotEmpty();
             $isTicketPersonnel = auth()->user()->roles->pluck('name')->intersect(['Ticket Admin', 'Ticket Staff'])->isNotEmpty();
             $isBranchPersonnel = auth()->user()->roles->pluck('name')->intersect(['Branch Manager', 'Branch Staff'])->isNotEmpty();
+            $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager'])->isNotEmpty();
         @endphp
         <h1 class="text-2xl font-bold text-slate-800">Booking</h1>
         @if($canCreateBooking)
@@ -142,8 +143,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     @endif
 
     <div class="flex gap-2 mb-4">
-        <button @click="activeTab = 'booking'" :class="activeTab === 'booking' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'" class="px-4 py-2 rounded-lg font-medium transition">Booking Index</button>
-        <button @click="activeTab = 'passenger'" :class="activeTab === 'passenger' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'" class="px-4 py-2 rounded-lg font-medium transition">Passenger Index</button>
+        <button @click="navigateToTab('booking')" :class="activeTab === 'booking' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'" class="px-4 py-2 rounded-lg font-medium transition">Booking Index</button>
+        <button @click="navigateToTab('passenger')" :class="activeTab === 'passenger' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'" class="px-4 py-2 rounded-lg font-medium transition">Passenger Index</button>
     </div>
 
     <div x-show="activeTab === 'booking'" x-cloak>
@@ -199,6 +200,13 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->balance ?? 0 }} SAR</td>@endif
                             <td class="px-3 py-2">
                                 <a href="{{ route('bookings.show', $booking->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
+                                @if($canDeleteBooking)
+                                <form method="POST" action="{{ route('bookings.destroy', $booking->id) }}" onsubmit="return confirm('Are you sure you want to delete this booking?')" class="inline ml-3">
+                                    @csrf
+                                    @method('DELETE')
+                                    <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
+                                </form>
+                                @endif
                             </td>
                         </tr>
                         @empty
@@ -757,6 +765,17 @@ function bookingIndexApp() {
             this.$watch('activeTab', (newVal) => {
                 document.body.style.overflow = newVal === 'passenger' ? 'hidden' : '';
             });
+        },
+
+        navigateToTab(tab) {
+            if (this.activeTab === tab) return;
+            const url = new URL(window.location);
+            if (tab === 'booking') {
+                url.searchParams.delete('tab');
+            } else {
+                url.searchParams.set('tab', tab);
+            }
+            window.location.href = url.toString();
         },
 
         passengersVisaData: @json($passengersVisaData),
