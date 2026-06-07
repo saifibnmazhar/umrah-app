@@ -10,7 +10,7 @@
 
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Add Route</h1>
 
-    <form method="POST" action="{{ route('routes.store') }}" id="routeForm" class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 space-y-5">
+    <form method="POST" action="{{ route('routes.store') }}" id="routeForm" x-data="routeCityForm()" class="bg-white rounded-lg shadow-sm border border-slate-200 p-6 space-y-5">
         @csrf
 
         <div class="grid grid-cols-3 gap-4">
@@ -63,8 +63,10 @@
             <div id="fromField" class="{{ in_array(old('route_type'), ['oneway_inbound', 'oneway_outbound', 'round']) ? '' : 'hidden' }}">
                 <label for="from_city_id" class="block text-sm font-medium text-slate-700 mb-1">From *</label>
                 <select name="from_city_id" id="from_city_id"
-                    class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('from_city_id') border-red-500 @enderror">
+                    class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('from_city_id') border-red-500 @enderror"
+                    @change="onCitySelectChange('from_city_id', $event)">
                     <option value="">Select</option>
+                    <option value="__add_new__">+ Add New City</option>
                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                         <option value="{{ $city->id }}" {{ old('from_city_id') == $city->id ? 'selected' : '' }}>{{ $city->code }} ({{ $city->city_name }})</option>
                     @endforeach
@@ -77,8 +79,10 @@
             <div id="toField" class="{{ in_array(old('route_type'), ['oneway_inbound', 'oneway_outbound', 'round']) ? '' : 'hidden' }}">
                 <label for="to_city_id" class="block text-sm font-medium text-slate-700 mb-1">To *</label>
                 <select name="to_city_id" id="to_city_id"
-                    class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('to_city_id') border-red-500 @enderror">
+                    class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('to_city_id') border-red-500 @enderror"
+                    @change="onCitySelectChange('to_city_id', $event)">
                     <option value="">Select</option>
+                    <option value="__add_new__">+ Add New City</option>
                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                         <option value="{{ $city->id }}" {{ old('to_city_id') == $city->id ? 'selected' : '' }}>{{ $city->code }} ({{ $city->city_name }})</option>
                     @endforeach
@@ -91,8 +95,10 @@
             <div id="returnField" class="{{ old('route_type') == 'round' ? '' : 'hidden' }}">
                 <label for="return_city_id" class="block text-sm font-medium text-slate-700 mb-1">Return To *</label>
                 <select name="return_city_id" id="return_city_id"
-                    class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('return_city_id') border-red-500 @enderror">
+                    class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('return_city_id') border-red-500 @enderror"
+                    @change="onCitySelectChange('return_city_id', $event)">
                     <option value="">Select</option>
+                    <option value="__add_new__">+ Add New City</option>
                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                         <option value="{{ $city->id }}" {{ old('return_city_id') == $city->id ? 'selected' : '' }}>{{ $city->code }} ({{ $city->city_name }})</option>
                     @endforeach
@@ -109,8 +115,9 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm text-slate-600 mb-1">Inbound From</label>
-                        <select name="segments[0][from_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                        <select id="segments_0_from_city_id" name="segments[0][from_city_id]" @change="onCitySelectChange('segments_0_from_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                             <option value="">Select</option>
+                            <option value="__add_new__">+ Add New City</option>
                             @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                 <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                             @endforeach
@@ -118,8 +125,9 @@
                     </div>
                     <div>
                         <label class="block text-sm text-slate-600 mb-1">Inbound To</label>
-                        <select name="segments[0][to_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                        <select id="segments_0_to_city_id" name="segments[0][to_city_id]" @change="onCitySelectChange('segments_0_to_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                             <option value="">Select</option>
+                            <option value="__add_new__">+ Add New City</option>
                             @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                 <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                             @endforeach
@@ -130,8 +138,9 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm text-slate-600 mb-1">Outbound From</label>
-                        <select name="segments[1][from_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                        <select id="segments_1_from_city_id" name="segments[1][from_city_id]" @change="onCitySelectChange('segments_1_from_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                             <option value="">Select</option>
+                            <option value="__add_new__">+ Add New City</option>
                             @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                 <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                             @endforeach
@@ -139,8 +148,9 @@
                     </div>
                     <div>
                         <label class="block text-sm text-slate-600 mb-1">Outbound To</label>
-                        <select name="segments[1][to_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                        <select id="segments_1_to_city_id" name="segments[1][to_city_id]" @change="onCitySelectChange('segments_1_to_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                             <option value="">Select</option>
+                            <option value="__add_new__">+ Add New City</option>
                             @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                 <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                             @endforeach
@@ -153,10 +163,12 @@
 
         <div id="transitFields" class="hidden grid grid-cols-2 gap-4">
             <div id="inboundTransit">
-                <label for="transit_city_id" class="block text-sm font-medium text-slate-700 mb-1">Transit City (Inbound)</label>
-                <select name="transits[0][transit_city_id]" id="transit_city_id"
+                <label for="transit_0_city_id" class="block text-sm font-medium text-slate-700 mb-1">Transit City (Inbound)</label>
+                <select name="transits[0][transit_city_id]" id="transit_0_city_id"
+                    @change="onCitySelectChange('transit_0_city_id', $event)"
                     class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                     <option value="">Select</option>
+                    <option value="__add_new__">+ Add New City</option>
                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                         <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                     @endforeach
@@ -176,10 +188,12 @@
                 </div>
             </div>
             <div id="outboundTransit" class="hidden">
-                <label for="transit_city_id_outbound" class="block text-sm font-medium text-slate-700 mb-1">Transit City (Outbound)</label>
-                <select name="transits[1][transit_city_id]" id="transit_city_id_outbound"
+                <label for="transit_1_city_id" class="block text-sm font-medium text-slate-700 mb-1">Transit City (Outbound)</label>
+                <select name="transits[1][transit_city_id]" id="transit_1_city_id"
+                    @change="onCitySelectChange('transit_1_city_id', $event)"
                     class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                     <option value="">Select</option>
+                    <option value="__add_new__">+ Add New City</option>
                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                         <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                     @endforeach
@@ -214,6 +228,8 @@
             </a>
         </div>
     </form>
+
+    @include('partials.city-form-modal')
 </div>
 
 <script>
@@ -289,5 +305,134 @@ document.addEventListener('DOMContentLoaded', function() {
     toggleRouteFields();
     toggleTransitFields();
 });
+
+function routeCityForm() {
+    return {
+        cityModalOpen: false,
+        citySaving: false,
+        activeSelect: null,
+        cityData: { city_name: '', code: '', country: '' },
+        cityErrors: {},
+
+        onCitySelectChange(selectId, event) {
+            const value = event.target.value;
+            if (value === '__add_new__') {
+                event.target.value = '';
+                this.activeSelect = selectId;
+                this.openCityModal();
+            }
+        },
+
+        openCityModal() {
+            this.cityData = { city_name: '', code: '', country: '' };
+            this.cityErrors = {};
+            this.cityModalOpen = true;
+            this.$nextTick(() => {
+                const el = document.getElementById('modal_city_name');
+                if (el) el.focus();
+            });
+        },
+
+        closeCityModal() {
+            this.cityModalOpen = false;
+            this.cityErrors = {};
+            this.activeSelect = null;
+        },
+
+        saveCity() {
+            this.citySaving = true;
+            this.cityErrors = {};
+
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            const headers = {
+                'Content-Type': 'application/json',
+                'Accept': 'application/json',
+                'X-CSRF-TOKEN': csrfMeta ? csrfMeta.getAttribute('content') : ''
+            };
+
+            fetch('{{ route('city-codes.store') }}', {
+                method: 'POST',
+                headers: headers,
+                body: JSON.stringify(this.cityData)
+            })
+            .then(async (response) => {
+                this.citySaving = false;
+                const data = await response.json().catch(() => ({}));
+                if (response.status === 422 && data.errors) {
+                    this.cityErrors = data.errors;
+                    return;
+                }
+                if (response.ok && data.success && data.city) {
+                    this.appendCityToAllSelects(data.city);
+                    this.closeCityModal();
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('City created successfully', 'success');
+                    }
+                    return;
+                }
+                if (typeof window.showToast === 'function') {
+                    window.showToast((data && data.message) || 'Failed to create city', 'error');
+                }
+            })
+            .catch(() => {
+                this.citySaving = false;
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Failed to create city', 'error');
+                }
+            });
+        },
+
+        appendCityToAllSelects(city) {
+            const selects = [
+                'from_city_id', 'to_city_id', 'return_city_id',
+                'segments_0_from_city_id', 'segments_0_to_city_id',
+                'segments_1_from_city_id', 'segments_1_to_city_id',
+                'transit_0_city_id', 'transit_1_city_id'
+            ];
+            const label = `${city.code} (${city.city_name})`;
+
+            selects.forEach((id) => {
+                const select = document.getElementById(id);
+                if (!select) return;
+
+                let exists = false;
+                for (let i = 0; i < select.options.length; i++) {
+                    if (select.options[i].value === String(city.id)) { exists = true; break; }
+                }
+                if (exists) {
+                    if (this.activeSelect === id) select.value = String(city.id);
+                    return;
+                }
+
+                const newOption = document.createElement('option');
+                newOption.value = String(city.id);
+                newOption.text = label;
+
+                let inserted = false;
+                for (let i = 0; i < select.options.length; i++) {
+                    const opt = select.options[i];
+                    if (opt.value === '' || opt.value === '__add_new__') continue;
+                    if (label.localeCompare(opt.text) < 0) {
+                        select.insertBefore(newOption, opt);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (!inserted) {
+                    const addNewOption = select.querySelector('option[value="__add_new__"]');
+                    if (addNewOption && addNewOption.parentNode === select) {
+                        select.insertBefore(newOption, addNewOption);
+                    } else {
+                        select.appendChild(newOption);
+                    }
+                }
+
+                if (this.activeSelect === id) {
+                    select.value = String(city.id);
+                }
+            });
+        }
+    }
+}
 </script>
 @endsection
