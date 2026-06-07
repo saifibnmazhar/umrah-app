@@ -6,16 +6,15 @@
     <title>Fingerprint Report - BM Umrah</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
-        body { font-family: 'Courier New', monospace; font-size: 10px; padding: 15px; color: #000; }
-        .header { text-align: center; margin-bottom: 15px; border-bottom: 2px solid #333; padding-bottom: 8px; }
-        .header h1 { font-size: 16px; font-weight: bold; }
-        .header p { font-size: 10px; color: #555; margin-top: 3px; }
-        .print-info { display: flex; justify-content: space-between; font-size: 9px; margin-bottom: 10px; color: #555; }
-        .filters-summary { font-size: 9px; margin-bottom: 10px; padding: 6px; border: 1px solid #ccc; background: #f9f9f9; }
-        .filters-summary strong { font-size: 9px; }
-        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-        th { background: #e0e0e0; font-size: 8px; font-weight: bold; text-align: center; padding: 4px 3px; border: 1px solid #999; }
-        td { font-size: 8px; padding: 3px; border: 1px solid #ccc; }
+        body { font-family: 'Courier New', monospace; font-size: 14px; padding: 10px; color: #000; }
+        .header { text-align: center; margin-bottom: 12px; border-bottom: 2px solid #333; padding-bottom: 8px; }
+        .header h1 { font-size: 20px; font-weight: bold; }
+        .header p { font-size: 13px; color: #555; margin-top: 3px; }
+        .print-info { display: flex; justify-content: space-between; font-size: 12px; margin-bottom: 8px; color: #555; }
+        .filters-summary { font-size: 12px; margin-bottom: 10px; padding: 6px; border: 1px solid #ccc; background: #f9f9f9; }
+        table { width: 100%; border-collapse: collapse; margin-bottom: 10px; table-layout: auto; }
+        th { background: #e0e0e0; font-size: 12px; font-weight: bold; text-align: center; padding: 5px 4px; border: 1px solid #999; white-space: nowrap; }
+        td { font-size: 12px; padding: 4px 4px; border: 1px solid #ccc; }
         .text-left { text-align: left; }
         .text-center { text-align: center; }
         .text-right { text-align: right; }
@@ -24,18 +23,19 @@
         .whitespace-pre-line { white-space: pre-line; }
         .summary { margin-top: 10px; border-top: 2px solid #333; padding-top: 8px; }
         .summary-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 20px; }
-        .summary-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 9px; }
+        .summary-row { display: flex; justify-content: space-between; padding: 2px 0; font-size: 12px; }
         .summary-row.bordered { border-top: 1px solid #ccc; padding-top: 4px; margin-top: 2px; }
         .summary-row .label { font-weight: bold; }
         .summary-row .value { font-weight: bold; }
-        .footer { text-align: center; font-size: 8px; color: #888; margin-top: 15px; border-top: 1px solid #ccc; padding-top: 6px; }
+        .footer { text-align: center; font-size: 11px; color: #888; margin-top: 15px; border-top: 1px solid #ccc; padding-top: 6px; }
         .page-break { page-break-after: always; }
         .invoice-group { border-left: 3px solid #999; }
         .invoice-group-odd { border-left: 3px solid #2563eb; }
         .invoice-group-even { border-left: 3px solid #ea580c; }
         @media print {
-            body { padding: 10px; }
+            body { padding: 5px; }
             .no-print { display: none; }
+            @page { size: landscape; margin: 8mm; }
         }
     </style>
 </head>
@@ -85,12 +85,12 @@
                 <th>Passport No</th>
                 <th>Mobile</th>
                 @if($canViewFinancials)
-                <th>Fingerprint Charge</th>
+                <th style="width: 60px">Fingerprint Charge</th>
                 @endif
-                <th>Fingerprint Cost</th>
-                <th>Fingerprint Deadline</th>
+                <th style="width: 60px">Fingerprint Cost</th>
+                <th style="width: 70px">Fingerprint Deadline</th>
                 <th>Completed Date</th>
-                <th>Req. Flight</th>
+                <th style="width: 110px">Req. Flight</th>
                 <th>Act. Flight</th>
                 <th>Status</th>
                 <th>Remarks</th>
