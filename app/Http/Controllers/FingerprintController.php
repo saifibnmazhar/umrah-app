@@ -158,6 +158,7 @@ class FingerprintController extends Controller
                         'district' => $booking->district?->name ?? '-',
                         'deadline' => $fingerprint->deadline?->format('Y-m-d'),
                         'passenger_name' => $passengerName,
+                        'passenger_address' => $passenger->address ?? '-',
                         'cost' => $fingerprint->cost,
                         'fingerprint_status' => $detail?->status?->value ?? 'none',
                         'fingerprint_status_display' => $statusDisplay,

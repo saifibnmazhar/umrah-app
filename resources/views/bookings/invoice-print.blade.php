@@ -44,8 +44,19 @@
     </div>
 
     @php
-        $fpLocation = $booking->fingerprint_location;
-        if ($fpLocation instanceof \BackedEnum) { $fpLocation = $fpLocation->value; }
+        $fpLocationValue = $booking->fingerprint_location;
+        if ($fpLocationValue instanceof \BackedEnum) { $fpLocationValue = $fpLocationValue->value; }
+        if ($fpLocationValue === 'home') {
+            $fpLocation = 'Home';
+        } elseif ($fpLocationValue === 'office') {
+            $fpLocation = $booking->office?->address ?? '-';
+        } else {
+            $fpLocation = '-';
+        }
+        $fingerprintDeadline = $booking->fingerprint?->deadline?->format('d M Y');
+        $passengerMobileBd = $booking->passengers->first()?->mobile_no ?? '-';
+        $passengerAddress = $booking->passengers->first()?->address ?? '-';
+        $addressKsa = $booking->customer->address ?? '-';
     @endphp
 
     {{-- Customer Information & Invoice Information --}}
@@ -59,30 +70,30 @@
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Booking Date :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $booking->booking_date ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Passenger Number (BD) :</td>
-                        <td class="px-2 py-1 w-[20%]">{{ $booking->customer->iqama_no ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Passenger Mobile (BD) :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $passengerMobileBd }}</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Customer Name :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $booking->customer->name ?? '-' }}</td>
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Customer Address :</td>
-                        <td class="px-2 py-1 w-[20%]">{{ $booking->customer->address ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Passenger Address :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $passengerAddress }}</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Iqama Number :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $booking->customer->iqama_no ?? '-' }}</td>
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Finger Location :</td>
-                        <td class="px-2 py-1 w-[20%]">{{ $fpLocation ?? '-' }}</td>
-                    </tr>
-                    <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Phone Number :</td>
-                        <td class="px-2 py-1 w-[20%]">{{ $booking->customer->mobile_no ?? '-' }}</td>
-                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Finger Deadline :</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Fingerprint Deadline :</td>
                         <td class="px-2 py-1 w-[20%]">{{ $fingerprintDeadline ?? '-' }}</td>
                     </tr>
                     <tr>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Customer Mobile :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $booking->customer->mobile_no ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Fingerprint Location :</td>
+                        <td class="px-2 py-1 w-[20%]">{{ $fpLocation ?? '-' }}</td>
+                    </tr>
+                    <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-[30%]">Address (KSA) :</td>
-                        <td class="px-2 py-1 " colspan="3">-</td>
+                        <td class="px-2 py-1 " colspan="3">{{ $addressKsa }}</td>
                     </tr>
                 </tbody>
             </table>

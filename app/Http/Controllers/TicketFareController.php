@@ -7,6 +7,7 @@ use App\Models\GroupTicket;
 use App\Models\BaggageAllowance;
 use App\Models\Airline;
 use App\Models\AirlineClass;
+use App\Models\TravelClass;
 use App\Models\Route;
 use App\Models\FlightDateGap;
 use Illuminate\Http\Request;
@@ -47,9 +48,10 @@ class TicketFareController extends Controller
     {
         $airlines = Airline::orderBy('name')->get();
         $airlineClasses = AirlineClass::with('travelClass')->get();
+        $travelClasses = TravelClass::orderBy('name')->get();
         $routes = Route::with(['airline', 'fromCity', 'toCity', 'returnCity'])->get();
 
-        return view('ticket-fares.create', compact('airlines', 'airlineClasses', 'routes'));
+        return view('ticket-fares.create', compact('airlines', 'airlineClasses', 'travelClasses', 'routes'));
     }
 
     public function store(Request $request)
@@ -152,9 +154,10 @@ class TicketFareController extends Controller
 
         $airlines = Airline::orderBy('name')->get();
         $airlineClasses = AirlineClass::with('travelClass')->get();
+        $travelClasses = TravelClass::orderBy('name')->get();
         $routes = Route::with(['airline', 'fromCity', 'toCity', 'returnCity'])->get();
 
-        return view('ticket-fares.edit', compact('ticketFare', 'airlines', 'airlineClasses', 'routes'));
+        return view('ticket-fares.edit', compact('ticketFare', 'airlines', 'airlineClasses', 'travelClasses', 'routes'));
     }
 
     public function update(Request $request, TicketFare $ticketFare)

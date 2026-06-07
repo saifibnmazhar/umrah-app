@@ -18,6 +18,7 @@
                         <th class="px-3 py-2 text-left font-medium">District</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Deadline</th>
                         <th class="px-3 py-2 text-left font-medium">Passenger</th>
+                        <th class="px-3 py-2 text-left font-medium">Passenger Address</th>
                         <th class="px-3 py-2 text-right font-medium">Cost (SAR)</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
                     </tr>
@@ -25,12 +26,12 @@
                 <tbody>
                     <template x-if="loading">
                         <tr>
-                            <td colspan="10" class="px-3 py-8 text-center text-slate-500">Loading...</td>
+                            <td colspan="11" class="px-3 py-8 text-center text-slate-500">Loading...</td>
                         </tr>
                     </template>
                     <template x-if="!loading && data.length === 0">
                         <tr>
-                            <td colspan="10" class="px-3 py-8 text-center text-slate-500">No fingerprint tasks assigned</td>
+                            <td colspan="11" class="px-3 py-8 text-center text-slate-500">No fingerprint tasks assigned</td>
                         </tr>
                     </template>
                     <template x-for="(row, index) in data" :key="row.fingerprint_detail_id || index">
@@ -43,6 +44,7 @@
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.district || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.deadline || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.passenger_name || '-'"></td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row.passenger_address || '-'"></td>
                             <td class="px-3 py-2 text-right">
                                 <input type="number"
                                        x-show="row.isFirstInGroup && canEditCost"
