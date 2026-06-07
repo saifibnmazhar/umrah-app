@@ -26,9 +26,15 @@ class AirlineController extends Controller
         ]);
 
         try {
-            Airline::create($validated);
+            $airline = Airline::create($validated);
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'airline' => $airline], 201);
+            }
             return redirect()->route('airlines.index')->with('success', 'Airline created successfully.');
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Failed to create airline.'], 500);
+            }
             return redirect()->back()->with('error', 'Failed to create airline.')->withInput();
         }
     }

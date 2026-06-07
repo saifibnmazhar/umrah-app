@@ -48,8 +48,9 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
-                    <select name="airline_id" id="airlineId" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" onchange="handleAirlineChange()">
+                    <select name="airline_id" id="airlineId" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" @change="onAirlineSelectChange($event)" onchange="handleAirlineChange()">
                         <option value="">Select Airline</option>
+                        <option value="__add_new__">+ Add New Airline</option>
                         @foreach($airlines as $airline)
                             <option value="{{ $airline->id }}" {{ old('airline_id') == $airline->id ? 'selected' : '' }}>
                                 {{ $airline->name }}
@@ -228,6 +229,7 @@
     </form>
 
     @include('partials.route-form-modal')
+    @include('partials.airline-form-modal')
 </div>
 
 <script>
@@ -405,6 +407,11 @@ function ticketFareForm() {
         cityData: { city_name: '', code: '', country: '' },
         cityErrors: {},
 
+        airlineModalOpen: false,
+        airlineSaving: false,
+        airlineData: { name: '', code: '' },
+        airlineErrors: {},
+
         onRouteSelectChange(event) {
             if (event.target.value === '__add_new__') {
                 event.target.value = '';
@@ -437,6 +444,101 @@ function ticketFareForm() {
         closeRouteModal() {
             this.showRouteModal = false;
             this.routeErrors = {};
+        },
+
+        onAirlineSelectChange(event) {
+            if (event.target.value === '__add_new__') {
+                event.target.value = '';
+                this.openAirlineModal();
+            }
+        },
+
+        openAirlineModal() {
+            this.airlineData = { name: '', code: '' };
+            this.airlineErrors = {};
+            this.airlineModalOpen = true;
+        },
+
+        closeAirlineModal() {
+            this.airlineModalOpen = false;
+            this.airlineErrors = {};
+        },
+
+        saveAirline() {
+            this.airlineSaving = true;
+            this.airlineErrors = {};
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            fetch('{{ route('airlines.store') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfMeta ? csrfMeta.getAttribute('content') : ''
+                },
+                body: JSON.stringify(this.airlineData)
+            })
+            .then(async (response) => {
+                this.airlineSaving = false;
+                const data = await response.json().catch(() => ({}));
+                if (response.status === 422 && data.errors) {
+                    this.airlineErrors = data.errors;
+                    return;
+                }
+                if (response.ok && data.success && data.airline) {
+                    this.appendAirlineToSelect(data.airline);
+                    this.closeAirlineModal();
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Airline created successfully', 'success');
+                    }
+                    return;
+                }
+                if (typeof window.showToast === 'function') {
+                    window.showToast((data && data.message) || 'Failed to create airline', 'error');
+                }
+            })
+            .catch(() => {
+                this.airlineSaving = false;
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Failed to create airline', 'error');
+                }
+            });
+        },
+
+        appendAirlineToSelect(airline) {
+            const sel = document.getElementById('airlineId');
+            if (!sel) return;
+
+            let exists = false;
+            for (let i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === String(airline.id)) { exists = true; break; }
+            }
+
+            if (!exists) {
+                const newOpt = document.createElement('option');
+                newOpt.value = String(airline.id);
+                newOpt.text = airline.name;
+                newOpt.selected = true;
+
+                const addNewOpt = sel.querySelector('option[value="__add_new__"]');
+                if (addNewOpt) {
+                    sel.insertBefore(newOpt, addNewOpt);
+                } else {
+                    sel.appendChild(newOpt);
+                }
+            } else {
+                for (let i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === String(airline.id)) {
+                        sel.options[i].selected = true;
+                        break;
+                    }
+                }
+            }
+
+            sel.value = String(airline.id);
+
+            if (typeof window.handleAirlineChange === 'function') {
+                window.handleAirlineChange();
+            }
         },
 
         saveRoute() {

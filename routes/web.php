@@ -58,7 +58,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('branches', BranchController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('offices', OfficeController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('city-codes', CityCodeController::class)->middleware('role:Super Admin,Co Admin');
-    Route::resource('airlines', AirlineController::class)->middleware('role:Super Admin,Co Admin');
+    Route::resource('airlines', AirlineController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('classes', TravelClassController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('airline-classes', AirlineClassController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('airline-cities', AirlineCityController::class)->middleware('role:Super Admin,Co Admin');
