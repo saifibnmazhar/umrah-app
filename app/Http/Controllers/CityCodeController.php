@@ -27,9 +27,15 @@ class CityCodeController extends Controller
         ]);
 
         try {
-            CityCode::create($validated);
+            $cityCode = CityCode::create($validated);
+            if ($request->wantsJson()) {
+                return response()->json(['success' => true, 'city' => $cityCode], 201);
+            }
             return redirect()->route('city-codes.index')->with('success', 'City code created successfully.');
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Failed to create city code.'], 500);
+            }
             return redirect()->back()->with('error', 'Failed to create city code.')->withInput();
         }
     }
