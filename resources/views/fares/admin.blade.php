@@ -81,21 +81,39 @@
         keys.forEach((k) => {
             const sel = document.getElementById(k);
             if (!sel) return;
+
             let exists = false;
             for (let i = 0; i < sel.options.length; i++) {
                 if (sel.options[i].value === String(city.id)) { exists = true; break; }
             }
-            if (!exists) {
+            if (exists) {
+                if (this.activeSelect === k) this.route[k] = String(city.id);
+                return;
+            }
+
+            const newOpt = document.createElement('option');
+            newOpt.value = String(city.id);
+            newOpt.text = label;
+
+            let inserted = false;
+            for (let i = 0; i < sel.options.length; i++) {
+                const opt = sel.options[i];
+                if (opt.value === '' || opt.value === '__add_new__') continue;
+                if (label.localeCompare(opt.text) < 0) {
+                    sel.insertBefore(newOpt, opt);
+                    inserted = true;
+                    break;
+                }
+            }
+            if (!inserted) {
                 const addNewOpt = sel.querySelector('option[value=&quot;__add_new__&quot;]');
-                const newOpt = document.createElement('option');
-                newOpt.value = String(city.id);
-                newOpt.text = label;
                 if (addNewOpt) {
                     sel.insertBefore(newOpt, addNewOpt);
                 } else {
                     sel.appendChild(newOpt);
                 }
             }
+
             if (this.activeSelect === k) {
                 this.route[k] = String(city.id);
             }
@@ -510,30 +528,30 @@
                             <label class="block text-sm font-medium text-slate-700 mb-1">From *</label>
                             <select id="from_city_id" name="from_city_id" x-model="route.from_city_id" @change="onCitySelectChange('from_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                 <option value="">Select</option>
+                                <option value="__add_new__">+ Add New City</option>
                                 @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                     <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                                 @endforeach
-                                <option value="__add_new__">+ Add New City</option>
                             </select>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">To *</label>
                             <select id="to_city_id" name="to_city_id" x-model="route.to_city_id" @change="onCitySelectChange('to_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                 <option value="">Select</option>
+                                <option value="__add_new__">+ Add New City</option>
                                 @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                     <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                                 @endforeach
-                                <option value="__add_new__">+ Add New City</option>
                             </select>
                         </div>
                         <div id="returnFieldModal">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Return To *</label>
                             <select id="return_city_id" name="return_city_id" x-model="route.return_city_id" @change="onCitySelectChange('return_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                 <option value="">Select</option>
+                                <option value="__add_new__">+ Add New City</option>
                                 @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                     <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                                 @endforeach
-                                <option value="__add_new__">+ Add New City</option>
                             </select>
                         </div>
                     </div>

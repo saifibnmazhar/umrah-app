@@ -67,10 +67,10 @@
                     class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('from_city_id') border-red-500 @enderror"
                     @change="onCitySelectChange('from_city_id', $event)">
                     <option value="">Select</option>
+                    <option value="__add_new__">+ Add New City</option>
                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                         <option value="{{ $city->id }}" {{ $route->from_city_id == $city->id ? 'selected' : '' }}>{{ $city->code }} ({{ $city->city_name }})</option>
                     @endforeach
-                    <option value="__add_new__">+ Add New City</option>
                 </select>
                 @error('from_city_id')
                     <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
@@ -83,10 +83,10 @@
                     class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('to_city_id') border-red-500 @enderror"
                     @change="onCitySelectChange('to_city_id', $event)">
                     <option value="">Select</option>
+                    <option value="__add_new__">+ Add New City</option>
                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                         <option value="{{ $city->id }}" {{ $route->to_city_id == $city->id ? 'selected' : '' }}>{{ $city->code }} ({{ $city->city_name }})</option>
                     @endforeach
-                    <option value="__add_new__">+ Add New City</option>
                 </select>
                 @error('to_city_id')
                     <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
@@ -99,10 +99,10 @@
                     class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('return_city_id') border-red-500 @enderror"
                     @change="onCitySelectChange('return_city_id', $event)">
                     <option value="">Select</option>
+                    <option value="__add_new__">+ Add New City</option>
                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                         <option value="{{ $city->id }}" {{ $route->return_city_id == $city->id ? 'selected' : '' }}>{{ $city->code }} ({{ $city->city_name }})</option>
                     @endforeach
-                    <option value="__add_new__">+ Add New City</option>
                 </select>
                 @error('return_city_id')
                     <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
@@ -342,11 +342,27 @@ function routeCityForm() {
                 for (let i = 0; i < select.options.length; i++) {
                     if (select.options[i].value === String(city.id)) { exists = true; break; }
                 }
-                if (!exists) {
+                if (exists) {
+                    if (this.activeSelect === id) select.value = String(city.id);
+                    return;
+                }
+
+                const newOption = document.createElement('option');
+                newOption.value = String(city.id);
+                newOption.text = label;
+
+                let inserted = false;
+                for (let i = 0; i < select.options.length; i++) {
+                    const opt = select.options[i];
+                    if (opt.value === '' || opt.value === '__add_new__') continue;
+                    if (label.localeCompare(opt.text) < 0) {
+                        select.insertBefore(newOption, opt);
+                        inserted = true;
+                        break;
+                    }
+                }
+                if (!inserted) {
                     const addNewOption = select.querySelector('option[value="__add_new__"]');
-                    const newOption = document.createElement('option');
-                    newOption.value = String(city.id);
-                    newOption.text = label;
                     if (addNewOption && addNewOption.parentNode === select) {
                         select.insertBefore(newOption, addNewOption);
                     } else {
