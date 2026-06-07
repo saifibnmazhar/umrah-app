@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Route;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
 
 class RouteController extends Controller
 {
@@ -14,7 +15,7 @@ class RouteController extends Controller
             ->orderBy('id', 'desc')
             ->paginate(15)
             ->withQueryString();
-        
+
         return view('routes.index', compact('routes'));
     }
 
@@ -26,7 +27,7 @@ class RouteController extends Controller
 public function store(Request $request)
     {
         $routeType = $request->route_type;
-        
+
         $rules = [
             'airline_id' => 'required|exists:airlines,id',
             'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
@@ -43,10 +44,22 @@ public function store(Request $request)
             $rules['return_city_id'] = 'required|exists:city_codes,id';
         }
 
-        $validated = $request->validate($rules);
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'errors'  => $validator->errors(),
+                ], 422);
+            }
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $validated = $validator->validated();
 
         try {
-            return DB::transaction(function () use ($request, $routeType, $validated) {
+            $route = DB::transaction(function () use ($request, $routeType, $validated) {
                 $route = Route::create($validated);
 
                 if ($routeType === 'multi_city' && $request->has('segments')) {
@@ -73,9 +86,25 @@ public function store(Request $request)
                     }
                 }
 
-                return redirect()->route('routes.index')->with('success', 'Route created successfully.');
+                return $route;
             });
+
+            if ($request->wantsJson()) {
+                $route->load(['airline', 'fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity', 'transits.transitCity']);
+                return response()->json([
+                    'success' => true,
+                    'route'   => $route,
+                ], 201);
+            }
+
+            return redirect()->route('routes.index')->with('success', 'Route created successfully.');
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to create route.',
+                ], 500);
+            }
             return redirect()->back()->with('error', 'Failed to create route.')->withInput();
         }
     }
@@ -83,21 +112,21 @@ public function store(Request $request)
     public function show(Route $route)
     {
         $route->load(['airline', 'fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity', 'transits.transitCity']);
-        
+
         return view('routes.show', compact('route'));
     }
 
     public function edit(Route $route)
     {
         $route->load(['multiSegments', 'transits']);
-        
+
         return view('routes.edit', compact('route'));
     }
 
     public function update(Request $request, Route $route)
     {
         $routeType = $request->route_type;
-        
+
         $rules = [
             'airline_id' => 'required|exists:airlines,id',
             'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
@@ -114,10 +143,22 @@ public function store(Request $request)
             $rules['return_city_id'] = 'required|exists:city_codes,id';
         }
 
-        $validated = $request->validate($rules);
+        $validator = Validator::make($request->all(), $rules);
+
+        if ($validator->fails()) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'errors'  => $validator->errors(),
+                ], 422);
+            }
+            return redirect()->back()->withErrors($validator)->withInput();
+        }
+
+        $validated = $validator->validated();
 
         try {
-            return DB::transaction(function () use ($request, $routeType, $validated, $route) {
+            $updatedRoute = DB::transaction(function () use ($request, $routeType, $validated, $route) {
                 $route->update($validated);
 
                 $route->multiSegments()->delete();
@@ -147,9 +188,25 @@ public function store(Request $request)
                     }
                 }
 
-                return redirect()->route('routes.index')->with('success', 'Route updated successfully.');
+                return $route;
             });
+
+            if ($request->wantsJson()) {
+                $updatedRoute->load(['airline', 'fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity', 'transits.transitCity']);
+                return response()->json([
+                    'success' => true,
+                    'route'   => $updatedRoute,
+                ], 200);
+            }
+
+            return redirect()->route('routes.index')->with('success', 'Route updated successfully.');
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Failed to update route.',
+                ], 500);
+            }
             return redirect()->back()->with('error', 'Failed to update route.')->withInput();
         }
     }
