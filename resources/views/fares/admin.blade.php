@@ -21,7 +21,14 @@
     onCitySelectChange(selectKey, event) {
         if (event.target.value === '__add_new__') {
             event.target.value = '';
-            this.route[selectKey] = '';
+            const nonRouteKeys = [
+                'segments_0_from_city_id', 'segments_0_to_city_id',
+                'segments_1_from_city_id', 'segments_1_to_city_id',
+                'transit_0_city_id', 'transit_1_city_id'
+            ];
+            if (!nonRouteKeys.includes(selectKey)) {
+                this.route[selectKey] = '';
+            }
             this.activeSelect = selectKey;
             this.openCityModal();
         }
@@ -76,9 +83,25 @@
         });
     },
     appendCityToAllSelects(city) {
-        const keys = ['from_city_id', 'to_city_id', 'return_city_id'];
+        const routeKeys = ['from_city_id', 'to_city_id', 'return_city_id'];
+        const segmentKeys = ['segments_0_from_city_id', 'segments_0_to_city_id', 'segments_1_from_city_id', 'segments_1_to_city_id'];
+        const transitKeys = ['transit_0_city_id', 'transit_1_city_id'];
+        const allKeys = [...routeKeys, ...segmentKeys, ...transitKeys];
         const label = `${city.code} (${city.city_name})`;
-        keys.forEach((k) => {
+
+        const setActiveValue = (k) => {
+            if (routeKeys.includes(k)) {
+                this.route[k] = String(city.id);
+            } else if (transitKeys.includes(k)) {
+                const idx = parseInt(k.split('_')[1], 10);
+                this.route.transits[idx].transit_city_id = String(city.id);
+            } else {
+                const sel = document.getElementById(k);
+                if (sel) sel.value = String(city.id);
+            }
+        };
+
+        allKeys.forEach((k) => {
             const sel = document.getElementById(k);
             if (!sel) return;
 
@@ -87,7 +110,7 @@
                 if (sel.options[i].value === String(city.id)) { exists = true; break; }
             }
             if (exists) {
-                if (this.activeSelect === k) this.route[k] = String(city.id);
+                if (this.activeSelect === k) setActiveValue(k);
                 return;
             }
 
@@ -114,9 +137,7 @@
                 }
             }
 
-            if (this.activeSelect === k) {
-                this.route[k] = String(city.id);
-            }
+            if (this.activeSelect === k) setActiveValue(k);
         });
     }
 }">
@@ -561,8 +582,9 @@
                         <div class="grid grid-cols-2 gap-4 mb-3">
                             <div>
                                 <label class="block text-sm text-slate-600 mb-1">Inbound From</label>
-                                <select name="segments[0][from_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                <select id="segments_0_from_city_id" name="segments[0][from_city_id]" @change="onCitySelectChange('segments_0_from_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                     <option value="">Select</option>
+                                    <option value="__add_new__">+ Add New City</option>
                                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                         <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                                     @endforeach
@@ -570,8 +592,9 @@
                             </div>
                             <div>
                                 <label class="block text-sm text-slate-600 mb-1">Inbound To</label>
-                                <select name="segments[0][to_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                <select id="segments_0_to_city_id" name="segments[0][to_city_id]" @change="onCitySelectChange('segments_0_to_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                     <option value="">Select</option>
+                                    <option value="__add_new__">+ Add New City</option>
                                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                         <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                                     @endforeach
@@ -582,8 +605,9 @@
                         <div class="grid grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm text-slate-600 mb-1">Outbound From</label>
-                                <select name="segments[1][from_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                <select id="segments_1_from_city_id" name="segments[1][from_city_id]" @change="onCitySelectChange('segments_1_from_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                     <option value="">Select</option>
+                                    <option value="__add_new__">+ Add New City</option>
                                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                         <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                                     @endforeach
@@ -591,8 +615,9 @@
                             </div>
                             <div>
                                 <label class="block text-sm text-slate-600 mb-1">Outbound To</label>
-                                <select name="segments[1][to_city_id]" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                                <select id="segments_1_to_city_id" name="segments[1][to_city_id]" @change="onCitySelectChange('segments_1_to_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                     <option value="">Select</option>
+                                    <option value="__add_new__">+ Add New City</option>
                                     @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                         <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                                     @endforeach
@@ -605,8 +630,9 @@
                     <div id="transitFieldsModal" class="hidden grid grid-cols-2 gap-4 mt-4">
                         <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_inbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Transit City (Inbound)</label>
-                            <select name="transits[0][transit_city_id]" x-model="route.transits[0].transit_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                            <select id="transit_0_city_id" name="transits[0][transit_city_id]" x-model="route.transits[0].transit_city_id" @change="onCitySelectChange('transit_0_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                 <option value="">Select</option>
+                                <option value="__add_new__">+ Add New City</option>
                                 @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                     <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                                 @endforeach
@@ -623,8 +649,9 @@
                         </div>
                         <div x-show="route.flight_type === 'transit' && (route.route_type === 'oneway_outbound' || route.route_type === 'round' || route.route_type === 'multi_city')">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Transit City (Outbound)</label>
-                            <select name="transits[1][transit_city_id]" x-model="route.transits[1].transit_city_id" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
+                            <select id="transit_1_city_id" name="transits[1][transit_city_id]" x-model="route.transits[1].transit_city_id" @change="onCitySelectChange('transit_1_city_id', $event)" class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border">
                                 <option value="">Select</option>
+                                <option value="__add_new__">+ Add New City</option>
                                 @foreach(\App\Models\CityCode::orderBy('code')->get() as $city)
                                     <option value="{{ $city->id }}">{{ $city->code }} ({{ $city->city_name }})</option>
                                 @endforeach
