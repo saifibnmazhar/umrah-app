@@ -42,9 +42,16 @@ class AirlineClassController extends Controller
         ]);
 
         try {
-            AirlineClass::create($validated);
+            $airlineClass = AirlineClass::create($validated);
+            if ($request->wantsJson()) {
+                $airlineClass->load(['airline', 'class']);
+                return response()->json(['success' => true, 'airline_class' => $airlineClass], 201);
+            }
             return redirect()->route('airline-classes.index')->with('success', 'Airline class created successfully.');
         } catch (\Exception $e) {
+            if ($request->wantsJson()) {
+                return response()->json(['success' => false, 'message' => 'Failed to create airline class.'], 500);
+            }
             return redirect()->back()->with('error', 'Failed to create airline class.')->withInput();
         }
     }

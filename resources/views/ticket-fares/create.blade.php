@@ -60,8 +60,9 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
-                    <select name="airline_classes_id" id="classId" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <select name="airline_classes_id" id="classId" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm" @change="onClassSelectChange($event)">
                         <option value="">Select Class</option>
+                        <option value="__add_new__">+ Add New Class</option>
                         @foreach($airlineClasses as $class)
                             <option value="{{ $class->id }}" data-airline-id="{{ $class->airline_id }}" {{ old('airline_classes_id') == $class->id ? 'selected' : '' }}>
                                 {{ $class->travelClass->name ?? 'Class ' . $class->id }}
@@ -230,6 +231,7 @@
 
     @include('partials.route-form-modal')
     @include('partials.airline-form-modal')
+    @include('partials.class-form-modal')
 </div>
 
 <script>
@@ -348,7 +350,7 @@ function filterClasses() {
     // Filter class options based on airline
     const options = classSelect.querySelectorAll('option');
     options.forEach(function(option) {
-        if (option.value === '') return;
+        if (option.value === '' || option.value === '__add_new__') return;
 
         const optionAirlineId = option.getAttribute('data-airline-id');
 
@@ -411,6 +413,11 @@ function ticketFareForm() {
         airlineSaving: false,
         airlineData: { name: '', code: '' },
         airlineErrors: {},
+
+        classModalOpen: false,
+        classSaving: false,
+        classData: { airline_id: '', class_id: '' },
+        classErrors: {},
 
         onRouteSelectChange(event) {
             if (event.target.value === '__add_new__') {
@@ -538,6 +545,106 @@ function ticketFareForm() {
 
             if (typeof window.handleAirlineChange === 'function') {
                 window.handleAirlineChange();
+            }
+        },
+
+        onClassSelectChange(event) {
+            if (event.target.value === '__add_new__') {
+                event.target.value = '';
+                this.openClassModal();
+            }
+        },
+
+        openClassModal() {
+            this.classData = { airline_id: '', class_id: '' };
+            this.classErrors = {};
+            this.classModalOpen = true;
+        },
+
+        closeClassModal() {
+            this.classModalOpen = false;
+            this.classErrors = {};
+        },
+
+        saveClass() {
+            this.classSaving = true;
+            this.classErrors = {};
+            const csrfMeta = document.querySelector('meta[name="csrf-token"]');
+            fetch('{{ route('airline-classes.store') }}', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfMeta ? csrfMeta.getAttribute('content') : ''
+                },
+                body: JSON.stringify(this.classData)
+            })
+            .then(async (response) => {
+                this.classSaving = false;
+                const data = await response.json().catch(() => ({}));
+                if (response.status === 422 && data.errors) {
+                    this.classErrors = data.errors;
+                    return;
+                }
+                if (response.ok && data.success && data.airline_class) {
+                    this.appendClassToSelect(data.airline_class);
+                    this.closeClassModal();
+                    if (typeof window.showToast === 'function') {
+                        window.showToast('Class created successfully', 'success');
+                    }
+                    return;
+                }
+                if (typeof window.showToast === 'function') {
+                    window.showToast((data && data.message) || 'Failed to create class', 'error');
+                }
+            })
+            .catch(() => {
+                this.classSaving = false;
+                if (typeof window.showToast === 'function') {
+                    window.showToast('Failed to create class', 'error');
+                }
+            });
+        },
+
+        appendClassToSelect(airlineClass) {
+            const sel = document.getElementById('classId');
+            if (!sel) return;
+
+            let exists = false;
+            for (let i = 0; i < sel.options.length; i++) {
+                if (sel.options[i].value === String(airlineClass.id)) { exists = true; break; }
+            }
+
+            const className = (airlineClass.class && airlineClass.class.name)
+                ? airlineClass.class.name
+                : ((airlineClass.travelClass && airlineClass.travelClass.name) ? airlineClass.travelClass.name : ('Class ' + airlineClass.id));
+
+            if (!exists) {
+                const newOpt = document.createElement('option');
+                newOpt.value = String(airlineClass.id);
+                newOpt.setAttribute('data-airline-id', String(airlineClass.airline_id));
+                newOpt.text = className;
+                newOpt.selected = true;
+
+                const addNewOpt = sel.querySelector('option[value="__add_new__"]');
+                if (addNewOpt) {
+                    sel.insertBefore(newOpt, addNewOpt);
+                } else {
+                    sel.appendChild(newOpt);
+                }
+            } else {
+                for (let i = 0; i < sel.options.length; i++) {
+                    if (sel.options[i].value === String(airlineClass.id)) {
+                        sel.options[i].selected = true;
+                        break;
+                    }
+                }
+            }
+
+            sel.value = String(airlineClass.id);
+
+            if (typeof window.filterClasses === 'function') {
+                window.filterClasses();
             }
         },
 
