@@ -108,12 +108,12 @@
                 <div class="flex items-center justify-between">
                     <div>
                         <p class="text-sm text-slate-500 mb-1">Regular Price</p>
-                        <p class="text-2xl font-bold text-slate-800">{{ number_format($package->regular_price, 0) }} BDT</p>
+                        <p class="text-2xl font-bold text-slate-800">@currency($package->regular_price, 0)</p>
                     </div>
                     @if($ticketType === 'offer' && $package->offer_price > 0)
                         <div class="text-right">
                             <p class="text-sm text-slate-500 mb-1">Offer Price</p>
-                            <p class="text-2xl font-bold text-emerald-600">{{ number_format($package->offer_price, 0) }} BDT</p>
+                            <p class="text-2xl font-bold text-emerald-600">@currency($package->offer_price, 0)</p>
                         </div>
                     @endif
                 </div>

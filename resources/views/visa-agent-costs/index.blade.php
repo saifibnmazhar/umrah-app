@@ -38,7 +38,7 @@
                     @forelse($visaAgentCosts as $cost)
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-2 text-slate-800 font-medium">{{ $cost->visaAgent->name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-slate-800 font-medium">{{ number_format($cost->visa_agent_cost, 2) }}</td>
+                            <td class="px-3 py-2 text-slate-800 font-medium">@currency($cost->visa_agent_cost, 2)</td>
                             <td class="px-3 py-2">
                                 <div class="flex gap-2">
                                     <button onclick="editCost({{ $cost->id }}, {{ $cost->visa_agent_id }}, {{ $cost->visa_agent_cost }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">Edit</button>

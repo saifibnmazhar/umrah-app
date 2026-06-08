@@ -38,7 +38,7 @@
                     @forelse($visaSellingPrices as $price)
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-2 text-slate-600">{{ $price->created_at->format('Y-m-d') }}</td>
-                            <td class="px-3 py-2 text-slate-800 font-medium">{{ number_format($price->selling_price, 2) }}</td>
+                            <td class="px-3 py-2 text-slate-800 font-medium">@currency($price->selling_price, 2)</td>
                              <td class="px-3 py-2">
                                 <div class="flex gap-2">
                                     @if($price->is_locked)

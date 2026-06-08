@@ -41,9 +41,9 @@
                     @foreach($ticketFares as $fare)
                         @php
                             $type = $fare['ticket_type'];
-                            $display = $fare['route'] . ' | ' . strtoupper($type ?? '?') . ' | BDT ' . number_format($fare['selling_fare'], 0);
+                            $display = $fare['route'] . ' | ' . strtoupper($type ?? '?') . ' | SAR ' . number_format($fare['selling_fare'], 0);
                             if ($type === 'offer') {
-                                $display .= ' | BDT ' . number_format($fare['offer_price'] ?? 0, 0);
+                                $display .= ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0);
                             }
                             if ($type === 'group' && ($fare['seats'] ?? null)) {
                                 $display .= ' | ' . $fare['seats'] . ' seats';
@@ -66,7 +66,7 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (BDT) *</label>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (SAR) *</label>
                     <input type="number" id="regularPrice" name="regular_price" value="{{ old('regular_price', $package->regular_price ?? '') }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="0.01" required readonly>
                     @error('regular_price')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -74,7 +74,7 @@
                 </div>
 
                 <div id="offerPriceContainer" class="{{ (isset($package) && $package->ticketFare?->ticket_type === \App\Enums\TicketType::OFFER) ? '' : 'hidden' }}">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
                     <input type="number" id="offerPrice" name="offer_price" value="{{ old('offer_price', $package->offer_price ?? '') }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
                     @error('offer_price')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
@@ -87,7 +87,7 @@
                     <span class="font-medium">Visa Selling Price (Latest):</span>
                     <span class="text-slate-800 font-medium">
                         @if($latestVisa)
-                            BDT {{ number_format($latestVisa->selling_price, 0) }}
+                            @currency($latestVisa->selling_price, 0)
                         @else
                             Not configured
                         @endif
@@ -116,9 +116,9 @@ const offerPrice = document.getElementById('offerPrice');
 const offerPriceContainer = document.getElementById('offerPriceContainer');
 
 function buildDisplay(fare) {
-    let disp = fare.route + ' | ' + fare.ticket_type.toUpperCase() + ' | BDT ' + fare.selling_fare;
+    let disp = fare.route + ' | ' + fare.ticket_type.toUpperCase() + ' | SAR ' + fare.selling_fare;
     if (fare.ticket_type === 'offer') {
-        disp += ' | BDT ' + fare.offer_price;
+        disp += ' | SAR ' + fare.offer_price;
     }
     if (fare.ticket_type === 'group' && fare.seats) {
         disp += ' | ' + fare.seats + ' seats';

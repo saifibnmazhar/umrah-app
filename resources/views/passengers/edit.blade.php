@@ -790,11 +790,11 @@
         },
 
         getTicketDisplayText(ticket) {
-            const price = ticket.selling_fare ? ticket.selling_fare + ' SAR' : '';
+            const price = ticket.selling_fare ? Alpine.store('currency').format(ticket.selling_fare) : '';
             const type = (ticket.ticket_type || 'standard').charAt(0).toUpperCase() + (ticket.ticket_type || 'standard').slice(1);
             switch (ticket.ticket_type) {
                 case 'offer':
-                    const offer = ticket.offer_price ? ' | ' + ticket.offer_price + ' SAR' : '';
+                    const offer = ticket.offer_price ? ' | ' + Alpine.store('currency').format(ticket.offer_price) : '';
                     return `${ticket.route || ''} | ${type} | ${price}${offer}`;
                 case 'group':
                     const seats = ticket.available_seats ? ' | ' + ticket.available_seats + ' seats' : '';

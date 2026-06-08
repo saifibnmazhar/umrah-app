@@ -54,7 +54,7 @@
                                        min="0">
                                 <span x-show="row.isFirstInGroup && !canEditCost"
                                       class="text-sm text-slate-700 font-medium"
-                                      x-text="row.cost != null && row.cost !== '' ? row.cost + ' SAR' : ''"></span>
+                                      x-text="row.cost != null && row.cost !== '' ? $currency(row.cost) : ''"></span>
                             </td>
                             <td class="px-3 py-2">
                                 <select x-show="canEditStatus"

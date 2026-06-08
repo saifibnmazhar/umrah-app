@@ -23,11 +23,11 @@
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-slate-600">Ticket Net Fare</span>
-                            <span class="text-sm font-medium text-slate-900">Rs. {{ number_format($package->ticketFare->net_fare ?? 0, 2) }}</span>
+                            <span class="text-sm font-medium text-slate-900">@currency($package->ticketFare->net_fare ?? 0, 2)</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-slate-600">Ticket Selling Fare</span>
-                            <span class="text-sm font-medium text-slate-900">Rs. {{ number_format($package->ticketFare->selling_fare ?? 0, 2) }}</span>
+                            <span class="text-sm font-medium text-slate-900">@currency($package->ticketFare->selling_fare ?? 0, 2)</span>
                         </div>
                     </div>
                 </div>
@@ -36,7 +36,7 @@
                     <div class="space-y-3">
                         <div class="flex justify-between">
                             <span class="text-sm text-slate-600">Visa Type</span>
-                            <span class="text-sm font-medium text-slate-900">{{ $package->visaSellingPrice?->selling_price ? 'BDT ' . number_format($package->visaSellingPrice->selling_price, 0) : 'N/A' }}</span>
+                            <span class="text-sm font-medium text-slate-900">{{ $package->visaSellingPrice?->selling_price ? 'SAR ' . number_format($package->visaSellingPrice->selling_price, 0) : 'N/A' }}</span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-sm text-slate-600">Visa Cost</span>
@@ -55,13 +55,13 @@
             <div class="grid grid-cols-2 gap-4">
                 <div class="flex justify-between">
                     <span class="text-sm text-slate-600">Regular Price</span>
-                    <span class="text-sm font-medium text-slate-900">Rs. {{ number_format($package->regular_price, 2) }}</span>
+                    <span class="text-sm font-medium text-slate-900">@currency($package->regular_price, 2)</span>
                 </div>
                 <div class="flex justify-between">
                     <span class="text-sm text-slate-600">Offer Price</span>
                     <span class="text-sm font-medium text-slate-900">
                         @if($package->offer_price)
-                            Rs. {{ number_format($package->offer_price, 2) }}
+                            @currency($package->offer_price, 2)
                         @else
                             -
                         @endif

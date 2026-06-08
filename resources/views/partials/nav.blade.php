@@ -100,6 +100,15 @@
                         </form>
                     </div>
                 </div>
+
+                <div class="relative flex items-center">
+                    <button @click="$store.currency.toggle()"
+                            class="nav-item px-2 py-1.5 rounded-md font-medium text-xs transition flex items-center gap-1.5 border border-slate-600 hover:border-slate-500 whitespace-nowrap">
+                        <span :class="$store.currency.mode === 'SAR' ? 'text-white font-bold' : 'text-slate-400'">SAR</span>
+                        <span class="text-slate-500">|</span>
+                        <span :class="$store.currency.mode === 'BDT' ? 'text-white font-bold' : 'text-slate-400'">BDT</span>
+                    </button>
+                </div>
             </div>
 
             <button @click="mobileOpen = !mobileOpen" class="md:hidden p-2 rounded-md hover:bg-slate-700" id="mobileMenuBtn">
@@ -179,6 +188,14 @@
                         Logout
                     </button>
                 </form>
+                <div class="mt-2 px-3">
+                    <button @click="$store.currency.toggle()"
+                            class="w-full text-left px-3 py-2 rounded-md font-medium text-sm transition flex items-center gap-2 border border-slate-600 hover:border-slate-500">
+                        <span :class="$store.currency.mode === 'SAR' ? 'text-white font-bold' : 'text-slate-400'">SAR</span>
+                        <span class="text-slate-500">|</span>
+                        <span :class="$store.currency.mode === 'BDT' ? 'text-white font-bold' : 'text-slate-400'">BDT</span>
+                    </button>
+                </div>
             </div>
         </div>
     </div>

@@ -83,7 +83,7 @@
                     <option value="">Select Payment</option>
                     @foreach($payments as $payment)
                         <option value="{{ $payment->id }}" {{ old('payment_id', $voucher->payment_id) == $payment->id ? 'selected' : '' }}>
-                            #{{ $payment->id }} - {{ number_format($payment->amount, 2) }} SAR
+                            #{{ $payment->id }} - @currency($payment->amount, 2)
                         </option>
                     @endforeach
                 </select>

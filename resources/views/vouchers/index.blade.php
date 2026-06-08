@@ -63,7 +63,7 @@
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Bank</span>
                                 @endif
                             </td>
-                            <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($voucher->amount, 2) }}</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($voucher->amount, 2)</td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($voucher->bdt_amount, 2) }}</td>
                             <td class="px-3 py-2">
                                 <div class="flex gap-2">
