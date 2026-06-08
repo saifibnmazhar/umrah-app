@@ -1121,7 +1121,6 @@ class BookingController extends Controller
 
         $passengerIds = $booking->passengers->pluck('id');
         $scope = request()->query('scope');
-
         $allDocs = Document::where(function ($q) use ($booking, $passengerIds, $scope) {
             if ($scope === 'customer') {
                 $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
@@ -1139,6 +1138,7 @@ class BookingController extends Controller
                   ->whereIn('owner_id', $passengerIds);
             });
         })->get();
+
 
         abort_if($allDocs->isEmpty(), 404, 'No documents found');
 
@@ -1161,10 +1161,17 @@ class BookingController extends Controller
                 $tmpFile = $tmpDir . '/doc_' . $doc->id . '.pdf';
 
                 if (in_array($ext, ['jpg', 'jpeg', 'png'])) {
-                    exec("convert " . escapeshellarg($fullPath) . " " . escapeshellarg($tmpFile) . " 2>/dev/null", $output, $code);
-                    if ($code === 0 && file_exists($tmpFile)) {
-                        $pdfFiles[] = $tmpFile;
-                    }
+                    $pdf = new \FPDF();
+                    $pdf->AddPage();
+                    list($imgW, $imgH) = getimagesize($fullPath);
+                    $scale = min($pdf->GetPageWidth() / $imgW, $pdf->GetPageHeight() / $imgH);
+                    $w = $imgW * $scale;
+                    $h = $imgH * $scale;
+                    $x = ($pdf->GetPageWidth() - $w) / 2;
+                    $y = ($pdf->GetPageHeight() - $h) / 2;
+                    $pdf->Image($fullPath, $x, $y, $w, $h);
+                    $pdf->Output('F', $tmpFile);
+                    $pdfFiles[] = $tmpFile;
                 } elseif ($ext === 'pdf') {
                     copy($fullPath, $tmpFile);
                     $pdfFiles[] = $tmpFile;
