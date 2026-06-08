@@ -1525,13 +1525,7 @@ function handleCustomerDocSelect(event) {
 }
 
 function downloadAllCustomerDocs() {
-    const docs = document.querySelectorAll('#customerDocumentsList .text-blue-600');
-    if (docs.length === 0) {
-        showToast('No customer documents to download', 'error');
-        return;
-    }
-    docs.forEach(doc => doc.click());
-    showToast('Downloading customer documents...');
+    window.location.href = '{{ route('bookings.download-all-docs', ['booking' => $booking->id, 'scope' => 'customer']) }}';
 }
 
 function downloadAllPassengerDocs() {

@@ -1120,20 +1120,32 @@ class BookingController extends Controller
         $booking->load('customer', 'passengers');
 
         $passengerIds = $booking->passengers->pluck('id');
+        $scope = request()->query('scope');
 
-        $allDocs = Document::where(function ($q) use ($booking, $passengerIds) {
-            $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
-              ->where('owner_id', $booking->id);
-        })->orWhere(function ($q) use ($passengerIds) {
-            $q->where('owner_type', 'App\Models\Passenger')
-              ->whereIn('owner_id', $passengerIds);
+        $allDocs = Document::where(function ($q) use ($booking, $passengerIds, $scope) {
+            if ($scope === 'customer') {
+                $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
+                  ->where('owner_id', $booking->id);
+            } elseif ($scope === 'passenger') {
+                $q->where('owner_type', 'App\Models\Passenger')
+                  ->whereIn('owner_id', $passengerIds);
+            } else {
+                $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
+                  ->where('owner_id', $booking->id);
+            }
+        })->when(!$scope || $scope === 'all', function ($q) use ($passengerIds) {
+            $q->orWhere(function ($q) use ($passengerIds) {
+                $q->where('owner_type', 'App\Models\Passenger')
+                  ->whereIn('owner_id', $passengerIds);
+            });
         })->get();
 
         abort_if($allDocs->isEmpty(), 404, 'No documents found');
 
         $invoiceId = $booking->invoice_id ?? 'INV';
         $customerName = $booking->customer->name ?? 'Customer';
-        $fileName = "{$invoiceId} {$customerName} All Docs.pdf";
+        $suffix = $scope === 'customer' ? 'Customer Docs' : ($scope === 'passenger' ? 'Passenger Docs' : 'All Docs');
+        $fileName = "{$invoiceId} {$customerName} {$suffix}.pdf";
 
         $tmpDir = storage_path('app/tmp/merge_' . uniqid());
         mkdir($tmpDir, 0755, true);
