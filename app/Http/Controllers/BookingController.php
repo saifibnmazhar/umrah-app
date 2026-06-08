@@ -36,6 +36,7 @@ use App\Services\PaymentService;
 use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Carbon\Carbon;
 
 class BookingController extends Controller
@@ -304,13 +305,18 @@ class BookingController extends Controller
 
             $customerDocs = $request->file('booking_customer_docs', []);
             if (is_array($customerDocs) && count($customerDocs) > 0) {
-                foreach ($customerDocs as $file) {
+                $booking->load('customer');
+                $invoiceId = $booking->invoice_id ?? 'INV';
+                $customerName = $booking->customer->name ?? 'Customer';
+                $existingCount = $booking->documents()->count();
+
+                foreach ($customerDocs as $index => $file) {
                     if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
                         $booking->documents()->create([
                             'owner_type' => 'booking',
                             'owner_id' => $booking->id,
                             'file_path' => $file->store('booking-docs', 'public'),
-                            'display_name' => $file->getClientOriginalName(),
+                            'display_name' => "{$invoiceId} {$customerName} " . ($existingCount + $index + 1),
                         ]);
                     }
                 }
@@ -663,13 +669,18 @@ class BookingController extends Controller
 
             $customerDocs = $request->file('booking_customer_docs', []);
             if (is_array($customerDocs) && count($customerDocs) > 0) {
-                foreach ($customerDocs as $file) {
+                $booking->load('customer');
+                $invoiceId = $booking->invoice_id ?? 'INV';
+                $customerName = $booking->customer->name ?? 'Customer';
+                $existingCount = $booking->documents()->count();
+
+                foreach ($customerDocs as $index => $file) {
                     if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
                         $booking->documents()->create([
                             'owner_type' => 'booking',
                             'owner_id' => $booking->id,
                             'file_path' => $file->store('booking-docs', 'public'),
-                            'display_name' => $file->getClientOriginalName(),
+                            'display_name' => "{$invoiceId} {$customerName} " . ($existingCount + $index + 1),
                         ]);
                     }
                 }
@@ -1100,5 +1111,102 @@ class BookingController extends Controller
             'total_value' => $booking->total_value,
             'invoice' => $invoiceData,
         ]);
+    }
+
+    public function downloadAllDocs(Booking $booking)
+    {
+        $this->ensureBranchAccess($booking);
+
+        $booking->load('customer', 'passengers');
+
+        $passengerIds = $booking->passengers->pluck('id');
+        $scope = request()->query('scope');
+        $allDocs = Document::where(function ($q) use ($booking, $passengerIds, $scope) {
+            if ($scope === 'customer') {
+                $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
+                  ->where('owner_id', $booking->id);
+            } elseif ($scope === 'passenger') {
+                $q->where('owner_type', 'App\Models\Passenger')
+                  ->whereIn('owner_id', $passengerIds);
+            } else {
+                $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
+                  ->where('owner_id', $booking->id);
+            }
+        })->when(!$scope || $scope === 'all', function ($q) use ($passengerIds) {
+            $q->orWhere(function ($q) use ($passengerIds) {
+                $q->where('owner_type', 'App\Models\Passenger')
+                  ->whereIn('owner_id', $passengerIds);
+            });
+        })->get();
+
+
+        abort_if($allDocs->isEmpty(), 404, 'No documents found');
+
+        $invoiceId = $booking->invoice_id ?? 'INV';
+        $customerName = $booking->customer->name ?? 'Customer';
+        $suffix = $scope === 'customer' ? 'Customer Docs' : ($scope === 'passenger' ? 'Passenger Docs' : 'All Docs');
+        $fileName = "{$invoiceId} {$customerName} {$suffix}.pdf";
+
+        $tmpDir = storage_path('app/tmp/merge_' . uniqid());
+        mkdir($tmpDir, 0755, true);
+
+        $pdfFiles = [];
+
+        try {
+            foreach ($allDocs as $doc) {
+                $fullPath = $this->resolveDocumentPath($doc);
+                if (!$fullPath || !file_exists($fullPath)) continue;
+
+                $ext = strtolower(pathinfo($doc->file_path, PATHINFO_EXTENSION));
+                $tmpFile = $tmpDir . '/doc_' . $doc->id . '.pdf';
+
+                if (in_array($ext, ['jpg', 'jpeg', 'png'])) {
+                    $pdf = new \FPDF();
+                    $pdf->AddPage();
+                    list($imgW, $imgH) = getimagesize($fullPath);
+                    $scale = min($pdf->GetPageWidth() / $imgW, $pdf->GetPageHeight() / $imgH);
+                    $w = $imgW * $scale;
+                    $h = $imgH * $scale;
+                    $x = ($pdf->GetPageWidth() - $w) / 2;
+                    $y = ($pdf->GetPageHeight() - $h) / 2;
+                    $pdf->Image($fullPath, $x, $y, $w, $h);
+                    $pdf->Output('F', $tmpFile);
+                    $pdfFiles[] = $tmpFile;
+                } elseif ($ext === 'pdf') {
+                    copy($fullPath, $tmpFile);
+                    $pdfFiles[] = $tmpFile;
+                }
+            }
+
+            abort_if(empty($pdfFiles), 404, 'No processable documents found');
+
+            $outputPdf = $tmpDir . '/merged.pdf';
+            $inputList = implode(' ', array_map('escapeshellarg', $pdfFiles));
+            exec("gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=" . escapeshellarg($outputPdf) . " {$inputList} 2>/dev/null", $output, $code);
+
+            if ($code !== 0 || !file_exists($outputPdf)) {
+                throw new \RuntimeException('Ghostscript merge failed');
+            }
+
+            $mergedContent = file_get_contents($outputPdf);
+        } finally {
+            array_map('unlink', glob($tmpDir . '/*'));
+            rmdir($tmpDir);
+        }
+
+        return response()->streamDownload(function () use ($mergedContent) {
+            echo $mergedContent;
+        }, $fileName);
+    }
+
+    private function resolveDocumentPath(Document $doc): ?string
+    {
+        if (Storage::disk('public')->exists($doc->file_path)) {
+            return Storage::disk('public')->path($doc->file_path);
+        }
+        if (Storage::exists($doc->file_path)) {
+            return Storage::path($doc->file_path);
+        }
+        return null;
     }
 }

@@ -2,6 +2,45 @@ import Alpine from 'alpinejs'
 import './booking.js'
 
 window.Alpine = Alpine
+
+Alpine.store('currency', {
+    mode: localStorage.getItem('currency_mode') || 'SAR',
+    rate: window.__currencyRate || 0,
+
+    init() {
+        this.rate = window.__currencyRate || 0
+    },
+
+    toggle() {
+        this.mode = this.mode === 'SAR' ? 'BDT' : 'SAR'
+        localStorage.setItem('currency_mode', this.mode)
+        this.convertAll()
+    },
+
+    format(amount, decimals = 2) {
+        const num = Number(amount) || 0
+        if (this.mode === 'SAR') {
+            return 'SAR ' + num.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+        }
+        const bdt = num * this.rate
+        return 'BDT ' + bdt.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+    },
+
+    convertAll() {
+        document.querySelectorAll('[data-sar]').forEach(el => {
+            const sar = parseFloat(el.dataset.sar)
+            const dec = parseInt(el.dataset.dec) || 2
+            if (!isNaN(sar)) {
+                el.textContent = this.format(sar, dec)
+            }
+        })
+    }
+})
+
+Alpine.magic('currency', () => {
+    return (amount, decimals = 2) => Alpine.store('currency').format(amount, decimals)
+})
+
 Alpine.start()
 
 Alpine.store('toast', {})
@@ -9,3 +48,8 @@ Alpine.store('toast', {})
 window.showToast = function(message, type = 'info') {
     Alpine.store('toast', { message, type })
 }
+
+document.addEventListener('DOMContentLoaded', () => {
+    Alpine.store('currency').init()
+    Alpine.store('currency').convertAll()
+})

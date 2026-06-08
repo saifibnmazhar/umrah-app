@@ -142,7 +142,7 @@
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Passport number</th>
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Package</th>
                         <th class="px-1 py-1 text-center font-semibold border border-[#00853e]" rowspan="2">Duration (Days)</th>
-                        <th class="px-1 py-1 text-right font-semibold border border-[#00853e]" rowspan="2">Package Value ({{ $currencySuffix }})</th>
+                        <th class="px-1 py-1 text-right font-semibold border border-[#00853e]" rowspan="2">Package Value</th>
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Trip</th>
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Airline</th>
                         <th class="px-1 py-1 text-left font-semibold border border-[#00853e]" rowspan="2">Route</th>
@@ -167,7 +167,7 @@
                         <td class="px-1 py-0.5 border border-slate-300">{{ $passenger->passport_no ?? '-' }}</td>
                         <td class="px-1 py-0.5 border border-slate-300">{{ $booking->package?->package_name ?? 'Package' }}</td>
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->stay_duration ?? '-' }}</td>
-                        <td class="px-1 py-0.5 text-right border border-slate-300">{{ number_format($passenger->package_value ?? 0, 2) }}</td>
+                        <td class="px-1 py-0.5 text-right border border-slate-300">@currency($passenger->package_value ?? 0, 2)</td>
                         <td class="px-1 py-0 text-center border border-slate-300">
                             <div class="py-0.5 leading-tight">In Bound</div>
                             <div class="border-t border-slate-300"></div>
@@ -363,24 +363,24 @@
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Sub Total ({{ $currencySuffix }}):</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($displaySubTotal ?? 0, 2) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Sub Total:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">@currency($subTotal, 2)</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Pax:</td>
                         <td class="px-2 py-1 text-right border border-slate-300">{{ $totalPackages ?? 0 }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Fingerprint Charge ({{ $currencySuffix }}):</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($displayFingerprintCharge ?? 0, 2) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Fingerprint Charge:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">@currency($fingerprintCharge, 2)</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Discount ({{ $currencySuffix }}):</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format($displayDiscount ?? 0, 2) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Discount:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">@currency($discount, 2)</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1.5 font-bold text-slate-800 border border-slate-600">Grand Total ({{ $currencySuffix }}):</td>
-                        <td class="px-2 py-1.5 text-right font-bold text-slate-800 border border-slate-600">{{ number_format($displayGrandTotal ?? 0, 2) }}</td>
+                        <td class="px-2 py-1.5 font-bold text-slate-800 border border-slate-600">Grand Total:</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-slate-800 border border-slate-600">@currency($grandTotal, 2)</td>
                     </tr>
                 </tbody>
             </table>
@@ -395,24 +395,24 @@
             <table class="w-full text-xs border-collapse">
                 <tbody>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Amount ({{ $currencySuffix }}):</td>
-                        <td class="px-2 py-1 text-right font-bold border border-slate-300">{{ number_format($displayGrandTotal ?? 0, 2) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Amount:</td>
+                        <td class="px-2 py-1 text-right font-bold border border-slate-300">@currency($grandTotal, 2)</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Previous Paid Amount ({{ $currencySuffix }}):</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, $displayPreviousPaid ?? 0), 2) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Previous Paid Amount:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">@currency($totalPaid - $currentPaid, 2)</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Current Paid Amount ({{ $currencySuffix }}):</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, $displayCurrentPaid ?? 0), 2) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Current Paid Amount:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">@currency($currentPaid, 2)</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Paid Amount ({{ $currencySuffix }}):</td>
-                        <td class="px-2 py-1 text-right border border-slate-300">{{ number_format(max(0, $displayTotalPaid ?? 0), 2) }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Paid Amount:</td>
+                        <td class="px-2 py-1 text-right border border-slate-300">@currency($totalPaid, 2)</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1.5 font-bold text-red-700 border border-red-400">Due Amount ({{ $currencySuffix }}):</td>
-                        <td class="px-2 py-1.5 text-right font-bold text-red-700 border border-red-400">{{ number_format(max(0, $displayDueAmount ?? 0), 2) }}</td>
+                        <td class="px-2 py-1.5 font-bold text-red-700 border border-red-400">Due Amount:</td>
+                        <td class="px-2 py-1.5 text-right font-bold text-red-700 border border-red-400">@currency($dueAmount, 2)</td>
                     </tr>
                 </tbody>
             </table>

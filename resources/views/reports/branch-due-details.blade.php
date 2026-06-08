@@ -50,17 +50,17 @@
                     <td class="px-4 py-3 text-sm text-slate-700">{{ $invoice ?? 'INV-0001' }}</td>
                     <td class="px-4 py-3 text-sm text-slate-700">{{ $passenger ?? 'John Doe' }}</td>
                     <td class="px-4 py-3 text-sm text-slate-700">{{ $package ?? 'Umrah Standard' }}</td>
-                    <td class="px-4 py-3 text-sm text-slate-700 text-right">{{ number_format($total_cost ?? 70000) }}</td>
-                    <td class="px-4 py-3 text-sm text-slate-700 text-right">{{ number_format($paid ?? 50000) }}</td>
-                    <td class="px-4 py-3 text-sm text-red-600 text-right">{{ number_format($due ?? 20000) }}</td>
+                    <td class="px-4 py-3 text-sm text-slate-700 text-right">@currency($total_cost ?? 70000, 0)</td>
+                    <td class="px-4 py-3 text-sm text-slate-700 text-right">@currency($paid ?? 50000, 0)</td>
+                    <td class="px-4 py-3 text-sm text-red-600 text-right">@currency($due ?? 20000, 0)</td>
                 </tr>
             </tbody>
             <tfoot class="bg-slate-50">
                 <tr>
                     <td colspan="4" class="px-4 py-3 text-sm font-medium text-slate-700">Total</td>
-                    <td class="px-4 py-3 text-sm font-medium text-slate-700 text-right">{{ number_format($total_cost ?? 70000) }}</td>
-                    <td class="px-4 py-3 text-sm font-medium text-slate-700 text-right">{{ number_format($paid ?? 50000) }}</td>
-                    <td class="px-4 py-3 text-sm font-medium text-red-600 text-right">{{ number_format($due ?? 20000) }}</td>
+                    <td class="px-4 py-3 text-sm font-medium text-slate-700 text-right">@currency($total_cost ?? 70000, 0)</td>
+                    <td class="px-4 py-3 text-sm font-medium text-slate-700 text-right">@currency($paid ?? 50000, 0)</td>
+                    <td class="px-4 py-3 text-sm font-medium text-red-600 text-right">@currency($due ?? 20000, 0)</td>
                 </tr>
             </tfoot>
         </table>

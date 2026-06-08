@@ -129,30 +129,30 @@
                             @if(!$isVisaPersonnel)
                             <div>
                                 <span class="text-xs text-slate-400">Ticket Fare (SAR)</span>
-                                <p class="text-slate-800 font-medium">{{ number_format($ticketFare, 2) }}</p>
+                                <p class="text-slate-800 font-medium">@currency($ticketFare, 2)</p>
                             </div>
                             @endif
                             @if(!$isTicketPersonnel)
                             <div>
                                 <span class="text-xs text-slate-400">Visa Price (SAR)</span>
-                                <p class="text-slate-800 font-medium">{{ number_format($visaCost, 2) }}</p>
+                                <p class="text-slate-800 font-medium">@currency($visaCost, 2)</p>
                             </div>
                             @endif
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <span class="text-xs text-slate-400">Fingerprint Charge (SAR)</span>
-                                <p class="text-slate-800 font-medium">{{ number_format($fingerprintCost, 2) }}</p>
+                                <p class="text-slate-800 font-medium">@currency($fingerprintCost, 2)</p>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
                             <div>
                                 <span class="text-xs text-slate-400">Due (SAR)</span>
-                                <p class="text-red-600 font-medium">{{ number_format($due, 2) }}</p>
+                                <p class="text-red-600 font-medium">@currency($due, 2)</p>
                             </div>
                             <div>
                                 <span class="text-xs text-slate-400">Paid (SAR)</span>
-                                <p class="text-green-600 font-medium">{{ number_format($paid, 2) }}</p>
+                                <p class="text-green-600 font-medium">@currency($paid, 2)</p>
                             </div>
                         </div>
                     </div>
@@ -449,10 +449,10 @@ function renderVisaSubmissionHistory() {
         tr.innerHTML = `
             <td class="px-3 py-2 text-slate-600">${item.date}</td>
             <td class="px-3 py-2 text-slate-800">${item.agent}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.agentCost.toLocaleString()} SAR</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.agentCost)}</td>
             <td class="px-3 py-2 text-slate-600">${item.flightDate}</td>
             <td class="px-3 py-2">${statusBadge}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.cancellationFee ? item.cancellationFee.toLocaleString() + ' SAR' : '-'}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.cancellationFee ? Alpine.store('currency').format(item.cancellationFee) : '-'}</td>
         `;
         tbody.appendChild(tr);
     });

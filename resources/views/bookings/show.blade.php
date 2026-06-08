@@ -67,10 +67,9 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-200">
                 <div>
                     <span class="text-slate-500 text-sm">Original Total</span>
-                    <p id="financialOriginalTotal" class="text-xl font-bold text-slate-800">{{ number_format($originalTotal, 2) }} SAR</p>
-                    <p id="financialOriginalTotalBdt" class="text-xs text-slate-500">≈ {{ number_format($originalTotalBdt, 2) }} BDT</p>
+                    <p id="financialOriginalTotal" class="text-xl font-bold text-slate-800">@currency($originalTotal, 2)</p>
                     <p id="financialDiscountIndicator" class="text-xs text-orange-600 mt-1 {{ ($booking->discount_amount ?? 0) > 0 ? '' : 'hidden' }}">
-                        −{{ number_format($booking->discount_amount ?? 0, 2) }} SAR discount
+                        −@currency($booking->discount_amount ?? 0) discount
                         @if($booking->discount_type?->value === 'percentage')
                             ({{ rtrim(rtrim(number_format((float) $booking->discount_value, 2), '0'), '.') }}%)
                         @endif
@@ -78,18 +77,15 @@
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Discounted Total</span>
-                    <p id="financialTotalValue" class="text-xl font-bold text-slate-800">{{ number_format($booking->invoice?->total_amount ?? 0, 2) }} SAR</p>
-                    <p id="financialTotalValueBdt" class="text-xs text-slate-800">≈ {{ number_format($discountedTotalBdt, 2) }} BDT</p>
+                    <p id="financialTotalValue" class="text-xl font-bold text-slate-800">@currency($booking->invoice?->total_amount ?? 0, 2)</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Total Paid</span>
-                    <p id="financialTotalPaid" class="text-xl font-bold text-green-600">{{ number_format($booking->invoice?->paid_amount ?? 0, 2) }} SAR</p>
-                    <p id="financialTotalPaidBdt" class="text-xs text-green-600">≈ {{ number_format($paidAmountBdt, 2) }} BDT</p>
+                    <p id="financialTotalPaid" class="text-xl font-bold text-green-600">@currency($booking->invoice?->paid_amount ?? 0, 2)</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Due</span>
-                    <p id="financialDue" class="text-xl font-bold text-red-600">{{ number_format($booking->invoice?->balance ?? 0, 2) }} SAR</p>
-                    <p id="financialDueBdt" class="text-xs text-red-600">≈ {{ number_format($balanceBdt, 2) }} BDT</p>
+                    <p id="financialDue" class="text-xl font-bold text-red-600">@currency($booking->invoice?->balance ?? 0, 2)</p>
                 </div>
             </div>
             <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
@@ -116,7 +112,7 @@
                     <span class="text-slate-500 text-sm ml-2">({{ $passenger->passport_no ?? 'N/A' }})</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="text-slate-800 font-medium">{{ number_format($passengerTotal, 2) }} SAR</span>
+                    <span class="text-slate-800 font-medium">@currency($passengerTotal, 2)</span>
                     <button onclick="viewPassengerDetails({{ $passenger->id }})" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-1 rounded">View</button>
                 </div>
             </div>
@@ -237,7 +233,7 @@
                             <td class="px-3 py-2 text-slate-600">{{ $payment->vouchers->first()?->voucher_id ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->payment_method?->value ?? 'Cash' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->transaction_id ?? '-' }}</td>
-                            <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->amount, 2) }} SAR</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($payment->amount, 2)</td>
                         </tr>
                         @empty
                         <tr>
@@ -367,15 +363,15 @@
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div class="flex justify-between">
                         <span class="text-slate-500">Total Package Value:</span>
-                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->total_amount ?? 0, 2) }} SAR</span>
+                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">@currency($booking->invoice?->total_amount ?? 0, 2)</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-500">Paid:</span>
-                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">{{ number_format($booking->invoice?->paid_amount ?? 0, 2) }} SAR</span>
+                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">@currency($booking->invoice?->paid_amount ?? 0, 2)</span>
                     </div>
                     <div class="flex justify-between col-span-2">
                         <span class="text-slate-600 font-medium">Due:</span>
-                        <span id="paymentDue" class="text-slate-800 font-bold text-right">{{ number_format($booking->invoice?->balance ?? 0, 2) }} SAR</span>
+                        <span id="paymentDue" class="text-slate-800 font-bold text-right">@currency($booking->invoice?->balance ?? 0, 2)</span>
                     </div>
                 </div>
             </div>
@@ -824,31 +820,25 @@ function updateFinancialSummary(invoice) {
     const fmt = (n) => Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     if (originalEl && invoice.original_total != null) {
-        originalEl.textContent = fmt(invoice.original_total) + ' SAR';
-    }
-    if (originalBdtEl && invoice.original_total != null && rate > 0) {
-        originalBdtEl.textContent = '≈ ' + fmt(invoice.original_total * rate) + ' BDT';
+        originalEl.innerHTML = Alpine.store('currency').format(invoice.original_total);
     }
     if (discountIndicatorEl) {
         if (invoice.discount_amount > 0) {
             const type = invoice.discount_type === 'fixed_amount' ? 'fixed' : invoice.discount_type;
             const pct = (type === 'percentage') ? ' (' + Number(invoice.discount_value).toString().replace(/\.?0+$/, '') + '%)' : '';
-            discountIndicatorEl.innerHTML = '−' + fmt(invoice.discount_amount) + ' SAR discount' + pct;
+            discountIndicatorEl.innerHTML = '−' + Alpine.store('currency').format(invoice.discount_amount) + ' discount' + pct;
             discountIndicatorEl.classList.remove('hidden');
         } else {
             discountIndicatorEl.classList.add('hidden');
         }
     }
 
-    if (totalEl) totalEl.textContent = fmt(invoice.total_amount) + ' SAR';
-    if (paidEl) paidEl.textContent = fmt(invoice.paid_amount) + ' SAR';
+    if (totalEl) totalEl.innerHTML = Alpine.store('currency').format(invoice.total_amount);
+    if (paidEl) paidEl.innerHTML = Alpine.store('currency').format(invoice.paid_amount);
     if (dueEl) {
-        dueEl.textContent = fmt(invoice.balance) + ' SAR';
+        dueEl.innerHTML = Alpine.store('currency').format(invoice.balance);
         dueEl.className = 'text-xl font-bold ' + (invoice.balance <= 0 ? 'text-green-600' : 'text-red-600');
     }
-    if (totalBdtEl && rate > 0) totalBdtEl.textContent = '≈ ' + fmt(invoice.total_amount * rate) + ' BDT';
-    if (paidBdtEl && rate > 0) paidBdtEl.textContent = '≈ ' + fmt(invoice.paid_amount * rate) + ' BDT';
-    if (dueBdtEl && rate > 0) dueBdtEl.textContent = '≈ ' + fmt(invoice.balance * rate) + ' BDT';
 }
 
 function appendPassengerRow(passenger, displayTotal) {
@@ -870,7 +860,7 @@ function appendPassengerRow(passenger, displayTotal) {
             '<span class="text-slate-500 text-sm ml-2">(' + escapeHtml(passport) + ')</span>' +
         '</div>' +
         '<div class="flex items-center gap-3">' +
-            '<span class="text-slate-800 font-medium">' + Number(total).toLocaleString() + ' SAR</span>' +
+            '<span class="text-slate-800 font-medium">' + Alpine.store('currency').format(total) + '</span>' +
             '<button onclick="viewPassengerDetails(' + passenger.id + ')" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-1 rounded">View</button>' +
         '</div>';
 
@@ -884,8 +874,7 @@ function escapeHtml(str) {
 }
 
 function downloadAllDocs() {
-    showToast('Downloading all documents...');
-    setTimeout(() => showToast('No documents available for download'), 1500);
+    window.location.href = '{{ route('bookings.download-all-docs', $booking->id) }}';
 }
 
 function viewPassengerDetails(passengerId) {
@@ -1288,9 +1277,9 @@ function renderRefundHistory() {
             <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
             <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
             <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.agentRefund || 0} SAR</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.customerRefund || 0} SAR</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${item.profit || 0} SAR</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.agentRefund || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerRefund || 0)}</td>
+            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0)}</td>
             <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
             <td class="px-3 py-2">${statusBadge}</td>
             <td class="px-3 py-2">
@@ -1323,9 +1312,9 @@ function generateRefundDetailsHTML(item) {
                     <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
                     <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
                     <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${item.agentRefund || 0} SAR</p></div>
-                    <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${item.customerRefund || 0} SAR</p></div>
-                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${item.profit || 0} SAR</p></div>
+                    <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.agentRefund || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerRefund || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0)}</p></div>
                     <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
                 </div>
             </div>
@@ -1408,9 +1397,9 @@ function renderAdditionalTicketHistory() {
             <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
             <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
             <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.additionalTicketCost || 0} SAR</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.customerPayment || 0} SAR</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${item.profit || 0} SAR</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerPayment || 0)}</td>
+            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0)}</td>
             <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
             <td class="px-3 py-2">${statusBadge}</td>
             <td class="px-3 py-2">
@@ -1443,9 +1432,9 @@ function generateAddTicketDetailsHTML(item) {
                     <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
                     <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
                     <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Additional Ticket Cost</span><p class="text-slate-800 font-medium">${item.additionalTicketCost || 0} SAR</p></div>
-                    <div><span class="text-xs text-slate-400">Customer Payment</span><p class="text-slate-800 font-medium">${item.customerPayment || 0} SAR</p></div>
-                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${item.profit || 0} SAR</p></div>
+                    <div><span class="text-xs text-slate-400">Additional Ticket Cost</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Customer Payment</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerPayment || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0)}</p></div>
                     <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
                 </div>
             </div>
@@ -1526,23 +1515,11 @@ function handleCustomerDocSelect(event) {
 }
 
 function downloadAllCustomerDocs() {
-    const docs = document.querySelectorAll('#customerDocumentsList .text-blue-600');
-    if (docs.length === 0) {
-        showToast('No customer documents to download', 'error');
-        return;
-    }
-    docs.forEach(doc => doc.click());
-    showToast('Downloading customer documents...');
+    window.location.href = '{{ route('bookings.download-all-docs', ['booking' => $booking->id, 'scope' => 'customer']) }}';
 }
 
 function downloadAllPassengerDocs() {
-    const docs = document.querySelectorAll('#passengerDocumentsList .text-blue-600');
-    if (docs.length === 0) {
-        showToast('No passenger documents to download', 'error');
-        return;
-    }
-    docs.forEach(doc => doc.click());
-    showToast('Downloading passenger documents...');
+    window.location.href = '{{ route('bookings.download-all-docs', ['booking' => $booking->id, 'scope' => 'passenger']) }}';
 }
 
 function downloadDoc(docId) {

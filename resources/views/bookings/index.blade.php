@@ -195,9 +195,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <td class="px-3 py-2 text-slate-700">{{ $booking->office->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->total_amount ?? 0 }} SAR</td>@endif
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->paid_amount ?? 0 }} SAR</td>@endif
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $booking->invoice?->balance ?? 0 }} SAR</td>@endif
+                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->total_amount ?? 0)</td>@endif
+                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->paid_amount ?? 0)</td>@endif
+                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->balance ?? 0)</td>@endif
                             <td class="px-3 py-2">
                                 <a href="{{ route('bookings.show', $booking->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
                                 @if($canDeleteBooking)
@@ -315,10 +315,10 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ optional($passenger->actual_flight_date)->format('d M Y') ?: 'N/A' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
-    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $passenger->package_value ? number_format($passenger->package_value, 2) . ' SAR' : '—' }}</td>@endif
+    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2)@else—@endif</td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
-    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">{{ $isFirstRow ? ($passenger->booking?->invoice?->balance ? number_format($passenger->booking->invoice->balance, 2) . ' SAR' : '—') : '' }}</td>@endif
+    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice?->balance)@currency($passenger->booking->invoice->balance, 2)@else—@endif @endif</td>@endif
     @if(!$isTicketPersonnel && !$isBranchPersonnel)
     <td class="px-3 py-2">
         <div class="flex items-center gap-1 flex-wrap">
@@ -346,7 +346,7 @@ if ($route) {
     @if(!$isVisaPersonnel && !$isBranchPersonnel)
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 flex-wrap">
-            <span class="font-medium text-sm">{{ $fareAmount > 0 ? number_format($fareAmount, 2) . ' SAR' : '—' }}</span>
+            <span class="font-medium text-sm">@if($fareAmount > 0)@currency($fareAmount, 2)@else—@endif</span>
             <button @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
             <button @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
         </div>
@@ -1234,9 +1234,9 @@ function updateFingerprintLocation(bookingId, location, select) {
                 const cells = row.querySelectorAll('td');
                 @if($canViewFinancialColumns)
                 if (cells.length >= 12) {
-                    cells[9].textContent = data.invoice.total_amount + ' SAR';
-                    cells[10].textContent = data.invoice.paid_amount + ' SAR';
-                    cells[11].textContent = data.invoice.balance + ' SAR';
+                    cells[9].textContent = Alpine.store('currency').format(data.invoice.total_amount);
+                    cells[10].textContent = Alpine.store('currency').format(data.invoice.paid_amount);
+                    cells[11].textContent = Alpine.store('currency').format(data.invoice.balance);
                 }
                 @endif
             }

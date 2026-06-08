@@ -224,10 +224,10 @@ $refundRequests = [];
                     </div>
                     <div class="text-right">
                         @if($package->offer_price && $package->ticketFare?->ticket_type?->value === 'offer')
-                        <span class="text-sm text-slate-400 line-through mr-2">{{ number_format($package->regular_price, 0) }} SAR</span>
+                        <span class="text-sm text-slate-400 line-through mr-2">@currency($package->regular_price, 0)</span>
                         @endif
                         <span class="font-semibold {{ $package->offer_price && $package->ticketFare?->ticket_type?->value === 'offer' ? 'text-emerald-600' : 'text-slate-800' }}">
-                            {{ number_format($package->offer_price ?? $package->regular_price, 0) }} SAR
+                            @currency($package->offer_price ?? $package->regular_price, 0)
                         </span>
                     </div>
                 </div>

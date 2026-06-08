@@ -198,9 +198,9 @@
                                 </template>
                             </td>
                             <td class="px-2 py-2 text-xs text-right border-r border-gray-200 font-medium text-green-700">
-                                <span x-show="row._isFirstPassenger && canViewFinancials" x-text="formatCurrency(row.fingerprint_charge)"></span>
+                                <span x-show="row._isFirstPassenger && canViewFinancials" x-text="$currency(row.fingerprint_charge)"></span>
                             </td>
-                            <td class="px-2 py-2 text-xs text-right border-r border-gray-200" x-text="row._isFirstPassenger ? formatCurrency(row.fingerprint_cost) : ''"></td>
+                            <td class="px-2 py-2 text-xs text-right border-r border-gray-200" x-text="row._isFirstPassenger ? $currency(row.fingerprint_cost) : ''"></td>
                             <td class="px-2 py-2 text-xs text-center border-r border-gray-200" x-text="row._isFirstPassenger ? (row.fingerprint_deadline || '-') : ''"></td>
                             <td class="px-2 py-2 text-xs text-center border-r border-gray-200" x-text="row.completed_date || '-'"></td>
                             <td class="px-2 py-2 text-xs text-left border-r border-gray-200" x-text="row.required_flight || '-'"></td>
@@ -210,9 +210,9 @@
                                 :class="getStatusClass(row.status_display)"></td>
                             <td class="px-2 py-2 text-xs text-left border-r border-gray-200" x-text="row.remarks || '-'"></td>
                             <td x-show="canViewFinancials" class="px-2 py-2 text-xs text-right font-semibold text-green-600"
-                                x-text="row._isFirstPassenger && row.profit ? formatCurrency(row.profit) : ''"></td>
+                                x-text="row._isFirstPassenger && row.profit ? $currency(row.profit) : ''"></td>
                             <td x-show="canViewFinancials" class="px-2 py-2 text-xs text-right font-semibold text-red-600"
-                                x-text="row._isFirstPassenger && row.loss ? formatCurrency(row.loss) : ''"></td>
+                                x-text="row._isFirstPassenger && row.loss ? $currency(row.loss) : ''"></td>
                         </tr>
                     </template>
                 </tbody>
@@ -269,25 +269,25 @@
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Fingerprint Charge:</span>
-                            <span class="text-xs font-bold text-green-700" x-text="canViewFinancials ? formatCurrency(summary.total_fingerprint_charge) : '-'"></span>
+                            <span class="text-xs font-bold text-green-700" x-text="canViewFinancials ? $currency(summary.total_fingerprint_charge) : '-'"></span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Costing:</span>
-                            <span class="text-xs font-bold text-gray-800" x-text="formatCurrency(summary.total_fingerprint_cost)"></span>
+                            <span class="text-xs font-bold text-gray-800" x-text="$currency(summary.total_fingerprint_cost)"></span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Profit:</span>
-                            <span class="text-xs font-bold text-green-700" x-text="canViewFinancials ? formatCurrency(summary.total_profit) : '-'"></span>
+                            <span class="text-xs font-bold text-green-700" x-text="canViewFinancials ? $currency(summary.total_profit) : '-'"></span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Loss:</span>
-                            <span class="text-xs font-bold text-red-700" x-text="canViewFinancials ? formatCurrency(summary.total_loss) : '-'"></span>
+                            <span class="text-xs font-bold text-red-700" x-text="canViewFinancials ? $currency(summary.total_loss) : '-'"></span>
                         </div>
                         <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
                             <span class="text-xs font-bold text-gray-700">Net Profit/Loss:</span>
                             <span class="text-xs font-bold" x-show="canViewFinancials"
                                   :class="summary.total_profit_loss >= 0 ? 'text-green-700' : 'text-red-700'"
-                                  x-text="formatCurrency(summary.total_profit_loss)"></span>
+                                  x-text="$currency(summary.total_profit_loss)"></span>
                             <span class="text-xs font-bold text-gray-700" x-show="!canViewFinancials">-</span>
                         </div>
                     </div>
@@ -428,17 +428,17 @@
                                 <div class="grid grid-cols-3 gap-4">
                                     <div>
                                         <label class="text-xs font-medium text-gray-500">Fingerprint Charge</label>
-                                        <p class="text-sm font-semibold text-green-700" x-text="formatCurrency(details.fingerprint_charge)"></p>
+                                        <p class="text-sm font-semibold text-green-700" x-text="$currency(details.fingerprint_charge)"></p>
                                     </div>
                                     <div>
                                         <label class="text-xs font-medium text-gray-500">Fingerprint Cost</label>
-                                        <p class="text-sm" x-text="formatCurrency(details.fingerprint_cost)"></p>
+                                        <p class="text-sm" x-text="$currency(details.fingerprint_cost)"></p>
                                     </div>
                                     <div>
                                         <label class="text-xs font-medium text-gray-500">Profit/Loss</label>
                                         <p class="text-sm font-semibold">
-                                            <span x-show="details.profit > 0" class="text-green-700" x-text="'Profit: ' + formatCurrency(details.profit)"></span>
-                                            <span x-show="details.loss > 0" class="text-red-700" x-text="'Loss: ' + formatCurrency(details.loss)"></span>
+                                            <span x-show="details.profit > 0" class="text-green-700" x-text="'Profit: ' + $currency(details.profit)"></span>
+                                            <span x-show="details.loss > 0" class="text-red-700" x-text="'Loss: ' + $currency(details.loss)"></span>
                                             <span x-show="!details.profit && !details.loss">-</span>
                                         </p>
                                     </div>
@@ -613,10 +613,7 @@ function fingerprintReport(options = {}) {
             this.details = null;
         },
 
-        formatCurrency(amount) {
-            if (amount === null || amount === undefined || amount === '') return '-';
-            return `${parseFloat(amount).toFixed(2)} SAR`;
-        },
+
 
         getStatusClass(status) {
             if (!status) return 'text-gray-800';

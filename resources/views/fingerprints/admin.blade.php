@@ -84,7 +84,7 @@
                             <td class="px-3 py-2 text-slate-600 whitespace-pre-line" x-text="(row.customer_mobile || '') + '\n' + (row.passenger_mobile || '')"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? (row.deadline || '-') : ''"></td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">
-                                <span x-show="row._isFirstPassenger" x-text="row.cost != null && row.cost != '' ? row.cost + ' SAR' : 'N/A'"></span>
+                                <span x-show="row._isFirstPassenger" x-text="row.cost != null && row.cost != '' ? $currency(row.cost) : 'N/A'"></span>
                             </td>
                             <td class="px-3 py-2 text-slate-600">
                                 <span x-show="row._isFirstPassenger" x-text="row.fingerprint_location || '-'"></span>

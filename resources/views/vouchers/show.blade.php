@@ -77,7 +77,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-slate-500">Amount (SAR)</p>
-                    <p class="font-medium text-slate-800">{{ number_format($voucher->amount, 2) }}</p>
+                    <p class="font-medium text-slate-800">@currency($voucher->amount, 2)</p>
                 </div>
                 <div>
                     <p class="text-sm text-slate-500">BDT Amount</p>

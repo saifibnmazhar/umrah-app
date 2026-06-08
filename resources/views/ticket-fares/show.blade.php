@@ -89,16 +89,16 @@
                 <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                     <div>
                         <span class="text-sm text-slate-500">Net Fare</span>
-                        <p class="text-slate-800 font-medium text-lg">{{ number_format($ticketFare->net_fare, 2) }} SAR</p>
+                        <p class="text-slate-800 font-medium text-lg">@currency($ticketFare->net_fare, 2)</p>
                     </div>
                     <div>
                         <span class="text-sm text-slate-500">Selling Fare</span>
-                        <p class="text-slate-800 font-medium text-lg">{{ number_format($ticketFare->selling_fare, 2) }} SAR</p>
+                        <p class="text-slate-800 font-medium text-lg">@currency($ticketFare->selling_fare, 2)</p>
                     </div>
                     @if($ticketFare->offer_price)
                     <div>
                         <span class="text-sm text-slate-500">Offer Price</span>
-                        <p class="text-green-600 font-medium text-lg">{{ number_format($ticketFare->offer_price, 2) }} SAR</p>
+                        <p class="text-green-600 font-medium text-lg">@currency($ticketFare->offer_price, 2)</p>
                     </div>
                     @endif
                     <div>

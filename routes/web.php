@@ -89,8 +89,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('bookings', BookingController::class)->except(['create', 'store', 'edit', 'update', 'destroy'])->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
     Route::get('/bookings/{booking}/edit', [BookingController::class, 'edit'])->name('bookings.edit')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
-    Route::put('/bookings/{booking}', [BookingController::class, 'update'])->name('bookings.update')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
-    Route::patch('/bookings/{booking}', [BookingController::class, 'update'])->name('bookings.update')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
+    Route::match(['PUT', 'PATCH'], '/bookings/{booking}', [BookingController::class, 'update'])->name('bookings.update')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
     Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy')->middleware('role:Super Admin,Co Admin,Branch Manager');
     Route::resource('passengers', PassengerController::class)->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
     Route::patch('/passengers/{passenger}/status', [PassengerController::class, 'updateStatus'])->name('passengers.update-status')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
@@ -107,6 +106,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/bookings/{booking}/payment', [BookingController::class, 'storePayment'])->name('bookings.payment.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
 
     // Document routes
+    Route::get('/bookings/{booking}/download-all-docs', [BookingController::class, 'downloadAllDocs'])->name('bookings.download-all-docs');
     Route::post('/documents/upload', [DocumentController::class, 'upload'])->name('documents.upload');
     Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
     Route::post('/documents/passenger/upload', [DocumentController::class, 'uploadPassenger'])->name('documents.passenger.upload');

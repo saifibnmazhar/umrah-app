@@ -546,6 +546,25 @@ function ticketFareForm() {
             if (typeof window.handleAirlineChange === 'function') {
                 window.handleAirlineChange();
             }
+
+            const classAirlineSel = document.getElementById('modal_class_airline_id');
+            if (classAirlineSel) {
+                let classExists = false;
+                for (let i = 0; i < classAirlineSel.options.length; i++) {
+                    if (classAirlineSel.options[i].value === String(airline.id)) { classExists = true; break; }
+                }
+                if (!classExists) {
+                    const newOpt = document.createElement('option');
+                    newOpt.value = String(airline.id);
+                    newOpt.text = airline.name;
+                    const placeholder = classAirlineSel.querySelector('option[value=""]');
+                    if (placeholder && placeholder.nextSibling) {
+                        classAirlineSel.insertBefore(newOpt, placeholder.nextSibling);
+                    } else {
+                        classAirlineSel.appendChild(newOpt);
+                    }
+                }
+            }
         },
 
         onClassSelectChange(event) {

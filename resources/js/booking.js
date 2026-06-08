@@ -487,12 +487,12 @@ customDurationModalVisible: false,
         const summaryTotalBeforeDiscount = document.getElementById('summaryTotalBeforeDiscount');
         const summaryTotalValue = document.getElementById('summaryTotalValue');
         
-        if (summaryPackage) summaryPackage.textContent = packageValue > 0 ? `${packageValue} SAR` : '-';
-        if (summaryFingerprintCharge) summaryFingerprintCharge.textContent = fingerprintCharge > 0 ? `${fingerprintCharge} SAR` : '-';
+        if (summaryPackage) summaryPackage.textContent = packageValue > 0 ? Alpine.store('currency').format(packageValue) : '-';
+        if (summaryFingerprintCharge) summaryFingerprintCharge.textContent = fingerprintCharge > 0 ? Alpine.store('currency').format(fingerprintCharge) : '-';
         if (summaryPaxQty) summaryPaxQty.textContent = paxQty;
-        if (summaryDiscount) summaryDiscount.textContent = discountAmount > 0 ? `-${discountAmount} SAR` : '-';
-        if (summaryTotalBeforeDiscount) summaryTotalBeforeDiscount.textContent = totalBeforeDiscount > 0 ? `${totalBeforeDiscount} SAR` : '-';
-        if (summaryTotalValue) summaryTotalValue.textContent = `${totalValue} SAR`;
+        if (summaryDiscount) summaryDiscount.textContent = discountAmount > 0 ? '-' + Alpine.store('currency').format(discountAmount) : '-';
+        if (summaryTotalBeforeDiscount) summaryTotalBeforeDiscount.textContent = totalBeforeDiscount > 0 ? Alpine.store('currency').format(totalBeforeDiscount) : '-';
+        if (summaryTotalValue) summaryTotalValue.textContent = Alpine.store('currency').format(totalValue);
     },
 
     openPassengerModal(index = null) {
@@ -618,9 +618,9 @@ customDurationModalVisible: false,
         const paidEl = document.getElementById('paymentPaid');
         const dueEl = document.getElementById('paymentDue');
         
-        if (totalEl) totalEl.textContent = totalPackageValue + ' SAR';
-        if (paidEl) paidEl.textContent = '0 SAR';
-        if (dueEl) dueEl.textContent = due + ' SAR';
+        if (totalEl) totalEl.textContent = Alpine.store('currency').format(totalPackageValue);
+        if (paidEl) paidEl.textContent = Alpine.store('currency').format(0);
+        if (dueEl) dueEl.textContent = Alpine.store('currency').format(due);
         
         this.paymentData = {
             currency: 'SAR',
@@ -1582,11 +1582,11 @@ Alpine.data('createBookingApp', () => ({
     },
 
     getTicketDisplayText(ticket) {
-        const price = ticket.selling_fare ? ticket.selling_fare + ' SAR' : '';
+        const price = ticket.selling_fare ? Alpine.store('currency').format(ticket.selling_fare, 0) : '';
         const type = ticket.ticket_type.charAt(0).toUpperCase() + ticket.ticket_type.slice(1);
         switch (ticket.ticket_type) {
             case 'offer':
-                const offer = ticket.offer_price ? ' | ' + ticket.offer_price + ' SAR' : '';
+                const offer = ticket.offer_price ? ' | ' + Alpine.store('currency').format(ticket.offer_price, 0) : '';
                 return `${ticket.route} | ${type} | ${price}${offer}`;
             case 'group':
                 const seats = ticket.available_seats ? ' | ' + ticket.available_seats + ' seats' : '';
@@ -1994,9 +1994,9 @@ Alpine.data('createBookingApp', () => ({
         const totalEl = document.getElementById('paymentTotalPackageValue');
         const paidEl = document.getElementById('paymentPaid');
         const dueEl = document.getElementById('paymentDue');
-        if (totalEl) totalEl.textContent = grand.toFixed(2) + ' SAR';
-        if (paidEl) paidEl.textContent = '0 SAR';
-        if (dueEl) dueEl.textContent = due.toFixed(2) + ' SAR';
+        if (totalEl) totalEl.textContent = Alpine.store('currency').format(grand);
+        if (paidEl) paidEl.textContent = Alpine.store('currency').format(0);
+        if (dueEl) dueEl.textContent = Alpine.store('currency').format(due);
         this.paymentMaxAmount = due;
         this.paymentData = {
             currency: 'SAR',
@@ -2075,7 +2075,7 @@ Alpine.data('createBookingApp', () => ({
         }
 
         if (amountSAR > this.paymentMaxAmount) {
-            alert('Payment amount cannot exceed the total booking value of ' + this.paymentMaxAmount.toFixed(2) + ' SAR');
+            alert('Payment amount cannot exceed the total booking value of ' + Alpine.store('currency').format(this.paymentMaxAmount));
             return;
         }
         
@@ -3118,9 +3118,9 @@ Alpine.data('editBookingApp', () => ({
         const paidEl = document.getElementById('paymentPaid');
         const dueEl = document.getElementById('paymentDue');
 
-        if (totalEl) totalEl.textContent = totalPackageValue + ' SAR';
-        if (paidEl) paidEl.textContent = '0 SAR';
-        if (dueEl) dueEl.textContent = due + ' SAR';
+        if (totalEl) totalEl.textContent = Alpine.store('currency').format(totalPackageValue);
+        if (paidEl) paidEl.textContent = Alpine.store('currency').format(0);
+        if (dueEl) dueEl.textContent = Alpine.store('currency').format(due);
 
         this.paymentData = {
             currency: 'SAR',
@@ -3168,7 +3168,7 @@ Alpine.data('editBookingApp', () => ({
         }
 
         if (amountSAR > this.paymentMaxAmount) {
-            alert('Payment amount cannot exceed the total booking value of ' + this.paymentMaxAmount.toFixed(2) + ' SAR');
+            alert('Payment amount cannot exceed the total booking value of ' + Alpine.store('currency').format(this.paymentMaxAmount));
             return;
         }
 
@@ -3372,12 +3372,12 @@ Alpine.data('editBookingApp', () => ({
     },
 
     getTicketDisplayText(ticket) {
-        const price = ticket.selling_fare ? ticket.selling_fare + ' SAR' : '';
+        const price = ticket.selling_fare ? Alpine.store('currency').format(ticket.selling_fare, 0) : '';
         const ticketType = ticket.ticket_type || 'standard';
         const type = ticketType.charAt(0).toUpperCase() + ticketType.slice(1);
         switch (ticketType) {
             case 'offer':
-                const offer = ticket.offer_price ? ' | ' + ticket.offer_price + ' SAR' : '';
+                const offer = ticket.offer_price ? ' | ' + Alpine.store('currency').format(ticket.offer_price, 0) : '';
                 return `${ticket.route || ''} | ${type} | ${price}${offer}`;
             case 'group':
                 const seats = ticket.available_seats ? ' | ' + ticket.available_seats + ' seats' : '';
@@ -4096,12 +4096,12 @@ Alpine.data('showBookingApp', () => ({
     },
 
     getTicketDisplayText(ticket) {
-        const price = ticket.selling_fare ? ticket.selling_fare + ' SAR' : '';
+        const price = ticket.selling_fare ? Alpine.store('currency').format(ticket.selling_fare, 0) : '';
         const ticketType = ticket.ticket_type || 'standard';
         const type = ticketType.charAt(0).toUpperCase() + ticketType.slice(1);
         switch (ticketType) {
             case 'offer':
-                const offer = ticket.offer_price ? ' | ' + ticket.offer_price + ' SAR' : '';
+                const offer = ticket.offer_price ? ' | ' + Alpine.store('currency').format(ticket.offer_price, 0) : '';
                 return `${ticket.route || ''} | ${type} | ${price}${offer}`;
             case 'group':
                 const seats = ticket.available_seats ? ' | ' + ticket.available_seats + ' seats' : '';
@@ -4230,7 +4230,7 @@ Alpine.data('showBookingApp', () => ({
         }
 
         if (amountSAR > this.paymentMaxAmount) {
-            const msg = 'Payment amount cannot exceed the due amount of ' + this.paymentMaxAmount.toFixed(2) + ' SAR';
+            const msg = 'Payment amount cannot exceed the due amount of ' + Alpine.store('currency').format(this.paymentMaxAmount);
             if (typeof showToast === 'function') {
                 showToast(msg, 'error');
             } else {

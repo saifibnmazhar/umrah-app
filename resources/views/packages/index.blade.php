@@ -49,9 +49,9 @@
                             }
                             $seats = $package->ticketFare?->groupTicket?->ticket_qty ?? null;
                             $ticketType = $package->ticketFare?->ticket_type?->value;
-                            $ticketDisplay = $routeName . ' | ' . strtoupper($ticketType ?? '?') . ' | BDT ' . number_format($package->ticketFare?->selling_fare ?? 0, 0);
+                            $ticketDisplay = $routeName . ' | ' . strtoupper($ticketType ?? '?') . ' | SAR ' . number_format($package->ticketFare?->selling_fare ?? 0, 0);
                             if ($ticketType === 'offer') {
-                                $ticketDisplay .= ' | BDT ' . number_format($package->ticketFare?->offer_price ?? 0, 0);
+                                $ticketDisplay .= ' | SAR ' . number_format($package->ticketFare?->offer_price ?? 0, 0);
                             }
                             if ($ticketType === 'group' && $seats) {
                                 $ticketDisplay .= ' | ' . $seats . ' seats';
@@ -60,10 +60,10 @@
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-2 text-slate-800 font-medium">{{ $package->package_name }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $ticketDisplay }}</td>
-                            <td class="px-3 py-2 text-right text-slate-800 font-medium">BDT {{ number_format($package->regular_price, 0) }}</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($package->regular_price, 0)</td>
                             <td class="px-3 py-2 text-right text-slate-600">
                                 @if($package->offer_price)
-                                    BDT {{ number_format($package->offer_price, 0) }}
+                                    @currency($package->offer_price, 0)
                                 @else
                                     -
                                 @endif
@@ -141,11 +141,11 @@
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (BDT) *</label>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (SAR) *</label>
                     <input type="number" id="modalRegularPrice" name="regular_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="0.01" required readonly>
                 </div>
                 <div id="modalOfferPriceContainer" class="hidden">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
                     <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
                 </div>
             </div>
@@ -155,7 +155,7 @@
                     <span class="font-medium">Visa Selling Price (Latest):</span>
                     <span class="text-slate-800 font-medium">
                         @if($latestVisa)
-                            BDT {{ number_format($latestVisa->selling_price, 0) }}
+                            @currency($latestVisa->selling_price, 0)
                         @else
                             Not configured
                         @endif
@@ -178,9 +178,9 @@ const packages = @json($packagesArray);
 const usedFareIds = @json($usedFareIds);
 
 function buildDisplay(fare) {
-    let disp = fare.route + ' | ' + fare.ticket_type.toUpperCase() + ' | BDT ' + fare.selling_fare;
+    let disp = fare.route + ' | ' + fare.ticket_type.toUpperCase() + ' | SAR ' + fare.selling_fare;
     if (fare.ticket_type === 'offer') {
-        disp += ' | BDT ' + fare.offer_price;
+        disp += ' | SAR ' + fare.offer_price;
     }
     if (fare.ticket_type === 'group' && fare.seats) {
         disp += ' | ' + fare.seats + ' seats';

@@ -54,7 +54,7 @@
                             <td class="px-3 py-2 text-slate-600">{{ $charge->district->division ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $charge->district->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $charge->user->name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($charge->fingerprint_charge, 2) }} SAR</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($charge->fingerprint_charge, 2)</td>
                             <td class="px-3 py-2 text-center">
                                 <button onclick="editFingerprintCharge({{ $charge->id }}, {{ $charge->district_id }}, {{ $charge->fingerprint_charge }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
                                 <form method="POST" action="{{ route('fingerprint-charges.destroy', $charge->id) }}" onsubmit="return confirm('Are you sure you want to delete this fingerprint charge?')" class="inline">

@@ -141,7 +141,7 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Customer Docs</label>
                 <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('booking_customer_docs').click()">
-                    <input type="file" id="booking_customer_docs" name="booking_customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleBookingCustomerDocsUpload(this)">
+                    <input type="file" id="booking_customer_docs" name="booking_customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple @change="handleBookingCustomerDocsUpload($event.target)">
                     <div class="text-slate-500">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -207,23 +207,19 @@
                 <div class="flex justify-between font-medium text-slate-800">
                     <span id="summaryPackage" class="w-1/6 text-center" x-text="allPackages.find(p => String(p.id) === String(bookingData.package_id))?.package_name ?? '-'">-</span>
                     <span class="w-1/6 text-center">
-                        <div x-text="fingerprintCharge > 0 ? fingerprintCharge + ' SAR' : '-'">-</div>
-                        <div class="text-xs text-slate-800" x-show="fingerprintCharge > 0 && exchangeRateValue > 0" x-text="'≈ ' + fingerprintChargeBDT + ' BDT'"></div>
+                        <div x-text="fingerprintCharge > 0 ? $currency(fingerprintCharge) : '-'">-</div>
                     </span>
                     <span class="w-1/6 text-center">
                         <div x-text="passengerCount">0</div>
                     </span>
                     <span class="w-1/6 text-center">
-                        <div x-text="bookingData.discount_value > 0 ? '-' + bookingData.discount_value + (bookingData.discount_type === 'percentage' ? '%' : ' SAR') : '-'">-</div>
-                        <div class="text-xs text-slate-800" x-show="bookingData.discount_value > 0 && bookingData.discount_type === 'fixed' && exchangeRateValue > 0" x-text="'≈ -' + discountAmountBDT + ' BDT'"></div>
+                        <div x-text="bookingData.discount_value > 0 ? (bookingData.discount_type === 'percentage' ? '-' + bookingData.discount_value + '%' : $currency(bookingData.discount_value)) : '-'">-</div>
                     </span>
                     <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center">
-                        <div x-text="(grandTotalValue ?? 0).toFixed(2) + ' SAR'">0 SAR</div>
-                        <div class="text-xs text-slate-800" x-show="grandTotalValue > 0 && exchangeRateValue > 0" x-text="'≈ ' + grandTotalValueBDT + ' BDT'">0 BDT</div>
+                        <div x-text="$currency(grandTotalValue ?? 0)">0 SAR</div>
                     </span>
                     <span id="summaryTotalValue" class="w-1/6 text-center">
-                        <div x-text="discountedTotal !== null ? discountedTotal.toFixed(2) + ' SAR' : 'N/A'">0 SAR</div>
-                        <div class="text-xs text-slate-800" x-show="discountedTotal !== null && exchangeRateValue > 0" x-text="'≈ ' + discountedTotalBDT + ' BDT'">0 BDT</div>
+                        <div x-text="discountedTotal !== null ? $currency(discountedTotal) : 'N/A'">0 SAR</div>
                     </span>
                 </div>
             </div>

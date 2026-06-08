@@ -15,17 +15,22 @@ class DocumentController extends Controller
             'booking_id' => 'required|exists:bookings,id',
         ]);
 
+        $booking = \App\Models\Booking::with('customer')->findOrFail($request->booking_id);
+        $invoiceId = $booking->invoice_id ?? 'INV';
+        $customerName = $booking->customer->name ?? 'Customer';
+
+        $existingCount = $booking->documents()->count();
         $uploadedDocs = [];
 
         if ($request->hasFile('documents')) {
-            foreach ($request->file('documents') as $file) {
+            foreach ($request->file('documents') as $index => $file) {
                 $path = $file->store('documents', 'public');
-                
+
                 $doc = Document::create([
                     'owner_type' => 'App\Models\Booking',
                     'owner_id' => $request->booking_id,
                     'file_path' => $path,
-                    'display_name' => $file->getClientOriginalName(),
+                    'display_name' => "{$invoiceId} {$customerName} " . ($existingCount + $index + 1),
                 ]);
 
                 $uploadedDocs[] = $doc;

@@ -145,25 +145,25 @@
             @if($canViewFinancials)
             <div class="summary-row">
                 <span class="label">Total Fingerprint Charge:</span>
-                <span class="value text-green">{{ number_format($totals['total_fingerprint_charge'], 2) }} SAR</span>
+                <span class="value text-green">@currency($totals['total_fingerprint_charge'], 2)</span>
             </div>
             @endif
             <div class="summary-row">
                 <span class="label">Total Fingerprint Cost:</span>
-                <span class="value">{{ number_format($totals['total_fingerprint_cost'], 2) }} SAR</span>
+                <span class="value">@currency($totals['total_fingerprint_cost'], 2)</span>
             </div>
             @if($canViewFinancials)
             <div class="summary-row">
                 <span class="label">Total Profit:</span>
-                <span class="value text-green">{{ $totals['total_profit'] > 0 ? number_format($totals['total_profit'], 2) . ' SAR' : '-' }}</span>
+                <span class="value text-green">@if($totals['total_profit'] > 0)@currency($totals['total_profit'], 2)@else-@endif</span>
             </div>
             <div class="summary-row">
                 <span class="label">Total Loss:</span>
-                <span class="value text-red">{{ $totals['total_loss'] > 0 ? number_format($totals['total_loss'], 2) . ' SAR' : '-' }}</span>
+                <span class="value text-red">@if($totals['total_loss'] > 0)@currency($totals['total_loss'], 2)@else-@endif</span>
             </div>
             <div class="summary-row bordered">
                 <span class="label">Net Profit/Loss:</span>
-                <span class="value {{ $totals['total_profit_loss'] >= 0 ? 'text-green' : 'text-red' }}">{{ number_format($totals['total_profit_loss'], 2) }} SAR</span>
+                <span class="value {{ $totals['total_profit_loss'] >= 0 ? 'text-green' : 'text-red' }}">@currency($totals['total_profit_loss'], 2)</span>
             </div>
             @endif
         </div>
