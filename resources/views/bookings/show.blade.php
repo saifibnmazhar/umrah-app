@@ -1529,13 +1529,7 @@ function downloadAllCustomerDocs() {
 }
 
 function downloadAllPassengerDocs() {
-    const docs = document.querySelectorAll('#passengerDocumentsList .text-blue-600');
-    if (docs.length === 0) {
-        showToast('No passenger documents to download', 'error');
-        return;
-    }
-    docs.forEach(doc => doc.click());
-    showToast('Downloading passenger documents...');
+    window.location.href = '{{ route('bookings.download-all-docs', ['booking' => $booking->id, 'scope' => 'passenger']) }}';
 }
 
 function downloadDoc(docId) {
