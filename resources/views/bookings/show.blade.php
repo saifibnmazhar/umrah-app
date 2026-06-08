@@ -884,8 +884,7 @@ function escapeHtml(str) {
 }
 
 function downloadAllDocs() {
-    showToast('Downloading all documents...');
-    setTimeout(() => showToast('No documents available for download'), 1500);
+    window.location.href = '{{ route('bookings.download-all-docs', $booking->id) }}';
 }
 
 function viewPassengerDetails(passengerId) {

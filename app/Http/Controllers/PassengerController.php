@@ -170,9 +170,15 @@ class PassengerController extends Controller
         ]);
 
         try {
+            $passenger->load('booking');
+            $invoiceId = $passenger->booking->invoice_id ?? 'INV';
+            $passengerName = $passenger->first_name . ' ' . $passenger->last_name;
+            $passportId = $passenger->passport_no ?? 'NOPASS';
+            $existingCount = $passenger->documents()->count();
+
             $documents = [];
 
-            foreach ($request->file('files', []) as $file) {
+            foreach ($request->file('files', []) as $index => $file) {
                 $filename = Str::slug($passenger->first_name . ' ' . $passenger->last_name) . '_' . time() . '_' . Str::random(6) . '.' . $file->getClientOriginalExtension();
                 $path = $file->storeAs('passenger-documents', $filename);
 
@@ -180,7 +186,7 @@ class PassengerController extends Controller
                     'owner_type' => Passenger::class,
                     'owner_id' => $passenger->id,
                     'file_path' => $path,
-                    'display_name' => $file->getClientOriginalName(),
+                    'display_name' => "{$invoiceId} {$passengerName} {$passportId} " . ($existingCount + $index + 1),
                 ]);
             }
 
