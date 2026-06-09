@@ -935,7 +935,7 @@ function handleEditPassengerDocUpload(input) {
 
     Array.from(files).forEach(file => {
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('files[]', file);
 
         fetch(`/passengers/${editPassengerId}/documents`, {
             method: 'POST',
@@ -951,7 +951,7 @@ function handleEditPassengerDocUpload(input) {
                 const emptyState = list.querySelector('p.text-slate-400');
                 if (emptyState) emptyState.remove();
 
-                const doc = data.document;
+                const doc = data.documents[0];
                 const item = document.createElement('div');
                 item.className = 'flex items-center justify-between bg-white rounded px-3 py-2 border border-slate-200';
                 item.innerHTML = `
