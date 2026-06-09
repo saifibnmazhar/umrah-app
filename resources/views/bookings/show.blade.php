@@ -141,7 +141,9 @@
                 </div>
                 <div id="customerDocumentsList" class="space-y-3 overflow-y-auto" style="max-height: 16rem;">
                     @php
-                        $allCustomerDocs = collect($booking->documents)->merge($booking->customer?->documents ?? collect());
+                        $allCustomerDocs = collect($booking->documents)
+                            ->merge($booking->customer?->documents ?? collect())
+                            ->sortBy(fn($d) => (int) preg_replace('/.*\s(\d+)$/', '$1', $d->display_name ?? '0'));
                     @endphp
                     @forelse($allCustomerDocs as $doc)
                     <div class="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200">
