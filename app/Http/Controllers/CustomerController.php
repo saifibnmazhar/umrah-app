@@ -94,16 +94,16 @@ class CustomerController extends Controller
     {
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'iqama_type' => 'required|in:self,referral',
+            'iqama_type' => 'nullable|string|max:50',
             'passport_no' => 'required|string|max:50|unique:customers,passport_no,' . $customer->id,
-            'iqama_no' => 'required|string|max:50|unique:customers,iqama_no,' . $customer->id,
+            'iqama_no' => 'nullable|string|max:50|unique:customers,iqama_no,' . $customer->id,
             'mobile_no' => 'required|string|max:20',
             'ref_iqama_no' => 'nullable|string|max:50',
             'ref_mobile_no' => 'nullable|string|max:20',
             'ref_iqama_doc' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'customer_docs' => 'nullable|array',
             'customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-            'address' => 'required|string|max:500',
+            'address' => 'nullable|string|max:500',
         ]);
 
         try {
