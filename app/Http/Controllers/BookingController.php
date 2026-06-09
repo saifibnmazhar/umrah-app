@@ -303,11 +303,17 @@ class BookingController extends Controller
                 'currency_rate_id' => $currentCurrencyRate?->id,
             ]);
 
+            $booking->load('customer');
+            $invoiceId = $booking->invoice_id ?? 'INV';
+            $customerName = $booking->customer->name ?? 'Customer';
+            if ($booking->customer) {
+                foreach ($booking->customer->documents as $idx => $doc) {
+                    $doc->update(['display_name' => "{$invoiceId} {$customerName} " . ($idx + 1)]);
+                }
+            }
+
             $customerDocs = $request->file('booking_customer_docs', []);
             if (is_array($customerDocs) && count($customerDocs) > 0) {
-                $booking->load('customer');
-                $invoiceId = $booking->invoice_id ?? 'INV';
-                $customerName = $booking->customer->name ?? 'Customer';
                 $existingCount = $booking->documents()->count();
 
                 foreach ($customerDocs as $index => $file) {
@@ -458,6 +464,7 @@ class BookingController extends Controller
 
         $booking->load([
             'customer',
+            'customer.documents',
             'passengers' => fn($q) => $q->approvedFingerprint(),
             'passengers.documents',
             'passengers.ticketFare',
@@ -1123,14 +1130,30 @@ class BookingController extends Controller
         $scope = request()->query('scope');
         $allDocs = Document::where(function ($q) use ($booking, $passengerIds, $scope) {
             if ($scope === 'customer') {
-                $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
-                  ->where('owner_id', $booking->id);
+                $q->where(function ($q) use ($booking) {
+                    $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
+                      ->where('owner_id', $booking->id);
+                });
+                if ($booking->customer) {
+                    $q->orWhere(function ($q) use ($booking) {
+                        $q->where('owner_type', 'App\Models\Customer')
+                          ->where('owner_id', $booking->customer_id);
+                    });
+                }
             } elseif ($scope === 'passenger') {
                 $q->where('owner_type', 'App\Models\Passenger')
                   ->whereIn('owner_id', $passengerIds);
             } else {
-                $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
-                  ->where('owner_id', $booking->id);
+                $q->where(function ($q) use ($booking) {
+                    $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
+                      ->where('owner_id', $booking->id);
+                });
+                if ($booking->customer) {
+                    $q->orWhere(function ($q) use ($booking) {
+                        $q->where('owner_type', 'App\Models\Customer')
+                          ->where('owner_id', $booking->customer_id);
+                    });
+                }
             }
         })->when(!$scope || $scope === 'all', function ($q) use ($passengerIds) {
             $q->orWhere(function ($q) use ($passengerIds) {

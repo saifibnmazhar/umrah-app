@@ -35,27 +35,33 @@ class CustomerController extends Controller
                 'ref_iqama_no' => 'nullable|string|max:50',
                 'ref_mobile_no' => 'nullable|string|max:20',
                 'ref_iqama_doc' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
-                'documents' => 'nullable|array',
-                'documents.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'customer_docs' => 'nullable|array',
+                'customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
                 'address' => 'nullable|string|max:500',
             ]);
 
-            $data = $request->except(['ref_iqama_doc', 'documents']);
+            $data = $request->except(['ref_iqama_doc', 'customer_docs']);
 
+            $refIqamaPath = null;
             if ($request->hasFile('ref_iqama_doc')) {
-                $path = $request->file('ref_iqama_doc')->store('customer-docs', 'public');
-                $data['ref_iqama_doc'] = $path;
+                $refIqamaPath = $request->file('ref_iqama_doc')->store('customer-docs', 'public');
+                $data['ref_iqama_doc'] = $refIqamaPath;
             }
 
             $customer = Customer::create($data);
 
-            if ($request->hasFile('documents')) {
-                foreach ($request->file('documents') as $file) {
+            if ($refIqamaPath) {
+                $customer->documents()->create([
+                    'file_path' => $refIqamaPath,
+                    'display_name' => $customer->name . ' - Ref Iqama',
+                ]);
+            }
+
+            if ($request->hasFile('customer_docs')) {
+                foreach ($request->file('customer_docs') as $index => $file) {
                     $customer->documents()->create([
-                        'owner_type' => 'customer',
-                        'owner_id' => $customer->id,
                         'file_path' => $file->store('customer-docs', 'public'),
-                        'display_name' => $file->getClientOriginalName(),
+                        'display_name' => $customer->name . ' - Doc ' . ($index + 1),
                     ]);
                 }
             }
@@ -110,12 +116,10 @@ class CustomerController extends Controller
             }
 
             if ($request->hasFile('customer_docs')) {
-                foreach ($request->file('customer_docs') as $file) {
+                foreach ($request->file('customer_docs') as $index => $file) {
                     $customer->documents()->create([
-                        'owner_type' => 'customer',
-                        'owner_id' => $customer->id,
                         'file_path' => $file->store('customer-docs', 'public'),
-                        'display_name' => $file->getClientOriginalName(),
+                        'display_name' => $customer->name . ' - Doc ' . ($index + 1),
                     ]);
                 }
             }

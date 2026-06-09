@@ -140,7 +140,10 @@
                     </div>
                 </div>
                 <div id="customerDocumentsList" class="space-y-3 overflow-y-auto" style="max-height: 16rem;">
-                    @forelse($booking->documents as $doc)
+                    @php
+                        $allCustomerDocs = collect($booking->documents)->merge($booking->customer?->documents ?? collect());
+                    @endphp
+                    @forelse($allCustomerDocs as $doc)
                     <div class="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200">
                         <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
                         <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>

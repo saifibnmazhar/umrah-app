@@ -62,7 +62,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('classes', TravelClassController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('airline-classes', AirlineClassController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('airline-cities', AirlineCityController::class)->middleware('role:Super Admin,Co Admin');
-    Route::resource('customers', CustomerController::class)->middleware('role:Super Admin,Co Admin');
+    Route::resource('customers', CustomerController::class)->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
     Route::resource('visa-agents', VisaAgentController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::resource('ticket-agents', TicketAgentController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('fingerprint-charges', FingerprintChargeController::class)->middleware('role:Super Admin,Co Admin');
