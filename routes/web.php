@@ -62,7 +62,12 @@ Route::middleware('auth')->group(function () {
     Route::resource('classes', TravelClassController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('airline-classes', AirlineClassController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('airline-cities', AirlineCityController::class)->middleware('role:Super Admin,Co Admin');
-    Route::resource('customers', CustomerController::class)->middleware('role:Super Admin,Co Admin');
+    Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index')->middleware('role:Super Admin,Co Admin');
+    Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create')->middleware('role:Super Admin,Co Admin');
+    Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
+    Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit')->middleware('role:Super Admin,Co Admin');
+    Route::match(['PUT', 'PATCH'], '/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update')->middleware('role:Super Admin,Co Admin');
+    Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy')->middleware('role:Super Admin,Co Admin');
     Route::resource('visa-agents', VisaAgentController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::resource('ticket-agents', TicketAgentController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('fingerprint-charges', FingerprintChargeController::class)->middleware('role:Super Admin,Co Admin');
