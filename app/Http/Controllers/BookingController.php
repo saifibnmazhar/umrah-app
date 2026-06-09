@@ -306,7 +306,10 @@ class BookingController extends Controller
             $booking->load('customer');
             $invoiceId = $booking->invoice_id ?? 'INV';
             $customerName = $booking->customer->name ?? 'Customer';
+
+            $customerDocCount = 0;
             if ($booking->customer) {
+                $customerDocCount = $booking->customer->documents->count();
                 foreach ($booking->customer->documents as $idx => $doc) {
                     $doc->update(['display_name' => "{$invoiceId} {$customerName} " . ($idx + 1)]);
                 }
@@ -314,7 +317,7 @@ class BookingController extends Controller
 
             $customerDocs = $request->file('booking_customer_docs', []);
             if (is_array($customerDocs) && count($customerDocs) > 0) {
-                $existingCount = $booking->documents()->count();
+                $bookingDocCount = $booking->documents()->count();
 
                 foreach ($customerDocs as $index => $file) {
                     if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
@@ -322,7 +325,7 @@ class BookingController extends Controller
                             'owner_type' => 'booking',
                             'owner_id' => $booking->id,
                             'file_path' => $file->store('booking-docs', 'public'),
-                            'display_name' => "{$invoiceId} {$customerName} " . ($existingCount + $index + 1),
+                            'display_name' => "{$invoiceId} {$customerName} " . ($customerDocCount + $bookingDocCount + $index + 1),
                         ]);
                     }
                 }
@@ -679,7 +682,8 @@ class BookingController extends Controller
                 $booking->load('customer');
                 $invoiceId = $booking->invoice_id ?? 'INV';
                 $customerName = $booking->customer->name ?? 'Customer';
-                $existingCount = $booking->documents()->count();
+                $customerDocCount = $booking->customer ? $booking->customer->documents->count() : 0;
+                $bookingDocCount = $booking->documents()->count();
 
                 foreach ($customerDocs as $index => $file) {
                     if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
@@ -687,7 +691,7 @@ class BookingController extends Controller
                             'owner_type' => 'booking',
                             'owner_id' => $booking->id,
                             'file_path' => $file->store('booking-docs', 'public'),
-                            'display_name' => "{$invoiceId} {$customerName} " . ($existingCount + $index + 1),
+                            'display_name' => "{$invoiceId} {$customerName} " . ($customerDocCount + $bookingDocCount + $index + 1),
                         ]);
                     }
                 }
