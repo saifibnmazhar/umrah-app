@@ -19,7 +19,8 @@ class DocumentController extends Controller
         $invoiceId = $booking->invoice_id ?? 'INV';
         $customerName = $booking->customer->name ?? 'Customer';
 
-        $existingCount = $booking->documents()->count();
+        $customerDocCount = $booking->customer ? $booking->customer->documents->count() : 0;
+        $bookingDocCount = $booking->documents()->count();
         $uploadedDocs = [];
 
         if ($request->hasFile('documents')) {
@@ -30,7 +31,7 @@ class DocumentController extends Controller
                     'owner_type' => 'App\Models\Booking',
                     'owner_id' => $request->booking_id,
                     'file_path' => $path,
-                    'display_name' => "{$invoiceId} {$customerName} " . ($existingCount + $index + 1),
+                    'display_name' => "{$invoiceId} {$customerName} " . ($customerDocCount + $bookingDocCount + $index + 1),
                 ]);
 
                 $uploadedDocs[] = $doc;

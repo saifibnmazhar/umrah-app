@@ -3478,6 +3478,9 @@ Alpine.data('showBookingApp', () => ({
 
     openPassengerModal() {
         this.editingPassengerIndex = null;
+        window.__pendingPassengerDocs = [];
+        let list = document.getElementById('passenger_doc_list');
+        if (list) list.innerHTML = '';
         let packageTicketFareId = null;
         if (window.__bookingServerData?.preSelectedPackageId) {
             const pkg = this.allPackages.find(p => String(p.id) === String(window.__bookingServerData.preSelectedPackageId));
@@ -3670,15 +3673,16 @@ Alpine.data('showBookingApp', () => ({
         .then(data => {
             if (data.success) {
                 this.closePassengerModal();
-                if (typeof showToast === 'function') {
-                    showToast('Passenger added successfully');
+                if (data.passenger) {
+                    appendPassengerRow(data.passenger, data.display_total);
+                    this.lastAddedPassenger = data.passenger;
+                    this.uploadPendingPassengerDocs(data.passenger.id);
                 }
                 if (data.invoice) {
                     updateFinancialSummary(data.invoice);
                 }
-                if (data.passenger) {
-                    appendPassengerRow(data.passenger, data.display_total);
-                    this.lastAddedPassenger = data.passenger;
+                if (typeof showToast === 'function') {
+                    showToast('Passenger added successfully');
                 }
             } else {
                 alert(data.message || 'Failed to add passenger');
@@ -3686,6 +3690,43 @@ Alpine.data('showBookingApp', () => ({
         })
         .catch(error => {
             alert('Error: ' + error.message);
+        });
+    },
+
+    uploadPendingPassengerDocs(passengerId) {
+        const files = window.__pendingPassengerDocs;
+        if (!files || files.length === 0) return;
+        const formData = new FormData();
+        files.forEach(file => formData.append('files[]', file));
+        fetch('/passengers/' + passengerId + '/documents', {
+            method: 'POST',
+            headers: {
+                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                'Accept': 'application/json',
+            },
+            body: formData
+        })
+        .then(response => {
+            if (!response.ok) {
+                return response.json().then(err => { throw new Error(err.message || 'Document upload failed'); });
+            }
+            return response.json();
+        })
+        .then(data => {
+            if (data.success && typeof showToast === 'function') {
+                showToast(data.message || 'Documents uploaded');
+            }
+        })
+        .catch(error => {
+            console.error('Document upload error:', error);
+            if (typeof showToast === 'function') {
+                showToast('Some documents failed to upload', 'error');
+            }
+        })
+        .finally(() => {
+            window.__pendingPassengerDocs = [];
+            let list = document.getElementById('passenger_doc_list');
+            if (list) list.innerHTML = '';
         });
     },
 
@@ -4314,16 +4355,30 @@ window.handlePassengerDocUpload = function(input) {
     const list = document.getElementById('passenger_doc_list');
     if (!list) return;
     list.innerHTML = '';
-    Array.from(input.files).forEach(file => {
+    window.__pendingPassengerDocs = [];
+    Array.from(input.files).forEach((file) => {
+        window.__pendingPassengerDocs.push(file);
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+        item.dataset.fileIndex = window.__pendingPassengerDocs.length - 1;
         item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removePassengerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
         list.appendChild(item);
     });
 };
 
 window.removePassengerDoc = function(btn) {
-    btn.parentElement.remove();
+    const item = btn.parentElement;
+    const index = parseInt(item.dataset.fileIndex);
+    if (!isNaN(index) && window.__pendingPassengerDocs) {
+        window.__pendingPassengerDocs.splice(index, 1);
+    }
+    item.remove();
+    const list = document.getElementById('passenger_doc_list');
+    if (list) {
+        Array.from(list.children).forEach((child, i) => {
+            child.dataset.fileIndex = i;
+        });
+    }
 };
 
 window.handleRefIqamaFileUpload = function(input) {
