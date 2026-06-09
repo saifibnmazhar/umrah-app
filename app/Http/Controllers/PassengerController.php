@@ -68,7 +68,19 @@ class PassengerController extends Controller
             }
         }
 
-        $ticketFare = $passenger->ticketFare?->selling_fare ?? 0;
+        $ticketFare = 0;
+        if ($passenger->ticketFare) {
+            $baseFare = (float) $passenger->ticketFare->selling_fare;
+            $passengerType = $passenger->passenger_type;
+            if ($passengerType instanceof \BackedEnum) {
+                $passengerType = $passengerType->value;
+            }
+            $ticketFare = match (strtolower($passengerType ?? '')) {
+                'child' => $baseFare * ((float) $passenger->ticketFare->child_fare_percentage) / 100,
+                'infant' => $baseFare * ((float) $passenger->ticketFare->infant_fare_percentage) / 100,
+                default => $baseFare,
+            };
+        }
         $visaCost = $passenger->booking?->package?->visaSellingPrice?->selling_price ?? 0;
         $fingerprintCost = ($passenger->booking?->fingerprint_location === 'home' && $passenger->booking?->fingerprintCharge)
             ? $passenger->booking->fingerprintCharge->fingerprint_charge
