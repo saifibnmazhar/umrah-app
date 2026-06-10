@@ -11,7 +11,6 @@ use App\Enums\Gender;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\TicketStatus;
-use App\Enums\VisaStatus;
 
 class Passenger extends Model
 {
@@ -32,7 +31,6 @@ class Passenger extends Model
         'flight_date_to',
         'actual_flight_date',
         'ticket_status',
-        'visa_status',
         'address',
         'ticket_fare_id',
         'package_value',
@@ -49,7 +47,6 @@ class Passenger extends Model
         'passenger_type' => PassengerType::class,
         'service_required' => ServiceRequired::class,
         'ticket_status' => TicketStatus::class,
-        'visa_status' => VisaStatus::class,
         'package_value' => 'decimal:2',
     ];
 
