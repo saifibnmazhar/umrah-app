@@ -38,6 +38,7 @@ use App\Http\Controllers\TicketFareController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FingerprintController;
 use App\Http\Controllers\FingerprintReportController;
+use App\Http\Controllers\VisaSubmissionController;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -111,6 +112,17 @@ Route::middleware('auth')->group(function () {
     Route::patch('/bookings/{booking}/passengers/{passenger}/recalculate', [BookingController::class, 'recalculatePassengerValue'])->name('bookings.passengers.recalculate')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
     Route::patch('/bookings/{booking}/fingerprint-location', [BookingController::class, 'updateFingerprintLocation'])->name('bookings.fingerprint-location.update')->middleware('role:Super Admin,Co Admin');
     Route::post('/bookings/{booking}/payment', [BookingController::class, 'storePayment'])->name('bookings.payment.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
+
+    // Visa submission routes
+    Route::post('/bookings/{booking}/passengers/{passenger}/visa-submit', [VisaSubmissionController::class, 'submit'])
+        ->name('bookings.passengers.visa-submit')
+        ->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    Route::post('/bookings/{booking}/passengers/{passenger}/visa-issue', [VisaSubmissionController::class, 'issue'])
+        ->name('bookings.passengers.visa-issue')
+        ->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    Route::put('/bookings/{booking}/passengers/{passenger}/visa-edit', [VisaSubmissionController::class, 'edit'])
+        ->name('bookings.passengers.visa-edit')
+        ->middleware('role:Super Admin,Co Admin,Visa Admin');
 
     // Document routes
     Route::get('/bookings/{booking}/download-all-docs', [BookingController::class, 'downloadAllDocs'])->name('bookings.download-all-docs');
