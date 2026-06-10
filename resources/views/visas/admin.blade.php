@@ -29,6 +29,7 @@
             >
                 Visa Agents
             </button>
+            @if(auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty())
             <button
                 @click="activeTab = 'commission-agents'"
                 :class="{ 'border-blue-500 text-blue-600': activeTab === 'commission-agents', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'commission-agents' }"
@@ -36,6 +37,7 @@
             >
                 Commission Agents
             </button>
+            @endif
         </nav>
     </div>
 
@@ -223,21 +225,17 @@
         </div>
     </div>
 
+    @if(auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty())
     <!-- Commission Agents Tab -->
     <div x-show="activeTab === 'commission-agents'" x-cloak>
         <div class="flex justify-between items-center mb-6">
             <h2 class="text-xl font-bold text-slate-800">Commission Agents</h2>
-            @php
-                $canManageCommissionAgents = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
-            @endphp
-            @if($canManageCommissionAgents)
             <button onclick="openCommissionAgentModal()" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
                 Add Commission Agent
             </button>
-            @endif
         </div>
 
         @if(session('success'))
@@ -261,9 +259,7 @@
                             <th class="px-6 py-4 text-left">Name</th>
                             <th class="px-6 py-4 text-left">Address</th>
                             <th class="px-6 py-4 text-left">Contacts</th>
-                            @if($canManageCommissionAgents)
                             <th class="px-6 py-4 text-right">Actions</th>
-                            @endif
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
@@ -273,7 +269,6 @@
                                 <td class="px-6 py-4 text-slate-700 font-medium">{{ $agent->name }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $agent->address ?? '—' }}</td>
                                 <td class="px-6 py-4 text-slate-600">{{ $agent->contacts ?? '—' }}</td>
-                                @if($canManageCommissionAgents)
                                 <td class="px-6 py-4 text-right">
                                     <div class="flex items-center justify-end gap-4">
                                         <button onclick="editCommissionAgent({{ $agent->id }}, {{ $agent->visa_agent_id }}, '{{ $agent->name }}', '{{ $agent->address ?? '' }}', '{{ $agent->contacts ?? '' }}')" class="text-slate-600 hover:text-slate-800 font-medium text-sm">Edit</button>
@@ -284,11 +279,10 @@
                                         </form>
                                     </div>
                                 </td>
-                                @endif
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="{{ $canManageCommissionAgents ? 5 : 4 }}" class="px-6 py-12 text-center text-slate-500">
+                                <td colspan="5" class="px-6 py-12 text-center text-slate-500">
                                     No commission agents found.
                                 </td>
                             </tr>
@@ -302,6 +296,7 @@
             {{ $commissionAgents->links() }}
         </div>
     </div>
+    @endif
 </div>
 
 <!-- Visa Price Modal -->
