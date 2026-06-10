@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Document;
 use App\Models\Package;
 use App\Models\TicketFare;
+use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
 use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
@@ -292,7 +293,7 @@ class PassengerController extends Controller
                 $booking = $passenger->booking;
                 VisaSubmission::create([
                     'passenger_id' => $passenger->id,
-                    'visa_selling_price_id' => $booking?->package?->visa_selling_price_id,
+                    'visa_selling_price_id' => $booking?->package?->visa_selling_price_id ?? VisaSellingPrice::latest('id')->value('id'),
                     'status' => 'pending',
                 ]);
             }

@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Passenger;
+use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
 use Illuminate\Console\Command;
 
@@ -23,7 +24,7 @@ class BackfillVisaSubmissions extends Command
 
                     VisaSubmission::create([
                         'passenger_id' => $passenger->id,
-                        'visa_selling_price_id' => $visaSellingPriceId ?? 1,
+                        'visa_selling_price_id' => $visaSellingPriceId ?? VisaSellingPrice::latest('id')->value('id'),
                         'status' => 'pending',
                     ]);
 

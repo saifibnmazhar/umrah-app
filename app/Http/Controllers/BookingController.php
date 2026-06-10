@@ -381,7 +381,7 @@ class BookingController extends Controller
                 if (($passengerData['service_required'] ?? 'all') !== 'ticket_only') {
                     VisaSubmission::create([
                         'passenger_id' => $passenger->id,
-                        'visa_selling_price_id' => $booking->package?->visa_selling_price_id,
+                        'visa_selling_price_id' => $booking->package?->visa_selling_price_id ?? VisaSellingPrice::latest('id')->value('id'),
                         'status' => 'pending',
                     ]);
                 }
@@ -854,7 +854,7 @@ class BookingController extends Controller
         if (($validated['service_required'] ?? 'all') !== 'ticket_only') {
             VisaSubmission::create([
                 'passenger_id' => $passenger->id,
-                'visa_selling_price_id' => $booking->package?->visa_selling_price_id,
+                'visa_selling_price_id' => $booking->package?->visa_selling_price_id ?? VisaSellingPrice::latest('id')->value('id'),
                 'status' => 'pending',
             ]);
         }
