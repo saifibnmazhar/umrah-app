@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\VisaStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class VisaSubmission extends Model
@@ -56,5 +57,10 @@ class VisaSubmission extends Model
     public function cancelledSubmission(): HasOne
     {
         return $this->hasOne(CancelledSubmission::class);
+    }
+
+    public function logs(): HasMany
+    {
+        return $this->hasMany(VisaUpdateLog::class);
     }
 }

@@ -3840,3 +3840,98 @@ public function handle()
     $this->info("Created {$count} visa submission(s) for passengers without one.");
 }
 ```
+
+---
+
+## Phase 9: Visa Update Logs Table
+
+### Overview
+Add a `visa_update_logs` table to track who made changes to visa submissions and what changed.
+
+### Migration File
+`2026_06_10_100002_create_visa_update_logs_table.php`
+
+### Artisan Command
+```bash
+php artisan make:migration create_visa_update_logs_table
+```
+
+### Schema Structure
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | bigint unsigned | PK, auto-increment |
+| `visa_submission_id` | bigint unsigned | FK → visa_submissions, cascade on delete |
+| `user_id` | bigint unsigned | FK → users |
+| `action` | string | `submitted`, `issued`, `edited`, `cancelled` |
+| `old_values` | JSON, nullable | Snapshot of changed tracked fields before update |
+| `new_values` | JSON, nullable | Snapshot of changed tracked fields after update |
+| `created_at` | timestamp | When the action occurred |
+
+### UP Method
+```php
+Schema::create('visa_update_logs', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('visa_submission_id')
+        ->constrained('visa_submissions')
+        ->cascadeOnDelete();
+    $table->foreignId('user_id')
+        ->constrained('users');
+    $table->string('action');
+    $table->json('old_values')->nullable();
+    $table->json('new_values')->nullable();
+    $table->timestamp('created_at');
+});
+```
+
+### DOWN Method
+```php
+Schema::dropIfExists('visa_update_logs');
+```
+
+### Model: `app/Models/VisaUpdateLog.php`
+- `const UPDATED_AT = null` (only created_at is used)
+- `$fillable`: `visa_submission_id`, `user_id`, `action`, `old_values`, `new_values`
+- `$casts`: `['old_values' => 'array', 'new_values' => 'array']`
+- Relationships: `visaSubmission(): BelongsTo`, `user(): BelongsTo`
+
+### Observer: `app/Observers/VisaSubmissionObserver.php`
+- Hooks into `updated` event on `VisaSubmission`
+- Tracks changed fields: `visa_agent_id`, `commission_agent_id`, `agent_commission`, `net_visa_cost`, `additional_cost`, `final_cost`, `visa_number`, `remarks`, `status`
+- Determines action from status transition:
+  - `pending → submitted` → `submitted`
+  - `submitted → issued` → `issued`
+  - any → `cancelled` → `cancelled`
+  - other field changes → `edited`
+- Stores only the changed tracked fields in `old_values`/`new_values` as JSON
+- Skips logging when no authenticated user (e.g., console commands)
+- Skips logging when no tracked fields changed
+
+### Registration
+In `AppServiceProvider::boot()`:
+```php
+VisaSubmission::observe(VisaSubmissionObserver::class);
+```
+
+### Model Update (`app/Models/VisaSubmission.php`)
+Add relationship:
+```php
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+public function logs(): HasMany
+{
+    return $this->hasMany(VisaUpdateLog::class);
+}
+```
+
+### Design Decisions
+
+| Decision | Justification |
+|----------|---------------|
+| Separate log table | Full history of every change, not just latest state |
+| Cascade delete | Removing a visa submission cleans up its logs automatically |
+| JSON columns for old/new | Flexible — captures exactly which fields changed without needing a column per field |
+| Only log on `updated` (not `created`) | Initial creation is system-generated, not a user action in the visa workflow |
+| No `updated_at` column | Log is append-only; only `created_at` matters |
+| Observer pattern | Decouples logging from controller logic; fires automatically on any model change |
+| Skip when no auth user | Console commands and system processes don't generate log entries |
