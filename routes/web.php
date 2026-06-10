@@ -22,6 +22,7 @@ use App\Http\Controllers\TravelClassController;
 use App\Http\Controllers\UserController;
 use App\Http\Controllers\VisaAgentController;
 use App\Http\Controllers\VisaAgentCostController;
+use App\Http\Controllers\CommissionAgentController;
 use App\Http\Controllers\VisaSellingPriceController;
 use App\Http\Controllers\CurrencyRateController;
 use App\Http\Controllers\TransactionTypeController;
@@ -76,6 +77,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/ticket-fares/baggage', [\App\Http\Controllers\TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
     Route::get('/api/ticket-fares/flight-date-gap', [\App\Http\Controllers\TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
     Route::resource('ticket-fares', \App\Http\Controllers\TicketFareController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::resource('commission-agents', CommissionAgentController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('visa-agent-costs', VisaAgentCostController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::resource('visa-selling-prices', VisaSellingPriceController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::resource('currency-rates', CurrencyRateController::class)->middleware('role:Super Admin,Co Admin');

@@ -29,6 +29,13 @@
             >
                 Visa Agents
             </button>
+            <button
+                @click="activeTab = 'commission-agents'"
+                :class="{ 'border-blue-500 text-blue-600': activeTab === 'commission-agents', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'commission-agents' }"
+                class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200"
+            >
+                Commission Agents
+            </button>
         </nav>
     </div>
 
@@ -215,6 +222,86 @@
             {{ $visaAgents->links() }}
         </div>
     </div>
+
+    <!-- Commission Agents Tab -->
+    <div x-show="activeTab === 'commission-agents'" x-cloak>
+        <div class="flex justify-between items-center mb-6">
+            <h2 class="text-xl font-bold text-slate-800">Commission Agents</h2>
+            @php
+                $canManageCommissionAgents = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
+            @endphp
+            @if($canManageCommissionAgents)
+            <button onclick="openCommissionAgentModal()" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
+                <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
+                </svg>
+                Add Commission Agent
+            </button>
+            @endif
+        </div>
+
+        @if(session('success'))
+            <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-4">
+                {{ session('success') }}
+            </div>
+        @endif
+
+        @if(session('error'))
+            <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+                {{ session('error') }}
+            </div>
+        @endif
+
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+            <div class="overflow-x-auto">
+                <table class="w-full text-sm">
+                    <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
+                        <tr>
+                            <th class="px-6 py-4 text-left">Visa Agent</th>
+                            <th class="px-6 py-4 text-left">Name</th>
+                            <th class="px-6 py-4 text-left">Address</th>
+                            <th class="px-6 py-4 text-left">Contacts</th>
+                            @if($canManageCommissionAgents)
+                            <th class="px-6 py-4 text-right">Actions</th>
+                            @endif
+                        </tr>
+                    </thead>
+                    <tbody class="divide-y divide-slate-200">
+                        @forelse($commissionAgents as $agent)
+                            <tr class="hover:bg-slate-50">
+                                <td class="px-6 py-4 text-slate-700 font-medium">{{ $agent->visaAgent->name ?? '—' }}</td>
+                                <td class="px-6 py-4 text-slate-700 font-medium">{{ $agent->name }}</td>
+                                <td class="px-6 py-4 text-slate-600">{{ $agent->address ?? '—' }}</td>
+                                <td class="px-6 py-4 text-slate-600">{{ $agent->contacts ?? '—' }}</td>
+                                @if($canManageCommissionAgents)
+                                <td class="px-6 py-4 text-right">
+                                    <div class="flex items-center justify-end gap-4">
+                                        <button onclick="editCommissionAgent({{ $agent->id }}, {{ $agent->visa_agent_id }}, '{{ $agent->name }}', '{{ $agent->address ?? '' }}', '{{ $agent->contacts ?? '' }}')" class="text-slate-600 hover:text-slate-800 font-medium text-sm">Edit</button>
+                                        <form method="POST" action="{{ route('commission-agents.destroy', $agent->id) }}" onsubmit="return confirm('Are you sure?')" class="inline">
+                                            @csrf
+                                            @method('DELETE')
+                                            <button type="submit" class="text-red-600 hover:text-red-800 font-medium text-sm">Delete</button>
+                                        </form>
+                                    </div>
+                                </td>
+                                @endif
+                            </tr>
+                        @empty
+                            <tr>
+                                <td colspan="{{ $canManageCommissionAgents ? 5 : 4 }}" class="px-6 py-12 text-center text-slate-500">
+                                    No commission agents found.
+                                </td>
+                            </tr>
+                        @endforelse
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        <div class="mt-6 flex justify-center">
+            {{ $commissionAgents->links() }}
+        </div>
+    </div>
 </div>
 
 <!-- Visa Price Modal -->
@@ -304,6 +391,45 @@
     </div>
 </div>
 
+<!-- Commission Agent Modal -->
+<div id="commissionAgentModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+    <div class="absolute inset-0 bg-black/50" onclick="closeCommissionAgentModal()"></div>
+    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
+        <h3 class="text-xl font-semibold text-slate-800 mb-4" id="commissionAgentModalTitle">Add Commission Agent</h3>
+        <form id="commissionAgentForm" method="POST" action="{{ route('commission-agents.store') }}">
+            @csrf
+            <input type="hidden" id="commissionAgentFormMethod" name="_method" value="POST">
+            <div class="space-y-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent</label>
+                    <select id="commissionAgentVisaAgent" name="visa_agent_id" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select Visa Agent</option>
+                        @foreach($allVisaAgents as $agent)
+                            <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                        @endforeach
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Name</label>
+                    <input type="text" id="commissionAgentName" name="name" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" required>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Address</label>
+                    <input type="text" id="commissionAgentAddress" name="address" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Contacts</label>
+                    <input type="text" id="commissionAgentContacts" name="contacts" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                </div>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button type="button" onclick="closeCommissionAgentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+            </div>
+        </form>
+    </div>
+</div>
+
 <script>
 // Visa Price Modal Functions
 function openVisaPriceModal() {
@@ -373,6 +499,33 @@ function editVisaAgent(id, name, address, contacts) {
     document.getElementById('visaAgentName').value = name;
     document.getElementById('visaAgentAddress').value = address;
     document.getElementById('visaAgentContacts').value = contacts;
+}
+
+// Commission Agent Modal Functions
+function openCommissionAgentModal() {
+    document.getElementById('commissionAgentModal').classList.remove('hidden');
+    document.getElementById('commissionAgentFormMethod').value = 'POST';
+    document.getElementById('commissionAgentForm').action = '{{ route("commission-agents.store") }}';
+    document.getElementById('commissionAgentModalTitle').textContent = 'Add Commission Agent';
+    document.getElementById('commissionAgentVisaAgent').value = '';
+    document.getElementById('commissionAgentName').value = '';
+    document.getElementById('commissionAgentAddress').value = '';
+    document.getElementById('commissionAgentContacts').value = '';
+}
+
+function closeCommissionAgentModal() {
+    document.getElementById('commissionAgentModal').classList.add('hidden');
+}
+
+function editCommissionAgent(id, visaAgentId, name, address, contacts) {
+    document.getElementById('commissionAgentModal').classList.remove('hidden');
+    document.getElementById('commissionAgentFormMethod').value = 'PUT';
+    document.getElementById('commissionAgentForm').action = '/commission-agents/' + id;
+    document.getElementById('commissionAgentModalTitle').textContent = 'Edit Commission Agent';
+    document.getElementById('commissionAgentVisaAgent').value = visaAgentId;
+    document.getElementById('commissionAgentName').value = name;
+    document.getElementById('commissionAgentAddress').value = address;
+    document.getElementById('commissionAgentContacts').value = contacts;
 }
 </script>
 @endsection
