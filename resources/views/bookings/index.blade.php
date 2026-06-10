@@ -1005,7 +1005,6 @@ function bookingIndexApp() {
             if (!data?.visa) return;
 
             const payload = {
-                submission_id: data.visa.id,
                 passenger_id: data.id,
                 booking_id: data.booking_id,
                 visa_number: this.visaIssueForm.visaNumber,
@@ -1093,7 +1092,6 @@ function bookingIndexApp() {
             if (!data?.visa) return;
 
             const payload = {
-                submission_id: data.visa.id,
                 passenger_id: data.id,
                 booking_id: data.booking_id,
                 visa_agent_id: this.visaEditForm.agentId || null,
