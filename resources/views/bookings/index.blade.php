@@ -326,7 +326,7 @@ if ($route) {
     <td class="px-3 py-2">
         <div class="flex items-center gap-1 flex-wrap">
             <template x-if="passengersVisaData[{{ $loop->index }}]?.visa">
-                <span class="text-slate-800 font-medium text-xs mr-1" x-text="passengersVisaData[{{ $loop->index }}]?.visa?.selling_price + ' SAR'"></span>
+                <span class="text-slate-800 font-medium text-xs mr-1" x-text="$currency(passengersVisaData[{{ $loop->index }}]?.visa?.selling_price)"></span>
             </template>
             <template x-if="!passengersVisaData[{{ $loop->index }}]?.visa">
                 <span class="text-slate-500 text-xs">N/A</span>
