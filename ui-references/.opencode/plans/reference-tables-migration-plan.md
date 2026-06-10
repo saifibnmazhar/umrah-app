@@ -3627,3 +3627,311 @@ protected $casts = [
     'sort_order' => 'integer',
 ];
 ```
+
+---
+
+## Visa Submission Status Migration
+
+Split into two migrations to keep the `visa_agent_id` nullable change isolated from the schema additions.
+
+---
+
+### Migration 1: Make `visa_agent_id` Nullable
+
+**File:** `2026_06_10_100000_make_visa_agent_id_nullable_in_visa_submissions.php`
+
+**Purpose:** Auto-created pending submissions have no agent assigned yet.
+
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+use Illuminate\Support\Facades\DB;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('visa_submissions', function (Blueprint $table) {
+            $table->foreignId('visa_agent_id')->nullable()->change();
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('visa_submissions', function (Blueprint $table) {
+            DB::table('visa_submissions')->whereNull('visa_agent_id')->update(['visa_agent_id' => 1]);
+            $table->foreignId('visa_agent_id')->nullable(false)->change();
+        });
+    }
+};
+```
+
+---
+
+### Migration 2: Add Status Columns & Drop `passengers.visa_status`
+
+**File:** `2026_06_10_100001_add_status_to_visa_submissions_and_drop_from_passengers.php`
+
+**Purpose:** Add workflow columns (`net_visa_cost`, `additional_cost`, `final_cost`, `remarks`, `status`) and remove the redundant `visa_status` from passengers.
+
+#### `up()`
+
+```php
+public function up(): void
+{
+    Schema::table('visa_submissions', function (Blueprint $table) {
+        $table->decimal('net_visa_cost', 10, 2)
+            ->nullable()
+            ->after('agent_commission');
+
+        $table->decimal('additional_cost', 10, 2)
+            ->nullable()
+            ->after('net_visa_cost');
+
+        $table->decimal('final_cost', 10, 2)
+            ->nullable()
+            ->after('additional_cost');
+
+        $table->string('remarks', 1000)
+            ->nullable()
+            ->after('final_cost');
+
+        $table->string('status', 20)
+            ->default('pending')
+            ->after('is_cancelled');
+    });
+
+    DB::statement('ALTER TABLE visa_submissions ADD CONSTRAINT vs_net_cost_check CHECK (net_visa_cost IS NULL OR net_visa_cost >= 0)');
+    DB::statement('ALTER TABLE visa_submissions ADD CONSTRAINT vs_add_cost_check CHECK (additional_cost IS NULL OR additional_cost >= 0)');
+    DB::statement('ALTER TABLE visa_submissions ADD CONSTRAINT vs_final_cost_check CHECK (final_cost IS NULL OR final_cost >= 0)');
+
+    if (Schema::hasColumn('passengers', 'visa_status')) {
+        Schema::table('passengers', function (Blueprint $table) {
+            $table->dropColumn('visa_status');
+        });
+    }
+}
+```
+
+#### `down()`
+
+```php
+public function down(): void
+{
+    Schema::table('passengers', function (Blueprint $table) {
+        $table->enum('visa_status', ['pending', 'submitted', 'issued'])
+            ->nullable()
+            ->after('ticket_status');
+    });
+
+    try {
+        DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS vs_net_cost_check');
+        DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS vs_add_cost_check');
+        DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS vs_final_cost_check');
+    } catch (\Exception $e) {
+        // MariaDB compatibility
+    }
+
+    Schema::table('visa_submissions', function (Blueprint $table) {
+        $table->dropColumn(['net_visa_cost', 'additional_cost', 'final_cost', 'remarks', 'status']);
+    });
+}
+```
+
+---
+
+### Schema After Migration 2
+
+**`visa_submissions` — full column set:**
+
+| # | Column | Type | Constraints |
+|---|--------|------|-------------|
+| 1 | `id` | bigint PK | auto-increment |
+| 2 | `passenger_id` | bigint FK→passengers | NOT NULL, restrictOnDelete |
+| 3 | `visa_agent_id` | bigint FK→visa_agents | **nullable** (from Migration 1) |
+| 4 | `commission_agent_id` | bigint FK→commission_agents | nullable |
+| 5 | `agent_commission` | decimal(10,2) | nullable, ≥0 |
+| 6 | `net_visa_cost` | decimal(10,2) | **new**, nullable, ≥0 |
+| 7 | `additional_cost` | decimal(10,2) | **new**, nullable, ≥0 |
+| 8 | `final_cost` | decimal(10,2) | **new**, nullable, ≥0 |
+| 9 | `remarks` | varchar(1000) | **new**, nullable |
+| 10 | `visa_selling_price_id` | bigint FK→visa_selling_prices | NOT NULL |
+| 11 | `visa_number` | varchar | nullable |
+| 12 | `is_cancelled` | boolean | default false |
+| 13 | `status` | varchar(20) | **new**, default `'pending'` |
+| 14 | `created_at` | timestamp | |
+| 15 | `updated_at` | timestamp | |
+
+**`passengers` — removed column:**
+
+| Column | Status |
+|--------|--------|
+| `visa_status` (enum: pending, submitted, issued) | **dropped** |
+
+---
+
+### Related Model Changes (applied after both migrations)
+
+**`app/Enums/VisaStatus.php`** — add `cancelled`:
+```php
+enum VisaStatus: string
+{
+    case PENDING = 'pending';
+    case SUBMITTED = 'submitted';
+    case ISSUED = 'issued';
+    case CANCELLED = 'cancelled';
+}
+```
+
+**`app/Models/VisaSubmission.php`** — update `$fillable` and `$casts`:
+```php
+protected $fillable = [
+    'passenger_id', 'visa_agent_id', 'commission_agent_id', 'agent_commission',
+    'visa_selling_price_id', 'visa_number', 'is_cancelled',
+    'net_visa_cost', 'additional_cost', 'final_cost', 'remarks', 'status',
+];
+
+protected $casts = [
+    'agent_commission' => 'decimal:2',
+    'net_visa_cost' => 'decimal:2',
+    'additional_cost' => 'decimal:2',
+    'final_cost' => 'decimal:2',
+    'is_cancelled' => 'boolean',
+    'status' => \App\Enums\VisaStatus::class,
+];
+```
+
+**`app/Models/Passenger.php`** — remove `visa_status`:
+```php
+// Remove from $fillable:
+// 'visa_status',
+
+// Remove from $casts:
+// 'visa_status' => VisaStatus::class,
+```
+
+---
+
+### Backfill Command (Separate Artisan Command)
+
+`php artisan umrah:backfill-visa-submissions`
+
+```php
+// app/Console/Commands/BackfillVisaSubmissions.php
+public function handle()
+{
+    $count = 0;
+    Passenger::whereDoesntHave('visaSubmission')
+        ->where('service_required', '!=', 'ticket_only')
+        ->chunk(100, function ($passengers) use (&$count) {
+        foreach ($passengers as $passenger) {
+            $visaSellingPriceId = $passenger->booking?->package?->visa_selling_price_id;
+            VisaSubmission::create([
+                'passenger_id' => $passenger->id,
+                'visa_selling_price_id' => $visaSellingPriceId ?? 1,
+                'status' => 'pending',
+            ]);
+            $count++;
+        }
+    });
+    $this->info("Created {$count} visa submission(s) for passengers without one.");
+}
+```
+
+---
+
+## Phase 9: Visa Update Logs Table
+
+### Overview
+Add a `visa_update_logs` table to track who made changes to visa submissions and what changed.
+
+### Migration File
+`2026_06_10_100002_create_visa_update_logs_table.php`
+
+### Artisan Command
+```bash
+php artisan make:migration create_visa_update_logs_table
+```
+
+### Schema Structure
+
+| Column | Type | Constraints |
+|--------|------|-------------|
+| `id` | bigint unsigned | PK, auto-increment |
+| `visa_submission_id` | bigint unsigned | FK → visa_submissions, cascade on delete |
+| `user_id` | bigint unsigned | FK → users |
+| `action` | string | `submitted`, `issued`, `edited`, `cancelled` |
+| `old_values` | JSON, nullable | Snapshot of changed tracked fields before update |
+| `new_values` | JSON, nullable | Snapshot of changed tracked fields after update |
+| `created_at` | timestamp | When the action occurred |
+
+### UP Method
+```php
+Schema::create('visa_update_logs', function (Blueprint $table) {
+    $table->id();
+    $table->foreignId('visa_submission_id')
+        ->constrained('visa_submissions')
+        ->cascadeOnDelete();
+    $table->foreignId('user_id')
+        ->constrained('users');
+    $table->string('action');
+    $table->json('old_values')->nullable();
+    $table->json('new_values')->nullable();
+    $table->timestamp('created_at');
+});
+```
+
+### DOWN Method
+```php
+Schema::dropIfExists('visa_update_logs');
+```
+
+### Model: `app/Models/VisaUpdateLog.php`
+- `const UPDATED_AT = null` (only created_at is used)
+- `$fillable`: `visa_submission_id`, `user_id`, `action`, `old_values`, `new_values`
+- `$casts`: `['old_values' => 'array', 'new_values' => 'array']`
+- Relationships: `visaSubmission(): BelongsTo`, `user(): BelongsTo`
+
+### Observer: `app/Observers/VisaSubmissionObserver.php`
+- Hooks into `updated` event on `VisaSubmission`
+- Tracks changed fields: `visa_agent_id`, `commission_agent_id`, `agent_commission`, `net_visa_cost`, `additional_cost`, `final_cost`, `visa_number`, `remarks`, `status`
+- Determines action from status transition:
+  - `pending → submitted` → `submitted`
+  - `submitted → issued` → `issued`
+  - any → `cancelled` → `cancelled`
+  - other field changes → `edited`
+- Stores only the changed tracked fields in `old_values`/`new_values` as JSON
+- Skips logging when no authenticated user (e.g., console commands)
+- Skips logging when no tracked fields changed
+
+### Registration
+In `AppServiceProvider::boot()`:
+```php
+VisaSubmission::observe(VisaSubmissionObserver::class);
+```
+
+### Model Update (`app/Models/VisaSubmission.php`)
+Add relationship:
+```php
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+public function logs(): HasMany
+{
+    return $this->hasMany(VisaUpdateLog::class);
+}
+```
+
+### Design Decisions
+
+| Decision | Justification |
+|----------|---------------|
+| Separate log table | Full history of every change, not just latest state |
+| Cascade delete | Removing a visa submission cleans up its logs automatically |
+| JSON columns for old/new | Flexible — captures exactly which fields changed without needing a column per field |
+| Only log on `updated` (not `created`) | Initial creation is system-generated, not a user action in the visa workflow |
+| No `updated_at` column | Log is append-only; only `created_at` matters |
+| Observer pattern | Decouples logging from controller logic; fires automatically on any model change |
+| Skip when no auth user | Console commands and system processes don't generate log entries |

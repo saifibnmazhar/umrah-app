@@ -26,6 +26,8 @@ use App\Models\Bank;
 use App\Models\Voucher;
 use App\Models\TransactionType;
 use App\Models\CurrencyRate;
+use App\Models\VisaAgent;
+use App\Models\VisaSubmission;
 use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
@@ -128,6 +130,8 @@ class BookingController extends Controller
             'ticketFare.route',
             'status',
             'visaSubmission.visaAgent',
+            'visaSubmission.visaSellingPrice',
+            'visaSubmission.commissionAgent',
             'fingerprintDetail.fingerprint.fingerprintDetails'
         ])
             ->orderBy('created_at', 'desc')
@@ -137,7 +141,24 @@ class BookingController extends Controller
 
         $passengerStatuses = PassengerStatus::all();
 
-        return view('bookings.index', compact('tab', 'bookings', 'passengers', 'passengerStatuses'));
+        $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
+            ->orderBy('name')
+            ->get()
+            ->map(fn($a) => [
+                'id' => $a->id,
+                'name' => $a->name,
+                'cost' => (float)($a->visaAgentCost?->visa_agent_cost ?? 0),
+                'commission_agents' => $a->commissionAgents->map(fn($ca) => [
+                    'id' => $ca->id,
+                    'name' => $ca->name,
+                ]),
+            ]);
+
+        $canEditVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
+
+        return view('bookings.index', compact(
+            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa'
+        ));
     }
 
     public function create(Request $request)
@@ -337,7 +358,7 @@ class BookingController extends Controller
                     $passengerData['stay_duration'] ?? null
                 );
 
-                Passenger::create([
+                $passenger = Passenger::create([
                     'booking_id' => $booking->id,
                     'first_name' => $passengerData['first_name'],
                     'last_name' => $passengerData['last_name'],
@@ -356,6 +377,14 @@ class BookingController extends Controller
                         ? null
                         : ($passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id),
                 ]);
+
+                if (($passengerData['service_required'] ?? 'all') !== 'ticket_only') {
+                    VisaSubmission::create([
+                        'passenger_id' => $passenger->id,
+                        'visa_selling_price_id' => $booking->package?->visa_selling_price_id ?? VisaSellingPrice::latest('id')->value('id'),
+                        'status' => 'pending',
+                    ]);
+                }
             }
 
             $fingerprint = Fingerprint::create([
@@ -821,6 +850,14 @@ class BookingController extends Controller
             : ($validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id);
 
         $passenger = Passenger::create($validated);
+
+        if (($validated['service_required'] ?? 'all') !== 'ticket_only') {
+            VisaSubmission::create([
+                'passenger_id' => $passenger->id,
+                'visa_selling_price_id' => $booking->package?->visa_selling_price_id ?? VisaSellingPrice::latest('id')->value('id'),
+                'status' => 'pending',
+            ]);
+        }
 
         $fingerprint = Fingerprint::where('booking_id', $booking->id)->first();
         if ($fingerprint) {

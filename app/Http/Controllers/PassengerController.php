@@ -7,6 +7,8 @@ use App\Models\Booking;
 use App\Models\Document;
 use App\Models\Package;
 use App\Models\TicketFare;
+use App\Models\VisaSellingPrice;
+use App\Models\VisaSubmission;
 use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Services\BookingService;
@@ -285,6 +287,16 @@ class PassengerController extends Controller
 
         try {
             $passenger->update($validated);
+
+            $newServiceRequired = $validated['service_required'] ?? null;
+            if ($newServiceRequired && $newServiceRequired !== 'ticket_only' && !$passenger->visaSubmission()->exists()) {
+                $booking = $passenger->booking;
+                VisaSubmission::create([
+                    'passenger_id' => $passenger->id,
+                    'visa_selling_price_id' => $booking?->package?->visa_selling_price_id ?? VisaSellingPrice::latest('id')->value('id'),
+                    'status' => 'pending',
+                ]);
+            }
 
             $booking = $passenger->booking;
             if ($booking) {

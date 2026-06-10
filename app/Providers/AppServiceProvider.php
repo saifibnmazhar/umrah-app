@@ -2,6 +2,8 @@
 
 namespace App\Providers;
 
+use App\Models\VisaSubmission;
+use App\Observers\VisaSubmissionObserver;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
 
@@ -20,6 +22,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        VisaSubmission::observe(VisaSubmissionObserver::class);
+
         Blade::directive('currency', function ($expression) {
             $parts = explode(',', $expression . ',2');
             $amount = trim($parts[0]);
