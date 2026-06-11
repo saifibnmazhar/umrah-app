@@ -95,7 +95,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'outbound_date' => $p->ticketFare->groupTicket?->outbound_date ?? '',
         'pnr' => $p->ticketFare->groupTicket?->pnr ?? '',
         'ticket_number' => '',
-        'date' => $p->ticketFare->created_at?->format('Y-m-d') ?? '',
+        'date' => '',
         'ticket_agent' => '',
         'selling_fare' => (float)($p->ticketFare->selling_fare ?? 0),
         'net_fare' => (float)($p->ticketFare->net_fare ?? 0),
@@ -633,6 +633,15 @@ if ($route) {
                                 <option value="Direct">Direct</option>
                             </select>
                         </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
+                            <select x-model="ticketFareForm.ticket_option" @change="handleTicketOptionChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Ticket</option>
+                                <template x-for="opt in filteredTicketOptions" :key="opt.value">
+                                    <option :value="opt.value" x-text="opt.display"></option>
+                                </template>
+                            </select>
+                        </div>
                         <div x-show="ticketFareForm.showInboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
                             <input type="date" x-model="ticketFareForm.inbound_date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
@@ -650,7 +659,7 @@ if ($route) {
                             <input type="text" x-model="ticketFareForm.ticket_number" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter Ticket Number">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
                             <input type="date" x-model="ticketFareForm.date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div>
@@ -669,31 +678,16 @@ if ($route) {
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
-                            <select x-model="ticketFareForm.route" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="">Select Route</option>
-                                <template x-for="r in filteredRoutes" :key="r.id">
-                                    <option :value="r.display" x-text="r.display"></option>
-                                </template>
-                            </select>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
+                            <input type="text" x-model="ticketFareForm.route" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
-                            <select x-model="ticketFareForm.airline" required @change="handleAirlineChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="">Select Airline</option>
-                                <template x-for="a in filteredAirlines" :key="a.id">
-                                    <option :value="a.name" x-text="a.name"></option>
-                                </template>
-                            </select>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline</label>
+                            <input type="text" x-model="ticketFareForm.airline" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
-                            <select x-model="ticketFareForm.travel_class" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="">Select Class</option>
-                                <template x-for="c in filteredClasses" :key="c.id">
-                                    <option :value="c.name" x-text="c.name"></option>
-                                </template>
-                            </select>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Class</label>
+                            <input type="text" x-model="ticketFareForm.travel_class" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
@@ -1147,11 +1141,12 @@ function bookingIndexApp() {
             group_ticket_id: '',
             route_type: '',
             flight_type: '',
+            ticket_option: '',
             inbound_date: '',
             outbound_date: '',
             pnr: '',
             ticket_number: '',
-            date: '',
+            date: (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(),
             ticket_agent: '',
             route: '',
             airline: '',
@@ -1196,7 +1191,7 @@ function bookingIndexApp() {
                 this.ticketFareForm.outbound_date = row.ticket_fare.outbound_date || '';
                 this.ticketFareForm.pnr = row.ticket_fare.pnr || '';
                 this.ticketFareForm.ticket_number = row.ticket_fare.ticket_number || '';
-                this.ticketFareForm.date = row.ticket_fare.date || '';
+                this.ticketFareForm.date = row.ticket_fare.date || (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
                 this.ticketFareForm.ticket_agent = row.ticket_fare.ticket_agent || '';
                 this.ticketFareForm.selling_fare = row.ticket_fare.selling_fare || 0;
                 this.ticketFareForm.net_fare = row.ticket_fare.net_fare || 0;
@@ -1217,7 +1212,7 @@ function bookingIndexApp() {
                 this.ticketFareForm.outbound_date = '';
                 this.ticketFareForm.pnr = '';
                 this.ticketFareForm.ticket_number = '';
-                this.ticketFareForm.date = '';
+                const today = new Date(); this.ticketFareForm.date = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
                 this.ticketFareForm.ticket_agent = '';
                 this.ticketFareForm.selling_fare = 0;
                 this.ticketFareForm.net_fare = 0;
@@ -1325,6 +1320,7 @@ function bookingIndexApp() {
         },
 
         handleRouteTypeOrFlightTypeChange() {
+            this.ticketFareForm.ticket_option = '';
             this.ticketFareForm.route = '';
             this.ticketFareForm.airline = '';
             this.ticketFareForm.travel_class = '';
@@ -1363,6 +1359,42 @@ function bookingIndexApp() {
             const airline = this.airlinesList.find(a => a.name === name);
             if (!airline) return this.classesList;
             return this.classesList.filter(c => airline.class_ids.includes(c.id));
+        },
+
+        get filteredTicketOptions() {
+            const routes = this.filteredRoutes;
+            const airlines = this.filteredAirlines;
+            const result = [];
+            if (!routes.length || !airlines.length) return result;
+            for (const r of routes) {
+                const matchingAirlines = airlines.filter(a => a.id === r.airline_id);
+                for (const a of matchingAirlines) {
+                    const classes = this.classesList.filter(c => a.class_ids.includes(c.id));
+                    for (const c of classes) {
+                        result.push({
+                            display: r.display + ' | ' + a.name + ' | ' + c.name,
+                            value: r.display + '||' + a.name + '||' + c.name,
+                        });
+                    }
+                }
+            }
+            return result;
+        },
+
+        handleTicketOptionChange() {
+            const val = this.ticketFareForm.ticket_option;
+            if (!val) {
+                this.ticketFareForm.route = '';
+                this.ticketFareForm.airline = '';
+                this.ticketFareForm.travel_class = '';
+                return;
+            }
+            const parts = val.split('||');
+            if (parts.length === 3) {
+                this.ticketFareForm.route = parts[0];
+                this.ticketFareForm.airline = parts[1];
+                this.ticketFareForm.travel_class = parts[2];
+            }
         },
 
         showToast(message) {
