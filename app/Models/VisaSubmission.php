@@ -54,9 +54,14 @@ class VisaSubmission extends Model
         return $this->belongsTo(VisaSellingPrice::class);
     }
 
+    public function cancelledSubmissions(): HasMany
+    {
+        return $this->hasMany(CancelledSubmission::class);
+    }
+
     public function cancelledSubmission(): HasOne
     {
-        return $this->hasOne(CancelledSubmission::class);
+        return $this->hasOne(CancelledSubmission::class)->latestOfMany();
     }
 
     public function logs(): HasMany

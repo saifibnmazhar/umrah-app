@@ -60,6 +60,7 @@ class PassengerController extends Controller
             'visaSubmission.visaAgent.commissionAgents',
             'visaSubmission.commissionAgent',
             'visaSubmission.visaSellingPrice',
+            'visaSubmission.cancelledSubmissions',
             'visaSubmission.cancelledSubmission',
             'visaSubmission.logs.user',
         ]);
@@ -131,7 +132,11 @@ class PassengerController extends Controller
             $currentAgentCost = (float)($visaSubmission->net_visa_cost ?? 0);
             $currentAdditional = (float)($visaSubmission->additional_cost ?? 0);
             $currentCommission = (float)($visaSubmission->agent_commission ?? 0);
-            $currentCaFee = (float)($visaSubmission->cancelledSubmission?->cancellation_fee ?? 0);
+
+            $cancelledQueue = $visaSubmission->cancelledSubmissions
+                ->sortBy('created_at')
+                ->values();
+            $cancelledIdx = 0;
 
             $historyRows[] = [
                 'date' => $visaSubmission->created_at,
@@ -146,6 +151,13 @@ class PassengerController extends Controller
             foreach ($statusLogs as $log) {
                 $nv = $log->new_values;
                 $agentId = $nv['visa_agent_id'] ?? null;
+
+                $caFee = null;
+                if (($nv['status'] ?? '') === 'cancelled' && isset($cancelledQueue[$cancelledIdx])) {
+                    $caFee = (float)$cancelledQueue[$cancelledIdx]->cancellation_fee ?: null;
+                    $cancelledIdx++;
+                }
+
                 $historyRows[] = [
                     'date' => $log->created_at,
                     'agent' => $agentId ? ($agentLookup[$agentId]?->name ?? 'N/A') : $currentAgentName,
@@ -153,7 +165,7 @@ class PassengerController extends Controller
                     'add_cost' => isset($nv['additional_cost']) ? (float)$nv['additional_cost'] : $currentAdditional,
                     'agent_commission' => isset($nv['agent_commission']) ? (float)$nv['agent_commission'] : $currentCommission,
                     'status' => $nv['status'] ?? $visaSubmission->status?->value,
-                    'cancellation_fee' => ($nv['status'] ?? '') === 'cancelled' ? $currentCaFee : null,
+                    'cancellation_fee' => $caFee,
                 ];
             }
         }

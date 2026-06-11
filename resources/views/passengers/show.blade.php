@@ -497,7 +497,7 @@ function openCancellationModal() {
     if (!visaSubmission) return;
 
     document.getElementById('cancelAgentName').value = visaSubmission.visa_agent?.name || '-';
-    document.getElementById('cancelAgentCost').value = visaSubmission.final_cost ? visaSubmission.final_cost.toFixed(2) : '0.00';
+    document.getElementById('cancelAgentCost').value = visaSubmission.net_visa_cost ? visaSubmission.net_visa_cost.toFixed(2) : '0.00';
     document.getElementById('cancellationFee').value = '';
     document.getElementById('cancelRemarks').value = '';
     document.getElementById('cancelError').classList.add('hidden');
