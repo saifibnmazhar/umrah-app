@@ -98,12 +98,14 @@ class VisaReportController extends Controller
             $customer = $booking?->customer;
 
             $iqama = $customer?->iqama_no;
+            $passport = $passenger?->passport_no;
             $result[] = [
                 'id' => $submission->id,
                 'invoice_no' => $booking?->invoice_id ?? '-',
                 'customer_name' => $customer?->name ?? '-',
                 'customer_iqama' => $iqama ? "IQAMA: {$iqama}" : 'N/A',
                 'pax_name' => $passenger ? trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')) : '-',
+                'pax_passport' => $passport ? "Passport: {$passport}" : 'N/A',
                 'mobile' => $passenger?->mobile_no ?? '-',
                 'visa_submit_date' => $submission->created_at?->format('d-M-Y'),
                 'visa_status' => $submission->status?->value ?? 'pending',
