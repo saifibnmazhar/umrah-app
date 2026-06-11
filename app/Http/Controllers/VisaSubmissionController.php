@@ -149,8 +149,8 @@ class VisaSubmissionController extends Controller
             return response()->json(['success' => false, 'message' => 'No visa submission found for this passenger'], 404);
         }
 
-        if ($visaSubmission->status?->value === 'cancelled') {
-            return response()->json(['success' => false, 'message' => 'Visa is already cancelled'], 422);
+        if ($visaSubmission->status?->value !== 'submitted') {
+            return response()->json(['success' => false, 'message' => 'Only submitted visas can be cancelled'], 422);
         }
 
         $cancellationFee = (float) ($validated['cancellation_fee'] ?? 0);
