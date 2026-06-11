@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\CancelledSubmission;
 use App\Models\Passenger;
 use App\Models\VisaSubmission;
 use App\Models\VisaAgent;
@@ -128,6 +129,97 @@ class VisaSubmissionController extends Controller
             'success' => true,
             'message' => 'Visa updated successfully',
             'visa_submission' => $visaSubmission->fresh()->load(['visaAgent', 'commissionAgent', 'visaSellingPrice']),
+        ]);
+    }
+
+    public function cancel(Request $request, Booking $booking, Passenger $passenger)
+    {
+        if ($passenger->booking_id !== $booking->id) {
+            return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
+        }
+
+        $validated = $request->validate([
+            'cancellation_fee' => 'nullable|numeric|min:0',
+            'remarks' => 'nullable|string|max:1000',
+        ]);
+
+        $visaSubmission = $passenger->visaSubmission;
+
+        if (!$visaSubmission) {
+            return response()->json(['success' => false, 'message' => 'No visa submission found for this passenger'], 404);
+        }
+
+        if ($visaSubmission->status?->value !== 'submitted') {
+            return response()->json(['success' => false, 'message' => 'Only submitted visas can be cancelled'], 422);
+        }
+
+        $cancellationFee = (float) ($validated['cancellation_fee'] ?? 0);
+
+        CancelledSubmission::create([
+            'visa_submission_id' => $visaSubmission->id,
+            'cancellation_fee' => $cancellationFee ?: null,
+        ]);
+
+        $visaSubmission->update([
+            'visa_agent_id' => null,
+            'commission_agent_id' => null,
+            'net_visa_cost' => null,
+            'additional_cost' => null,
+            'agent_commission' => null,
+            'final_cost' => null,
+            'is_cancelled' => true,
+            'status' => 'cancelled',
+            'remarks' => $validated['remarks'] ?? $visaSubmission->remarks,
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Visa cancelled successfully',
+            'visa_submission' => $visaSubmission->fresh()->load(['visaAgent', 'commissionAgent', 'visaSellingPrice', 'cancelledSubmission']),
+        ]);
+    }
+
+    public function reSubmit(Request $request, Booking $booking, Passenger $passenger)
+    {
+        if ($passenger->booking_id !== $booking->id) {
+            return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
+        }
+
+        $validated = $request->validate([
+            'visa_agent_id' => 'required|exists:visa_agents,id',
+            'commission_agent_id' => 'nullable|exists:commission_agents,id',
+            'agent_commission' => 'nullable|numeric|min:0',
+        ]);
+
+        $visaSubmission = $passenger->visaSubmission;
+
+        if (!$visaSubmission) {
+            return response()->json(['success' => false, 'message' => 'No visa submission found for this passenger'], 404);
+        }
+
+        if ($visaSubmission->status?->value !== 'cancelled') {
+            return response()->json(['success' => false, 'message' => 'Only cancelled visas can be re-submitted'], 422);
+        }
+
+        $visaAgent = VisaAgent::with('visaAgentCost')->findOrFail($validated['visa_agent_id']);
+        $netVisaCost = (float) ($visaAgent->visaAgentCost?->visa_agent_cost ?? 0);
+        $agentCommission = (float) ($validated['agent_commission'] ?? 0);
+        $finalCost = $netVisaCost + $agentCommission;
+
+        $visaSubmission->update([
+            'is_cancelled' => false,
+            'visa_agent_id' => $validated['visa_agent_id'],
+            'commission_agent_id' => $validated['commission_agent_id'] ?? null,
+            'agent_commission' => $agentCommission ?: null,
+            'net_visa_cost' => $netVisaCost ?: null,
+            'final_cost' => $finalCost ?: null,
+            'status' => 'submitted',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Visa re-submitted successfully',
+            'visa_submission' => $visaSubmission->fresh()->load(['visaAgent', 'commissionAgent', 'visaSellingPrice', 'cancelledSubmission']),
         ]);
     }
 }
