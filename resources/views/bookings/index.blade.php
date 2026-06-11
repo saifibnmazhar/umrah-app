@@ -678,31 +678,16 @@ if ($route) {
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
-                            <select x-model="ticketFareForm.route" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="">Select Route</option>
-                                <template x-for="r in filteredRoutes" :key="r.id">
-                                    <option :value="r.display" x-text="r.display"></option>
-                                </template>
-                            </select>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
+                            <input type="text" x-model="ticketFareForm.route" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
-                            <select x-model="ticketFareForm.airline" required @change="handleAirlineChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="">Select Airline</option>
-                                <template x-for="a in filteredAirlines" :key="a.id">
-                                    <option :value="a.name" x-text="a.name"></option>
-                                </template>
-                            </select>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline</label>
+                            <input type="text" x-model="ticketFareForm.airline" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
-                            <select x-model="ticketFareForm.travel_class" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="">Select Class</option>
-                                <template x-for="c in filteredClasses" :key="c.id">
-                                    <option :value="c.name" x-text="c.name"></option>
-                                </template>
-                            </select>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Class</label>
+                            <input type="text" x-model="ticketFareForm.travel_class" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
