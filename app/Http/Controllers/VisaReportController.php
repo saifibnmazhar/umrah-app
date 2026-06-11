@@ -107,6 +107,7 @@ class VisaReportController extends Controller
                 'pax_name' => $passenger ? trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')) : '-',
                 'pax_passport' => $passport ? "Passport: {$passport}" : 'N/A',
                 'mobile' => $passenger?->mobile_no ?? '-',
+                'customer_mobile' => $customer?->mobile_no ?? '-',
                 'visa_submit_date' => $submission->created_at?->format('d-M-Y'),
                 'visa_status' => $submission->status?->value ?? 'pending',
                 'flight_date' => $passenger?->flight_date_display ?? '-',
