@@ -633,6 +633,15 @@ if ($route) {
                                 <option value="Direct">Direct</option>
                             </select>
                         </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
+                            <select x-model="ticketFareForm.ticket_option" @change="handleTicketOptionChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Ticket</option>
+                                <template x-for="opt in filteredTicketOptions" :key="opt.value">
+                                    <option :value="opt.value" x-text="opt.display"></option>
+                                </template>
+                            </select>
+                        </div>
                         <div x-show="ticketFareForm.showInboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
                             <input type="date" x-model="ticketFareForm.inbound_date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
@@ -1147,6 +1156,7 @@ function bookingIndexApp() {
             group_ticket_id: '',
             route_type: '',
             flight_type: '',
+            ticket_option: '',
             inbound_date: '',
             outbound_date: '',
             pnr: '',
@@ -1325,6 +1335,7 @@ function bookingIndexApp() {
         },
 
         handleRouteTypeOrFlightTypeChange() {
+            this.ticketFareForm.ticket_option = '';
             this.ticketFareForm.route = '';
             this.ticketFareForm.airline = '';
             this.ticketFareForm.travel_class = '';
@@ -1363,6 +1374,42 @@ function bookingIndexApp() {
             const airline = this.airlinesList.find(a => a.name === name);
             if (!airline) return this.classesList;
             return this.classesList.filter(c => airline.class_ids.includes(c.id));
+        },
+
+        get filteredTicketOptions() {
+            const routes = this.filteredRoutes;
+            const airlines = this.filteredAirlines;
+            const result = [];
+            if (!routes.length || !airlines.length) return result;
+            for (const r of routes) {
+                const matchingAirlines = airlines.filter(a => a.id === r.airline_id);
+                for (const a of matchingAirlines) {
+                    const classes = this.classesList.filter(c => a.class_ids.includes(c.id));
+                    for (const c of classes) {
+                        result.push({
+                            display: r.display + ' | ' + a.name + ' | ' + c.name,
+                            value: r.display + '||' + a.name + '||' + c.name,
+                        });
+                    }
+                }
+            }
+            return result;
+        },
+
+        handleTicketOptionChange() {
+            const val = this.ticketFareForm.ticket_option;
+            if (!val) {
+                this.ticketFareForm.route = '';
+                this.ticketFareForm.airline = '';
+                this.ticketFareForm.travel_class = '';
+                return;
+            }
+            const parts = val.split('||');
+            if (parts.length === 3) {
+                this.ticketFareForm.route = parts[0];
+                this.ticketFareForm.airline = parts[1];
+                this.ticketFareForm.travel_class = parts[2];
+            }
         },
 
         showToast(message) {
