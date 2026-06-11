@@ -229,7 +229,10 @@ select {
                     <template x-for="(row, rowIndex) in data" :key="row.id || rowIndex">
                         <tr class="table-row-visa">
                             <td class="px-2 py-2 text-xs text-center border-r border-gray-200 font-medium" x-text="row.invoice_no"></td>
-                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200" x-text="row.customer_name"></td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200">
+                                <div x-text="row.customer_name"></div>
+                                <div class="text-[11px] font-semibold text-gray-700" x-text="row.customer_iqama"></div>
+                            </td>
                             <td class="px-2 py-2 text-xs text-left border-r border-gray-200" x-text="row.pax_name"></td>
                             <td class="px-2 py-2 text-xs text-center border-r border-gray-200" x-text="row.mobile"></td>
                             <td class="px-2 py-2 text-xs text-center border-r border-gray-200" x-text="row.visa_submit_date"></td>
