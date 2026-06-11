@@ -6,7 +6,7 @@
     $isTicketPersonnel = auth()->user()->roles->pluck('name')->intersect(['Ticket Admin', 'Ticket Staff'])->isNotEmpty();
     $isBranchPersonnel = auth()->user()->roles->pluck('name')->intersect(['Branch Manager', 'Branch Staff'])->isNotEmpty();
 @endphp
-<div class="max-w-3xl mx-auto pt-6">
+<div class="max-w-5xl mx-auto pt-6">
     <div id="passengerDetailsContent" class="space-y-6">
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
@@ -225,26 +225,29 @@
                         </div>
                     </div>
                     <div class="overflow-x-auto">
-                        <table class="w-full min-w-[800px] text-sm">
+                        <table class="w-full text-sm">
                             <thead class="bg-slate-50 text-slate-600">
                                 <tr>
                                     <th class="px-3 py-2 text-left font-medium">Date</th>
                                     <th class="px-3 py-2 text-left font-medium">Agent</th>
                                     <th class="px-3 py-2 text-right font-medium">Agent Cost</th>
+                                    <th class="px-3 py-2 text-right font-medium">Add. Cost</th>
+                                    <th class="px-3 py-2 text-right font-medium">Agent Commission</th>
                                     <th class="px-3 py-2 text-left font-medium">Status</th>
                                     <th class="px-3 py-2 text-right font-medium">Cancellation Fee</th>
                                 </tr>
                             </thead>
                             <tbody id="visaSubmissionHistoryBody" class="divide-y divide-slate-200">
-                                @if($passenger->visaSubmission)
-                                @php $vs = $passenger->visaSubmission; @endphp
+                                @forelse($historyRows as $row)
+                                @php $date = $row['date'] instanceof \Carbon\Carbon ? $row['date']->format('d M Y') : $row['date']; @endphp
                                 <tr class="hover:bg-slate-50">
-                                    <td class="px-3 py-2 text-slate-600">{{ $vs->created_at->format('d M Y') }}</td>
-                                    <td class="px-3 py-2 text-slate-800">{{ $vs->visaAgent?->name ?? '-' }}</td>
-                                    @php $agentCost = (float)$vs->net_visa_cost + (float)$vs->additional_cost; @endphp
-                                    <td class="px-3 py-2 text-slate-800 text-right font-medium">@if($agentCost)<span data-sar="{{ $agentCost }}" data-dec="2">SAR {{ number_format($agentCost, 2) }}</span>@else-@endif</td>
+                                    <td class="px-3 py-2 text-slate-600">{{ $date }}</td>
+                                    <td class="px-3 py-2 text-slate-800">{{ $row['agent'] }}</td>
+                                    <td class="px-3 py-2 text-slate-800 text-right font-medium">@if($row['agent_cost'])<span data-sar="{{ $row['agent_cost'] }}" data-dec="2">SAR {{ number_format($row['agent_cost'], 2) }}</span>@else N/A @endif</td>
+                                    <td class="px-3 py-2 text-slate-800 text-right font-medium">@if($row['add_cost'])<span data-sar="{{ $row['add_cost'] }}" data-dec="2">SAR {{ number_format($row['add_cost'], 2) }}</span>@else N/A @endif</td>
+                                    <td class="px-3 py-2 text-slate-800 text-right font-medium">@if($row['agent_commission'])<span data-sar="{{ $row['agent_commission'] }}" data-dec="2">SAR {{ number_format($row['agent_commission'], 2) }}</span>@else N/A @endif</td>
                                     <td class="px-3 py-2">
-                                        @switch($vs->status?->value)
+                                        @switch($row['status'])
                                         @case('submitted')
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Submitted</span>
                                         @break
@@ -255,25 +258,16 @@
                                         <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>
                                         @break
                                         @default
-                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">{{ ucfirst($vs->status?->value ?? 'Pending') }}</span>
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">{{ ucfirst($row['status'] ?? 'Pending') }}</span>
                                         @endswitch
                                     </td>
-                                    <td class="px-3 py-2 text-slate-800 text-right font-medium">
-                                        @if($vs->cancelledSubmission)<span data-sar="{{ (float)$vs->cancelledSubmission->cancellation_fee }}" data-dec="2">SAR {{ number_format((float)$vs->cancelledSubmission->cancellation_fee, 2) }}</span>@else-@endif
-                                    </td>
+                                    <td class="px-3 py-2 text-slate-800 text-right font-medium">@if($row['cancellation_fee'])<span data-sar="{{ $row['cancellation_fee'] }}" data-dec="2">SAR {{ number_format($row['cancellation_fee'], 2) }}</span>@else - @endif</td>
                                 </tr>
-                                @foreach($vs->logs as $log)
-                                <tr class="hover:bg-slate-50 text-slate-500">
-                                    <td class="px-3 py-2">{{ $log->created_at->format('d M Y') }}</td>
-                                    <td class="px-3 py-2">{{ $log->action }}</td>
-                                    <td class="px-3 py-2 text-right" colspan="3">{{ $log->user?->name ?? 'System' }}</td>
-                                </tr>
-                                @endforeach
-                                @else
+                                @empty
                                 <tr>
-                                    <td colspan="5" class="px-3 py-4 text-center text-slate-400">No visa submission found</td>
+                                    <td colspan="7" class="px-3 py-4 text-center text-slate-400">No visa submission found</td>
                                 </tr>
-                                @endif
+                                @endforelse
                             </tbody>
                         </table>
                     </div>

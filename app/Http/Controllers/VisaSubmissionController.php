@@ -161,6 +161,12 @@ class VisaSubmissionController extends Controller
         ]);
 
         $visaSubmission->update([
+            'visa_agent_id' => null,
+            'commission_agent_id' => null,
+            'net_visa_cost' => null,
+            'additional_cost' => null,
+            'agent_commission' => null,
+            'final_cost' => null,
             'is_cancelled' => true,
             'status' => 'cancelled',
             'remarks' => $validated['remarks'] ?? $visaSubmission->remarks,

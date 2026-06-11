@@ -114,7 +114,51 @@ class PassengerController extends Controller
             ->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])
             ->isNotEmpty();
 
-        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa'));
+        $historyRows = [];
+        $visaSubmission = $passenger->visaSubmission;
+
+        if ($visaSubmission) {
+            $statusLogs = $visaSubmission->logs()
+                ->orderBy('created_at', 'asc')
+                ->get()
+                ->filter(fn($log) => isset($log->new_values['status']));
+
+            $agentIds = $statusLogs->map(fn($l) => $l->new_values['visa_agent_id'] ?? null)
+                ->filter()->unique()->values()->toArray();
+            $agentLookup = VisaAgent::whereIn('id', $agentIds)->get()->keyBy('id');
+
+            $currentAgentName = $visaSubmission->visaAgent?->name ?? 'N/A';
+            $currentAgentCost = (float)($visaSubmission->net_visa_cost ?? 0);
+            $currentAdditional = (float)($visaSubmission->additional_cost ?? 0);
+            $currentCommission = (float)($visaSubmission->agent_commission ?? 0);
+            $currentCaFee = (float)($visaSubmission->cancelledSubmission?->cancellation_fee ?? 0);
+
+            $historyRows[] = [
+                'date' => $visaSubmission->created_at,
+                'agent' => 'N/A',
+                'agent_cost' => null,
+                'add_cost' => null,
+                'agent_commission' => null,
+                'status' => 'pending',
+                'cancellation_fee' => null,
+            ];
+
+            foreach ($statusLogs as $log) {
+                $nv = $log->new_values;
+                $agentId = $nv['visa_agent_id'] ?? null;
+                $historyRows[] = [
+                    'date' => $log->created_at,
+                    'agent' => $agentId ? ($agentLookup[$agentId]?->name ?? 'N/A') : $currentAgentName,
+                    'agent_cost' => isset($nv['net_visa_cost']) ? (float)$nv['net_visa_cost'] : $currentAgentCost,
+                    'add_cost' => isset($nv['additional_cost']) ? (float)$nv['additional_cost'] : $currentAdditional,
+                    'agent_commission' => isset($nv['agent_commission']) ? (float)$nv['agent_commission'] : $currentCommission,
+                    'status' => $nv['status'] ?? $visaSubmission->status?->value,
+                    'cancellation_fee' => ($nv['status'] ?? '') === 'cancelled' ? $currentCaFee : null,
+                ];
+            }
+        }
+
+        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa', 'historyRows'));
     }
 
     public function edit(Passenger $passenger)
