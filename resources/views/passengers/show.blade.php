@@ -205,8 +205,12 @@
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-semibold text-slate-800">Visa Submission History</h3>
                         <div class="flex gap-2">
+                            @if($passenger->visaSubmission && $passenger->visaSubmission->status?->value === 'submitted' && $canEditVisa)
                             <button onclick="openCancellationModal()" class="px-4 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium text-sm">Cancel</button>
+                            @endif
+                            @if($passenger->visaSubmission && $passenger->visaSubmission->status?->value === 'cancelled' && $canEditVisa)
                             <button onclick="openVisaResubmitModal()" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm">Visa Re-Submit</button>
+                            @endif
                         </div>
                     </div>
                     <div class="overflow-x-auto">
@@ -216,12 +220,50 @@
                                     <th class="px-3 py-2 text-left font-medium">Date</th>
                                     <th class="px-3 py-2 text-left font-medium">Agent</th>
                                     <th class="px-3 py-2 text-right font-medium">Agent Cost</th>
-                                    <th class="px-3 py-2 text-left font-medium">Flight Date</th>
                                     <th class="px-3 py-2 text-left font-medium">Status</th>
                                     <th class="px-3 py-2 text-right font-medium">Cancellation Fee</th>
                                 </tr>
                             </thead>
-                            <tbody id="visaSubmissionHistoryBody" class="divide-y divide-slate-200"></tbody>
+                            <tbody id="visaSubmissionHistoryBody" class="divide-y divide-slate-200">
+                                @if($passenger->visaSubmission)
+                                @php $vs = $passenger->visaSubmission; @endphp
+                                <tr class="hover:bg-slate-50">
+                                    <td class="px-3 py-2 text-slate-600">{{ $vs->created_at->format('d M Y') }}</td>
+                                    <td class="px-3 py-2 text-slate-800">{{ $vs->visaAgent?->name ?? '-' }}</td>
+                                    @php $agentCost = (float)$vs->net_visa_cost + (float)$vs->additional_cost; @endphp
+                                    <td class="px-3 py-2 text-slate-800 text-right font-medium">@if($agentCost)<span data-sar="{{ $agentCost }}" data-dec="2">SAR {{ number_format($agentCost, 2) }}</span>@else-@endif</td>
+                                    <td class="px-3 py-2">
+                                        @switch($vs->status?->value)
+                                        @case('submitted')
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Submitted</span>
+                                        @break
+                                        @case('issued')
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Issued</span>
+                                        @break
+                                        @case('cancelled')
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>
+                                        @break
+                                        @default
+                                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-gray-100 text-gray-700">{{ ucfirst($vs->status?->value ?? 'Pending') }}</span>
+                                        @endswitch
+                                    </td>
+                                    <td class="px-3 py-2 text-slate-800 text-right font-medium">
+                                        @if($vs->cancelledSubmission)<span data-sar="{{ (float)$vs->cancelledSubmission->cancellation_fee }}" data-dec="2">SAR {{ number_format((float)$vs->cancelledSubmission->cancellation_fee, 2) }}</span>@else-@endif
+                                    </td>
+                                </tr>
+                                @foreach($vs->logs as $log)
+                                <tr class="hover:bg-slate-50 text-slate-500">
+                                    <td class="px-3 py-2">{{ $log->created_at->format('d M Y') }}</td>
+                                    <td class="px-3 py-2">{{ $log->action }}</td>
+                                    <td class="px-3 py-2 text-right" colspan="3">{{ $log->user?->name ?? 'System' }}</td>
+                                </tr>
+                                @endforeach
+                                @else
+                                <tr>
+                                    <td colspan="5" class="px-3 py-4 text-center text-slate-400">No visa submission found</td>
+                                </tr>
+                                @endif
+                            </tbody>
                         </table>
                     </div>
                 </div>
@@ -241,11 +283,10 @@
 </style>
 
 @if(!$isTicketPersonnel && !$isBranchPersonnel)
-{{-- Cancellation Modal --}}
 <div id="cancellationModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
     <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeCancellationModal()"></div>
     <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
-        <h3 class="text-xl font-semibold text-slate-800 mb-4">Cancellation</h3>
+        <h3 class="text-xl font-semibold text-slate-800 mb-4">Cancel Visa</h3>
         <form id="cancellationForm" onsubmit="handleCancellation(event)">
             <div class="space-y-4">
                 <div>
@@ -254,71 +295,104 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Agent Cost (SAR)</label>
-                    <input type="number" id="cancelAgentCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    <input type="text" id="cancelAgentCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Cancellation Fee (SAR) *</label>
-                    <input type="number" id="cancellationFee" required min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter cancellation fee">
+                    <input type="number" id="cancellationFee" required min="0" step="0.01" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter cancellation fee">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                    <textarea id="cancelRemarks" rows="2" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Optional remarks"></textarea>
                 </div>
             </div>
+            <div id="cancelError" class="text-red-600 text-sm hidden mt-2"></div>
             <div class="flex gap-3 mt-6">
-                <button type="submit" class="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">Submit Cancellation</button>
-                <button type="button" onclick="closeCancellationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                <button type="submit" id="cancelSubmitBtn" class="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">Submit Cancellation</button>
+                <button type="button" onclick="closeCancellationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Close</button>
             </div>
         </form>
     </div>
 </div>
 
-{{-- Visa Re-Submit Modal --}}
-<div id="visaResubmitModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
-    <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeVisaResubmitModal()"></div>
+<div id="visaResubmitModal" class="hidden fixed inset-0 z-50 flex items-center justify-center" x-data="resubmitData()">
+    <div class="modal-overlay absolute inset-0 bg-black/50" @click="closeModal()"></div>
     <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
         <h3 class="text-xl font-semibold text-slate-800 mb-4">Visa Re-Submit</h3>
-        <form id="visaResubmitForm" onsubmit="handleVisaResubmit(event)">
+        <form @submit.prevent="handleSubmit">
             <div class="space-y-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent *</label>
-                    <select id="visaResubmitAgent" required onchange="updateResubmitCommissionAgentOptions()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <select x-model="form.visa_agent_id" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                         <option value="">Select Agent</option>
-                        <option value="Visa Agent A">Visa Agent A</option>
-                        <option value="Visa Agent B">Visa Agent B</option>
+                        <template x-for="agent in agents" :key="agent.id">
+                            <option :value="agent.id" x-text="agent.name"></option>
+                        </template>
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Commission Agent *</label>
-                    <select id="visaResubmitCommissionAgent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Commission Agent</label>
+                    <select x-model="form.commission_agent_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                         <option value="">Select Commission Agent</option>
+                        <template x-for="ca in commissionAgents" :key="ca.id">
+                            <option :value="ca.id" x-text="ca.name"></option>
+                        </template>
                     </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Visa Selling Price (SAR)</label>
-                    <input type="number" id="visaResubmitSellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="0">
-                </div>
-                <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
-                    <input type="number" id="visaResubmitAgentCommission" oninput="updateVisaResubmitFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                    <input type="text" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" x-model="sellingPriceDisplay">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
-                    <input type="number" id="visaResubmitNetVisaCost" oninput="updateVisaResubmitFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0">
+                    <input type="text" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" x-model="netVisaCostDisplay">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
+                    <input type="number" x-model="form.agent_commission" min="0" step="0.01" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Final Visa Cost (SAR)</label>
-                    <input type="number" id="visaResubmitFinal" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold" value="0">
+                    <input type="text" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold" x-model="finalCostDisplay">
                 </div>
             </div>
+            <div id="resubmitError" class="text-red-600 text-sm hidden mt-2"></div>
             <div class="flex gap-3 mt-6">
-                <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
-                <button type="button" onclick="closeVisaResubmitModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                <button type="submit" id="resubmitSubmitBtn" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" @click="closeModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </form>
     </div>
 </div>
 @endif
 
+@php
+$visaSubData = $passenger->visaSubmission ? [
+    'id' => $passenger->visaSubmission->id,
+    'visa_agent' => $passenger->visaSubmission->visaAgent
+        ? ['id' => $passenger->visaSubmission->visaAgent->id, 'name' => $passenger->visaSubmission->visaAgent->name]
+        : null,
+    'net_visa_cost' => (float)($passenger->visaSubmission->net_visa_cost ?? 0),
+    'additional_cost' => (float)($passenger->visaSubmission->additional_cost ?? 0),
+    'final_cost' => (float)($passenger->visaSubmission->final_cost ?? 0),
+    'status' => $passenger->visaSubmission->status?->value,
+] : null;
+
+$visaSellingPriceValue = (float)(
+    $passenger->visaSubmission?->visaSellingPrice?->selling_price
+    ?? $passenger->booking?->package?->visaSellingPrice?->selling_price
+    ?? 0
+);
+@endphp
+
 <script>
 const passengerId = {{ $passenger->id }};
+const bookingId = {{ $passenger->booking_id ?? 'null' }};
+const csrfToken = '{{ csrf_token() }}';
 
+// ============================================
+// Document Upload
+// ============================================
 function handleDocumentUpload(input) {
     const files = input.files;
     if (!files || files.length === 0) return;
@@ -330,9 +404,7 @@ function handleDocumentUpload(input) {
 
     fetch(`/passengers/${passengerId}/documents`, {
         method: 'POST',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        },
+        headers: { 'X-CSRF-TOKEN': csrfToken },
         body: formData
     })
     .then(response => response.json())
@@ -383,9 +455,7 @@ function deleteDocument(documentId) {
 
     fetch(`/passengers/${passengerId}/documents/${documentId}`, {
         method: 'DELETE',
-        headers: {
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
+        headers: { 'X-CSRF-TOKEN': csrfToken }
     })
     .then(response => response.json())
     .then(data => {
@@ -414,158 +484,154 @@ function downloadAllDocuments() {
 }
 
 // ============================================
-// Visa Submission History
+// Cancellation
 // ============================================
-const visaHistoryData = [
-    { date: '2026-02-01', agent: 'Visa Agent A', agentCost: 2500, flightDate: '2026-04-20', status: 'Submitted', cancellationFee: 0 },
-    { date: '2026-02-15', agent: 'Visa Agent A', agentCost: 1800, flightDate: '2026-04-05', status: 'Cancelled', cancellationFee: 500 },
-    { date: '2026-03-01', agent: 'Visa Agent B', agentCost: 2200, flightDate: '2026-04-15', status: 'Submitted', cancellationFee: 0 },
-    { date: '2026-03-10', agent: 'Visa Agent B', agentCost: 3000, flightDate: '2026-04-20', status: 'Issued', cancellationFee: 0 }
-];
-
-function renderVisaSubmissionHistory() {
-    const tbody = document.getElementById('visaSubmissionHistoryBody');
-    if (!tbody) return;
-
-    tbody.innerHTML = '';
-
-    visaHistoryData.forEach(item => {
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50';
-
-        let statusBadge = '';
-        switch(item.status) {
-            case 'Submitted':
-                statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-blue-100 text-blue-700">Submitted</span>';
-                break;
-            case 'Cancelled':
-                statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>';
-                break;
-            case 'Issued':
-                statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Issued</span>';
-                break;
-        }
-
-        tr.innerHTML = `
-            <td class="px-3 py-2 text-slate-600">${item.date}</td>
-            <td class="px-3 py-2 text-slate-800">${item.agent}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.agentCost)}</td>
-            <td class="px-3 py-2 text-slate-600">${item.flightDate}</td>
-            <td class="px-3 py-2">${statusBadge}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${item.cancellationFee ? Alpine.store('currency').format(item.cancellationFee) : '-'}</td>
-        `;
-        tbody.appendChild(tr);
-    });
-}
-
-let currentHistoryItem = null;
+const visaSubmission = @json($visaSubData);
 
 function openCancellationModal() {
-    currentHistoryItem = visaHistoryData[0];
+    if (!visaSubmission) return;
 
-    document.getElementById('cancelAgentName').value = currentHistoryItem?.agent || '';
-    document.getElementById('cancelAgentCost').value = currentHistoryItem?.agentCost || 0;
+    document.getElementById('cancelAgentName').value = visaSubmission.visa_agent?.name || '-';
+    document.getElementById('cancelAgentCost').value = visaSubmission.final_cost ? visaSubmission.final_cost.toFixed(2) : '0.00';
     document.getElementById('cancellationFee').value = '';
+    document.getElementById('cancelRemarks').value = '';
+    document.getElementById('cancelError').classList.add('hidden');
 
     document.getElementById('cancellationModal').classList.remove('hidden');
 }
 
 function closeCancellationModal() {
     document.getElementById('cancellationModal').classList.add('hidden');
-    currentHistoryItem = null;
 }
 
 function handleCancellation(e) {
     e.preventDefault();
 
     const cancellationFee = parseFloat(document.getElementById('cancellationFee').value) || 0;
+    const remarks = document.getElementById('cancelRemarks').value;
+    const btn = document.getElementById('cancelSubmitBtn');
+    const errorEl = document.getElementById('cancelError');
 
-    const newRow = {
-        date: new Date().toISOString().split('T')[0],
-        agent: currentHistoryItem.agent,
-        agentCost: currentHistoryItem.agentCost,
-        flightDate: currentHistoryItem.flightDate,
-        status: 'Cancelled',
-        cancellationFee: cancellationFee
+    btn.disabled = true;
+    btn.textContent = 'Processing...';
+    errorEl.classList.add('hidden');
+
+    fetch(`/bookings/${bookingId}/passengers/${passengerId}/visa-cancel`, {
+        method: 'POST',
+        headers: {
+            'X-CSRF-TOKEN': csrfToken,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({ cancellation_fee: cancellationFee, remarks: remarks })
+    })
+    .then(response => response.json().then(data => ({ ok: response.ok, data })))
+    .then(({ ok, data }) => {
+        if (ok && data.success) {
+            location.reload();
+        } else {
+            errorEl.textContent = data.message || 'Cancellation failed';
+            errorEl.classList.remove('hidden');
+            btn.disabled = false;
+            btn.textContent = 'Submit Cancellation';
+        }
+    })
+    .catch(error => {
+        console.error('Error:', error);
+        errorEl.textContent = 'Network error occurred';
+        errorEl.classList.remove('hidden');
+        btn.disabled = false;
+        btn.textContent = 'Submit Cancellation';
+    });
+}
+
+// ============================================
+// Re-Submit (Alpine component)
+// ============================================
+const visaAgents = @json($visaAgents);
+const sellingPrice = @json($visaSellingPriceValue);
+
+function resubmitData() {
+    return {
+        agents: visaAgents,
+        form: {
+            visa_agent_id: '',
+            commission_agent_id: '',
+            agent_commission: 0,
+        },
+        get selectedAgent() {
+            return this.agents.find(a => a.id == this.form.visa_agent_id);
+        },
+        get commissionAgents() {
+            return this.selectedAgent?.commission_agents || [];
+        },
+        get netVisaCost() {
+            return this.selectedAgent?.cost || 0;
+        },
+        get finalCost() {
+            return this.netVisaCost + (parseFloat(this.form.agent_commission) || 0);
+        },
+        get sellingPriceDisplay() {
+            return sellingPrice.toFixed(2);
+        },
+        get netVisaCostDisplay() {
+            return this.netVisaCost.toFixed(2);
+        },
+        get finalCostDisplay() {
+            return this.finalCost.toFixed(2);
+        },
+        openModal() {
+            this.form.visa_agent_id = '';
+            this.form.commission_agent_id = '';
+            this.form.agent_commission = 0;
+            document.getElementById('visaResubmitModal').classList.remove('hidden');
+        },
+        closeModal() {
+            document.getElementById('visaResubmitModal').classList.add('hidden');
+        },
+        handleSubmit() {
+            const btn = document.getElementById('resubmitSubmitBtn');
+            const errorEl = document.getElementById('resubmitError');
+            btn.disabled = true;
+            btn.textContent = 'Processing...';
+            errorEl.classList.add('hidden');
+
+            fetch(`/bookings/${bookingId}/passengers/${passengerId}/visa-resubmit`, {
+                method: 'POST',
+                headers: {
+                    'X-CSRF-TOKEN': csrfToken,
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                },
+                body: JSON.stringify(this.form)
+            })
+            .then(response => response.json().then(data => ({ ok: response.ok, data })))
+            .then(({ ok, data }) => {
+                if (ok && data.success) {
+                    location.reload();
+                } else {
+                    errorEl.textContent = data.message || 'Re-submit failed';
+                    errorEl.classList.remove('hidden');
+                    btn.disabled = false;
+                    btn.textContent = 'Save';
+                }
+            })
+            .catch(error => {
+                console.error('Error:', error);
+                errorEl.textContent = 'Network error occurred';
+                errorEl.classList.remove('hidden');
+                btn.disabled = false;
+                btn.textContent = 'Save';
+            });
+        }
     };
-
-    visaHistoryData.push(newRow);
-    renderVisaSubmissionHistory();
-    closeCancellationModal();
 }
 
 function openVisaResubmitModal() {
-    document.getElementById('visaResubmitAgent').value = '';
-    document.getElementById('visaResubmitCommissionAgent').innerHTML = '<option value="">Select Commission Agent</option>';
-    document.getElementById('visaResubmitSellingPrice').value = 500;
-    document.getElementById('visaResubmitAgentCommission').value = 0;
-    document.getElementById('visaResubmitNetVisaCost').value = 0;
-    document.getElementById('visaResubmitFinal').value = 500;
-
-    document.getElementById('visaResubmitModal').classList.remove('hidden');
-}
-
-function closeVisaResubmitModal() {
-    document.getElementById('visaResubmitModal').classList.add('hidden');
-}
-
-function updateResubmitCommissionAgentOptions() {
-    const agent = document.getElementById('visaResubmitAgent').value;
-    const commissionSelect = document.getElementById('visaResubmitCommissionAgent');
-
-    const agents = {
-        "Visa Agent A": ["Commission Agent 1", "Commission Agent 2"],
-        "Visa Agent B": ["Commission Agent 3", "Commission Agent 4"]
-    };
-
-    commissionSelect.innerHTML = '<option value="">Select Commission Agent</option>';
-    if (agents[agent]) {
-        agents[agent].forEach(a => {
-            const option = document.createElement('option');
-            option.value = a;
-            option.textContent = a;
-            commissionSelect.appendChild(option);
-        });
+    const el = document.querySelector('[x-data="resubmitData()"]');
+    if (el && el.__x) {
+        el.__x.$data.openModal();
     }
 }
-
-function updateVisaResubmitFinal() {
-    const sellingPrice = parseFloat(document.getElementById('visaResubmitSellingPrice').value) || 0;
-    const commission = parseFloat(document.getElementById('visaResubmitAgentCommission').value) || 0;
-    const netCost = parseFloat(document.getElementById('visaResubmitNetVisaCost').value) || 0;
-    document.getElementById('visaResubmitFinal').value = sellingPrice + commission + netCost;
-}
-
-function handleVisaResubmit(e) {
-    e.preventDefault();
-
-    const agentCommission = parseFloat(document.getElementById('visaResubmitAgentCommission').value) || 0;
-    const netVisaCost = parseFloat(document.getElementById('visaResubmitNetVisaCost').value) || 0;
-
-    const visaData = {
-        agent: document.getElementById('visaResubmitAgent').value,
-        commissionAgent: document.getElementById('visaResubmitCommissionAgent').value,
-        sellingPrice: parseFloat(document.getElementById('visaResubmitSellingPrice').value) || 0,
-        agentCommission: agentCommission,
-        netVisaCost: netVisaCost,
-        finalCost: agentCommission + netVisaCost,
-        resubmittedAt: new Date().toISOString()
-    };
-
-    const newRow = {
-        date: new Date().toISOString().split('T')[0],
-        agent: visaData.agent,
-        agentCost: visaData.finalCost,
-        flightDate: '-',
-        status: 'Submitted',
-        cancellationFee: 0
-    };
-
-    visaHistoryData.push(newRow);
-    renderVisaSubmissionHistory();
-    closeVisaResubmitModal();
-}
-
-renderVisaSubmissionHistory();
 </script>
 @endsection

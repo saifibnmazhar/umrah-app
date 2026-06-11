@@ -123,6 +123,12 @@ Route::middleware('auth')->group(function () {
     Route::put('/bookings/{booking}/passengers/{passenger}/visa-edit', [VisaSubmissionController::class, 'edit'])
         ->name('bookings.passengers.visa-edit')
         ->middleware('role:Super Admin,Co Admin,Visa Admin');
+    Route::post('/bookings/{booking}/passengers/{passenger}/visa-cancel', [VisaSubmissionController::class, 'cancel'])
+        ->name('bookings.passengers.visa-cancel')
+        ->middleware('role:Super Admin,Co Admin,Visa Admin');
+    Route::post('/bookings/{booking}/passengers/{passenger}/visa-resubmit', [VisaSubmissionController::class, 'reSubmit'])
+        ->name('bookings.passengers.visa-resubmit')
+        ->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
 
     // Document routes
     Route::get('/bookings/{booking}/download-all-docs', [BookingController::class, 'downloadAllDocs'])->name('bookings.download-all-docs');

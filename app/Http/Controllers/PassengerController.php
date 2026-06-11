@@ -7,6 +7,7 @@ use App\Models\Booking;
 use App\Models\Document;
 use App\Models\Package;
 use App\Models\TicketFare;
+use App\Models\VisaAgent;
 use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
 use App\Enums\FingerprintStatus;
@@ -54,7 +55,13 @@ class PassengerController extends Controller
             'ticketFare.airlineClass',
             'ticketFare.airlineClass.class',
             'ticketFare.route',
-            'documents'
+            'documents',
+            'visaSubmission.visaAgent.visaAgentCost',
+            'visaSubmission.visaAgent.commissionAgents',
+            'visaSubmission.commissionAgent',
+            'visaSubmission.visaSellingPrice',
+            'visaSubmission.cancelledSubmission',
+            'visaSubmission.logs.user',
         ]);
 
         $routeDisplay = null;
@@ -90,7 +97,24 @@ class PassengerController extends Controller
         $due = $passenger->booking?->invoice?->balance ?? 0;
         $paid = $passenger->booking?->invoice?->paid_amount ?? 0;
 
-        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid'));
+        $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
+            ->orderBy('name')
+            ->get()
+            ->map(fn($a) => [
+                'id' => $a->id,
+                'name' => $a->name,
+                'cost' => (float)($a->visaAgentCost?->visa_agent_cost ?? 0),
+                'commission_agents' => $a->commissionAgents->map(fn($ca) => [
+                    'id' => $ca->id,
+                    'name' => $ca->name,
+                ]),
+            ]);
+
+        $canEditVisa = auth()->user()->roles->pluck('name')
+            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])
+            ->isNotEmpty();
+
+        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa'));
     }
 
     public function edit(Passenger $passenger)
