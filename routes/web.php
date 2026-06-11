@@ -39,6 +39,7 @@ use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FingerprintController;
 use App\Http\Controllers\FingerprintReportController;
 use App\Http\Controllers\VisaSubmissionController;
+use App\Http\Controllers\VisaReportController;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -201,7 +202,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/fingerprint/print', [FingerprintReportController::class, 'print'])->name('report.fingerprint.print')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
     Route::get('/api/reports/fingerprint', [FingerprintReportController::class, 'data'])->name('api.reports.fingerprint')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
     Route::get('/api/reports/fingerprint/details/{fingerprintDetail}', [FingerprintReportController::class, 'details'])->name('api.reports.fingerprint.details')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
-    Route::get('/reports/visa', fn() => view('reports.visa'))->name('report.visa')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    Route::get('/reports/visa', [VisaReportController::class, 'index'])->name('report.visa')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    Route::get('/api/reports/visa', [VisaReportController::class, 'data'])->name('api.reports.visa')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/reports/visa-agent', fn() => view('reports.visa-agent'))->name('report.visa-agent')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/reports/ticket-agent', fn() => view('reports.ticket-agent'))->name('report.ticket-agent')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/due', fn() => view('reports.due'))->name('report.due')->middleware('role:Super Admin,Co Admin,Auditor');
