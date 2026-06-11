@@ -1,5 +1,5 @@
 @extends('layouts.app')
-@section('title', 'Visa Report')
+@section('title', 'Visa Sales Report')
 @section('content')
 <style>
 .search-input {
@@ -143,7 +143,7 @@ select {
     <div class="mb-3">
         <span class="text-sm text-gray-500 font-medium">Report</span>
         <span class="text-sm text-gray-400 mx-1">></span>
-        <span class="text-sm text-gray-700 font-semibold">Visa Report</span>
+        <span class="text-sm text-gray-700 font-semibold">Visa Sales Report</span>
     </div>
 
     <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
@@ -204,8 +204,8 @@ select {
                 <thead>
                     <tr class="table-header">
                         <th class="w-28 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Invoice No</th>
-                        <th class="w-40 px-2 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
-                        <th class="w-40 px-2 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">PAX Name</th>
+                        <th class="w-40 px-2 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Customer Info</th>
+                        <th class="w-40 px-2 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Pax Info</th>
                         <th class="w-32 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
                         <th class="w-32 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Visa Submit Date</th>
                         <th class="w-28 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Visa Status</th>
