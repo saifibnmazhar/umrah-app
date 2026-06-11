@@ -128,10 +128,10 @@ class PassengerController extends Controller
                 ->filter()->unique()->values()->toArray();
             $agentLookup = VisaAgent::whereIn('id', $agentIds)->get()->keyBy('id');
 
-            $currentAgentName = $visaSubmission->visaAgent?->name ?? 'N/A';
-            $currentAgentCost = (float)($visaSubmission->net_visa_cost ?? 0);
-            $currentAdditional = (float)($visaSubmission->additional_cost ?? 0);
-            $currentCommission = (float)($visaSubmission->agent_commission ?? 0);
+            $runningAgentName = 'N/A';
+            $runningAgentCost = null;
+            $runningAdditional = null;
+            $runningCommission = null;
 
             $cancelledQueue = $visaSubmission->cancelledSubmissions
                 ->sortBy('created_at')
@@ -150,7 +150,21 @@ class PassengerController extends Controller
 
             foreach ($statusLogs as $log) {
                 $nv = $log->new_values;
-                $agentId = $nv['visa_agent_id'] ?? null;
+
+                if (array_key_exists('visa_agent_id', $nv)) {
+                    $runningAgentName = $nv['visa_agent_id']
+                        ? ($agentLookup[$nv['visa_agent_id']]?->name ?? 'N/A')
+                        : 'N/A';
+                }
+                if (array_key_exists('net_visa_cost', $nv)) {
+                    $runningAgentCost = is_numeric($nv['net_visa_cost']) ? (float)$nv['net_visa_cost'] : null;
+                }
+                if (array_key_exists('additional_cost', $nv)) {
+                    $runningAdditional = is_numeric($nv['additional_cost']) ? (float)$nv['additional_cost'] : null;
+                }
+                if (array_key_exists('agent_commission', $nv)) {
+                    $runningCommission = is_numeric($nv['agent_commission']) ? (float)$nv['agent_commission'] : null;
+                }
 
                 $caFee = null;
                 if (($nv['status'] ?? '') === 'cancelled' && isset($cancelledQueue[$cancelledIdx])) {
@@ -160,10 +174,10 @@ class PassengerController extends Controller
 
                 $historyRows[] = [
                     'date' => $log->created_at,
-                    'agent' => $agentId ? ($agentLookup[$agentId]?->name ?? 'N/A') : $currentAgentName,
-                    'agent_cost' => isset($nv['net_visa_cost']) ? (float)$nv['net_visa_cost'] : $currentAgentCost,
-                    'add_cost' => isset($nv['additional_cost']) ? (float)$nv['additional_cost'] : $currentAdditional,
-                    'agent_commission' => isset($nv['agent_commission']) ? (float)$nv['agent_commission'] : $currentCommission,
+                    'agent' => $runningAgentName,
+                    'agent_cost' => $runningAgentCost,
+                    'add_cost' => $runningAdditional,
+                    'agent_commission' => $runningCommission,
                     'status' => $nv['status'] ?? $visaSubmission->status?->value,
                     'cancellation_fee' => $caFee,
                 ];
