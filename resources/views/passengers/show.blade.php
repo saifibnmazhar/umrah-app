@@ -628,9 +628,9 @@ function resubmitData() {
 }
 
 function openVisaResubmitModal() {
-    const el = document.querySelector('[x-data="resubmitData()"]');
-    if (el && el.__x) {
-        el.__x.$data.openModal();
+    const el = document.getElementById('visaResubmitModal');
+    if (el) {
+        Alpine.$data(el).openModal();
     }
 }
 </script>
