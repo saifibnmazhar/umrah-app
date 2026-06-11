@@ -95,7 +95,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'outbound_date' => $p->ticketFare->groupTicket?->outbound_date ?? '',
         'pnr' => $p->ticketFare->groupTicket?->pnr ?? '',
         'ticket_number' => '',
-        'date' => $p->ticketFare->created_at?->format('Y-m-d') ?? '',
+        'date' => '',
         'ticket_agent' => '',
         'selling_fare' => (float)($p->ticketFare->selling_fare ?? 0),
         'net_fare' => (float)($p->ticketFare->net_fare ?? 0),
@@ -659,7 +659,7 @@ if ($route) {
                             <input type="text" x-model="ticketFareForm.ticket_number" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter Ticket Number">
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Date *</label>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
                             <input type="date" x-model="ticketFareForm.date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div>
@@ -1146,7 +1146,7 @@ function bookingIndexApp() {
             outbound_date: '',
             pnr: '',
             ticket_number: '',
-            date: '',
+            date: (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(),
             ticket_agent: '',
             route: '',
             airline: '',
@@ -1191,7 +1191,7 @@ function bookingIndexApp() {
                 this.ticketFareForm.outbound_date = row.ticket_fare.outbound_date || '';
                 this.ticketFareForm.pnr = row.ticket_fare.pnr || '';
                 this.ticketFareForm.ticket_number = row.ticket_fare.ticket_number || '';
-                this.ticketFareForm.date = row.ticket_fare.date || '';
+                this.ticketFareForm.date = row.ticket_fare.date || (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
                 this.ticketFareForm.ticket_agent = row.ticket_fare.ticket_agent || '';
                 this.ticketFareForm.selling_fare = row.ticket_fare.selling_fare || 0;
                 this.ticketFareForm.net_fare = row.ticket_fare.net_fare || 0;
@@ -1212,7 +1212,7 @@ function bookingIndexApp() {
                 this.ticketFareForm.outbound_date = '';
                 this.ticketFareForm.pnr = '';
                 this.ticketFareForm.ticket_number = '';
-                this.ticketFareForm.date = '';
+                const today = new Date(); this.ticketFareForm.date = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
                 this.ticketFareForm.ticket_agent = '';
                 this.ticketFareForm.selling_fare = 0;
                 this.ticketFareForm.net_fare = 0;
