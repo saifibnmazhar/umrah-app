@@ -3951,12 +3951,12 @@ Merge the `offices` table into `branches` by adding `location` (KSA/BD) and `fin
 | Step | What |
 |------|------|
 | 1 | Migration 1 — Add columns to `branches` |
-| 2 | Migration 2 — Rename `bookings.branch_id`→`booking_branch_id`, `office_id`→`fingerprint_branch_id`; update FKs |
-| 3 | Migration 3 — Drop `users.office_id` column + FK |
-| 4 | **Seeder** — Copy offices→branches, update existing booking/user FKs |
+| 2 | **Seeder** — Copy offices→branches, update existing `bookings.office_id` + `users.office_id` to new branch IDs |
+| 3 | Migration 2 — Rename `bookings.branch_id`→`booking_branch_id`, `office_id`→`fingerprint_branch_id`; update FKs |
+| 4 | Migration 3 — Drop `users.office_id` column + FK |
 | 5 | Migration 4 — Drop `offices` table |
 
-Why this order: Steps 1–3 are pure schema (safe, no data loss). Step 4 reads from `offices` (still exists). Step 5 drops the now-empty `offices`. On empty DB, seeder is a no-op.
+Why this order: **Seeder runs before Migration 2** because Migration 2 adds a FK from `fingerprint_branch_id` to `branches.id`. At seeder time the column is still `office_id` with values pointing to `offices.id` — the seeder rewrites them to the new branch IDs so the FK in Migration 2 doesn't fail. On empty DB, seeder is a no-op.
 
 ---
 
@@ -3977,13 +3977,19 @@ Schema::table('branches', function (Blueprint $table) {
 
 **File:** `2026_06_xx_100001_rename_branch_office_columns_on_bookings.php`
 
-```php
-Schema::table('bookings', function (Blueprint $table) {
-    $table->dropForeign(['branch_id']);
-    $table->dropForeign(['office_id']);
-    $table->dropIndex(['branch_id']);
-    $table->dropIndex(['office_id']);
+**Note:** Uses `try/catch` around FK drops for idempotency — MariaDB (non-transactional DDL) can leave the DB in a partially migrated state on failure.
 
+```php
+foreach (['bookings_branch_id_foreign', 'bookings_office_id_foreign',
+          'bookings_booking_branch_id_foreign', 'bookings_fingerprint_branch_id_foreign'] as $fk) {
+    try {
+        DB::statement("ALTER TABLE bookings DROP FOREIGN KEY `{$fk}`");
+    } catch (\Exception $e) {
+        // FK doesn't exist — safe to ignore (idempotent)
+    }
+}
+
+Schema::table('bookings', function (Blueprint $table) {
     $table->renameColumn('branch_id', 'booking_branch_id');
     $table->renameColumn('office_id', 'fingerprint_branch_id');
 
@@ -4058,11 +4064,11 @@ class MergeOfficesIntoBranchesSeeder extends Seeder
                 ->orWhere('location', '')
                 ->update(['location' => 'KSA', 'fingerprint_operation' => false]);
 
-            // 3. Update bookings.fingerprint_branch_id
+            // 3. Update bookings.office_id (column not yet renamed — Migration 2 runs after seeder)
             foreach ($officeMap as $oldOfficeId => $newBranchId) {
                 DB::table('bookings')
-                    ->where('fingerprint_branch_id', $oldOfficeId)
-                    ->update(['fingerprint_branch_id' => $newBranchId]);
+                    ->where('office_id', $oldOfficeId)
+                    ->update(['office_id' => $newBranchId]);
             }
 
             // 4. Update users: merge office_id into branch_id

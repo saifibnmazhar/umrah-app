@@ -33,8 +33,8 @@ class MergeOfficesIntoBranchesSeeder extends Seeder
 
             foreach ($officeMap as $oldOfficeId => $newBranchId) {
                 DB::table('bookings')
-                    ->where('fingerprint_branch_id', $oldOfficeId)
-                    ->update(['fingerprint_branch_id' => $newBranchId]);
+                    ->where('office_id', $oldOfficeId)
+                    ->update(['office_id' => $newBranchId]);
             }
 
             foreach ($officeMap as $oldOfficeId => $newBranchId) {

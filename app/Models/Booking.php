@@ -15,11 +15,11 @@ class Booking extends Model
     protected $fillable = [
         'user_id',
         'customer_id',
-        'office_id',
+        'fingerprint_branch_id',
         'district_id',
         'package_id',
         'fingerprint_charge_id',
-        'branch_id',
+        'booking_branch_id',
         'invoice_id',
         'date_gap_id',
         'fingerprint_location',
@@ -51,9 +51,9 @@ class Booking extends Model
         return $this->belongsTo(Customer::class);
     }
 
-    public function office(): BelongsTo
+    public function fingerprintBranch(): BelongsTo
     {
-        return $this->belongsTo(Office::class);
+        return $this->belongsTo(Branch::class, 'fingerprint_branch_id');
     }
 
     public function district(): BelongsTo
@@ -71,9 +71,9 @@ class Booking extends Model
         return $this->belongsTo(FingerprintCharge::class);
     }
 
-    public function branch(): BelongsTo
+    public function bookingBranch(): BelongsTo
     {
-        return $this->belongsTo(Branch::class);
+        return $this->belongsTo(Branch::class, 'booking_branch_id');
     }
 
     public function dateGap(): BelongsTo

@@ -11,18 +11,21 @@ Merge the `offices` table into the `branches` table by adding `location` (KSA/BD
 | Step | What | Command |
 |------|------|---------|
 | 1 | **Migration 1** — Add `location`, `fingerprint_operation` to `branches` | `php artisan migrate` |
-| 2 | **Migration 2** — Rename `bookings.branch_id`→`booking_branch_id`, `office_id`→`fingerprint_branch_id`; update FKs | (same `migrate`) |
-| 3 | **Migration 3** — Drop `users.office_id` column + FK | (same `migrate`) |
-| 4 | **Seed data** — Copy offices→branches, update existing booking/user FKs | `php artisan db:seed --class=MergeOfficesIntoBranchesSeeder` |
-| 5 | **Migration 4** — Drop `offices` table | `php artisan migrate` |
+| 2 | **Seed data** — Copy offices→branches, update existing booking `office_id` + user `office_id` | `php artisan db:seed --class=MergeOfficesIntoBranchesSeeder` |
+| 3 | **Migration 2** — Rename `bookings.branch_id`→`booking_branch_id`, `office_id`→`fingerprint_branch_id`; update FKs | `php artisan migrate` |
+| 4 | **Migration 3** — Drop `users.office_id` column + FK | (same `migrate`) |
+| 5 | **Migration 4** — Drop `offices` table | (same `migrate`) |
 
 ### Why this order
 
-- Steps 1-3 are pure schema changes (safe, no data loss).
-- Step 4 reads from `offices` (still exists), copies data into `branches`, updates FKs on `bookings` and `users`.
+- **Seeder must run before Migration 2** because Migration 2 adds a FK constraint from the renamed `fingerprint_branch_id` to `branches.id`. At seeder time, the column is still called `office_id` and its values still point to `offices.id` — the seeder rewrites them to the new branch IDs so the FK in Migration 2 doesn't fail.
+- Steps 3-4 run after seeder, so all old IDs already resolve to `branches.id`.
 - Step 5 drops the now-empty `offices` table.
+- On an empty database (tests/fresh install): Step 2 is a no-op (zero rows in `offices`).
 
-On an empty database (tests/fresh install): Step 4 is a no-op (zero rows in `offices`).
+### Critical column name context
+
+When the seeder runs (Step 2), `bookings.office_id` has **not** been renamed yet. The seeder reads/writes `office_id`, not `fingerprint_branch_id`. After the seeder completes, Migration 2 renames the column.
 
 ---
 
@@ -57,13 +60,19 @@ Schema::table('branches', function (Blueprint $table) {
 
 ### Migration 2 — `rename_branch_and_office_columns_on_bookings_table`
 
-```php
-Schema::table('bookings', function (Blueprint $table) {
-    $table->dropForeign(['branch_id']);
-    $table->dropForeign(['office_id']);
-    $table->dropIndex(['branch_id']);
-    $table->dropIndex(['office_id']);
+Idempotent — uses `try/catch` for FK drops to survive partial failures on non-transactional DDL (MariaDB).
 
+```php
+foreach (['bookings_branch_id_foreign', 'bookings_office_id_foreign',
+          'bookings_booking_branch_id_foreign', 'bookings_fingerprint_branch_id_foreign'] as $fk) {
+    try {
+        DB::statement("ALTER TABLE bookings DROP FOREIGN KEY `{$fk}`");
+    } catch (\Exception $e) {
+        // FK doesn't exist — safe to ignore (idempotent)
+    }
+}
+
+Schema::table('bookings', function (Blueprint $table) {
     $table->renameColumn('branch_id', 'booking_branch_id');
     $table->renameColumn('office_id', 'fingerprint_branch_id');
 
@@ -129,11 +138,11 @@ class MergeOfficesIntoBranchesSeeder extends Seeder
                 ->orWhere('location', '')
                 ->update(['location' => 'KSA', 'fingerprint_operation' => false]);
 
-            // 3. Update bookings.fingerprint_branch_id
+            // 3. Update bookings.office_id (column not yet renamed — Migration 2 runs after seeder)
             foreach ($officeMap as $oldOfficeId => $newBranchId) {
                 DB::table('bookings')
-                    ->where('fingerprint_branch_id', $oldOfficeId)
-                    ->update(['fingerprint_branch_id' => $newBranchId]);
+                    ->where('office_id', $oldOfficeId)
+                    ->update(['office_id' => $newBranchId]);
             }
 
             // 4. Update users: merge office_id into branch_id
