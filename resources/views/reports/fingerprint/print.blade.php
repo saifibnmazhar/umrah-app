@@ -62,7 +62,7 @@
             'Location' => request('fingerprint_location'),
             'Branch' => request('branch_id') ? \App\Models\Branch::find(request('branch_id'))?->name : null,
             'District' => request('district_id') ? \App\Models\District::find(request('district_id'))?->name : null,
-            'Office' => request('office_id') ? \App\Models\Office::find(request('office_id'))?->name : null,
+            'Fingerprint Branch' => request('fingerprint_branch_id') ? \App\Models\Branch::find(request('fingerprint_branch_id'))?->name : null,
         ]);
     @endphp
 

@@ -33,9 +33,9 @@
                       });
                   }
                   this.$watch('selectedRole', () => {
-                      const type = this.roleType;
-                      if (type !== 'branch' && this.$refs.branchSelect) this.$refs.branchSelect.value = '';
-                      if (type !== 'fingerprint' && this.$refs.officeSelect) this.$refs.officeSelect.value = '';
+                      if (this.roleType !== 'branch' && this.roleType !== 'fingerprint' && this.$refs.branchSelect) {
+                          this.$refs.branchSelect.value = '';
+                      }
                   });
               }
           }">
@@ -116,42 +116,40 @@
             @enderror
         </div>
 
-        <div x-show="roleType === 'branch'" x-cloak>
+        <div x-show="roleType === 'branch' || roleType === 'fingerprint'" x-cloak>
             <label for="branch_id" class="block text-sm font-medium text-slate-700 mb-1">Branch</label>
-            <select
-                name="branch_id"
-                id="branch_id"
-                x-ref="branchSelect"
-                class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('branch_id') border-red-500 @enderror"
-            >
-                <option value="">-- Select Branch --</option>
-                @foreach($branches as $branch)
+            <template x-if="roleType === 'fingerprint'">
+                <select
+                    name="branch_id"
+                    id="branch_id"
+                    x-ref="branchSelect"
+                    required
+                    class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('branch_id') border-red-500 @enderror"
+                >
+                    <option value="">-- Select Branch --</option>
+                    @foreach($fingerprintBranches as $branch)
                     <option value="{{ $branch->id }}" {{ old('branch_id') == $branch->id ? 'selected' : '' }}>
                         {{ $branch->name }}
                     </option>
-                @endforeach
-            </select>
-            @error('branch_id')
-                <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
-            @enderror
-        </div>
-
-        <div x-show="roleType === 'fingerprint'" x-cloak>
-            <label for="office_id" class="block text-sm font-medium text-slate-700 mb-1">Office</label>
-            <select
-                name="office_id"
-                id="office_id"
-                x-ref="officeSelect"
-                class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('office_id') border-red-500 @enderror"
-            >
-                <option value="">-- Select Office --</option>
-                @foreach($offices as $office)
-                    <option value="{{ $office->id }}" {{ old('office_id') == $office->id ? 'selected' : '' }}>
-                        {{ $office->name }}
+                    @endforeach
+                </select>
+            </template>
+            <template x-if="roleType === 'branch'">
+                <select
+                    name="branch_id"
+                    id="branch_id"
+                    x-ref="branchSelect"
+                    class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('branch_id') border-red-500 @enderror"
+                >
+                    <option value="">Central / No Branch</option>
+                    @foreach($allBranches as $branch)
+                    <option value="{{ $branch->id }}" {{ old('branch_id') == $branch->id ? 'selected' : '' }}>
+                        {{ $branch->name }}
                     </option>
-                @endforeach
-            </select>
-            @error('office_id')
+                    @endforeach
+                </select>
+            </template>
+            @error('branch_id')
                 <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
             @enderror
         </div>

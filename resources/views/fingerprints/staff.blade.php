@@ -14,7 +14,7 @@
                         <th class="px-3 py-2 text-left font-medium">Customer Name</th>
                         <th class="px-3 py-2 text-left font-medium">PAX Qty</th>
                         <th class="px-3 py-2 text-left font-medium">Mobile</th>
-                        <th class="px-3 py-2 text-left font-medium">Branch(BD)</th>
+                        <th class="px-3 py-2 text-left font-medium">Fingerprint Branch</th>
                         <th class="px-3 py-2 text-left font-medium">District</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Deadline</th>
                         <th class="px-3 py-2 text-left font-medium">Passenger</th>
@@ -40,7 +40,7 @@
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.customer_name || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? row.pax_qty : ''"></td>
                             <td class="px-3 py-2 text-slate-600 whitespace-pre-line" x-text="getMobileDisplay(row)"></td>
-                            <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.office || '-') : ''"></td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.fingerprint_branch_name || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.district || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.deadline || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.passenger_name || '-'"></td>
