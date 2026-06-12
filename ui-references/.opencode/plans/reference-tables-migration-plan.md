@@ -4014,9 +4014,6 @@ Schema::table('users', function (Blueprint $table) {
 ```php
 Schema::dropIfExists('offices');
 ```
-
----
-
 ## Phase 3: Branch-Office Merge — Seeder
 
 **File:** `database/seeders/MergeOfficesIntoBranchesSeeder.php`
@@ -4079,3 +4076,504 @@ class MergeOfficesIntoBranchesSeeder extends Seeder
     }
 }
 ```
+---
+
+---
+
+## Phase 1: Issue Ticket — Migrations
+
+### Overview
+
+Create `issued_tickets` (ticket issue workflow) and `issued_ticket_logs` (audit trail) tables. These replace the current client-side-only Issue Ticket flow with persistent database storage.
+
+### Dependency Analysis
+
+| Table | Dependencies |
+|-------|--------------|
+| issued_tickets | passengers, ticket_fares, users |
+| issued_ticket_logs | issued_tickets, users |
+
+### Migration Order
+
+| Step | Table | Artisan Command |
+|------|-------|-----------------|
+| 1 | issued_tickets | `php artisan make:migration create_issued_tickets_table` |
+| 2 | issued_ticket_logs | `php artisan make:migration create_issued_ticket_logs_table` |
+
+### Design Decisions
+
+#### 1. ID Configuration
+- All primary keys use `bigIncrements()` for consistency
+- Foreign keys use `foreignId()->constrained()` for proper constraints
+
+#### 2. Foreign Key Constraints
+
+| Table | Column | References | Delete Behavior |
+|-------|--------|------------|-----------------|
+| issued_tickets | passenger_id | passengers.id | `restrictOnDelete()` |
+| issued_tickets | ticket_fare_id | ticket_fares.id | `restrictOnDelete()` (nullable) |
+| issued_tickets | user_id | users.id | `nullOnDelete()` (nullable) |
+| issued_ticket_logs | issued_ticket_id | issued_tickets.id | `cascadeOnDelete()` |
+| issued_ticket_logs | user_id | users.id | `restrictOnDelete()` |
+
+- `onUpdate('cascade')` on all foreign keys
+- `restrictOnDelete()` prevents accidental deletion of parent records
+- `cascadeOnDelete()` on logs — removing a ticket cleans up its audit trail
+
+#### 3. Enum Columns
+
+| Column | Table | Values | PHP Enum |
+|--------|-------|--------|----------|
+| issue_type | issued_tickets | regular, additional, pending_outbound | `IssueType` |
+| status | issued_tickets | pending, issued, re-issued, refunded | `IssueTicketStatus` |
+| action | issued_ticket_logs | issued, edited, re-issued, refunded | `IssueLogAction` |
+
+#### 4. Nullable Rules
+
+| Column | Nullable | Justification |
+|--------|----------|---------------|
+| ticket_fare_id | YES | Pending tickets may not have a fare selected yet |
+| issue_type | YES | Not known until the issue workflow starts |
+| pnr | YES | PNR assigned at issue time |
+| invoice_number | YES | Invoice generated at issue time |
+| ticket_number | YES | Ticket number assigned at issue time |
+| baggage_inbound | YES | May not be known for pending tickets |
+| baggage_outbound | YES | May not be known for pending tickets |
+| user_id | YES | Pending tickets created by system have no user; frozen after first issue |
+| issued_at | YES | Only set when status transitions from pending → issued |
+| remarks | YES | Optional notes |
+
+#### 5. Default Values
+
+| Column | Default | Justification |
+|--------|---------|---------------|
+| status | `'pending'` | Tickets start in pending state |
+| is_refundable | `false` | Not refundable unless explicitly set |
+| is_exchangeable | `false` | Not exchangeable unless explicitly set |
+| outbound_pending | `false` | Normal tickets are not pending-outbound |
+| user_id freeze rule | — | After status transitions from pending → issued, `user_id` is frozen; all subsequent changes go through `issued_ticket_logs` only |
+
+#### 6. Timestamps
+- **issued_tickets**: `timestamps()` (created_at, updated_at) for lifecycle tracking
+- **issued_ticket_logs**: Only `created_at` (append-only audit log, no `updated_at`)
+
+#### 7. Indexes
+- Foreign key constraints auto-create indexes
+- No redundant manual indexes needed
+
+### Migration File Details
+
+#### 1. issued_tickets table
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('issued_tickets', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('passenger_id')
+            ->constrained('passengers')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->foreignId('ticket_fare_id')
+            ->nullable()
+            ->constrained('ticket_fares')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->string('issue_type')->nullable();
+        $table->string('status')->default('pending');
+        $table->string('pnr')->nullable();
+        $table->string('invoice_number')->nullable();
+        $table->string('ticket_number')->nullable();
+        $table->string('baggage_inbound')->nullable();
+        $table->string('baggage_outbound')->nullable();
+        $table->boolean('is_refundable')->default(false);
+        $table->boolean('is_exchangeable')->default(false);
+        $table->boolean('outbound_pending')->default(false);
+        $table->foreignId('user_id')
+            ->nullable()
+            ->constrained('users')
+            ->nullOnDelete()
+            ->onUpdate('cascade');
+        $table->timestamp('issued_at')->nullable();
+        $table->text('remarks')->nullable();
+        $table->timestamps();
+    });
+}
+
+// DOWN
+public function down(): void
+{
+    if (Schema::hasTable('issued_tickets')) {
+        Schema::table('issued_tickets', function (Blueprint $table) {
+            $table->dropForeign(['passenger_id']);
+            $table->dropForeign(['ticket_fare_id']);
+            $table->dropForeign(['user_id']);
+        });
+    }
+
+    Schema::dropIfExists('issued_tickets');
+}
+```
+
+#### 2. issued_ticket_logs table
+
+```php
+// UP
+public function up(): void
+{
+    Schema::create('issued_ticket_logs', function (Blueprint $table) {
+        $table->id();
+        $table->foreignId('issued_ticket_id')
+            ->constrained('issued_tickets')
+            ->cascadeOnDelete()
+            ->onUpdate('cascade');
+        $table->foreignId('user_id')
+            ->constrained('users')
+            ->restrictOnDelete()
+            ->onUpdate('cascade');
+        $table->string('action');
+        $table->json('old_values')->nullable();
+        $table->json('new_values')->nullable();
+        $table->timestamp('created_at');
+    });
+}
+
+// DOWN
+public function down(): void
+{
+    if (Schema::hasTable('issued_ticket_logs')) {
+        Schema::table('issued_ticket_logs', function (Blueprint $table) {
+            $table->dropForeign(['issued_ticket_id']);
+            $table->dropForeign(['user_id']);
+        });
+    }
+
+    Schema::dropIfExists('issued_ticket_logs');
+}
+```
+
+### Safe Execution Plan
+
+```bash
+# Step 1: Create migration files
+php artisan make:migration create_issued_tickets_table
+php artisan make:migration create_issued_ticket_logs_table
+
+# Step 2: Verify migration files content
+
+# Step 3: Run migrations
+php artisan migrate
+
+# Step 4: Verify tables created
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('issued_tickets');
+```
+
+### Rollback Considerations
+
+| Table | Delete Behavior | Rollback Risk |
+|-------|-----------------|---------------|
+| issued_tickets | restrictOnDelete | Medium — prevents passenger/ticket_fare deletion if tickets exist |
+| issued_ticket_logs | cascadeOnDelete | Low — logs are cleaned up when ticket is removed |
+
+### Summary (Phase 1)
+
+| Category | Count |
+|----------|-------|
+| Total Tables | 2 |
+| Foreign Keys | 5 |
+| Enum Columns | 3 (stored as string, enforced via PHP enum) |
+| Boolean Columns | 3 |
+| JSON Columns | 1 (old_values/new_values) |
+
+---
+
+## Phase 2: Issue Ticket — Models
+
+### PHP Enum Files to Create
+
+**File: `app/Enums/IssueType.php`**
+```php
+<?php
+
+namespace App\Enums;
+
+enum IssueType: string
+{
+    case REGULAR = 'regular';
+    case ADDITIONAL = 'additional';
+    case PENDING_OUTBOUND = 'pending_outbound';
+}
+```
+
+**File: `app/Enums/IssueTicketStatus.php`**
+```php
+<?php
+
+namespace App\Enums;
+
+enum IssueTicketStatus: string
+{
+    case PENDING = 'pending';
+    case ISSUED = 'issued';
+    case RE_ISSUED = 're-issued';
+    case REFUNDED = 'refunded';
+}
+```
+
+**File: `app/Enums/IssueLogAction.php`**
+```php
+<?php
+
+namespace App\Enums;
+
+enum IssueLogAction: string
+{
+    case ISSUED = 'issued';
+    case EDITED = 'edited';
+    case RE_ISSUED = 're-issued';
+    case REFUNDED = 'refunded';
+}
+```
+
+### IssuedTicket Model
+
+**File: `app/Models/IssuedTicket.php`**
+
+```php
+<?php
+
+namespace App\Models;
+
+use App\Enums\IssueTicketStatus;
+use App\Enums\IssueType;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+
+class IssuedTicket extends Model
+{
+    protected $fillable = [
+        'passenger_id', 'ticket_fare_id', 'issue_type', 'status',
+        'pnr', 'invoice_number', 'ticket_number',
+        'baggage_inbound', 'baggage_outbound',
+        'is_refundable', 'is_exchangeable', 'outbound_pending',
+        'user_id', 'issued_at', 'remarks',
+    ];
+
+    protected $casts = [
+        'issue_type' => IssueType::class,
+        'status' => IssueTicketStatus::class,
+        'is_refundable' => 'boolean',
+        'is_exchangeable' => 'boolean',
+        'outbound_pending' => 'boolean',
+        'issued_at' => 'datetime',
+    ];
+
+    public function passenger(): BelongsTo
+    {
+        return $this->belongsTo(Passenger::class);
+    }
+
+    public function ticketFare(): BelongsTo
+    {
+        return $this->belongsTo(TicketFare::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+
+    public function logs(): HasMany
+    {
+        return $this->hasMany(IssuedTicketLog::class);
+    }
+
+    public function logAction(string $action, ?array $oldValues = null, ?array $newValues = null): IssuedTicketLog
+    {
+        return $this->logs()->create([
+            'user_id' => auth()->id(),
+            'action' => $action,
+            'old_values' => $oldValues,
+            'new_values' => $newValues,
+        ]);
+    }
+}
+```
+
+### IssuedTicketLog Model
+
+**File: `app/Models/IssuedTicketLog.php`**
+
+```php
+<?php
+
+namespace App\Models;
+
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+
+class IssuedTicketLog extends Model
+{
+    const UPDATED_AT = null;
+
+    protected $fillable = [
+        'issued_ticket_id', 'user_id', 'action', 'old_values', 'new_values',
+    ];
+
+    protected $casts = [
+        'old_values' => 'array',
+        'new_values' => 'array',
+    ];
+
+    public function issuedTicket(): BelongsTo
+    {
+        return $this->belongsTo(IssuedTicket::class);
+    }
+
+    public function user(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
+    }
+}
+```
+
+### Passenger Model Updates
+
+**File: `app/Models/Passenger.php`** — add to existing model:
+
+```php
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
+
+// Relationships to add:
+public function issuedTickets(): HasMany
+{
+    return $this->hasMany(IssuedTicket::class);
+}
+
+public function latestIssuedTicket(): HasOne
+{
+    return $this->hasOne(IssuedTicket::class)->latestOfMany();
+}
+```
+
+### Model Configuration Summary
+
+| Model | Key Casts |
+|-------|-----------|
+| IssuedTicket | `issue_type` → `IssueType`, `status` → `IssueTicketStatus`, booleans → `boolean`, `issued_at` → `datetime` |
+| IssuedTicketLog | `old_values`/`new_values` → `array`, `UPDATED_AT = null` |
+| Passenger | Add `issuedTickets()` hasMany + `latestIssuedTicket()` hasOne |
+
+### Validation Layer Requirements
+
+```php
+// In TicketIssueController or Form Request
+public function rules(): array
+{
+    return [
+        'passenger_id' => 'required|exists:passengers,id',
+        'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
+        'issue_type' => 'nullable|in:regular,additional,pending_outbound',
+        'status' => 'required|in:pending,issued,re-issued,refunded',
+        'pnr' => 'nullable|string|max:255',
+        'invoice_number' => 'nullable|string|max:255',
+        'ticket_number' => 'nullable|string|max:255',
+        'baggage_inbound' => 'nullable|string|max:255',
+        'baggage_outbound' => 'nullable|string|max:255',
+        'is_refundable' => 'boolean',
+        'is_exchangeable' => 'boolean',
+        'outbound_pending' => 'boolean',
+    ];
+}
+```
+
+---
+
+## Phase 11: Issue Ticket — Backfill Command
+
+### Overview
+
+Create pending `issued_tickets` records for existing passengers that do not already have one. This ensures all historical passengers have an issued_ticket entry after the migration.
+
+### Artisan Command
+
+```bash
+php artisan tickets:backfill-issued
+```
+
+### Command Implementation
+
+**File: `app/Console/Commands/BackfillIssuedTickets.php`**
+
+```php
+<?php
+
+namespace App\Console\Commands;
+
+use App\Models\IssuedTicket;
+use App\Models\Passenger;
+use Illuminate\Console\Command;
+
+class BackfillIssuedTickets extends Command
+{
+    protected $signature = 'tickets:backfill-issued';
+    protected $description = 'Create pending issued_tickets for passengers without one';
+
+    public function handle(): int
+    {
+        $count = 0;
+
+        Passenger::whereDoesntHave('issuedTickets')
+            ->chunk(100, function ($passengers) use (&$count) {
+                foreach ($passengers as $passenger) {
+                    IssuedTicket::create([
+                        'passenger_id' => $passenger->id,
+                        'ticket_fare_id' => $passenger->ticket_fare_id,
+                        'status' => 'pending',
+                    ]);
+                    $count++;
+                }
+            });
+
+        $this->info("Created {$count} pending issued_ticket(s) for passengers without one.");
+        return Command::SUCCESS;
+    }
+}
+```
+
+### Execution Steps
+
+```bash
+# Step 1: Register in app/Console/Kernel.php if needed (auto-discovered in Laravel 8+)
+
+# Step 2: Run the backfill
+php artisan tickets:backfill-issued
+
+# Step 3: Verify
+php artisan tinker -> IssuedTicket::count();
+```
+
+### Design Decisions
+
+| Decision | Justification |
+|----------|---------------|
+| Chunked processing | Prevents memory exhaustion with large datasets |
+| `whereDoesntHave('issuedTickets')` | Skips passengers already backfilled (idempotent) |
+| Copies `ticket_fare_id` | Preserves the existing fare assignment from the passenger record |
+| Status = `pending` | Default state — actual issue flow will transition as needed |
+| No `user_id` set | Backfill is system-generated; user will be set when ticket is actually issued |
+| Safe to re-run | `whereDoesntHave` guard makes it idempotent |
+
+### Risks & Edge Cases
+
+| Risk | Mitigation |
+|------|------------|
+| Run before migrations | `IssuedTicket` model references a table that doesn't exist — run only after `php artisan migrate` |
+| Duplicate on re-run | `whereDoesntHave` guard prevents creating duplicates |
+| Passenger has null `ticket_fare_id` | Accepted — `ticket_fare_id` is nullable in the schema |
+
+---
+
