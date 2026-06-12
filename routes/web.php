@@ -13,7 +13,6 @@ use App\Http\Controllers\CityCodeController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DistrictController;
-use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\FlightDateGapController;
 use App\Http\Controllers\FingerprintChargeController;
 use App\Http\Controllers\RouteController;
@@ -59,7 +58,6 @@ Route::middleware('auth')->group(function () {
     Route::resource('booking-conditions', BookingConditionController::class)->middleware('role:Super Admin,Co Admin');
     Route::patch('/booking-conditions/{bookingCondition}/toggle-active', [BookingConditionController::class, 'toggleActive'])->name('booking-conditions.toggle-active')->middleware('role:Super Admin,Co Admin');
     Route::resource('branches', BranchController::class)->middleware('role:Super Admin,Co Admin');
-    Route::resource('offices', OfficeController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('city-codes', CityCodeController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('airlines', AirlineController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('classes', TravelClassController::class)->middleware('role:Super Admin,Co Admin');
