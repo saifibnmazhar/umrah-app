@@ -1,5 +1,7 @@
 # Database Migration Plan: Reference Tables
 
+> **Note**: This file contains plans for multiple independent migration phases. Scroll to relevant sections.
+
 ## Overview
 
 This plan outlines the database migrations for 9 reference tables with proper ordering based on foreign key dependencies.
@@ -3935,3 +3937,145 @@ public function logs(): HasMany
 | No `updated_at` column | Log is append-only; only `created_at` matters |
 | Observer pattern | Decouples logging from controller logic; fires automatically on any model change |
 | Skip when no auth user | Console commands and system processes don't generate log entries |
+
+---
+
+## Phase 2: Branch-Office Merge — Migrations
+
+### Overview
+
+Merge the `offices` table into `branches` by adding `location` (KSA/BD) and `fingerprint_operation` (boolean) columns, then drop `offices`.
+
+### Execution Order
+
+| Step | What |
+|------|------|
+| 1 | Migration 1 — Add columns to `branches` |
+| 2 | Migration 2 — Rename `bookings.branch_id`→`booking_branch_id`, `office_id`→`fingerprint_branch_id`; update FKs |
+| 3 | Migration 3 — Drop `users.office_id` column + FK |
+| 4 | **Seeder** — Copy offices→branches, update existing booking/user FKs |
+| 5 | Migration 4 — Drop `offices` table |
+
+Why this order: Steps 1–3 are pure schema (safe, no data loss). Step 4 reads from `offices` (still exists). Step 5 drops the now-empty `offices`. On empty DB, seeder is a no-op.
+
+---
+
+### Migration 1 — `add_location_and_fingerprint_operation_to_branches_table`
+
+**File:** `2026_06_xx_100000_add_location_fingerprint_operation_to_branches.php`
+
+```php
+Schema::table('branches', function (Blueprint $table) {
+    $table->string('location')->default('KSA');
+    $table->boolean('fingerprint_operation')->default(false);
+});
+```
+
+---
+
+### Migration 2 — `rename_branch_and_office_columns_on_bookings_table`
+
+**File:** `2026_06_xx_100001_rename_branch_office_columns_on_bookings.php`
+
+```php
+Schema::table('bookings', function (Blueprint $table) {
+    $table->dropForeign(['branch_id']);
+    $table->dropForeign(['office_id']);
+    $table->dropIndex(['branch_id']);
+    $table->dropIndex(['office_id']);
+
+    $table->renameColumn('branch_id', 'booking_branch_id');
+    $table->renameColumn('office_id', 'fingerprint_branch_id');
+
+    $table->foreign('booking_branch_id')->references('id')->on('branches')->onUpdate('cascade');
+    $table->foreign('fingerprint_branch_id')->references('id')->on('branches')->onUpdate('cascade');
+});
+```
+
+---
+
+### Migration 3 — `drop_office_id_from_users_table`
+
+**File:** `2026_06_xx_100002_drop_office_id_from_users.php`
+
+```php
+Schema::table('users', function (Blueprint $table) {
+    $table->dropForeign(['office_id']);
+    $table->dropColumn('office_id');
+});
+```
+
+---
+
+### Migration 4 — `drop_offices_table`
+
+**File:** `2026_06_xx_100003_drop_offices_table.php`
+
+```php
+Schema::dropIfExists('offices');
+```
+
+---
+
+## Phase 3: Branch-Office Merge — Seeder
+
+**File:** `database/seeders/MergeOfficesIntoBranchesSeeder.php`
+
+**Command:** `php artisan db:seed --class=MergeOfficesIntoBranchesSeeder`
+
+**Note:** Seeder runs before Migration 4 (so `offices` table still exists for data copy). No-op on empty database. Not added to `DatabaseSeeder` — standalone only.
+
+```php
+<?php
+
+namespace Database\Seeders;
+
+use Illuminate\Database\Seeder;
+use Illuminate\Support\Facades\DB;
+
+class MergeOfficesIntoBranchesSeeder extends Seeder
+{
+    public function run(): void
+    {
+        DB::transaction(function () {
+            // 1. Map old office IDs to new branch IDs
+            $officeMap = [];
+            $offices = DB::table('offices')->get();
+
+            foreach ($offices as $office) {
+                $newBranchId = DB::table('branches')->insertGetId([
+                    'name' => $office->name,
+                    'address' => $office->address,
+                    'contacts' => $office->contacts,
+                    'location' => 'BD',
+                    'fingerprint_operation' => true,
+                    'created_at' => $office->created_at ?? now(),
+                    'updated_at' => $office->updated_at ?? now(),
+                ]);
+                $officeMap[$office->id] = $newBranchId;
+            }
+
+            // 2. Update existing KSA branches
+            DB::table('branches')
+                ->whereNull('location')
+                ->orWhere('location', '')
+                ->update(['location' => 'KSA', 'fingerprint_operation' => false]);
+
+            // 3. Update bookings.fingerprint_branch_id
+            foreach ($officeMap as $oldOfficeId => $newBranchId) {
+                DB::table('bookings')
+                    ->where('fingerprint_branch_id', $oldOfficeId)
+                    ->update(['fingerprint_branch_id' => $newBranchId]);
+            }
+
+            // 4. Update users: merge office_id into branch_id
+            foreach ($officeMap as $oldOfficeId => $newBranchId) {
+                DB::table('users')
+                    ->where('office_id', $oldOfficeId)
+                    ->whereNull('branch_id')
+                    ->update(['branch_id' => $newBranchId]);
+            }
+        });
+    }
+}
+```
