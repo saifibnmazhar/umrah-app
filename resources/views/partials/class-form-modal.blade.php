@@ -29,7 +29,7 @@
                     class="block w-full rounded-md border shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2"
                 >
                     <option value="">Select Airline</option>
-                    @foreach($airlines as $airline)
+                    @foreach(\App\Models\Airline::orderBy('name')->get() as $airline)
                         <option value="{{ $airline->id }}">{{ $airline->name }}</option>
                     @endforeach
                 </select>
@@ -46,7 +46,7 @@
                     class="block w-full rounded-md border shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2"
                 >
                     <option value="">Select Class</option>
-                    @foreach($travelClasses as $travelClass)
+                    @foreach(\App\Models\TravelClass::orderBy('name')->get() as $travelClass)
                         <option value="{{ $travelClass->id }}">{{ $travelClass->name }}</option>
                     @endforeach
                 </select>

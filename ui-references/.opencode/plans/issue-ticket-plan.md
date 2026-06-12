@@ -1342,3 +1342,24 @@ These are not implemented now, but the schema and controller structure support t
 - [ ] Group ticket `ticket_qty` decremented on issue
 - [ ] Page refresh: all issued ticket data persists and loads correctly
 - [ ] Backfill command: creates records for all existing passengers (idempotent)
+
+---
+
+## Git Commit Message
+
+```
+feat: implement persistent issued ticket system with audit logs
+
+- Add issued_tickets + issued_ticket_logs tables and models
+- Create TicketIssueController with issue() and edit() endpoints
+- Add TicketFareController@quickStore for inline fare creation
+- Auto-create pending issued_tickets on booking/passenger creation
+- Add issuedTickets/latestIssuedTicket relations to Passenger model
+- Add BackfillIssuedTickets command (tickets:backfill-issued)
+- Replace client-side-only ticket flow with API-backed persistence
+- Replace 6 baggage fields with 2 string inputs + auto-suggest
+- Add Outbound Ticket Pending checkbox
+- Add inline "Add New Ticket" form with Route/Airline/Class sub-modals
+- Conditionally show Issue/Edit buttons based on ticket status
+- Add new routes: issue, edit, quick-create
+```

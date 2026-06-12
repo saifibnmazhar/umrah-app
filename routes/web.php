@@ -34,6 +34,7 @@ use App\Http\Controllers\VisaAdminController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\FareAdminController;
 use App\Http\Controllers\TicketFareController;
+use App\Http\Controllers\TicketIssueController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FingerprintController;
 use App\Http\Controllers\FingerprintReportController;
@@ -221,4 +222,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets', fn() => view('tickets.index'))->name('tickets.index')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/tickets/{id}/print', fn($id) => view('tickets.print', compact('id')))->name('tickets.print')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/tickets/{id}/add-confirm', fn($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+
+    Route::middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff')->group(function () {
+        Route::post('/bookings/{booking}/passengers/{passenger}/ticket-issue', [TicketIssueController::class, 'issue'])
+            ->name('bookings.passengers.ticket-issue');
+        Route::put('/bookings/{booking}/passengers/{passenger}/ticket-edit', [TicketIssueController::class, 'edit'])
+            ->name('bookings.passengers.ticket-edit');
+    });
+
+    Route::post('/api/ticket-fares/quick-create', [TicketFareController::class, 'quickStore'])
+        ->middleware('auth');
 });

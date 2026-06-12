@@ -27,6 +27,7 @@ use App\Models\TransactionType;
 use App\Models\CurrencyRate;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
+use App\Models\IssuedTicket;
 use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
@@ -131,7 +132,12 @@ class BookingController extends Controller
             'visaSubmission.visaAgent',
             'visaSubmission.visaSellingPrice',
             'visaSubmission.commissionAgent',
-            'fingerprintDetail.fingerprint.fingerprintDetails'
+            'fingerprintDetail.fingerprint.fingerprintDetails',
+            'ticketFare.baggageAllowances',
+            'latestIssuedTicket.ticketAgent',
+            'latestIssuedTicket.ticketFare.airline',
+            'latestIssuedTicket.ticketFare.airlineClass.class',
+            'latestIssuedTicket.ticketFare.route',
         ])
             ->orderBy('created_at', 'desc')
             ->paginate(15)
@@ -402,6 +408,16 @@ class BookingController extends Controller
                     VisaSubmission::create([
                         'passenger_id' => $passenger->id,
                         'visa_selling_price_id' => $booking->package?->visa_selling_price_id ?? VisaSellingPrice::latest('id')->value('id'),
+                        'status' => 'pending',
+                    ]);
+                }
+
+                if ($passenger->ticket_fare_id) {
+                    IssuedTicket::create([
+                        'booking_id' => $booking->id,
+                        'passenger_id' => $passenger->id,
+                        'ticket_fare_id' => $passenger->ticket_fare_id,
+                        'user_id' => auth()->id(),
                         'status' => 'pending',
                     ]);
                 }
@@ -874,6 +890,16 @@ class BookingController extends Controller
             VisaSubmission::create([
                 'passenger_id' => $passenger->id,
                 'visa_selling_price_id' => $booking->package?->visa_selling_price_id ?? VisaSellingPrice::latest('id')->value('id'),
+                'status' => 'pending',
+            ]);
+        }
+
+        if ($passenger->ticket_fare_id) {
+            IssuedTicket::create([
+                'booking_id' => $booking->id,
+                'passenger_id' => $passenger->id,
+                'ticket_fare_id' => $passenger->ticket_fare_id,
+                'user_id' => auth()->id(),
                 'status' => 'pending',
             ]);
         }

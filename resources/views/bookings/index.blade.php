@@ -56,6 +56,7 @@ $classesList = \App\Models\TravelClass::all()->map(fn($c) => [
 
 $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'id' => $p->id,
+    'booking_id' => $p->booking_id,
     'booking_date' => $p->booking?->created_at?->format('Y-m-d') ?? '',
     'invoice_no' => $p->booking?->invoice_id ?? '',
     'passenger_name' => trim($p->first_name . ' ' . $p->last_name),
@@ -103,12 +104,42 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'refundable' => false,
         'non_refundable' => false,
         'non_exchangeable' => false,
-        'baggage_inbound_adult' => 30,
-        'baggage_inbound_child' => 30,
-        'baggage_inbound_infant' => 10,
-        'baggage_outbound_adult' => 50,
-        'baggage_outbound_child' => 50,
-        'baggage_outbound_infant' => 10,
+        'baggage_inbound' => '',
+        'baggage_outbound' => '',
+        'outbound_pending' => false,
+        'issue_type' => null,
+        'issued_ticket_id' => null,
+        'baggage_allowances' => $p->ticketFare?->baggageAllowances->map(fn($b) => [
+            'passenger_type' => $b->passenger_type,
+            'travel_direction' => $b->travel_direction,
+            'allowance' => $b->allowance,
+        ]) ?? [],
+    ] : null,
+
+    'latest_issued_ticket' => ($lit = $p->latestIssuedTicket) ? [
+        'id' => $lit->id,
+        'ticket_number' => $lit->ticket_number ?? '',
+        'pnr' => $lit->pnr ?? '',
+        'ticket_agent_id' => $lit->ticket_agent_id,
+        'ticket_agent_name' => $lit->ticketAgent?->name ?? '',
+        'ticket_fare_id' => $lit->ticket_fare_id,
+        'group_ticket_id' => $lit->group_ticket_id,
+        'issued_date' => $lit->issued_date?->format('Y-m-d') ?? '',
+        'inbound_date' => $lit->inbound_date?->format('Y-m-d') ?? '',
+        'outbound_date' => $lit->outbound_date?->format('Y-m-d') ?? '',
+        'selling_fare' => (float)($lit->selling_fare ?? 0),
+        'net_fare' => (float)($lit->net_fare ?? 0),
+        'is_refundable' => $lit->is_refundable ?? false,
+        'is_exchangeable' => $lit->is_exchangeable ?? false,
+        'baggage_inbound' => $lit->baggage_inbound ?? '',
+        'baggage_outbound' => $lit->baggage_outbound ?? '',
+        'outbound_pending' => $lit->outbound_pending ?? false,
+        'issue_type' => $lit->issue_type,
+        'status' => $lit->status,
+        'airline' => $lit->ticketFare?->airline?->name ?? '',
+        'travel_class' => $lit->ticketFare?->airlineClass?->class?->name ?? '',
+        'route' => $lit->ticketFare?->route ? ($lit->ticketFare->route->fromCity?->code . '-' . $lit->ticketFare->route->toCity?->code) : '',
+        'route_type' => $lit->ticketFare?->route?->route_type?->value,
     ] : null,
 ])->values();
 @endphp
@@ -375,8 +406,8 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 flex-wrap">
             <span class="font-medium text-sm">@if($fareAmount > 0)@currency($fareAmount, 2)@else—@endif</span>
-            <button @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
-            <button @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
+            <button x-show="!passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'pending'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
+            <button x-show="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'issued' || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 're-issued'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
         </div>
     </td>
     @endif
@@ -675,6 +706,134 @@ if ($route) {
                 </div>
 
                 <div class="mb-4">
+                    <button type="button" @click="newTicketFareForm.visible = !newTicketFareForm.visible" class="text-sm text-blue-600 hover:text-blue-800 font-medium">
+                        <span x-text="newTicketFareForm.visible ? '- Hide' : '+ Add New Ticket'"></span>
+                    </button>
+                </div>
+
+                <div x-show="newTicketFareForm.visible" x-cloak class="mb-4 p-4 border border-blue-200 rounded-lg bg-blue-50/30">
+                    <h4 class="text-sm font-semibold text-slate-700 mb-3">New Ticket Fare</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Route Type</label>
+                            <select x-model="newTicketFareForm.route_type" @change="handleNewTicketRouteTypeChange()" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-slate-400">
+                                <option value="">Select</option>
+                                <option value="oneway_inbound">One Way-Inbound</option>
+                                <option value="oneway_outbound">One Way-Outbound</option>
+                                <option value="round">Round</option>
+                                <option value="multi_city">Multi City</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Flight Type</label>
+                            <select x-model="newTicketFareForm.flight_type" @change="handleNewTicketFlightTypeChange()" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-slate-400">
+                                <option value="">Select</option>
+                                <option value="direct">Direct</option>
+                                <option value="transit">Transit</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Airline</label>
+                            <select x-model="newTicketFareForm.airline_id" @change="onNewAirlineSelectChange($event)" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-slate-400">
+                                <option value="">Select</option>
+                                <template x-for="a in airlinesList" :key="a.id">
+                                    <option :value="a.id" x-text="a.name"></option>
+                                </template>
+                                <option value="__add_new__">+ Add New</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Class</label>
+                            <select x-model="newTicketFareForm.airline_classes_id" @change="onNewClassSelectChange($event)" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-slate-400">
+                                <option value="">Select</option>
+                                <template x-for="ac in filteredNewClasses" :key="ac.id">
+                                    <option :value="ac.id" x-text="ac.class_name"></option>
+                                </template>
+                                <option value="__add_new__">+ Add New</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-xs text-slate-600 mb-1">Route</label>
+                            <select x-model="newTicketFareForm.route_id" @change="onNewRouteSelectChange($event)" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-slate-400">
+                                <option value="">Select</option>
+                                <template x-for="r in filteredNewRoutes" :key="r.id">
+                                    <option :value="r.id" x-text="r.display" :data-route-type="r.route_type" :data-flight-type="r.flight_type" :data-airline-id="r.airline_id"></option>
+                                </template>
+                                <option value="__add_new__">+ Add New</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Ticket Type</label>
+                            <select x-model="newTicketFareForm.ticket_type" @change="handleNewTicketTypeChange()" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded focus:ring-1 focus:ring-slate-400">
+                                <option value="regular">Regular</option>
+                                <option value="offer">Offer</option>
+                                <option value="group">Group</option>
+                            </select>
+                        </div>
+                        <div x-show="newTicketFareForm.ticket_type === 'offer'">
+                            <label class="block text-xs text-slate-600 mb-1">Offer Price</label>
+                            <input type="number" x-model="newTicketFareForm.offer_price" min="0" step="0.01" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Effective From</label>
+                            <input type="date" x-model="newTicketFareForm.effective_from" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Effective To</label>
+                            <input type="date" x-model="newTicketFareForm.effective_to" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded">
+                        </div>
+                    </div>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Net Fare (SAR)</label>
+                            <input type="number" x-model="newTicketFareForm.net_fare" min="0" step="0.01" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Selling Fare (SAR)</label>
+                            <input type="number" x-model="newTicketFareForm.selling_fare" min="0" step="0.01" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Child Fare %</label>
+                            <input type="number" x-model="newTicketFareForm.child_fare_percentage" min="0" max="100" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded">
+                        </div>
+                        <div>
+                            <label class="block text-xs text-slate-600 mb-1">Infant Fare %</label>
+                            <input type="number" x-model="newTicketFareForm.infant_fare_percentage" min="0" max="100" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded">
+                        </div>
+                    </div>
+                    <div x-show="newTicketFareForm.route_type && (newTicketFareForm.route_type === 'round' || newTicketFareForm.route_type === 'oneway_inbound')">
+                        <label class="block text-xs text-slate-600 mb-1">Inbound Baggage</label>
+                        <div class="grid grid-cols-3 gap-2 mb-2">
+                            <div><label class="block text-xs text-slate-500">Adult</label><input type="number" x-model="newTicketFareForm.inbound_adult" min="0" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded"></div>
+                            <div><label class="block text-xs text-slate-500">Child</label><input type="number" x-model="newTicketFareForm.inbound_child" min="0" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded"></div>
+                            <div><label class="block text-xs text-slate-500">Infant</label><input type="number" x-model="newTicketFareForm.inbound_infant" min="0" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded"></div>
+                        </div>
+                    </div>
+                    <div x-show="newTicketFareForm.route_type && (newTicketFareForm.route_type === 'round' || newTicketFareForm.route_type === 'oneway_outbound')">
+                        <label class="block text-xs text-slate-600 mb-1">Outbound Baggage</label>
+                        <div class="grid grid-cols-3 gap-2 mb-2">
+                            <div><label class="block text-xs text-slate-500">Adult</label><input type="number" x-model="newTicketFareForm.outbound_adult" min="0" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded"></div>
+                            <div><label class="block text-xs text-slate-500">Child</label><input type="number" x-model="newTicketFareForm.outbound_child" min="0" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded"></div>
+                            <div><label class="block text-xs text-slate-500">Infant</label><input type="number" x-model="newTicketFareForm.outbound_infant" min="0" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded"></div>
+                        </div>
+                    </div>
+                    <div x-show="newTicketFareForm.ticket_type === 'group'" class="grid grid-cols-2 md:grid-cols-4 gap-3 mb-3">
+                        <div><label class="block text-xs text-slate-600 mb-1">PNR</label><input type="text" x-model="newTicketFareForm.pnr" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded"></div>
+                        <div><label class="block text-xs text-slate-600 mb-1">Qty</label><input type="number" x-model="newTicketFareForm.ticket_qty" min="1" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded"></div>
+                        <div><label class="block text-xs text-slate-600 mb-1">Inbound Date</label><input type="date" x-model="newTicketFareForm.inbound_date" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded"></div>
+                        <div><label class="block text-xs text-slate-600 mb-1">Outbound Date</label><input type="date" x-model="newTicketFareForm.outbound_date" class="w-full text-xs px-2 py-1.5 border border-slate-300 rounded"></div>
+                    </div>
+                    <div class="flex items-center gap-4 mb-3">
+                        <label class="flex items-center gap-1 text-xs"><input type="checkbox" x-model="newTicketFareForm.is_non_refundable" class="w-3 h-3"> Non-Refundable</label>
+                        <label class="flex items-center gap-1 text-xs"><input type="checkbox" x-model="newTicketFareForm.is_non_exchangable" class="w-3 h-3"> Non-Exchangeable</label>
+                        <label class="flex items-center gap-1 text-xs"><input type="checkbox" x-model="newTicketFareForm.with_meal" class="w-3 h-3"> With Meal</label>
+                    </div>
+                    <button type="button" @click="saveNewTicketFare()" :disabled="newTicketFareForm.saving" class="text-xs px-3 py-1.5 bg-blue-600 text-white rounded hover:bg-blue-700 disabled:opacity-50">
+                        <span x-text="newTicketFareForm.saving ? 'Saving...' : 'Create Ticket Fare'"></span>
+                    </button>
+                </div>
+
+                <div class="mb-4">
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
@@ -712,38 +871,20 @@ if ($route) {
 
                 <div x-show="ticketFareForm.showBaggage" class="mb-4">
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
-                    <div x-show="ticketFareForm.showInboundBaggage" id="ticketFareInboundBaggage" class="mb-4">
-                        <h5 class="text-sm font-medium text-slate-700 mb-2">Inbound</h5>
-                        <div class="grid grid-cols-3 gap-4">
-                            <div x-show="ticketFareForm.passenger_type === 'adult'">
-                                <label class="block text-sm text-slate-600 mb-1">Adult</label>
-                                <input type="number" x-model="ticketFareForm.baggage_inbound_adult" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="30">
-                            </div>
-                            <div x-show="ticketFareForm.passenger_type === 'child'">
-                                <label class="block text-sm text-slate-600 mb-1">Child</label>
-                                <input type="number" x-model="ticketFareForm.baggage_inbound_child" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="30">
-                            </div>
-                            <div x-show="ticketFareForm.passenger_type === 'infant'">
-                                <label class="block text-sm text-slate-600 mb-1">Infant</label>
-                                <input type="number" x-model="ticketFareForm.baggage_inbound_infant" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="10">
-                            </div>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div x-show="ticketFareForm.showInboundDate">
+                            <label class="block text-sm text-slate-600 mb-1">Inbound Baggage (KG)</label>
+                            <input type="text" x-model="ticketFareForm.baggage_inbound" placeholder="e.g. 30" list="baggageSuggestInbound" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <datalist id="baggageSuggestInbound">
+                                <option value="30"><option value="40"><option value="50"><option value="20"><option value="25">
+                            </datalist>
                         </div>
-                    </div>
-                    <div x-show="ticketFareForm.showOutboundBaggage" id="ticketFareOutboundBaggage">
-                        <h5 class="text-sm font-medium text-slate-700 mb-2">Outbound</h5>
-                        <div class="grid grid-cols-3 gap-4">
-                            <div x-show="ticketFareForm.passenger_type === 'adult'">
-                                <label class="block text-sm text-slate-600 mb-1">Adult</label>
-                                <input type="number" x-model="ticketFareForm.baggage_outbound_adult" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="50">
-                            </div>
-                            <div x-show="ticketFareForm.passenger_type === 'child'">
-                                <label class="block text-sm text-slate-600 mb-1">Child</label>
-                                <input type="number" x-model="ticketFareForm.baggage_outbound_child" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="50">
-                            </div>
-                            <div x-show="ticketFareForm.passenger_type === 'infant'">
-                                <label class="block text-sm text-slate-600 mb-1">Infant</label>
-                                <input type="number" x-model="ticketFareForm.baggage_outbound_infant" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="10">
-                            </div>
+                        <div x-show="ticketFareForm.showOutboundDate">
+                            <label class="block text-sm text-slate-600 mb-1">Outbound Baggage (KG)</label>
+                            <input type="text" x-model="ticketFareForm.baggage_outbound" placeholder="e.g. 50" list="baggageSuggestOutbound" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <datalist id="baggageSuggestOutbound">
+                                <option value="50"><option value="40"><option value="30"><option value="25"><option value="20">
+                            </datalist>
                         </div>
                     </div>
                 </div>
@@ -762,13 +903,24 @@ if ($route) {
                     </div>
                 </div>
 
+                <div class="mb-4">
+                    <label class="flex items-center gap-2 cursor-pointer">
+                        <input type="checkbox" x-model="ticketFareForm.outbound_pending" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                        <span class="text-sm text-slate-700">Outbound Ticket Pending</span>
+                    </label>
+                </div>
+
                 <div class="flex gap-3 mt-6">
-                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" x-text="ticketFareModalTitle === 'Issue Ticket' ? 'Issue Ticket' : 'Save Changes'"></button>
                     <button type="button" @click="closeTicketFareModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
                 </div>
             </form>
         </div>
     </div>
+
+    @include('partials.route-form-modal')
+    @include('partials.airline-form-modal')
+    @include('partials.class-form-modal')
 </div>
 
 <style>
@@ -1154,19 +1306,45 @@ function bookingIndexApp() {
             passenger_type: '',
             selling_fare: 0,
             net_fare: 0,
-            baggage_inbound_adult: 30,
-            baggage_inbound_child: 30,
-            baggage_inbound_infant: 10,
-            baggage_outbound_adult: 50,
-            baggage_outbound_child: 50,
-            baggage_outbound_infant: 10,
+            baggage_inbound: '',
+            baggage_outbound: '',
             non_refundable: false,
             non_exchangeable: false,
+            outbound_pending: false,
             showInboundDate: false,
             showOutboundDate: false,
             showBaggage: false,
-            showInboundBaggage: false,
-            showOutboundBaggage: false,
+        },
+
+        newTicketFareForm: {
+            visible: false,
+            saving: false,
+            route_type: '',
+            flight_type: '',
+            airline_id: '',
+            airline_classes_id: '',
+            route_id: '',
+            ticket_type: 'regular',
+            effective_from: '',
+            effective_to: '',
+            net_fare: '',
+            selling_fare: '',
+            offer_price: '',
+            child_fare_percentage: 70,
+            infant_fare_percentage: 30,
+            with_meal: false,
+            pnr: '',
+            ticket_qty: 1,
+            inbound_date: '',
+            outbound_date: '',
+            is_non_refundable: false,
+            is_non_exchangable: false,
+            inbound_adult: '',
+            inbound_child: '',
+            inbound_infant: '',
+            outbound_adult: '',
+            outbound_child: '',
+            outbound_infant: '',
         },
 
         openTicketFareModal(rowIndex) {
@@ -1174,7 +1352,8 @@ function bookingIndexApp() {
             const row = this.passengersTicketData[rowIndex];
             if (!row) return;
 
-            const isAlreadyIssued = row.ticket_status === 'issued' || row.ticket_status === 're-issued';
+            const lit = row.latest_issued_ticket;
+            const isAlreadyIssued = lit && (lit.status === 'issued' || lit.status === 're-issued');
             this.ticketFareModalTitle = isAlreadyIssued ? 'Edit Ticket' : 'Issue Ticket';
 
             this.ticketFareForm.route = row.route || '';
@@ -1182,7 +1361,32 @@ function bookingIndexApp() {
             this.ticketFareForm.travel_class = row.travel_class || '';
             this.ticketFareForm.passenger_type = row.passenger_type || '';
 
-            if (row.ticket_fare) {
+            const today = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+
+            if (lit) {
+                this.ticketFareForm.ticket_number = lit.ticket_number || '';
+                this.ticketFareForm.pnr = lit.pnr || '';
+                this.ticketFareForm.ticket_agent = lit.ticket_agent_name || '';
+                this.ticketFareForm.date = lit.issued_date || today;
+                this.ticketFareForm.inbound_date = lit.inbound_date || '';
+                this.ticketFareForm.outbound_date = lit.outbound_date || '';
+                this.ticketFareForm.selling_fare = lit.selling_fare || 0;
+                this.ticketFareForm.net_fare = lit.net_fare || 0;
+                this.ticketFareForm.non_refundable = !lit.is_refundable;
+                this.ticketFareForm.non_exchangeable = !lit.is_exchangeable;
+                this.ticketFareForm.baggage_inbound = lit.baggage_inbound || '';
+                this.ticketFareForm.baggage_outbound = lit.baggage_outbound || '';
+                this.ticketFareForm.outbound_pending = lit.outbound_pending || false;
+                this.ticketFareForm.ticket_type = row.ticket_fare?.ticket_type || '';
+                this.ticketFareForm.route_type = lit.route_type ? (
+                    lit.route_type === 'oneway_inbound' ? 'One Way-Inbound' :
+                    lit.route_type === 'oneway_outbound' ? 'One Way-Outbound' :
+                    lit.route_type === 'round' ? 'Round' :
+                    lit.route_type === 'multi_city' ? 'Multi City' : ''
+                ) : (row.ticket_fare?.route_type || '');
+                this.ticketFareForm.flight_type = row.ticket_fare?.flight_type || '';
+                this.ticketFareForm.group_ticket_id = row.ticket_fare?.group_ticket_id || '';
+            } else if (row.ticket_fare) {
                 this.ticketFareForm.ticket_type = row.ticket_fare.ticket_type || '';
                 this.ticketFareForm.route_type = row.ticket_fare.route_type || '';
                 this.ticketFareForm.flight_type = row.ticket_fare.flight_type || '';
@@ -1191,18 +1395,15 @@ function bookingIndexApp() {
                 this.ticketFareForm.outbound_date = row.ticket_fare.outbound_date || '';
                 this.ticketFareForm.pnr = row.ticket_fare.pnr || '';
                 this.ticketFareForm.ticket_number = row.ticket_fare.ticket_number || '';
-                this.ticketFareForm.date = row.ticket_fare.date || (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+                this.ticketFareForm.date = row.ticket_fare.date || today;
                 this.ticketFareForm.ticket_agent = row.ticket_fare.ticket_agent || '';
                 this.ticketFareForm.selling_fare = row.ticket_fare.selling_fare || 0;
                 this.ticketFareForm.net_fare = row.ticket_fare.net_fare || 0;
                 this.ticketFareForm.non_refundable = row.ticket_fare.non_refundable || false;
                 this.ticketFareForm.non_exchangeable = row.ticket_fare.non_exchangeable || false;
-                this.ticketFareForm.baggage_inbound_adult = row.ticket_fare.baggage_inbound_adult || 30;
-                this.ticketFareForm.baggage_inbound_child = row.ticket_fare.baggage_inbound_child || 30;
-                this.ticketFareForm.baggage_inbound_infant = row.ticket_fare.baggage_inbound_infant || 10;
-                this.ticketFareForm.baggage_outbound_adult = row.ticket_fare.baggage_outbound_adult || 50;
-                this.ticketFareForm.baggage_outbound_child = row.ticket_fare.baggage_outbound_child || 50;
-                this.ticketFareForm.baggage_outbound_infant = row.ticket_fare.baggage_outbound_infant || 10;
+                this.ticketFareForm.baggage_inbound = row.ticket_fare.baggage_inbound || '';
+                this.ticketFareForm.baggage_outbound = row.ticket_fare.baggage_outbound || '';
+                this.ticketFareForm.outbound_pending = row.ticket_fare.outbound_pending || false;
             } else {
                 this.ticketFareForm.ticket_type = '';
                 this.ticketFareForm.route_type = '';
@@ -1212,22 +1413,20 @@ function bookingIndexApp() {
                 this.ticketFareForm.outbound_date = '';
                 this.ticketFareForm.pnr = '';
                 this.ticketFareForm.ticket_number = '';
-                const today = new Date(); this.ticketFareForm.date = today.getFullYear() + '-' + String(today.getMonth() + 1).padStart(2, '0') + '-' + String(today.getDate()).padStart(2, '0');
+                this.ticketFareForm.date = today;
                 this.ticketFareForm.ticket_agent = '';
                 this.ticketFareForm.selling_fare = 0;
                 this.ticketFareForm.net_fare = 0;
                 this.ticketFareForm.non_refundable = false;
                 this.ticketFareForm.non_exchangeable = false;
-                this.ticketFareForm.baggage_inbound_adult = 30;
-                this.ticketFareForm.baggage_inbound_child = 30;
-                this.ticketFareForm.baggage_inbound_infant = 10;
-                this.ticketFareForm.baggage_outbound_adult = 50;
-                this.ticketFareForm.baggage_outbound_child = 50;
-                this.ticketFareForm.baggage_outbound_infant = 10;
+                this.ticketFareForm.baggage_inbound = '';
+                this.ticketFareForm.baggage_outbound = '';
+                this.ticketFareForm.outbound_pending = false;
             }
 
             this.handleTicketFareRouteTypeChange();
             this.handleTicketTypeChange();
+            this.suggestBaggage();
             this.isTicketFareModalOpen = true;
         },
 
@@ -1240,27 +1439,21 @@ function bookingIndexApp() {
             const routeType = this.ticketFareForm.route_type;
             const f = this.ticketFareForm;
             f.showBaggage = false;
-            f.showInboundBaggage = false;
-            f.showOutboundBaggage = false;
             f.showInboundDate = false;
             f.showOutboundDate = false;
 
             switch (routeType) {
                 case 'One Way-Inbound':
                     f.showBaggage = true;
-                    f.showInboundBaggage = true;
                     f.showInboundDate = true;
                     break;
                 case 'One Way-Outbound':
                     f.showBaggage = true;
-                    f.showOutboundBaggage = true;
                     f.showOutboundDate = true;
                     break;
                 case 'Round':
                 case 'Multi City':
                     f.showBaggage = true;
-                    f.showInboundBaggage = true;
-                    f.showOutboundBaggage = true;
                     f.showInboundDate = true;
                     f.showOutboundDate = true;
                     break;
@@ -1283,40 +1476,122 @@ function bookingIndexApp() {
             }
         },
 
+        getAgentIdByName(name) {
+            const agent = this.ticketAgents.find(a => a.name === name);
+            return agent ? agent.id : null;
+        },
+
+        getSelectedFareId() {
+            const row = this.passengersTicketData[this.editingPassengerIndex];
+            if (!row) return null;
+            return row.latest_issued_ticket?.ticket_fare_id || row.ticket_fare_id || null;
+        },
+
+        mapIssuedTicketToForm(ticket) {
+            const fare = ticket.ticket_fare || {};
+            const route = fare.route || {};
+            return {
+                ticket_type: fare.ticket_type || 'regular',
+                route_type: route.route_type || '',
+                flight_type: route.flight_type || '',
+                group_ticket_id: ticket.group_ticket_id,
+                inbound_date: ticket.inbound_date || '',
+                outbound_date: ticket.outbound_date || '',
+                pnr: ticket.pnr || '',
+                ticket_number: ticket.ticket_number || '',
+                date: ticket.issued_date || '',
+                ticket_agent: ticket.ticket_agent?.name || '',
+                selling_fare: ticket.selling_fare || 0,
+                net_fare: ticket.net_fare || 0,
+                non_refundable: !ticket.is_refundable,
+                non_exchangeable: !ticket.is_exchangeable,
+                baggage_inbound: ticket.baggage_inbound || '',
+                baggage_outbound: ticket.baggage_outbound || '',
+                outbound_pending: ticket.outbound_pending || false,
+            };
+        },
+
         handleTicketFareSubmit() {
             if (this.editingPassengerIndex === null) return;
 
             const row = this.passengersTicketData[this.editingPassengerIndex];
             if (!row) return;
 
-            const ticketFareData = {
-                ticket_type: this.ticketFareForm.ticket_type || 'regular',
-                route_type: this.ticketFareForm.route_type || '',
-                flight_type: this.ticketFareForm.flight_type || '',
-                group_ticket_id: this.ticketFareForm.group_ticket_id || '',
-                inbound_date: this.ticketFareForm.inbound_date || '',
-                outbound_date: this.ticketFareForm.outbound_date || '',
-                pnr: this.ticketFareForm.pnr || '',
+            const isEdit = row.latest_issued_ticket && (row.latest_issued_ticket.status === 'issued' || row.latest_issued_ticket.status === 're-issued');
+
+            if (!isEdit && row.latest_issued_ticket && row.latest_issued_ticket.status !== 'pending') {
+                this.showToast('This ticket cannot be issued again.', 'error');
+                return;
+            }
+
+            const payload = {
                 ticket_number: this.ticketFareForm.ticket_number || '',
-                date: this.ticketFareForm.date || '',
-                ticket_agent: this.ticketFareForm.ticket_agent || '',
+                pnr: this.ticketFareForm.pnr || '',
+                ticket_agent_id: this.getAgentIdByName(this.ticketFareForm.ticket_agent),
+                ticket_fare_id: this.getSelectedFareId(),
+                group_ticket_id: this.ticketFareForm.group_ticket_id || null,
+                issued_date: this.ticketFareForm.date || '',
+                inbound_date: this.ticketFareForm.inbound_date || null,
+                outbound_date: this.ticketFareForm.outbound_date || null,
                 selling_fare: parseFloat(this.ticketFareForm.selling_fare) || 0,
                 net_fare: parseFloat(this.ticketFareForm.net_fare) || 0,
-                non_refundable: this.ticketFareForm.non_refundable || false,
-                non_exchangeable: this.ticketFareForm.non_exchangeable || false,
-                baggage_inbound_adult: parseInt(this.ticketFareForm.baggage_inbound_adult) || 30,
-                baggage_inbound_child: parseInt(this.ticketFareForm.baggage_inbound_child) || 30,
-                baggage_inbound_infant: parseInt(this.ticketFareForm.baggage_inbound_infant) || 10,
-                baggage_outbound_adult: parseInt(this.ticketFareForm.baggage_outbound_adult) || 50,
-                baggage_outbound_child: parseInt(this.ticketFareForm.baggage_outbound_child) || 50,
-                baggage_outbound_infant: parseInt(this.ticketFareForm.baggage_outbound_infant) || 10,
+                is_refundable: !this.ticketFareForm.non_refundable,
+                is_exchangeable: !this.ticketFareForm.non_exchangeable,
+                baggage_inbound: this.ticketFareForm.baggage_inbound || '',
+                baggage_outbound: this.ticketFareForm.baggage_outbound || '',
+                outbound_pending: this.ticketFareForm.outbound_pending || false,
+                issue_type: 'regular',
             };
 
-            row.ticket_fare = ticketFareData;
-            row.ticket_status = 'issued';
+            const url = isEdit
+                ? `/bookings/${row.booking_id}/passengers/${row.id}/ticket-edit`
+                : `/bookings/${row.booking_id}/passengers/${row.id}/ticket-issue`;
 
-            this.showToast('Ticket fare saved successfully');
-            this.closeTicketFareModal();
+            fetch(url, {
+                method: isEdit ? 'PUT' : 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: JSON.stringify(payload),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    row.ticket_status = 'issued';
+                    const t = data.issued_ticket;
+                    row.latest_issued_ticket = {
+                        id: t.id,
+                        ticket_number: t.ticket_number,
+                        pnr: t.pnr,
+                        ticket_agent_id: t.ticket_agent_id,
+                        ticket_agent_name: t.ticket_agent?.name || payload.ticket_agent || '',
+                        ticket_fare_id: t.ticket_fare_id,
+                        group_ticket_id: t.group_ticket_id,
+                        issued_date: t.issued_date,
+                        inbound_date: t.inbound_date,
+                        outbound_date: t.outbound_date,
+                        selling_fare: t.selling_fare,
+                        net_fare: t.net_fare,
+                        is_refundable: t.is_refundable,
+                        is_exchangeable: t.is_exchangeable,
+                        baggage_inbound: t.baggage_inbound,
+                        baggage_outbound: t.baggage_outbound,
+                        outbound_pending: t.outbound_pending,
+                        issue_type: t.issue_type,
+                        status: t.status,
+                        airline: t.ticket_fare?.airline?.name || '',
+                        travel_class: t.ticket_fare?.airlineClass?.class?.name || '',
+                        route_type: t.ticket_fare?.route?.route_type,
+                    };
+                    row.ticket_fare = this.mapIssuedTicketToForm(t);
+                    this.showToast(data.message || 'Ticket saved successfully.');
+                    this.closeTicketFareModal();
+                } else {
+                    this.showToast(data.message || 'Failed to save ticket.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Ticket submit error:', err);
+                this.showToast('Failed to save ticket.', 'error');
+            });
         },
 
         handleRouteTypeOrFlightTypeChange() {
@@ -1395,6 +1670,282 @@ function bookingIndexApp() {
                 this.ticketFareForm.airline = parts[1];
                 this.ticketFareForm.travel_class = parts[2];
             }
+            this.suggestBaggage();
+        },
+
+        suggestBaggage() {
+            const idx = this.editingPassengerIndex;
+            if (idx === null) return;
+            const row = this.passengersTicketData[idx];
+            if (!row?.baggage_allowances?.length) return;
+            const pType = row.passenger_type || 'adult';
+            const inbound = row.baggage_allowances.find(b => b.passenger_type === pType && b.travel_direction === 'inbound');
+            const outbound = row.baggage_allowances.find(b => b.passenger_type === pType && b.travel_direction === 'outbound');
+            if (inbound) this.ticketFareForm.baggage_inbound = inbound.allowance;
+            if (outbound) this.ticketFareForm.baggage_outbound = outbound.allowance;
+        },
+
+        get filteredNewRoutes() {
+            const rt = this.newTicketFareForm.route_type;
+            const ft = this.newTicketFareForm.flight_type;
+            if (!rt || !ft) return this.routesList;
+            return this.routesList.filter(r => r.route_type === rt && r.flight_type === ft);
+        },
+
+        get filteredNewClasses() {
+            const id = this.newTicketFareForm.airline_id;
+            if (!id) return [];
+            const airline = this.airlinesList.find(a => a.id == id);
+            if (!airline) return [];
+            return this.classesList.filter(c => airline.class_ids.includes(c.id));
+        },
+
+        handleNewTicketRouteTypeChange() {
+            this.newTicketFareForm.flight_type = '';
+            this.newTicketFareForm.route_id = '';
+        },
+
+        handleNewTicketFlightTypeChange() {
+            this.newTicketFareForm.route_id = '';
+        },
+
+        handleNewTicketTypeChange() {},
+
+        buildRouteDisplay(route) {
+            if (!route) return '';
+            const rt = route.route_type?.value || route.route_type;
+            if (rt === 'multi_city') {
+                const seg = route.multi_segments?.[0] || route.multiSegments?.[0];
+                if (seg) {
+                    const fromCode = seg.from_city?.code || seg.fromCity?.code || '?';
+                    const toCode = seg.to_city?.code || seg.toCity?.code || '?';
+                    return fromCode + '-' + toCode;
+                }
+                return 'Multi City';
+            }
+            const fromCode = route.from_city?.code || route.fromCity?.code || '?';
+            const toCode = route.to_city?.code || route.toCity?.code || '?';
+            const returnCode = route.return_city?.code || route.returnCity?.code || '';
+            return rt === 'round' && returnCode
+                ? fromCode + '-' + toCode + '-' + returnCode
+                : fromCode + '-' + toCode;
+        },
+
+        onNewRouteSelectChange(event) {
+            if (event.target.value === '__add_new__') {
+                event.target.value = '';
+                this.openRouteModal();
+            }
+        },
+
+        onNewAirlineSelectChange(event) {
+            if (event.target.value === '__add_new__') {
+                event.target.value = '';
+                this.openAirlineModal();
+            }
+        },
+
+        onNewClassSelectChange(event) {
+            if (event.target.value === '__add_new__') {
+                event.target.value = '';
+                this.openClassModal();
+            }
+        },
+
+        saveNewTicketFare() {
+            this.newTicketFareForm.saving = true;
+            const f = this.newTicketFareForm;
+            const payload = {
+                route_type: f.route_type,
+                flight_type: f.flight_type,
+                airline_id: f.airline_id,
+                airline_classes_id: f.airline_classes_id,
+                route_id: f.route_id,
+                ticket_type: f.ticket_type,
+                net_fare: parseFloat(f.net_fare) || 0,
+                selling_fare: parseFloat(f.selling_fare) || 0,
+                offer_price: f.offer_price ? parseFloat(f.offer_price) : null,
+                child_fare_percentage: parseFloat(f.child_fare_percentage) || 70,
+                infant_fare_percentage: parseFloat(f.infant_fare_percentage) || 30,
+                with_meal: f.with_meal,
+                pnr: f.pnr || null,
+                ticket_qty: f.ticket_qty || null,
+                inbound_date: f.inbound_date || null,
+                outbound_date: f.outbound_date || null,
+                is_non_refundable: f.is_non_refundable,
+                is_non_exchangable: f.is_non_exchangable,
+                inbound_adult: f.inbound_adult ? parseFloat(f.inbound_adult) : null,
+                inbound_child: f.inbound_child ? parseFloat(f.inbound_child) : null,
+                inbound_infant: f.inbound_infant ? parseFloat(f.inbound_infant) : null,
+                outbound_adult: f.outbound_adult ? parseFloat(f.outbound_adult) : null,
+                outbound_child: f.outbound_child ? parseFloat(f.outbound_child) : null,
+                outbound_infant: f.outbound_infant ? parseFloat(f.outbound_infant) : null,
+            };
+
+            fetch('/api/ticket-fares/quick-create', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: JSON.stringify(payload),
+            })
+            .then(res => res.json())
+            .then(data => {
+                this.newTicketFareForm.saving = false;
+                if (data.success) {
+                    const fare = data.ticket_fare;
+                    const routeDisplay = this.buildRouteDisplay(fare.route);
+                    const airlineName = fare.airline?.name || '';
+                    const className = fare.airlineClass?.class?.name || '';
+                    if (routeDisplay && airlineName && className) {
+                        this.ticketFareForm.ticket_option = routeDisplay + '||' + airlineName + '||' + className;
+                        this.handleTicketOptionChange();
+                    }
+                    this.showToast('Ticket fare created successfully.');
+                    this.newTicketFareForm.visible = false;
+                } else {
+                    this.showToast(data.message || 'Failed to create ticket fare.', 'error');
+                }
+            })
+            .catch(err => {
+                this.newTicketFareForm.saving = false;
+                console.error('Quick create error:', err);
+                this.showToast('Failed to create ticket fare.', 'error');
+            });
+        },
+
+        showRouteModal: false,
+        editRouteMode: false,
+        routeSaving: false,
+        routeErrors: {},
+        route: {
+            id: null, airline_id: '', route_type: '', flight_type: '',
+            from_city_id: '', to_city_id: '', return_city_id: '',
+            additional_gap: '', transits: [
+                {transit_city_id: '', transit_hours: '', transit_minutes: ''},
+                {transit_city_id: '', transit_hours: '', transit_minutes: ''},
+            ],
+        },
+
+        cityModalOpen: false,
+        citySaving: false,
+        activeSelect: null,
+        cityData: { city_name: '', code: '', country: '' },
+        cityErrors: {},
+
+        airlineModalOpen: false,
+        airlineSaving: false,
+        airlineData: { name: '', code: '' },
+        airlineErrors: {},
+
+        classModalOpen: false,
+        classSaving: false,
+        classData: { airline_id: '', class_id: '' },
+        classErrors: {},
+
+        openRouteModal() { this.showRouteModal = true; this.editRouteMode = false; },
+        closeRouteModal() { this.showRouteModal = false; this.routeErrors = {}; },
+        toggleRouteFields() {},
+        toggleTransitFields() {},
+
+        onCitySelectChange(selectKey, event) {
+            if (event.target.value === '__add_new__') {
+                event.target.value = '';
+                this.activeSelect = selectKey;
+                this.openCityModal();
+            }
+        },
+        openCityModal() { this.cityModalOpen = true; },
+        closeCityModal() { this.cityModalOpen = false; this.cityErrors = {}; this.activeSelect = null; },
+        saveCity() { /* handled by route save */ },
+        appendCityToAllSelects() {},
+
+        openAirlineModal() { this.airlineModalOpen = true; this.airlineData = { name: '', code: '' }; this.airlineErrors = {}; },
+        closeAirlineModal() { this.airlineModalOpen = false; this.airlineErrors = {}; },
+
+        saveAirline() {
+            this.airlineSaving = true;
+            fetch('/airlines', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: JSON.stringify(this.airlineData),
+            })
+            .then(res => res.json())
+            .then(data => {
+                this.airlineSaving = false;
+                if (data.id) {
+                    this.airlinesList.push({ id: data.id, name: data.name, class_ids: [] });
+                    this.newTicketFareForm.airline_id = data.id;
+                    this.closeAirlineModal();
+                    this.showToast('Airline created successfully.');
+                } else {
+                    this.airlineErrors = data.errors || {};
+                    this.showToast('Failed to create airline.', 'error');
+                }
+            })
+            .catch(() => { this.airlineSaving = false; this.showToast('Failed to create airline.', 'error'); });
+        },
+
+        openClassModal() { this.classModalOpen = true; this.classData = { airline_id: '', class_id: '' }; this.classErrors = {}; },
+        closeClassModal() { this.classModalOpen = false; this.classErrors = {}; },
+
+        saveClass() {
+            this.classSaving = true;
+            this.classData.airline_id = this.newTicketFareForm.airline_id;
+            fetch('/airline-classes', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: JSON.stringify(this.classData),
+            })
+            .then(res => res.json())
+            .then(data => {
+                this.classSaving = false;
+                if (data.id) {
+                    const travelClass = this.classesList.find(c => c.id == data.class_id);
+                    const display = travelClass ? travelClass.name : data.class_id;
+                    this.newTicketFareForm.airline_classes_id = data.id;
+                    const airline = this.airlinesList.find(a => a.id == data.airline_id);
+                    if (airline && travelClass && !airline.class_ids.includes(travelClass.id)) {
+                        airline.class_ids.push(travelClass.id);
+                    }
+                    this.closeClassModal();
+                    this.showToast('Class created successfully.');
+                } else {
+                    this.classErrors = data.errors || {};
+                    this.showToast('Failed to create class.', 'error');
+                }
+            })
+            .catch(() => { this.classSaving = false; this.showToast('Failed to create class.', 'error'); });
+        },
+
+        saveRoute() {
+            this.routeSaving = true;
+            const formData = new FormData();
+            Object.entries(this.route).forEach(([k, v]) => {
+                if (k === 'transits') {
+                    v.forEach((t, i) => {
+                        Object.entries(t).forEach(([tk, tv]) => formData.append(`transits[${i}][${tk}]`, tv));
+                    });
+                } else {
+                    formData.append(k, v);
+                }
+            });
+            fetch('/routes', {
+                method: 'POST',
+                headers: { 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: formData,
+            })
+            .then(res => res.json())
+            .then(data => {
+                this.routeSaving = false;
+                if (data.id) {
+                    this.newTicketFareForm.route_id = data.id;
+                    this.closeRouteModal();
+                    this.showToast('Route created successfully.');
+                } else {
+                    this.routeErrors = data.errors || {};
+                    this.showToast('Failed to create route.', 'error');
+                }
+            })
+            .catch(() => { this.routeSaving = false; this.showToast('Failed to create route.', 'error'); });
         },
 
         showToast(message) {
