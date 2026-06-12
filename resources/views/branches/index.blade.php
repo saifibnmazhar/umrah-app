@@ -30,6 +30,7 @@
                         <th class="px-4 py-3 text-left">Name</th>
                         <th class="px-4 py-3 text-left">Address</th>
                         <th class="px-4 py-3 text-left">Contacts</th>
+                        <th class="px-4 py-3 text-left">Location</th>
                         <th class="px-4 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -40,6 +41,7 @@
                             <td class="px-4 py-3 text-slate-700 font-medium">{{ $branch->name }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $branch->address }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $branch->contacts }}</td>
+                            <td class="px-4 py-3 text-slate-600">{{ $branch->location }}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
                                     <a href="{{ route('branches.edit', $branch->id) }}" class="text-slate-600 hover:text-slate-800 font-medium" aria-label="Edit {{ $branch->name }}">Edit</a>
@@ -53,7 +55,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-12 text-center text-slate-500">
+                            <td colspan="6" class="px-4 py-12 text-center text-slate-500">
                                 No branches found.
                             </td>
                         </tr>
