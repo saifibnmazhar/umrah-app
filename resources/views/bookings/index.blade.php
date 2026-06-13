@@ -27,6 +27,8 @@ $groupTickets = \App\Models\GroupTicket::with('ticketFare')->get()->map(fn($gt) 
     'pnr' => $gt->pnr,
     'date' => $gt->inbound_date?->format('Y-m-d') ?? $gt->outbound_date?->format('Y-m-d') ?? '',
     'remainingSeats' => $gt->ticket_qty ?? 0,
+    'is_refundable' => $gt->is_refundable,
+    'is_exchangable' => $gt->is_exchangable,
 ])->values();
 
 $ticketAgents = \App\Models\TicketAgent::orderBy('name')->get();
@@ -98,8 +100,15 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'ticket_number' => '',
         'date' => '',
         'ticket_agent' => '',
+        'ticket_fare_id' => $p->ticketFare->id,
+        'airline_id' => $p->ticketFare->airline_id,
+        'airline_classes_id' => $p->ticketFare->airline_classes_id,
+        'route_id' => $p->ticketFare->route_id,
         'selling_fare' => (float)($p->ticketFare->selling_fare ?? 0),
         'net_fare' => (float)($p->ticketFare->net_fare ?? 0),
+        'child_fare_percentage' => (float)($p->ticketFare->child_fare_percentage ?? 70),
+        'infant_fare_percentage' => (float)($p->ticketFare->infant_fare_percentage ?? 30),
+        'offer_price' => $p->ticketFare->ticket_type?->value === 'offer' ? (float)($p->ticketFare->offer_price ?? 0) : null,
         'with_offer' => (bool)($p->ticketFare->ticket_type?->value === 'offer'),
         'refundable' => false,
         'non_refundable' => false,
@@ -1316,6 +1325,8 @@ function bookingIndexApp() {
             showBaggage: false,
         },
 
+        _initLock: false,
+
         newTicketFareForm: {
             visible: false,
             saving: false,
@@ -1386,6 +1397,8 @@ function bookingIndexApp() {
                 ) : (row.ticket_fare?.route_type || '');
                 this.ticketFareForm.flight_type = row.ticket_fare?.flight_type || '';
                 this.ticketFareForm.group_ticket_id = row.ticket_fare?.group_ticket_id || '';
+                this.ticketFareForm.route_id = row.ticket_fare?.route_id || '';
+                this.ticketFareForm.airline_id = row.ticket_fare?.airline_id || '';
             } else if (row.ticket_fare) {
                 this.ticketFareForm.ticket_type = row.ticket_fare.ticket_type || '';
                 this.ticketFareForm.route_type = row.ticket_fare.route_type || '';
@@ -1404,6 +1417,8 @@ function bookingIndexApp() {
                 this.ticketFareForm.baggage_inbound = row.ticket_fare.baggage_inbound || '';
                 this.ticketFareForm.baggage_outbound = row.ticket_fare.baggage_outbound || '';
                 this.ticketFareForm.outbound_pending = row.ticket_fare.outbound_pending || false;
+                this.ticketFareForm.route_id = row.ticket_fare.route_id || '';
+                this.ticketFareForm.airline_id = row.ticket_fare.airline_id || '';
             } else {
                 this.ticketFareForm.ticket_type = '';
                 this.ticketFareForm.route_type = '';
@@ -1424,10 +1439,40 @@ function bookingIndexApp() {
                 this.ticketFareForm.outbound_pending = false;
             }
 
+            this._initLock = true;
             this.handleTicketFareRouteTypeChange();
             this.handleTicketTypeChange();
+
+            if (!isAlreadyIssued && row.ticket_fare) {
+                const opt = this.filteredTicketOptions.find(o => {
+                    const parts = o.value.split('||');
+                    return parseInt(parts[0]) === row.ticket_fare.route_id
+                        && parseInt(parts[1]) === row.ticket_fare.airline_id
+                        && parseInt(parts[2]) === row.ticket_fare.airline_classes_id;
+                });
+                if (opt) {
+                    this.ticketFareForm.ticket_option = opt.value;
+                    this.handleTicketOptionChange();
+                }
+
+                if (row.ticket_fare.group_ticket_id && this.ticketFareForm.ticket_type === 'group') {
+                    const gt = this.groupTickets.find(g => g.id === row.ticket_fare.group_ticket_id);
+                    if (gt) {
+                        this.ticketFareForm.non_refundable = !gt.is_refundable;
+                        this.ticketFareForm.non_exchangeable = !gt.is_exchangable;
+                    }
+                }
+            }
+
+            this._initLock = false;
             this.suggestBaggage();
             this.isTicketFareModalOpen = true;
+        },
+
+        calculateFareForPassengerType(baseFare, passengerType, childPct, infantPct) {
+            if (passengerType === 'child') return Math.round((baseFare * (childPct || 70)) / 100);
+            if (passengerType === 'infant') return Math.round((baseFare * (infantPct || 30)) / 100);
+            return baseFare;
         },
 
         closeTicketFareModal() {
@@ -1461,10 +1506,23 @@ function bookingIndexApp() {
         },
 
         handleTicketTypeChange() {
-            const isGroup = this.ticketFareForm.ticket_type === 'group';
-            if (!isGroup) {
-                this.ticketFareForm.group_ticket_id = '';
-            }
+            if (this._initLock) return;
+            this.ticketFareForm.ticket_option = '';
+            this.ticketFareForm.route = '';
+            this.ticketFareForm.airline = '';
+            this.ticketFareForm.travel_class = '';
+            this.ticketFareForm.route_id = '';
+            this.ticketFareForm.airline_id = '';
+            this.ticketFareForm.selling_fare = 0;
+            this.ticketFareForm.net_fare = 0;
+            this.ticketFareForm.baggage_inbound = '';
+            this.ticketFareForm.baggage_outbound = '';
+            this.ticketFareForm.pnr = '';
+            this.ticketFareForm.ticket_number = '';
+            this.ticketFareForm.ticket_agent = '';
+            this.ticketFareForm.date = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+            this.ticketFareForm.group_ticket_id = '';
+            this.suggestBaggage();
         },
 
         handleGroupTicketSelect() {
@@ -1648,7 +1706,7 @@ function bookingIndexApp() {
                     for (const c of classes) {
                         result.push({
                             display: r.display + ' | ' + a.name + ' | ' + c.name,
-                            value: r.display + '||' + a.name + '||' + c.name,
+                            value: r.id + '||' + a.id + '||' + c.id,
                         });
                     }
                 }
@@ -1662,13 +1720,40 @@ function bookingIndexApp() {
                 this.ticketFareForm.route = '';
                 this.ticketFareForm.airline = '';
                 this.ticketFareForm.travel_class = '';
+                this.ticketFareForm.route_id = '';
+                this.ticketFareForm.airline_id = '';
+                this.ticketFareForm.selling_fare = 0;
+                this.ticketFareForm.net_fare = 0;
+                this.ticketFareForm.baggage_inbound = '';
+                this.ticketFareForm.baggage_outbound = '';
                 return;
             }
             const parts = val.split('||');
             if (parts.length === 3) {
-                this.ticketFareForm.route = parts[0];
-                this.ticketFareForm.airline = parts[1];
-                this.ticketFareForm.travel_class = parts[2];
+                const routeId = parseInt(parts[0]);
+                const airlineId = parseInt(parts[1]);
+                const classId = parseInt(parts[2]);
+                const route = this.routesList.find(r => r.id === routeId);
+                const airline = this.airlinesList.find(a => a.id === airlineId);
+                const travelClass = this.classesList.find(c => c.id === classId);
+                this.ticketFareForm.route = route ? route.display : '';
+                this.ticketFareForm.airline = airline ? airline.name : '';
+                this.ticketFareForm.travel_class = travelClass ? travelClass.name : '';
+                this.ticketFareForm.route_id = routeId;
+                this.ticketFareForm.airline_id = airlineId;
+
+                const row = this.passengersTicketData[this.editingPassengerIndex];
+                if (row?.ticket_fare && routeId === row.ticket_fare.route_id && airlineId === row.ticket_fare.airline_id && classId === row.ticket_fare.airline_classes_id) {
+                    const pType = row.passenger_type || 'adult';
+                    this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(row.ticket_fare.selling_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
+                    this.ticketFareForm.net_fare = this.calculateFareForPassengerType(row.ticket_fare.net_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
+                    if (row.ticket_fare.with_offer && row.ticket_fare.offer_price) {
+                        this.ticketFareForm.selling_fare = row.ticket_fare.offer_price;
+                    }
+                } else {
+                    this.ticketFareForm.selling_fare = 0;
+                    this.ticketFareForm.net_fare = 0;
+                }
             }
             this.suggestBaggage();
         },
@@ -1677,10 +1762,11 @@ function bookingIndexApp() {
             const idx = this.editingPassengerIndex;
             if (idx === null) return;
             const row = this.passengersTicketData[idx];
-            if (!row?.baggage_allowances?.length) return;
-            const pType = row.passenger_type || 'adult';
-            const inbound = row.baggage_allowances.find(b => b.passenger_type === pType && b.travel_direction === 'inbound');
-            const outbound = row.baggage_allowances.find(b => b.passenger_type === pType && b.travel_direction === 'outbound');
+            const allowances = row?.ticket_fare?.baggage_allowances;
+            if (!allowances?.length) return;
+            const pType = this.ticketFareForm.passenger_type || 'adult';
+            const inbound = allowances.find(b => b.passenger_type === pType && b.travel_direction === 'inbound');
+            const outbound = allowances.find(b => b.passenger_type === pType && b.travel_direction === 'outbound');
             if (inbound) this.ticketFareForm.baggage_inbound = inbound.allowance;
             if (outbound) this.ticketFareForm.baggage_outbound = outbound.allowance;
         },
@@ -1792,11 +1878,8 @@ function bookingIndexApp() {
                 this.newTicketFareForm.saving = false;
                 if (data.success) {
                     const fare = data.ticket_fare;
-                    const routeDisplay = this.buildRouteDisplay(fare.route);
-                    const airlineName = fare.airline?.name || '';
-                    const className = fare.airlineClass?.class?.name || '';
-                    if (routeDisplay && airlineName && className) {
-                        this.ticketFareForm.ticket_option = routeDisplay + '||' + airlineName + '||' + className;
+                    if (fare.route_id && fare.airline_id && fare.airline_classes_id) {
+                        this.ticketFareForm.ticket_option = fare.route_id + '||' + fare.airline_id + '||' + fare.airline_classes_id;
                         this.handleTicketOptionChange();
                     }
                     this.showToast('Ticket fare created successfully.');
