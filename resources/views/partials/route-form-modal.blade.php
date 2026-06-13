@@ -6,7 +6,7 @@
      - Methods: openRouteModal(), closeRouteModal(), saveRoute(), toggleRouteFields(), toggleTransitFields(),
                 onCitySelectChange(), openCityModal(), closeCityModal(), saveCity(), appendCityToAllSelects()
 --}}
-<div x-show="showRouteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+<div x-show="showRouteModal" x-cloak class="fixed inset-0 z-[70] overflow-y-auto" style="display: none;">
     <div class="flex items-center justify-center min-h-screen px-4">
         <div x-show="showRouteModal" x-transition.opacity class="fixed inset-0 bg-black/50" @click="closeRouteModal()"></div>
         <div x-show="showRouteModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-3xl p-6 z-10 max-h-[90vh] overflow-y-auto">
