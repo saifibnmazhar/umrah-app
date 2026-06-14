@@ -45,7 +45,7 @@ customDurationModalVisible: false,
     },
     bookingData: {
         fingerprint_location: 'Office',
-        office_id: '',
+        fingerprint_branch_id: '',
         district_id: '',
         fingerprint_charge_id: '',
         package_id: '',
@@ -105,7 +105,7 @@ customDurationModalVisible: false,
         this.passengerCount = 0;
         this.bookingData = {
             fingerprint_location: 'Office',
-            office_id: '',
+            fingerprint_branch_id: '',
             district_id: '',
             package_id: '',
             discount_type: 'fixed',
@@ -774,8 +774,8 @@ customDurationModalVisible: false,
             e.preventDefault();
             return false;
         }
-        if (!this.bookingData.office_id) {
-            alert('Please select fingerprint office');
+        if (!this.bookingData.fingerprint_branch_id) {
+            alert('Please select fingerprint branch');
             e.preventDefault();
             return false;
         }
@@ -901,7 +901,7 @@ Alpine.data('createBookingApp', () => ({
     },
     bookingData: {
         fingerprint_location: 'Office',
-        office_id: '',
+        fingerprint_branch_id: '',
         district_id: '',
         fingerprint_charge_id: '',
         package_id: '',
@@ -1046,7 +1046,7 @@ Alpine.data('createBookingApp', () => ({
         if (bookingDocsInput) bookingDocsInput.value = '';
         this.bookingData = {
             fingerprint_location: 'Office',
-            office_id: '',
+            fingerprint_branch_id: '',
             district_id: '',
             package_id: '',
             discount_type: 'fixed',
@@ -2125,8 +2125,8 @@ Alpine.data('createBookingApp', () => ({
             alert('Please select a district');
             return;
         }
-        if (!this.bookingData.office_id) {
-            alert('Please select an office');
+        if (!this.bookingData.fingerprint_branch_id) {
+            alert('Please select a fingerprint branch');
             return;
         }
         if (!this.bookingData.fingerprint_charge_id) {
@@ -2320,7 +2320,7 @@ Alpine.data('editBookingApp', () => ({
     },
     bookingData: {
         fingerprint_location: 'Office',
-        office_id: '',
+        fingerprint_branch_id: '',
         district_id: '',
         fingerprint_charge_id: '',
         package_id: '',
@@ -2456,7 +2456,7 @@ Alpine.data('editBookingApp', () => ({
             this.bookingData.fingerprint_location = 'office';
         }
 
-        this.bookingData.office_id = booking.office_id ? String(booking.office_id) : '';
+        this.bookingData.fingerprint_branch_id = booking.fingerprint_branch_id ? String(booking.fingerprint_branch_id) : '';
         this.bookingData.district_id = booking.district_id ? String(booking.district_id) : '';
         this.bookingData.package_id = booking.package_id ? String(booking.package_id) : '';
         this.bookingData.remarks = booking.remarks || '';
@@ -2473,7 +2473,7 @@ Alpine.data('editBookingApp', () => ({
 
         console.log('Loading booking data:', {
             fingerprint_location: this.bookingData.fingerprint_location,
-            office_id: this.bookingData.office_id,
+            fingerprint_branch_id: this.bookingData.fingerprint_branch_id,
             district_id: this.bookingData.district_id,
             package_id: this.bookingData.package_id,
             passengers_count: this.existingPassengers ? this.existingPassengers.length : 0
@@ -2572,7 +2572,7 @@ Alpine.data('editBookingApp', () => ({
         if (bookingDocsInput) bookingDocsInput.value = '';
         this.bookingData = {
             fingerprint_location: 'Office',
-            office_id: '',
+            fingerprint_branch_id: '',
             district_id: '',
             package_id: '',
             discount_type: 'fixed',
@@ -3217,8 +3217,8 @@ Alpine.data('editBookingApp', () => ({
             e.preventDefault();
             return false;
         }
-        if (!this.bookingData.office_id) {
-            alert('Please select fingerprint office');
+        if (!this.bookingData.fingerprint_branch_id) {
+            alert('Please select fingerprint branch');
             e.preventDefault();
             return false;
         }
