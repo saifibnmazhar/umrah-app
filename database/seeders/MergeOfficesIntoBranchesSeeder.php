@@ -31,11 +31,13 @@ class MergeOfficesIntoBranchesSeeder extends Seeder
                 ->orWhere('location', '')
                 ->update(['location' => 'KSA', 'fingerprint_operation' => false]);
 
+            DB::statement('SET FOREIGN_KEY_CHECKS=0');
             foreach ($officeMap as $oldOfficeId => $newBranchId) {
                 DB::table('bookings')
                     ->where('office_id', $oldOfficeId)
                     ->update(['office_id' => $newBranchId]);
             }
+            DB::statement('SET FOREIGN_KEY_CHECKS=1');
 
             foreach ($officeMap as $oldOfficeId => $newBranchId) {
                 DB::table('users')

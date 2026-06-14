@@ -12,7 +12,7 @@ class InvoiceService
     {
         return Invoice::create([
             'booking_id' => $booking->id,
-            'branch_id' => $booking->branch_id,
+            'branch_id' => $booking->booking_branch_id,
             'user_id' => $booking->user_id,
             'total_amount' => $booking->total_value,
             'paid_amount' => 0,
