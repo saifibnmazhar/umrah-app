@@ -240,7 +240,7 @@ class BookingService
             'user_id' => $data['user_id'] ?? auth()->id(),
             'customer_id' => $data['customer_id'],
             'district_id' => $data['district_id'] ?? null,
-            'office_id' => $data['office_id'] ?? null,
+            'fingerprint_branch_id' => $data['fingerprint_branch_id'] ?? null,
             'package_id' => $data['package_id'] ?? null,
             'fingerprint_location' => $data['fingerprint_location'] ?? 'Office',
             'pax_qty' => count($data['passengers']),

@@ -49,7 +49,7 @@
         if ($fpLocationValue === 'home') {
             $fpLocation = 'Home';
         } elseif ($fpLocationValue === 'office') {
-            $fpLocation = $booking->office?->address ?? '-';
+            $fpLocation = $booking->fingerprintBranch?->address ?? '-';
         } else {
             $fpLocation = '-';
         }
@@ -114,7 +114,7 @@
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Branch (Operating By) :</td>
-                        <td class="px-2 py-1">{{ $booking->office->name ?? '-' }}</td>
+                        <td class="px-2 py-1">{{ $booking->fingerprintBranch->name ?? '-' }}</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Sale Representative :</td>

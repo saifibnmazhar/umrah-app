@@ -24,7 +24,10 @@ class BranchController extends Controller
             'name' => 'required|string|max:255',
             'address' => 'required|string|max:255',
             'contacts' => 'required|string|max:255',
+            'location' => 'required|in:KSA,BD',
         ]);
+
+        $validated['fingerprint_operation'] = $validated['location'] === 'BD';
 
         try {
             Branch::create($validated);
@@ -45,7 +48,10 @@ class BranchController extends Controller
             'name' => 'required|string|max:255',
             'address' => 'required|string|max:255',
             'contacts' => 'required|string|max:255',
+            'location' => 'required|in:KSA,BD',
         ]);
+
+        $validated['fingerprint_operation'] = $validated['location'] === 'BD';
 
         try {
             $branch->update($validated);

@@ -6,7 +6,6 @@ use App\Models\Fingerprint;
 use App\Models\FingerprintDetail;
 use App\Models\Branch;
 use App\Models\District;
-use App\Models\Office;
 use App\Models\User;
 use App\Queries\FingerprintReportQuery;
 use App\Enums\FingerprintStatus;
@@ -22,22 +21,24 @@ class FingerprintReportController extends Controller
     {
         $branches = Branch::orderBy('name')->get(['id', 'name']);
         $districts = District::orderBy('name')->get(['id', 'name']);
-        $offices = Office::orderBy('name')->get(['id', 'name']);
+        $fingerprintBranches = Branch::where('fingerprint_operation', true)
+            ->orderBy('name')
+            ->get(['id', 'name']);
         $staffUsers = User::whereHas('roles', fn($q) => $q->where('name', 'Fingerprint Staff'))
             ->orderBy('name')
             ->get(['id', 'name']);
 
         return view('reports.fingerprint.index', compact(
-            'branches', 'districts', 'offices', 'staffUsers'
+            'branches', 'districts', 'fingerprintBranches', 'staffUsers'
         ));
     }
 
     public function data(Request $request): JsonResponse
     {
         $query = (new FingerprintReportQuery($request))->getQuery();
-        $officeId = $this->getOfficeFilter();
-        if ($officeId) {
-            $query->whereHas('booking', fn($q) => $q->where('office_id', $officeId));
+        $branchId = $this->getFingerprintBranchFilter();
+        if ($branchId) {
+            $query->whereHas('booking', fn($q) => $q->where('fingerprint_branch_id', $branchId));
         }
         $fingerprints = $query->paginate(self::PER_PAGE);
 
@@ -45,8 +46,8 @@ class FingerprintReportController extends Controller
         $items = $this->mapReportData($fingerprints->items(), $canViewFinancials);
 
         $allQuery = (new FingerprintReportQuery($request))->getQuery();
-        if ($officeId) {
-            $allQuery->whereHas('booking', fn($q) => $q->where('office_id', $officeId));
+        if ($branchId) {
+            $allQuery->whereHas('booking', fn($q) => $q->where('fingerprint_branch_id', $branchId));
         }
         $allFingerprints = $allQuery->get();
         $allItems = $this->mapReportData($allFingerprints->all(), $canViewFinancials);
@@ -67,9 +68,9 @@ class FingerprintReportController extends Controller
     public function print(Request $request): View
     {
         $query = (new FingerprintReportQuery($request))->getQuery();
-        $officeId = $this->getOfficeFilter();
-        if ($officeId) {
-            $query->whereHas('booking', fn($q) => $q->where('office_id', $officeId));
+        $branchId = $this->getFingerprintBranchFilter();
+        if ($branchId) {
+            $query->whereHas('booking', fn($q) => $q->where('fingerprint_branch_id', $branchId));
         }
         $fingerprints = $query->get();
 
@@ -94,8 +95,8 @@ class FingerprintReportController extends Controller
         $fingerprint = $fingerprintDetail->fingerprint;
         $booking = $fingerprint->booking;
 
-        $officeId = $this->getOfficeFilter();
-        if ($officeId && $booking->office_id !== $officeId) {
+        $branchId = $this->getFingerprintBranchFilter();
+        if ($branchId && $booking->fingerprint_branch_id !== $branchId) {
             abort(403, 'Unauthorized access to booking data from another office.');
         }
         $passenger = $fingerprintDetail->passenger;
@@ -286,7 +287,7 @@ class FingerprintReportController extends Controller
         }
 
         $fingerprintAdmin = User::whereHas('roles', fn($q) => $q->where('name', 'Fingerprint Admin'))
-            ->where('office_id', $booking->office_id)
+            ->where('branch_id', $booking->fingerprint_branch_id)
             ->first();
 
         return $fingerprintAdmin?->name ?? '-';
@@ -302,11 +303,11 @@ class FingerprintReportController extends Controller
         );
     }
 
-    protected function getOfficeFilter(): ?int
+    protected function getFingerprintBranchFilter(): ?int
     {
         $user = auth()->user();
-        if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
-            return $user->office_id;
+        if ($user->branch?->fingerprint_operation && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+            return $user->branch_id;
         }
         return null;
     }

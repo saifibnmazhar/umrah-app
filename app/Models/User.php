@@ -26,7 +26,6 @@ class User extends Authenticatable
         'email',
         'password',
         'branch_id',
-        'office_id',
         'is_active',
     ];
 
@@ -57,11 +56,6 @@ class User extends Authenticatable
     public function branch(): BelongsTo
     {
         return $this->belongsTo(Branch::class);
-    }
-
-    public function office(): BelongsTo
-    {
-        return $this->belongsTo(Office::class);
     }
 
     public function userRoles(): HasMany

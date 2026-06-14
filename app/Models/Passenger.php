@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
+use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Enums\FingerprintStatus;
 use App\Enums\Gender;
 use App\Enums\PassengerType;
@@ -78,6 +79,16 @@ class Passenger extends Model
     public function fingerprintDetail(): HasOne
     {
         return $this->hasOne(FingerprintDetail::class);
+    }
+
+    public function issuedTickets(): HasMany
+    {
+        return $this->hasMany(IssuedTicket::class);
+    }
+
+    public function latestIssuedTicket(): HasOne
+    {
+        return $this->hasOne(IssuedTicket::class)->latestOfMany();
     }
 
     public function scopeApprovedFingerprint($query): void

@@ -45,9 +45,9 @@ class FingerprintController extends Controller
         }
 
         $user = auth()->user();
-        if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+        if ($user->branch?->fingerprint_operation && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
             $query->whereHas('booking', function ($q) use ($user) {
-                $q->where('office_id', $user->office_id);
+                $q->where('fingerprint_branch_id', $user->branch_id);
             });
         }
 
@@ -79,8 +79,8 @@ class FingerprintController extends Controller
                         'cost' => $fingerprint->cost,
                         'assigned_staff_id' => $fingerprint->assigned_staff_id,
                         'assigned_staff_name' => $fingerprint->assignedStaff->name ?? null,
-                        'booking_branch_id' => $booking->branch_id,
-                        'booking_office_id' => $booking->office_id,
+                        'booking_branch_id' => $booking->booking_branch_id,
+                        'fingerprint_branch_id' => $booking->fingerprint_branch_id,
                         'passenger_name' => $passenger->first_name . ' ' . $passenger->last_name,
                         'fingerprint_status' => $detail?->status?->value ?? 'none',
                         'fingerprint_status_display' => $statusDisplay,
@@ -115,7 +115,7 @@ class FingerprintController extends Controller
         $query = Fingerprint::with([
             'booking.customer',
             'booking.district',
-            'booking.office',
+            'booking.fingerprintBranch',
             'booking.passengers',
             'fingerprintDetails.passenger'
         ])->orderBy('created_at', 'desc');
@@ -154,7 +154,7 @@ class FingerprintController extends Controller
                         'pax_qty' => $passengers->count(),
                         'customer_mobile' => $booking->customer?->mobile_no ?? '',
                         'passenger_mobile' => $passenger->mobile_no ?? '',
-                        'office' => $booking->office?->name ?? '-',
+                        'fingerprint_branch_name' => $booking->fingerprintBranch?->name ?? '-',
                         'district' => $booking->district?->name ?? '-',
                         'deadline' => $fingerprint->deadline?->format('Y-m-d'),
                         'passenger_name' => $passengerName,
@@ -325,15 +325,15 @@ class FingerprintController extends Controller
     {
         $user = auth()->user();
 
-        $query = User::select('id', 'name', 'branch_id')
+        $query = User::select('id', 'name')
             ->whereHas('roles', fn($q) => $q->where('name', 'Fingerprint Staff'));
 
-        if ($request->filled('office_id')) {
-            $query->where('office_id', (int) $request->office_id);
+        if ($request->filled('fingerprint_branch_id')) {
+            $query->where('branch_id', (int) $request->fingerprint_branch_id);
         }
 
-        if ($user->office_id && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
-            $query->where('office_id', $user->office_id);
+        if ($user->branch?->fingerprint_operation && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+            $query->where('branch_id', $user->branch_id);
         }
 
         $users = $query->orderBy('name')->get();

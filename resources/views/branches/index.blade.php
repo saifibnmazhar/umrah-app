@@ -1,9 +1,9 @@
 @extends('layouts.app')
-@section('title', 'Branches(KSA)')
+@section('title', 'Branches')
 @section('content')
 <div class="max-w-4xl mx-auto">
     <div class="flex justify-between items-center mb-6">
-        <h1 class="text-2xl font-bold text-slate-800">Branches(KSA)</h1>
+        <h1 class="text-2xl font-bold text-slate-800">Branches</h1>
         <a href="{{ route('branches.create') }}" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
             Add New
         </a>
@@ -30,6 +30,7 @@
                         <th class="px-4 py-3 text-left">Name</th>
                         <th class="px-4 py-3 text-left">Address</th>
                         <th class="px-4 py-3 text-left">Contacts</th>
+                        <th class="px-4 py-3 text-left">Location</th>
                         <th class="px-4 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -40,10 +41,11 @@
                             <td class="px-4 py-3 text-slate-700 font-medium">{{ $branch->name }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $branch->address }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $branch->contacts }}</td>
+                            <td class="px-4 py-3 text-slate-600">{{ $branch->location }}</td>
                             <td class="px-4 py-3 text-right">
                                 <div class="flex items-center justify-end gap-3">
                                     <a href="{{ route('branches.edit', $branch->id) }}" class="text-slate-600 hover:text-slate-800 font-medium" aria-label="Edit {{ $branch->name }}">Edit</a>
-                                    <form method="POST" action="{{ route('branches.destroy', $branch->id) }}" onsubmit="return confirm('Are you sure you want to delete this branch(KSA)?')">
+                                    <form method="POST" action="{{ route('branches.destroy', $branch->id) }}" onsubmit="return confirm('Are you sure you want to delete this branch?')">
                                         @csrf
                                         @method('DELETE')
                                         <button type="submit" class="text-red-600 hover:text-red-800 font-medium" aria-label="Delete {{ $branch->name }}">Delete</button>
@@ -53,8 +55,8 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-12 text-center text-slate-500">
-                                No branches(KSA) found.
+                            <td colspan="6" class="px-4 py-12 text-center text-slate-500">
+                                No branches found.
                             </td>
                         </tr>
                     @endforelse

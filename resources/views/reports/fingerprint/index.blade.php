@@ -17,7 +17,7 @@
         fingerprint_location: '{{ request('fingerprint_location') }}',
         branch_id: '{{ request('branch_id') }}',
         district_id: '{{ request('district_id') }}',
-        office_id: '{{ request('office_id') }}',
+        fingerprint_branch_id: '{{ request('fingerprint_branch_id') }}',
     }
 })">
     <div class="mb-3">
@@ -118,11 +118,11 @@
             </div>
 
             <div class="flex items-center gap-2">
-                <span class="text-sm font-semibold text-gray-700">Office</span>
-                <select x-model="filters.office_id" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
-                    <option value="">All Offices</option>
-                    @foreach($offices as $office)
-                    <option value="{{ $office->id }}">{{ $office->name }}</option>
+                <span class="text-sm font-semibold text-gray-700">Fingerprint Branch</span>
+                <select x-model="filters.fingerprint_branch_id" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">All Fingerprint Branches</option>
+                    @foreach($fingerprintBranches as $branch)
+                    <option value="{{ $branch->id }}">{{ $branch->name }}</option>
                     @endforeach
                 </select>
             </div>
@@ -508,7 +508,7 @@ function fingerprintReport(options = {}) {
             fingerprint_location: '',
             branch_id: '',
             district_id: '',
-            office_id: '',
+            fingerprint_branch_id: '',
         },
         summary: {
             total_invoices: 0,
@@ -582,7 +582,7 @@ function fingerprintReport(options = {}) {
                 fingerprint_location: '',
                 branch_id: '',
                 district_id: '',
-                office_id: '',
+                fingerprint_branch_id: '',
             };
             this.currentPage = 1;
             this.loadData();

@@ -11,6 +11,7 @@ use App\Models\TravelClass;
 use App\Models\Route;
 use App\Models\FlightDateGap;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use App\Enums\TicketType;
 use App\Enums\PassengerType;
 use App\Enums\TravelDirection;
@@ -436,5 +437,101 @@ class TicketFareController extends Controller
             'additional_gap' => $additionalGap,
             'final_gap' => $defaultGap + $additionalGap
         ]);
+    }
+
+    public function quickStore(Request $request)
+    {
+        $validated = $request->validate([
+            'route_type' => 'required|string',
+            'flight_type' => 'required|string',
+            'airline_id' => 'required|exists:airlines,id',
+            'airline_classes_id' => 'required|exists:airline_classes,id',
+            'route_id' => 'required|exists:routes,id',
+            'ticket_type' => 'required|in:regular,offer,group',
+            'effective_from' => 'nullable|date',
+            'effective_to' => 'nullable|date',
+            'with_meal' => 'boolean',
+            'net_fare' => 'required|numeric|min:0',
+            'selling_fare' => 'required|numeric|min:0',
+            'offer_price' => 'nullable|numeric|min:0',
+            'child_fare_percentage' => 'nullable|numeric|min:0|max:100',
+            'infant_fare_percentage' => 'nullable|numeric|min:0|max:100',
+            'pnr' => 'nullable|string|max:50',
+            'ticket_qty' => 'nullable|integer|min:1',
+            'inbound_date' => 'nullable|date',
+            'outbound_date' => 'nullable|date',
+            'is_non_refundable' => 'boolean',
+            'is_non_exchangable' => 'boolean',
+            'inbound_adult' => 'nullable|numeric|min:0',
+            'inbound_child' => 'nullable|numeric|min:0',
+            'inbound_infant' => 'nullable|numeric|min:0',
+            'outbound_adult' => 'nullable|numeric|min:0',
+            'outbound_child' => 'nullable|numeric|min:0',
+            'outbound_infant' => 'nullable|numeric|min:0',
+        ]);
+
+        try {
+            DB::beginTransaction();
+
+            $ticketFare = TicketFare::create([
+                'airline_id' => $validated['airline_id'],
+                'airline_classes_id' => $validated['airline_classes_id'],
+                'route_id' => $validated['route_id'],
+                'route_type' => $validated['route_type'],
+                'ticket_type' => $validated['ticket_type'],
+                'effective_from' => $validated['effective_from'] ?? now(),
+                'effective_to' => $validated['effective_to'] ?? now()->addYear(),
+                'net_fare' => $validated['net_fare'],
+                'selling_fare' => $validated['selling_fare'],
+                'offer_price' => $validated['offer_price'] ?? null,
+                'child_fare_percentage' => $validated['child_fare_percentage'] ?? 70,
+                'infant_fare_percentage' => $validated['infant_fare_percentage'] ?? 30,
+                'with_meal' => $validated['with_meal'] ?? false,
+                'user_id' => auth()->id(),
+            ]);
+
+            if ($validated['ticket_type'] === 'group') {
+                GroupTicket::create([
+                    'ticket_fare_id' => $ticketFare->id,
+                    'pnr' => $validated['pnr'] ?? null,
+                    'ticket_qty' => $validated['ticket_qty'] ?? 1,
+                    'inbound_date' => $validated['inbound_date'] ?? null,
+                    'outbound_date' => $validated['outbound_date'] ?? null,
+                    'is_refundable' => !($validated['is_non_refundable'] ?? false),
+                    'is_exchangable' => !($validated['is_non_exchangable'] ?? false),
+                ]);
+            }
+
+            foreach (['inbound', 'outbound'] as $direction) {
+                foreach (['adult', 'child', 'infant'] as $type) {
+                    $key = "{$direction}_{$type}";
+                    if (isset($validated[$key]) && $validated[$key] !== null) {
+                        BaggageAllowance::create([
+                            'ticket_fare_id' => $ticketFare->id,
+                            'passenger_type' => $type,
+                            'travel_direction' => $direction,
+                            'allowance' => $validated[$key],
+                        ]);
+                    }
+                }
+            }
+
+            DB::commit();
+
+            $ticketFare->load([
+                'airline', 'airlineClass.class', 'route.fromCity', 'route.toCity', 'route.returnCity',
+                'route.multiSegments.fromCity', 'route.multiSegments.toCity',
+                'baggageAllowances',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'ticket_fare' => $ticketFare,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Quick ticket fare creation failed: ' . $e->getMessage());
+            return response()->json(['message' => 'Failed to create ticket fare.'], 500);
+        }
     }
 }

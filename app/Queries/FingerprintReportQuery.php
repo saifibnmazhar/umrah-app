@@ -13,9 +13,9 @@ class FingerprintReportQuery
     {
         $this->query = Fingerprint::with([
             'booking.customer',
-            'booking.branch',
+            'booking.bookingBranch',
             'booking.district',
-            'booking.office.users.roles',
+            'booking.fingerprintBranch',
             'booking.fingerprintCharge',
             'booking.passengers',
             'fingerprintDetails.passenger',
@@ -39,9 +39,9 @@ class FingerprintReportQuery
             ->applyStatus($request)
             ->applyAssignedStaff($request)
             ->applyLocation($request)
-            ->applyBranch($request)
+            ->applyBookingBranch($request)
             ->applyDistrict($request)
-            ->applyOffice($request);
+            ->applyFingerprintBranch($request);
     }
 
     protected function applySearch(Request $request): static
@@ -122,11 +122,11 @@ class FingerprintReportQuery
         return $this;
     }
 
-    protected function applyBranch(Request $request): static
+    protected function applyBookingBranch(Request $request): static
     {
-        if ($branchId = $request->filled('branch_id') ? $request->branch_id : null) {
+        if ($branchId = $request->filled('booking_branch_id') ? $request->booking_branch_id : null) {
             $this->query->whereHas('booking', function ($q) use ($branchId) {
-                $q->where('branch_id', $branchId);
+                $q->where('booking_branch_id', $branchId);
             });
         }
         return $this;
@@ -142,21 +142,21 @@ class FingerprintReportQuery
         return $this;
     }
 
-    protected function applyOffice(Request $request): static
+    protected function applyFingerprintBranch(Request $request): static
     {
-        if ($officeId = $request->filled('office_id') ? $request->office_id : null) {
-            $this->query->whereHas('booking', function ($q) use ($officeId) {
-                $q->where('office_id', $officeId);
+        if ($branchId = $request->filled('fingerprint_branch_id') ? $request->fingerprint_branch_id : null) {
+            $this->query->whereHas('booking', function ($q) use ($branchId) {
+                $q->where('fingerprint_branch_id', $branchId);
             });
         }
         return $this;
     }
 
-    public function applyOfficeFilter(?int $officeId): static
+    public function applyFingerprintBranchFilter(?int $branchId): static
     {
-        if ($officeId) {
-            $this->query->whereHas('booking', function ($q) use ($officeId) {
-                $q->where('office_id', $officeId);
+        if ($branchId) {
+            $this->query->whereHas('booking', function ($q) use ($branchId) {
+                $q->where('fingerprint_branch_id', $branchId);
             });
         }
         return $this;

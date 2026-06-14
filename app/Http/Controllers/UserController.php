@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Models\User;
 use App\Models\Branch;
-use App\Models\Office;
 use App\Models\Role;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
@@ -20,7 +19,7 @@ class UserController extends Controller
 
     public function index()
     {
-        $users = User::with(['branch', 'office', 'roles'])
+        $users = User::with(['branch', 'roles'])
             ->orderBy('name')
             ->paginate(10)
             ->withQueryString();
@@ -30,10 +29,10 @@ class UserController extends Controller
     public function create()
     {
         $this->ensureSuperAdmin();
-        $branches = Branch::orderBy('name')->get();
-        $offices = Office::orderBy('name')->get();
+        $allBranches = Branch::orderBy('name')->get();
+        $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get();
         $roles = Role::orderBy('name')->get();
-        return view('users.create', compact('branches', 'offices', 'roles'));
+        return view('users.create', compact('allBranches', 'fingerprintBranches', 'roles'));
     }
 
     public function store(Request $request)
@@ -44,7 +43,6 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email',
             'password' => 'required|min:8|confirmed',
             'branch_id' => 'nullable|exists:branches,id',
-            'office_id' => 'nullable|exists:offices,id',
             'role_id' => 'required|exists:roles,id',
         ]);
 
@@ -52,9 +50,11 @@ class UserController extends Controller
         $roleName = Str::lower($role->name);
 
         if (Str::contains($roleName, 'fingerprint')) {
-            $request->validate(['office_id' => 'required|exists:offices,id']);
-        } elseif (Str::contains($roleName, 'branch')) {
             $request->validate(['branch_id' => 'required|exists:branches,id']);
+            $branch = Branch::find($request->branch_id);
+            if (!$branch || !$branch->fingerprint_operation) {
+                return back()->withErrors(['branch_id' => 'Fingerprint roles require a branch with fingerprint operations enabled.'])->withInput();
+            }
         }
 
         $validated['password'] = bcrypt($validated['password']);
@@ -68,11 +68,11 @@ class UserController extends Controller
     public function edit(User $user)
     {
         $this->ensureSuperAdmin();
-        $branches = Branch::orderBy('name')->get();
-        $offices = Office::orderBy('name')->get();
+        $allBranches = Branch::orderBy('name')->get();
+        $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get();
         $roles = Role::orderBy('name')->get();
         $user->load('roles');
-        return view('users.edit', compact('user', 'branches', 'offices', 'roles'));
+        return view('users.edit', compact('user', 'allBranches', 'fingerprintBranches', 'roles'));
     }
 
     public function update(Request $request, User $user)
@@ -83,7 +83,6 @@ class UserController extends Controller
             'email' => 'required|email|unique:users,email,' . $user->id,
             'password' => 'nullable|min:8|confirmed',
             'branch_id' => 'nullable|exists:branches,id',
-            'office_id' => 'nullable|exists:offices,id',
             'role_id' => 'required|exists:roles,id',
         ]);
 
@@ -91,9 +90,11 @@ class UserController extends Controller
         $roleName = Str::lower($role->name);
 
         if (Str::contains($roleName, 'fingerprint')) {
-            $request->validate(['office_id' => 'required|exists:offices,id']);
-        } elseif (Str::contains($roleName, 'branch')) {
             $request->validate(['branch_id' => 'required|exists:branches,id']);
+            $branch = Branch::find($request->branch_id);
+            if (!$branch || !$branch->fingerprint_operation) {
+                return back()->withErrors(['branch_id' => 'Fingerprint roles require a branch with fingerprint operations enabled.'])->withInput();
+            }
         }
 
         if (!empty($validated['password'])) {

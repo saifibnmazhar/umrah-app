@@ -13,7 +13,6 @@ use App\Http\Controllers\CityCodeController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DistrictController;
-use App\Http\Controllers\OfficeController;
 use App\Http\Controllers\FlightDateGapController;
 use App\Http\Controllers\FingerprintChargeController;
 use App\Http\Controllers\RouteController;
@@ -35,6 +34,7 @@ use App\Http\Controllers\VisaAdminController;
 use App\Http\Controllers\PackageController;
 use App\Http\Controllers\FareAdminController;
 use App\Http\Controllers\TicketFareController;
+use App\Http\Controllers\TicketIssueController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FingerprintController;
 use App\Http\Controllers\FingerprintReportController;
@@ -59,7 +59,6 @@ Route::middleware('auth')->group(function () {
     Route::resource('booking-conditions', BookingConditionController::class)->middleware('role:Super Admin,Co Admin');
     Route::patch('/booking-conditions/{bookingCondition}/toggle-active', [BookingConditionController::class, 'toggleActive'])->name('booking-conditions.toggle-active')->middleware('role:Super Admin,Co Admin');
     Route::resource('branches', BranchController::class)->middleware('role:Super Admin,Co Admin');
-    Route::resource('offices', OfficeController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('city-codes', CityCodeController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('airlines', AirlineController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('classes', TravelClassController::class)->middleware('role:Super Admin,Co Admin');
@@ -223,4 +222,14 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets', fn() => view('tickets.index'))->name('tickets.index')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/tickets/{id}/print', fn($id) => view('tickets.print', compact('id')))->name('tickets.print')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/tickets/{id}/add-confirm', fn($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+
+    Route::middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff')->group(function () {
+        Route::post('/bookings/{booking}/passengers/{passenger}/ticket-issue', [TicketIssueController::class, 'issue'])
+            ->name('bookings.passengers.ticket-issue');
+        Route::put('/bookings/{booking}/passengers/{passenger}/ticket-edit', [TicketIssueController::class, 'edit'])
+            ->name('bookings.passengers.ticket-edit');
+    });
+
+    Route::post('/api/ticket-fares/quick-create', [TicketFareController::class, 'quickStore'])
+        ->middleware('auth');
 });

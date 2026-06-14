@@ -31,8 +31,7 @@
                         <th class="px-4 py-3 text-left">ID</th>
                         <th class="px-4 py-3 text-left">Name</th>
                         <th class="px-4 py-3 text-left">Email</th>
-                        <th class="px-4 py-3 text-left">Branch(KSA)</th>
-                        <th class="px-4 py-3 text-left">Branch(BD)</th>
+                        <th class="px-4 py-3 text-left">Branch</th>
                         <th class="px-4 py-3 text-left">Roles</th>
                         <th class="px-4 py-3 text-center">Status</th>
                         @if(auth()->user()->hasRole('Super Admin'))
@@ -47,7 +46,6 @@
                             <td class="px-4 py-3 text-slate-700 font-medium">{{ $user->name }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $user->email }}</td>
                             <td class="px-4 py-3 text-slate-600">{{ $user->branch?->name ?? '-' }}</td>
-                            <td class="px-4 py-3 text-slate-600">{{ $user->office?->name ?? '-' }}</td>
                             <td class="px-4 py-3">
                                 @foreach($user->roles as $role)
                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-700 mr-1">{{ $role->name }}</span>
@@ -92,7 +90,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="{{ auth()->user()->hasRole('Super Admin') ? 8 : 7 }}" class="px-4 py-12 text-center text-slate-500">
+                            <td colspan="{{ auth()->user()->hasRole('Super Admin') ? 7 : 6 }}" class="px-4 py-12 text-center text-slate-500">
                                 No users found.
                             </td>
                         </tr>
