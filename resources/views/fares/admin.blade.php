@@ -4,7 +4,7 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto pt-6" x-data="{
-    activeTab: 'agents',
+    activeTab: new URLSearchParams(window.location.search).get('tab') || 'agents',
     showAgentModal: false,
     editAgentMode: false,
     agent: { id: null, name: '', address: '', contacts: '' },
