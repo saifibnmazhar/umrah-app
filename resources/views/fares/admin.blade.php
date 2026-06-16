@@ -292,6 +292,8 @@
                             <th class="px-4 py-3 text-left">Offer Price</th>
                             <th class="px-4 py-3 text-left">Effective From</th>
                             <th class="px-4 py-3 text-left">Effective To</th>
+                            <th class="px-4 py-3 text-left">Ticket Qty</th>
+                            <th class="px-4 py-3 text-left">Created At</th>
                             <th class="px-4 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
@@ -337,6 +339,14 @@
                                 <td class="px-4 py-3 text-slate-600">@if($fare->offer_price)@currency($fare->offer_price, 2)@else-@endif</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $fare->effective_from->format('Y-m-d') }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $fare->effective_to->format('Y-m-d') }}</td>
+                                <td class="px-4 py-3 text-slate-600">
+                                    @if($fare->ticket_type->value === 'group' && $fare->groupTicket)
+                                        {{ $fare->groupTicket->ticket_qty }}
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 text-slate-600">{{ $fare->created_at->format('d/m/Y') }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-3">
                                         <a href="{{ route('ticket-fares.show', $fare->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">View</a>
@@ -356,7 +366,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="px-4 py-12 text-center text-slate-500">
+                                <td colspan="13" class="px-4 py-12 text-center text-slate-500">
                                     No ticket fares found.
                                 </td>
                             </tr>
