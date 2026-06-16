@@ -38,7 +38,7 @@ class VisaSellingPriceController extends Controller
 
             $validated['user_id'] = $userId;
             VisaSellingPrice::create($validated);
-            return redirect()->route('visa.admin')->with('success', 'Visa selling price created successfully.');
+            return redirect()->route('visa.admin', ['tab' => 'visa-selling-prices'])->with('success', 'Visa selling price created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create visa selling price.')->withInput();
         }
@@ -72,7 +72,7 @@ class VisaSellingPriceController extends Controller
 
             $validated['user_id'] = $userId;
             $visaSellingPrice->update($validated);
-            return redirect()->route('visa.admin')->with('success', 'Visa selling price updated successfully.');
+            return redirect()->route('visa.admin', ['tab' => 'visa-selling-prices'])->with('success', 'Visa selling price updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update visa selling price.')->withInput();
         }
@@ -86,7 +86,7 @@ class VisaSellingPriceController extends Controller
 
         try {
             $visaSellingPrice->delete();
-            return redirect()->route('visa.admin')->with('success', 'Visa selling price deleted successfully.');
+            return redirect()->route('visa.admin', ['tab' => 'visa-selling-prices'])->with('success', 'Visa selling price deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete visa selling price.');
         }

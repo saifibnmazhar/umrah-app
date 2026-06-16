@@ -42,7 +42,7 @@ class VisaAgentCostController extends Controller
         try {
             $validated['user_id'] = auth()->id() ?? 1;
             VisaAgentCost::create($validated);
-            return redirect()->route('visa.admin')->with('success', 'Visa agent cost created successfully.');
+            return redirect()->route('visa.admin', ['tab' => 'visa-agent-costs'])->with('success', 'Visa agent cost created successfully.');
         } catch (\Exception $e) {
             \Log::error('VisaAgentCost Create Error: ' . $e->getMessage());
             return redirect()->back()->with('error', 'Failed to create visa agent cost: ' . $e->getMessage())->withInput();
@@ -71,7 +71,7 @@ class VisaAgentCostController extends Controller
 
         try {
             $visaAgentCost->update($validated);
-            return redirect()->route('visa.admin')->with('success', 'Visa agent cost updated successfully.');
+            return redirect()->route('visa.admin', ['tab' => 'visa-agent-costs'])->with('success', 'Visa agent cost updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update visa agent cost.')->withInput();
         }
@@ -81,7 +81,7 @@ class VisaAgentCostController extends Controller
     {
         try {
             $visaAgentCost->delete();
-            return redirect()->route('visa.admin')->with('success', 'Visa agent cost deleted successfully.');
+            return redirect()->route('visa.admin', ['tab' => 'visa-agent-costs'])->with('success', 'Visa agent cost deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete visa agent cost.');
         }
