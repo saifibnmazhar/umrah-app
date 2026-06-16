@@ -324,7 +324,8 @@
                             <th class="px-3 py-2 text-right font-medium">Visa Selling Price</th>
                             <th class="px-3 py-2 text-right font-medium">Service Charge</th>
                             <th class="px-3 py-2 text-right font-medium">Package Price</th>
-                            <th class="px-3 py-2 text-right font-medium">Offer Price</th>
+                            <th class="px-3 py-2 text-right font-medium pr-8">Offer Price</th>
+                            <th class="px-3 py-2 text-left font-medium">Created At</th>
                             <th class="px-3 py-2 text-center font-medium">Action</th>
                         </tr>
                     </thead>
@@ -359,13 +360,14 @@
                                 <td class="px-3 py-2 text-right text-slate-600">@currency($visaSellingPrice, 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-600">@currency($package->service_charge ?? 0, 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency(($package->regular_price ?? 0) + ($package->service_charge ?? 0), 0)</td>
-                                <td class="px-3 py-2 text-right text-slate-600">
+                                <td class="px-3 py-2 text-right text-slate-600 pr-8">
                                     @if($package->offer_price)
                                         @currency(($package->offer_price ?? 0) + ($package->service_charge ?? 0), 0)
                                     @else
                                         -
                                     @endif
                                 </td>
+                                <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $package->created_at ? $package->created_at->format('d/m/y') : '-' }}</td>
                                 <td class="px-3 py-2 text-center">
                                     <a href="{{ route('settings.package.show', $package->id) }}" class="text-xs text-slate-600 hover:text-slate-800 mr-3">View</a>
                                     @if($package->is_locked)
@@ -384,7 +386,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
+                                <td colspan="10" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
                             </tr>
                         @endforelse
                     </tbody>
