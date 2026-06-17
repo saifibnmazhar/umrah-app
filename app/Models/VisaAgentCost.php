@@ -14,7 +14,7 @@ class VisaAgentCost extends Model
     ];
 
     protected $casts = [
-        'visa_agent_cost' => 'decimal:2',
+        'visa_agent_cost' => 'decimal:6',
     ];
 
     public function visaAgent(): BelongsTo

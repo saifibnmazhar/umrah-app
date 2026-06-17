@@ -178,7 +178,7 @@
                     </svg>
                 </button>
             </div>
-            <form id="fingerprintChargeForm" method="POST" action="{{ route('fingerprint-charges.store') }}">
+            <form id="fingerprintChargeForm" method="POST" action="{{ route('fingerprint-charges.store') }}" x-data="{ bdtValue: 0 }">
                 @csrf
                 <input type="hidden" id="chargeId" name="charge_id">
                 <input type="hidden" id="formMethod" name="_method" value="POST">
@@ -193,9 +193,13 @@
                             @endforeach
                         </select>
                     </div>
+                    <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Fingerprint Charge (BDT) *</label>
+                        <input type="number" x-model="bdtValue" @input="document.getElementById('modalFingerprintChargeInput').value = (parseFloat(bdtValue || 0) / ($store.currency.rate || 1)).toFixed(6)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" required>
+                    </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Fingerprint Charge (SAR) *</label>
-                        <input type="number" id="modalFingerprintChargeInput" name="fingerprint_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" step="0.01" required>
+                        <input type="number" id="modalFingerprintChargeInput" name="fingerprint_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0" min="0" step="0.01" required :readonly="$store.currency.mode === 'BDT'">
                     </div>
                 </div>
                 <div class="flex gap-3 mt-6">
@@ -260,6 +264,10 @@
         document.getElementById('fingerprintChargeForm').action = '{{ route("fingerprint-charges.store") }}';
         document.getElementById('modalFingerprintChargeInput').value = '0';
         document.getElementById('modalDistrictSelect').value = '';
+        const formEl = document.getElementById('fingerprintChargeForm');
+        if (formEl._x_dataStack) {
+            Alpine.$data(formEl).bdtValue = 0;
+        }
     }
 
     function hideFingerprintChargeModal() {
@@ -286,6 +294,11 @@
         document.getElementById('fingerprintChargeForm').action = '/fingerprint-charges/' + id;
         document.getElementById('modalFingerprintChargeInput').value = charge;
         document.getElementById('modalDistrictSelect').value = districtId;
+        const formEl = document.getElementById('fingerprintChargeForm');
+        if (formEl._x_dataStack && Alpine.store('currency').mode === 'BDT') {
+            const rate = window.__currencyRate || 1;
+            Alpine.$data(formEl).bdtValue = charge * (rate || 1);
+        }
     }
     </script>
 
@@ -324,7 +337,8 @@
                             <th class="px-3 py-2 text-right font-medium">Visa Selling Price</th>
                             <th class="px-3 py-2 text-right font-medium">Service Charge</th>
                             <th class="px-3 py-2 text-right font-medium">Package Price</th>
-                            <th class="px-3 py-2 text-right font-medium">Offer Price</th>
+                            <th class="px-3 py-2 text-right font-medium pr-8">Offer Price</th>
+                            <th class="px-3 py-2 text-left font-medium">Created At</th>
                             <th class="px-3 py-2 text-center font-medium">Action</th>
                         </tr>
                     </thead>
@@ -359,13 +373,14 @@
                                 <td class="px-3 py-2 text-right text-slate-600">@currency($visaSellingPrice, 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-600">@currency($package->service_charge ?? 0, 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency(($package->regular_price ?? 0) + ($package->service_charge ?? 0), 0)</td>
-                                <td class="px-3 py-2 text-right text-slate-600">
+                                <td class="px-3 py-2 text-right text-slate-600 pr-8">
                                     @if($package->offer_price)
                                         @currency(($package->offer_price ?? 0) + ($package->service_charge ?? 0), 0)
                                     @else
                                         -
                                     @endif
                                 </td>
+                                <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $package->created_at ? $package->created_at->format('d/m/y') : '-' }}</td>
                                 <td class="px-3 py-2 text-center">
                                     <a href="{{ route('settings.package.show', $package->id) }}" class="text-xs text-slate-600 hover:text-slate-800 mr-3">View</a>
                                     @if($package->is_locked)
@@ -384,7 +399,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="9" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
+                                <td colspan="10" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

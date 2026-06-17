@@ -21,10 +21,10 @@
         </div>
     @endif
 
-    <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-        <div class="overflow-x-auto">
+    <div class="bg-white rounded-lg shadow-sm border border-slate-200">
+        <div class="max-h-[500px] overflow-y-auto">
             <table class="w-full text-sm">
-                <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
+                <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider sticky top-0 z-10">
                     <tr>
                         <th class="px-4 py-3 text-left">ID</th>
                         <th class="px-4 py-3 text-left">Name</th>
@@ -59,10 +59,6 @@
                 </tbody>
             </table>
         </div>
-    </div>
-
-    <div class="mt-4 flex justify-center">
-        {{ $airlines->appends(request()->query())->links() }}
     </div>
 </div>
 @endsection
