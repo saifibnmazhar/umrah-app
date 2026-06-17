@@ -14,7 +14,7 @@ class FingerprintCharge extends Model
     ];
 
     protected $casts = [
-        'fingerprint_charge' => 'decimal:2',
+        'fingerprint_charge' => 'decimal:6',
     ];
 
     public function district(): BelongsTo

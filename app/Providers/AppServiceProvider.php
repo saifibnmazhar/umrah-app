@@ -32,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
             return "<?php
                 \$__val = {$amount} ?? 0;
                 \$__dec = {$decimals};
-                echo '<span class=\"currency-display\" data-sar=\"' . number_format((float) \$__val, \$__dec, '.', '') . '\" data-dec=\"' . \$__dec . '\">SAR ' . number_format((float) \$__val, \$__dec) . '</span>';
+                echo '<span class=\"currency-display\" data-sar=\"' . number_format((float) \$__val, 6, '.', '') . '\" data-dec=\"' . \$__dec . '\">SAR ' . number_format((float) \$__val, \$__dec) . '</span>';
             ?>";
         });
 
