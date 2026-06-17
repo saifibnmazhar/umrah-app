@@ -342,8 +342,8 @@
                                 <td class="px-4 py-3 text-slate-700 font-medium">@currency($fare->net_fare, 2)</td>
                                 <td class="px-4 py-3 text-slate-700 font-medium">@currency($fare->selling_fare, 2)</td>
                                 <td class="px-4 py-3 text-slate-600">@if($fare->offer_price)@currency($fare->offer_price, 2)@else-@endif</td>
-                                <td class="px-4 py-3 text-slate-600">{{ $fare->effective_from->format('Y-m-d') }}</td>
-                                <td class="px-4 py-3 text-slate-600">{{ $fare->effective_to->format('Y-m-d') }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $fare->effective_from->format('d/m/Y') }}</td>
+                                <td class="px-4 py-3 text-slate-600">{{ $fare->effective_to->format('d/m/Y') }}</td>
                                 <td class="px-4 py-3 text-slate-600">
                                     @if($fare->ticket_type->value === 'group' && $fare->groupTicket)
                                         {{ $fare->groupTicket->ticket_qty }}
