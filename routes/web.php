@@ -213,9 +213,11 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
 
     // Detail Pages with parameters
+    /* Temporarily disabled
     Route::resource('invoices', InvoiceController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('payments', PaymentController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('vouchers', VoucherController::class)->middleware('role:Super Admin,Co Admin');
+    */
     Route::get('/invoices/{id}/print', fn($id) => view('invoices.print', compact('id')))->name('invoices.print');
     Route::get('/re-issues/{id}/confirm', fn($id) => view('re-issues.confirmation', compact('id')))->name('re-issues.confirmation');
     Route::get('/refunds/{id}/confirm', fn($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation');
