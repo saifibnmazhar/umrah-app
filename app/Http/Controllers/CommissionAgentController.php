@@ -18,7 +18,7 @@ class CommissionAgentController extends Controller
 
         try {
             CommissionAgent::create($validated);
-            return redirect()->route('visa.admin')->with('success', 'Commission agent created successfully.');
+            return redirect()->route('visa.admin', ['tab' => 'commission-agents'])->with('success', 'Commission agent created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create commission agent.')->withInput();
         }
@@ -35,7 +35,7 @@ class CommissionAgentController extends Controller
 
         try {
             $commissionAgent->update($validated);
-            return redirect()->route('visa.admin')->with('success', 'Commission agent updated successfully.');
+            return redirect()->route('visa.admin', ['tab' => 'commission-agents'])->with('success', 'Commission agent updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update commission agent.')->withInput();
         }
@@ -45,7 +45,7 @@ class CommissionAgentController extends Controller
     {
         try {
             $commissionAgent->delete();
-            return redirect()->route('visa.admin')->with('success', 'Commission agent deleted successfully.');
+            return redirect()->route('visa.admin', ['tab' => 'commission-agents'])->with('success', 'Commission agent deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete commission agent.');
         }

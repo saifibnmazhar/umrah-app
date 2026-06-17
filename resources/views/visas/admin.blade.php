@@ -3,27 +3,34 @@
 @section('title', 'Visa Admin')
 
 @section('content')
-<div class="max-w-5xl mx-auto pt-6" x-data="{ activeTab: 'visa-selling-prices' }">
+<div class="max-w-5xl mx-auto pt-6" x-data="{
+    activeTab: new URLSearchParams(window.location.search).get('tab') || 'visa-selling-prices',
+    updateUrlTab(name) {
+        const url = new URL(window.location);
+        url.searchParams.set('tab', name);
+        history.replaceState(null, '', url);
+    },
+}">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Visa Admin</h1>
 
     <div class="border-b border-gray-200 mb-6">
         <nav class="-mb-px flex space-x-8">
             <button
-                @click="activeTab = 'visa-selling-prices'"
+                @click="activeTab = 'visa-selling-prices'; updateUrlTab('visa-selling-prices')"
                 :class="{ 'border-blue-500 text-blue-600': activeTab === 'visa-selling-prices', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'visa-selling-prices' }"
                 class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200"
             >
                 Visa Selling Prices
             </button>
             <button
-                @click="activeTab = 'visa-agent-costs'"
+                @click="activeTab = 'visa-agent-costs'; updateUrlTab('visa-agent-costs')"
                 :class="{ 'border-blue-500 text-blue-600': activeTab === 'visa-agent-costs', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'visa-agent-costs' }"
                 class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200"
             >
                 Visa Agent Costs
             </button>
             <button
-                @click="activeTab = 'visa-agents'"
+                @click="activeTab = 'visa-agents'; updateUrlTab('visa-agents')"
                 :class="{ 'border-blue-500 text-blue-600': activeTab === 'visa-agents', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'visa-agents' }"
                 class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200"
             >
@@ -31,7 +38,7 @@
             </button>
             @if(auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty())
             <button
-                @click="activeTab = 'commission-agents'"
+                @click="activeTab = 'commission-agents'; updateUrlTab('commission-agents')"
                 :class="{ 'border-blue-500 text-blue-600': activeTab === 'commission-agents', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'commission-agents' }"
                 class="whitespace-nowrap py-4 px-1 border-b-2 font-medium text-sm transition-colors duration-200"
             >
