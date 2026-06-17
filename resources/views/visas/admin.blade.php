@@ -311,7 +311,7 @@
     <div class="absolute inset-0 bg-black/50" onclick="closeVisaPriceModal()"></div>
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
         <h3 class="text-xl font-semibold text-slate-800 mb-4" id="visaPriceModalTitle">Add Visa Price</h3>
-        <form id="visaPriceForm" method="POST" action="{{ route('visa-selling-prices.store') }}">
+        <form id="visaPriceForm" method="POST" action="{{ route('visa-selling-prices.store') }}" x-data="{ bdtValue: 0 }">
             @csrf
             <input type="hidden" id="visaPriceFormMethod" name="_method" value="POST">
             <div class="space-y-4">
@@ -319,9 +319,13 @@
                     <label class="block text-sm font-medium text-slate-700 mb-1">Date</label>
                     <input type="text" id="visaPriceDate" class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" value="{{ date('Y-m-d') }}" readonly>
                 </div>
+                <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Price (BDT)</label>
+                    <input type="number" x-model="bdtValue" @input="document.getElementById('visaPriceInput').value = (parseFloat(bdtValue || 0) / ($store.currency.rate || 1)).toFixed(6)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" required>
+                </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Price (SAR)</label>
-                    <input type="number" id="visaPriceInput" name="selling_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="" min="0" step="0.01" required>
+                    <input type="number" id="visaPriceInput" name="selling_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="" min="0" step="0.01" required :readonly="$store.currency.mode === 'BDT'">
                 </div>
             </div>
             <div class="flex gap-3 mt-6">
@@ -337,7 +341,7 @@
     <div class="absolute inset-0 bg-black/50" onclick="closeAgentCostModal()"></div>
     <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-sm mx-4 p-6">
         <h3 class="text-xl font-semibold text-slate-800 mb-4" id="agentCostModalTitle">Add Agent Price</h3>
-        <form id="agentCostForm" method="POST" action="{{ route('visa-agent-costs.store') }}">
+        <form id="agentCostForm" method="POST" action="{{ route('visa-agent-costs.store') }}" x-data="{ bdtValue: 0 }">
             @csrf
             <input type="hidden" id="agentCostFormMethod" name="_method" value="POST">
             <div class="space-y-4">
@@ -350,9 +354,13 @@
                         @endforeach
                     </select>
                 </div>
+                <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Agent Visa Price (BDT)</label>
+                    <input type="number" x-model="bdtValue" @input="document.getElementById('agentCostInput').value = (parseFloat(bdtValue || 0) / ($store.currency.rate || 1)).toFixed(6)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" required>
+                </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Agent Visa Price (SAR)</label>
-                    <input type="number" id="agentCostInput" name="visa_agent_cost" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="" min="0" required>
+                    <input type="number" id="agentCostInput" name="visa_agent_cost" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="" min="0" required :readonly="$store.currency.mode === 'BDT'">
                 </div>
             </div>
             <div class="flex gap-3 mt-6">
@@ -441,6 +449,10 @@ function openVisaPriceModal() {
     document.getElementById('visaPriceModalTitle').textContent = 'Add Visa Price';
     document.getElementById('visaPriceInput').value = '';
     document.getElementById('visaPriceDate').value = new Date().toISOString().split('T')[0];
+    const visaPriceFormEl = document.getElementById('visaPriceForm');
+    if (visaPriceFormEl._x_dataStack) {
+        Alpine.$data(visaPriceFormEl).bdtValue = 0;
+    }
 }
 
 function closeVisaPriceModal() {
@@ -453,6 +465,11 @@ function editVisaPrice(id, price) {
     document.getElementById('visaPriceForm').action = '/visa-selling-prices/' + id;
     document.getElementById('visaPriceModalTitle').textContent = 'Edit Visa Price';
     document.getElementById('visaPriceInput').value = price;
+    const visaPriceFormEl = document.getElementById('visaPriceForm');
+    if (visaPriceFormEl._x_dataStack && Alpine.store('currency').mode === 'BDT') {
+        const rate = window.__currencyRate || 1;
+        Alpine.$data(visaPriceFormEl).bdtValue = price * (rate || 1);
+    }
 }
 
 // Agent Cost Modal Functions
@@ -463,6 +480,10 @@ function openAgentCostModal() {
     document.getElementById('agentCostModalTitle').textContent = 'Add Agent Price';
     document.getElementById('visaAgentSelect').value = '';
     document.getElementById('agentCostInput').value = '';
+    const agentCostFormEl = document.getElementById('agentCostForm');
+    if (agentCostFormEl._x_dataStack) {
+        Alpine.$data(agentCostFormEl).bdtValue = 0;
+    }
 }
 
 function closeAgentCostModal() {
@@ -476,6 +497,11 @@ function editAgentCost(id, agentId, cost) {
     document.getElementById('agentCostModalTitle').textContent = 'Edit Agent Price';
     document.getElementById('visaAgentSelect').value = agentId;
     document.getElementById('agentCostInput').value = cost;
+    const agentCostFormEl = document.getElementById('agentCostForm');
+    if (agentCostFormEl._x_dataStack && Alpine.store('currency').mode === 'BDT') {
+        const rate = window.__currencyRate || 1;
+        Alpine.$data(agentCostFormEl).bdtValue = cost * (rate || 1);
+    }
 }
 
 // Visa Agent Modal Functions

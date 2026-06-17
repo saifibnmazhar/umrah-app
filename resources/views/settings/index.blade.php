@@ -195,7 +195,7 @@
                     </div>
                     <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Fingerprint Charge (BDT) *</label>
-                        <input type="number" x-model="bdtValue" @input="document.getElementById('modalFingerprintChargeInput').value = (parseFloat(bdtValue || 0) / ($store.currency.rate || 1)).toFixed(2)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" required>
+                        <input type="number" x-model="bdtValue" @input="document.getElementById('modalFingerprintChargeInput').value = (parseFloat(bdtValue || 0) / ($store.currency.rate || 1)).toFixed(6)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" required>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Fingerprint Charge (SAR) *</label>

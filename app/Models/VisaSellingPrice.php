@@ -14,7 +14,7 @@ class VisaSellingPrice extends Model
     ];
 
     protected $casts = [
-        'selling_price' => 'decimal:2',
+        'selling_price' => 'decimal:6',
     ];
 
     protected $appends = ['is_locked'];
