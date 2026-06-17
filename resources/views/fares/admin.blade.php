@@ -4,7 +4,12 @@
 
 @section('content')
 <div class="max-w-7xl mx-auto pt-6" x-data="{
-    activeTab: 'agents',
+    activeTab: new URLSearchParams(window.location.search).get('tab') || 'agents',
+    updateUrlTab(name) {
+        const url = new URL(window.location);
+        url.searchParams.set('tab', name);
+        history.replaceState(null, '', url);
+    },
     showAgentModal: false,
     editAgentMode: false,
     agent: { id: null, name: '', address: '', contacts: '' },
@@ -145,13 +150,13 @@
 
     <div class="border-b border-slate-200 mb-6">
         <nav class="-mb-px flex gap-6">
-            <button @click="activeTab = 'agents'" :class="{ 'border-blue-500 text-blue-600': activeTab === 'agents', 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300': activeTab !== 'agents' }" class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap">
+            <button @click="activeTab = 'agents'; updateUrlTab('agents')" :class="{ 'border-blue-500 text-blue-600': activeTab === 'agents', 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300': activeTab !== 'agents' }" class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap">
                 Ticket Agents
             </button>
-            <button @click="activeTab = 'fares'" :class="{ 'border-blue-500 text-blue-600': activeTab === 'fares', 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300': activeTab !== 'fares' }" class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap">
+            <button @click="activeTab = 'fares'; updateUrlTab('fares')" :class="{ 'border-blue-500 text-blue-600': activeTab === 'fares', 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300': activeTab !== 'fares' }" class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap">
                 Ticket Fares
             </button>
-            <button @click="activeTab = 'routes'" :class="{ 'border-blue-500 text-blue-600': activeTab === 'routes', 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300': activeTab !== 'routes' }" class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap">
+            <button @click="activeTab = 'routes'; updateUrlTab('routes')" :class="{ 'border-blue-500 text-blue-600': activeTab === 'routes', 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300': activeTab !== 'routes' }" class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap">
                 Routes
             </button>
         </nav>
@@ -292,6 +297,8 @@
                             <th class="px-4 py-3 text-left">Offer Price</th>
                             <th class="px-4 py-3 text-left">Effective From</th>
                             <th class="px-4 py-3 text-left">Effective To</th>
+                            <th class="px-4 py-3 text-left">Ticket Qty</th>
+                            <th class="px-4 py-3 text-left">Created At</th>
                             <th class="px-4 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
@@ -337,6 +344,14 @@
                                 <td class="px-4 py-3 text-slate-600">@if($fare->offer_price)@currency($fare->offer_price, 2)@else-@endif</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $fare->effective_from->format('Y-m-d') }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $fare->effective_to->format('Y-m-d') }}</td>
+                                <td class="px-4 py-3 text-slate-600">
+                                    @if($fare->ticket_type->value === 'group' && $fare->groupTicket)
+                                        {{ $fare->groupTicket->ticket_qty }}
+                                    @else
+                                        —
+                                    @endif
+                                </td>
+                                <td class="px-4 py-3 text-slate-600">{{ $fare->created_at->format('d/m/Y') }}</td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-3">
                                         <a href="{{ route('ticket-fares.show', $fare->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">View</a>
@@ -356,7 +371,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="11" class="px-4 py-12 text-center text-slate-500">
+                                <td colspan="13" class="px-4 py-12 text-center text-slate-500">
                                     No ticket fares found.
                                 </td>
                             </tr>
