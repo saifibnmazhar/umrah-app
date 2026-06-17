@@ -9,7 +9,7 @@ class AirlineController extends Controller
 {
     public function index()
     {
-        $airlines = Airline::orderBy('name')->paginate(10)->withQueryString();
+        $airlines = Airline::orderBy('id')->get();
         return view('airlines.index', compact('airlines'));
     }
 
