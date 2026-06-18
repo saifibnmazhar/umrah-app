@@ -451,17 +451,15 @@
                             @foreach($ticketFares as $fare)
                                 @php
                                     $type = $fare['ticket_type'];
-                                    $display = $fare['airline'] . ' | ' . $fare['route'] . ' | ' . strtoupper($type ?? '?') . ' | SAR ' . number_format($fare['selling_fare'], 0);
-                                    if ($type === 'offer') {
-                                        $display .= ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0);
-                                    }
+                                    $prefix = $fare['airline'] . ' | ' . $fare['route'] . ' | ' . strtoupper($type ?? '?');
                                 @endphp
                                 <option value="{{ $fare['id'] }}"
                                     data-ticket-type="{{ $fare['ticket_type'] }}"
                                     data-selling-fare="{{ $fare['selling_fare'] }}"
                                     data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
+                                    data-display-prefix="{{ $prefix }}"
                                     data-used="{{ in_array($fare['id'], $usedFareIds) ? 'true' : 'false' }}">
-                                    {{ $display }}
+                                    {{ $prefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $type === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
                                 </option>
                             @endforeach
                         </select>
@@ -469,16 +467,16 @@
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (SAR) *</label>
-                            <input type="number" id="modalRegularPrice" name="regular_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="0.01" required readonly>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (<span id="modalRegularPriceLabel" class="currency-label">SAR</span>) *</label>
+                            <input type="number" id="modalRegularPrice" name="regular_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="0.01" required readonly data-sar-value="0">
                         </div> 
                         <div id="modalOfferPriceContainer" class="hidden">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
-                            <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (<span id="modalOfferPriceLabel" class="currency-label">SAR</span>)</label>
+                            <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" data-sar-value="0">
                         </div>
                         <div id="modalServiceChargeContainer">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
-                            <input type="number" id="modalServiceCharge" name="service_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (<span id="modalServiceChargeLabel" class="currency-label">SAR</span>)</label>
+                            <input type="number" id="modalServiceCharge" name="service_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0" data-sar-value="0">
                         </div>                       
                     </div>
 
@@ -492,6 +490,10 @@
                                     Not configured
                                 @endif
                             </span>
+                        </p>
+                        <p class="text-sm text-slate-600 mt-2">
+                            <span class="font-medium">Gross Amount:</span>
+                            <span id="modalGrossDisplay" class="text-slate-800 font-medium">@currency(0, 0)</span>
                         </p>
                     </div>
 
@@ -518,11 +520,16 @@
             document.getElementById('modalTicketTypeSelect').value = '';
             document.getElementById('modalTicketSelect').value = '';
             document.getElementById('modalRegularPrice').value = '';
+            document.getElementById('modalRegularPrice').dataset.sarValue = '0';
             document.getElementById('modalServiceCharge').value = 0;
+            document.getElementById('modalServiceCharge').dataset.sarValue = '0';
             document.getElementById('modalOfferPrice').value = '';
+            document.getElementById('modalOfferPrice').dataset.sarValue = '0';
             document.getElementById('modalOfferPriceContainer').classList.add('hidden');
             filterModalTickets();
             document.getElementById('packageModal').classList.remove('hidden');
+            syncInputCurrency();
+            updateModalGross();
         }
 
         function editPackage(id) {
@@ -547,18 +554,23 @@
                 document.getElementById('modalTicketSelect').value = pkg.ticket_fare_id;
             }
             
-            document.getElementById('modalRegularPrice').value = pkg.regular_price;
-            document.getElementById('modalOfferPrice').value = pkg.offer_price || '';
-            document.getElementById('modalServiceCharge').value = pkg.service_charge || 0;
+            document.getElementById('modalRegularPrice').dataset.sarValue = parseFloat(pkg.regular_price || 0).toFixed(6);
+            document.getElementById('modalServiceCharge').dataset.sarValue = parseFloat(pkg.service_charge || 0).toFixed(6);
+            if (pkg.offer_price) {
+                document.getElementById('modalOfferPrice').dataset.sarValue = parseFloat(pkg.offer_price).toFixed(6);
+            }
             
             if (ticketOption && ticketOption.dataset.ticketType === 'offer') {
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
             } else {
                 document.getElementById('modalOfferPriceContainer').classList.add('hidden');
                 document.getElementById('modalOfferPrice').value = '';
+                document.getElementById('modalOfferPrice').dataset.sarValue = '0';
             }
             
             document.getElementById('packageModal').classList.remove('hidden');
+            syncInputCurrency();
+            updateModalGross();
         }
 
         function hidePackageModal() {
@@ -580,11 +592,66 @@
             });
         }
 
+        function syncInputCurrency() {
+            const currency = window.Alpine?.store('currency');
+            if (!currency) return;
+            const isBDT = currency.mode === 'BDT';
+            const rate = currency.rate;
+
+            document.querySelectorAll('[data-sar-value]').forEach(input => {
+                const sar = parseFloat(input.dataset.sarValue) || 0;
+                if (isBDT) {
+                    input.value = Math.round(sar * rate);
+                } else {
+                    input.value = sar.toFixed(2);
+                }
+            });
+
+            document.querySelectorAll('.currency-label').forEach(el => {
+                el.textContent = isBDT ? 'BDT' : 'SAR';
+            });
+        }
+
+        function updateModalGross() {
+            const regularSar = parseFloat(document.getElementById('modalRegularPrice')?.dataset?.sarValue || 0);
+            const offerSar = parseFloat(document.getElementById('modalOfferPrice')?.dataset?.sarValue || 0);
+            const serviceSar = parseFloat(document.getElementById('modalServiceCharge')?.dataset?.sarValue || 0);
+            const selectedOption = document.getElementById('modalTicketSelect').options[document.getElementById('modalTicketSelect').selectedIndex];
+            const ticketType = selectedOption?.dataset?.ticketType;
+
+            let gross = 0;
+            if (ticketType === 'offer') {
+                gross = offerSar + serviceSar;
+            } else {
+                gross = regularSar + serviceSar;
+            }
+
+            const grossDisplay = document.getElementById('modalGrossDisplay');
+            if (!grossDisplay) return;
+
+            const sar = gross;
+            const currency = window.Alpine?.store('currency');
+            const isBDT = currency?.mode === 'BDT';
+            const rate = currency?.rate || 1;
+
+            grossDisplay.dataset.sar = sar.toFixed(6);
+            grossDisplay.dataset.dec = '0';
+            if (isBDT) {
+                grossDisplay.textContent = 'BDT ' + Math.round(sar * rate).toLocaleString();
+            } else {
+                grossDisplay.textContent = 'SAR ' + Math.round(sar).toLocaleString();
+            }
+        }
+
         function calculateModalPrices() {
             const selectedOption = document.getElementById('modalTicketSelect').options[document.getElementById('modalTicketSelect').selectedIndex];
             if (!selectedOption || !selectedOption.value) {
                 document.getElementById('modalRegularPrice').value = '';
+                document.getElementById('modalRegularPrice').dataset.sarValue = '0';
                 document.getElementById('modalOfferPrice').value = '';
+                document.getElementById('modalOfferPrice').dataset.sarValue = '0';
+                syncInputCurrency();
+                updateModalGross();
                 return;
             }
 
@@ -593,18 +660,84 @@
             const ticketType = selectedOption.dataset.ticketType;
             
             if (ticketType === 'offer') {
-                document.getElementById('modalRegularPrice').value = (sellingFare + latestVisaPrice).toFixed(2);
+                const regularSar = sellingFare + latestVisaPrice;
+                const offerSar = offerFare + latestVisaPrice;
+                document.getElementById('modalRegularPrice').dataset.sarValue = regularSar.toFixed(6);
+                document.getElementById('modalOfferPrice').dataset.sarValue = offerSar.toFixed(6);
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
-                document.getElementById('modalOfferPrice').value = (offerFare + latestVisaPrice).toFixed(2);
             } else {
-                document.getElementById('modalRegularPrice').value = (sellingFare + latestVisaPrice).toFixed(2);
+                const regularSar = sellingFare + latestVisaPrice;
+                document.getElementById('modalRegularPrice').dataset.sarValue = regularSar.toFixed(6);
+                document.getElementById('modalOfferPrice').dataset.sarValue = '0';
                 document.getElementById('modalOfferPriceContainer').classList.add('hidden');
                 document.getElementById('modalOfferPrice').value = '';
             }
+            syncInputCurrency();
+            updateModalGross();
         }
 
         document.getElementById('modalTicketTypeSelect').addEventListener('change', filterModalTickets);
         document.getElementById('modalTicketSelect').addEventListener('change', calculateModalPrices);
+
+        function handlePriceInput(el) {
+            const currency = window.Alpine?.store('currency');
+            const isBDT = currency?.mode === 'BDT';
+            const rate = currency?.rate || 1;
+            if (isBDT) {
+                const bdtValue = parseFloat(el.value || 0);
+                el.dataset.sarValue = (bdtValue / rate).toFixed(6);
+            } else {
+                el.dataset.sarValue = parseFloat(el.value || 0).toFixed(6);
+            }
+            syncInputCurrency();
+            updateModalGross();
+        }
+        document.getElementById('modalOfferPrice').addEventListener('input', function () { handlePriceInput(this); });
+        document.getElementById('modalServiceCharge').addEventListener('input', function () { handlePriceInput(this); });
+
+        function updateModalTicketLabels() {
+            const currency = window.Alpine?.store('currency');
+            if (!currency) return;
+            const select = document.getElementById('modalTicketSelect');
+            if (!select) return;
+            Array.from(select.options).forEach(opt => {
+                if (!opt.value || !opt.dataset.displayPrefix) return;
+                const sellingFare = parseFloat(opt.dataset.sellingFare) || 0;
+                const offerPrice = parseFloat(opt.dataset.offerPrice) || 0;
+                let display = opt.dataset.displayPrefix;
+                if (currency.mode === 'BDT') {
+                    display += ' | BDT ' + Math.round(sellingFare * currency.rate).toLocaleString();
+                    if (opt.dataset.ticketType === 'offer') {
+                        display += ' | BDT ' + Math.round(offerPrice * currency.rate).toLocaleString();
+                    }
+                } else {
+                    display += ' | SAR ' + sellingFare.toLocaleString();
+                    if (opt.dataset.ticketType === 'offer') {
+                        display += ' | SAR ' + offerPrice.toLocaleString();
+                    }
+                }
+                opt.textContent = display;
+            });
+        }
+        window.addEventListener('currency-toggled', () => {
+            updateModalTicketLabels();
+            syncInputCurrency();
+            updateModalGross();
+        });
+        document.addEventListener('DOMContentLoaded', () => {
+            updateModalTicketLabels();
+            syncInputCurrency();
+            updateModalGross();
+        });
+
+        document.getElementById('packageForm').addEventListener('submit', function () {
+            const currency = window.Alpine?.store('currency');
+            if (currency?.mode === 'BDT') {
+                document.querySelectorAll('[data-sar-value]').forEach(input => {
+                    input.value = parseFloat(input.dataset.sarValue || 0).toFixed(2);
+                });
+            }
+        });
 
         function toggleModalOfferPriceField() {
             const ticketType = document.getElementById('modalTicketTypeSelect').value;
