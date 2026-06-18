@@ -480,21 +480,21 @@
                         </div>                       
                     </div>
 
-                    <div class="mt-4 p-4 bg-slate-50 rounded-lg">
-                        <p class="text-sm text-slate-600">
+                    <div class="mt-4 p-4 bg-slate-50 rounded-lg grid grid-cols-2 gap-4">
+                        <div class="text-sm text-slate-600">
                             <span class="font-medium">Visa Selling Price (Latest):</span>
-                            <span class="text-slate-800 font-medium">
+                            <span class="text-slate-800 font-medium block">
                                 @if($latestVisa)
                                     @currency($latestVisa->selling_price, 0)
                                 @else
                                     Not configured
                                 @endif
                             </span>
-                        </p>
-                        <p class="text-sm text-slate-600 mt-2">
+                        </div>
+                        <div class="text-sm text-slate-600">
                             <span class="font-medium">Gross Amount:</span>
-                            <span id="modalGrossDisplay" class="text-slate-800 font-medium">@currency(0, 0)</span>
-                        </p>
+                            <span id="modalGrossDisplay" class="text-slate-800 font-medium block">@currency(0, 0)</span>
+                        </div>
                     </div>
 
                     <div class="flex gap-3 mt-6">
@@ -525,6 +525,7 @@
             document.getElementById('modalServiceCharge').dataset.sarValue = '0';
             document.getElementById('modalOfferPrice').value = '';
             document.getElementById('modalOfferPrice').dataset.sarValue = '0';
+            document.getElementById('modalOfferPrice').readOnly = false;
             document.getElementById('modalOfferPriceContainer').classList.add('hidden');
             filterModalTickets();
             document.getElementById('packageModal').classList.remove('hidden');
@@ -562,10 +563,12 @@
             
             if (ticketOption && ticketOption.dataset.ticketType === 'offer') {
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
+                document.getElementById('modalOfferPrice').readOnly = true;
             } else {
                 document.getElementById('modalOfferPriceContainer').classList.add('hidden');
                 document.getElementById('modalOfferPrice').value = '';
                 document.getElementById('modalOfferPrice').dataset.sarValue = '0';
+                document.getElementById('modalOfferPrice').readOnly = false;
             }
             
             document.getElementById('packageModal').classList.remove('hidden');
@@ -665,12 +668,14 @@
                 document.getElementById('modalRegularPrice').dataset.sarValue = regularSar.toFixed(6);
                 document.getElementById('modalOfferPrice').dataset.sarValue = offerSar.toFixed(6);
                 document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
+                document.getElementById('modalOfferPrice').readOnly = true;
             } else {
                 const regularSar = sellingFare + latestVisaPrice;
                 document.getElementById('modalRegularPrice').dataset.sarValue = regularSar.toFixed(6);
                 document.getElementById('modalOfferPrice').dataset.sarValue = '0';
                 document.getElementById('modalOfferPriceContainer').classList.add('hidden');
                 document.getElementById('modalOfferPrice').value = '';
+                document.getElementById('modalOfferPrice').readOnly = false;
             }
             syncInputCurrency();
             updateModalGross();
@@ -742,12 +747,15 @@
         function toggleModalOfferPriceField() {
             const ticketType = document.getElementById('modalTicketTypeSelect').value;
             const offerPriceContainer = document.getElementById('modalOfferPriceContainer');
+            const offerInput = document.getElementById('modalOfferPrice');
             
             if (ticketType === 'offer') {
                 offerPriceContainer.classList.remove('hidden');
+                offerInput.readOnly = true;
             } else {
                 offerPriceContainer.classList.add('hidden');
-                document.getElementById('modalOfferPrice').value = '';
+                offerInput.value = '';
+                offerInput.readOnly = false;
             }
         }
         </script>
