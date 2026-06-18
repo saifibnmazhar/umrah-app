@@ -521,7 +521,7 @@ class TicketFareController extends Controller
             $ticketFare->load([
                 'airline', 'airlineClass.class', 'route.fromCity', 'route.toCity', 'route.returnCity',
                 'route.multiSegments.fromCity', 'route.multiSegments.toCity',
-                'baggageAllowances',
+                'groupTicket', 'baggageAllowances',
             ]);
 
             return response()->json([

@@ -15,6 +15,7 @@ Alpine.store('currency', {
         this.mode = this.mode === 'SAR' ? 'BDT' : 'SAR'
         localStorage.setItem('currency_mode', this.mode)
         this.convertAll()
+        window.dispatchEvent(new CustomEvent('currency-toggled'))
     },
 
     format(amount, decimals = 2) {
