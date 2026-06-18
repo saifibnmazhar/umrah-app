@@ -22,15 +22,6 @@ $passengersVisaData = ($passengers ?? collect())->map(fn($p) => [
     ] : null,
 ])->values();
 
-$groupTickets = \App\Models\GroupTicket::with('ticketFare')->get()->map(fn($gt) => [
-    'id' => $gt->id,
-    'pnr' => $gt->pnr,
-    'date' => $gt->inbound_date?->format('Y-m-d') ?? $gt->outbound_date?->format('Y-m-d') ?? '',
-    'remainingSeats' => $gt->ticket_qty ?? 0,
-    'is_refundable' => $gt->is_refundable,
-    'is_exchangable' => $gt->is_exchangable,
-])->values();
-
 $ticketAgents = \App\Models\TicketAgent::orderBy('name')->get();
 
 $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])->get()->map(fn($r) => [
@@ -75,8 +66,11 @@ $ticketFaresList = \App\Models\TicketFare::with([
     'airline_classes_id' => $fare->airline_classes_id,
     'route_type' => $fare->route->route_type?->value,
     'flight_type' => $fare->route->flight_type?->value,
+    'group_ticket_id' => $fare->groupTicket?->id ?? null,
     'pnr' => $fare->groupTicket?->pnr ?? '',
     'ticket_qty' => $fare->groupTicket?->ticket_qty ?? null,
+    'is_refundable' => $fare->groupTicket?->is_refundable ?? null,
+    'is_exchangable' => $fare->groupTicket?->is_exchangable ?? null,
 ])->values();
 
 $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
@@ -665,16 +659,6 @@ if ($route) {
                     </select>
                 </div>
 
-                <div x-show="ticketFareForm.ticket_type === 'group'" class="mb-4">
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Group Ticket</label>
-                    <select x-model="ticketFareForm.group_ticket_id" @change="handleGroupTicketSelect()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                        <option value="">Select Ticket</option>
-                        <template x-for="gt in groupTickets" :key="gt.id">
-                            <option :value="gt.id" x-text="gt.pnr + ' • ' + gt.date + ' • ' + gt.remainingSeats + ' seats'"></option>
-                        </template>
-                    </select>
-                </div>
-
                 <div class="mb-4">
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Information</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -988,8 +972,6 @@ function bookingIndexApp() {
 
         passengersVisaData: @json($passengersVisaData),
         passengersTicketData: @json($passengersTicketData),
-
-        groupTickets: @json($groupTickets),
 
         ticketAgents: @json($ticketAgents),
 
@@ -1420,14 +1402,12 @@ function bookingIndexApp() {
                     lit.route_type === 'multi_city' ? 'Multi City' : ''
                 ) : (row.ticket_fare?.route_type || '');
                 this.ticketFareForm.flight_type = row.ticket_fare?.flight_type || '';
-                this.ticketFareForm.group_ticket_id = row.ticket_fare?.group_ticket_id || '';
                 this.ticketFareForm.route_id = row.ticket_fare?.route_id || '';
                 this.ticketFareForm.airline_id = row.ticket_fare?.airline_id || '';
             } else if (row.ticket_fare) {
                 this.ticketFareForm.ticket_type = row.ticket_fare.ticket_type || '';
                 this.ticketFareForm.route_type = row.ticket_fare.route_type || '';
                 this.ticketFareForm.flight_type = row.ticket_fare.flight_type || '';
-                this.ticketFareForm.group_ticket_id = row.ticket_fare.group_ticket_id || '';
                 this.ticketFareForm.inbound_date = row.ticket_fare.inbound_date || '';
                 this.ticketFareForm.outbound_date = row.ticket_fare.outbound_date || '';
                 this.ticketFareForm.pnr = row.ticket_fare.pnr || '';
@@ -1447,7 +1427,6 @@ function bookingIndexApp() {
                 this.ticketFareForm.ticket_type = '';
                 this.ticketFareForm.route_type = '';
                 this.ticketFareForm.flight_type = '';
-                this.ticketFareForm.group_ticket_id = '';
                 this.ticketFareForm.inbound_date = '';
                 this.ticketFareForm.outbound_date = '';
                 this.ticketFareForm.pnr = '';
@@ -1474,13 +1453,6 @@ function bookingIndexApp() {
                     this.handleTicketOptionChange();
                 }
 
-                if (row.ticket_fare.group_ticket_id && this.ticketFareForm.ticket_type === 'group') {
-                    const gt = this.groupTickets.find(g => g.id === row.ticket_fare.group_ticket_id);
-                    if (gt) {
-                        this.ticketFareForm.non_refundable = !gt.is_refundable;
-                        this.ticketFareForm.non_exchangeable = !gt.is_exchangable;
-                    }
-                }
             }
 
             this._initLock = false;
@@ -1544,15 +1516,6 @@ function bookingIndexApp() {
             this.suggestBaggage();
         },
 
-        handleGroupTicketSelect() {
-            const selectedId = this.ticketFareForm.group_ticket_id;
-            const selected = this.groupTickets.find(gt => gt.id === selectedId);
-            if (selected) {
-                this.ticketFareForm.pnr = selected.pnr;
-                this.ticketFareForm.date = selected.date;
-            }
-        },
-
         getAgentIdByName(name) {
             const agent = this.ticketAgents.find(a => a.name === name);
             return agent ? agent.id : null;
@@ -1571,7 +1534,6 @@ function bookingIndexApp() {
                 ticket_type: fare.ticket_type || 'regular',
                 route_type: route.route_type || '',
                 flight_type: route.flight_type || '',
-                group_ticket_id: ticket.group_ticket_id,
                 inbound_date: ticket.inbound_date || '',
                 outbound_date: ticket.outbound_date || '',
                 pnr: ticket.pnr || '',
@@ -1753,6 +1715,13 @@ function bookingIndexApp() {
                 this.ticketFareForm.route_id = fare.route_id;
                 this.ticketFareForm.airline_id = fare.airline_id;
 
+                this.ticketFareForm.group_ticket_id = fare.group_ticket_id || null;
+                this.ticketFareForm.pnr = fare.pnr || '';
+                if (fare.ticket_type === 'group' && fare.is_refundable !== null) {
+                    this.ticketFareForm.non_refundable = !fare.is_refundable;
+                    this.ticketFareForm.non_exchangeable = !fare.is_exchangable;
+                }
+
                 const row = this.passengersTicketData[this.editingPassengerIndex];
                 if (row?.ticket_fare && fare.id === row.ticket_fare.ticket_fare_id) {
                     const pType = row.passenger_type || 'adult';
@@ -1907,8 +1876,11 @@ function bookingIndexApp() {
                             airline_classes_id: fare.airline_classes_id,
                             route_type: fare.route?.route_type?.value || fare.route?.route_type || '',
                             flight_type: fare.route?.flight_type?.value || fare.route?.flight_type || '',
+                            group_ticket_id: fare.group_ticket?.id ?? null,
                             pnr: pnr,
                             ticket_qty: ticketQty,
+                            is_refundable: !this.newTicketFareForm.is_non_refundable,
+                            is_exchangable: !this.newTicketFareForm.is_non_exchangable,
                         });
                         this.ticketFareForm.ticket_option = fare.id;
                         this.handleTicketOptionChange();
