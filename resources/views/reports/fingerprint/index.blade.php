@@ -131,7 +131,6 @@
 
     <div class="bg-white border-x-2 border-b-2 border-gray-400 shadow-sm flex flex-col" style="max-height: calc(100vh - 280px);">
         <div class="overflow-auto flex-1 min-h-0">
-            <div class="overflow-x-auto">
             <table class="w-full min-w-[1800px] table-fixed">
                 <thead class="sticky top-0 z-10">
                     <tr class="bg-gray-100">
@@ -218,7 +217,6 @@
                     </template>
                 </tbody>
             </table>
-            </div>
         </div>
     </div>
 
