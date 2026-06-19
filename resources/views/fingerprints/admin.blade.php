@@ -52,6 +52,7 @@
                         <th class="px-3 py-2 text-left font-medium">PAX Qty</th>
                         <th class="px-3 py-2 text-left font-medium">Mobile</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Deadline</th>
+                        <th class="px-3 py-2 text-left font-medium">Reschedule Deadline</th>
                         <th class="px-3 py-2 text-right font-medium">Fingerprint Cost</th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Location</th>
                         <th class="px-3 py-2 text-left font-medium">District</th>
@@ -65,12 +66,12 @@
                 <tbody id="fingerprintAdminTableBody">
                     <template x-if="loading">
                         <tr>
-                            <td colspan="14" class="px-3 py-8 text-center text-slate-500">Loading...</td>
+                            <td colspan="15" class="px-3 py-8 text-center text-slate-500">Loading...</td>
                         </tr>
                     </template>
                     <template x-if="!loading && data.length === 0">
                         <tr>
-                            <td colspan="14" class="px-3 py-8 text-center text-slate-500">No fingerprint tasks found</td>
+                            <td colspan="15" class="px-3 py-8 text-center text-slate-500">No fingerprint tasks found</td>
                         </tr>
                     </template>
                     <template x-for="(row, rowIndex) in data" :key="row.fingerprint_detail_id || rowIndex">
@@ -83,6 +84,7 @@
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.pax_qty : ''"></td>
                             <td class="px-3 py-2 text-slate-600 whitespace-pre-line" x-text="(row.customer_mobile || '') + '\n' + (row.passenger_mobile || '')"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? (row.deadline || '-') : ''"></td>
+                            <td class="px-3 py-2 text-slate-600" x-text="row.reschedule_deadline || '-'"></td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">
                                 <span x-show="row._isFirstPassenger" x-text="row.cost != null && row.cost != '' ? $currency(row.cost) : 'N/A'"></span>
                             </td>
