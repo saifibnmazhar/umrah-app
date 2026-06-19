@@ -9,6 +9,7 @@ use App\Models\District;
 use App\Models\User;
 use App\Queries\FingerprintReportQuery;
 use App\Enums\FingerprintStatus;
+use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -67,6 +68,8 @@ class FingerprintReportController extends Controller
 
     public function print(Request $request): View
     {
+        $currency = $request->get('currency', 'SAR');
+
         $query = (new FingerprintReportQuery($request))->getQuery();
         $branchId = $this->getFingerprintBranchFilter();
         if ($branchId) {
@@ -79,7 +82,7 @@ class FingerprintReportController extends Controller
 
         $totals = $this->computeTotals($items);
 
-        return view('reports.fingerprint.print', compact('items', 'totals', 'canViewFinancials'));
+        return view('reports.fingerprint.print', compact('items', 'totals', 'canViewFinancials', 'currency'));
     }
 
     public function details(FingerprintDetail $fingerprintDetail): JsonResponse

@@ -534,6 +534,7 @@ function fingerprintReport(options = {}) {
             Object.entries(this.filters).forEach(([key, value]) => {
                 if (value) params.set(key, value);
             });
+            params.set('currency', Alpine.store('currency').mode);
             return `/reports/fingerprint/print?${params.toString()}`;
         },
 
