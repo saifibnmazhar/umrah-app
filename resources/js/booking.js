@@ -1582,18 +1582,8 @@ Alpine.data('createBookingApp', () => ({
     },
 
     getTicketDisplayText(ticket) {
-        const price = ticket.selling_fare ? Alpine.store('currency').format(ticket.selling_fare, 0) : '';
         const type = ticket.ticket_type.charAt(0).toUpperCase() + ticket.ticket_type.slice(1);
-        switch (ticket.ticket_type) {
-            case 'offer':
-                const offer = ticket.offer_price ? ' | ' + Alpine.store('currency').format(ticket.offer_price, 0) : '';
-                return `${ticket.route} | ${type} | ${price}${offer}`;
-            case 'group':
-                const seats = ticket.available_seats ? ' | ' + ticket.available_seats + ' seats' : '';
-                return `${ticket.route} | ${type} | ${price}${seats}`;
-            default:
-                return `${ticket.route} | ${type} | ${price}`;
-        }
+        return `${ticket.route} | ${type}`;
     },
 
     getPassengerFare(passenger) {
@@ -3372,19 +3362,9 @@ Alpine.data('editBookingApp', () => ({
     },
 
     getTicketDisplayText(ticket) {
-        const price = ticket.selling_fare ? Alpine.store('currency').format(ticket.selling_fare, 0) : '';
         const ticketType = ticket.ticket_type || 'standard';
         const type = ticketType.charAt(0).toUpperCase() + ticketType.slice(1);
-        switch (ticketType) {
-            case 'offer':
-                const offer = ticket.offer_price ? ' | ' + Alpine.store('currency').format(ticket.offer_price, 0) : '';
-                return `${ticket.route || ''} | ${type} | ${price}${offer}`;
-            case 'group':
-                const seats = ticket.available_seats ? ' | ' + ticket.available_seats + ' seats' : '';
-                return `${ticket.route || ''} | ${type} | ${price}${seats}`;
-            default:
-                return `${ticket.route || ''} | ${type} | ${price}`;
-        }
+        return `${ticket.route || ''} | ${type}`;
     },
 
     getPassengerFare(passenger) {
@@ -4137,19 +4117,9 @@ Alpine.data('showBookingApp', () => ({
     },
 
     getTicketDisplayText(ticket) {
-        const price = ticket.selling_fare ? Alpine.store('currency').format(ticket.selling_fare, 0) : '';
         const ticketType = ticket.ticket_type || 'standard';
         const type = ticketType.charAt(0).toUpperCase() + ticketType.slice(1);
-        switch (ticketType) {
-            case 'offer':
-                const offer = ticket.offer_price ? ' | ' + Alpine.store('currency').format(ticket.offer_price, 0) : '';
-                return `${ticket.route || ''} | ${type} | ${price}${offer}`;
-            case 'group':
-                const seats = ticket.available_seats ? ' | ' + ticket.available_seats + ' seats' : '';
-                return `${ticket.route || ''} | ${type} | ${price}${seats}`;
-            default:
-                return `${ticket.route || ''} | ${type} | ${price}`;
-        }
+        return `${ticket.route || ''} | ${type}`;
     },
 
     recalculateCurrentPassenger(index) {
