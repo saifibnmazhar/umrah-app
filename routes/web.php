@@ -64,9 +64,9 @@ Route::middleware('auth')->group(function () {
     Route::resource('classes', TravelClassController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('airline-classes', AirlineClassController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('airline-cities', AirlineCityController::class)->middleware('role:Super Admin,Co Admin');
-    Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index')->middleware('role:Super Admin,Co Admin');
+    Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index')->middleware('role:Super Admin,Co Admin,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
     Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create')->middleware('role:Super Admin,Co Admin');
-    Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
+    Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
     Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit')->middleware('role:Super Admin,Co Admin');
     Route::match(['PUT', 'PATCH'], '/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update')->middleware('role:Super Admin,Co Admin');
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy')->middleware('role:Super Admin,Co Admin');
@@ -106,8 +106,8 @@ Route::middleware('auth')->group(function () {
     Route::delete('/passengers/{passenger}/documents/{document}', [PassengerController::class, 'destroyDocument'])->name('passengers.documents.destroy')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
 
     // Booking-specific routes
-    Route::post('/bookings/{booking}/passengers', [BookingController::class, 'addPassenger'])->name('bookings.passengers.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
-    Route::delete('/bookings/{booking}/passengers/{passenger}', [BookingController::class, 'removePassenger'])->name('bookings.passengers.destroy')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff');
+    Route::post('/bookings/{booking}/passengers', [BookingController::class, 'addPassenger'])->name('bookings.passengers.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
+    Route::delete('/bookings/{booking}/passengers/{passenger}', [BookingController::class, 'removePassenger'])->name('bookings.passengers.destroy')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
     Route::get('/bookings/{booking}/print', [BookingController::class, 'print'])->name('bookings.print')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
     Route::patch('/bookings/{booking}/passengers/{passenger}/recalculate', [BookingController::class, 'recalculatePassengerValue'])->name('bookings.passengers.recalculate')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
     Route::patch('/bookings/{booking}/fingerprint-location', [BookingController::class, 'updateFingerprintLocation'])->name('bookings.fingerprint-location.update')->middleware('role:Super Admin,Co Admin');
