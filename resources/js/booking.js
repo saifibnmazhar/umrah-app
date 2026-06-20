@@ -659,7 +659,7 @@ customDurationModalVisible: false,
         const sarAmount = parseFloat(this.paymentData.amount_sar) || 0;
         
         if (sarAmount > 0 && this.exchangeRate > 0) {
-            const convertedBdt = (sarAmount * this.exchangeRate).toFixed(2);
+            const convertedBdt = (sarAmount * this.exchangeRate).toFixed(6);
             this.paymentData.amount_bdt = convertedBdt;
         } else {
             this.paymentData.amount_bdt = '';
@@ -670,7 +670,7 @@ customDurationModalVisible: false,
         const bdtAmount = parseFloat(this.paymentData.amount_bdt) || 0;
         
         if (bdtAmount > 0 && this.exchangeRate > 0) {
-            const convertedSar = (bdtAmount / this.exchangeRate).toFixed(2);
+            const convertedSar = (bdtAmount / this.exchangeRate).toFixed(6);
             this.paymentData.amount_sar = convertedSar;
         } else if (bdtAmount > 0 && this.exchangeRate <= 0) {
             this.paymentData.amount_sar = '';
@@ -679,13 +679,13 @@ customDurationModalVisible: false,
 
     convertSarToBdt() {
         if (this.paymentData.currency === 'SAR' && this.paymentData.amount_sar && this.exchangeRate > 0) {
-            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(2);
+            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(6);
         }
     },
 
     convertBdtToSar() {
         if (this.paymentData.currency === 'BDT' && this.paymentData.amount_bdt && this.exchangeRate > 0) {
-            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(2);
+            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(6);
         }
     },
 
@@ -963,23 +963,23 @@ Alpine.data('createBookingApp', () => ({
     },
     get fingerprintChargeBDT() {
         const rate = this.exchangeRateValue;
-        return rate > 0 ? (parseFloat(this.fingerprintCharge || 0) * rate).toFixed(2) : '0.00';
+        return rate > 0 ? (parseFloat(this.fingerprintCharge || 0) * rate).toFixed(6) : '0.00';
     },
     get grandTotalValueBDT() {
         const rate = this.exchangeRateValue;
-        return rate > 0 && this.grandTotalValue > 0 ? (this.grandTotalValue * rate).toFixed(2) : '0.00';
+        return rate > 0 && this.grandTotalValue > 0 ? (this.grandTotalValue * rate).toFixed(6) : '0.00';
     },
     get discountedTotalBDT() {
         const rate = this.exchangeRateValue;
         if (rate <= 0) return null;
         const dt = this.discountedTotal;
-        return dt !== null ? (dt * rate).toFixed(2) : null;
+        return dt !== null ? (dt * rate).toFixed(6) : null;
     },
     get discountAmountBDT() {
         const rate = this.exchangeRateValue;
         if (rate <= 0 || this.bookingData.discount_type !== 'fixed') return null;
         const dv = parseFloat(this.bookingData.discount_value) || 0;
-        return dv > 0 ? (dv * rate).toFixed(2) : null;
+        return dv > 0 ? (dv * rate).toFixed(6) : null;
     },
 
     serviceLabel(value) {
@@ -2033,7 +2033,7 @@ Alpine.data('createBookingApp', () => ({
         const sarAmount = parseFloat(this.paymentData.amount_sar) || 0;
         
         if (sarAmount > 0 && this.exchangeRate > 0) {
-            const convertedBdt = (sarAmount * this.exchangeRate).toFixed(2);
+            const convertedBdt = (sarAmount * this.exchangeRate).toFixed(6);
             this.paymentData.amount_bdt = convertedBdt;
         } else {
             this.paymentData.amount_bdt = '';
@@ -2044,7 +2044,7 @@ Alpine.data('createBookingApp', () => ({
         const bdtAmount = parseFloat(this.paymentData.amount_bdt) || 0;
         
         if (bdtAmount > 0 && this.exchangeRate > 0) {
-            const convertedSar = (bdtAmount / this.exchangeRate).toFixed(2);
+            const convertedSar = (bdtAmount / this.exchangeRate).toFixed(6);
             this.paymentData.amount_sar = convertedSar;
         } else if (bdtAmount > 0 && this.exchangeRate <= 0) {
             this.paymentData.amount_sar = '';
@@ -2054,13 +2054,13 @@ Alpine.data('createBookingApp', () => ({
     handlePaymentMethodChange() {},
     convertSarToBdt() {
         if (this.paymentData.currency === 'SAR' && this.paymentData.amount_sar && this.exchangeRate > 0) {
-            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(2);
+            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(6);
         }
     },
 
     convertBdtToSar() {
         if (this.paymentData.currency === 'BDT' && this.paymentData.amount_bdt && this.exchangeRate > 0) {
-            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(2);
+            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(6);
         }
     },
 
@@ -2385,23 +2385,23 @@ Alpine.data('editBookingApp', () => ({
     },
     get fingerprintChargeBDT() {
         const rate = this.exchangeRateValue;
-        return rate > 0 ? (parseFloat(this.fingerprintCharge || 0) * rate).toFixed(2) : '0.00';
+        return rate > 0 ? (parseFloat(this.fingerprintCharge || 0) * rate).toFixed(6) : '0.00';
     },
     get grandTotalValueBDT() {
         const rate = this.exchangeRateValue;
-        return rate > 0 && this.grandTotalValue > 0 ? (this.grandTotalValue * rate).toFixed(2) : '0.00';
+        return rate > 0 && this.grandTotalValue > 0 ? (this.grandTotalValue * rate).toFixed(6) : '0.00';
     },
     get discountedTotalBDT() {
         const rate = this.exchangeRateValue;
         if (rate <= 0) return null;
         const dt = this.discountedTotal;
-        return dt !== null ? (dt * rate).toFixed(2) : null;
+        return dt !== null ? (dt * rate).toFixed(6) : null;
     },
     get discountAmountBDT() {
         const rate = this.exchangeRateValue;
         if (rate <= 0 || this.bookingData.discount_type !== 'fixed') return null;
         const dv = parseFloat(this.bookingData.discount_value) || 0;
-        return dv > 0 ? (dv * rate).toFixed(2) : null;
+        return dv > 0 ? (dv * rate).toFixed(6) : null;
     },
 
     serviceLabel(value) {
@@ -3139,21 +3139,21 @@ Alpine.data('editBookingApp', () => ({
 
     handlePaymentCurrencyChange() {
         if (this.paymentData.currency === 'BDT' && this.paymentData.amount_sar && this.exchangeRate > 0) {
-            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(2);
+            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(6);
         } else if (this.paymentData.currency === 'SAR' && this.paymentData.amount_bdt && this.exchangeRate > 0) {
-            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(2);
+            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(6);
         }
     },
 
     convertSarToBdt() {
         if (this.paymentData.currency === 'SAR' && this.paymentData.amount_sar && this.exchangeRate > 0) {
-            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(2);
+            this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(6);
         }
     },
 
     convertBdtToSar() {
         if (this.paymentData.currency === 'BDT' && this.paymentData.amount_bdt && this.exchangeRate > 0) {
-            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(2);
+            this.paymentData.amount_sar = (parseFloat(this.paymentData.amount_bdt) / this.exchangeRate).toFixed(6);
         }
     },
 
@@ -4237,7 +4237,7 @@ Alpine.data('showBookingApp', () => ({
     handleSarAmountInput() {
         const sarAmount = parseFloat(this.paymentData.amount_sar) || 0;
         if (sarAmount > 0 && this.exchangeRate > 0) {
-            this.paymentData.amount_bdt = (sarAmount * this.exchangeRate).toFixed(2);
+            this.paymentData.amount_bdt = (sarAmount * this.exchangeRate).toFixed(6);
         } else {
             this.paymentData.amount_bdt = '';
         }
@@ -4246,7 +4246,7 @@ Alpine.data('showBookingApp', () => ({
     handleBdtAmountInput() {
         const bdtAmount = parseFloat(this.paymentData.amount_bdt) || 0;
         if (bdtAmount > 0 && this.exchangeRate > 0) {
-            this.paymentData.amount_sar = (bdtAmount / this.exchangeRate).toFixed(2);
+            this.paymentData.amount_sar = (bdtAmount / this.exchangeRate).toFixed(6);
         } else if (bdtAmount > 0 && this.exchangeRate <= 0) {
             this.paymentData.amount_sar = '';
         }
