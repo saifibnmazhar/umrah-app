@@ -173,11 +173,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     <div class="flex justify-between items-center mb-6">
         @php
             $canCreateBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff', 'Auditor', 'Visa Admin', 'Visa Staff', 'Ticket Admin', 'Ticket Staff', 'Fingerprint Admin', 'Fingerprint Staff'])->isNotEmpty();
-            $canViewFinancialColumns = true;
+            $canViewFinancialColumns = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
+            $canViewVisaColumns = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
+            $canViewTicketFareColumn = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
             $canEditInline = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
-            $isVisaPersonnel = false;
-            $isTicketPersonnel = false;
-            $isBranchPersonnel = false;
             $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             $canViewActionColumn = true;
             $canViewPassengerIndex = true;
@@ -311,10 +310,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
-                            @if(!$isTicketPersonnel && !$isBranchPersonnel)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
-                            @if(!$isTicketPersonnel && !$isBranchPersonnel)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
+                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
+                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
-                            @if(!$isVisaPersonnel && !$isBranchPersonnel)<th class="px-3 py-2 text-left font-medium">Ticket Fare</th>@endif
+                            @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Fare</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
@@ -384,7 +383,7 @@ if ($route) {
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice?->balance)@currency($passenger->booking->invoice->balance, 2)@else—@endif @endif</td>@endif
-    @if(!$isTicketPersonnel && !$isBranchPersonnel)
+    @if($canViewVisaColumns)
     <td class="px-3 py-2">
         <div class="flex items-center gap-1 flex-wrap">
             <template x-if="passengersVisaData[{{ $loop->index }}]?.visa">
@@ -433,7 +432,7 @@ if ($route) {
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">N/A</span>
         </template>
     </td>
-    @if(!$isVisaPersonnel && !$isBranchPersonnel)
+    @if($canViewTicketFareColumn)
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 flex-wrap">
             <span class="font-medium text-sm">@if($fareAmount > 0)@currency($fareAmount, 2)@else—@endif</span>
@@ -481,7 +480,7 @@ if ($route) {
 </tr>
 @empty
 <tr>
-    <td colspan="{{ 16 + ($canViewFinancialColumns ? 4 : 0) + (($isTicketPersonnel || $isBranchPersonnel) ? 0 : 2) + (($isVisaPersonnel || $isBranchPersonnel) ? 0 : 1) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="{{ 16 + ($canViewFinancialColumns ? 4 : 0) + ($canViewVisaColumns ? 2 : 0) + ($canViewTicketFareColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 @endforelse
                     </tbody>
                 </table>
