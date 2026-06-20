@@ -30,6 +30,7 @@
                         <th class="px-4 py-3 text-left">Name</th>
                         <th class="px-4 py-3 text-left">Description</th>
                         <th class="px-4 py-3 text-left">Currency</th>
+                        <th class="px-4 py-3 text-left">Location</th>
                         <th class="px-4 py-3 text-right">Actions</th>
                     </tr>
                 </thead>
@@ -42,6 +43,13 @@
                             <td class="px-4 py-3">
                                 @if($bank->currency)
                                     <span class="text-slate-700">{{ $bank->currency->value }}</span>
+                                @else
+                                    <span class="text-slate-400 italic text-xs">Not Set</span>
+                                @endif
+                            </td>
+                            <td class="px-4 py-3">
+                                @if($bank->location)
+                                    <span class="text-slate-700">{{ $bank->location->value }}</span>
                                 @else
                                     <span class="text-slate-400 italic text-xs">Not Set</span>
                                 @endif
@@ -59,7 +67,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-4 py-12 text-center text-slate-500">
+                            <td colspan="6" class="px-4 py-12 text-center text-slate-500">
                                 No banks found.
                             </td>
                         </tr>
