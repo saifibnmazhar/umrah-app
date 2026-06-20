@@ -21,9 +21,9 @@ class Invoice extends Model
     ];
 
     protected $casts = [
-        'total_amount' => 'decimal:2',
-        'paid_amount' => 'decimal:2',
-        'balance' => 'decimal:2',
+        'total_amount' => 'decimal:6',
+        'paid_amount' => 'decimal:6',
+        'balance' => 'decimal:6',
         'status' => InvoiceStatus::class,
     ];
 

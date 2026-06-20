@@ -18,9 +18,9 @@ class Package extends Model
     ];
 
     protected $casts = [
-        'regular_price' => 'decimal:2',
-        'offer_price' => 'decimal:2',
-        'service_charge' => 'decimal:2',
+        'regular_price' => 'decimal:6',
+        'offer_price' => 'decimal:6',
+        'service_charge' => 'decimal:6',
     ];
 
     protected $appends = ['is_locked'];
