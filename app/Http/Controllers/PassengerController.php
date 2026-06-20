@@ -26,6 +26,13 @@ class PassengerController extends Controller
         private InvoiceService $invoiceService,
     ) {}
 
+    private function ensureBranchAccess(Passenger $passenger): void
+    {
+        if (auth()->user()->branch_id && auth()->user()->branch_id !== $passenger->booking->booking_branch_id) {
+            abort(403);
+        }
+    }
+
     private function authorizeFingerprintAccess(Passenger $passenger): void
     {
         $user = auth()->user();
@@ -39,6 +46,7 @@ class PassengerController extends Controller
 
     public function show(Passenger $passenger)
     {
+        $this->ensureBranchAccess($passenger);
         $this->authorizeFingerprintAccess($passenger);
 
         $passenger->load([
@@ -189,6 +197,7 @@ class PassengerController extends Controller
 
     public function edit(Passenger $passenger)
     {
+        $this->ensureBranchAccess($passenger);
         $this->authorizeFingerprintAccess($passenger);
 
         $passenger->load([

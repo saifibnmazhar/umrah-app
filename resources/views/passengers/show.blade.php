@@ -2,9 +2,8 @@
 @section('title', 'Passenger Details')
 @section('content')
 @php
-    $isVisaPersonnel = auth()->user()->roles->pluck('name')->intersect(['Visa Admin', 'Visa Staff'])->isNotEmpty();
-    $isTicketPersonnel = auth()->user()->roles->pluck('name')->intersect(['Ticket Admin', 'Ticket Staff'])->isNotEmpty();
-    $isBranchPersonnel = auth()->user()->roles->pluck('name')->intersect(['Branch Manager', 'Branch Staff'])->isNotEmpty();
+    $canViewFinancialSection = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
+    $canViewVisaSection = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
     $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
 @endphp
 <div class="max-w-5xl mx-auto pt-6">
@@ -123,22 +122,19 @@
                     </div>
                 </div>
 
+                @if($canViewFinancialSection)
                 <div class="bg-slate-50 rounded-lg p-4">
                     <h3 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Financial Details</h3>
                     <div class="space-y-3">
                         <div class="grid grid-cols-2 gap-3">
-                            @if(!$isVisaPersonnel)
                             <div>
                                 <span class="text-xs text-slate-400">Ticket Fare (SAR)</span>
                                 <p class="text-slate-800 font-medium">@currency($ticketFare, 2)</p>
                             </div>
-                            @endif
-                            @if(!$isTicketPersonnel)
                             <div>
                                 <span class="text-xs text-slate-400">Visa Price (SAR)</span>
                                 <p class="text-slate-800 font-medium">@currency($visaCost, 2)</p>
                             </div>
-                            @endif
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
@@ -158,6 +154,7 @@
                         </div>
                     </div>
                 </div>
+                @endif
 
                 <div class="bg-slate-50 rounded-lg p-4 md:col-span-2">
                     <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
@@ -201,7 +198,7 @@
                 </div>
             </div>
 
-            @if(!$isTicketPersonnel && !$isBranchPersonnel)
+            @if($canViewVisaSection)
             {{-- Visa Submission History --}}
             <div class="mt-6 pt-4 border-t border-slate-200">
                 <div class="bg-white rounded-xl shadow-lg p-6">
@@ -290,7 +287,7 @@
 .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
 </style>
 
-@if(!$isTicketPersonnel && !$isBranchPersonnel)
+@if($canViewVisaSection)
 <div id="cancellationModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
     <div class="modal-overlay absolute inset-0 bg-black/50" onclick="closeCancellationModal()"></div>
     <div class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
