@@ -17,7 +17,9 @@
         <div class="bg-white rounded-xl shadow-lg p-6">
             @php
                 $canEditBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
-                $isVisaPersonnel = auth()->user()->roles->pluck('name')->intersect(['Visa Admin', 'Visa Staff'])->isNotEmpty();
+                $canViewRequestButtons = auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
+                $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
+                $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             @endphp
         <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
                 <div class="flex items-center gap-3">
@@ -89,9 +91,11 @@
                 </div>
             </div>
             <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
+                @if($canApplyDiscount)
                 <button type="button" onclick="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">
                     Discount
                 </button>
+                @endif
 </div>
         </div>
 
@@ -122,9 +126,7 @@
             </div>
             
             <div class="flex justify-end mt-4">
-                @if($canEditBooking)
                 <button @click="openPassengerModal()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
-                @endif
             </div>
         </div>
 
@@ -148,7 +150,12 @@
                     @forelse($allCustomerDocs as $doc)
                     <div class="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200">
                         <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
-                        <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
+                        <div class="flex gap-2">
+                            @if($canDeleteDocument)
+                            <button onclick="deleteDocument({{ $doc->id }})" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
+                            @endif
+                            <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
+                        </div>
                     </div>
                     @empty
                     <p class="text-sm text-slate-400">No customer documents</p>
@@ -167,7 +174,12 @@
                     @forelse($booking->passengers->flatMap->documents as $doc)
                     <div class="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200">
                         <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
-                        <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
+                        <div class="flex gap-2">
+                            @if($canDeleteDocument)
+                            <button onclick="deleteDocument({{ $doc->id }})" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
+                            @endif
+                            <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
+                        </div>
                     </div>
                     @empty
                     <p class="text-sm text-slate-400">No passenger documents</p>
@@ -178,7 +190,7 @@
 
         {{-- Action Buttons Row --}}
         <div class="flex justify-end gap-3 mt-8">
-            @if(!$isVisaPersonnel)
+            @if($canViewRequestButtons)
             <button onclick="openReIssueModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                 Request Re-Issue
             </button>
@@ -203,7 +215,7 @@
                 <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
                     Payment History
                 </button>
-                @if(!$isVisaPersonnel)
+                @if($canViewRequestButtons)
                 <button onclick="switchTab('reissue')" id="tab-reissue" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
                     Re-issue History
                 </button>
@@ -250,7 +262,7 @@
             </div>
         </div>
 
-        @if(!$isVisaPersonnel)
+        @if($canViewRequestButtons)
         {{-- Re-issue History Tab --}}
         <div id="content-reissue" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Re-issue History</h3>
@@ -443,7 +455,7 @@
     </div>
 </div>
 
-@if(!$isVisaPersonnel)
+@if($canViewRequestButtons)
 {{-- Request Re-Issue Modal --}}
 <div id="reIssueModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
     <div class="fixed inset-0 bg-black/50" onclick="closeReIssueModal()"></div>
@@ -643,6 +655,7 @@
 </div>
 @endif
 
+@if($canApplyDiscount)
 {{-- Discount Modal --}}
 <div id="discountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center"
     data-discount-type="{{ $booking->discount_type?->value ?? 'fixed' }}"
@@ -686,6 +699,7 @@
         </div>
     </div>
 </div>
+@endif
 
 {{-- Toast Container --}}
 <div id="toastContainer" class="fixed top-4 right-4 z-[70] space-y-2"></div>
@@ -1506,7 +1520,8 @@ function handleCustomerDocSelect(event) {
             data.documents.forEach(doc => {
                 const item = document.createElement('div');
                 item.className = 'flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200';
-                item.innerHTML = '<span class="text-sm text-slate-700 truncate">' + (doc.display_name || 'Document') + '</span><button onclick="downloadDoc(' + doc.id + ')" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>';
+                var deleteBtn = {{ $canDeleteDocument ? 'true' : 'false' }} ? '<button onclick="deleteDocument(' + doc.id + ')" class="text-red-500 hover:text-red-700 text-xs mr-2">Delete</button>' : '';
+                item.innerHTML = '<span class="text-sm text-slate-700 truncate">' + (doc.display_name || 'Document') + '</span><div class="flex gap-2">' + deleteBtn + '<button onclick="downloadDoc(' + doc.id + ')" class="text-blue-600 hover:text-blue-800 text-xs">Download</button></div>';
                 list.appendChild(item);
             });
             input.value = '';
@@ -1525,6 +1540,29 @@ function downloadAllCustomerDocs() {
 
 function downloadAllPassengerDocs() {
     window.location.href = '{{ route('bookings.download-all-docs', ['booking' => $booking->id, 'scope' => 'passenger']) }}';
+}
+
+function deleteDocument(docId) {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+
+    fetch('/documents/' + docId, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Document deleted successfully');
+            const list = document.getElementById('customerDocumentsList');
+            const docItem = document.querySelector(`button[onclick*="deleteDocument(${docId})"]`)?.closest('.flex.justify-between');
+            if (docItem) docItem.remove();
+        } else {
+            showToast('Failed to delete document', 'error');
+        }
+    })
+    .catch(() => showToast('Failed to delete document', 'error'));
 }
 
 function downloadDoc(docId) {
