@@ -117,7 +117,7 @@ class BookingController extends Controller
         $tab = $request->get('tab', 'booking');
         
         $bookings = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'invoice', 'district', 'package'])
-            ->when($this->isBranchScoped(), fn ($q) =>
+            ->when(auth()->user()->branch_id, fn ($q) =>
                 $q->where('booking_branch_id', auth()->user()->branch_id)
             )
             ->orderBy('created_at', 'desc')

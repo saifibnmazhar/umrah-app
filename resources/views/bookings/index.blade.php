@@ -172,13 +172,14 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 <div class="w-full mx-auto" x-data="bookingIndexApp()">
     <div class="flex justify-between items-center mb-6">
         @php
-            $canCreateBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
+            $canCreateBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff', 'Auditor', 'Visa Admin', 'Visa Staff', 'Ticket Admin', 'Ticket Staff', 'Fingerprint Admin', 'Fingerprint Staff'])->isNotEmpty();
             $canViewFinancialColumns = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
             $canEditInline = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             $isVisaPersonnel = auth()->user()->roles->pluck('name')->intersect(['Visa Admin', 'Visa Staff'])->isNotEmpty();
             $isTicketPersonnel = auth()->user()->roles->pluck('name')->intersect(['Ticket Admin', 'Ticket Staff'])->isNotEmpty();
             $isBranchPersonnel = auth()->user()->roles->pluck('name')->intersect(['Branch Manager', 'Branch Staff'])->isNotEmpty();
-            $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager'])->isNotEmpty();
+            $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
+            $canViewActionColumn = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
         @endphp
         <h1 class="text-2xl font-bold text-slate-800">Booking</h1>
         @if($canCreateBooking)
@@ -229,7 +230,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Paid</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
-                            <th class="px-3 py-2 text-left font-medium">Actions</th>
+                            @if($canViewActionColumn)<th class="px-3 py-2 text-left font-medium">Actions</th>@endif
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
@@ -259,6 +260,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->total_amount ?? 0)</td>@endif
                             @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->paid_amount ?? 0)</td>@endif
                             @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->balance ?? 0)</td>@endif
+                            @if($canViewActionColumn)
                             <td class="px-3 py-2">
                                 <a href="{{ route('bookings.show', $booking->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
                                 @if($canDeleteBooking)
@@ -269,10 +271,11 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                                 </form>
                                 @endif
                             </td>
+                            @endif
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="{{ $canViewFinancialColumns ? 13 : 10 }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
+                            <td colspan="{{ 9 + ($canViewFinancialColumns ? 3 : 0) + ($canViewActionColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
                         </tr>
                         @endforelse
                     </tbody>
