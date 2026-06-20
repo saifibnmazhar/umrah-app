@@ -34,7 +34,7 @@ class FareAdminController extends Controller
             });
         }
 
-        $ticketFares = $ticketFaresQuery->orderBy('id')->paginate(15)->withQueryString();
+        $ticketFares = $ticketFaresQuery->orderBy('id', 'desc')->paginate(15)->withQueryString();
         
         $routesQuery = Route::with(['airline', 'fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity']);
         
