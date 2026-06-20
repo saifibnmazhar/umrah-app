@@ -101,9 +101,9 @@ Route::middleware('auth')->group(function () {
     Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy')->middleware('role:Super Admin,Co Admin');
     Route::resource('passengers', PassengerController::class)->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
     Route::patch('/passengers/{passenger}/status', [PassengerController::class, 'updateStatus'])->name('passengers.update-status')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
-    Route::post('/passengers/{passenger}/documents', [PassengerController::class, 'uploadDocument'])->name('passengers.documents.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
-    Route::get('/passengers/{passenger}/documents/{document}/download', [PassengerController::class, 'downloadDocument'])->name('passengers.documents.download')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
-    Route::delete('/passengers/{passenger}/documents/{document}', [PassengerController::class, 'destroyDocument'])->name('passengers.documents.destroy')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
+    Route::post('/passengers/{passenger}/documents', [PassengerController::class, 'uploadDocument'])->name('passengers.documents.store');
+    Route::get('/passengers/{passenger}/documents/{document}/download', [PassengerController::class, 'downloadDocument'])->name('passengers.documents.download');
+    Route::delete('/passengers/{passenger}/documents/{document}', [PassengerController::class, 'destroyDocument'])->name('passengers.documents.destroy')->middleware('role:Super Admin,Co Admin');
 
     // Booking-specific routes
     Route::post('/bookings/{booking}/passengers', [BookingController::class, 'addPassenger'])->name('bookings.passengers.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
@@ -135,6 +135,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/documents/upload', [DocumentController::class, 'upload'])->name('documents.upload');
     Route::get('/documents/{document}/download', [DocumentController::class, 'download'])->name('documents.download');
     Route::post('/documents/passenger/upload', [DocumentController::class, 'uploadPassenger'])->name('documents.passenger.upload');
+    Route::delete('/documents/{document}', [DocumentController::class, 'destroy'])->name('documents.destroy')->middleware('role:Super Admin,Co Admin');
 
     // API routes
     Route::post('/api/bookings/calculate-type', [BookingController::class, 'calculatePassengerType'])->name('api.bookings.calculate-type');

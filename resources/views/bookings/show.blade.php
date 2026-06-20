@@ -18,6 +18,7 @@
             @php
                 $canEditBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
                 $canViewRequestButtons = auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
+                $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             @endphp
         <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
                 <div class="flex items-center gap-3">
@@ -148,7 +149,12 @@
                     @forelse($allCustomerDocs as $doc)
                     <div class="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200">
                         <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
-                        <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
+                        <div class="flex gap-2">
+                            @if($canDeleteDocument)
+                            <button onclick="deleteDocument({{ $doc->id }})" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
+                            @endif
+                            <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
+                        </div>
                     </div>
                     @empty
                     <p class="text-sm text-slate-400">No customer documents</p>
@@ -167,7 +173,12 @@
                     @forelse($booking->passengers->flatMap->documents as $doc)
                     <div class="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200">
                         <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
-                        <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
+                        <div class="flex gap-2">
+                            @if($canDeleteDocument)
+                            <button onclick="deleteDocument({{ $doc->id }})" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
+                            @endif
+                            <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
+                        </div>
                     </div>
                     @empty
                     <p class="text-sm text-slate-400">No passenger documents</p>
@@ -1506,7 +1517,8 @@ function handleCustomerDocSelect(event) {
             data.documents.forEach(doc => {
                 const item = document.createElement('div');
                 item.className = 'flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200';
-                item.innerHTML = '<span class="text-sm text-slate-700 truncate">' + (doc.display_name || 'Document') + '</span><button onclick="downloadDoc(' + doc.id + ')" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>';
+                var deleteBtn = {{ $canDeleteDocument ? 'true' : 'false' }} ? '<button onclick="deleteDocument(' + doc.id + ')" class="text-red-500 hover:text-red-700 text-xs mr-2">Delete</button>' : '';
+                item.innerHTML = '<span class="text-sm text-slate-700 truncate">' + (doc.display_name || 'Document') + '</span><div class="flex gap-2">' + deleteBtn + '<button onclick="downloadDoc(' + doc.id + ')" class="text-blue-600 hover:text-blue-800 text-xs">Download</button></div>';
                 list.appendChild(item);
             });
             input.value = '';
@@ -1525,6 +1537,29 @@ function downloadAllCustomerDocs() {
 
 function downloadAllPassengerDocs() {
     window.location.href = '{{ route('bookings.download-all-docs', ['booking' => $booking->id, 'scope' => 'passenger']) }}';
+}
+
+function deleteDocument(docId) {
+    if (!confirm('Are you sure you want to delete this document?')) return;
+
+    fetch('/documents/' + docId, {
+        method: 'DELETE',
+        headers: {
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+        }
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Document deleted successfully');
+            const list = document.getElementById('customerDocumentsList');
+            const docItem = document.querySelector(`button[onclick*="deleteDocument(${docId})"]`)?.closest('.flex.justify-between');
+            if (docItem) docItem.remove();
+        } else {
+            showToast('Failed to delete document', 'error');
+        }
+    })
+    .catch(() => showToast('Failed to delete document', 'error'));
 }
 
 function downloadDoc(docId) {

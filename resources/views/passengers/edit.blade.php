@@ -188,46 +188,6 @@
                 </div>
             </div>
 
-            <div class="mb-6">
-                <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Documents</h4>
-                <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:border-slate-400 transition cursor-pointer" onclick="document.getElementById('edit_passenger_doc_input').click()">
-                    <input type="file" id="edit_passenger_doc_input" class="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="handleEditPassengerDocUpload(this)">
-                    <div class="text-slate-500">
-                        <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
-                        </svg>
-                        <p class="text-sm text-slate-600">Click to upload documents</p>
-                        <p class="text-xs text-slate-400">PDF, JPG, PNG</p>
-                    </div>
-                </div>
-                <div id="edit_passenger_docs_list" class="mt-3 space-y-2">
-                    @forelse($passenger->documents as $doc)
-                    <div class="flex items-center justify-between bg-white rounded px-3 py-2 border border-slate-200">
-                        <div class="flex items-center gap-2">
-                            <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4 text-slate-500" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />
-                            </svg>
-                            <span class="text-sm text-slate-700">{{ $doc->display_name }}</span>
-                        </div>
-                        <div class="flex items-center gap-2">
-                            <a href="{{ route('passengers.documents.download', ['passenger' => $passenger->id, 'document' => $doc->id]) }}" class="text-blue-500 hover:text-blue-700">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
-                                </svg>
-                            </a>
-                            <button onclick="deleteEditPassengerDoc({{ $doc->id }})" class="text-red-500 hover:text-red-700">
-                                <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
-                                </svg>
-                            </button>
-                        </div>
-                    </div>
-                    @empty
-                    <p class="text-sm text-slate-400">No documents uploaded</p>
-                    @endforelse
-                </div>
-            </div>
-
             <div class="flex gap-3 pt-4 border-t border-slate-200">
                 <button type="submit" class="flex-1 px-6 py-2 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium flex items-center justify-center gap-1.5">
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">

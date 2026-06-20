@@ -87,4 +87,18 @@ class DocumentController extends Controller
             'documents' => $uploadedDocs,
         ]);
     }
+
+    public function destroy(Document $document)
+    {
+        if (Storage::disk('public')->exists($document->file_path)) {
+            Storage::disk('public')->delete($document->file_path);
+        }
+
+        $document->delete();
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Document deleted successfully',
+        ]);
+    }
 }
