@@ -78,7 +78,7 @@ class BookingController extends Controller
 
     private function ensureBranchAccess(Booking $booking): void
     {
-        if ($this->isBranchScoped() && auth()->user()->branch_id !== $booking->booking_branch_id) {
+        if (auth()->user()->branch_id && auth()->user()->branch_id !== $booking->booking_branch_id) {
             abort(403);
         }
     }
@@ -125,23 +125,29 @@ class BookingController extends Controller
             ->appends(['tab' => $tab])
             ->withQueryString();
 
-        $passengers = Passenger::approvedFingerprint()->with([
-            'booking',
-            'booking.customer',
-            'booking.package.ticketFare.route',
-            'booking.invoice',
-            'ticketFare.route',
-            'status',
-            'visaSubmission.visaAgent',
-            'visaSubmission.visaSellingPrice',
-            'visaSubmission.commissionAgent',
-            'fingerprintDetail.fingerprint.fingerprintDetails',
-            'ticketFare.baggageAllowances',
-            'latestIssuedTicket.ticketAgent',
-            'latestIssuedTicket.ticketFare.airline',
-            'latestIssuedTicket.ticketFare.airlineClass.class',
-            'latestIssuedTicket.ticketFare.route',
-        ])
+        $passengers = Passenger::approvedFingerprint()
+            ->when(auth()->user()->branch_id, fn ($q) =>
+                $q->whereHas('booking', fn ($q) =>
+                    $q->where('booking_branch_id', auth()->user()->branch_id)
+                )
+            )
+            ->with([
+                'booking',
+                'booking.customer',
+                'booking.package.ticketFare.route',
+                'booking.invoice',
+                'ticketFare.route',
+                'status',
+                'visaSubmission.visaAgent',
+                'visaSubmission.visaSellingPrice',
+                'visaSubmission.commissionAgent',
+                'fingerprintDetail.fingerprint.fingerprintDetails',
+                'ticketFare.baggageAllowances',
+                'latestIssuedTicket.ticketAgent',
+                'latestIssuedTicket.ticketFare.airline',
+                'latestIssuedTicket.ticketFare.airlineClass.class',
+                'latestIssuedTicket.ticketFare.route',
+            ])
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->appends(['tab' => $tab])
