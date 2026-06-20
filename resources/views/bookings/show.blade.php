@@ -19,6 +19,7 @@
                 $canEditBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
                 $canViewRequestButtons = auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
                 $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
+                $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             @endphp
         <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
                 <div class="flex items-center gap-3">
@@ -90,9 +91,11 @@
                 </div>
             </div>
             <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
+                @if($canApplyDiscount)
                 <button type="button" onclick="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">
                     Discount
                 </button>
+                @endif
 </div>
         </div>
 
@@ -654,6 +657,7 @@
 </div>
 @endif
 
+@if($canApplyDiscount)
 {{-- Discount Modal --}}
 <div id="discountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center"
     data-discount-type="{{ $booking->discount_type?->value ?? 'fixed' }}"
@@ -697,6 +701,7 @@
         </div>
     </div>
 </div>
+@endif
 
 {{-- Toast Container --}}
 <div id="toastContainer" class="fixed top-4 right-4 z-[70] space-y-2"></div>
