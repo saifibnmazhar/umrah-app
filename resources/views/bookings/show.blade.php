@@ -126,9 +126,7 @@
             </div>
             
             <div class="flex justify-end mt-4">
-                @if($canEditBooking)
                 <button @click="openPassengerModal()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
-                @endif
             </div>
         </div>
 
