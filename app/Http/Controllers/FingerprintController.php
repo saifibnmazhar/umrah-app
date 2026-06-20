@@ -23,6 +23,7 @@ class FingerprintController extends Controller
             'booking.district',
             'booking.passengers',
             'fingerprintDetails.passenger',
+            'fingerprintDetails.rescheduledFingerprints',
             'assignedStaff'
         ])->orderBy('created_at', 'desc');
 
@@ -59,11 +60,15 @@ class FingerprintController extends Controller
                 $passengers = $booking->passengers;
 
                 return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers) {
-                    $detail = $fingerprint->fingerprintDetails()
+                    $detail = $fingerprint->fingerprintDetails
                         ->where('passenger_id', $passenger->id)
                         ->first();
 
                     $statusDisplay = $this->computePartiallyApprovedStatus($detail, $passengers);
+
+                    $rescheduleDeadline = $detail?->rescheduledFingerprints
+                        ->sortByDesc('created_at')
+                        ->first()?->next_date?->format('Y-m-d');
 
                     return [
                         'fingerprint_id' => $fingerprint->id,
@@ -76,6 +81,7 @@ class FingerprintController extends Controller
                         'passenger_mobile' => $passenger->mobile_no,
                         'district' => $booking->district->name ?? '-',
                         'deadline' => $fingerprint->deadline?->format('Y-m-d'),
+                        'reschedule_deadline' => $rescheduleDeadline,
                         'cost' => $fingerprint->cost,
                         'assigned_staff_id' => $fingerprint->assigned_staff_id,
                         'assigned_staff_name' => $fingerprint->assignedStaff->name ?? null,

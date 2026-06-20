@@ -20,13 +20,13 @@
         fingerprint_branch_id: '{{ request('fingerprint_branch_id') }}',
     }
 })">
-    <div class="mb-3">
+    <div class="sticky top-0 z-30 bg-white py-2 mb-3">
         <span class="text-sm text-gray-500 font-medium">Report</span>
         <span class="text-sm text-gray-400 mx-1">></span>
         <span class="text-sm text-gray-700 font-semibold">Fingerprint Report</span>
     </div>
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
+    <div class="sticky top-[40px] z-20 bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700 whitespace-nowrap">SEARCH BOX</label>
@@ -129,10 +129,10 @@
         </div>
     </div>
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
-        <div class="overflow-x-auto">
+    <div class="bg-white border-x-2 border-b-2 border-gray-400 shadow-sm flex flex-col" style="max-height: calc(100vh - 280px);">
+        <div class="overflow-auto flex-1 min-h-0">
             <table class="w-full min-w-[1800px] table-fixed">
-                <thead>
+                <thead class="sticky top-0 z-10">
                     <tr class="bg-gray-100">
                         <th colspan="6" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Basic Information</th>
                         <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Fingerprint Charge Calculation</th>
@@ -534,6 +534,7 @@ function fingerprintReport(options = {}) {
             Object.entries(this.filters).forEach(([key, value]) => {
                 if (value) params.set(key, value);
             });
+            params.set('currency', Alpine.store('currency').mode);
             return `/reports/fingerprint/print?${params.toString()}`;
         },
 

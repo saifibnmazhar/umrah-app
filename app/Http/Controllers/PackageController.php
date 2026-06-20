@@ -125,6 +125,10 @@ class PackageController extends Controller
         $latestVisa = VisaSellingPrice::latest()->first();
         $validated['visa_selling_price_id'] = $latestVisa?->id;
 
+        if (empty($validated['offer_price'])) {
+            $validated['offer_price'] = null;
+        }
+
         $ticketFare = TicketFare::find($validated['ticket_fare_id']);
         if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {
             $validated['offer_price'] = $validated['regular_price'];
@@ -193,6 +197,10 @@ class PackageController extends Controller
 
         $latestVisa = VisaSellingPrice::latest()->first();
         $validated['visa_selling_price_id'] = $latestVisa?->id;
+
+        if (empty($validated['offer_price'])) {
+            $validated['offer_price'] = null;
+        }
 
         $ticketFare = TicketFare::find($validated['ticket_fare_id']);
         if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {

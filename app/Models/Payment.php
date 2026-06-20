@@ -28,8 +28,8 @@ class Payment extends Model
 
     protected $casts = [
         'payment_date' => 'date',
-        'amount' => 'decimal:2',
-        'bdt_amount' => 'decimal:2',
+        'amount' => 'decimal:6',
+        'bdt_amount' => 'decimal:6',
         'payment_method' => \App\Enums\PaymentMethod::class,
     ];
 

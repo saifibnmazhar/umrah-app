@@ -374,7 +374,7 @@
                                 <td class="px-3 py-2 text-right text-slate-600">@currency($package->service_charge ?? 0, 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency(($package->regular_price ?? 0) + ($package->service_charge ?? 0), 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-600 pr-8">
-                                    @if($package->offer_price)
+                                    @if($package->ticketFare?->ticket_type === \App\Enums\TicketType::OFFER)
                                         @currency(($package->offer_price ?? 0) + ($package->service_charge ?? 0), 0)
                                     @else
                                         -
@@ -468,15 +468,15 @@
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (<span id="modalRegularPriceLabel" class="currency-label">SAR</span>) *</label>
-                            <input type="number" id="modalRegularPrice" name="regular_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="0.01" required readonly data-sar-value="0">
+                            <input type="number" id="modalRegularPrice" name="regular_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="any" required readonly data-sar-value="0">
                         </div> 
                         <div id="modalOfferPriceContainer" class="hidden">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (<span id="modalOfferPriceLabel" class="currency-label">SAR</span>)</label>
-                            <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" data-sar-value="0">
+                            <input type="number" id="modalOfferPrice" name="offer_price" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="any" data-sar-value="0">
                         </div>
                         <div id="modalServiceChargeContainer">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (<span id="modalServiceChargeLabel" class="currency-label">SAR</span>)</label>
-                            <input type="number" id="modalServiceCharge" name="service_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01" value="0" data-sar-value="0">
+                            <input type="number" id="modalServiceCharge" name="service_charge" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="any" value="0" data-sar-value="0">
                         </div>                       
                     </div>
 
@@ -606,7 +606,7 @@
                 if (isBDT) {
                     input.value = Math.round(sar * rate);
                 } else {
-                    input.value = sar.toFixed(2);
+                    input.value = sar.toFixed(6);
                 }
             });
 
@@ -739,7 +739,7 @@
             const currency = window.Alpine?.store('currency');
             if (currency?.mode === 'BDT') {
                 document.querySelectorAll('[data-sar-value]').forEach(input => {
-                    input.value = parseFloat(input.dataset.sarValue || 0).toFixed(2);
+                    input.value = parseFloat(input.dataset.sarValue || 0).toFixed(6);
                 });
             }
         });

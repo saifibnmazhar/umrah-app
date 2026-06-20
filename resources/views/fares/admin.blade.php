@@ -287,7 +287,7 @@
                 <table class="w-full text-sm">
                     <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
                         <tr>
-                            <th class="px-4 py-3 text-left">ID</th>
+                            <th class="px-4 py-3 text-left">#</th>
                             <th class="px-4 py-3 text-left">Airline</th>
                             <th class="px-4 py-3 text-left">Class</th>
                             <th class="px-4 py-3 text-left">Route</th>
@@ -305,7 +305,7 @@
                     <tbody class="divide-y divide-slate-200">
                         @forelse($ticketFares as $fare)
                             <tr class="hover:bg-slate-50">
-                                <td class="px-4 py-3 text-slate-700">{{ $fare->id }}</td>
+                                <td class="px-4 py-3 text-slate-700">{{ $loop->iteration }}</td>
                                 <td class="px-4 py-3 text-slate-700 font-medium">{{ $fare->airline->name ?? '-' }}</td>
                                 <td class="px-4 py-3 text-slate-600">{{ $fare->airlineClass->travelClass->name ?? '-' }}</td>
                                 <td class="px-4 py-3 text-slate-700 font-medium">

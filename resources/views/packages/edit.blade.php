@@ -67,7 +67,7 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Regular Price (SAR) *</label>
-                    <input type="number" id="regularPrice" name="regular_price" value="{{ old('regular_price', $package->regular_price ?? '') }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="0.01" required readonly>
+                    <input type="number" id="regularPrice" name="regular_price" value="{{ old('regular_price', $package->regular_price ?? '') }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" min="0" step="any" required readonly>
                     @error('regular_price')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
@@ -75,8 +75,16 @@
 
                 <div id="offerPriceContainer" class="{{ (isset($package) && $package->ticketFare?->ticket_type === \App\Enums\TicketType::OFFER) ? '' : 'hidden' }}">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
-                    <input type="number" id="offerPrice" name="offer_price" value="{{ old('offer_price', $package->offer_price ?? '') }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="0.01">
+                    <input type="number" id="offerPrice" name="offer_price" value="{{ old('offer_price', $package->offer_price ?? '') }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="any">
                     @error('offer_price')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
+                    <input type="number" id="serviceCharge" name="service_charge" value="{{ old('service_charge', $package->service_charge ?? 0) }}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" min="0" step="any">
+                    @error('service_charge')
                         <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                     @enderror
                 </div>
@@ -114,6 +122,7 @@ const ticketSelect = document.getElementById('ticketSelect');
 const regularPrice = document.getElementById('regularPrice');
 const offerPrice = document.getElementById('offerPrice');
 const offerPriceContainer = document.getElementById('offerPriceContainer');
+const serviceCharge = document.getElementById('serviceCharge');
 
 function buildDisplay(fare) {
     let disp = fare.route + ' | ' + fare.ticket_type.toUpperCase() + ' | SAR ' + fare.selling_fare;
@@ -149,11 +158,11 @@ function calculatePrices() {
     const offerFare = parseFloat(selectedOption.dataset.offerPrice) || 0;
     const ticketType = selectedOption.dataset.ticketType;
 
-    regularPrice.value = (sellingFare + latestVisaPrice).toFixed(2);
+    regularPrice.value = (sellingFare + latestVisaPrice).toFixed(6);
 
     if (ticketType === 'offer') {
         offerPriceContainer.classList.remove('hidden');
-        offerPrice.value = (offerFare + latestVisaPrice).toFixed(2);
+        offerPrice.value = (offerFare + latestVisaPrice).toFixed(6);
     } else {
         offerPriceContainer.classList.add('hidden');
         offerPrice.value = '';

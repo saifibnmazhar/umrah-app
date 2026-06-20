@@ -92,7 +92,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                        <select x-model="passengerData.route_type" @change="updateBaggageWeight(); filterTickets()" :disabled="passengerData.service_required === 'visa_only'" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select x-model="passengerData.route_type" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" @change="updateBaggageWeight(); filterTickets()">
                             <option value="">Select</option>
                             <option value="One Way-Inbound">One Way-Inbound</option>
                             <option value="One Way-Outbound">One Way-Outbound</option>
@@ -102,7 +102,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                        <select x-model="passengerData.flight_type" @change="filterTickets()" :disabled="passengerData.service_required === 'visa_only'" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select x-model="passengerData.flight_type" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" @change="filterTickets()">
                             <option value="">Select</option>
                             <option value="Transit">Transit</option>
                             <option value="Direct">Direct</option>
@@ -110,7 +110,7 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                        <select x-model="passengerData.ticket_fare_id" @change="onTicketChange()" :disabled="passengerData.service_required === 'visa_only'" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select x-model="passengerData.ticket_fare_id" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" @change="onTicketChange()">
                             <option value="">Select Ticket</option>
                             <template x-for="ticket in filteredTickets" :key="ticket.id">
                                 <option :value="String(ticket.id)" x-text="getTicketDisplayText(ticket)"></option>

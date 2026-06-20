@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\District;
+use App\Enums\TicketType;
 use App\Models\FingerprintCharge;
 use App\Models\FlightDateGap;
 use App\Models\Package;
@@ -122,6 +123,15 @@ class SettingsController extends Controller
             'service_charge' => 'nullable|numeric|min:0',
         ]);
 
+        if (empty($validated['offer_price'])) {
+            $validated['offer_price'] = null;
+        }
+
+        $ticketFare = TicketFare::find($validated['ticket_fare_id']);
+        if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {
+            $validated['offer_price'] = $validated['regular_price'];
+        }
+
         try {
             $validated['user_id'] = auth()->id() ?? 1;
             $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;
@@ -146,6 +156,15 @@ class SettingsController extends Controller
             'offer_price' => 'nullable|numeric|min:0',
             'service_charge' => 'nullable|numeric|min:0',
         ]);
+
+        if (empty($validated['offer_price'])) {
+            $validated['offer_price'] = null;
+        }
+
+        $ticketFare = TicketFare::find($validated['ticket_fare_id']);
+        if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {
+            $validated['offer_price'] = $validated['regular_price'];
+        }
 
         try {
             $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;

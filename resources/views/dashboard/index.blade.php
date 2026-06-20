@@ -5,7 +5,7 @@
 @section('content')
 @php
 $showSummaryCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
-$showPackages = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
+$showPackages = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff', 'Auditor', 'Visa Admin', 'Visa Staff', 'Ticket Admin', 'Ticket Staff', 'Fingerprint Admin', 'Fingerprint Staff'])->isNotEmpty();
 $showRequests = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
 $stats = [
     'visaSubmitted' => 120,

@@ -51,6 +51,19 @@
     </div>
 
     @php
+        $__currency = $currency ?? 'SAR';
+        $__rate = app(\App\Services\CurrencyRateService::class)->getCurrentRateValue();
+        $fmtNum = function($amount, $d = 2) use ($__currency, $__rate) {
+            if ($amount === null || $amount === '') return '';
+            $val = $__currency === 'BDT' ? $amount * $__rate : $amount;
+            return number_format($val, $d);
+        };
+        $fmtCurrency = function($amount, $d = 2) use ($__currency, $__rate) {
+            if ($amount === null || $amount === '') return '';
+            $val = $__currency === 'BDT' ? $amount * $__rate : $amount;
+            return ($__currency === 'BDT' ? 'BDT ' : 'SAR ') . number_format($val, $d);
+        };
+
         $appliedFilters = array_filter([
             'Search' => request('search'),
             'Booking Date From' => request('booking_date_from'),
@@ -110,9 +123,9 @@
                 <td class="text-center">{{ $row['passport_no'] }}</td>
                 <td class="text-left" style="white-space: pre-line;">{{ $row['_isFirstPassenger'] ? $row['customer_mobile'] . "\n" . $row['passenger_mobile'] : $row['passenger_mobile'] }}</td>
                 @if($canViewFinancials)
-                <td class="text-right">{{ $row['_isFirstPassenger'] ? number_format($row['fingerprint_charge'], 2) : '' }}</td>
+                <td class="text-right">{{ $row['_isFirstPassenger'] ? $fmtNum($row['fingerprint_charge']) : '' }}</td>
                 @endif
-                <td class="text-right">{{ $row['_isFirstPassenger'] ? number_format($row['fingerprint_cost'], 2) : '' }}</td>
+                <td class="text-right">{{ $row['_isFirstPassenger'] ? $fmtNum($row['fingerprint_cost']) : '' }}</td>
                 <td class="text-center">{{ $row['_isFirstPassenger'] ? ($row['fingerprint_deadline'] ?? '-') : '' }}</td>
                 <td class="text-center">{{ $row['completed_date'] ?? '-' }}</td>
                 <td class="text-left">{{ $row['required_flight'] ?? '-' }}</td>
@@ -120,8 +133,8 @@
                 <td class="text-center">{{ $row['status_display'] ?? '-' }}</td>
                 <td class="text-left">{{ $row['remarks'] ?? '-' }}</td>
                 @if($canViewFinancials)
-                <td class="text-right text-green">{{ $row['_isFirstPassenger'] && ($row['profit'] ?? 0) > 0 ? number_format($row['profit'], 2) : '' }}</td>
-                <td class="text-right text-red">{{ $row['_isFirstPassenger'] && ($row['loss'] ?? 0) > 0 ? number_format($row['loss'], 2) : '' }}</td>
+                <td class="text-right text-green">{{ $row['_isFirstPassenger'] && ($row['profit'] ?? 0) > 0 ? $fmtNum($row['profit']) : '' }}</td>
+                <td class="text-right text-red">{{ $row['_isFirstPassenger'] && ($row['loss'] ?? 0) > 0 ? $fmtNum($row['loss']) : '' }}</td>
                 @endif
             </tr>
             @empty
@@ -145,25 +158,25 @@
             @if($canViewFinancials)
             <div class="summary-row">
                 <span class="label">Total Fingerprint Charge:</span>
-                <span class="value text-green">@currency($totals['total_fingerprint_charge'], 2)</span>
+                <span class="value text-green">{{ $fmtCurrency($totals['total_fingerprint_charge']) }}</span>
             </div>
             @endif
             <div class="summary-row">
                 <span class="label">Total Fingerprint Cost:</span>
-                <span class="value">@currency($totals['total_fingerprint_cost'], 2)</span>
+                <span class="value">{{ $fmtCurrency($totals['total_fingerprint_cost']) }}</span>
             </div>
             @if($canViewFinancials)
             <div class="summary-row">
                 <span class="label">Total Profit:</span>
-                <span class="value text-green">@if($totals['total_profit'] > 0)@currency($totals['total_profit'], 2)@else-@endif</span>
+                <span class="value text-green">@if($totals['total_profit'] > 0){{ $fmtCurrency($totals['total_profit']) }}@else-@endif</span>
             </div>
             <div class="summary-row">
                 <span class="label">Total Loss:</span>
-                <span class="value text-red">@if($totals['total_loss'] > 0)@currency($totals['total_loss'], 2)@else-@endif</span>
+                <span class="value text-red">@if($totals['total_loss'] > 0){{ $fmtCurrency($totals['total_loss']) }}@else-@endif</span>
             </div>
             <div class="summary-row bordered">
                 <span class="label">Net Profit/Loss:</span>
-                <span class="value {{ $totals['total_profit_loss'] >= 0 ? 'text-green' : 'text-red' }}">@currency($totals['total_profit_loss'], 2)</span>
+                <span class="value {{ $totals['total_profit_loss'] >= 0 ? 'text-green' : 'text-red' }}">{{ $fmtCurrency($totals['total_profit_loss']) }}</span>
             </div>
             @endif
         </div>
