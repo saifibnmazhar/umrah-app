@@ -774,7 +774,7 @@ customDurationModalVisible: false,
             e.preventDefault();
             return false;
         }
-        if (!this.bookingData.fingerprint_branch_id) {
+        if (document.querySelector('[name="fingerprint_branch_id"]') && !this.bookingData.fingerprint_branch_id) {
             alert('Please select fingerprint branch');
             e.preventDefault();
             return false;
@@ -2124,7 +2124,7 @@ Alpine.data('createBookingApp', () => ({
             alert('Please select a district');
             return;
         }
-        if (!this.bookingData.fingerprint_branch_id) {
+        if (document.querySelector('[name="fingerprint_branch_id"]') && !this.bookingData.fingerprint_branch_id) {
             alert('Please select a fingerprint branch');
             return;
         }
@@ -3216,7 +3216,7 @@ Alpine.data('editBookingApp', () => ({
             e.preventDefault();
             return false;
         }
-        if (!this.bookingData.fingerprint_branch_id) {
+        if (document.querySelector('[name="fingerprint_branch_id"]') && !this.bookingData.fingerprint_branch_id) {
             alert('Please select fingerprint branch');
             e.preventDefault();
             return false;

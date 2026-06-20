@@ -21,6 +21,7 @@ class VisaSubmissionController extends Controller
             'visa_agent_id' => 'required|exists:visa_agents,id',
             'commission_agent_id' => 'nullable|exists:commission_agents,id',
             'agent_commission' => 'nullable|numeric|min:0',
+            'net_visa_cost' => 'nullable|numeric|min:0',
         ]);
 
         $visaSubmission = $passenger->visaSubmission;
@@ -30,7 +31,7 @@ class VisaSubmissionController extends Controller
         }
 
         $visaAgent = VisaAgent::with('visaAgentCost')->findOrFail($validated['visa_agent_id']);
-        $netVisaCost = (float) ($visaAgent->visaAgentCost?->visa_agent_cost ?? 0);
+        $netVisaCost = (float) ($validated['net_visa_cost'] ?? $visaAgent->visaAgentCost?->visa_agent_cost ?? 0);
         $agentCommission = (float) ($validated['agent_commission'] ?? 0);
         $finalCost = $netVisaCost + $agentCommission;
 
