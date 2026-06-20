@@ -4583,3 +4583,146 @@ php artisan tinker -> IssuedTicket::count();
 
 ---
 
+## Banks: Add `location` Column
+
+### Overview
+
+Add a `location` enum column to the existing `banks` table using the already-defined `App\Enums\Location` enum (cases: `KSA`, `BD`).
+
+### Dependency Analysis
+
+This is a **column addition** to the existing `banks` table. No new tables, no foreign key dependencies.
+
+### Migration File
+
+**File**: `database/migrations/2026_06_20_070840_add_location_to_banks_table.php`
+
+### Artisan Command
+
+```bash
+php artisan make:migration add_location_to_banks_table
+```
+
+### Schema Change
+
+#### UP Method
+
+```php
+public function up(): void
+{
+    Schema::table('banks', function (Blueprint $table) {
+        $table->enum('location', ['KSA', 'BD'])->nullable()->after('currency');
+    });
+}
+```
+
+#### DOWN Method
+
+```php
+public function down(): void
+{
+    Schema::table('banks', function (Blueprint $table) {
+        $table->dropColumn('location');
+    });
+}
+```
+
+### Existing Enum (no new file needed)
+
+The `Location` enum already exists at `app/Enums/Location.php`:
+
+```php
+<?php
+
+namespace App\Enums;
+
+enum Location: string
+{
+    case KSA = 'KSA';
+    case BD = 'BD';
+}
+```
+
+### Model Update (`app/Models/Bank.php`)
+
+| Change | Detail |
+|--------|--------|
+| `$fillable` | Add `'location'` |
+| `$casts` | Add `'location' => \App\Enums\Location::class` |
+| `use` import | Add `use App\Enums\Location;` |
+
+### Controller Validation Update (`app/Http/Controllers/BankController.php`)
+
+Add to both `store()` and `update()` validation rules:
+```php
+'location' => 'nullable|in:KSA,BD',
+```
+
+### Frontend Updates (Blade Views)
+
+| View | Change |
+|------|--------|
+| `resources/views/banks/create.blade.php` | Add Location `<select>` after Currency field |
+| `resources/views/banks/edit.blade.php` | Add Location `<select>` after Currency field |
+| `resources/views/banks/index.blade.php` | Add Location `<th>` and `<td>` columns; update `colspan` in `@empty` row from 5 to 6 |
+
+### SQL Schema Update
+
+**File**: `database/schema/mariadb-schema.sql`
+
+Add `location` column after `currency`:
+```sql
+`location` enum('KSA','BD') DEFAULT NULL,
+```
+
+### Design Decisions
+
+| Decision | Justification |
+|----------|---------------|
+| `enum('KSA', 'BD')` column type | Matches the existing `currency` column's approach in the same table (MySQL native ENUM) |
+| Nullable | Existing rows remain valid without a migration data fill |
+| No default value | Explicit assignment required — avoids silent assumptions |
+| `after('currency')` | Logical column placement — currency and location are both bank configuration fields |
+| Reuses existing `Location` enum | Already defined at `app/Enums/Location.php` and used by the `Branch` model |
+| Hardcoded option labels (`KSA` / `Bangladesh`) | Consistent with the branches create/edit views location dropdown |
+
+### Files Changed (6 total)
+
+| File | Change |
+|------|--------|
+| `database/migrations/2026_06_20_070840_add_location_to_banks_table.php` | New migration |
+| `app/Models/Bank.php` | Add `location` to `$fillable` + `$casts` |
+| `app/Http/Controllers/BankController.php` | Add `location` to validation rules |
+| `resources/views/banks/create.blade.php` | Add location select |
+| `resources/views/banks/edit.blade.php` | Add location select |
+| `resources/views/banks/index.blade.php` | Add location column to table |
+
+### Safe Execution Steps
+
+```bash
+# Step 1: Create migration (already done below)
+php artisan make:migration add_location_to_banks_table
+
+# Step 2: Run migration
+php artisan migrate
+
+# Step 3: Verify column added
+php artisan tinker -> DB::getSchemaBuilder()->getColumnListing('banks');
+```
+
+### Rollback
+
+```bash
+php artisan migrate:rollback --step=1
+```
+
+### Risks & Edge Cases
+
+| Risk | Mitigation |
+|------|------------|
+| Existing banks without location | Column is nullable — existing rows are unaffected |
+| Invalid enum value at application level | Both DB-level ENUM constraint and `in:KSA,BD` validation rule guard against it |
+| Location values misaligned with `Branch` model usage | Same `Location` enum ensures values are consistent across all models |
+
+---
+
