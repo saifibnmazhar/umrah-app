@@ -63,14 +63,17 @@ class BookingController extends Controller
 
     private function resolveBookingBranch(Request $request, bool $forUpdate): int
     {
-        if ($this->isAdminRole() && $request->filled('booking_branch_id')) {
+        $user = auth()->user();
+
+        if (!$user->branch_id && $request->filled('booking_branch_id')) {
             return (int) $request->input('booking_branch_id');
         }
-        $branchId = auth()->user()->branch_id;
-        if (! $branchId) {
-            abort(422, 'Your account is not assigned to a branch. Contact an administrator.');
+
+        if ($user->branch_id) {
+            return (int) $user->branch_id;
         }
-        return (int) $branchId;
+
+        abort(422, 'Your account is not assigned to a branch. Contact an administrator.');
     }
 
     private function ensureBranchAccess(Booking $booking): void
@@ -173,7 +176,7 @@ class BookingController extends Controller
 
         $user = auth()->user();
         $userBranch = $user->branch;
-        $bookingBranches = $this->isAdminRole() ? Branch::orderBy('name')->get(['id', 'name']) : collect();
+        $bookingBranches = !$userBranch ? Branch::orderBy('name')->get(['id', 'name']) : collect();
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get(['id', 'name']);
 
         $showBookingBranch = !$userBranch;
