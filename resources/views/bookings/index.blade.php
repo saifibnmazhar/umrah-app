@@ -180,6 +180,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             $isBranchPersonnel = auth()->user()->roles->pluck('name')->intersect(['Branch Manager', 'Branch Staff'])->isNotEmpty();
             $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             $canViewActionColumn = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
+            $canViewPassengerIndex = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
         @endphp
         <h1 class="text-2xl font-bold text-slate-800">Booking</h1>
         @if($canCreateBooking)
@@ -206,7 +207,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     <div class="flex gap-2 mb-4">
         <button @click="navigateToTab('booking')" :class="activeTab === 'booking' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'" class="px-4 py-2 rounded-lg font-medium transition">Booking Index</button>
-        <button @click="navigateToTab('passenger')" :class="activeTab === 'passenger' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'" class="px-4 py-2 rounded-lg font-medium transition">Passenger Index</button>
+        @if($canViewPassengerIndex)<button @click="navigateToTab('passenger')" :class="activeTab === 'passenger' ? 'bg-slate-700 text-white' : 'bg-slate-200 text-slate-700 hover:bg-slate-300'" class="px-4 py-2 rounded-lg font-medium transition">Passenger Index</button>@endif
     </div>
 
     <div x-show="activeTab === 'booking'" x-cloak>
@@ -287,6 +288,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         </div>
     </div>
 
+    @if($canViewPassengerIndex)
     <div x-show="activeTab === 'passenger'" x-cloak>
         <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col" style="max-height: calc(95vh - 200px);">
             <div class="overflow-auto flex-1 min-h-0">
@@ -489,6 +491,7 @@ if ($route) {
             </div>
         </div>
     </div>
+    @endif
 
     {{-- Visa Submit Modal --}}
     <div x-show="visaSubmitModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeVisaSubmitModal()">
