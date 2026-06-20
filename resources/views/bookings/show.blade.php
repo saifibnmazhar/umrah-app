@@ -17,7 +17,7 @@
         <div class="bg-white rounded-xl shadow-lg p-6">
             @php
                 $canEditBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
-                $isVisaPersonnel = auth()->user()->roles->pluck('name')->intersect(['Visa Admin', 'Visa Staff'])->isNotEmpty();
+                $canViewRequestButtons = auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
             @endphp
         <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
                 <div class="flex items-center gap-3">
@@ -178,7 +178,7 @@
 
         {{-- Action Buttons Row --}}
         <div class="flex justify-end gap-3 mt-8">
-            @if(!$isVisaPersonnel)
+            @if($canViewRequestButtons)
             <button onclick="openReIssueModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                 Request Re-Issue
             </button>
@@ -203,7 +203,7 @@
                 <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
                     Payment History
                 </button>
-                @if(!$isVisaPersonnel)
+                @if($canViewRequestButtons)
                 <button onclick="switchTab('reissue')" id="tab-reissue" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
                     Re-issue History
                 </button>
@@ -250,7 +250,7 @@
             </div>
         </div>
 
-        @if(!$isVisaPersonnel)
+        @if($canViewRequestButtons)
         {{-- Re-issue History Tab --}}
         <div id="content-reissue" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Re-issue History</h3>
@@ -443,7 +443,7 @@
     </div>
 </div>
 
-@if(!$isVisaPersonnel)
+@if($canViewRequestButtons)
 {{-- Request Re-Issue Modal --}}
 <div id="reIssueModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
     <div class="fixed inset-0 bg-black/50" onclick="closeReIssueModal()"></div>
