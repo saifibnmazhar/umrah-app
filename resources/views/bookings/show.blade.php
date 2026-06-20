@@ -186,7 +186,7 @@
                 Request Add. Tkt
             </button>
             <button onclick="openRefundModal()" class="px-6 py-3 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium">
-                Request Refund
+                Request Ticket Refund
             </button>
             @endif
             <button onclick="downloadAllDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
