@@ -1,0 +1,22 @@
+
+  [41;1m InvalidArgumentException [49;22m
+
+[39;1m  Unexpected end of input[39;22m
+
+  at [32mvendor\psy\psysh\src\Shell.php[39m:[32m1481[39m
+    1477▕ 
+    1478▕         if (!$this->hasValidCode()) {
+    1479▕             $this->popCodeStack();
+    1480▕ 
+  ➜ 1481▕             throw new \InvalidArgumentException('Unexpected end of input');
+    1482▕         }
+    1483▕     }
+    1484▕ 
+    1485▕     /**
+
+  [33m1   [39m[39;1mvendor\psy\psysh\src\Shell.php[39;22m:[39;1m2180[39;22m
+  [90m    Psy\Shell::setCode("PassengerStatus::all()-")[39m
+
+  [33m2   [39m[39;1mvendor\laravel\tinker\src\Console\TinkerCommand.php[39;22m:[39;1m77[39;22m
+  [90m    Psy\Shell::execute("PassengerStatus::all()-")[39m
+
