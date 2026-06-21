@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Invoice Details')
 @section('content')
+@php $rateVal = $currentCurrencyRate?->rate ?? 0; @endphp
 <script>window.__bookingServerData = {
     ticketFares: @json($ticketFares ?? []),
     packages: @json($packages ?? []),
@@ -69,9 +70,9 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-200">
                 <div>
                     <span class="text-slate-500 text-sm">Original Total</span>
-                    <p id="financialOriginalTotal" class="text-xl font-bold text-slate-800">@currency($originalTotal, 2)</p>
+                    <p id="financialOriginalTotal" class="text-xl font-bold text-slate-800">@currency($originalTotal, 2, $rateVal)</p>
                     <p id="financialDiscountIndicator" class="text-xs text-orange-600 mt-1 {{ ($booking->discount_amount ?? 0) > 0 ? '' : 'hidden' }}">
-                        −@currency($booking->discount_amount ?? 0) discount
+                        −@currency($booking->discount_amount ?? 0, 2, $rateVal) discount
                         @if($booking->discount_type?->value === 'percentage')
                             ({{ rtrim(rtrim(number_format((float) $booking->discount_value, 2), '0'), '.') }}%)
                         @endif
@@ -79,15 +80,15 @@
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Discounted Total</span>
-                    <p id="financialTotalValue" class="text-xl font-bold text-slate-800">@currency($booking->invoice?->total_amount ?? 0, 2)</p>
+                    <p id="financialTotalValue" class="text-xl font-bold text-slate-800">@currency($booking->invoice?->total_amount ?? 0, 2, $rateVal)</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Total Paid</span>
-                    <p id="financialTotalPaid" class="text-xl font-bold text-green-600">@currency($booking->invoice?->paid_amount ?? 0, 2)</p>
+                    <p id="financialTotalPaid" class="text-xl font-bold text-green-600">@currency($booking->invoice?->paid_amount ?? 0, 2, $rateVal)</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Due</span>
-                    <p id="financialDue" class="text-xl font-bold text-red-600">@currency($booking->invoice?->balance ?? 0, 2)</p>
+                    <p id="financialDue" class="text-xl font-bold text-red-600">@currency($booking->invoice?->balance ?? 0, 2, $rateVal)</p>
                 </div>
             </div>
             <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
@@ -116,7 +117,7 @@
                     <span class="text-slate-500 text-sm ml-2">({{ $passenger->passport_no ?? 'N/A' }})</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="text-slate-800 font-medium">@currency($passengerTotal, 2)</span>
+                    <span class="text-slate-800 font-medium">@currency($passengerTotal, 2, $rateVal)</span>
                     <button onclick="viewPassengerDetails({{ $passenger->id }})" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-1 rounded">View</button>
                 </div>
             </div>
@@ -250,7 +251,7 @@
                             <td class="px-3 py-2 text-slate-600">{{ $payment->vouchers->first()?->voucher_id ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->payment_method?->value ?? 'Cash' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->transaction_id ?? '-' }}</td>
-                            <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($payment->amount, 2)</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($payment->amount, 2, $rateVal)</td>
                         </tr>
                         @empty
                         <tr>
@@ -380,15 +381,15 @@
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div class="flex justify-between">
                         <span class="text-slate-500">Total Package Value:</span>
-                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">@currency($booking->invoice?->total_amount ?? 0, 2)</span>
+                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">@currency($booking->invoice?->total_amount ?? 0, 2, $rateVal)</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-500">Paid:</span>
-                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">@currency($booking->invoice?->paid_amount ?? 0, 2)</span>
+                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">@currency($booking->invoice?->paid_amount ?? 0, 2, $rateVal)</span>
                     </div>
                     <div class="flex justify-between col-span-2">
                         <span class="text-slate-600 font-medium">Due:</span>
-                        <span id="paymentDue" class="text-slate-800 font-bold text-right">@currency($booking->invoice?->balance ?? 0, 2)</span>
+                        <span id="paymentDue" class="text-slate-800 font-bold text-right">@currency($booking->invoice?->balance ?? 0, 2, $rateVal)</span>
                     </div>
                 </div>
             </div>

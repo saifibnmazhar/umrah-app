@@ -849,6 +849,7 @@ class BookingController extends Controller
 
                 $fingerprintDetailIds = \App\Models\FingerprintDetail::whereIn('passenger_id', $passengerIds)->pluck('id');
 
+                \App\Models\IssuedTicket::whereIn('passenger_id', $passengerIds)->forceDelete();
                 \App\Models\RescheduledFingerprint::whereIn('fingerprint_detail_id', $fingerprintDetailIds)->delete();
                 \App\Models\CancelledSubmission::whereIn('visa_submission_id', \App\Models\VisaSubmission::whereIn('passenger_id', $passengerIds)->pluck('id'))->delete();
                 \App\Models\VisaSubmission::whereIn('passenger_id', $passengerIds)->delete();
@@ -963,6 +964,7 @@ class BookingController extends Controller
                 $detail->delete();
             }
 
+            $passenger->issuedTickets()->forceDelete();
             $passenger->delete();
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();

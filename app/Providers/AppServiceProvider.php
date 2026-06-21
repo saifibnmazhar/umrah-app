@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
         VisaSubmission::observe(VisaSubmissionObserver::class);
 
         Blade::directive('currency', function ($expression) {
-            $parts = explode(',', $expression . ',2,,');
+            $parts = explode(',', $expression);
             $amount = trim($parts[0]);
             $decimals = isset($parts[1]) ? trim($parts[1]) : 2;
             $decimals = is_numeric($decimals) ? (int) $decimals : 2;
