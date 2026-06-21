@@ -939,7 +939,7 @@ if ($route) {
                     </div>
                 </div>
 
-                <div class="mb-4">
+                <div class="mb-4" x-show="ticketFareForm.route_type === 'One Way-Inbound'">
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" x-model="ticketFareForm.outbound_pending" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
                         <span class="text-sm text-slate-700">Outbound Ticket Pending</span>
