@@ -153,8 +153,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'issued_date' => $lit->issued_date?->format('Y-m-d') ?? '',
         'inbound_date' => $lit->inbound_date?->format('Y-m-d') ?? '',
         'outbound_date' => $lit->outbound_date?->format('Y-m-d') ?? '',
-        'selling_fare' => (float)($lit->selling_fare ?? 0),
-        'net_fare' => (float)($lit->net_fare ?? 0),
+                    'selling_fare' => (float)($lit->selling_fare ?? 0),
+                        'net_fare' => (float)($lit->net_fare ?? 0),
+                        'offer_price' => (float)($lit->offer_price ?? 0),
         'is_refundable' => $lit->is_refundable ?? false,
         'is_exchangeable' => $lit->is_exchangeable ?? false,
         'baggage_inbound' => $lit->baggage_inbound ?? '',
@@ -887,6 +888,10 @@ if ($route) {
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
                             <input type="number" x-model="ticketFareForm.net_fare" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
                         </div>
+                        <div x-show="ticketFareForm.ticket_type === 'offer'">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
+                            <input type="number" x-model="ticketFareForm.offer_price" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                        </div>
                     </div>
                 </div>
 
@@ -1326,6 +1331,7 @@ function bookingIndexApp() {
             passenger_type: '',
             selling_fare: 0,
             net_fare: 0,
+            offer_price: 0,
             baggage_inbound: '',
             baggage_outbound: '',
             non_refundable: false,
@@ -1394,6 +1400,7 @@ function bookingIndexApp() {
                 this.ticketFareForm.outbound_date = lit.outbound_date || '';
                 this.ticketFareForm.selling_fare = lit.selling_fare || 0;
                 this.ticketFareForm.net_fare = lit.net_fare || 0;
+                this.ticketFareForm.offer_price = lit.offer_price || 0;
                 this.ticketFareForm.non_refundable = !lit.is_refundable;
                 this.ticketFareForm.non_exchangeable = !lit.is_exchangeable;
                 this.ticketFareForm.baggage_inbound = lit.baggage_inbound || '';
@@ -1421,6 +1428,7 @@ function bookingIndexApp() {
                 this.ticketFareForm.ticket_agent = row.ticket_fare.ticket_agent || '';
                 this.ticketFareForm.selling_fare = row.ticket_fare.selling_fare || 0;
                 this.ticketFareForm.net_fare = row.ticket_fare.net_fare || 0;
+                this.ticketFareForm.offer_price = row.ticket_fare.offer_price || 0;
                 this.ticketFareForm.non_refundable = row.ticket_fare.non_refundable || false;
                 this.ticketFareForm.non_exchangeable = row.ticket_fare.non_exchangeable || false;
                 this.ticketFareForm.baggage_inbound = row.ticket_fare.baggage_inbound || '';
@@ -1509,8 +1517,10 @@ function bookingIndexApp() {
             this.ticketFareForm.travel_class = '';
             this.ticketFareForm.route_id = '';
             this.ticketFareForm.airline_id = '';
-            this.ticketFareForm.selling_fare = 0;
-            this.ticketFareForm.net_fare = 0;
+                this.ticketFareForm.selling_fare = 0;
+                this.ticketFareForm.net_fare = 0;
+                this.ticketFareForm.offer_price = 0;
+            this.ticketFareForm.offer_price = 0;
             this.ticketFareForm.baggage_inbound = '';
             this.ticketFareForm.baggage_outbound = '';
             this.ticketFareForm.pnr = '';
@@ -1547,6 +1557,7 @@ function bookingIndexApp() {
                 ticket_agent: ticket.ticket_agent?.name || '',
                 selling_fare: ticket.selling_fare || 0,
                 net_fare: ticket.net_fare || 0,
+                offer_price: ticket.offer_price || 0,
                 non_refundable: !ticket.is_refundable,
                 non_exchangeable: !ticket.is_exchangeable,
                 baggage_inbound: ticket.baggage_inbound || '',
@@ -1579,6 +1590,7 @@ function bookingIndexApp() {
                 outbound_date: this.ticketFareForm.outbound_date || null,
                 selling_fare: parseFloat(this.ticketFareForm.selling_fare) || 0,
                 net_fare: parseFloat(this.ticketFareForm.net_fare) || 0,
+                offer_price: parseFloat(this.ticketFareForm.offer_price) || 0,
                 is_refundable: !this.ticketFareForm.non_refundable,
                 is_exchangeable: !this.ticketFareForm.non_exchangeable,
                 baggage_inbound: this.ticketFareForm.baggage_inbound || '',
@@ -1737,7 +1749,7 @@ function bookingIndexApp() {
                     this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(row.ticket_fare.selling_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
                     this.ticketFareForm.net_fare = this.calculateFareForPassengerType(row.ticket_fare.net_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
                     if (row.ticket_fare.with_offer && row.ticket_fare.offer_price) {
-                        this.ticketFareForm.selling_fare = row.ticket_fare.offer_price;
+                        this.ticketFareForm.offer_price = row.ticket_fare.offer_price;
                     }
                 } else {
                     this.ticketFareForm.selling_fare = 0;
