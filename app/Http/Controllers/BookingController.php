@@ -863,6 +863,7 @@ class BookingController extends Controller
                 $booking->payments()->delete();
                 $booking->invoice()->delete();
                 $booking->fingerprint()->delete();
+                \App\Models\IssuedTicket::where('booking_id', $booking->id)->forceDelete();
                 $booking->passengers()->delete();
                 $booking->documents()->delete();
                 $booking->delete();
