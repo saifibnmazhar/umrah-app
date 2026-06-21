@@ -38,6 +38,14 @@ class TicketFareController extends Controller
             });
         }
 
+        if ($request->has('status') && $request->status === 'inactive') {
+            $query->where('is_active', false);
+        } elseif ($request->has('status') && $request->status === 'all') {
+            // no filter
+        } else {
+            $query->where('is_active', true);
+        }
+
         $ticketFares = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
 
         $airlines = Airline::orderBy('name')->get();
@@ -251,6 +259,17 @@ class TicketFareController extends Controller
         }
     }
 
+    public function toggleActive(TicketFare $ticketFare)
+    {
+        $ticketFare->is_active = !$ticketFare->is_active;
+        $ticketFare->save();
+
+        $ticketFare->packages()->update(['is_active' => $ticketFare->is_active]);
+
+        $status = $ticketFare->is_active ? 'activated' : 'deactivated';
+        return back()->with('success', "Ticket fare {$status} successfully. Associated packages have also been {$status}.");
+    }
+
     public function destroy(TicketFare $ticketFare)
     {
         if ($ticketFare->isLocked()) {
@@ -287,7 +306,8 @@ class TicketFareController extends Controller
         $dbRouteType = $routeTypeMap[$request->route_type] ?? $request->route_type;
         $dbFlightType = $flightTypeMap[$request->flight_type] ?? $request->flight_type;
 
-        $fares = TicketFare::whereHas('route', function ($query) use ($dbRouteType, $dbFlightType) {
+        $fares = TicketFare::where('is_active', true)
+            ->whereHas('route', function ($query) use ($dbRouteType, $dbFlightType) {
                 $query->where('route_type', $dbRouteType)
                       ->where('flight_type', $dbFlightType);
             })

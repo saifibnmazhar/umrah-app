@@ -14,7 +14,8 @@ class DashboardController extends Controller
             return redirect()->route('login');
         }
 
-        $packages = Package::with(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.airline', 'ticketFare.airlineClass'])
+        $packages = Package::where('is_active', true)
+            ->with(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.airline', 'ticketFare.airlineClass'])
             ->orderBy('id', 'desc')
             ->limit(6)
             ->get();

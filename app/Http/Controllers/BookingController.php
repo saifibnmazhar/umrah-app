@@ -83,6 +83,17 @@ class BookingController extends Controller
         }
     }
 
+    private function ensureEditWindow(Booking $booking): void
+    {
+        if ($this->isAdminRole()) {
+            return;
+        }
+
+        if ($booking->created_at->diffInHours(now()) >= 12) {
+            abort(403, 'Edit window has expired. Bookings can only be edited within 12 hours of creation.');
+        }
+    }
+
     private function syncBookingFinancials(Booking $booking): array
     {
         $this->bookingService->syncFinancials($booking);
@@ -194,7 +205,7 @@ class BookingController extends Controller
         }
 
         $districts = District::orderBy('name')->get();
-        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
             return [
                 'id' => $pkg->id,
                 'package_name' => $pkg->package_name,
@@ -204,7 +215,7 @@ class BookingController extends Controller
             ];
         });
 
-        $ticketFares = TicketFare::with([
+        $ticketFares = TicketFare::where('is_active', true)->with([
             'route.fromCity',
             'route.toCity',
             'route.returnCity',
@@ -257,10 +268,14 @@ class BookingController extends Controller
         $currencyRates = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->get();
         $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
 
+        $userBranchLocation = $userBranch?->location?->value;
+        $banks = \App\Models\Bank::orderBy('name')->get(['id', 'name', 'currency', 'location']);
+
         return view('bookings.create', compact(
             'districts', 'packages', 'preSelectedPackageId', 'ticketFares',
             'currencyRates', 'currentCurrencyRate', 'bookingBranches',
-            'fingerprintBranches', 'showBookingBranch', 'showFingerprintBranch'
+            'fingerprintBranches', 'showBookingBranch', 'showFingerprintBranch',
+            'userBranchLocation', 'banks'
         ));
     }
 
@@ -552,7 +567,7 @@ class BookingController extends Controller
             'payments.vouchers',
         ]);
 
-        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
             return [
                 'id' => $pkg->id,
                 'package_name' => $pkg->package_name,
@@ -563,7 +578,7 @@ class BookingController extends Controller
             ];
         });
 
-        $ticketFares = TicketFare::with([
+        $ticketFares = TicketFare::where('is_active', true)->with([
             'route.fromCity',
             'route.toCity',
             'route.returnCity',
@@ -627,16 +642,21 @@ class BookingController extends Controller
         $originalTotalBdt = $rate > 0 ? $originalTotal * $rate : 0;
         $discountedTotalBdt = $totalAmountBdt;
 
+        $userBranchLocation = auth()->user()->branch?->location?->value;
+        $banks = \App\Models\Bank::orderBy('name')->get(['id', 'name', 'currency', 'location']);
+
         return view('bookings.show', compact(
             'booking', 'ticketFares', 'packages', 'currentCurrencyRate',
             'totalAmountBdt', 'paidAmountBdt', 'balanceBdt',
-            'originalTotal', 'originalTotalBdt', 'discountedTotalBdt'
+            'originalTotal', 'originalTotalBdt', 'discountedTotalBdt',
+            'userBranchLocation', 'banks'
         ));
     }
 
     public function edit(Booking $booking)
     {
         $this->ensureBranchAccess($booking);
+        $this->ensureEditWindow($booking);
 
         $booking->load(['customer', 'passengers' => fn($q) => $q->approvedFingerprint(), 'district', 'fingerprintBranch', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
 
@@ -644,7 +664,7 @@ class BookingController extends Controller
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get(['id', 'name']);
 
         $districts = District::orderBy('name')->get();
-        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
             return [
                 'id' => $pkg->id,
                 'package_name' => $pkg->package_name,
@@ -654,7 +674,7 @@ class BookingController extends Controller
                 'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
             ];
         });
-        $ticketFares = TicketFare::with([
+        $ticketFares = TicketFare::where('is_active', true)->with([
             'route.fromCity',
             'route.toCity',
             'route.returnCity',
@@ -715,22 +735,23 @@ class BookingController extends Controller
     public function update(Request $request, Booking $booking)
     {
         $this->ensureBranchAccess($booking);
+        $this->ensureEditWindow($booking);
 
         $validated = $request->validate([
             'customer_id' => 'sometimes|required|exists:customers,id',
             'district_id' => 'nullable|exists:districts,id',
             'fingerprint_branch_id' => 'nullable|exists:branches,id',
-            'package_id' => 'nullable|exists:packages,id',
+            'fingerprint_charge_id' => 'nullable|exists:fingerprint_charges,id',
             'booking_branch_id' => 'nullable|exists:branches,id',
             'fingerprint_location' => 'nullable|in:office,home',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:1000',
-            'passengers' => 'nullable|array',
-            'passengers.*.id' => 'nullable|exists:passengers,id',
         ]);
 
         try {
+            DB::beginTransaction();
+
             $validated['discount_type'] = ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage';
             if (! $this->isAdminRole()) {
                 unset($validated['booking_branch_id']);
@@ -769,10 +790,12 @@ class BookingController extends Controller
                 }
             }
 
+            DB::commit();
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Discount applied successfully',
+                    'message' => 'Booking updated successfully',
                     'invoice' => $invoiceData,
                     'discount' => [
                         'type' => $discountType,
@@ -785,6 +808,8 @@ class BookingController extends Controller
             return redirect()->route('bookings.show', $booking->id)
                 ->with('success', 'Booking updated successfully');
         } catch (\Exception $e) {
+            DB::rollBack();
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,
@@ -846,6 +871,7 @@ class BookingController extends Controller
                 $booking->payments()->delete();
                 $booking->invoice()->delete();
                 $booking->fingerprint()->delete();
+                \App\Models\IssuedTicket::where('booking_id', $booking->id)->forceDelete();
                 $booking->passengers()->delete();
                 $booking->documents()->delete();
                 $booking->delete();

@@ -5,7 +5,9 @@
     ticketFares: @json($ticketFares ?? []), 
     packages: @json($packages ?? []), 
     preSelectedPackageId: {{ $preSelectedPackageId ?? 'null' }},
-    currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }}
+    currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }},
+    userBranchLocation: @json($userBranchLocation ?? null),
+    banks: @json($banks ?? [])
 };</script>
 <div class="max-w-5xl mx-auto" x-data="createBookingApp()" x-init="init()">
     <div class="flex justify-between items-center mb-6">
@@ -39,7 +41,7 @@
             <input type="hidden" name="payment[payment_method]" :value="paymentSaved && paymentData.method === 'cash' ? 'cash' : 'bank'">
             <input type="hidden" name="payment[payment_date]" :value="paymentSaved ? new Date().toISOString().split('T')[0] : ''">
             <input type="hidden" name="payment[transaction_id]" :value="paymentSaved ? (paymentData.trx_id || '') : ''">
-            <input type="hidden" name="payment[bank_id]" :value="paymentSaved ? (paymentData.bank_method || '') : ''">
+            <input type="hidden" name="payment[bank_id]" :value="paymentSaved ? (paymentData.bank_id || '') : ''">
             <div class="mb-6">
                 <label class="block text-sm font-medium text-slate-700 mb-2">Customer <span class="text-slate-400">(Passport No.)</span></label>
                 <div class="relative">
@@ -317,7 +319,7 @@
                 <div class="grid grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Currency</label>
-                        <select id="paymentCurrency" x-model="paymentData.currency" @change="handlePaymentCurrencyChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select id="paymentCurrency" x-model="paymentData.currency" @change="handlePaymentCurrencyChange()" :disabled="isCurrencyLocked" :class="{'bg-slate-100 cursor-not-allowed': isCurrencyLocked}" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="SAR">SAR</option>
                             <option value="BDT">BDT</option>
                         </select>
@@ -332,12 +334,11 @@
                     
                     <div x-show="paymentData.method === 'bank'" x-cloak class="col-span-2">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
-                        <select id="paymentBankMethod" x-model="paymentData.bank_method" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select id="paymentBankMethod" x-model="paymentData.bank_method" @change="handleBankMethodChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Bank</option>
-                            <option value="AL-Raji">AL-Raji</option>
-                            <option value="SNB">SNB</option>
-                            <option value="Bkash-BMT">Bkash-BMT</option>
-                            <option value="IBBL-BMT">IBBL-BMT</option>
+                            <template x-for="bank in filteredBanks" :key="bank.id">
+                                <option :value="bank.name" x-text="bank.name"></option>
+                            </template>
                         </select>
                     </div>
                     

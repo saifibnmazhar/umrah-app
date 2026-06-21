@@ -27,11 +27,18 @@ class SettingsController extends Controller
 
         $flightDateGap = FlightDateGap::first();
 
-        $packages = Package::with(['ticketFare', 'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity', 'ticketFare.airline', 'visaSellingPrice'])
-            ->withCount('bookings')
-            ->orderBy('id', 'desc')
-            ->paginate(10)
-            ->withQueryString();
+        $packagesQuery = Package::with(['ticketFare', 'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity', 'ticketFare.airline', 'visaSellingPrice'])
+            ->withCount('bookings');
+
+        if (request()->has('status') && request('status') === 'inactive') {
+            $packagesQuery->where('is_active', false);
+        } elseif (request()->has('status') && request('status') === 'all') {
+            // no filter
+        } else {
+            $packagesQuery->where('is_active', true);
+        }
+
+        $packages = $packagesQuery->orderBy('id', 'desc')->paginate(10)->withQueryString();
 
         $ticketFares = TicketFare::with([
                 'airline',
@@ -42,6 +49,7 @@ class SettingsController extends Controller
                 'route.multiSegments.toCity',
                 'airlineClass.travelClass',
             ])
+            ->where('is_active', true)
             ->orderBy('id', 'desc')
             ->get()
             ->map(function ($fare) {

@@ -213,7 +213,7 @@ class PassengerController extends Controller
             'documents'
         ]);
 
-        $ticketFares = TicketFare::with([
+        $ticketFares = TicketFare::where('is_active', true)->with([
             'route.fromCity',
             'route.toCity',
             'route.returnCity',
@@ -264,7 +264,8 @@ class PassengerController extends Controller
             ];
         });
 
-        $packages = Package::with(['ticketFare'])
+        $packages = Package::where('is_active', true)
+            ->with(['ticketFare'])
             ->get()
             ->map(fn($p) => [
                 'id' => $p->id,

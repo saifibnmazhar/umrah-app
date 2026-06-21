@@ -77,11 +77,13 @@ Route::middleware('auth')->group(function () {
     Route::resource('routes', RouteController::class)->middleware('role:Super Admin,Co Admin');
     Route::get('/api/ticket-fares/baggage', [\App\Http\Controllers\TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
     Route::get('/api/ticket-fares/flight-date-gap', [\App\Http\Controllers\TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
+    Route::patch('/ticket-fares/{ticketFare}/toggle-active', [\App\Http\Controllers\TicketFareController::class, 'toggleActive'])->name('ticket-fares.toggle-active')->middleware('role:Super Admin,Co Admin,Ticket Admin');
     Route::resource('ticket-fares', \App\Http\Controllers\TicketFareController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('commission-agents', CommissionAgentController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('visa-agent-costs', VisaAgentCostController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::resource('visa-selling-prices', VisaSellingPriceController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::resource('currency-rates', CurrencyRateController::class)->middleware('role:Super Admin,Co Admin');
+    Route::patch('/packages/{package}/toggle-active', [PackageController::class, 'toggleActive'])->name('packages.toggle-active')->middleware('role:Super Admin,Co Admin');
     Route::resource('packages', PackageController::class)->middleware('role:Super Admin,Co Admin');
     Route::get('/users', [UserController::class, 'index'])->name('users.index')->middleware('role:Super Admin,Co Admin');
     Route::get('/users/create', [UserController::class, 'create'])->name('users.create')->middleware('role:Super Admin');
@@ -96,9 +98,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/bookings/create', [BookingController::class, 'create'])->name('bookings.create');
     Route::resource('bookings', BookingController::class)->except(['create', 'store', 'edit', 'update', 'destroy']);
     Route::post('/bookings', [BookingController::class, 'store'])->name('bookings.store');
-    Route::get('/bookings/{booking}/edit', [BookingController::class, 'edit'])->name('bookings.edit')->middleware('role:Super Admin,Co Admin');
-    Route::match(['PUT', 'PATCH'], '/bookings/{booking}', [BookingController::class, 'update'])->name('bookings.update')->middleware('role:Super Admin,Co Admin');
-    Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy')->middleware('role:Super Admin,Co Admin');
+    Route::get('/bookings/{booking}/edit', [BookingController::class, 'edit'])->name('bookings.edit');
+    Route::match(['PUT', 'PATCH'], '/bookings/{booking}', [BookingController::class, 'update'])->name('bookings.update');
+    Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy')->middleware('role:Super Admin');
     Route::resource('passengers', PassengerController::class)->except(['destroy']);
     Route::delete('/passengers/{passenger}', [PassengerController::class, 'destroy'])->name('passengers.destroy')->middleware('role:Super Admin,Co Admin');
     Route::patch('/passengers/{passenger}/status', [PassengerController::class, 'updateStatus'])->name('passengers.update-status')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');

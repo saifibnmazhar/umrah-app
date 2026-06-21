@@ -47,7 +47,7 @@ $classesList = \App\Models\TravelClass::all()->map(fn($c) => [
     'name' => $c->name,
 ])->values();
 
-$ticketFaresList = \App\Models\TicketFare::with([
+$ticketFaresList = \App\Models\TicketFare::where('is_active', true)->with([
     'route.fromCity', 'route.toCity', 'route.returnCity',
     'route.multiSegments.fromCity', 'route.multiSegments.toCity',
     'airline', 'airlineClass.class', 'groupTicket',
@@ -71,6 +71,11 @@ $ticketFaresList = \App\Models\TicketFare::with([
     'ticket_qty' => $fare->groupTicket?->ticket_qty ?? null,
     'is_refundable' => $fare->groupTicket?->is_refundable ?? null,
     'is_exchangable' => $fare->groupTicket?->is_exchangable ?? null,
+    'selling_fare' => (float)($fare->selling_fare ?? 0),
+    'net_fare' => (float)($fare->net_fare ?? 0),
+    'offer_price' => $fare->ticket_type?->value === 'offer' ? (float)($fare->offer_price ?? 0) : null,
+    'child_fare_percentage' => (float)($fare->child_fare_percentage ?? 70),
+    'infant_fare_percentage' => (float)($fare->infant_fare_percentage ?? 30),
 ])->values();
 
 $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
@@ -92,6 +97,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'required_flight_date' => $p->flight_date_from?->format('Y-m-d') ?? '',
     'actual_flight_date' => $p->actual_flight_date?->format('Y-m-d') ?? '',
     'fingerprint_location' => $p->booking?->fingerprint_location?->value ?? 'None',
+    'fingerprint_status' => $p->fingerprintDetail?->status?->value ?? null,
     'status' => $p->passengerStatus?->name ?? 'None',
     'documents' => [],
     'passenger_data' => null,
@@ -153,8 +159,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'issued_date' => $lit->issued_date?->format('Y-m-d') ?? '',
         'inbound_date' => $lit->inbound_date?->format('Y-m-d') ?? '',
         'outbound_date' => $lit->outbound_date?->format('Y-m-d') ?? '',
-        'selling_fare' => (float)($lit->selling_fare ?? 0),
-        'net_fare' => (float)($lit->net_fare ?? 0),
+                    'selling_fare' => (float)($lit->selling_fare ?? 0),
+                        'net_fare' => (float)($lit->net_fare ?? 0),
+                        'offer_price' => (float)($lit->offer_price ?? 0),
         'is_refundable' => $lit->is_refundable ?? false,
         'is_exchangeable' => $lit->is_exchangeable ?? false,
         'baggage_inbound' => $lit->baggage_inbound ?? '',
@@ -177,7 +184,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             $canViewVisaColumns = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
             $canViewTicketFareColumn = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
             $canEditInline = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
-            $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
+            $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin'])->isNotEmpty();
             $canViewActionColumn = true;
             $canViewPassengerIndex = true;
         @endphp
@@ -393,17 +400,20 @@ if ($route) {
                 <span class="text-slate-500 text-xs">N/A</span>
             </template>
 
-            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending'">
+            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                 <button @click="openVisaSubmitModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Submit</button>
             </template>
-            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted'">
+            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                 <button @click="openVisaIssueModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
             </template>
-            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued' && canEditVisa">
+            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued' && canEditVisa && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                 <button @click="openVisaEditModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
             </template>
-            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled'">
+            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                 <a href="{{ route('passengers.show', $passenger->id) }}" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</a>
+            </template>
+            <template x-if="passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
+                <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
             </template>
         </div>
     </td>
@@ -436,21 +446,29 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 flex-wrap">
             <span class="font-medium text-sm">@if($fareAmount > 0)@currency($fareAmount, 2)@else—@endif</span>
-            <button x-show="!passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'pending'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
-            <button x-show="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'issued' || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 're-issued'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
+            <button x-show="(!passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'pending') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
+            <button x-show="(passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'issued' || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 're-issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
+            <template x-if="passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
+                <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
+            </template>
         </div>
     </td>
     @endif
     <td class="px-3 py-2">
-        @php $ticketStatus = $passenger->ticket_status; @endphp
-        @if($ticketStatus)
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                {{ $ticketStatus->value === 'issued' ? 'bg-green-100 text-green-700' : ($ticketStatus->value === 're-issued' ? 'bg-purple-100 text-purple-700' : ($ticketStatus->value === 'refunded' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600')) }}">
-                {{ ucfirst($ticketStatus->value) }}
+        <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                :class="{
+                    'bg-green-100 text-green-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued',
+                    'bg-purple-100 text-purple-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued',
+                    'bg-red-100 text-red-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'refunded',
+                    'bg-slate-100 text-slate-600': ['issued','re-issued','refunded'].indexOf(passengersTicketData[{{ $loop->index }}]?.ticket_status) === -1
+                }"
+                x-text="passengersTicketData[{{ $loop->index }}]?.ticket_status.charAt(0).toUpperCase() + passengersTicketData[{{ $loop->index }}]?.ticket_status.slice(1)">
             </span>
-        @else
+        </template>
+        <template x-if="!passengersTicketData[{{ $loop->index }}]?.ticket_status">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
-        @endif
+        </template>
     </td>
     <td class="px-3 py-2">
         @php
@@ -887,6 +905,10 @@ if ($route) {
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
                             <input type="number" x-model="ticketFareForm.net_fare" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
                         </div>
+                        <div x-show="ticketFareForm.ticket_type === 'offer'">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
+                            <input type="number" x-model="ticketFareForm.offer_price" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                        </div>
                     </div>
                 </div>
 
@@ -924,7 +946,7 @@ if ($route) {
                     </div>
                 </div>
 
-                <div class="mb-4">
+                <div class="mb-4" x-show="ticketFareForm.route_type === 'One Way-Inbound'">
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" x-model="ticketFareForm.outbound_pending" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
                         <span class="text-sm text-slate-700">Outbound Ticket Pending</span>
@@ -1326,6 +1348,7 @@ function bookingIndexApp() {
             passenger_type: '',
             selling_fare: 0,
             net_fare: 0,
+            offer_price: 0,
             baggage_inbound: '',
             baggage_outbound: '',
             non_refundable: false,
@@ -1394,6 +1417,7 @@ function bookingIndexApp() {
                 this.ticketFareForm.outbound_date = lit.outbound_date || '';
                 this.ticketFareForm.selling_fare = lit.selling_fare || 0;
                 this.ticketFareForm.net_fare = lit.net_fare || 0;
+                this.ticketFareForm.offer_price = lit.offer_price || 0;
                 this.ticketFareForm.non_refundable = !lit.is_refundable;
                 this.ticketFareForm.non_exchangeable = !lit.is_exchangeable;
                 this.ticketFareForm.baggage_inbound = lit.baggage_inbound || '';
@@ -1421,6 +1445,7 @@ function bookingIndexApp() {
                 this.ticketFareForm.ticket_agent = row.ticket_fare.ticket_agent || '';
                 this.ticketFareForm.selling_fare = row.ticket_fare.selling_fare || 0;
                 this.ticketFareForm.net_fare = row.ticket_fare.net_fare || 0;
+                this.ticketFareForm.offer_price = row.ticket_fare.offer_price || 0;
                 this.ticketFareForm.non_refundable = row.ticket_fare.non_refundable || false;
                 this.ticketFareForm.non_exchangeable = row.ticket_fare.non_exchangeable || false;
                 this.ticketFareForm.baggage_inbound = row.ticket_fare.baggage_inbound || '';
@@ -1509,8 +1534,10 @@ function bookingIndexApp() {
             this.ticketFareForm.travel_class = '';
             this.ticketFareForm.route_id = '';
             this.ticketFareForm.airline_id = '';
-            this.ticketFareForm.selling_fare = 0;
-            this.ticketFareForm.net_fare = 0;
+                this.ticketFareForm.selling_fare = 0;
+                this.ticketFareForm.net_fare = 0;
+                this.ticketFareForm.offer_price = 0;
+            this.ticketFareForm.offer_price = 0;
             this.ticketFareForm.baggage_inbound = '';
             this.ticketFareForm.baggage_outbound = '';
             this.ticketFareForm.pnr = '';
@@ -1547,6 +1574,7 @@ function bookingIndexApp() {
                 ticket_agent: ticket.ticket_agent?.name || '',
                 selling_fare: ticket.selling_fare || 0,
                 net_fare: ticket.net_fare || 0,
+                offer_price: ticket.offer_price || 0,
                 non_refundable: !ticket.is_refundable,
                 non_exchangeable: !ticket.is_exchangeable,
                 baggage_inbound: ticket.baggage_inbound || '',
@@ -1579,6 +1607,7 @@ function bookingIndexApp() {
                 outbound_date: this.ticketFareForm.outbound_date || null,
                 selling_fare: parseFloat(this.ticketFareForm.selling_fare) || 0,
                 net_fare: parseFloat(this.ticketFareForm.net_fare) || 0,
+                offer_price: parseFloat(this.ticketFareForm.offer_price) || 0,
                 is_refundable: !this.ticketFareForm.non_refundable,
                 is_exchangeable: !this.ticketFareForm.non_exchangeable,
                 baggage_inbound: this.ticketFareForm.baggage_inbound || '',
@@ -1737,11 +1766,15 @@ function bookingIndexApp() {
                     this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(row.ticket_fare.selling_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
                     this.ticketFareForm.net_fare = this.calculateFareForPassengerType(row.ticket_fare.net_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
                     if (row.ticket_fare.with_offer && row.ticket_fare.offer_price) {
-                        this.ticketFareForm.selling_fare = row.ticket_fare.offer_price;
+                        this.ticketFareForm.offer_price = row.ticket_fare.offer_price;
                     }
                 } else {
-                    this.ticketFareForm.selling_fare = 0;
-                    this.ticketFareForm.net_fare = 0;
+                    const pType = row?.passenger_type || 'adult';
+                    this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(fare.selling_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                    this.ticketFareForm.net_fare = this.calculateFareForPassengerType(fare.net_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                    if (fare.ticket_type === 'offer' && fare.offer_price) {
+                        this.ticketFareForm.offer_price = fare.offer_price;
+                    }
                 }
             }
             this.suggestBaggage();

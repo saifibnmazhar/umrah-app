@@ -15,12 +15,14 @@ class Package extends Model
         'regular_price',
         'offer_price',
         'service_charge',
+        'is_active',
     ];
 
     protected $casts = [
         'regular_price' => 'decimal:6',
         'offer_price' => 'decimal:6',
         'service_charge' => 'decimal:6',
+        'is_active' => 'boolean',
     ];
 
     protected $appends = ['is_locked'];
