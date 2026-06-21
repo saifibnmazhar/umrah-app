@@ -890,14 +890,13 @@ Alpine.data('createBookingApp', () => ({
 
     newCustomer: {
         name: '',
-        iqama_type: '',
-        iqama_no: '',
         passport_no: '',
         mobile_no: '',
+        address: '',
+        iqama_type: '',
+        iqama_no: '',
         ref_iqama_no: '',
-        ref_mobile_no: '',
-        ref_iqama_doc: null,
-        address: ''
+        ref_mobile_no: ''
     },
     bookingData: {
         fingerprint_location: 'Office',
@@ -2308,14 +2307,13 @@ Alpine.data('editBookingApp', () => ({
 
     newCustomer: {
         name: '',
-        iqama_type: '',
-        iqama_no: '',
         passport_no: '',
         mobile_no: '',
+        address: '',
+        iqama_type: '',
+        iqama_no: '',
         ref_iqama_no: '',
-        ref_mobile_no: '',
-        ref_iqama_doc: null,
-        address: ''
+        ref_mobile_no: ''
     },
     bookingData: {
         fingerprint_location: 'Office',
@@ -3407,6 +3405,94 @@ Alpine.data('editBookingApp', () => ({
         }
 
         return fare > 0 ? fare.toLocaleString() : '-';
+    },
+
+    openCustomerModal() {
+        this.newCustomer = {
+            name: '',
+            iqama_type: '',
+            iqama_no: '',
+            passport_no: this.customerSearch,
+            mobile_no: '',
+            ref_iqama_no: '',
+            ref_mobile_no: '',
+            ref_iqama_doc: null,
+            address: ''
+        };
+        const fileInput = document.getElementById('ref_iqama_doc');
+        if (fileInput) fileInput.value = '';
+        const fileName = document.getElementById('ref_iqama_doc_filename');
+        if (fileName) fileName.textContent = 'click to upload';
+        const docsList = document.getElementById('customer_docs_list');
+        if (docsList) docsList.innerHTML = '';
+        const docsInput = document.getElementById('customer_docs');
+        if (docsInput) docsInput.value = '';
+        this.customerModalVisible = true;
+        this.customerSuggestions = [];
+    },
+
+    closeCustomerModal() {
+        this.customerModalVisible = false;
+    },
+
+    async submitNewCustomer() {
+        try {
+            const formData = new FormData();
+            Object.keys(this.newCustomer).forEach(key => {
+                if (this.newCustomer[key] !== null) {
+                    formData.append(key, this.newCustomer[key]);
+                }
+            });
+            const fileInput = document.getElementById('ref_iqama_doc');
+            if (fileInput && fileInput.files[0]) {
+                formData.append('ref_iqama_doc', fileInput.files[0]);
+            }
+            const docsInput = document.getElementById('customer_docs');
+            if (docsInput) {
+                Array.from(docsInput.files).forEach(file => {
+                    formData.append('customer_docs[]', file);
+                });
+            }
+            const response = await fetch('/customers', {
+                method: 'POST',
+                headers: {
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || ''
+                },
+                body: formData
+            });
+            const text = await response.text();
+            let data;
+            try {
+                data = JSON.parse(text);
+            } catch (parseError) {
+                alert('Server error: Received non-JSON response. Check console for details.');
+                console.log('Parse error:', parseError);
+                return;
+            }
+            if (data.success) {
+                this.selectedCustomer = data.customer;
+                this.customerSearch = data.customer.passport_no;
+                this.customerSuggestions = [];
+                this.closeCustomerModal();
+                this.newCustomer = {
+                    name: '',
+                    iqama_type: '',
+                    iqama_no: '',
+                    passport_no: '',
+                    mobile_no: '',
+                    ref_iqama_no: '',
+                    ref_mobile_no: '',
+                    address: ''
+                };
+                alert('Customer added successfully');
+            } else {
+                alert(data.message || 'Failed to add customer');
+            }
+        } catch (e) {
+            console.error('Error:', e);
+            alert('Failed to add customer');
+        }
     }
 }));
 

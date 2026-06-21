@@ -720,17 +720,17 @@ class BookingController extends Controller
             'customer_id' => 'sometimes|required|exists:customers,id',
             'district_id' => 'nullable|exists:districts,id',
             'fingerprint_branch_id' => 'nullable|exists:branches,id',
-            'package_id' => 'nullable|exists:packages,id',
+            'fingerprint_charge_id' => 'nullable|exists:fingerprint_charges,id',
             'booking_branch_id' => 'nullable|exists:branches,id',
             'fingerprint_location' => 'nullable|in:office,home',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:1000',
-            'passengers' => 'nullable|array',
-            'passengers.*.id' => 'nullable|exists:passengers,id',
         ]);
 
         try {
+            DB::beginTransaction();
+
             $validated['discount_type'] = ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage';
             if (! $this->isAdminRole()) {
                 unset($validated['booking_branch_id']);
@@ -769,10 +769,12 @@ class BookingController extends Controller
                 }
             }
 
+            DB::commit();
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => true,
-                    'message' => 'Discount applied successfully',
+                    'message' => 'Booking updated successfully',
                     'invoice' => $invoiceData,
                     'discount' => [
                         'type' => $discountType,
@@ -785,6 +787,8 @@ class BookingController extends Controller
             return redirect()->route('bookings.show', $booking->id)
                 ->with('success', 'Booking updated successfully');
         } catch (\Exception $e) {
+            DB::rollBack();
+
             if ($request->expectsJson()) {
                 return response()->json([
                     'success' => false,

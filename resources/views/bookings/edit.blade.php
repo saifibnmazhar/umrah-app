@@ -40,13 +40,7 @@
         <form method="POST" action="{{ route('bookings.update', $booking->id) }}" @submit="submitForm($event)" enctype="multipart/form-data">
             @csrf
             @method('PUT')
-            <input type="hidden" name="payment[amount]" :value="paymentSaved ? (parseFloat(paymentData.amount_sar) || 0) : 0">
-            <input type="hidden" name="payment[bdt_amount]" :value="paymentSaved ? (parseFloat(paymentData.amount_bdt) || 0) : 0">
-            <input type="hidden" name="payment[currency]" :value="paymentSaved ? paymentData.currency : 'SAR'">
-            <input type="hidden" name="payment[payment_method]" :value="paymentSaved && paymentData.method === 'cash' ? 'cash' : 'bank'">
-            <input type="hidden" name="payment[payment_date]" :value="paymentSaved ? new Date().toISOString().split('T')[0] : ''">
-            <input type="hidden" name="payment[transaction_id]" :value="paymentSaved ? (paymentData.trx_id || '') : ''">
-            <input type="hidden" name="payment[bank_id]" :value="paymentSaved ? (paymentData.bank_method || '') : ''">
+
             <div class="mb-6">
                 <label class="block text-sm font-medium text-slate-700 mb-2">Customer <span class="text-slate-400">(Passport No.)</span></label>
                 <div class="relative">
@@ -100,12 +94,19 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Booking Branch</label>
-                    <select name="booking_branch_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
-                        <option value="">Select Booking Branch</option>
-                        @foreach($bookingBranches as $branch)
-                            <option value="{{ $branch->id }}">{{ $branch->name }}</option>
-                        @endforeach
-                    </select>
+                    @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin'))
+                        <select name="booking_branch_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                            <option value="">Select Booking Branch</option>
+                            @foreach($bookingBranches as $branch)
+                                <option value="{{ $branch->id }}" {{ $booking->booking_branch_id == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                            @endforeach
+                        </select>
+                    @else
+                        <p class="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium">
+                            {{ $booking->branch?->name ?? 'N/A' }}
+                        </p>
+                        <input type="hidden" name="booking_branch_id" value="{{ $booking->booking_branch_id }}">
+                    @endif
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">District *</label>
@@ -119,12 +120,10 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Package</label>
-                    <select x-model="bookingData.package_id" @change="onPackageChange(); $el.blur()" name="package_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
-                        <option value="">Select Package</option>
-                        @foreach($packages as $pkg)
-                        <option value="{{ $pkg['id'] }}">{{ $pkg['package_name'] }}</option>
-                        @endforeach
-                    </select>
+                    <p class="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium">
+                        {{ $booking->package?->package_name ?? 'N/A' }}
+                    </p>
+                    <input type="hidden" x-model="bookingData.package_id" name="package_id">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">PAX QTY</label>
@@ -326,16 +325,62 @@
                         <input type="text" x-model="newCustomer.passport_no" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No.</label>
-                        <input type="text" x-model="newCustomer.iqama_no" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                    </div>
-                    <div>
                         <label class="block text-sm font-medium text-slate-600 mb-1">Mobile No. *</label>
                         <input type="text" x-model="newCustomer.mobile_no" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Address (KSA)</label>
+                        <input type="text" x-model="newCustomer.address" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama Type</label>
+                        <select x-model="newCustomer.iqama_type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="none">None</option>
+                            <option value="self">Self</option>
+                            <option value="referral">Referral</option>
+                        </select>
+                    </div>
+                    <div x-show="newCustomer.iqama_type !== 'none'&& newCustomer.iqama_type !== ''">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No. (Self)</label>
+                        <input type="text" x-model="newCustomer.iqama_no" x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Customer Docs (Self)</label>
+                        <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('customer_docs').click()">
+                            <input type="file" id="customer_docs" name="customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleCustomerDocUpload(this)">
+                            <div class="text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <span>click to upload</span>
+                            </div>
+                        </div>
+                        <div id="customer_docs_list" class="mt-2 space-y-1"></div>
+                    </div>
+                    <div x-show="newCustomer.iqama_type === 'referral'">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Referral Iqama No.</label>
+                        <input type="text" x-model="newCustomer.ref_iqama_no" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div x-show="newCustomer.iqama_type === 'referral'">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Referral Mobile No.</label>
+                        <input type="text" x-model="newCustomer.ref_mobile_no" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div x-show="newCustomer.iqama_type === 'referral'">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Upload Ref. Iqama *</label>
+                        <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('ref_iqama_doc').click()">
+                            <input type="file" id="ref_iqama_doc" name="ref_iqama_doc" class="hidden" accept=".jpg,.jpeg,.png,.pdf" onchange="handleRefIqamaFileUpload(this)">
+                            <div class="text-slate-500">
+                                <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
+                                </svg>
+                                <span id="ref_iqama_doc_filename">click to upload</span>
+                            </div>
+                        </div>
+                    </div>
                 </div>
                 <div class="flex gap-3 pt-4 border-t border-slate-200">
-                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Add Customer</button>
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save Customer</button>
                     <button type="button" @click="closeCustomerModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
                 </div>
             </form>
