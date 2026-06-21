@@ -71,6 +71,11 @@ $ticketFaresList = \App\Models\TicketFare::with([
     'ticket_qty' => $fare->groupTicket?->ticket_qty ?? null,
     'is_refundable' => $fare->groupTicket?->is_refundable ?? null,
     'is_exchangable' => $fare->groupTicket?->is_exchangable ?? null,
+    'selling_fare' => (float)($fare->selling_fare ?? 0),
+    'net_fare' => (float)($fare->net_fare ?? 0),
+    'offer_price' => $fare->ticket_type?->value === 'offer' ? (float)($fare->offer_price ?? 0) : null,
+    'child_fare_percentage' => (float)($fare->child_fare_percentage ?? 70),
+    'infant_fare_percentage' => (float)($fare->infant_fare_percentage ?? 30),
 ])->values();
 
 $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
@@ -1757,8 +1762,12 @@ function bookingIndexApp() {
                         this.ticketFareForm.offer_price = row.ticket_fare.offer_price;
                     }
                 } else {
-                    this.ticketFareForm.selling_fare = 0;
-                    this.ticketFareForm.net_fare = 0;
+                    const pType = row?.passenger_type || 'adult';
+                    this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(fare.selling_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                    this.ticketFareForm.net_fare = this.calculateFareForPassengerType(fare.net_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                    if (fare.ticket_type === 'offer' && fare.offer_price) {
+                        this.ticketFareForm.offer_price = fare.offer_price;
+                    }
                 }
             }
             this.suggestBaggage();
