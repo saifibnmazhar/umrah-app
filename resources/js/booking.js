@@ -874,6 +874,7 @@ Alpine.data('createBookingApp', () => ({
         currency: 'SAR',
         method: 'cash',
         bank_method: '',
+        bank_id: '',
         trx_id: '',
         amount_sar: '',
         amount_bdt: ''
@@ -882,9 +883,24 @@ Alpine.data('createBookingApp', () => ({
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     userBranchLocation: window.__bookingServerData?.userBranchLocation || null,
+    banks: window.__bookingServerData?.banks || [],
+
+    get filteredBanks() {
+        if (this.userBranchLocation) {
+            return this.banks.filter(b => b.location === this.userBranchLocation);
+        }
+        return this.banks;
+    },
 
     get isCurrencyLocked() {
-        return this.paymentData.method === 'cash' && this.userBranchLocation;
+        if (this.paymentData.method === 'cash') {
+            return !!this.userBranchLocation;
+        }
+        if (this.paymentData.method === 'bank' && this.paymentData.bank_method) {
+            const bank = this.banks.find(b => b.name === this.paymentData.bank_method);
+            return !!bank?.currency;
+        }
+        return false;
     },
 
     hasPaymentData() {
@@ -2005,6 +2021,7 @@ Alpine.data('createBookingApp', () => ({
             currency: this.userBranchLocation === 'BD' ? 'BDT' : 'SAR',
             method: 'cash',
             bank_method: '',
+            bank_id: '',
             trx_id: '',
             amount_sar: '',
             amount_bdt: ''
@@ -2060,6 +2077,17 @@ Alpine.data('createBookingApp', () => ({
             this.paymentData.currency = this.userBranchLocation === 'BD' ? 'BDT' : 'SAR';
         }
     },
+
+    handleBankMethodChange() {
+        const bank = this.banks.find(b => b.name === this.paymentData.bank_method);
+        if (bank) {
+            this.paymentData.bank_id = bank.id;
+            if (bank.currency) {
+                this.paymentData.currency = bank.currency;
+            }
+        }
+    },
+
     convertSarToBdt() {
         if (this.paymentData.currency === 'SAR' && this.paymentData.amount_sar && this.exchangeRate > 0) {
             this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(6);
@@ -3521,9 +3549,24 @@ Alpine.data('showBookingApp', () => ({
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     userBranchLocation: window.__bookingServerData?.userBranchLocation || null,
+    banks: window.__bookingServerData?.banks || [],
+
+    get filteredBanks() {
+        if (this.userBranchLocation) {
+            return this.banks.filter(b => b.location === this.userBranchLocation);
+        }
+        return this.banks;
+    },
 
     get isCurrencyLocked() {
-        return this.paymentData.method === 'cash' && this.userBranchLocation;
+        if (this.paymentData.method === 'cash') {
+            return !!this.userBranchLocation;
+        }
+        if (this.paymentData.method === 'bank' && this.paymentData.bank_method) {
+            const bank = this.banks.find(b => b.name === this.paymentData.bank_method);
+            return !!bank?.currency;
+        }
+        return false;
     },
 
     passengers: [],
@@ -4356,6 +4399,13 @@ Alpine.data('showBookingApp', () => ({
     handlePaymentMethodChange() {
         if (this.paymentData.method === 'cash' && this.userBranchLocation) {
             this.paymentData.currency = this.userBranchLocation === 'BD' ? 'BDT' : 'SAR';
+        }
+    },
+
+    handleBankMethodChange() {
+        const bank = this.banks.find(b => b.name === this.paymentData.bank_method);
+        if (bank?.currency) {
+            this.paymentData.currency = bank.currency;
         }
     },
 

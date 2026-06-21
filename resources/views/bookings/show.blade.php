@@ -10,7 +10,8 @@
     firstPassengerMobile: '{{ $booking->passengers->first()?->mobile_no ?? '' }}',
     firstPassenger: @json($booking->passengers->sortBy('id')->first()?->toArray() ?? null),
     lastPassenger: @json($booking->passengers->sortByDesc('id')->first()?->toArray() ?? null),
-    userBranchLocation: @json($userBranchLocation ?? null)
+    userBranchLocation: @json($userBranchLocation ?? null),
+    banks: @json($banks ?? [])
 };</script>
 <div class="max-w-5xl mx-auto" x-data="showBookingApp()" x-init="init()">
     <div id="invoiceDetailsContent" class="space-y-6">
@@ -413,12 +414,11 @@
 
                     <div x-show="paymentData.method === 'bank'" x-cloak class="col-span-2">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
-                        <select x-model="paymentData.bank_method" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select x-model="paymentData.bank_method" @change="handleBankMethodChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Bank</option>
-                            <option value="AL-Raji">AL-Raji</option>
-                            <option value="SNB">SNB</option>
-                            <option value="Bkash-BMT">Bkash-BMT</option>
-                            <option value="IBBL-BMT">IBBL-BMT</option>
+                            <template x-for="bank in filteredBanks" :key="bank.id">
+                                <option :value="bank.name" x-text="bank.name"></option>
+                            </template>
                         </select>
                     </div>
 
