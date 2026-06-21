@@ -227,7 +227,15 @@
             </div>
         </div>
 
-        <div class="mt-6 flex justify-center">
+        <div class="mt-6 flex justify-center"
+             @click.prevent="
+                 const el = $event.target.closest('a');
+                 if (el && el.href) {
+                     const url = new URL(el.href);
+                     url.searchParams.set('tab', activeTab);
+                     window.location.href = url.toString();
+                 }
+             ">
             {{ $visaAgents->links() }}
         </div>
     </div>
