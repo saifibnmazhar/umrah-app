@@ -443,15 +443,20 @@ if ($route) {
     </td>
     @endif
     <td class="px-3 py-2">
-        @php $ticketStatus = $passenger->ticket_status; @endphp
-        @if($ticketStatus)
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                {{ $ticketStatus->value === 'issued' ? 'bg-green-100 text-green-700' : ($ticketStatus->value === 're-issued' ? 'bg-purple-100 text-purple-700' : ($ticketStatus->value === 'refunded' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600')) }}">
-                {{ ucfirst($ticketStatus->value) }}
+        <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                :class="{
+                    'bg-green-100 text-green-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued',
+                    'bg-purple-100 text-purple-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued',
+                    'bg-red-100 text-red-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'refunded',
+                    'bg-slate-100 text-slate-600': ['issued','re-issued','refunded'].indexOf(passengersTicketData[{{ $loop->index }}]?.ticket_status) === -1
+                }"
+                x-text="passengersTicketData[{{ $loop->index }}]?.ticket_status.charAt(0).toUpperCase() + passengersTicketData[{{ $loop->index }}]?.ticket_status.slice(1)">
             </span>
-        @else
+        </template>
+        <template x-if="!passengersTicketData[{{ $loop->index }}]?.ticket_status">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
-        @endif
+        </template>
     </td>
     <td class="px-3 py-2">
         @php
