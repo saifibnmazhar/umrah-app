@@ -162,7 +162,7 @@
     </div>
 
     <div x-show="showHoldModal"
-         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4">
+         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
             <div class="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl">
                 <h3 class="text-lg font-bold text-slate-800">Hold by BMT/Client</h3>
