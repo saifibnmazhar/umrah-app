@@ -161,7 +161,15 @@
                 </table>
             </div>
 
-            <div class="mt-4 flex justify-center">
+            <div class="mt-4 flex justify-center"
+                 @click.prevent="
+                     const el = $event.target.closest('a');
+                     if (el && el.href) {
+                         const url = new URL(el.href);
+                         url.searchParams.set('tab', activeTab);
+                         window.location.href = url.toString();
+                     }
+                 ">
                 {{ $fingerprintCharges->appends(request()->query())->links() }}
             </div>
         </div>
@@ -441,7 +449,15 @@
                 </table>
             </div>
 
-            <div class="mt-4 flex justify-center">
+            <div class="mt-4 flex justify-center"
+                 @click.prevent="
+                     const el = $event.target.closest('a');
+                     if (el && el.href) {
+                         const url = new URL(el.href);
+                         url.searchParams.set('tab', activeTab);
+                         window.location.href = url.toString();
+                     }
+                 ">
                 {{ $packages->appends(request()->query())->links() }}
             </div>
         </div>
