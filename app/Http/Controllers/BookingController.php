@@ -1132,7 +1132,8 @@ class BookingController extends Controller
             'displayCurrentPaid',
             'displayTotalPaid',
             'displayPreviousPaid',
-            'displayDueAmount'
+            'displayDueAmount',
+            'rate'
         ));
     }
 
