@@ -268,10 +268,13 @@ class BookingController extends Controller
         $currencyRates = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->get();
         $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
 
+        $userBranchLocation = $userBranch?->location?->value;
+
         return view('bookings.create', compact(
             'districts', 'packages', 'preSelectedPackageId', 'ticketFares',
             'currencyRates', 'currentCurrencyRate', 'bookingBranches',
-            'fingerprintBranches', 'showBookingBranch', 'showFingerprintBranch'
+            'fingerprintBranches', 'showBookingBranch', 'showFingerprintBranch',
+            'userBranchLocation'
         ));
     }
 
@@ -638,10 +641,13 @@ class BookingController extends Controller
         $originalTotalBdt = $rate > 0 ? $originalTotal * $rate : 0;
         $discountedTotalBdt = $totalAmountBdt;
 
+        $userBranchLocation = auth()->user()->branch?->location?->value;
+
         return view('bookings.show', compact(
             'booking', 'ticketFares', 'packages', 'currentCurrencyRate',
             'totalAmountBdt', 'paidAmountBdt', 'balanceBdt',
-            'originalTotal', 'originalTotalBdt', 'discountedTotalBdt'
+            'originalTotal', 'originalTotalBdt', 'discountedTotalBdt',
+            'userBranchLocation'
         ));
     }
 

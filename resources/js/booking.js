@@ -881,6 +881,11 @@ Alpine.data('createBookingApp', () => ({
     paymentSaved: false,
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
+    userBranchLocation: window.__bookingServerData?.userBranchLocation || null,
+
+    get isCurrencyLocked() {
+        return this.paymentData.method === 'cash' && this.userBranchLocation;
+    },
 
     hasPaymentData() {
         const amountSar = parseFloat(this.paymentData.amount_sar) || 0;
@@ -1997,7 +2002,7 @@ Alpine.data('createBookingApp', () => ({
         if (dueEl) dueEl.textContent = Alpine.store('currency').format(due);
         this.paymentMaxAmount = due;
         this.paymentData = {
-            currency: 'SAR',
+            currency: this.userBranchLocation === 'BD' ? 'BDT' : 'SAR',
             method: 'cash',
             bank_method: '',
             trx_id: '',
@@ -2050,7 +2055,11 @@ Alpine.data('createBookingApp', () => ({
         }
     },
 
-    handlePaymentMethodChange() {},
+    handlePaymentMethodChange() {
+        if (this.paymentData.method === 'cash' && this.userBranchLocation) {
+            this.paymentData.currency = this.userBranchLocation === 'BD' ? 'BDT' : 'SAR';
+        }
+    },
     convertSarToBdt() {
         if (this.paymentData.currency === 'SAR' && this.paymentData.amount_sar && this.exchangeRate > 0) {
             this.paymentData.amount_bdt = (parseFloat(this.paymentData.amount_sar) * this.exchangeRate).toFixed(6);
@@ -3511,6 +3520,12 @@ Alpine.data('showBookingApp', () => ({
     },
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
+    userBranchLocation: window.__bookingServerData?.userBranchLocation || null,
+
+    get isCurrencyLocked() {
+        return this.paymentData.method === 'cash' && this.userBranchLocation;
+    },
+
     passengers: [],
     lastAddedPassenger: null,
     firstAddedPassenger: null,
@@ -4292,7 +4307,7 @@ Alpine.data('showBookingApp', () => ({
         if (dueEl) dueEl.textContent = dueFinEl?.textContent || dueEl.textContent;
 
         this.paymentData = {
-            currency: 'SAR',
+            currency: this.userBranchLocation === 'BD' ? 'BDT' : 'SAR',
             method: 'cash',
             bank_method: '',
             trx_id: '',
@@ -4338,7 +4353,11 @@ Alpine.data('showBookingApp', () => ({
         }
     },
 
-    handlePaymentMethodChange() {},
+    handlePaymentMethodChange() {
+        if (this.paymentData.method === 'cash' && this.userBranchLocation) {
+            this.paymentData.currency = this.userBranchLocation === 'BD' ? 'BDT' : 'SAR';
+        }
+    },
 
     savePayment() {
         const amountSAR = parseFloat(this.paymentData.amount_sar) || 0;
