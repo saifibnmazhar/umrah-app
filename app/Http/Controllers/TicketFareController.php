@@ -264,8 +264,10 @@ class TicketFareController extends Controller
         $ticketFare->is_active = !$ticketFare->is_active;
         $ticketFare->save();
 
+        $ticketFare->packages()->update(['is_active' => $ticketFare->is_active]);
+
         $status = $ticketFare->is_active ? 'activated' : 'deactivated';
-        return back()->with('success', "Ticket fare {$status} successfully.");
+        return back()->with('success', "Ticket fare {$status} successfully. Associated packages have also been {$status}.");
     }
 
     public function destroy(TicketFare $ticketFare)
