@@ -7,7 +7,7 @@
     <title>@yield('title', 'BM Umrah')</title>
     @php
         use App\Services\CurrencyRateService;
-        $__currencyRate = app(CurrencyRateService::class)->getCurrentRateValue();
+        $__currencyRate = (float) (app(CurrencyRateService::class)->getRateForDate(now())?->rate ?? 0);
     @endphp
     <script>window.__currencyRate = {{ $__currencyRate }};</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])

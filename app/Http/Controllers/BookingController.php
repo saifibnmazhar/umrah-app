@@ -25,6 +25,7 @@ use App\Models\Bank;
 use App\Models\Voucher;
 use App\Models\TransactionType;
 use App\Models\CurrencyRate;
+use App\Services\CurrencyRateService;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Models\IssuedTicket;
@@ -170,8 +171,10 @@ class BookingController extends Controller
 
         $canEditVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
 
+        $currencyRateService = app(CurrencyRateService::class);
+
         return view('bookings.index', compact(
-            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa'
+            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa', 'currencyRateService'
         ));
     }
 
@@ -255,7 +258,7 @@ class BookingController extends Controller
         });
 
         $currencyRates = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->get();
-        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currentCurrencyRate = app(CurrencyRateService::class)->getRateForDate(now());
 
         return view('bookings.create', compact(
             'districts', 'packages', 'preSelectedPackageId', 'ticketFares',
@@ -321,7 +324,7 @@ class BookingController extends Controller
         try {
             DB::beginTransaction();
 
-            $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
+            $currentCurrencyRate = app(CurrencyRateService::class)->getRateForDate(now());
 
             $user = auth()->user();
             $userBranch = $user->branch;
@@ -613,7 +616,11 @@ class BookingController extends Controller
             ];
         });
 
-        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currencyRate = $booking->currencyRate;
+        if (!$currencyRate) {
+            $currencyRate = app(CurrencyRateService::class)->getRateForDate($booking->created_at);
+        }
+        $currentCurrencyRate = $currencyRate;
 
         $rate = $currentCurrencyRate?->rate ?? 0;
         $totalAmount = $booking->invoice?->total_amount ?? 0;
@@ -705,7 +712,11 @@ class BookingController extends Controller
         });
 
         $customers = \App\Models\Customer::orderBy('name')->get(['id', 'name', 'passport_no', 'iqama_no', 'mobile_no']);
-        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currencyRate = $booking->currencyRate;
+        if (!$currencyRate) {
+            $currencyRate = app(CurrencyRateService::class)->getRateForDate($booking->created_at);
+        }
+        $currentCurrencyRate = $currencyRate;
 
         return view('bookings.edit', compact(
             'booking', 'districts', 'packages', 'ticketFares', 'customers', 'currentCurrencyRate', 'bookingBranches', 'fingerprintBranches'

@@ -6,9 +6,16 @@ use App\Models\CurrencyRate;
 
 class CurrencyRateService
 {
+    public function getRateForDate($date): ?CurrencyRate
+    {
+        return CurrencyRate::where('created_at', '<=', $date)
+            ->orderBy('created_at', 'desc')
+            ->first();
+    }
+
     public function getCurrentRate(): ?CurrencyRate
     {
-        return CurrencyRate::orderBy('created_at', 'desc')->first();
+        return $this->getRateForDate(now());
     }
 
     public function getCurrentRateValue(): float
@@ -17,28 +24,34 @@ class CurrencyRateService
         return $rate ? (float) $rate->rate : 0;
     }
 
-    public function convertSarToBdt(float $sarAmount): float
+    public function convertSarToBdt(float $sarAmount, $date = null): float
     {
-        $rate = $this->getCurrentRateValue();
+        $rate = $date
+            ? ((float) ($this->getRateForDate($date)?->rate ?? 0))
+            : $this->getCurrentRateValue();
         return $sarAmount * $rate;
     }
 
-    public function convertBdtToSar(float $bdtAmount): float
+    public function convertBdtToSar(float $bdtAmount, $date = null): float
     {
-        $rate = $this->getCurrentRateValue();
+        $rate = $date
+            ? ((float) ($this->getRateForDate($date)?->rate ?? 0))
+            : $this->getCurrentRateValue();
         if ($rate <= 0) {
             return 0;
         }
         return $bdtAmount / $rate;
     }
 
-    public function convert(float $amount, string $fromCurrency, string $toCurrency): float
+    public function convert(float $amount, string $fromCurrency, string $toCurrency, $date = null): float
     {
         if ($fromCurrency === $toCurrency) {
             return $amount;
         }
 
-        $rate = $this->getCurrentRateValue();
+        $rate = $date
+            ? ((float) ($this->getRateForDate($date)?->rate ?? 0))
+            : $this->getCurrentRateValue();
         if ($rate <= 0) {
             return 0;
         }

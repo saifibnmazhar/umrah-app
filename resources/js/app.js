@@ -18,12 +18,13 @@ Alpine.store('currency', {
         window.dispatchEvent(new CustomEvent('currency-toggled'))
     },
 
-    format(amount, decimals = 2) {
+    format(amount, decimals = 2, rate = null) {
         const num = Number(amount) || 0
+        const effectiveRate = rate !== null ? rate : this.rate
         if (this.mode === 'SAR') {
             return 'SAR ' + num.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
         }
-        const bdt = num * this.rate
+        const bdt = num * effectiveRate
         return 'BDT ' + bdt.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
     },
 
@@ -31,15 +32,16 @@ Alpine.store('currency', {
         document.querySelectorAll('[data-sar]').forEach(el => {
             const sar = parseFloat(el.dataset.sar)
             const dec = parseInt(el.dataset.dec) || 2
+            const rate = el.dataset.rate ? parseFloat(el.dataset.rate) : null
             if (!isNaN(sar)) {
-                el.textContent = this.format(sar, dec)
+                el.textContent = this.format(sar, dec, rate)
             }
         })
     }
 })
 
 Alpine.magic('currency', () => {
-    return (amount, decimals = 2) => Alpine.store('currency').format(amount, decimals)
+    return (amount, decimals = 2, rate = null) => Alpine.store('currency').format(amount, decimals, rate)
 })
 
 Alpine.start()

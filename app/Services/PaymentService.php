@@ -187,7 +187,7 @@ class PaymentService
     private function processCurrencyConversion(array $data): array
     {
         $currencyRateService = app(CurrencyRateService::class);
-        $currentRate = $currencyRateService->getCurrentRate();
+        $currentRate = $currencyRateService->getRateForDate(now());
         
         $data['amount'] = (float) ($data['amount'] ?? 0);
         $data['bdt_amount'] = (float) ($data['bdt_amount'] ?? 0);
