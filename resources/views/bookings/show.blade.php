@@ -16,7 +16,7 @@
         {{-- Header Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
             @php
-                $canEditBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff'])->isNotEmpty();
+                $canEditBooking = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || $booking->created_at->diffInHours(now()) < 12;
                 $canViewRequestButtons = auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
                 $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
                 $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();

@@ -83,6 +83,17 @@ class BookingController extends Controller
         }
     }
 
+    private function ensureEditWindow(Booking $booking): void
+    {
+        if ($this->isAdminRole()) {
+            return;
+        }
+
+        if ($booking->created_at->diffInHours(now()) >= 12) {
+            abort(403, 'Edit window has expired. Bookings can only be edited within 12 hours of creation.');
+        }
+    }
+
     private function syncBookingFinancials(Booking $booking): array
     {
         $this->bookingService->syncFinancials($booking);
@@ -637,6 +648,7 @@ class BookingController extends Controller
     public function edit(Booking $booking)
     {
         $this->ensureBranchAccess($booking);
+        $this->ensureEditWindow($booking);
 
         $booking->load(['customer', 'passengers' => fn($q) => $q->approvedFingerprint(), 'district', 'fingerprintBranch', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
 
@@ -715,6 +727,7 @@ class BookingController extends Controller
     public function update(Request $request, Booking $booking)
     {
         $this->ensureBranchAccess($booking);
+        $this->ensureEditWindow($booking);
 
         $validated = $request->validate([
             'customer_id' => 'sometimes|required|exists:customers,id',
