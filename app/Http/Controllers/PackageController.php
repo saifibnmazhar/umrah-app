@@ -11,9 +11,9 @@ use Illuminate\Validation\Rule;
 
 class PackageController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $packages = Package::with([
+        $query = Package::with([
             'ticketFare',
             'ticketFare.route.fromCity',
             'ticketFare.route.toCity',
@@ -22,7 +22,17 @@ class PackageController extends Controller
             'ticketFare.route.multiSegments.toCity',
             'ticketFare.groupTicket',
             'visaSellingPrice'
-        ])->withCount('bookings')->orderBy('id')->paginate(10);
+        ])->withCount('bookings');
+
+        if ($request->has('status') && $request->status === 'inactive') {
+            $query->where('is_active', false);
+        } elseif ($request->has('status') && $request->status === 'all') {
+            // no filter
+        } else {
+            $query->where('is_active', true);
+        }
+
+        $packages = $query->orderBy('id')->paginate(10);
 
         $packagesArray = $packages->map(fn($p) => [
             'id' => $p->id,
@@ -44,7 +54,7 @@ class PackageController extends Controller
             'route.multiSegments.fromCity',
             'route.multiSegments.toCity',
             'groupTicket'
-        ])->orderBy('id')->get()->map(fn($f) => [
+        ])->where('is_active', true)->orderBy('id')->get()->map(fn($f) => [
             'id' => $f->id,
             'ticket_type' => $f->ticket_type?->value,
             'selling_fare' => $f->selling_fare,
@@ -92,7 +102,7 @@ class PackageController extends Controller
             'route.multiSegments.fromCity',
             'route.multiSegments.toCity',
             'groupTicket'
-        ])->whereNotIn('id', $usedFareIds)->orderBy('id')->get()->map(fn($f) => [
+        ])->where('is_active', true)->whereNotIn('id', $usedFareIds)->orderBy('id')->get()->map(fn($f) => [
             'id' => $f->id,
             'ticket_type' => $f->ticket_type?->value,
             'selling_fare' => $f->selling_fare,
@@ -161,7 +171,7 @@ class PackageController extends Controller
             'route.multiSegments.fromCity',
             'route.multiSegments.toCity',
             'groupTicket'
-        ])->whereNotIn('id', $usedFareIds)->orderBy('id')->get()->map(fn($f) => [
+        ])->where('is_active', true)->whereNotIn('id', $usedFareIds)->orderBy('id')->get()->map(fn($f) => [
             'id' => $f->id,
             'ticket_type' => $f->ticket_type?->value,
             'selling_fare' => $f->selling_fare,
@@ -210,6 +220,15 @@ class PackageController extends Controller
         $package->update($validated);
 
         return redirect()->route('packages.index')->with('success', 'Package updated successfully.');
+    }
+
+    public function toggleActive(Package $package)
+    {
+        $package->is_active = !$package->is_active;
+        $package->save();
+
+        $status = $package->is_active ? 'activated' : 'deactivated';
+        return back()->with('success', "Package {$status} successfully.");
     }
 
     public function destroy(Package $package)

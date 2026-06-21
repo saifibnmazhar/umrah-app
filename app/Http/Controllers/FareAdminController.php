@@ -34,6 +34,14 @@ class FareAdminController extends Controller
             });
         }
 
+        if ($request->has('status') && $request->status === 'inactive') {
+            $ticketFaresQuery->where('is_active', false);
+        } elseif ($request->has('status') && $request->status === 'all') {
+            // no filter
+        } else {
+            $ticketFaresQuery->where('is_active', true);
+        }
+
         $ticketFares = $ticketFaresQuery->orderBy('id', 'desc')->paginate(15)->withQueryString();
         
         $routesQuery = Route::with(['airline', 'fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity']);

@@ -315,6 +315,28 @@
             </div>
         @endif
 
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mb-4">
+            <form method="GET" action="{{ route('settings') }}" class="p-4 flex flex-wrap gap-4 items-end">
+                <input type="hidden" name="tab" value="package-configuration">
+                <div class="min-w-[150px]">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                    <select name="status" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                        <option value="">Active</option>
+                        <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                        <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>All</option>
+                    </select>
+                </div>
+                <div>
+                    <button type="submit" class="px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-600 transition text-sm font-medium">
+                        Filter
+                    </button>
+                    <a href="{{ route('settings', ['tab' => 'package-configuration']) }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium ml-2">
+                        Clear
+                    </a>
+                </div>
+            </form>
+        </div>
+
         <div class="flex justify-between items-center mb-4">
             <h2 class="text-lg font-semibold text-slate-700">Packages</h2>
             <button type="button" onclick="showPackageModal()" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
@@ -339,6 +361,7 @@
                             <th class="px-3 py-2 text-right font-medium">Package Price</th>
                             <th class="px-3 py-2 text-right font-medium pr-8">Offer Price</th>
                             <th class="px-3 py-2 text-left font-medium">Created At</th>
+                            <th class="px-3 py-2 text-center font-medium">Status</th>
                             <th class="px-3 py-2 text-center font-medium">Action</th>
                         </tr>
                     </thead>
@@ -382,6 +405,18 @@
                                 </td>
                                 <td class="px-3 py-2 text-slate-600 whitespace-nowrap">{{ $package->created_at ? $package->created_at->format('d/m/y') : '-' }}</td>
                                 <td class="px-3 py-2 text-center">
+                                    <form method="POST" action="{{ route('packages.toggle-active', $package->id) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $package->is_active ? 'bg-emerald-500' : 'bg-slate-300' }}">
+                                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $package->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                        </button>
+                                    </form>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $package->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' }}">
+                                        {{ $package->is_active ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </td>
+                                <td class="px-3 py-2 text-center">
                                     <a href="{{ route('settings.package.show', $package->id) }}" class="text-xs text-slate-600 hover:text-slate-800 mr-3">View</a>
                                     @if($package->is_locked)
                                         <button class="text-xs text-slate-400 cursor-not-allowed mr-3" title="Has existing bookings" disabled>Edit</button>
@@ -399,7 +434,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="10" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
+                                <td colspan="11" class="px-3 py-8 text-center text-slate-500">No packages configured yet.</td>
                             </tr>
                         @endforelse
                     </tbody>

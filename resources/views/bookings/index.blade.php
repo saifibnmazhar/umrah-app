@@ -47,7 +47,7 @@ $classesList = \App\Models\TravelClass::all()->map(fn($c) => [
     'name' => $c->name,
 ])->values();
 
-$ticketFaresList = \App\Models\TicketFare::with([
+$ticketFaresList = \App\Models\TicketFare::where('is_active', true)->with([
     'route.fromCity', 'route.toCity', 'route.returnCity',
     'route.multiSegments.fromCity', 'route.multiSegments.toCity',
     'airline', 'airlineClass.class', 'groupTicket',

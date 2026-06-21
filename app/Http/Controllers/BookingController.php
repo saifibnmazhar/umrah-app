@@ -205,7 +205,7 @@ class BookingController extends Controller
         }
 
         $districts = District::orderBy('name')->get();
-        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
             return [
                 'id' => $pkg->id,
                 'package_name' => $pkg->package_name,
@@ -215,7 +215,7 @@ class BookingController extends Controller
             ];
         });
 
-        $ticketFares = TicketFare::with([
+        $ticketFares = TicketFare::where('is_active', true)->with([
             'route.fromCity',
             'route.toCity',
             'route.returnCity',
@@ -563,7 +563,7 @@ class BookingController extends Controller
             'payments.vouchers',
         ]);
 
-        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
             return [
                 'id' => $pkg->id,
                 'package_name' => $pkg->package_name,
@@ -574,7 +574,7 @@ class BookingController extends Controller
             ];
         });
 
-        $ticketFares = TicketFare::with([
+        $ticketFares = TicketFare::where('is_active', true)->with([
             'route.fromCity',
             'route.toCity',
             'route.returnCity',
@@ -656,7 +656,7 @@ class BookingController extends Controller
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get(['id', 'name']);
 
         $districts = District::orderBy('name')->get();
-        $packages = Package::with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
             return [
                 'id' => $pkg->id,
                 'package_name' => $pkg->package_name,
@@ -666,7 +666,7 @@ class BookingController extends Controller
                 'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
             ];
         });
-        $ticketFares = TicketFare::with([
+        $ticketFares = TicketFare::where('is_active', true)->with([
             'route.fromCity',
             'route.toCity',
             'route.returnCity',

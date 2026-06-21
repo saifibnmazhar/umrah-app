@@ -25,6 +25,7 @@ class TicketFare extends Model
         'infant_fare_percentage',
         'with_meal',
         'user_id',
+        'is_active',
     ];
 
     protected $casts = [
@@ -37,6 +38,7 @@ class TicketFare extends Model
         'child_fare_percentage' => 'decimal:2',
         'infant_fare_percentage' => 'decimal:2',
         'with_meal' => 'boolean',
+        'is_active' => 'boolean',
     ];
 
     protected $appends = ['is_locked'];

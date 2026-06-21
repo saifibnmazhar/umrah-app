@@ -24,6 +24,27 @@
         </div>
     @endif
 
+    <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mb-4">
+        <form method="GET" action="{{ route('packages.index') }}" class="p-4 flex flex-wrap gap-4 items-end">
+            <div class="min-w-[150px]">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                <select name="status" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <option value="">Active</option>
+                    <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                    <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>All</option>
+                </select>
+            </div>
+            <div>
+                <button type="submit" class="px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-600 transition text-sm font-medium">
+                    Filter
+                </button>
+                <a href="{{ route('packages.index') }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium ml-2">
+                    Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
     <div class="bg-white rounded-lg shadow-sm border border-slate-200 p-6">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
@@ -33,6 +54,7 @@
                         <th class="px-3 py-2 text-left font-medium">Ticket</th>
                         <th class="px-3 py-2 text-right font-medium">Regular Price</th>
                         <th class="px-3 py-2 text-right font-medium">Offer Price</th>
+                        <th class="px-3 py-2 text-center font-medium">Status</th>
                         <th class="px-3 py-2 text-center font-medium">Action</th>
                     </tr>
                 </thead>
@@ -69,6 +91,18 @@
                                 @endif
                             </td>
                             <td class="px-3 py-2 text-center">
+                                <form method="POST" action="{{ route('packages.toggle-active', $package->id) }}">
+                                    @csrf
+                                    @method('PATCH')
+                                    <button type="submit" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $package->is_active ? 'bg-emerald-500' : 'bg-slate-300' }}">
+                                        <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $package->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                    </button>
+                                </form>
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $package->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' }}">
+                                    {{ $package->is_active ? 'Active' : 'Inactive' }}
+                                </span>
+                            </td>
+                            <td class="px-3 py-2 text-center">
                                 @if($package->bookings_count > 0)
                                     <button class="text-xs text-slate-400 cursor-not-allowed mr-3" title="Has existing bookings" disabled>Edit</button>
                                     <button class="text-xs text-red-400 cursor-not-allowed" title="Has existing bookings" disabled>Delete</button>
@@ -84,7 +118,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-3 py-8 text-center text-slate-500">
+                            <td colspan="6" class="px-3 py-8 text-center text-slate-500">
                                 No packages configured yet.
                             </td>
                         </tr>

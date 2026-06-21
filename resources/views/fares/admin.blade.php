@@ -247,6 +247,7 @@
 
         <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mb-6">
             <form method="GET" action="{{ route('fare.admin') }}" class="p-4 flex flex-wrap gap-4 items-end">
+                <input type="hidden" name="tab" value="fares">
                 <div class="flex-1 min-w-[200px]">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Search</label>
                     <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by airline..." class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
@@ -271,11 +272,19 @@
                         <option value="group" {{ request('ticket_type') == 'group' ? 'selected' : '' }}>Group</option>
                     </select>
                 </div>
+                <div class="min-w-[150px]">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Status</label>
+                    <select name="status" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                        <option value="">Active</option>
+                        <option value="inactive" {{ request('status') == 'inactive' ? 'selected' : '' }}>Inactive</option>
+                        <option value="all" {{ request('status') == 'all' ? 'selected' : '' }}>All</option>
+                    </select>
+                </div>
                 <div>
                     <button type="submit" class="px-4 py-2 bg-slate-700 text-white rounded-md hover:bg-slate-600 transition text-sm font-medium">
                         Filter
                     </button>
-                    <a href="{{ route('fare.admin') }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium ml-2">
+                    <a href="{{ route('fare.admin', ['tab' => 'fares']) }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium ml-2">
                         Clear
                     </a>
                 </div>
@@ -299,6 +308,7 @@
                             <th class="px-4 py-3 text-left">Effective To</th>
                             <th class="px-4 py-3 text-left">Ticket Qty</th>
                             <th class="px-4 py-3 text-left">Created At</th>
+                            <th class="px-4 py-3 text-center">Status</th>
                             <th class="px-4 py-3 text-right">Actions</th>
                         </tr>
                     </thead>
@@ -352,6 +362,18 @@
                                     @endif
                                 </td>
                                 <td class="px-4 py-3 text-slate-600">{{ $fare->created_at->format('d/m/Y') }}</td>
+                                <td class="px-4 py-3 text-center">
+                                    <form method="POST" action="{{ route('ticket-fares.toggle-active', $fare->id) }}">
+                                        @csrf
+                                        @method('PATCH')
+                                        <button type="submit" class="relative inline-flex h-6 w-11 items-center rounded-full transition-colors {{ $fare->is_active ? 'bg-emerald-500' : 'bg-slate-300' }}">
+                                            <span class="inline-block h-4 w-4 transform rounded-full bg-white transition-transform {{ $fare->is_active ? 'translate-x-6' : 'translate-x-1' }}"></span>
+                                        </button>
+                                    </form>
+                                    <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $fare->is_active ? 'bg-emerald-100 text-emerald-700' : 'bg-red-100 text-red-700' }}">
+                                        {{ $fare->is_active ? 'Active' : 'Inactive' }}
+                                    </span>
+                                </td>
                                 <td class="px-4 py-3 text-right">
                                     <div class="flex items-center justify-end gap-3">
                                         <a href="{{ route('ticket-fares.show', $fare->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">View</a>
@@ -371,7 +393,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="13" class="px-4 py-12 text-center text-slate-500">
+                                <td colspan="14" class="px-4 py-12 text-center text-slate-500">
                                     No ticket fares found.
                                 </td>
                             </tr>
