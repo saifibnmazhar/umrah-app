@@ -1039,6 +1039,7 @@ class BookingController extends Controller
 
         $booking = Booking::with([
             'customer',
+            'bookingBranch',
             'fingerprintBranch',
             'package',
             'currencyRate',

@@ -35,8 +35,8 @@
     {{-- Header --}}
     <div class="text-center mb-2">
         <h1 class="text-lg font-bold text-slate-800">BOOKING INVOICE UMH</h1>
-        <p class="text-xs text-slate-500 mt-0">Phone: {{ $booking->branch->contacts ?? '+966XXX-XXXXXXX' }}</p>
-        <p class="text-xs text-slate-500">{{ $booking->branch->name ?? 'BMT-Dak' }}</p>
+        <p class="text-xs text-slate-500 mt-0">Phone: {{ $booking->bookingBranch->contacts ?? '+966XXX-XXXXXXX' }}</p>
+        <p class="text-xs text-slate-500">{{ $booking->bookingBranch->name ?? 'BMT-Dak' }}</p>
     </div>
 
     <div class="text-right mb-2">
