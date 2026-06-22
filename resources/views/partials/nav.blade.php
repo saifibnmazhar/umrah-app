@@ -25,7 +25,7 @@
                 
                 @if($canAccessAdminReports || $canAccessFingerprintReport || $canAccessVisa || $canAccessTicket)
                 <div class="relative">
-                    <button @click="reportMenuOpen = !reportMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap">
+                    <button @click="reportMenuOpen = !reportMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap" data-tab="reports">
                         Reports ▾
                     </button>
                     <div x-show="reportMenuOpen" @click.away="reportMenuOpen = false" class="absolute right-0 bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50 min-w-[220px]">
@@ -48,7 +48,7 @@
                 
                 @if($canAccessAdmin || $canAccessVisa || $canAccessTicket)
                 <div class="relative">
-                    <button @click="appMenuOpen = !appMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap">
+                    <button @click="appMenuOpen = !appMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap" data-tab="appManagement">
                         App Management ▾
                     </button>
                     <div x-show="appMenuOpen" @click.away="appMenuOpen = false" class="absolute right-0 bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50 min-w-[200px] max-h-[75vh] overflow-y-auto">
