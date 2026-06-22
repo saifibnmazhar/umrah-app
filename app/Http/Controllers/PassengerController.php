@@ -31,7 +31,9 @@ class PassengerController extends Controller
 
     private function ensureBranchAccess(Passenger $passenger): void
     {
-        if (auth()->user()->branch_id && auth()->user()->branch_id !== $passenger->booking->booking_branch_id) {
+        if (auth()->user()->branch_id
+            && auth()->user()->branch_id !== $passenger->booking->booking_branch_id
+            && auth()->user()->branch_id !== $passenger->booking->fingerprint_branch_id) {
             abort(403);
         }
     }
