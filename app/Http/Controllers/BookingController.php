@@ -131,6 +131,14 @@ class BookingController extends Controller
             ->when(auth()->user()->branch_id, fn ($q) =>
                 $q->where('booking_branch_id', auth()->user()->branch_id)
             )
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->input('search');
+                $q->where(function ($query) use ($search) {
+                    $query->where('invoice_id', 'like', "%{$search}%")
+                        ->orWhereHas('customer', fn ($q) => $q->where('mobile_no', 'like', "%{$search}%"))
+                        ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
+                });
+            })
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->appends(['tab' => $tab])

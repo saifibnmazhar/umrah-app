@@ -219,7 +219,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     <div x-show="activeTab === 'booking'" x-cloak>
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="mb-4">
-                <input type="text" x-model="searchTerm" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Mobile or Invoice No...">
+                <input type="text" x-model="searchTerm" x-ref="searchInput" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Invoice No, Mobile or Passport No...">
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[1000px] text-sm">
@@ -977,7 +977,8 @@ if ($route) {
 function bookingIndexApp() {
     return {
         activeTab: '{{ $tab ?? 'booking' }}',
-        searchTerm: '',
+        searchTerm: new URL(window.location).searchParams.get('search') || '',
+        searchTimeout: null,
 
         init() {
             if (this.activeTab === 'passenger') {
@@ -985,6 +986,28 @@ function bookingIndexApp() {
             }
             this.$watch('activeTab', (newVal) => {
                 document.body.style.overflow = newVal === 'passenger' ? 'hidden' : '';
+            });
+
+            this.$nextTick(() => {
+                if (this.searchTerm && this.$refs.searchInput) {
+                    this.$refs.searchInput.focus();
+                    const len = this.searchTerm.length;
+                    this.$refs.searchInput.setSelectionRange(len, len);
+                }
+            });
+
+            this.$watch('searchTerm', (val) => {
+                if (this.searchTimeout) clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => {
+                    const url = new URL(window.location);
+                    if (val) {
+                        url.searchParams.set('search', val);
+                    } else {
+                        url.searchParams.delete('search');
+                    }
+                    url.searchParams.delete('page');
+                    window.location.href = url.toString();
+                }, 500);
             });
         },
 
