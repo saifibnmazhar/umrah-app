@@ -231,6 +231,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Mobile</th>
                             <th class="px-3 py-2 text-left font-medium">Passengers</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Location</th>
+                            <th class="px-3 py-2 text-left font-medium">Booking Branch</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Branch</th>
                             <th class="px-3 py-2 text-left font-medium">District</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
@@ -261,6 +262,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                                 <span class="text-slate-700">{{ ucfirst($booking->fingerprint_location?->value ?? 'Office') }}</span>
                                 @endif
                             </td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->bookingBranch->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprintBranch->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
@@ -282,7 +284,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="{{ 9 + ($canViewFinancialColumns ? 3 : 0) + ($canViewActionColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
+                            <td colspan="{{ 10 + ($canViewFinancialColumns ? 3 : 0) + ($canViewActionColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
                         </tr>
                         @endforelse
                     </tbody>
