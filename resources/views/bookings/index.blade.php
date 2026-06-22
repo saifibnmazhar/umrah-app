@@ -219,7 +219,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     <div x-show="activeTab === 'booking'" x-cloak>
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="mb-4">
-                <input type="text" x-model="searchTerm" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Invoice No, Mobile or Passport No...">
+                <input type="text" x-model="searchTerm" x-ref="searchInput" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Invoice No, Mobile or Passport No...">
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[1000px] text-sm">
@@ -984,6 +984,14 @@ function bookingIndexApp() {
             }
             this.$watch('activeTab', (newVal) => {
                 document.body.style.overflow = newVal === 'passenger' ? 'hidden' : '';
+            });
+
+            this.$nextTick(() => {
+                if (this.searchTerm && this.$refs.searchInput) {
+                    this.$refs.searchInput.focus();
+                    const len = this.searchTerm.length;
+                    this.$refs.searchInput.setSelectionRange(len, len);
+                }
             });
 
             this.$watch('searchTerm', (val) => {
