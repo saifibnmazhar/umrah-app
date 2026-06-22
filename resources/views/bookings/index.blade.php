@@ -230,7 +230,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
                         @endforeach
                     </select>
-                    <span class="text-slate-700 font-medium whitespace-nowrap">Total Booking - {{ $totalBookingCount }}</span>
+                    <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm">Total Booking - {{ $totalBookingCount }}</span>
                 </div>
                 @endunless
             </div>
