@@ -14,6 +14,7 @@ use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Services\BookingService;
 use App\Services\InvoiceService;
+use App\Traits\ConvertsDocumentsToPdf;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\Storage;
@@ -21,6 +22,8 @@ use Illuminate\Support\Str;
 
 class PassengerController extends Controller
 {
+    use ConvertsDocumentsToPdf;
+
     public function __construct(
         private BookingService $bookingService,
         private InvoiceService $invoiceService,
@@ -332,11 +335,26 @@ class PassengerController extends Controller
             abort(403, 'Unauthorized');
         }
 
-        if (!Storage::exists($document->file_path)) {
+        $fullPath = $this->resolveDocumentPath($document);
+        if (!$fullPath || !file_exists($fullPath)) {
             abort(404, 'File not found');
         }
 
-        return Storage::download($document->file_path, $document->display_name);
+        $tmpFile = storage_path('app/tmp/doc_' . uniqid() . '.pdf');
+        $fileName = $document->display_name . '.pdf';
+
+        try {
+            $this->convertToPdf($fullPath, $tmpFile);
+            $content = file_get_contents($tmpFile);
+        } finally {
+            if (file_exists($tmpFile)) {
+                unlink($tmpFile);
+            }
+        }
+
+        return response()->streamDownload(function () use ($content) {
+            echo $content;
+        }, $fileName);
     }
 
     public function destroyDocument(Passenger $passenger, Document $document)
@@ -366,6 +384,54 @@ class PassengerController extends Controller
                 'message' => 'Failed to delete document',
             ], 500);
         }
+    }
+
+    public function downloadAllDocuments(Passenger $passenger)
+    {
+        $this->authorizeFingerprintAccess($passenger);
+
+        $passenger->load('booking.customer');
+        $allDocs = $passenger->documents;
+
+        abort_if($allDocs->isEmpty(), 404, 'No documents found');
+
+        $passengerName = $passenger->first_name . ' ' . $passenger->last_name;
+        $fileName = "{$passengerName} Documents.pdf";
+
+        $tmpDir = storage_path('app/tmp/merge_' . uniqid());
+        mkdir($tmpDir, 0755, true);
+
+        $pdfFiles = [];
+
+        try {
+            foreach ($allDocs as $doc) {
+                $fullPath = $this->resolveDocumentPath($doc);
+                if (!$fullPath || !file_exists($fullPath)) continue;
+
+                $tmpFile = $tmpDir . '/doc_' . $doc->id . '.pdf';
+                $this->convertToPdf($fullPath, $tmpFile);
+                $pdfFiles[] = $tmpFile;
+            }
+
+            abort_if(empty($pdfFiles), 404, 'No processable documents found');
+
+            $outputPdf = $tmpDir . '/merged.pdf';
+            $inputList = implode(' ', array_map('escapeshellarg', $pdfFiles));
+            exec("gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=" . escapeshellarg($outputPdf) . " {$inputList} 2>/dev/null", $output, $code);
+
+            if ($code !== 0 || !file_exists($outputPdf)) {
+                throw new \RuntimeException('Ghostscript merge failed');
+            }
+
+            $mergedContent = file_get_contents($outputPdf);
+        } finally {
+            array_map('unlink', glob($tmpDir . '/*'));
+            rmdir($tmpDir);
+        }
+
+        return response()->streamDownload(function () use ($mergedContent) {
+            echo $mergedContent;
+        }, $fileName);
     }
 
     public function update(Request $request, Passenger $passenger)

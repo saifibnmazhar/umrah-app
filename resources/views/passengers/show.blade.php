@@ -483,10 +483,7 @@ function deleteDocument(documentId) {
 }
 
 function downloadAllDocuments() {
-    const documents = @json($passenger->documents);
-    documents.forEach(doc => {
-        window.open(`/passengers/${passengerId}/documents/${doc.id}/download`, '_blank');
-    });
+    window.location.href = '{{ route('passengers.download-all-docs', $passenger->id) }}';
 }
 
 // ============================================
