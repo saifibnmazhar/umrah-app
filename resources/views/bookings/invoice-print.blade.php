@@ -110,7 +110,7 @@
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Booking Branch :</td>
-                        <td class="px-2 py-1">{{ $booking->branch->name ?? '-' }}</td>
+                        <td class="px-2 py-1">{{ $booking->bookingBranch->name ?? '-' }}</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Fingerprint Branch :</td>
