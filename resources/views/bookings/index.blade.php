@@ -241,7 +241,6 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                 </div>
                 @endunless
             </div>
-            </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[1000px] text-sm">
                     <thead class="bg-slate-50 text-slate-600">
@@ -1042,6 +1041,7 @@ function bookingIndexApp() {
         navigateToTab(tab) {
             if (this.activeTab === tab) return;
             const url = new URL(window.location);
+            url.searchParams.delete('page');
             if (tab === 'booking') {
                 url.searchParams.delete('tab');
             } else {
