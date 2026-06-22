@@ -336,7 +336,7 @@
     </div>
 
     <div x-show="showDetailsModal"
-         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
          :class="showDetailsModal ? '' : 'hidden'">
         <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50">
