@@ -218,8 +218,21 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     <div x-show="activeTab === 'booking'" x-cloak>
         <div class="bg-white rounded-xl shadow-lg p-6">
-            <div class="mb-4">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
                 <input type="text" x-model="searchTerm" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Mobile or Invoice No...">
+                @unless(auth()->user()->branch_id)
+                <div class="flex items-center gap-4">
+                    <select
+                        onchange="const url=new URL(window.location.href); if(this.value) url.searchParams.set('booking_branch_id',this.value); else url.searchParams.delete('booking_branch_id'); window.location.href=url.toString();"
+                        class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                        <option value="">All Branches</option>
+                        @foreach($bookingBranches as $branch)
+                        <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                    <span class="text-slate-700 font-medium whitespace-nowrap">Total Booking - {{ $totalBookingCount }}</span>
+                </div>
+                @endunless
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[1000px] text-sm">

@@ -126,15 +126,25 @@ class BookingController extends Controller
     public function index(Request $request)
     {
         $tab = $request->get('tab', 'booking');
-        
+        $user = auth()->user();
+        $userBranchId = $user->branch_id;
+
+        $bookingBranches = $userBranchId ? collect() : Branch::orderBy('name')->get(['id', 'name']);
+        $selectedBranchId = $userBranchId ? null : $request->get('booking_branch_id');
+
         $bookings = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'invoice', 'district', 'package'])
-            ->when(auth()->user()->branch_id, fn ($q) =>
-                $q->where('booking_branch_id', auth()->user()->branch_id)
+            ->when($userBranchId, fn ($q) =>
+                $q->where('booking_branch_id', $userBranchId)
+            )
+            ->when($selectedBranchId, fn ($q) =>
+                $q->where('booking_branch_id', $selectedBranchId)
             )
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->appends(['tab' => $tab])
             ->withQueryString();
+
+        $totalBookingCount = $bookings->total();
 
         $passengers = Passenger::approvedFingerprint()
             ->when(auth()->user()->branch_id, fn ($q) =>
@@ -182,7 +192,8 @@ class BookingController extends Controller
         $canEditVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
 
         return view('bookings.index', compact(
-            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa'
+            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa',
+            'bookingBranches', 'selectedBranchId', 'totalBookingCount'
         ));
     }
 
