@@ -35,8 +35,8 @@
     {{-- Header --}}
     <div class="text-center mb-2">
         <h1 class="text-lg font-bold text-slate-800">BOOKING INVOICE UMH</h1>
-        <p class="text-xs text-slate-500 mt-0">Phone: {{ $booking->branch->contacts ?? '+966XXX-XXXXXXX' }}</p>
-        <p class="text-xs text-slate-500">{{ $booking->branch->name ?? 'BMT-Dak' }}</p>
+        <p class="text-xs text-slate-500 mt-0">Phone: {{ $booking->bookingBranch->contacts ?? '+966XXX-XXXXXXX' }}</p>
+        <p class="text-xs text-slate-500">{{ $booking->bookingBranch->name ?? 'BMT-Dak' }}</p>
     </div>
 
     <div class="text-right mb-2">
@@ -109,11 +109,11 @@
                         <td class="px-2 py-1">{{ $invoiceDate ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Branch (Booking By) :</td>
-                        <td class="px-2 py-1">{{ $booking->branch->name ?? '-' }}</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Booking Branch :</td>
+                        <td class="px-2 py-1">{{ $booking->bookingBranch->name ?? '-' }}</td>
                     </tr>
                     <tr>
-                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Branch (Operating By) :</td>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Fingerprint Branch :</td>
                         <td class="px-2 py-1">{{ $booking->fingerprintBranch->name ?? '-' }}</td>
                     </tr>
                     <tr>
