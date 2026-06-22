@@ -79,7 +79,9 @@ class BookingController extends Controller
 
     private function ensureBranchAccess(Booking $booking): void
     {
-        if (auth()->user()->branch_id && auth()->user()->branch_id !== $booking->booking_branch_id) {
+        if (auth()->user()->branch_id
+            && auth()->user()->branch_id !== $booking->booking_branch_id
+            && auth()->user()->branch_id !== $booking->fingerprint_branch_id) {
             abort(403);
         }
     }
@@ -145,7 +147,11 @@ class BookingController extends Controller
 
         $bookingQuery = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'bookingBranch', 'invoice', 'district', 'package'])
             ->when($userBranchId, fn ($q) =>
-                $q->where('booking_branch_id', $userBranchId)
+                $q->where(function ($q) {
+                    $q->where('booking_branch_id', auth()->user()->branch_id)
+                      ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+                })
+            )
             )
             ->when($selectedBranchId, fn ($q) =>
                 $q->where('booking_branch_id', $selectedBranchId)
@@ -169,7 +175,10 @@ class BookingController extends Controller
         $passengers = Passenger::approvedFingerprint()
             ->when(auth()->user()->branch_id, fn ($q) =>
                 $q->whereHas('booking', fn ($q) =>
-                    $q->where('booking_branch_id', auth()->user()->branch_id)
+                    $q->where(function ($q) {
+                        $q->where('booking_branch_id', auth()->user()->branch_id)
+                          ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+                    })
                 )
             )
             ->with([
@@ -405,6 +414,7 @@ class BookingController extends Controller
                 'discount_amount' => 0,
                 'remarks' => $validated['remarks'] ?? null,
                 'currency_rate_id' => $currentCurrencyRate?->id,
+                'total_value' => 0,
             ]);
 
             $booking->load('customer');
@@ -459,6 +469,7 @@ class BookingController extends Controller
                     'ticket_fare_id' => ($passengerData['service_required'] ?? '') === 'visa_only'
                         ? null
                         : ($passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id),
+                    'package_value' => 0,
                 ]);
 
                 if (($passengerData['service_required'] ?? 'all') !== 'ticket_only') {

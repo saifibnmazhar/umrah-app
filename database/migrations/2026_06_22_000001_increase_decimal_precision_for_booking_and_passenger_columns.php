@@ -11,11 +11,11 @@ return new class extends Migration
         Schema::table('bookings', function (Blueprint $table) {
             $table->decimal('discount_value', 14, 6)->change();
             $table->decimal('discount_amount', 14, 6)->change();
-            $table->decimal('total_value', 14, 6)->change();
+            $table->decimal('total_value', 14, 6)->nullable()->change();
         });
 
         Schema::table('passengers', function (Blueprint $table) {
-            $table->decimal('package_value', 14, 6)->change();
+            $table->decimal('package_value', 14, 6)->nullable()->change();
         });
     }
 
