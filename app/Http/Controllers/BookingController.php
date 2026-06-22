@@ -78,7 +78,9 @@ class BookingController extends Controller
 
     private function ensureBranchAccess(Booking $booking): void
     {
-        if (auth()->user()->branch_id && auth()->user()->branch_id !== $booking->booking_branch_id) {
+        if (auth()->user()->branch_id
+            && auth()->user()->branch_id !== $booking->booking_branch_id
+            && auth()->user()->branch_id !== $booking->fingerprint_branch_id) {
             abort(403);
         }
     }
@@ -129,7 +131,10 @@ class BookingController extends Controller
         
         $bookings = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'invoice', 'district', 'package'])
             ->when(auth()->user()->branch_id, fn ($q) =>
-                $q->where('booking_branch_id', auth()->user()->branch_id)
+                $q->where(function ($q) {
+                    $q->where('booking_branch_id', auth()->user()->branch_id)
+                      ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+                })
             )
             ->orderBy('created_at', 'desc')
             ->paginate(10)
@@ -139,7 +144,10 @@ class BookingController extends Controller
         $passengers = Passenger::approvedFingerprint()
             ->when(auth()->user()->branch_id, fn ($q) =>
                 $q->whereHas('booking', fn ($q) =>
-                    $q->where('booking_branch_id', auth()->user()->branch_id)
+                    $q->where(function ($q) {
+                        $q->where('booking_branch_id', auth()->user()->branch_id)
+                          ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+                    })
                 )
             )
             ->with([
