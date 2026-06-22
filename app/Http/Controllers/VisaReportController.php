@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\VisaSubmission;
 use App\Models\VisaAgent;
+use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -91,11 +92,16 @@ class VisaReportController extends Controller
 
     protected function mapReportData(array $submissions): array
     {
+        $currencyRateService = app(CurrencyRateService::class);
         $result = [];
         foreach ($submissions as $submission) {
             $passenger = $submission->passenger;
             $booking = $passenger?->booking;
             $customer = $booking?->customer;
+
+            $rate = $booking?->currencyRate?->rate
+                ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
+                ?? 0;
 
             $iqama = $customer?->iqama_no;
             $passport = $passenger?->passport_no;
@@ -114,6 +120,7 @@ class VisaReportController extends Controller
                 'visa_number' => $submission->visa_number ?? '-',
                 'visa_agent' => $submission->visaAgent?->name ?? '-',
                 'agent_cost' => (float)($submission->final_cost ?? 0),
+                'rate' => $rate,
             ];
         }
         return $result;

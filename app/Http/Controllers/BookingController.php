@@ -25,6 +25,7 @@ use App\Models\Bank;
 use App\Models\Voucher;
 use App\Models\TransactionType;
 use App\Models\CurrencyRate;
+use App\Services\CurrencyRateService;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Models\IssuedTicket;
@@ -189,8 +190,10 @@ class BookingController extends Controller
 
         $canEditVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
 
+        $currencyRateService = app(CurrencyRateService::class);
+
         return view('bookings.index', compact(
-            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa'
+            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa', 'currencyRateService'
         ));
     }
 
@@ -274,7 +277,7 @@ class BookingController extends Controller
         });
 
         $currencyRates = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->get();
-        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currentCurrencyRate = app(CurrencyRateService::class)->getRateForDate(now());
 
         $userBranchLocation = $userBranch?->location?->value;
         $banks = \App\Models\Bank::orderBy('name')->get(['id', 'name', 'currency', 'location']);
@@ -344,7 +347,7 @@ class BookingController extends Controller
         try {
             DB::beginTransaction();
 
-            $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
+            $currentCurrencyRate = app(CurrencyRateService::class)->getRateForDate(now());
 
             $user = auth()->user();
             $userBranch = $user->branch;
@@ -636,7 +639,11 @@ class BookingController extends Controller
             ];
         });
 
-        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currencyRate = $booking->currencyRate;
+        if (!$currencyRate) {
+            $currencyRate = app(CurrencyRateService::class)->getRateForDate($booking->created_at);
+        }
+        $currentCurrencyRate = $currencyRate;
 
         $rate = $currentCurrencyRate?->rate ?? 0;
         $totalAmount = $booking->invoice?->total_amount ?? 0;
@@ -733,7 +740,11 @@ class BookingController extends Controller
         });
 
         $customers = \App\Models\Customer::orderBy('name')->get(['id', 'name', 'passport_no', 'iqama_no', 'mobile_no']);
-        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currencyRate = $booking->currencyRate;
+        if (!$currencyRate) {
+            $currencyRate = app(CurrencyRateService::class)->getRateForDate($booking->created_at);
+        }
+        $currentCurrencyRate = $currencyRate;
 
         return view('bookings.edit', compact(
             'booking', 'districts', 'packages', 'ticketFares', 'customers', 'currentCurrencyRate', 'bookingBranches', 'fingerprintBranches'
@@ -871,6 +882,7 @@ class BookingController extends Controller
 
                 $fingerprintDetailIds = \App\Models\FingerprintDetail::whereIn('passenger_id', $passengerIds)->pluck('id');
 
+                \App\Models\IssuedTicket::whereIn('passenger_id', $passengerIds)->forceDelete();
                 \App\Models\RescheduledFingerprint::whereIn('fingerprint_detail_id', $fingerprintDetailIds)->delete();
                 \App\Models\CancelledSubmission::whereIn('visa_submission_id', \App\Models\VisaSubmission::whereIn('passenger_id', $passengerIds)->pluck('id'))->delete();
                 \App\Models\VisaSubmission::whereIn('passenger_id', $passengerIds)->delete();
@@ -986,6 +998,7 @@ class BookingController extends Controller
                 $detail->delete();
             }
 
+            $passenger->issuedTickets()->forceDelete();
             $passenger->delete();
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();
@@ -1154,7 +1167,8 @@ class BookingController extends Controller
             'displayCurrentPaid',
             'displayTotalPaid',
             'displayPreviousPaid',
-            'displayDueAmount'
+            'displayDueAmount',
+            'rate'
         ));
     }
 

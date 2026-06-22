@@ -15,7 +15,7 @@ Alpine.data('bookingApp', () => ({
 customerModalVisible: false,
         discountModalVisible: false,
         paymentModalVisible: false,
-customDurationModalVisible: false,
+    customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
         method: 'cash',
@@ -25,7 +25,9 @@ customDurationModalVisible: false,
         amount_bdt: ''
     },
     paymentSaved: false,
+    paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
+    historicalRate: window.__bookingServerData?.historicalRate || window.__bookingServerData?.currentCurrencyRate || 0,
 
     hasPaymentData() {
         const amountSar = parseFloat(this.paymentData.amount_sar) || 0;

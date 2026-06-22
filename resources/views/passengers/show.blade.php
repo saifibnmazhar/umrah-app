@@ -129,27 +129,27 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <span class="text-xs text-slate-400">Ticket Fare (SAR)</span>
-                                <p class="text-slate-800 font-medium">@currency($ticketFare, 2)</p>
+                                <p class="text-slate-800 font-medium">@currency($ticketFare, 2, $rate)</p>
                             </div>
                             <div>
                                 <span class="text-xs text-slate-400">Visa Price (SAR)</span>
-                                <p class="text-slate-800 font-medium">@currency($visaCost, 2)</p>
+                                <p class="text-slate-800 font-medium">@currency($visaCost, 2, $rate)</p>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <span class="text-xs text-slate-400">Fingerprint Charge (SAR)</span>
-                                <p class="text-slate-800 font-medium">@currency($fingerprintCost, 2)</p>
+                                <p class="text-slate-800 font-medium">@currency($fingerprintCost, 2, $rate)</p>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
                             <div>
                                 <span class="text-xs text-slate-400">Due (SAR)</span>
-                                <p class="text-red-600 font-medium">@currency($due, 2)</p>
+                                <p class="text-red-600 font-medium">@currency($due, 2, $rate)</p>
                             </div>
                             <div>
                                 <span class="text-xs text-slate-400">Paid (SAR)</span>
-                                <p class="text-green-600 font-medium">@currency($paid, 2)</p>
+                                <p class="text-green-600 font-medium">@currency($paid, 2, $rate)</p>
                             </div>
                         </div>
                     </div>

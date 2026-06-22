@@ -13,6 +13,7 @@ use App\Models\TicketAgent;
 use App\Models\VisaAgent;
 use App\Models\CommissionAgent;
 use App\Models\TransactionType;
+use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 
 class VoucherController extends Controller
@@ -80,13 +81,17 @@ class VoucherController extends Controller
     public function show(Voucher $voucher)
     {
         $voucher->load(['booking', 'payment', 'branch', 'user', 'currencyRate', 'bank', 'ticketAgent', 'visaAgent', 'commissionAgent', 'transactionType']);
-        return view('vouchers.show', compact('voucher'));
+        $currencyRateService = app(CurrencyRateService::class);
+        $rate = $voucher->booking?->currencyRate?->rate
+            ?? $currencyRateService->getRateForDate($voucher->booking?->created_at)?->rate
+            ?? 0;
+        return view('vouchers.show', compact('voucher', 'rate'));
     }
 
     public function edit(Voucher $voucher)
     {
         $bookings = Booking::orderBy('id', 'desc')->get();
-        $payments = Payment::orderBy('id', 'desc')->get();
+        $payments = Payment::with('booking')->orderBy('id', 'desc')->get();
         $branches = Branch::orderBy('name')->get();
         $currencyRates = CurrencyRate::orderBy('created_at', 'desc')->get();
         $banks = Bank::orderBy('name')->get();
@@ -94,7 +99,7 @@ class VoucherController extends Controller
         $visaAgents = VisaAgent::orderBy('name')->get();
         $commissionAgents = CommissionAgent::orderBy('name')->get();
         $transactionTypes = TransactionType::orderBy('name')->get();
-        
+
         return view('vouchers.edit', compact(
             'voucher', 'bookings', 'payments', 'branches', 'currencyRates', 'banks',
             'ticketAgents', 'visaAgents', 'commissionAgents', 'transactionTypes'

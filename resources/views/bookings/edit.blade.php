@@ -10,9 +10,11 @@
     existingPassengers: @json($booking->passengers->toArray()),
     existingCustomer: @json($booking->customer?->toArray() ?? null),
     currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }},
+    historicalRate: {{ $currentCurrencyRate?->rate ?? 0 }},
     bookingId: {{ $booking->id }},
     updateRoute: '{{ route('bookings.update', $booking->id) }}'
 };</script>
+<script>window.__currencyRate = {{ $currentCurrencyRate?->rate ?? 0 }};</script>
 <div class="max-w-5xl mx-auto" x-data="editBookingApp()" x-init="init()">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Edit Booking</h1>
@@ -182,19 +184,19 @@
                 <div class="flex justify-between font-medium text-slate-800">
                     <span id="summaryPackage" class="w-1/6 text-center" x-text="allPackages.find(p => String(p.id) === String(bookingData.package_id))?.package_name ?? '-'">-</span>
                     <span class="w-1/6 text-center">
-                        <div x-text="fingerprintCharge > 0 ? $currency(fingerprintCharge) : '-'">-</div>
+                        <div x-text="fingerprintCharge > 0 ? $currency(fingerprintCharge, 2, historicalRate) : '-'">-</div>
                     </span>
                     <span class="w-1/6 text-center">
                         <div x-text="passengerCount">0</div>
                     </span>
                     <span class="w-1/6 text-center">
-                        <div x-text="bookingData.discount_value > 0 ? (bookingData.discount_type === 'percentage' ? '-' + bookingData.discount_value + '%' : $currency(bookingData.discount_value)) : '-'">-</div>
+                        <div x-text="bookingData.discount_value > 0 ? (bookingData.discount_type === 'percentage' ? '-' + bookingData.discount_value + '%' : $currency(bookingData.discount_value, 2, historicalRate)) : '-'">-</div>
                     </span>
                     <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center">
-                        <div x-text="$currency(grandTotalValue ?? 0)">0 SAR</div>
+                        <div x-text="$currency(grandTotalValue ?? 0, 2, historicalRate)">0 SAR</div>
                     </span>
                     <span id="summaryTotalValue" class="w-1/6 text-center">
-                        <div x-text="discountedTotal !== null ? $currency(discountedTotal) : 'N/A'">0 SAR</div>
+                        <div x-text="discountedTotal !== null ? $currency(discountedTotal, 2, historicalRate) : 'N/A'">0 SAR</div>
                     </span>
                 </div>
             </div>

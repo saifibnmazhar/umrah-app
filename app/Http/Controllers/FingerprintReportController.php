@@ -122,7 +122,12 @@ class FingerprintReportController extends Controller
 
         $canViewFinancials = $this->canViewFinancials();
 
+        $rate = $booking?->currencyRate?->rate
+            ?? app(CurrencyRateService::class)->getRateForDate($booking?->created_at)?->rate
+            ?? 0;
+
         return response()->json([
+            'rate' => $rate,
             'invoice_id' => $booking->invoice_id,
             'customer_name' => $booking->customer?->name ?? '-',
             'booking_date' => $booking->created_at?->format('Y-m-d'),
@@ -187,32 +192,37 @@ class FingerprintReportController extends Controller
                         ->first()?->remarks
                     : null;
 
-                $result[] = [
-                    '_isFirstPassenger' => $pIdx === 0,
-                    '_isLastPassenger' => $pIdx === $passengers->count() - 1,
-                    '_isOddInvoice' => $invoiceIndex % 2 === 1,
-                    'fingerprint_id' => $fingerprint->id,
-                    'fingerprint_detail_id' => $detail?->id,
-                    'invoice_id' => $booking->invoice_id,
-                    'booking_date' => $booking->created_at?->format('Y-m-d'),
-                    'customer_name' => $booking->customer?->name ?? '-',
-                    'customer_mobile' => $booking->customer?->mobile_no ?? '-',
-                    'passenger_name' => trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')),
-                    'passport_no' => $passenger->passport_no ?? '-',
-                    'passenger_mobile' => $passenger->mobile_no ?? '-',
-                    'fingerprint_charge' => $canViewFinancials ? (float)$fingerprintCharge : null,
-                    'fingerprint_cost' => (float)$cost,
-                    'fingerprint_deadline' => $fingerprint->deadline?->format('Y-m-d'),
-                    'completed_date' => $detail && $detail->status === FingerprintStatus::APPROVED
-                        ? $detail->updated_at?->format('Y-m-d')
-                        : '-',
-                    'status_display' => $statusDisplay,
-                    'required_flight' => $passenger->flight_date_display ?? '-',
-                    'actual_flight' => $passenger->actual_flight_date?->format('Y-m-d') ?? '-',
-                    'remarks' => $remarks ?? '-',
-                    'profit' => $canViewFinancials ? max(0, (float)$profitLoss) : null,
-                    'loss' => $canViewFinancials ? abs(min(0, (float)$profitLoss)) : null,
-                ];
+                    $rate = $booking?->currencyRate?->rate
+                        ?? app(CurrencyRateService::class)->getRateForDate($booking?->created_at)?->rate
+                        ?? 0;
+
+                    $result[] = [
+                        '_isFirstPassenger' => $pIdx === 0,
+                        '_isLastPassenger' => $pIdx === $passengers->count() - 1,
+                        '_isOddInvoice' => $invoiceIndex % 2 === 1,
+                        'fingerprint_id' => $fingerprint->id,
+                        'fingerprint_detail_id' => $detail?->id,
+                        'invoice_id' => $booking->invoice_id,
+                        'booking_date' => $booking->created_at?->format('Y-m-d'),
+                        'customer_name' => $booking->customer?->name ?? '-',
+                        'customer_mobile' => $booking->customer?->mobile_no ?? '-',
+                        'passenger_name' => trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')),
+                        'passport_no' => $passenger->passport_no ?? '-',
+                        'passenger_mobile' => $passenger->mobile_no ?? '-',
+                        'fingerprint_charge' => $canViewFinancials ? (float)$fingerprintCharge : null,
+                        'fingerprint_cost' => (float)$cost,
+                        'fingerprint_deadline' => $fingerprint->deadline?->format('Y-m-d'),
+                        'completed_date' => $detail && $detail->status === FingerprintStatus::APPROVED
+                            ? $detail->updated_at?->format('Y-m-d')
+                            : '-',
+                        'status_display' => $statusDisplay,
+                        'required_flight' => $passenger->flight_date_display ?? '-',
+                        'actual_flight' => $passenger->actual_flight_date?->format('Y-m-d') ?? '-',
+                        'remarks' => $remarks ?? '-',
+                        'profit' => $canViewFinancials ? max(0, (float)$profitLoss) : null,
+                        'loss' => $canViewFinancials ? abs(min(0, (float)$profitLoss)) : null,
+                        'rate' => $rate,
+                    ];
             }
         }
 
