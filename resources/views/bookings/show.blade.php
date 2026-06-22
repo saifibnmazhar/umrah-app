@@ -691,8 +691,8 @@
             <div>
                 <label class="block text-sm font-medium text-slate-600 mb-1">Fixed (SAR)</label>
                 <input type="number" id="discountValueSar"
-                    value="{{ number_format($booking->discount_value ?? 0, 2, '.', '') }}"
-                    min="0" step="0.01"
+                    value="{{ number_format($booking->discount_value ?? 0, 6, '.', '') }}"
+                    min="0" step="any"
                     data-current="{{ $booking->discount_value ?? 0 }}"
                     oninput="onFixedSarInput()"
                     class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
@@ -735,7 +735,7 @@
 <script>
 var currentDiscountState = {
     type: '{{ $booking->discount_type?->value === 'fixed_amount' ? 'fixed' : ($booking->discount_type?->value ?? 'fixed') }}',
-    value: {{ round($booking->discount_value ?? 0, 2) }}
+    value: {{ round($booking->discount_value ?? 0, 6) }}
 };
 
 function round2(n) {
@@ -792,7 +792,7 @@ function openDiscountModal() {
     const rate = getCurrencyRate();
 
     document.getElementById('discountType').value = type;
-    document.getElementById('discountValueSar').value = round2(currentDiscountState.value);
+    document.getElementById('discountValueSar').value = parseFloat(currentDiscountState.value).toFixed(6);
 
     if (type === 'fixed' && mode === 'BDT' && rate > 0) {
         document.getElementById('discountValueBdt').value = round2(currentDiscountState.value * rate).toFixed(2);
@@ -841,7 +841,7 @@ function onFixedBdtInput() {
     const rate = getCurrencyRate();
     const bdtValue = parseFloat(document.getElementById('discountValueBdt').value) || 0;
     const sarValue = rate > 0 ? bdtValue / rate : 0;
-    document.getElementById('discountValueSar').value = sarValue ? round2(sarValue).toFixed(2) : '';
+    document.getElementById('discountValueSar').value = sarValue ? sarValue.toFixed(6) : '';
     validateNumericInput('discountValueBdt');
     calculateInvoiceDiscount();
 }
@@ -852,7 +852,7 @@ function onFixedSarInput() {
     const rate = getCurrencyRate();
     if (mode === 'BDT' && rate > 0) {
         const sarValue = parseFloat(document.getElementById('discountValueSar').value) || 0;
-                document.getElementById('discountValueBdt').value = sarValue ? round2(sarValue * rate).toFixed(2) : '';
+        document.getElementById('discountValueBdt').value = sarValue ? round2(sarValue * rate).toFixed(2) : '';
     }
     calculateInvoiceDiscount();
 }
