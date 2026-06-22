@@ -152,7 +152,6 @@ class BookingController extends Controller
                       ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
                 })
             )
-            )
             ->when($selectedBranchId, fn ($q) =>
                 $q->where('booking_branch_id', $selectedBranchId)
             )
