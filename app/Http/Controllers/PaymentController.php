@@ -11,6 +11,7 @@ use App\Models\Bank;
 use App\Models\TicketAgent;
 use App\Models\VisaAgent;
 use App\Models\CommissionAgent;
+use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 
 class PaymentController extends Controller
@@ -73,7 +74,11 @@ class PaymentController extends Controller
     public function show(Payment $payment)
     {
         $payment->load(['booking', 'branch', 'user', 'currencyRate', 'bank', 'ticketAgent', 'visaAgent', 'commissionAgent']);
-        return view('payments.show', compact('payment'));
+        $currencyRateService = app(CurrencyRateService::class);
+        $rate = $payment->booking?->currencyRate?->rate
+            ?? $currencyRateService->getRateForDate($payment->booking?->created_at)?->rate
+            ?? 0;
+        return view('payments.show', compact('payment', 'rate'));
     }
 
     public function edit(Payment $payment)

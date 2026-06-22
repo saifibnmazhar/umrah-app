@@ -8,8 +8,10 @@
     isEditMode: true,
     preSelectedPackageId: {{ $passenger->booking->package_id ?? 'null' }},
     updateRoute: '{{ route('passengers.update', $passenger->id) }}',
-    showRoute: '{{ route('passengers.show', $passenger->id) }}'
+    showRoute: '{{ route('passengers.show', $passenger->id) }}',
+    currentCurrencyRate: {{ $rate }}
 };</script>
+<script>window.__currencyRate = {{ $rate }};</script>
 <div class="max-w-3xl mx-auto" x-data="editPassengerApp()" x-init="init()">
     <div class="bg-white rounded-xl shadow-lg p-6">
         <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">

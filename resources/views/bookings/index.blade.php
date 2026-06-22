@@ -2,25 +2,31 @@
 @section('title', 'Booking')
 @section('content')
 @php
-$passengersVisaData = ($passengers ?? collect())->map(fn($p) => [
-    'id' => $p->id,
-    'booking_id' => $p->booking_id,
-    'visa' => $p->visaSubmission ? [
-        'id' => $p->visaSubmission->id,
-        'agent_id' => $p->visaSubmission->visa_agent_id,
-        'agent' => $p->visaSubmission?->visaAgent?->name ?? '',
-        'visa_number' => $p->visaSubmission?->visa_number ?? '',
-        'selling_price' => (float)($p->visaSubmission?->visaSellingPrice?->selling_price ?? 0),
-        'agent_commission' => (float)($p->visaSubmission?->agent_commission ?? 0),
-        'net_visa_cost' => (float)($p->visaSubmission?->net_visa_cost ?? 0),
-        'additional_cost' => (float)($p->visaSubmission?->additional_cost ?? 0),
-        'remarks' => $p->visaSubmission?->remarks ?? '',
-        'final_cost' => (float)($p->visaSubmission?->final_cost ?? 0),
-        'commission_agent_id' => $p->visaSubmission?->commission_agent_id,
-        'commission_agent' => $p->visaSubmission?->commissionAgent?->name ?? '',
-        'status' => $p->visaSubmission->status?->value ?? 'pending',
-    ] : null,
-])->values();
+$passengersVisaData = ($passengers ?? collect())->map(function($p) {
+    $rate = $p->booking?->currencyRate?->rate
+        ?? app(\App\Services\CurrencyRateService::class)->getRateForDate($p->booking?->created_at)?->rate
+        ?? 0;
+    return [
+        'id' => $p->id,
+        'booking_id' => $p->booking_id,
+        'rate' => $rate,
+        'visa' => $p->visaSubmission ? [
+            'id' => $p->visaSubmission->id,
+            'agent_id' => $p->visaSubmission->visa_agent_id,
+            'agent' => $p->visaSubmission?->visaAgent?->name ?? '',
+            'visa_number' => $p->visaSubmission?->visa_number ?? '',
+            'selling_price' => (float)($p->visaSubmission?->visaSellingPrice?->selling_price ?? 0),
+            'agent_commission' => (float)($p->visaSubmission?->agent_commission ?? 0),
+            'net_visa_cost' => (float)($p->visaSubmission?->net_visa_cost ?? 0),
+            'additional_cost' => (float)($p->visaSubmission?->additional_cost ?? 0),
+            'remarks' => $p->visaSubmission?->remarks ?? '',
+            'final_cost' => (float)($p->visaSubmission?->final_cost ?? 0),
+            'commission_agent_id' => $p->visaSubmission?->commission_agent_id,
+            'commission_agent' => $p->visaSubmission?->commissionAgent?->name ?? '',
+            'status' => $p->visaSubmission->status?->value ?? 'pending',
+        ] : null,
+    ];
+})->values();
 
 $ticketAgents = \App\Models\TicketAgent::orderBy('name')->get();
 
@@ -247,6 +253,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                                 <select
                                     class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
                                     data-original="{{ $booking->fingerprint_location?->value ?? 'office' }}"
+                                    data-rate="{{ $bookingCurrencyRate }}"
                                     onchange="updateFingerprintLocation({{ $booking->id }}, this.value, this)">
                                     <option value="home" {{ ($booking->fingerprint_location?->value ?? '') === 'home' ? 'selected' : '' }}>Home</option>
                                     <option value="office" {{ ($booking->fingerprint_location?->value ?? '') === 'office' ? 'selected' : '' }}>Office</option>
@@ -389,7 +396,7 @@ if ($route) {
     <td class="px-3 py-2">
         <div class="flex items-center gap-1 flex-wrap">
             <template x-if="passengersVisaData[{{ $loop->index }}]?.visa">
-                <span class="text-slate-800 font-medium text-xs mr-1" x-text="$currency(passengersVisaData[{{ $loop->index }}]?.visa?.selling_price)"></span>
+                <span class="text-slate-800 font-medium text-xs mr-1" x-text="$currency(passengersVisaData[{{ $loop->index }}]?.visa?.selling_price, 2, passengersVisaData[{{ $loop->index }}]?.rate)"></span>
             </template>
             <template x-if="!passengersVisaData[{{ $loop->index }}]?.visa">
                 <span class="text-slate-500 text-xs">N/A</span>
@@ -2115,9 +2122,10 @@ function updateFingerprintLocation(bookingId, location, select) {
                 const cells = row.querySelectorAll('td');
                 @if($canViewFinancialColumns)
                 if (cells.length >= 12) {
-                    cells[9].textContent = Alpine.store('currency').format(data.invoice.total_amount);
-                    cells[10].textContent = Alpine.store('currency').format(data.invoice.paid_amount);
-                    cells[11].textContent = Alpine.store('currency').format(data.invoice.balance);
+                    const rate = parseFloat(selectEl.dataset.rate) || 0;
+                    cells[9].textContent = Alpine.store('currency').format(data.invoice.total_amount, 2, rate);
+                    cells[10].textContent = Alpine.store('currency').format(data.invoice.paid_amount, 2, rate);
+                    cells[11].textContent = Alpine.store('currency').format(data.invoice.balance, 2, rate);
                 }
                 @endif
             }

@@ -840,23 +840,23 @@ function updateFinancialSummary(invoice) {
     const fmt = (n) => Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     if (originalEl && invoice.original_total != null) {
-        originalEl.innerHTML = Alpine.store('currency').format(invoice.original_total);
+        originalEl.innerHTML = Alpine.store('currency').format(invoice.original_total, 2, rate);
     }
     if (discountIndicatorEl) {
         if (invoice.discount_amount > 0) {
             const type = invoice.discount_type === 'fixed_amount' ? 'fixed' : invoice.discount_type;
             const pct = (type === 'percentage') ? ' (' + Number(invoice.discount_value).toString().replace(/\.?0+$/, '') + '%)' : '';
-            discountIndicatorEl.innerHTML = '−' + Alpine.store('currency').format(invoice.discount_amount) + ' discount' + pct;
+            discountIndicatorEl.innerHTML = '−' + Alpine.store('currency').format(invoice.discount_amount, 2, rate) + ' discount' + pct;
             discountIndicatorEl.classList.remove('hidden');
         } else {
             discountIndicatorEl.classList.add('hidden');
         }
     }
 
-    if (totalEl) totalEl.innerHTML = Alpine.store('currency').format(invoice.total_amount);
-    if (paidEl) paidEl.innerHTML = Alpine.store('currency').format(invoice.paid_amount);
+    if (totalEl) totalEl.innerHTML = Alpine.store('currency').format(invoice.total_amount, 2, rate);
+    if (paidEl) paidEl.innerHTML = Alpine.store('currency').format(invoice.paid_amount, 2, rate);
     if (dueEl) {
-        dueEl.innerHTML = Alpine.store('currency').format(invoice.balance);
+        dueEl.innerHTML = Alpine.store('currency').format(invoice.balance, 2, rate);
         dueEl.className = 'text-xl font-bold ' + (invoice.balance <= 0 ? 'text-green-600' : 'text-red-600');
     }
 }
@@ -880,7 +880,7 @@ function appendPassengerRow(passenger, displayTotal) {
             '<span class="text-slate-500 text-sm ml-2">(' + escapeHtml(passport) + ')</span>' +
         '</div>' +
         '<div class="flex items-center gap-3">' +
-            '<span class="text-slate-800 font-medium">' + Alpine.store('currency').format(total) + '</span>' +
+            '<span class="text-slate-800 font-medium">' + Alpine.store('currency').format(total, 2, window.__bookingServerData?.currentCurrencyRate || 0) + '</span>' +
             '<button onclick="viewPassengerDetails(' + passenger.id + ')" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-1 rounded">View</button>' +
         '</div>';
 
@@ -1297,9 +1297,9 @@ function renderRefundHistory() {
             <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
             <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
             <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.agentRefund || 0)}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerRefund || 0)}</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.agentRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
+            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
             <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
             <td class="px-3 py-2">${statusBadge}</td>
             <td class="px-3 py-2">
@@ -1332,9 +1332,9 @@ function generateRefundDetailsHTML(item) {
                     <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
                     <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
                     <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.agentRefund || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerRefund || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.agentRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
                     <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
                 </div>
             </div>
@@ -1417,9 +1417,9 @@ function renderAdditionalTicketHistory() {
             <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
             <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
             <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0)}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerPayment || 0)}</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerPayment || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
+            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
             <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
             <td class="px-3 py-2">${statusBadge}</td>
             <td class="px-3 py-2">
@@ -1452,9 +1452,9 @@ function generateAddTicketDetailsHTML(item) {
                     <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
                     <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
                     <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Additional Ticket Cost</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Customer Payment</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerPayment || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Additional Ticket Cost</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Customer Payment</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerPayment || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
                     <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
                 </div>
             </div>

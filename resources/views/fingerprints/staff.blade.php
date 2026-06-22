@@ -52,9 +52,9 @@
                                        @change="updateCost(row.fingerprint_id, $event.target.value)"
                                        class="w-20 text-right text-sm border border-slate-300 rounded px-2 py-1"
                                        min="0">
-                                <span x-show="row.isFirstInGroup && !canEditCost"
-                                      class="text-sm text-slate-700 font-medium"
-                                      x-text="row.cost != null && row.cost !== '' ? $currency(row.cost) : ''"></span>
+<span x-show="row.isFirstInGroup && !canEditCost"
+      class="text-sm text-slate-700 font-medium"
+      x-text="row.cost != null && row.cost !== '' ? $currency(row.cost, 2, row.rate) : ''"></span>
                             </td>
                             <td class="px-3 py-2">
                                 <select x-show="canEditStatus"

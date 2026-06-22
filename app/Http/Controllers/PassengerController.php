@@ -13,6 +13,7 @@ use App\Models\VisaSubmission;
 use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Services\BookingService;
+use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -192,7 +193,13 @@ class PassengerController extends Controller
             }
         }
 
-        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa', 'historyRows'));
+        $currencyRateService = app(CurrencyRateService::class);
+        $booking = $passenger->booking;
+        $rate = $booking?->currencyRate?->rate
+            ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
+            ?? 0;
+
+        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa', 'historyRows', 'rate'));
     }
 
     public function edit(Passenger $passenger)
@@ -274,7 +281,12 @@ class PassengerController extends Controller
                 'ticket_fare_id' => $p->ticket_fare_id,
             ]);
 
-        return view('passengers.edit', compact('passenger', 'ticketFares', 'packages'));
+        $booking = $passenger->booking;
+        $rate = $booking?->currencyRate?->rate
+            ?? app(CurrencyRateService::class)->getRateForDate($booking?->created_at)?->rate
+            ?? 0;
+
+        return view('passengers.edit', compact('passenger', 'ticketFares', 'packages', 'rate'));
     }
 
     public function uploadDocument(Request $request, Passenger $passenger)
