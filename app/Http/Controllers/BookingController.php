@@ -132,6 +132,15 @@ class BookingController extends Controller
         $bookingBranches = $userBranchId ? collect() : Branch::orderBy('name')->get(['id', 'name']);
         $selectedBranchId = $userBranchId ? null : $request->get('booking_branch_id');
 
+        $branchCounts = !$userBranchId
+            ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
+                ->whereNotNull('booking_branch_id')
+                ->groupBy('booking_branch_id')
+                ->pluck('total', 'booking_branch_id')
+                ->toArray()
+            : [];
+        $allBookingCount = !$userBranchId ? Booking::count() : 0;
+
         $bookingQuery = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'invoice', 'district', 'package'])
             ->when($userBranchId, fn ($q) =>
                 $q->where('booking_branch_id', $userBranchId)
@@ -194,7 +203,8 @@ class BookingController extends Controller
 
         return view('bookings.index', compact(
             'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa',
-            'bookingBranches', 'selectedBranchId', 'totalBookingCount'
+            'bookingBranches', 'selectedBranchId', 'totalBookingCount',
+            'branchCounts', 'allBookingCount'
         ));
     }
 
