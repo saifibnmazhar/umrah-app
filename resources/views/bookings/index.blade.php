@@ -224,8 +224,23 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     <div x-show="activeTab === 'booking'" x-cloak>
         <div class="bg-white rounded-xl shadow-lg p-6">
-            <div class="mb-4">
-                <input type="text" x-model="searchTerm" x-ref="searchInput" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Invoice No, Mobile or Passport No...">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+                <input type="text" x-model="searchTerm" x-ref="searchInput" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Mobile or Invoice No...">
+                @unless(auth()->user()->branch_id)
+                <div class="flex items-center gap-4">
+                    <select
+                        x-model="selectedBranchId"
+                        @change="onBranchChange"
+                        class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                        <option value="">All Branches</option>
+                        @foreach($bookingBranches as $branch)
+                        <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                    <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm" x-text="'Total Booking - ' + totalBookingCount">Total Booking - {{ $totalBookingCount }}</span>
+                </div>
+                @endunless
+            </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[1000px] text-sm">
@@ -988,6 +1003,10 @@ function bookingIndexApp() {
         activeTab: '{{ $tab ?? 'booking' }}',
         searchTerm: new URL(window.location).searchParams.get('search') || '',
         searchTimeout: null,
+        selectedBranchId: '{{ $selectedBranchId }}',
+        totalBookingCount: {{ $totalBookingCount }},
+        branchCounts: @json($branchCounts),
+        allBookingCount: {{ $allBookingCount }},
 
         init() {
             if (this.activeTab === 'passenger') {
@@ -1027,6 +1046,19 @@ function bookingIndexApp() {
                 url.searchParams.delete('tab');
             } else {
                 url.searchParams.set('tab', tab);
+            }
+            window.location.href = url.toString();
+        },
+
+        onBranchChange() {
+            this.totalBookingCount = this.selectedBranchId
+                ? (this.branchCounts[this.selectedBranchId] || 0)
+                : this.allBookingCount;
+            const url = new URL(window.location.href);
+            if (this.selectedBranchId) {
+                url.searchParams.set('booking_branch_id', this.selectedBranchId);
+            } else {
+                url.searchParams.delete('booking_branch_id');
             }
             window.location.href = url.toString();
         },

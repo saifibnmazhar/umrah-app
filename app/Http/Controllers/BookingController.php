@@ -127,10 +127,28 @@ class BookingController extends Controller
     public function index(Request $request)
     {
         $tab = $request->get('tab', 'booking');
-        
-        $bookings = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'bookingBranch', 'invoice', 'district', 'package'])
-            ->when(auth()->user()->branch_id, fn ($q) =>
-                $q->where('booking_branch_id', auth()->user()->branch_id)
+
+        $user = auth()->user();
+        $userBranchId = $user->branch_id;
+
+        $bookingBranches = $userBranchId ? collect() : Branch::orderBy('name')->get(['id', 'name']);
+        $selectedBranchId = $userBranchId ? null : $request->get('booking_branch_id');
+
+        $branchCounts = !$userBranchId
+            ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
+                ->whereNotNull('booking_branch_id')
+                ->groupBy('booking_branch_id')
+                ->pluck('total', 'booking_branch_id')
+                ->toArray()
+            : [];
+        $allBookingCount = !$userBranchId ? Booking::count() : 0;
+
+        $bookingQuery = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'bookingBranch', 'invoice', 'district', 'package'])
+            ->when($userBranchId, fn ($q) =>
+                $q->where('booking_branch_id', $userBranchId)
+            )
+            ->when($selectedBranchId, fn ($q) =>
+                $q->where('booking_branch_id', $selectedBranchId)
             )
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->input('search');
@@ -140,8 +158,11 @@ class BookingController extends Controller
                         ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
                 });
             })
-            ->orderBy('created_at', 'desc')
-            ->paginate(10)
+            ->orderBy('created_at', 'desc');
+
+        $totalBookingCount = (clone $bookingQuery)->count();
+
+        $bookings = $bookingQuery->paginate(10)
             ->appends(['tab' => $tab])
             ->withQueryString();
 
@@ -193,7 +214,9 @@ class BookingController extends Controller
         $currencyRateService = app(CurrencyRateService::class);
 
         return view('bookings.index', compact(
-            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa', 'currencyRateService'
+            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa',
+            'currencyRateService', 'bookingBranches', 'selectedBranchId', 'totalBookingCount',
+            'branchCounts', 'allBookingCount'
         ));
     }
 
