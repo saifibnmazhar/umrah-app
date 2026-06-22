@@ -17,7 +17,6 @@ class DashboardController extends Controller
         $packages = Package::where('is_active', true)
             ->with(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.airline', 'ticketFare.airlineClass'])
             ->orderBy('id', 'desc')
-            ->limit(6)
             ->get();
 
         return view('dashboard.index', compact('packages'));

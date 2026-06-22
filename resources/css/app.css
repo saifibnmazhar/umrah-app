@@ -28,3 +28,5 @@
 
 .table-header { background: linear-gradient(to bottom, #f3f3f3 0%, #e8e8e8 0%); border: 1px solid #d4d4d4; }
 .table-row { background-color: #ffffff; border: 1px solid #d4d4d4; }
+
+[x-cloak] { display: none !important; }
