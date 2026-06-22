@@ -673,27 +673,47 @@
         </div>
         <div class="mb-4">
             <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
-            <select id="discountType" onchange="calculateInvoiceDiscount()" 
+            <select id="discountType" onchange="onDiscountTypeChange()"
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                <option value="fixed" data-current="{{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'true' : 'false' }}" {{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'selected' : '' }}>Fixed (SAR)</option>
+                <option value="fixed" data-current="{{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'true' : 'false' }}" {{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'selected' : '' }}>Fixed</option>
                 <option value="percentage" data-current="{{ $booking->discount_type?->value === 'percentage' ? 'true' : 'false' }}" {{ $booking->discount_type?->value === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
             </select>
         </div>
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value</label>
-            <input type="number" id="discountValue" 
-                value="{{ $booking->discount_value ?? 0 }}" 
-                min="0" step="0.01"
-                data-current="{{ $booking->discount_value ?? 0 }}"
-                oninput="validateDiscountValue(); calculateInvoiceDiscount()" 
+
+        <div id="fixedDiscountFields" class="mb-4">
+            <div id="fixedBdtField" class="mb-3">
+                <label class="block text-sm font-medium text-slate-600 mb-1">Fixed (BDT)</label>
+                <input type="number" id="discountValueBdt"
+                    min="0" step="0.01"
+                    oninput="onFixedBdtInput()"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-1">Fixed (SAR)</label>
+                <input type="number" id="discountValueSar"
+                    value="{{ number_format($booking->discount_value ?? 0, 6, '.', '') }}"
+                    min="0" step="any"
+                    data-current="{{ $booking->discount_value ?? 0 }}"
+                    oninput="onFixedSarInput()"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+            </div>
+        </div>
+
+        <div id="percentageDiscountField" class="mb-4">
+            <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value (%)</label>
+            <input type="number" id="discountValuePct"
+                value="{{ number_format($booking->discount_type?->value === 'percentage' ? ($booking->discount_value ?? 0) : 0, 2, '.', '') }}"
+                min="0" max="100" step="0.01"
+                oninput="onPercentageInput()"
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
         </div>
+
         <div class="flex gap-3 pt-4 border-t border-slate-200">
-            <button type="button" onclick="applyInvoiceDiscount()" 
+            <button type="button" onclick="applyInvoiceDiscount()"
                 class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
                 Apply
             </button>
-            <button type="button" onclick="closeDiscountModal()" 
+            <button type="button" onclick="closeDiscountModal()"
                 class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
                 Cancel
             </button>
@@ -715,50 +735,158 @@
 <script>
 var currentDiscountState = {
     type: '{{ $booking->discount_type?->value === 'fixed_amount' ? 'fixed' : ($booking->discount_type?->value ?? 'fixed') }}',
-    value: {{ $booking->discount_value ?? 0 }}
+    value: {{ round($booking->discount_value ?? 0, 6) }}
 };
+
+function round2(n) {
+    return Math.round(n * 100) / 100;
+}
 
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
-    
+
     const toast = document.createElement('div');
     toast.className = `px-4 py-2 rounded shadow text-white ${type === 'error' ? 'bg-red-600' : 'bg-slate-700'}`;
     toast.textContent = message;
     container.appendChild(toast);
-    
+
     setTimeout(() => toast.remove(), 3000);
 }
 
-function openDiscountModal() {
-    document.getElementById('discountType').value = currentDiscountState.type;
-    document.getElementById('discountValue').value = currentDiscountState.value;
-    
-    document.getElementById('discountModal').classList.remove('hidden');
+function getCurrencyMode() {
+    return Alpine.store('currency')?.mode || 'SAR';
 }
 
-function validateDiscountValue() {
-    const input = document.getElementById('discountValue');
-    const discountType = document.getElementById('discountType').value;
-    
-    if (input.value < 0) {
-        input.value = 0;
-        showToast('Discount value cannot be negative', 'error');
+function getCurrencyRate() {
+    return Alpine.store('currency')?.rate || window.__bookingServerData?.currentCurrencyRate || 0;
+}
+
+function updateDiscountFieldsVisibility() {
+    const type = document.getElementById('discountType').value;
+    const mode = getCurrencyMode();
+
+    const fixedFields = document.getElementById('fixedDiscountFields');
+    const pctField = document.getElementById('percentageDiscountField');
+    const bdtField = document.getElementById('fixedBdtField');
+    const sarInput = document.getElementById('discountValueSar');
+
+    fixedFields.classList.toggle('hidden', type !== 'fixed');
+    pctField.classList.toggle('hidden', type !== 'percentage');
+
+    if (type === 'fixed') {
+        const showBdt = mode === 'BDT';
+        bdtField.classList.toggle('hidden', !showBdt);
+        sarInput.readOnly = showBdt;
+        if (showBdt) {
+            sarInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+        } else {
+            sarInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+        }
     }
-    
-    if (discountType === 'percentage' && input.value > 100) {
-        input.value = 100;
-        showToast('Percentage cannot exceed 100%', 'error');
+}
+
+function openDiscountModal() {
+    const type = currentDiscountState.type;
+    const mode = getCurrencyMode();
+    const rate = getCurrencyRate();
+
+    document.getElementById('discountType').value = type;
+    document.getElementById('discountValueSar').value = parseFloat(currentDiscountState.value).toFixed(6);
+
+    if (type === 'fixed' && mode === 'BDT' && rate > 0) {
+        document.getElementById('discountValueBdt').value = round2(currentDiscountState.value * rate).toFixed(2);
+    } else {
+        document.getElementById('discountValueBdt').value = '';
     }
+
+    if (type === 'percentage') {
+        document.getElementById('discountValuePct').value = round2(currentDiscountState.value);
+    } else {
+        document.getElementById('discountValuePct').value = '';
+    }
+
+    updateDiscountFieldsVisibility();
+    document.getElementById('discountModal').classList.remove('hidden');
 }
 
 function closeDiscountModal() {
     document.getElementById('discountModal').classList.add('hidden');
 }
 
+function onDiscountTypeChange() {
+    const type = document.getElementById('discountType').value;
+    const mode = getCurrencyMode();
+    const rate = getCurrencyRate();
+
+    document.getElementById('discountValueSar').value = '';
+    document.getElementById('discountValueBdt').value = '';
+    document.getElementById('discountValuePct').value = '';
+
+    if (type === 'fixed') {
+        if (mode === 'BDT' && rate > 0) {
+            document.getElementById('discountValueBdt').focus();
+        } else {
+            document.getElementById('discountValueSar').focus();
+        }
+    } else {
+        document.getElementById('discountValuePct').focus();
+    }
+
+    updateDiscountFieldsVisibility();
+    calculateInvoiceDiscount();
+}
+
+function onFixedBdtInput() {
+    const rate = getCurrencyRate();
+    const bdtValue = parseFloat(document.getElementById('discountValueBdt').value) || 0;
+    const sarValue = rate > 0 ? bdtValue / rate : 0;
+    document.getElementById('discountValueSar').value = sarValue ? sarValue.toFixed(6) : '';
+    validateNumericInput('discountValueBdt');
+    calculateInvoiceDiscount();
+}
+
+function onFixedSarInput() {
+    validateNumericInput('discountValueSar');
+    const mode = getCurrencyMode();
+    const rate = getCurrencyRate();
+    if (mode === 'BDT' && rate > 0) {
+        const sarValue = parseFloat(document.getElementById('discountValueSar').value) || 0;
+        document.getElementById('discountValueBdt').value = sarValue ? round2(sarValue * rate).toFixed(2) : '';
+    }
+    calculateInvoiceDiscount();
+}
+
+function onPercentageInput() {
+    validateNumericInput('discountValuePct');
+    calculateInvoiceDiscount();
+}
+
+function validateNumericInput(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const val = parseFloat(input.value);
+    if (!isNaN(val) && val < 0) {
+        input.value = 0;
+        showToast('Value cannot be negative', 'error');
+    }
+    if (inputId === 'discountValuePct' && !isNaN(val) && val > 100) {
+        input.value = 100;
+        showToast('Percentage cannot exceed 100%', 'error');
+    }
+}
+
+function getDiscountValue() {
+    const type = document.getElementById('discountType').value;
+    if (type === 'percentage') {
+        return parseFloat(document.getElementById('discountValuePct').value) || 0;
+    }
+    return parseFloat(document.getElementById('discountValueSar').value) || 0;
+}
+
 function calculateInvoiceDiscount() {
     const type = document.getElementById('discountType').value;
-    const value = parseFloat(document.getElementById('discountValue').value) || 0;
+    const value = getDiscountValue();
     const totalEl = document.getElementById('financialTotalValue');
     const totalText = totalEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
     const total = parseFloat(totalText) || 0;
@@ -788,8 +916,8 @@ function calculateInvoiceDiscount() {
 
 function applyInvoiceDiscount() {
     const discountType = document.getElementById('discountType').value;
-    const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
-    
+    const discountValue = getDiscountValue();
+
     fetch('{{ route('bookings.update', $booking->id) }}', {
         method: 'PATCH',
         headers: {
@@ -824,6 +952,22 @@ function applyInvoiceDiscount() {
         showToast('Error: ' + error.message, 'error');
     });
 }
+
+document.addEventListener('currency-toggled', function () {
+    const modal = document.getElementById('discountModal');
+    if (modal && !modal.classList.contains('hidden')) {
+        updateDiscountFieldsVisibility();
+        const type = document.getElementById('discountType').value;
+        if (type === 'fixed') {
+            const mode = getCurrencyMode();
+            const rate = getCurrencyRate();
+            if (mode === 'BDT' && rate > 0) {
+                const sarValue = parseFloat(document.getElementById('discountValueSar').value) || 0;
+                document.getElementById('discountValueBdt').value = sarValue ? round2(sarValue * rate).toFixed(2) : '';
+            }
+        }
+    }
+});
 
 function updateFinancialSummary(invoice) {
     const totalEl = document.getElementById('financialTotalValue');

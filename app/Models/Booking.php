@@ -35,9 +35,9 @@ class Booking extends Model
     protected $casts = [
         'fingerprint_location' => FingerprintLocation::class,
         'discount_type' => DiscountType::class,
-        'discount_value' => 'decimal:2',
-        'discount_amount' => 'decimal:2',
-        'total_value' => 'decimal:2',
+        'discount_value' => 'decimal:6',
+        'discount_amount' => 'decimal:6',
+        'total_value' => 'decimal:6',
         'pax_qty' => 'integer',
     ];
 
