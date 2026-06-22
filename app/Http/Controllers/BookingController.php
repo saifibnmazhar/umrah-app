@@ -379,6 +379,7 @@ class BookingController extends Controller
                 'discount_amount' => 0,
                 'remarks' => $validated['remarks'] ?? null,
                 'currency_rate_id' => $currentCurrencyRate?->id,
+                'total_value' => 0,
             ]);
 
             $booking->load('customer');
@@ -433,6 +434,7 @@ class BookingController extends Controller
                     'ticket_fare_id' => ($passengerData['service_required'] ?? '') === 'visa_only'
                         ? null
                         : ($passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id),
+                    'package_value' => 0,
                 ]);
 
                 if (($passengerData['service_required'] ?? 'all') !== 'ticket_only') {
