@@ -198,9 +198,9 @@
                                 </template>
                             </td>
                             <td class="px-2 py-2 text-xs text-right border-r border-gray-200 font-medium text-green-700">
-                                <span x-show="row._isFirstPassenger && canViewFinancials" x-text="$currency(row.fingerprint_charge)"></span>
+                                <span x-show="row._isFirstPassenger && canViewFinancials" x-text="$currency(row.fingerprint_charge, 2, row.rate)"></span>
                             </td>
-                            <td class="px-2 py-2 text-xs text-right border-r border-gray-200" x-text="row._isFirstPassenger ? $currency(row.fingerprint_cost) : ''"></td>
+                            <td class="px-2 py-2 text-xs text-right border-r border-gray-200" x-text="row._isFirstPassenger ? $currency(row.fingerprint_cost, 2, row.rate) : ''"></td>
                             <td class="px-2 py-2 text-xs text-center border-r border-gray-200" x-text="row._isFirstPassenger ? (row.fingerprint_deadline || '-') : ''"></td>
                             <td class="px-2 py-2 text-xs text-center border-r border-gray-200" x-text="row.completed_date || '-'"></td>
                             <td class="px-2 py-2 text-xs text-left border-r border-gray-200" x-text="row.required_flight || '-'"></td>
@@ -210,9 +210,9 @@
                                 :class="getStatusClass(row.status_display)"></td>
                             <td class="px-2 py-2 text-xs text-left border-r border-gray-200" x-text="row.remarks || '-'"></td>
                             <td x-show="canViewFinancials" class="px-2 py-2 text-xs text-right font-semibold text-green-600"
-                                x-text="row._isFirstPassenger && row.profit ? $currency(row.profit) : ''"></td>
+                                x-text="row._isFirstPassenger && row.profit ? $currency(row.profit, 2, row.rate) : ''"></td>
                             <td x-show="canViewFinancials" class="px-2 py-2 text-xs text-right font-semibold text-red-600"
-                                x-text="row._isFirstPassenger && row.loss ? $currency(row.loss) : ''"></td>
+                                x-text="row._isFirstPassenger && row.loss ? $currency(row.loss, 2, row.rate) : ''"></td>
                         </tr>
                     </template>
                 </tbody>
@@ -336,7 +336,7 @@
     </div>
 
     <div x-show="showDetailsModal"
-         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
          :class="showDetailsModal ? '' : 'hidden'">
         <div class="bg-white rounded-xl shadow-2xl max-w-4xl w-full max-h-[90vh] overflow-hidden">
             <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 bg-gray-50">
@@ -428,17 +428,17 @@
                                 <div class="grid grid-cols-3 gap-4">
                                     <div>
                                         <label class="text-xs font-medium text-gray-500">Fingerprint Charge</label>
-                                        <p class="text-sm font-semibold text-green-700" x-text="$currency(details.fingerprint_charge)"></p>
+                                        <p class="text-sm font-semibold text-green-700" x-text="$currency(details.fingerprint_charge, 2, details.rate)"></p>
                                     </div>
                                     <div>
                                         <label class="text-xs font-medium text-gray-500">Fingerprint Cost</label>
-                                        <p class="text-sm" x-text="$currency(details.fingerprint_cost)"></p>
+                                        <p class="text-sm" x-text="$currency(details.fingerprint_cost, 2, details.rate)"></p>
                                     </div>
                                     <div>
                                         <label class="text-xs font-medium text-gray-500">Profit/Loss</label>
                                         <p class="text-sm font-semibold">
-                                            <span x-show="details.profit > 0" class="text-green-700" x-text="'Profit: ' + $currency(details.profit)"></span>
-                                            <span x-show="details.loss > 0" class="text-red-700" x-text="'Loss: ' + $currency(details.loss)"></span>
+                                            <span x-show="details.profit > 0" class="text-green-700" x-text="'Profit: ' + $currency(details.profit, 2, details.rate)"></span>
+                                            <span x-show="details.loss > 0" class="text-red-700" x-text="'Loss: ' + $currency(details.loss, 2, details.rate)"></span>
                                             <span x-show="!details.profit && !details.loss">-</span>
                                         </p>
                                     </div>

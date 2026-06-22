@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Invoice Details')
 @section('content')
+@php $rateVal = $currentCurrencyRate?->rate ?? 0; @endphp
 <script>window.__bookingServerData = {
     ticketFares: @json($ticketFares ?? []),
     packages: @json($packages ?? []),
@@ -18,8 +19,12 @@
         {{-- Header Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
             @php
-                $canEditBooking = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || $booking->created_at->diffInHours(now()) < 12;
-                $canViewRequestButtons = auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
+                $isFingerprintOnlyViewer = auth()->user()->branch_id
+                    && auth()->user()->branch_id === $booking->fingerprint_branch_id
+                    && auth()->user()->branch_id !== $booking->booking_branch_id;
+
+                $canEditBooking = !$isFingerprintOnlyViewer && (auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || $booking->created_at->diffInHours(now()) < 12);
+                $canViewRequestButtons = !$isFingerprintOnlyViewer && (auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty());
                 $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
                 $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             @endphp
@@ -71,9 +76,9 @@
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-200">
                 <div>
                     <span class="text-slate-500 text-sm">Original Total</span>
-                    <p id="financialOriginalTotal" class="text-xl font-bold text-slate-800">@currency($originalTotal, 2)</p>
+                    <p id="financialOriginalTotal" class="text-xl font-bold text-slate-800">@currency($originalTotal, 2, $rateVal)</p>
                     <p id="financialDiscountIndicator" class="text-xs text-orange-600 mt-1 {{ ($booking->discount_amount ?? 0) > 0 ? '' : 'hidden' }}">
-                        −@currency($booking->discount_amount ?? 0) discount
+                        −@currency($booking->discount_amount ?? 0, 2, $rateVal) discount
                         @if($booking->discount_type?->value === 'percentage')
                             ({{ rtrim(rtrim(number_format((float) $booking->discount_value, 2), '0'), '.') }}%)
                         @endif
@@ -81,15 +86,15 @@
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Discounted Total</span>
-                    <p id="financialTotalValue" class="text-xl font-bold text-slate-800">@currency($booking->invoice?->total_amount ?? 0, 2)</p>
+                    <p id="financialTotalValue" class="text-xl font-bold text-slate-800">@currency($booking->invoice?->total_amount ?? 0, 2, $rateVal)</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Total Paid</span>
-                    <p id="financialTotalPaid" class="text-xl font-bold text-green-600">@currency($booking->invoice?->paid_amount ?? 0, 2)</p>
+                    <p id="financialTotalPaid" class="text-xl font-bold text-green-600">@currency($booking->invoice?->paid_amount ?? 0, 2, $rateVal)</p>
                 </div>
                 <div>
                     <span class="text-slate-500 text-sm">Due</span>
-                    <p id="financialDue" class="text-xl font-bold text-red-600">@currency($booking->invoice?->balance ?? 0, 2)</p>
+                    <p id="financialDue" class="text-xl font-bold text-red-600">@currency($booking->invoice?->balance ?? 0, 2, $rateVal)</p>
                 </div>
             </div>
             <div class="mt-6 pt-4 border-t border-slate-200 flex justify-end">
@@ -118,7 +123,7 @@
                     <span class="text-slate-500 text-sm ml-2">({{ $passenger->passport_no ?? 'N/A' }})</span>
                 </div>
                 <div class="flex items-center gap-3">
-                    <span class="text-slate-800 font-medium">@currency($passengerTotal, 2)</span>
+                    <span class="text-slate-800 font-medium">@currency($passengerTotal, 2, $rateVal)</span>
                     <button onclick="viewPassengerDetails({{ $passenger->id }})" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-1 rounded">View</button>
                 </div>
             </div>
@@ -128,7 +133,9 @@
             </div>
             
             <div class="flex justify-end mt-4">
+                @if(!$isFingerprintOnlyViewer)
                 <button @click="openPassengerModal()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
+                @endif
             </div>
         </div>
 
@@ -206,17 +213,21 @@
             <button onclick="downloadAllDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
                 Download All Docs
             </button>
+            @if(!$isFingerprintOnlyViewer)
             <button @click="openPaymentModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                 Payment
             </button>
+            @endif
         </div>
 
         {{-- Tab Navigation --}}
         <div class="bg-white rounded-xl shadow-lg mb-6">
             <div class="flex border-b border-slate-200">
+                @if(!$isFingerprintOnlyViewer)
                 <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
                     Payment History
                 </button>
+                @endif
                 @if($canViewRequestButtons)
                 <button onclick="switchTab('reissue')" id="tab-reissue" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
                     Re-issue History
@@ -232,6 +243,7 @@
         </div>
 
         {{-- Payment History Tab --}}
+        @if(!$isFingerprintOnlyViewer)
         <div id="content-payment" class="tab-content block bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Payment History</h3>
             <div class="overflow-x-auto">
@@ -252,7 +264,7 @@
                             <td class="px-3 py-2 text-slate-600">{{ $payment->vouchers->first()?->voucher_id ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->payment_method?->value ?? 'Cash' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->transaction_id ?? '-' }}</td>
-                            <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($payment->amount, 2)</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($payment->amount, 2, $rateVal)</td>
                         </tr>
                         @empty
                         <tr>
@@ -263,6 +275,7 @@
                 </table>
             </div>
         </div>
+        @endif
 
         @if($canViewRequestButtons)
         {{-- Re-issue History Tab --}}
@@ -382,15 +395,15 @@
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div class="flex justify-between">
                         <span class="text-slate-500">Total Package Value:</span>
-                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">@currency($booking->invoice?->total_amount ?? 0, 2)</span>
+                        <span id="paymentTotalPackageValue" class="text-slate-800 font-medium text-right">@currency($booking->invoice?->total_amount ?? 0, 2, $rateVal)</span>
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-500">Paid:</span>
-                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">@currency($booking->invoice?->paid_amount ?? 0, 2)</span>
+                        <span id="paymentPaid" class="text-slate-800 font-medium text-right">@currency($booking->invoice?->paid_amount ?? 0, 2, $rateVal)</span>
                     </div>
                     <div class="flex justify-between col-span-2">
                         <span class="text-slate-600 font-medium">Due:</span>
-                        <span id="paymentDue" class="text-slate-800 font-bold text-right">@currency($booking->invoice?->balance ?? 0, 2)</span>
+                        <span id="paymentDue" class="text-slate-800 font-bold text-right">@currency($booking->invoice?->balance ?? 0, 2, $rateVal)</span>
                     </div>
                 </div>
             </div>
@@ -673,27 +686,47 @@
         </div>
         <div class="mb-4">
             <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
-            <select id="discountType" onchange="calculateInvoiceDiscount()" 
+            <select id="discountType" onchange="onDiscountTypeChange()"
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                <option value="fixed" data-current="{{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'true' : 'false' }}" {{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'selected' : '' }}>Fixed (SAR)</option>
+                <option value="fixed" data-current="{{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'true' : 'false' }}" {{ in_array($booking->discount_type?->value, ['fixed', 'fixed_amount', null]) ? 'selected' : '' }}>Fixed</option>
                 <option value="percentage" data-current="{{ $booking->discount_type?->value === 'percentage' ? 'true' : 'false' }}" {{ $booking->discount_type?->value === 'percentage' ? 'selected' : '' }}>Percentage (%)</option>
             </select>
         </div>
-        <div class="mb-4">
-            <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value</label>
-            <input type="number" id="discountValue" 
-                value="{{ $booking->discount_value ?? 0 }}" 
-                min="0" step="0.01"
-                data-current="{{ $booking->discount_value ?? 0 }}"
-                oninput="validateDiscountValue(); calculateInvoiceDiscount()" 
+
+        <div id="fixedDiscountFields" class="mb-4">
+            <div id="fixedBdtField" class="mb-3">
+                <label class="block text-sm font-medium text-slate-600 mb-1">Fixed (BDT)</label>
+                <input type="number" id="discountValueBdt"
+                    min="0" step="0.01"
+                    oninput="onFixedBdtInput()"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-600 mb-1">Fixed (SAR)</label>
+                <input type="number" id="discountValueSar"
+                    value="{{ number_format($booking->discount_value ?? 0, 6, '.', '') }}"
+                    min="0" step="any"
+                    data-current="{{ $booking->discount_value ?? 0 }}"
+                    oninput="onFixedSarInput()"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+            </div>
+        </div>
+
+        <div id="percentageDiscountField" class="mb-4">
+            <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value (%)</label>
+            <input type="number" id="discountValuePct"
+                value="{{ number_format($booking->discount_type?->value === 'percentage' ? ($booking->discount_value ?? 0) : 0, 2, '.', '') }}"
+                min="0" max="100" step="0.01"
+                oninput="onPercentageInput()"
                 class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
         </div>
+
         <div class="flex gap-3 pt-4 border-t border-slate-200">
-            <button type="button" onclick="applyInvoiceDiscount()" 
+            <button type="button" onclick="applyInvoiceDiscount()"
                 class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
                 Apply
             </button>
-            <button type="button" onclick="closeDiscountModal()" 
+            <button type="button" onclick="closeDiscountModal()"
                 class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
                 Cancel
             </button>
@@ -715,50 +748,158 @@
 <script>
 var currentDiscountState = {
     type: '{{ $booking->discount_type?->value === 'fixed_amount' ? 'fixed' : ($booking->discount_type?->value ?? 'fixed') }}',
-    value: {{ $booking->discount_value ?? 0 }}
+    value: {{ round($booking->discount_value ?? 0, 6) }}
 };
+
+function round2(n) {
+    return Math.round(n * 100) / 100;
+}
 
 function showToast(message, type = 'success') {
     const container = document.getElementById('toastContainer');
     if (!container) return;
-    
+
     const toast = document.createElement('div');
     toast.className = `px-4 py-2 rounded shadow text-white ${type === 'error' ? 'bg-red-600' : 'bg-slate-700'}`;
     toast.textContent = message;
     container.appendChild(toast);
-    
+
     setTimeout(() => toast.remove(), 3000);
 }
 
-function openDiscountModal() {
-    document.getElementById('discountType').value = currentDiscountState.type;
-    document.getElementById('discountValue').value = currentDiscountState.value;
-    
-    document.getElementById('discountModal').classList.remove('hidden');
+function getCurrencyMode() {
+    return Alpine.store('currency')?.mode || 'SAR';
 }
 
-function validateDiscountValue() {
-    const input = document.getElementById('discountValue');
-    const discountType = document.getElementById('discountType').value;
-    
-    if (input.value < 0) {
-        input.value = 0;
-        showToast('Discount value cannot be negative', 'error');
+function getCurrencyRate() {
+    return Alpine.store('currency')?.rate || window.__bookingServerData?.currentCurrencyRate || 0;
+}
+
+function updateDiscountFieldsVisibility() {
+    const type = document.getElementById('discountType').value;
+    const mode = getCurrencyMode();
+
+    const fixedFields = document.getElementById('fixedDiscountFields');
+    const pctField = document.getElementById('percentageDiscountField');
+    const bdtField = document.getElementById('fixedBdtField');
+    const sarInput = document.getElementById('discountValueSar');
+
+    fixedFields.classList.toggle('hidden', type !== 'fixed');
+    pctField.classList.toggle('hidden', type !== 'percentage');
+
+    if (type === 'fixed') {
+        const showBdt = mode === 'BDT';
+        bdtField.classList.toggle('hidden', !showBdt);
+        sarInput.readOnly = showBdt;
+        if (showBdt) {
+            sarInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+        } else {
+            sarInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+        }
     }
-    
-    if (discountType === 'percentage' && input.value > 100) {
-        input.value = 100;
-        showToast('Percentage cannot exceed 100%', 'error');
+}
+
+function openDiscountModal() {
+    const type = currentDiscountState.type;
+    const mode = getCurrencyMode();
+    const rate = getCurrencyRate();
+
+    document.getElementById('discountType').value = type;
+    document.getElementById('discountValueSar').value = parseFloat(currentDiscountState.value).toFixed(6);
+
+    if (type === 'fixed' && mode === 'BDT' && rate > 0) {
+        document.getElementById('discountValueBdt').value = round2(currentDiscountState.value * rate).toFixed(2);
+    } else {
+        document.getElementById('discountValueBdt').value = '';
     }
+
+    if (type === 'percentage') {
+        document.getElementById('discountValuePct').value = round2(currentDiscountState.value);
+    } else {
+        document.getElementById('discountValuePct').value = '';
+    }
+
+    updateDiscountFieldsVisibility();
+    document.getElementById('discountModal').classList.remove('hidden');
 }
 
 function closeDiscountModal() {
     document.getElementById('discountModal').classList.add('hidden');
 }
 
+function onDiscountTypeChange() {
+    const type = document.getElementById('discountType').value;
+    const mode = getCurrencyMode();
+    const rate = getCurrencyRate();
+
+    document.getElementById('discountValueSar').value = '';
+    document.getElementById('discountValueBdt').value = '';
+    document.getElementById('discountValuePct').value = '';
+
+    if (type === 'fixed') {
+        if (mode === 'BDT' && rate > 0) {
+            document.getElementById('discountValueBdt').focus();
+        } else {
+            document.getElementById('discountValueSar').focus();
+        }
+    } else {
+        document.getElementById('discountValuePct').focus();
+    }
+
+    updateDiscountFieldsVisibility();
+    calculateInvoiceDiscount();
+}
+
+function onFixedBdtInput() {
+    const rate = getCurrencyRate();
+    const bdtValue = parseFloat(document.getElementById('discountValueBdt').value) || 0;
+    const sarValue = rate > 0 ? bdtValue / rate : 0;
+    document.getElementById('discountValueSar').value = sarValue ? sarValue.toFixed(6) : '';
+    validateNumericInput('discountValueBdt');
+    calculateInvoiceDiscount();
+}
+
+function onFixedSarInput() {
+    validateNumericInput('discountValueSar');
+    const mode = getCurrencyMode();
+    const rate = getCurrencyRate();
+    if (mode === 'BDT' && rate > 0) {
+        const sarValue = parseFloat(document.getElementById('discountValueSar').value) || 0;
+        document.getElementById('discountValueBdt').value = sarValue ? round2(sarValue * rate).toFixed(2) : '';
+    }
+    calculateInvoiceDiscount();
+}
+
+function onPercentageInput() {
+    validateNumericInput('discountValuePct');
+    calculateInvoiceDiscount();
+}
+
+function validateNumericInput(inputId) {
+    const input = document.getElementById(inputId);
+    if (!input) return;
+    const val = parseFloat(input.value);
+    if (!isNaN(val) && val < 0) {
+        input.value = 0;
+        showToast('Value cannot be negative', 'error');
+    }
+    if (inputId === 'discountValuePct' && !isNaN(val) && val > 100) {
+        input.value = 100;
+        showToast('Percentage cannot exceed 100%', 'error');
+    }
+}
+
+function getDiscountValue() {
+    const type = document.getElementById('discountType').value;
+    if (type === 'percentage') {
+        return parseFloat(document.getElementById('discountValuePct').value) || 0;
+    }
+    return parseFloat(document.getElementById('discountValueSar').value) || 0;
+}
+
 function calculateInvoiceDiscount() {
     const type = document.getElementById('discountType').value;
-    const value = parseFloat(document.getElementById('discountValue').value) || 0;
+    const value = getDiscountValue();
     const totalEl = document.getElementById('financialTotalValue');
     const totalText = totalEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
     const total = parseFloat(totalText) || 0;
@@ -788,8 +929,8 @@ function calculateInvoiceDiscount() {
 
 function applyInvoiceDiscount() {
     const discountType = document.getElementById('discountType').value;
-    const discountValue = parseFloat(document.getElementById('discountValue').value) || 0;
-    
+    const discountValue = getDiscountValue();
+
     fetch('{{ route('bookings.update', $booking->id) }}', {
         method: 'PATCH',
         headers: {
@@ -825,6 +966,22 @@ function applyInvoiceDiscount() {
     });
 }
 
+document.addEventListener('currency-toggled', function () {
+    const modal = document.getElementById('discountModal');
+    if (modal && !modal.classList.contains('hidden')) {
+        updateDiscountFieldsVisibility();
+        const type = document.getElementById('discountType').value;
+        if (type === 'fixed') {
+            const mode = getCurrencyMode();
+            const rate = getCurrencyRate();
+            if (mode === 'BDT' && rate > 0) {
+                const sarValue = parseFloat(document.getElementById('discountValueSar').value) || 0;
+                document.getElementById('discountValueBdt').value = sarValue ? round2(sarValue * rate).toFixed(2) : '';
+            }
+        }
+    }
+});
+
 function updateFinancialSummary(invoice) {
     const totalEl = document.getElementById('financialTotalValue');
     const paidEl = document.getElementById('financialTotalPaid');
@@ -840,23 +997,23 @@ function updateFinancialSummary(invoice) {
     const fmt = (n) => Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     if (originalEl && invoice.original_total != null) {
-        originalEl.innerHTML = Alpine.store('currency').format(invoice.original_total);
+        originalEl.innerHTML = Alpine.store('currency').format(invoice.original_total, 2, rate);
     }
     if (discountIndicatorEl) {
         if (invoice.discount_amount > 0) {
             const type = invoice.discount_type === 'fixed_amount' ? 'fixed' : invoice.discount_type;
             const pct = (type === 'percentage') ? ' (' + Number(invoice.discount_value).toString().replace(/\.?0+$/, '') + '%)' : '';
-            discountIndicatorEl.innerHTML = '−' + Alpine.store('currency').format(invoice.discount_amount) + ' discount' + pct;
+            discountIndicatorEl.innerHTML = '−' + Alpine.store('currency').format(invoice.discount_amount, 2, rate) + ' discount' + pct;
             discountIndicatorEl.classList.remove('hidden');
         } else {
             discountIndicatorEl.classList.add('hidden');
         }
     }
 
-    if (totalEl) totalEl.innerHTML = Alpine.store('currency').format(invoice.total_amount);
-    if (paidEl) paidEl.innerHTML = Alpine.store('currency').format(invoice.paid_amount);
+    if (totalEl) totalEl.innerHTML = Alpine.store('currency').format(invoice.total_amount, 2, rate);
+    if (paidEl) paidEl.innerHTML = Alpine.store('currency').format(invoice.paid_amount, 2, rate);
     if (dueEl) {
-        dueEl.innerHTML = Alpine.store('currency').format(invoice.balance);
+        dueEl.innerHTML = Alpine.store('currency').format(invoice.balance, 2, rate);
         dueEl.className = 'text-xl font-bold ' + (invoice.balance <= 0 ? 'text-green-600' : 'text-red-600');
     }
 }
@@ -880,7 +1037,7 @@ function appendPassengerRow(passenger, displayTotal) {
             '<span class="text-slate-500 text-sm ml-2">(' + escapeHtml(passport) + ')</span>' +
         '</div>' +
         '<div class="flex items-center gap-3">' +
-            '<span class="text-slate-800 font-medium">' + Alpine.store('currency').format(total) + '</span>' +
+            '<span class="text-slate-800 font-medium">' + Alpine.store('currency').format(total, 2, window.__bookingServerData?.currentCurrencyRate || 0) + '</span>' +
             '<button onclick="viewPassengerDetails(' + passenger.id + ')" class="text-xs bg-slate-200 hover:bg-slate-300 text-slate-600 px-2 py-1 rounded">View</button>' +
         '</div>';
 
@@ -1297,9 +1454,9 @@ function renderRefundHistory() {
             <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
             <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
             <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.agentRefund || 0)}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerRefund || 0)}</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.agentRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
+            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
             <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
             <td class="px-3 py-2">${statusBadge}</td>
             <td class="px-3 py-2">
@@ -1332,9 +1489,9 @@ function generateRefundDetailsHTML(item) {
                     <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
                     <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
                     <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.agentRefund || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerRefund || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.agentRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
                     <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
                 </div>
             </div>
@@ -1417,9 +1574,9 @@ function renderAdditionalTicketHistory() {
             <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
             <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
             <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0)}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerPayment || 0)}</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerPayment || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
+            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
             <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
             <td class="px-3 py-2">${statusBadge}</td>
             <td class="px-3 py-2">
@@ -1452,9 +1609,9 @@ function generateAddTicketDetailsHTML(item) {
                     <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
                     <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
                     <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Additional Ticket Cost</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Customer Payment</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerPayment || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Additional Ticket Cost</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Customer Payment</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerPayment || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
                     <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
                 </div>
             </div>

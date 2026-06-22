@@ -15,7 +15,7 @@ Alpine.data('bookingApp', () => ({
 customerModalVisible: false,
         discountModalVisible: false,
         paymentModalVisible: false,
-customDurationModalVisible: false,
+    customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
         method: 'cash',
@@ -25,7 +25,9 @@ customDurationModalVisible: false,
         amount_bdt: ''
     },
     paymentSaved: false,
+    paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
+    historicalRate: window.__bookingServerData?.historicalRate || window.__bookingServerData?.currentCurrencyRate || 0,
 
     hasPaymentData() {
         const amountSar = parseFloat(this.paymentData.amount_sar) || 0;
@@ -51,6 +53,7 @@ customDurationModalVisible: false,
         package_id: '',
         discount_type: 'fixed',
         discount_value: 0,
+        discountValueBdt: '',
         remarks: ''
     },
     passengerData: {
@@ -927,6 +930,7 @@ Alpine.data('createBookingApp', () => ({
         package_id: '',
         discount_type: 'fixed',
         discount_value: 0,
+        discountValueBdt: '',
         remarks: ''
     },
     passengerData: {
@@ -1017,6 +1021,18 @@ Alpine.data('createBookingApp', () => ({
         }));
         this.allTickets = serverData.ticketFares || [];
         this.filteredTickets = this.allTickets;
+
+        window.addEventListener('currency-toggled', () => {
+            if (this.discountModalVisible) {
+                const mode = Alpine.store('currency').mode;
+                const rate = Alpine.store('currency').rate;
+                if (mode === 'BDT' && rate > 0) {
+                    this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+                } else {
+                    this.discountValueBdt = '';
+                }
+            }
+        });
 
         this.$nextTick(() => {
             if (serverData.preSelectedPackageId) {
@@ -2134,6 +2150,13 @@ Alpine.data('createBookingApp', () => ({
     },
 
     openDiscountModal() {
+        const mode = Alpine.store('currency').mode;
+        const rate = Alpine.store('currency').rate;
+        if (mode === 'BDT' && rate > 0) {
+            this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+        } else {
+            this.discountValueBdt = '';
+        }
         this.discountModalVisible = true;
     },
 
@@ -2360,6 +2383,7 @@ Alpine.data('editBookingApp', () => ({
         package_id: '',
         discount_type: 'fixed',
         discount_value: 0,
+        discountValueBdt: '',
         remarks: ''
     },
     passengerData: {
@@ -2463,6 +2487,18 @@ Alpine.data('editBookingApp', () => ({
         if (this.isEditMode && this.existingBooking) {
             this.loadExistingBooking();
         }
+
+        window.addEventListener('currency-toggled', () => {
+            if (this.discountModalVisible) {
+                const mode = Alpine.store('currency').mode;
+                const rate = Alpine.store('currency').rate;
+                if (mode === 'BDT' && rate > 0) {
+                    this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+                } else {
+                    this.discountValueBdt = '';
+                }
+            }
+        });
 
         this.$nextTick(() => {
             if (serverData.preSelectedPackageId) {
@@ -3135,6 +3171,13 @@ Alpine.data('editBookingApp', () => ({
     },
 
     openDiscountModal() {
+        const mode = Alpine.store('currency').mode;
+        const rate = Alpine.store('currency').rate;
+        if (mode === 'BDT' && rate > 0) {
+            this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+        } else {
+            this.discountValueBdt = '';
+        }
         this.discountModalVisible = true;
     },
 

@@ -10,9 +10,11 @@
     existingPassengers: @json($booking->passengers->toArray()),
     existingCustomer: @json($booking->customer?->toArray() ?? null),
     currentCurrencyRate: {{ $currentCurrencyRate?->rate ?? 0 }},
+    historicalRate: {{ $currentCurrencyRate?->rate ?? 0 }},
     bookingId: {{ $booking->id }},
     updateRoute: '{{ route('bookings.update', $booking->id) }}'
 };</script>
+<script>window.__currencyRate = {{ $currentCurrencyRate?->rate ?? 0 }};</script>
 <div class="max-w-5xl mx-auto" x-data="editBookingApp()" x-init="init()">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Edit Booking</h1>
@@ -182,19 +184,19 @@
                 <div class="flex justify-between font-medium text-slate-800">
                     <span id="summaryPackage" class="w-1/6 text-center" x-text="allPackages.find(p => String(p.id) === String(bookingData.package_id))?.package_name ?? '-'">-</span>
                     <span class="w-1/6 text-center">
-                        <div x-text="fingerprintCharge > 0 ? $currency(fingerprintCharge) : '-'">-</div>
+                        <div x-text="fingerprintCharge > 0 ? $currency(fingerprintCharge, 2, historicalRate) : '-'">-</div>
                     </span>
                     <span class="w-1/6 text-center">
                         <div x-text="passengerCount">0</div>
                     </span>
                     <span class="w-1/6 text-center">
-                        <div x-text="bookingData.discount_value > 0 ? (bookingData.discount_type === 'percentage' ? '-' + bookingData.discount_value + '%' : $currency(bookingData.discount_value)) : '-'">-</div>
+                        <div x-text="bookingData.discount_value > 0 ? (bookingData.discount_type === 'percentage' ? '-' + bookingData.discount_value + '%' : $currency(bookingData.discount_value, 2, historicalRate)) : '-'">-</div>
                     </span>
                     <span id="summaryTotalBeforeDiscount" class="w-1/6 text-center">
-                        <div x-text="$currency(grandTotalValue ?? 0)">0 SAR</div>
+                        <div x-text="$currency(grandTotalValue ?? 0, 2, historicalRate)">0 SAR</div>
                     </span>
                     <span id="summaryTotalValue" class="w-1/6 text-center">
-                        <div x-text="discountedTotal !== null ? $currency(discountedTotal) : 'N/A'">0 SAR</div>
+                        <div x-text="discountedTotal !== null ? $currency(discountedTotal, 2, historicalRate) : 'N/A'">0 SAR</div>
                     </span>
                 </div>
             </div>
@@ -217,18 +219,44 @@
             <h3 class="text-xl font-semibold text-slate-800 mb-4">Apply Discount</h3>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
-                <select x-model="bookingData.discount_type" id="discountType" name="discount_type" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                    <option value="fixed">Fixed (SAR)</option>
+                <select x-model="bookingData.discount_type" id="discountType" name="discount_type"
+                    @change="discountValueBdt = ''; bookingData.discount_value = 0"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                    <option value="fixed">Fixed</option>
                     <option value="percentage">Percentage (%)</option>
                 </select>
             </div>
-            <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value</label>
-                <input type="number" x-model="bookingData.discount_value" name="discount_value" step="0.01" min="0" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+
+            <div x-show="bookingData.discount_type === 'fixed'" class="mb-4">
+                <div x-show="$store.currency.mode === 'BDT'" class="mb-3">
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Fixed (BDT)</label>
+                    <input type="number" x-model="discountValueBdt"
+                        min="0" step="0.01"
+                        @input="bookingData.discount_value = parseFloat(((parseFloat(discountValueBdt) || 0) / ($store.currency.rate || 1)).toFixed(6))"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Fixed (SAR)</label>
+                    <input type="number" x-model="bookingData.discount_value"
+                        min="0" step="any"
+                        :readonly="$store.currency.mode === 'BDT'"
+                        :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}"
+                        @input="if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { discountValueBdt = Math.round((parseFloat($event.target.value) || 0) * $store.currency.rate * 100) / 100; }"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                </div>
             </div>
+
+            <div x-show="bookingData.discount_type === 'percentage'" class="mb-4">
+                <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value (%)</label>
+                <input type="number" x-model="bookingData.discount_value" name="discount_value"
+                    min="0" max="100" step="0.01"
+                    @input="if (parseFloat($event.target.value) > 100) { $event.target.value = 100; bookingData.discount_value = 100; } else if (parseFloat($event.target.value) < 0) { $event.target.value = 0; bookingData.discount_value = 0; }"
+                    class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+            </div>
+
             <div class="flex gap-3 pt-4 border-t border-slate-200">
                 <button type="button" @click="closeDiscountModal()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Apply</button>
-                <button type="button" @click="closeDiscountModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                <button type="button" @click="discountValueBdt = ''; closeDiscountModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </div>
     </div>

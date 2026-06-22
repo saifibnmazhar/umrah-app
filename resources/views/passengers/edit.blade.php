@@ -8,8 +8,10 @@
     isEditMode: true,
     preSelectedPackageId: {{ $passenger->booking->package_id ?? 'null' }},
     updateRoute: '{{ route('passengers.update', $passenger->id) }}',
-    showRoute: '{{ route('passengers.show', $passenger->id) }}'
+    showRoute: '{{ route('passengers.show', $passenger->id) }}',
+    currentCurrencyRate: {{ $rate }}
 };</script>
+<script>window.__currencyRate = {{ $rate }};</script>
 <div class="max-w-3xl mx-auto" x-data="editPassengerApp()" x-init="init()">
     <div class="bg-white rounded-xl shadow-lg p-6">
         <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
@@ -101,7 +103,7 @@
                         <select x-model="passengerData.stay_duration" @change="handleStayDurationChange(); calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Stay Duration</option>
                             <option value="14">Group (14 Days)</option>
-                            <option value="85">Family (85 Days)</option>
+                            {{-- <option value="85">Family (85 Days)</option> --}}
                             <option value="Customize (Set Duration)">Customize (Set Duration)</option>
                         </select>
                     </div>

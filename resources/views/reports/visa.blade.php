@@ -261,7 +261,7 @@ select {
                             <td class="px-2 py-2 text-xs text-center border-r border-gray-200" x-text="row.flight_date"></td>
                             <td class="px-2 py-2 text-xs text-center border-r border-gray-200" x-text="row.visa_number"></td>
                             <td class="px-2 py-2 text-xs text-left border-r border-gray-200" x-text="row.visa_agent"></td>
-                            <td class="px-2 py-2 text-xs text-right font-medium" x-text="$currency(row.agent_cost)"></td>
+                            <td class="px-2 py-2 text-xs text-right font-medium" x-text="$currency(row.agent_cost, 2, row.rate)"></td>
                         </tr>
                     </template>
                 </tbody>

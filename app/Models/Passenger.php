@@ -48,7 +48,7 @@ class Passenger extends Model
         'passenger_type' => PassengerType::class,
         'service_required' => ServiceRequired::class,
         'ticket_status' => TicketStatus::class,
-        'package_value' => 'decimal:2',
+        'package_value' => 'decimal:6',
     ];
 
     public function booking(): BelongsTo

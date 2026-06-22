@@ -25,6 +25,7 @@ use App\Models\Bank;
 use App\Models\Voucher;
 use App\Models\TransactionType;
 use App\Models\CurrencyRate;
+use App\Services\CurrencyRateService;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Models\IssuedTicket;
@@ -78,7 +79,9 @@ class BookingController extends Controller
 
     private function ensureBranchAccess(Booking $booking): void
     {
-        if (auth()->user()->branch_id && auth()->user()->branch_id !== $booking->booking_branch_id) {
+        if (auth()->user()->branch_id
+            && auth()->user()->branch_id !== $booking->booking_branch_id
+            && auth()->user()->branch_id !== $booking->fingerprint_branch_id) {
             abort(403);
         }
     }
@@ -126,20 +129,56 @@ class BookingController extends Controller
     public function index(Request $request)
     {
         $tab = $request->get('tab', 'booking');
-        
-        $bookings = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'invoice', 'district', 'package'])
-            ->when(auth()->user()->branch_id, fn ($q) =>
-                $q->where('booking_branch_id', auth()->user()->branch_id)
+
+        $user = auth()->user();
+        $userBranchId = $user->branch_id;
+
+        $bookingBranches = $userBranchId ? collect() : Branch::orderBy('name')->get(['id', 'name']);
+        $selectedBranchId = $userBranchId ? null : $request->get('booking_branch_id');
+
+        $branchCounts = !$userBranchId
+            ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
+                ->whereNotNull('booking_branch_id')
+                ->groupBy('booking_branch_id')
+                ->pluck('total', 'booking_branch_id')
+                ->toArray()
+            : [];
+        $allBookingCount = !$userBranchId ? Booking::count() : 0;
+
+        $bookingQuery = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'bookingBranch', 'invoice', 'district', 'package'])
+            ->when($userBranchId, fn ($q) =>
+                $q->where(function ($q) {
+                    $q->where('booking_branch_id', auth()->user()->branch_id)
+                      ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+                })
             )
-            ->orderBy('created_at', 'desc')
-            ->paginate(10)
+            )
+            ->when($selectedBranchId, fn ($q) =>
+                $q->where('booking_branch_id', $selectedBranchId)
+            )
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->input('search');
+                $q->where(function ($query) use ($search) {
+                    $query->where('invoice_id', 'like', "%{$search}%")
+                        ->orWhereHas('customer', fn ($q) => $q->where('mobile_no', 'like', "%{$search}%"))
+                        ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
+                });
+            })
+            ->orderBy('created_at', 'desc');
+
+        $totalBookingCount = (clone $bookingQuery)->count();
+
+        $bookings = $bookingQuery->paginate(10)
             ->appends(['tab' => $tab])
             ->withQueryString();
 
         $passengers = Passenger::approvedFingerprint()
             ->when(auth()->user()->branch_id, fn ($q) =>
                 $q->whereHas('booking', fn ($q) =>
-                    $q->where('booking_branch_id', auth()->user()->branch_id)
+                    $q->where(function ($q) {
+                        $q->where('booking_branch_id', auth()->user()->branch_id)
+                          ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+                    })
                 )
             )
             ->with([
@@ -181,8 +220,12 @@ class BookingController extends Controller
 
         $canEditVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
 
+        $currencyRateService = app(CurrencyRateService::class);
+
         return view('bookings.index', compact(
-            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa'
+            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa',
+            'currencyRateService', 'bookingBranches', 'selectedBranchId', 'totalBookingCount',
+            'branchCounts', 'allBookingCount'
         ));
     }
 
@@ -266,7 +309,7 @@ class BookingController extends Controller
         });
 
         $currencyRates = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->get();
-        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currentCurrencyRate = app(CurrencyRateService::class)->getRateForDate(now());
 
         $userBranchLocation = $userBranch?->location?->value;
         $banks = \App\Models\Bank::orderBy('name')->get(['id', 'name', 'currency', 'location']);
@@ -336,7 +379,7 @@ class BookingController extends Controller
         try {
             DB::beginTransaction();
 
-            $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
+            $currentCurrencyRate = app(CurrencyRateService::class)->getRateForDate(now());
 
             $user = auth()->user();
             $userBranch = $user->branch;
@@ -371,6 +414,7 @@ class BookingController extends Controller
                 'discount_amount' => 0,
                 'remarks' => $validated['remarks'] ?? null,
                 'currency_rate_id' => $currentCurrencyRate?->id,
+                'total_value' => 0,
             ]);
 
             $booking->load('customer');
@@ -425,6 +469,7 @@ class BookingController extends Controller
                     'ticket_fare_id' => ($passengerData['service_required'] ?? '') === 'visa_only'
                         ? null
                         : ($passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id),
+                    'package_value' => 0,
                 ]);
 
                 if (($passengerData['service_required'] ?? 'all') !== 'ticket_only') {
@@ -628,7 +673,11 @@ class BookingController extends Controller
             ];
         });
 
-        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currencyRate = $booking->currencyRate;
+        if (!$currencyRate) {
+            $currencyRate = app(CurrencyRateService::class)->getRateForDate($booking->created_at);
+        }
+        $currentCurrencyRate = $currencyRate;
 
         $rate = $currentCurrencyRate?->rate ?? 0;
         $totalAmount = $booking->invoice?->total_amount ?? 0;
@@ -725,7 +774,11 @@ class BookingController extends Controller
         });
 
         $customers = \App\Models\Customer::orderBy('name')->get(['id', 'name', 'passport_no', 'iqama_no', 'mobile_no']);
-        $currentCurrencyRate = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currencyRate = $booking->currencyRate;
+        if (!$currencyRate) {
+            $currencyRate = app(CurrencyRateService::class)->getRateForDate($booking->created_at);
+        }
+        $currentCurrencyRate = $currencyRate;
 
         return view('bookings.edit', compact(
             'booking', 'districts', 'packages', 'ticketFares', 'customers', 'currentCurrencyRate', 'bookingBranches', 'fingerprintBranches'
@@ -863,6 +916,7 @@ class BookingController extends Controller
 
                 $fingerprintDetailIds = \App\Models\FingerprintDetail::whereIn('passenger_id', $passengerIds)->pluck('id');
 
+                \App\Models\IssuedTicket::whereIn('passenger_id', $passengerIds)->forceDelete();
                 \App\Models\RescheduledFingerprint::whereIn('fingerprint_detail_id', $fingerprintDetailIds)->delete();
                 \App\Models\CancelledSubmission::whereIn('visa_submission_id', \App\Models\VisaSubmission::whereIn('passenger_id', $passengerIds)->pluck('id'))->delete();
                 \App\Models\VisaSubmission::whereIn('passenger_id', $passengerIds)->delete();
@@ -978,6 +1032,7 @@ class BookingController extends Controller
                 $detail->delete();
             }
 
+            $passenger->issuedTickets()->forceDelete();
             $passenger->delete();
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();
@@ -1039,6 +1094,7 @@ class BookingController extends Controller
 
         $booking = Booking::with([
             'customer',
+            'bookingBranch',
             'fingerprintBranch',
             'package',
             'currencyRate',
@@ -1145,7 +1201,8 @@ class BookingController extends Controller
             'displayCurrentPaid',
             'displayTotalPaid',
             'displayPreviousPaid',
-            'displayDueAmount'
+            'displayDueAmount',
+            'rate'
         ));
     }
 

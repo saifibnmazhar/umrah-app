@@ -20,7 +20,8 @@ class PaymentService
         \Log::info('PaymentService: Creating payment for invoice ID: ' . $invoice->id . ', booking ID: ' . $invoice->booking_id);
         \Log::info('PaymentService: Payment data received:', $data);
 
-        $processedData = $this->processCurrencyConversion($data);
+        $bookingCreatedAt = $invoice->booking?->created_at;
+        $processedData = $this->processCurrencyConversion($data, $bookingCreatedAt);
         \Log::info('PaymentService: Processed data:', $processedData);
 
         if (!$this->invoiceService->canAcceptPayment($invoice, $processedData['amount'])) {
@@ -78,7 +79,8 @@ class PaymentService
     {
         \Log::info('PaymentService: Starting createCustomerPaymentAndUpdateInvoice for invoice ID: ' . $invoice->id);
 
-        $processedData = $this->processCurrencyConversion($data);
+        $bookingCreatedAt = $invoice->booking?->created_at;
+        $processedData = $this->processCurrencyConversion($data, $bookingCreatedAt);
         \Log::info('PaymentService: Processed data:', $processedData);
 
         if (!$this->invoiceService->canAcceptPayment($invoice, $processedData['amount'])) {
@@ -142,7 +144,12 @@ class PaymentService
 
     public function createAgentPayment(string $agentType, array $data): array
     {
-        $processedData = $this->processCurrencyConversion($data);
+        $bookingCreatedAt = null;
+        if (!empty($data['booking_id'])) {
+            $booking = \App\Models\Booking::find($data['booking_id']);
+            $bookingCreatedAt = $booking?->created_at;
+        }
+        $processedData = $this->processCurrencyConversion($data, $bookingCreatedAt);
         $agentIdField = $agentType . '_id';
 
         return DB::transaction(function () use ($agentType, $agentIdField, $data, $processedData) {
@@ -184,16 +191,16 @@ class PaymentService
         });
     }
 
-    private function processCurrencyConversion(array $data): array
+    private function processCurrencyConversion(array $data, $bookingCreatedAt = null): array
     {
         $currencyRateService = app(CurrencyRateService::class);
-        $currentRate = $currencyRateService->getCurrentRate();
-        
+        $currentRate = $currencyRateService->getRateForDate($bookingCreatedAt ?? now());
+
         $data['amount'] = (float) ($data['amount'] ?? 0);
         $data['bdt_amount'] = (float) ($data['bdt_amount'] ?? 0);
-        
+
         $data['currency_rate_id'] = $currentRate?->id;
-        
+
         return $data;
     }
 }

@@ -2,6 +2,10 @@
 @section('title', 'Passenger Details')
 @section('content')
 @php
+    $isFingerprintOnlyViewer = auth()->user()->branch_id
+        && auth()->user()->branch_id === ($passenger->booking?->fingerprint_branch_id)
+        && auth()->user()->branch_id !== ($passenger->booking?->booking_branch_id);
+
     $canViewFinancialSection = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
     $canViewVisaSection = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
     $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
@@ -15,12 +19,14 @@
                     <p class="text-slate-500 text-sm mt-1">Invoice: <span>{{ $passenger->booking?->invoice?->id ?? '-' }}</span></p>
                 </div>
                 <div class="flex items-center gap-2">
+                    @if(!$isFingerprintOnlyViewer)
                     <a href="{{ route('passengers.edit', $passenger->id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm flex items-center gap-1.5">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
                         </svg>
                         Edit
                     </a>
+                    @endif
                     <a href="{{ route('bookings.index') }}" class="text-slate-400 hover:text-slate-600">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
@@ -129,27 +135,27 @@
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <span class="text-xs text-slate-400">Ticket Fare (SAR)</span>
-                                <p class="text-slate-800 font-medium">@currency($ticketFare, 2)</p>
+                                <p class="text-slate-800 font-medium">@currency($ticketFare, 2, $rate)</p>
                             </div>
                             <div>
                                 <span class="text-xs text-slate-400">Visa Price (SAR)</span>
-                                <p class="text-slate-800 font-medium">@currency($visaCost, 2)</p>
+                                <p class="text-slate-800 font-medium">@currency($visaCost, 2, $rate)</p>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3">
                             <div>
                                 <span class="text-xs text-slate-400">Fingerprint Charge (SAR)</span>
-                                <p class="text-slate-800 font-medium">@currency($fingerprintCost, 2)</p>
+                                <p class="text-slate-800 font-medium">@currency($fingerprintCost, 2, $rate)</p>
                             </div>
                         </div>
                         <div class="grid grid-cols-2 gap-3 pt-2 border-t border-slate-200">
                             <div>
                                 <span class="text-xs text-slate-400">Due (SAR)</span>
-                                <p class="text-red-600 font-medium">@currency($due, 2)</p>
+                                <p class="text-red-600 font-medium">@currency($due, 2, $rate)</p>
                             </div>
                             <div>
                                 <span class="text-xs text-slate-400">Paid (SAR)</span>
-                                <p class="text-green-600 font-medium">@currency($paid, 2)</p>
+                                <p class="text-green-600 font-medium">@currency($paid, 2, $rate)</p>
                             </div>
                         </div>
                     </div>
@@ -483,10 +489,7 @@ function deleteDocument(documentId) {
 }
 
 function downloadAllDocuments() {
-    const documents = @json($passenger->documents);
-    documents.forEach(doc => {
-        window.open(`/passengers/${passengerId}/documents/${doc.id}/download`, '_blank');
-    });
+    window.location.href = '{{ route('passengers.download-all-docs', $passenger->id) }}';
 }
 
 // ============================================

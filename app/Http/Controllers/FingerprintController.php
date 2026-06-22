@@ -7,6 +7,7 @@ use App\Models\FingerprintDetail;
 use App\Models\RescheduledFingerprint;
 use App\Models\User;
 use App\Enums\FingerprintLocation;
+use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 
@@ -59,7 +60,9 @@ class FingerprintController extends Controller
                 $booking = $fingerprint->booking;
                 $passengers = $booking->passengers;
 
-                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers) {
+                $currencyRateService = app(CurrencyRateService::class);
+
+                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $currencyRateService) {
                     $detail = $fingerprint->fingerprintDetails
                         ->where('passenger_id', $passenger->id)
                         ->first();
@@ -69,6 +72,10 @@ class FingerprintController extends Controller
                     $rescheduleDeadline = $detail?->rescheduledFingerprints
                         ->sortByDesc('created_at')
                         ->first()?->next_date?->format('Y-m-d');
+
+                    $rate = $booking?->currencyRate?->rate
+                        ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
+                        ?? 0;
 
                     return [
                         'fingerprint_id' => $fingerprint->id,
@@ -83,6 +90,7 @@ class FingerprintController extends Controller
                         'deadline' => $fingerprint->deadline?->format('Y-m-d'),
                         'reschedule_deadline' => $rescheduleDeadline,
                         'cost' => $fingerprint->cost,
+                        'rate' => $rate,
                         'assigned_staff_id' => $fingerprint->assigned_staff_id,
                         'assigned_staff_name' => $fingerprint->assignedStaff->name ?? null,
                         'booking_branch_id' => $booking->booking_branch_id,
@@ -140,7 +148,9 @@ class FingerprintController extends Controller
 
                 $passengers = $booking->passengers;
 
-                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers) {
+                $currencyRateService = app(CurrencyRateService::class);
+
+                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $currencyRateService) {
                     $detail = $fingerprint->fingerprintDetails()
                         ->where('passenger_id', $passenger->id)
                         ->first();
@@ -150,6 +160,10 @@ class FingerprintController extends Controller
                     $firstName = $passenger->first_name ?? '';
                     $lastName = $passenger->last_name ?? '';
                     $passengerName = trim($firstName . ' ' . $lastName) ?: '-';
+
+                    $rate = $booking?->currencyRate?->rate
+                        ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
+                        ?? 0;
 
                     return [
                         'fingerprint_id' => $fingerprint->id,
@@ -166,6 +180,7 @@ class FingerprintController extends Controller
                         'passenger_name' => $passengerName,
                         'passenger_address' => $passenger->address ?? '-',
                         'cost' => $fingerprint->cost,
+                        'rate' => $rate,
                         'fingerprint_status' => $detail?->status?->value ?? 'none',
                         'fingerprint_status_display' => $statusDisplay,
                         'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',

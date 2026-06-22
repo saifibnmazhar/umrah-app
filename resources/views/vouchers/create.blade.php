@@ -81,8 +81,9 @@
                 >
                     <option value="">Select Payment</option>
                     @foreach($payments as $payment)
+                        @php $paymentRate = $payment->booking?->currencyRate?->rate ?? app(\App\Services\CurrencyRateService::class)->getRateForDate($payment->booking?->created_at)?->rate ?? 0; @endphp
                         <option value="{{ $payment->id }}" {{ old('payment_id') == $payment->id ? 'selected' : '' }}>
-                            #{{ $payment->id }} - @currency($payment->amount, 2)
+                            #{{ $payment->id }} - @currency($payment->amount, 2, $paymentRate)
                         </option>
                     @endforeach
                 </select>

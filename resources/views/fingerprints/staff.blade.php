@@ -52,9 +52,9 @@
                                        @change="updateCost(row.fingerprint_id, $event.target.value)"
                                        class="w-20 text-right text-sm border border-slate-300 rounded px-2 py-1"
                                        min="0">
-                                <span x-show="row.isFirstInGroup && !canEditCost"
-                                      class="text-sm text-slate-700 font-medium"
-                                      x-text="row.cost != null && row.cost !== '' ? $currency(row.cost) : ''"></span>
+<span x-show="row.isFirstInGroup && !canEditCost"
+      class="text-sm text-slate-700 font-medium"
+      x-text="row.cost != null && row.cost !== '' ? $currency(row.cost, 2, row.rate) : ''"></span>
                             </td>
                             <td class="px-3 py-2">
                                 <select x-show="canEditStatus"
@@ -109,7 +109,7 @@
 
     <!-- Hold Modal -->
     <div x-show="showHoldModal"
-         class="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center p-4"
+         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
          style="display: none;">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
             <div class="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl">

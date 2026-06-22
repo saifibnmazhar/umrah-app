@@ -2,25 +2,31 @@
 @section('title', 'Booking')
 @section('content')
 @php
-$passengersVisaData = ($passengers ?? collect())->map(fn($p) => [
-    'id' => $p->id,
-    'booking_id' => $p->booking_id,
-    'visa' => $p->visaSubmission ? [
-        'id' => $p->visaSubmission->id,
-        'agent_id' => $p->visaSubmission->visa_agent_id,
-        'agent' => $p->visaSubmission?->visaAgent?->name ?? '',
-        'visa_number' => $p->visaSubmission?->visa_number ?? '',
-        'selling_price' => (float)($p->visaSubmission?->visaSellingPrice?->selling_price ?? 0),
-        'agent_commission' => (float)($p->visaSubmission?->agent_commission ?? 0),
-        'net_visa_cost' => (float)($p->visaSubmission?->net_visa_cost ?? 0),
-        'additional_cost' => (float)($p->visaSubmission?->additional_cost ?? 0),
-        'remarks' => $p->visaSubmission?->remarks ?? '',
-        'final_cost' => (float)($p->visaSubmission?->final_cost ?? 0),
-        'commission_agent_id' => $p->visaSubmission?->commission_agent_id,
-        'commission_agent' => $p->visaSubmission?->commissionAgent?->name ?? '',
-        'status' => $p->visaSubmission->status?->value ?? 'pending',
-    ] : null,
-])->values();
+$passengersVisaData = ($passengers ?? collect())->map(function($p) {
+    $rate = $p->booking?->currencyRate?->rate
+        ?? app(\App\Services\CurrencyRateService::class)->getRateForDate($p->booking?->created_at)?->rate
+        ?? 0;
+    return [
+        'id' => $p->id,
+        'booking_id' => $p->booking_id,
+        'rate' => $rate,
+        'visa' => $p->visaSubmission ? [
+            'id' => $p->visaSubmission->id,
+            'agent_id' => $p->visaSubmission->visa_agent_id,
+            'agent' => $p->visaSubmission?->visaAgent?->name ?? '',
+            'visa_number' => $p->visaSubmission?->visa_number ?? '',
+            'selling_price' => (float)($p->visaSubmission?->visaSellingPrice?->selling_price ?? 0),
+            'agent_commission' => (float)($p->visaSubmission?->agent_commission ?? 0),
+            'net_visa_cost' => (float)($p->visaSubmission?->net_visa_cost ?? 0),
+            'additional_cost' => (float)($p->visaSubmission?->additional_cost ?? 0),
+            'remarks' => $p->visaSubmission?->remarks ?? '',
+            'final_cost' => (float)($p->visaSubmission?->final_cost ?? 0),
+            'commission_agent_id' => $p->visaSubmission?->commission_agent_id,
+            'commission_agent' => $p->visaSubmission?->commissionAgent?->name ?? '',
+            'status' => $p->visaSubmission->status?->value ?? 'pending',
+        ] : null,
+    ];
+})->values();
 
 $ticketAgents = \App\Models\TicketAgent::orderBy('name')->get();
 
@@ -218,8 +224,23 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     <div x-show="activeTab === 'booking'" x-cloak>
         <div class="bg-white rounded-xl shadow-lg p-6">
-            <div class="mb-4">
-                <input type="text" x-model="searchTerm" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Mobile or Invoice No...">
+            <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+                <input type="text" x-model="searchTerm" x-ref="searchInput" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Mobile or Invoice No...">
+                @unless(auth()->user()->branch_id)
+                <div class="flex items-center gap-4">
+                    <select
+                        x-model="selectedBranchId"
+                        @change="onBranchChange"
+                        class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                        <option value="">All Branches</option>
+                        @foreach($bookingBranches as $branch)
+                        <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                    <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm" x-text="'Total Booking - ' + totalBookingCount">Total Booking - {{ $totalBookingCount }}</span>
+                </div>
+                @endunless
+            </div>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[1000px] text-sm">
@@ -231,6 +252,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Mobile</th>
                             <th class="px-3 py-2 text-left font-medium">Passengers</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Location</th>
+                            <th class="px-3 py-2 text-left font-medium">Booking Branch</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Branch</th>
                             <th class="px-3 py-2 text-left font-medium">District</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
@@ -242,6 +264,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     </thead>
                     <tbody class="divide-y divide-slate-200">
                         @forelse($bookings as $booking)
+                        @php $bookingCurrencyRate = $booking->currencyRate?->rate ?? ($currencyRateService?->getRateForDate($booking->created_at)?->rate ?? 0); @endphp
                         <tr>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->invoice_id ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->created_at->format('Y-m-d') }}</td>
@@ -253,6 +276,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                                 <select
                                     class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
                                     data-original="{{ $booking->fingerprint_location?->value ?? 'office' }}"
+                                    data-rate="{{ $bookingCurrencyRate }}"
                                     onchange="updateFingerprintLocation({{ $booking->id }}, this.value, this)">
                                     <option value="home" {{ ($booking->fingerprint_location?->value ?? '') === 'home' ? 'selected' : '' }}>Home</option>
                                     <option value="office" {{ ($booking->fingerprint_location?->value ?? '') === 'office' ? 'selected' : '' }}>Office</option>
@@ -261,12 +285,13 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                                 <span class="text-slate-700">{{ ucfirst($booking->fingerprint_location?->value ?? 'Office') }}</span>
                                 @endif
                             </td>
+                            <td class="px-3 py-2 text-slate-700">{{ $booking->bookingBranch->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprintBranch->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->total_amount ?? 0)</td>@endif
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->paid_amount ?? 0)</td>@endif
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->balance ?? 0)</td>@endif
+                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->total_amount ?? 0, 2, $bookingCurrencyRate)</td>@endif
+                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->paid_amount ?? 0, 2, $bookingCurrencyRate)</td>@endif
+                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->balance ?? 0, 2, $bookingCurrencyRate)</td>@endif
                             @if($canViewActionColumn)
                             <td class="px-3 py-2">
                                 <a href="{{ route('bookings.show', $booking->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
@@ -282,7 +307,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="{{ 9 + ($canViewFinancialColumns ? 3 : 0) + ($canViewActionColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
+                            <td colspan="{{ 10 + ($canViewFinancialColumns ? 3 : 0) + ($canViewActionColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -355,6 +380,7 @@ if ($route) {
     }
 }
 @endphp
+@php $passBookingRate = $passenger->booking?->currencyRate?->rate ?? ($currencyRateService?->getRateForDate($passenger->booking?->created_at)?->rate ?? 0); @endphp
 <tr>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->created_at?->format('d M Y') ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->invoice_id ?? '—' }}</td>
@@ -386,15 +412,15 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ optional($passenger->actual_flight_date)->format('d M Y') ?: 'N/A' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
-    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2)@else—@endif</td>@endif
+    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
-    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice?->balance)@currency($passenger->booking->invoice->balance, 2)@else—@endif @endif</td>@endif
+    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice?->balance)@currency($passenger->booking->invoice->balance, 2, $passBookingRate)@else—@endif @endif</td>@endif
     @if($canViewVisaColumns)
     <td class="px-3 py-2">
         <div class="flex items-center gap-1 flex-wrap">
             <template x-if="passengersVisaData[{{ $loop->index }}]?.visa">
-                <span class="text-slate-800 font-medium text-xs mr-1" x-text="$currency(passengersVisaData[{{ $loop->index }}]?.visa?.selling_price)"></span>
+                <span class="text-slate-800 font-medium text-xs mr-1" x-text="$currency(passengersVisaData[{{ $loop->index }}]?.visa?.selling_price, 2, passengersVisaData[{{ $loop->index }}]?.rate)"></span>
             </template>
             <template x-if="!passengersVisaData[{{ $loop->index }}]?.visa">
                 <span class="text-slate-500 text-xs">N/A</span>
@@ -445,7 +471,7 @@ if ($route) {
     @if($canViewTicketFareColumn)
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 flex-wrap">
-            <span class="font-medium text-sm">@if($fareAmount > 0)@currency($fareAmount, 2)@else—@endif</span>
+            <span class="font-medium text-sm">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
             <button x-show="(!passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'pending') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
             <button x-show="(passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'issued' || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 're-issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
             <template x-if="passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
@@ -975,7 +1001,12 @@ if ($route) {
 function bookingIndexApp() {
     return {
         activeTab: '{{ $tab ?? 'booking' }}',
-        searchTerm: '',
+        searchTerm: new URL(window.location).searchParams.get('search') || '',
+        searchTimeout: null,
+        selectedBranchId: '{{ $selectedBranchId }}',
+        totalBookingCount: {{ $totalBookingCount }},
+        branchCounts: @json($branchCounts),
+        allBookingCount: {{ $allBookingCount }},
 
         init() {
             if (this.activeTab === 'passenger') {
@@ -983,6 +1014,28 @@ function bookingIndexApp() {
             }
             this.$watch('activeTab', (newVal) => {
                 document.body.style.overflow = newVal === 'passenger' ? 'hidden' : '';
+            });
+
+            this.$nextTick(() => {
+                if (this.searchTerm && this.$refs.searchInput) {
+                    this.$refs.searchInput.focus();
+                    const len = this.searchTerm.length;
+                    this.$refs.searchInput.setSelectionRange(len, len);
+                }
+            });
+
+            this.$watch('searchTerm', (val) => {
+                if (this.searchTimeout) clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => {
+                    const url = new URL(window.location);
+                    if (val) {
+                        url.searchParams.set('search', val);
+                    } else {
+                        url.searchParams.delete('search');
+                    }
+                    url.searchParams.delete('page');
+                    window.location.href = url.toString();
+                }, 500);
             });
         },
 
@@ -993,6 +1046,19 @@ function bookingIndexApp() {
                 url.searchParams.delete('tab');
             } else {
                 url.searchParams.set('tab', tab);
+            }
+            window.location.href = url.toString();
+        },
+
+        onBranchChange() {
+            this.totalBookingCount = this.selectedBranchId
+                ? (this.branchCounts[this.selectedBranchId] || 0)
+                : this.allBookingCount;
+            const url = new URL(window.location.href);
+            if (this.selectedBranchId) {
+                url.searchParams.set('booking_branch_id', this.selectedBranchId);
+            } else {
+                url.searchParams.delete('booking_branch_id');
             }
             window.location.href = url.toString();
         },
@@ -2146,9 +2212,10 @@ function updateFingerprintLocation(bookingId, location, select) {
                 const cells = row.querySelectorAll('td');
                 @if($canViewFinancialColumns)
                 if (cells.length >= 12) {
-                    cells[9].textContent = Alpine.store('currency').format(data.invoice.total_amount);
-                    cells[10].textContent = Alpine.store('currency').format(data.invoice.paid_amount);
-                    cells[11].textContent = Alpine.store('currency').format(data.invoice.balance);
+                    const rate = parseFloat(selectEl.dataset.rate) || 0;
+                    cells[9].textContent = Alpine.store('currency').format(data.invoice.total_amount, 2, rate);
+                    cells[10].textContent = Alpine.store('currency').format(data.invoice.paid_amount, 2, rate);
+                    cells[11].textContent = Alpine.store('currency').format(data.invoice.balance, 2, rate);
                 }
                 @endif
             }

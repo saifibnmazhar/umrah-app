@@ -71,7 +71,7 @@
                         <select x-model="passengerData.stay_duration" @change="handleStayDurationChange(); calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Stay Duration</option>
                             <option value="14">Group (14 Days)</option>
-                            <option value="85">Family (85 Days)</option>
+                            {{-- <option value="85">Family (85 Days)</option> --}}
                             <option value="Customize (Set Duration)">Customize (Set Duration)</option>
                         </select>
                     </div>

@@ -52,7 +52,8 @@
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Bank</span>
                                 @endif
                             </td>
-                            <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($payment->amount, 2)</td>
+                            @php $paymentRate = $payment->booking?->currencyRate?->rate ?? app(\App\Services\CurrencyRateService::class)->getRateForDate($payment->booking?->created_at)?->rate ?? 0; @endphp
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($payment->amount, 2, $paymentRate)</td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->bdt_amount, 2) }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->bank->name ?? '-' }}</td>
                             <td class="px-3 py-2">
