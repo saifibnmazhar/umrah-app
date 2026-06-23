@@ -3,8 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
-use App\Models\Booking;
-use App\Models\Branch;
 use App\Models\User;
 use App\Models\CurrencyRate;
 use App\Models\Bank;
@@ -29,8 +27,6 @@ class PaymentController extends Controller
 
     public function create()
     {
-        $bookings = Booking::orderBy('id', 'desc')->get();
-        $branches = Branch::orderBy('name')->get();
         $currencyRates = CurrencyRate::orderBy('created_at', 'desc')->get();
         $banks = Bank::orderBy('name')->get();
         $ticketAgents = TicketAgent::orderBy('name')->get();
@@ -38,7 +34,7 @@ class PaymentController extends Controller
         $commissionAgents = CommissionAgent::orderBy('name')->get();
         
         return view('payments.create', compact(
-            'bookings', 'branches', 'currencyRates', 'banks',
+            'currencyRates', 'banks',
             'ticketAgents', 'visaAgents', 'commissionAgents'
         ));
     }
@@ -46,8 +42,6 @@ class PaymentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-            'branch_id' => 'required|exists:branches,id',
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:cash,bank',
             'amount' => 'required|numeric|min:0',
@@ -83,8 +77,6 @@ class PaymentController extends Controller
 
     public function edit(Payment $payment)
     {
-        $bookings = Booking::orderBy('id', 'desc')->get();
-        $branches = Branch::orderBy('name')->get();
         $currencyRates = CurrencyRate::orderBy('created_at', 'desc')->get();
         $banks = Bank::orderBy('name')->get();
         $ticketAgents = TicketAgent::orderBy('name')->get();
@@ -92,7 +84,7 @@ class PaymentController extends Controller
         $commissionAgents = CommissionAgent::orderBy('name')->get();
         
         return view('payments.edit', compact(
-            'payment', 'bookings', 'branches', 'currencyRates', 'banks',
+            'payment', 'currencyRates', 'banks',
             'ticketAgents', 'visaAgents', 'commissionAgents'
         ));
     }
@@ -100,8 +92,6 @@ class PaymentController extends Controller
     public function update(Request $request, Payment $payment)
     {
         $validated = $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-            'branch_id' => 'required|exists:branches,id',
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:cash,bank',
             'amount' => 'required|numeric|min:0',

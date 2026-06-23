@@ -35,14 +35,6 @@
                     <p class="font-medium text-slate-800">#{{ $payment->id }}</p>
                 </div>
                 <div>
-                    <p class="text-sm text-slate-500">Booking</p>
-                    <p class="font-medium text-slate-800">{{ $payment->booking->id ?? 'N/A' }}</p>
-                </div>
-                <div>
-                    <p class="text-sm text-slate-500">Branch</p>
-                    <p class="font-medium text-slate-800">{{ $payment->branch->name ?? 'N/A' }}</p>
-                </div>
-                <div>
                     <p class="text-sm text-slate-500">Payment Date</p>
                     <p class="font-medium text-slate-800">{{ $payment->payment_date }}</p>
                 </div>

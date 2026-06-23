@@ -30,7 +30,6 @@
                 <thead class="bg-slate-50 text-slate-600">
                     <tr>
                         <th class="px-3 py-2 text-left font-medium">ID</th>
-                        <th class="px-3 py-2 text-left font-medium">Booking</th>
                         <th class="px-3 py-2 text-left font-medium">Date</th>
                         <th class="px-3 py-2 text-left font-medium">Method</th>
                         <th class="px-3 py-2 text-right font-medium">Amount (SAR)</th>
@@ -43,7 +42,6 @@
                     @forelse($payments as $payment)
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-2 text-slate-800 font-medium">#{{ $payment->id }}</td>
-                            <td class="px-3 py-2 text-slate-600">{{ $payment->booking->id ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->payment_date }}</td>
                             <td class="px-3 py-2">
                                 @if($payment->payment_method === 'cash')
@@ -52,8 +50,7 @@
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Bank</span>
                                 @endif
                             </td>
-                            @php $paymentRate = $payment->booking?->currencyRate?->rate ?? app(\App\Services\CurrencyRateService::class)->getRateForDate($payment->booking?->created_at)?->rate ?? 0; @endphp
-                            <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($payment->amount, 2, $paymentRate)</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->amount, 2) }} SAR</td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->bdt_amount, 2) }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->bank->name ?? '-' }}</td>
                             <td class="px-3 py-2">
@@ -70,7 +67,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="8" class="px-3 py-8 text-center text-slate-500">
+                            <td colspan="7" class="px-3 py-8 text-center text-slate-500">
                                 No payments yet. Click "Add Payment" to create a new one.
                             </td>
                         </tr>
