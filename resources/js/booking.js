@@ -1652,7 +1652,7 @@ Alpine.data('createBookingApp', () => ({
             fare = baseFare * pct / 100;
         }
 
-        return fare > 0 ? fare.toLocaleString() : '-';
+        return fare > 0 ? Alpine.store('currency').format(fare) : '-';
     },
 
     parseFlightDateRange(rangeString) {
@@ -2358,6 +2358,7 @@ Alpine.data('editBookingApp', () => ({
     paymentSaved: false,
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
+    historicalRate: window.__bookingServerData?.historicalRate || window.__bookingServerData?.currentCurrencyRate || 0,
 
     hasPaymentData() {
         const amountSar = parseFloat(this.paymentData.amount_sar) || 0;
@@ -3484,7 +3485,7 @@ Alpine.data('editBookingApp', () => ({
             fare = baseFare * pct / 100;
         }
 
-        return fare > 0 ? fare.toLocaleString() : '-';
+        return fare > 0 ? Alpine.store('currency').format(fare) : '-';
     },
 
     openCustomerModal() {
