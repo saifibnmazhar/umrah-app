@@ -3,7 +3,7 @@
 @section('title', 'Ticket Admin')
 
 @section('content')
-<div class="max-w-7xl mx-auto pt-6" x-data="{
+<div class="w-full px-6 pt-6" x-data="{
     activeTab: new URLSearchParams(window.location.search).get('tab') || 'agents',
     updateUrlTab(name) {
         const url = new URL(window.location);
