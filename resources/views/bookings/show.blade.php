@@ -106,6 +106,7 @@
 </div>
         </div>
 
+        @if(!$isFingerprintOnlyViewer)
         {{-- Passengers Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="flex justify-between items-center mb-4">
@@ -133,12 +134,12 @@
             </div>
             
             <div class="flex justify-end mt-4">
-                @if(!$isFingerprintOnlyViewer)
                 <button @click="openPassengerModal()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
-                @endif
             </div>
         </div>
+        @endif
 
+        @if(!$isFingerprintOnlyViewer)
         {{-- Documents Section --}}
         <div class="grid grid-cols-2 gap-5">
             <div class="bg-slate-50 rounded-lg p-5">
@@ -196,6 +197,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         {{-- Action Buttons Row --}}
         <div class="flex justify-end gap-3 mt-8">
@@ -210,9 +212,11 @@
                 Request Ticket Refund
             </button>
             @endif
+            @if(!$isFingerprintOnlyViewer)
             <button onclick="downloadAllDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
                 Download All Docs
             </button>
+            @endif
             <button @click="openPaymentModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                 Payment
             </button>
