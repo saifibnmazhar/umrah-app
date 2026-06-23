@@ -17,7 +17,13 @@ class FareAdminController extends Controller
         $ticketAgents = $ticketAgentsQuery->paginate(10)->withQueryString();
 
         $ticketFaresQuery = TicketFare::with(['airline', 'airlineClass.travelClass', 'route.fromCity', 'route.toCity', 'route.returnCity', 'route.multiSegments.fromCity', 'route.multiSegments.toCity', 'user', 'groupTicket'])
-            ->withCount(['packages', 'passengers']);
+            ->withCount([
+                'packages',
+                'passengers',
+                'issuedTickets as issued_tickets_count' => function ($query) {
+                    $query->where('status', 'issued');
+                },
+            ]);
 
         if ($request->has('airline_id') && $request->airline_id) {
             $ticketFaresQuery->where('airline_id', $request->airline_id);
