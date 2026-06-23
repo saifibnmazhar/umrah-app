@@ -321,6 +321,32 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     @if($canViewPassengerIndex)
     <div x-show="activeTab === 'passenger'" x-cloak>
         <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col" style="max-height: calc(95vh - 200px);">
+            <div class="mb-4 flex flex-wrap items-center gap-4">
+                <select x-model="selectedFingerprintStatus" @change="onFingerprintStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <option value="">Fingerprint Status</option>
+                    @foreach($fingerprintStatuses as $status)
+                    <option value="{{ $status->value }}" {{ $selectedFingerprintStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                    @endforeach
+                </select>
+                <select x-model="selectedVisaStatus" @change="onVisaStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <option value="">Visa Status</option>
+                    @foreach($visaStatuses as $status)
+                    <option value="{{ $status->value }}" {{ $selectedVisaStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                    @endforeach
+                </select>
+                <select x-model="selectedTicketStatus" @change="onTicketStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <option value="">Ticket Status</option>
+                    @foreach($ticketStatuses as $status)
+                    <option value="{{ $status->value }}" {{ $selectedTicketStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                    @endforeach
+                </select>
+                <select x-model="selectedVisaAgentId" @change="onVisaAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <option value="">Visa Agent</option>
+                    @foreach($visaAgents as $agent)
+                    <option value="{{ $agent['id'] }}" {{ (string) $selectedVisaAgentId === (string) $agent['id'] ? 'selected' : '' }}>{{ $agent['name'] }}</option>
+                    @endforeach
+                </select>
+            </div>
             <div class="overflow-auto flex-1 min-h-0">
                 <table class="w-full min-w-[1800px] text-sm">
                     <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
@@ -1006,6 +1032,10 @@ function bookingIndexApp() {
         totalBookingCount: {{ $totalBookingCount }},
         branchCounts: @json($branchCounts),
         allBookingCount: {{ $allBookingCount }},
+        selectedFingerprintStatus: '{{ $selectedFingerprintStatus ?? '' }}',
+        selectedVisaStatus: '{{ $selectedVisaStatus ?? '' }}',
+        selectedTicketStatus: '{{ $selectedTicketStatus ?? '' }}',
+        selectedVisaAgentId: '{{ $selectedVisaAgentId ?? '' }}',
 
         init() {
             if (this.activeTab === 'passenger') {
@@ -1060,6 +1090,50 @@ function bookingIndexApp() {
             } else {
                 url.searchParams.delete('booking_branch_id');
             }
+            window.location.href = url.toString();
+        },
+
+        onFingerprintStatusChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedFingerprintStatus) {
+                url.searchParams.set('fingerprint_status', this.selectedFingerprintStatus);
+            } else {
+                url.searchParams.delete('fingerprint_status');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onVisaStatusChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedVisaStatus) {
+                url.searchParams.set('visa_status', this.selectedVisaStatus);
+            } else {
+                url.searchParams.delete('visa_status');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onTicketStatusChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedTicketStatus) {
+                url.searchParams.set('ticket_status', this.selectedTicketStatus);
+            } else {
+                url.searchParams.delete('ticket_status');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onVisaAgentChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedVisaAgentId) {
+                url.searchParams.set('visa_agent_id', this.selectedVisaAgentId);
+            } else {
+                url.searchParams.delete('visa_agent_id');
+            }
+            url.searchParams.delete('page');
             window.location.href = url.toString();
         },
 

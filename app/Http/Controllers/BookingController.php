@@ -34,6 +34,8 @@ use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\FingerprintLocation;
 use App\Enums\DiscountType;
+use App\Enums\VisaStatus;
+use App\Enums\TicketStatus;
 use App\Services\BookingService;
 use App\Services\PaymentService;
 use App\Services\InvoiceService;
@@ -135,6 +137,10 @@ class BookingController extends Controller
 
         $bookingBranches = $userBranchId ? collect() : Branch::orderBy('name')->get(['id', 'name']);
         $selectedBranchId = $userBranchId ? null : $request->get('booking_branch_id');
+        $selectedFingerprintStatus = $request->get('fingerprint_status');
+        $selectedVisaStatus = $request->get('visa_status');
+        $selectedTicketStatus = $request->get('ticket_status');
+        $selectedVisaAgentId = $request->get('visa_agent_id');
 
         $branchCounts = !$userBranchId
             ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
@@ -197,6 +203,18 @@ class BookingController extends Controller
                 'latestIssuedTicket.ticketFare.airlineClass.class',
                 'latestIssuedTicket.ticketFare.route',
             ])
+            ->when($request->filled('fingerprint_status'), fn ($q) =>
+                $q->whereHas('fingerprintDetail', fn ($q) => $q->where('status', $request->input('fingerprint_status')))
+            )
+            ->when($request->filled('visa_status'), fn ($q) =>
+                $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status')))
+            )
+            ->when($request->filled('ticket_status'), fn ($q) =>
+                $q->where('ticket_status', $request->input('ticket_status'))
+            )
+            ->when($request->filled('visa_agent_id'), fn ($q) =>
+                $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
+            )
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->appends(['tab' => $tab])
@@ -221,10 +239,16 @@ class BookingController extends Controller
 
         $currencyRateService = app(CurrencyRateService::class);
 
+        $fingerprintStatuses = FingerprintStatus::cases();
+        $visaStatuses = VisaStatus::cases();
+        $ticketStatuses = TicketStatus::cases();
+
         return view('bookings.index', compact(
             'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa',
             'currencyRateService', 'bookingBranches', 'selectedBranchId', 'totalBookingCount',
-            'branchCounts', 'allBookingCount'
+            'branchCounts', 'allBookingCount',
+            'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
+            'fingerprintStatuses', 'visaStatuses', 'ticketStatuses'
         ));
     }
 
