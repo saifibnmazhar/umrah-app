@@ -1398,6 +1398,21 @@ class BookingController extends Controller
         }, $fileName);
     }
 
+    public function searchInvoice(Request $request)
+    {
+        $query = $request->input('q', '');
+
+        if (strlen($query) < 1) {
+            return response()->json([]);
+        }
+
+        $bookings = Booking::where('invoice_id', 'like', "%{$query}%")
+            ->limit(10)
+            ->get(['id', 'invoice_id']);
+
+        return response()->json($bookings);
+    }
+
     private function resolveDocumentPath(Document $doc): ?string
     {
         if (Storage::disk('public')->exists($doc->file_path)) {
