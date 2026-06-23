@@ -30,33 +30,27 @@
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700 whitespace-nowrap">SEARCH BOX</label>
-                <input type="text" x-model="filters.search" @keydown.enter="currentPage = 1; loadData()" placeholder="Search by Invoice No, Customer Name, PAX Name, Mobile"
+                <input type="text" x-model="filters.search" @input.debounce.400ms="currentPage = 1; loadData()" placeholder="Search by Invoice No, Customer Name, PAX Name, Mobile"
                        class="search-input w-96 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-300">
             </div>
 
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-700">Booking Date</span>
                 <label class="text-xs text-gray-500">From</label>
-                <input type="date" x-model="filters.booking_date_from" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-300">
+                <input type="date" x-model="filters.booking_date_from" @change="currentPage = 1; loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-300">
                 <label class="text-xs text-gray-500">To</label>
-                <input type="date" x-model="filters.booking_date_to" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-300">
+                <input type="date" x-model="filters.booking_date_to" @change="currentPage = 1; loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-300">
             </div>
 
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-700">Completion Date</span>
                 <label class="text-xs text-gray-500">From</label>
-                <input type="date" x-model="filters.completion_date_from" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-300">
+                <input type="date" x-model="filters.completion_date_from" @change="currentPage = 1; loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-300">
                 <label class="text-xs text-gray-500">To</label>
-                <input type="date" x-model="filters.completion_date_to" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-300">
+                <input type="date" x-model="filters.completion_date_to" @change="currentPage = 1; loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-300">
             </div>
 
             <div class="flex items-center gap-2 ml-auto">
-                <button @click="currentPage = 1; loadData()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1 border border-gray-300 bg-white">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                    </svg>
-                    Filter
-                </button>
                 <button @click="resetFilters()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1 border border-gray-300 bg-white">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/>
@@ -69,7 +63,7 @@
         <div class="flex flex-wrap items-center gap-3 mt-3 pt-3 border-t border-gray-200">
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-700">Status</span>
-                <select x-model="filters.status" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select x-model="filters.status" @change="currentPage = 1; loadData()" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="">All Statuses</option>
                     <option value="none">None</option>
                     <option value="processing">Processing</option>
@@ -80,7 +74,7 @@
 
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-700">Location</span>
-                <select x-model="filters.fingerprint_location" class="w-36 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select x-model="filters.fingerprint_location" @change="currentPage = 1; loadData()" class="w-36 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="">All</option>
                     <option value="home">Home</option>
                     <option value="office">Office</option>
@@ -89,7 +83,7 @@
 
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-700">Assigned Staff</span>
-                <select x-model="filters.assigned_staff_id" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select x-model="filters.assigned_staff_id" @change="currentPage = 1; loadData()" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="">All Staff</option>
                     @foreach($staffUsers as $staff)
                     <option value="{{ $staff->id }}">{{ $staff->name }}</option>
@@ -99,7 +93,7 @@
 
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-700">Branch</span>
-                <select x-model="filters.branch_id" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select x-model="filters.branch_id" @change="currentPage = 1; loadData()" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="">All Branches</option>
                     @foreach($branches as $branch)
                     <option value="{{ $branch->id }}">{{ $branch->name }}</option>
@@ -109,7 +103,7 @@
 
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-700">District</span>
-                <select x-model="filters.district_id" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select x-model="filters.district_id" @change="currentPage = 1; loadData()" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="">All Districts</option>
                     @foreach($districts as $district)
                     <option value="{{ $district->id }}">{{ $district->name }}</option>
@@ -119,7 +113,7 @@
 
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-700">Fingerprint Branch</span>
-                <select x-model="filters.fingerprint_branch_id" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select x-model="filters.fingerprint_branch_id" @change="currentPage = 1; loadData()" class="w-44 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="">All Fingerprint Branches</option>
                     @foreach($fingerprintBranches as $branch)
                     <option value="{{ $branch->id }}">{{ $branch->name }}</option>
