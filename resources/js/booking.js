@@ -1652,7 +1652,7 @@ Alpine.data('createBookingApp', () => ({
             fare = baseFare * pct / 100;
         }
 
-        return fare > 0 ? fare.toLocaleString() : '-';
+        return fare > 0 ? Alpine.store('currency').format(fare) : '-';
     },
 
     parseFlightDateRange(rangeString) {
@@ -3484,7 +3484,7 @@ Alpine.data('editBookingApp', () => ({
             fare = baseFare * pct / 100;
         }
 
-        return fare > 0 ? fare.toLocaleString() : '-';
+        return fare > 0 ? Alpine.store('currency').format(fare) : '-';
     },
 
     openCustomerModal() {
