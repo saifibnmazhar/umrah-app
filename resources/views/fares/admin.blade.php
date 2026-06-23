@@ -315,6 +315,7 @@
                             <th class="px-4 py-3 text-left">Effective From</th>
                             <th class="px-4 py-3 text-left">Effective To</th>
                             <th class="px-4 py-3 text-left">Ticket Qty</th>
+                            <th class="px-4 py-3 text-left">Available Ticket</th>
                             <th class="px-4 py-3 text-left">Created At</th>
                             <th class="px-4 py-3 text-center">Status</th>
                             <th class="px-4 py-3 text-right">Actions</th>
@@ -369,6 +370,13 @@
                                         —
                                     @endif
                                 </td>
+                                <td class="px-4 py-3 text-slate-600">
+                                    @if($fare->ticket_type->value === 'group' && $fare->groupTicket)
+                                        {{ max(0, $fare->groupTicket->ticket_qty - ($fare->issued_tickets_count ?? 0)) }}
+                                    @else
+                                        —
+                                    @endif
+                                </td>
                                 <td class="px-4 py-3 text-slate-600">{{ $fare->created_at->format('d/m/Y') }}</td>
                                 <td class="px-4 py-3 text-center">
                                     <form method="POST" action="{{ route('ticket-fares.toggle-active', $fare->id) }}">
@@ -401,7 +409,7 @@
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="14" class="px-4 py-12 text-center text-slate-500">
+                                <td colspan="15" class="px-4 py-12 text-center text-slate-500">
                                     No ticket fares found.
                                 </td>
                             </tr>
