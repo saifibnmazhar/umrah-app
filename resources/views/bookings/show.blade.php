@@ -1700,6 +1700,18 @@ function downloadAllPassengerDocs() {
     window.location.href = '{{ route('bookings.download-all-docs', ['booking' => $booking->id, 'scope' => 'passenger']) }}';
 }
 
+function appendPassengerDocToList(doc) {
+    const list = document.getElementById('passengerDocumentsList');
+    if (!list) return;
+    const emptyState = list.querySelector('p');
+    if (emptyState) emptyState.remove();
+    const item = document.createElement('div');
+    item.className = 'flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200';
+    var deleteBtn = {{ $canDeleteDocument ? 'true' : 'false' }} ? '<button onclick="deleteDocument(' + doc.id + ')" class="text-red-500 hover:text-red-700 text-xs mr-2">Delete</button>' : '';
+    item.innerHTML = '<span class="text-sm text-slate-700 truncate">' + (doc.display_name || 'Document') + '</span><div class="flex gap-2">' + deleteBtn + '<button onclick="downloadDoc(' + doc.id + ')" class="text-blue-600 hover:text-blue-800 text-xs">Download</button></div>';
+    list.appendChild(item);
+}
+
 function deleteDocument(docId) {
     if (!confirm('Are you sure you want to delete this document?')) return;
 
