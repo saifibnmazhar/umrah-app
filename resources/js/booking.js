@@ -3933,6 +3933,13 @@ Alpine.data('showBookingApp', () => ({
             if (data.success && typeof showToast === 'function') {
                 showToast(data.message || 'Documents uploaded');
             }
+            if (data.documents) {
+                data.documents.forEach(function(doc) {
+                    if (typeof appendPassengerDocToList === 'function') {
+                        appendPassengerDocToList(doc);
+                    }
+                });
+            }
         })
         .catch(error => {
             console.error('Document upload error:', error);

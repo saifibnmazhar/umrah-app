@@ -505,7 +505,7 @@ class BookingController extends Controller
                         if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
                             $passenger->documents()->create([
                                 'file_path' => $file->store('passenger-documents'),
-                                'display_name' => "{$invoiceId} {$passenger->first_name} {$passenger->last_name} " . ($fileIdx + 1),
+                                'display_name' => "{$invoiceId} {$passenger->first_name} {$passenger->last_name} {$passenger->passport_no} " . ($fileIdx + 1),
                             ]);
                         }
                     }
