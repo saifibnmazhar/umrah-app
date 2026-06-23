@@ -42,7 +42,7 @@
                     @forelse($payments as $payment)
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-2 text-slate-800 font-medium">#{{ $payment->id }}</td>
-                            <td class="px-3 py-2 text-slate-600">{{ $payment->payment_date }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->payment_date->format('d/m/Y') }}</td>
                             <td class="px-3 py-2">
                                 @if($payment->payment_method === 'cash')
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Cash</span>

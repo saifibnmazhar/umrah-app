@@ -84,7 +84,7 @@
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
                 <label for="amount" class="block text-sm font-medium text-slate-700 mb-1">Amount (SAR) *</label>
-                <input type="number" name="amount" id="amount" x-model="amount_sar" @input="handleSarInput()" :disabled="currency === 'BDT'" step="0.01" min="0" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" :class="{'bg-slate-100 cursor-not-allowed': currency === 'BDT'}" placeholder="Enter SAR amount">
+                <input type="number" name="amount" id="amount" x-model="amount_sar" @input="handleSarInput()" :readonly="currency === 'BDT'" step="0.01" min="0" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" :class="{'bg-slate-100 cursor-not-allowed': currency === 'BDT'}" placeholder="Enter SAR amount">
                 @error('amount')
                     <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
                 @enderror
