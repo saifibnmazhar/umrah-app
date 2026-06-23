@@ -351,6 +351,9 @@ class BookingController extends Controller
             'passengers.*.ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'booking_customer_docs' => 'nullable|array',
             'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'passenger_docs' => 'nullable|array',
+            'passenger_docs.*' => 'nullable|array',
+            'passenger_docs.*.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'payment' => 'required|array',
             'payment.amount' => 'required|numeric|min:0.01',
             'payment.bdt_amount' => 'nullable|numeric|min:0',
@@ -444,7 +447,8 @@ class BookingController extends Controller
                 }
             }
 
-            foreach ($validated['passengers'] as $passengerData) {
+            $createdPassengers = [];
+            foreach ($validated['passengers'] as $passengerIndex => $passengerData) {
                 $passengerType = $this->bookingService->calculatePassengerType(
                     $passengerData['date_of_birth'],
                     $passengerData['stay_duration'] ?? null
@@ -471,6 +475,8 @@ class BookingController extends Controller
                     'package_value' => 0,
                 ]);
 
+                $createdPassengers[$passengerIndex] = $passenger;
+
                 if (($passengerData['service_required'] ?? 'all') !== 'ticket_only') {
                     VisaSubmission::create([
                         'passenger_id' => $passenger->id,
@@ -487,6 +493,22 @@ class BookingController extends Controller
                         'user_id' => auth()->id(),
                         'status' => 'pending',
                     ]);
+                }
+            }
+
+            $passengerDocs = $request->file('passenger_docs', []);
+            if (is_array($passengerDocs) && count($passengerDocs) > 0) {
+                foreach ($passengerDocs as $passengerIndex => $files) {
+                    if (!isset($createdPassengers[$passengerIndex])) continue;
+                    $passenger = $createdPassengers[$passengerIndex];
+                    foreach ($files as $fileIdx => $file) {
+                        if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+                            $passenger->documents()->create([
+                                'file_path' => $file->store('passenger-documents'),
+                                'display_name' => "{$invoiceId} {$passenger->first_name} {$passenger->last_name} " . ($fileIdx + 1),
+                            ]);
+                        }
+                    }
                 }
             }
 

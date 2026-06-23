@@ -33,7 +33,7 @@
     @endif
 
     <div class="bg-white rounded-xl shadow-lg p-6">
-        <form method="POST" action="{{ route('bookings.store') }}" @submit="submitForm($event)">
+        <form method="POST" action="{{ route('bookings.store') }}" enctype="multipart/form-data" @submit="submitForm($event)">
             @csrf
             <input type="hidden" name="payment[amount]" :value="paymentSaved ? (parseFloat(paymentData.amount_sar) || 0) : 0">
             <input type="hidden" name="payment[bdt_amount]" :value="paymentSaved ? (parseFloat(paymentData.amount_bdt) || 0) : 0">

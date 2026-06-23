@@ -12,9 +12,9 @@ Alpine.data('bookingApp', () => ({
     fingerprintCharge: 0,
     editingPassengerIndex: null,
     passengerModalVisible: false,
-customerModalVisible: false,
-        discountModalVisible: false,
-        paymentModalVisible: false,
+    customerModalVisible: false,
+    discountModalVisible: false,
+    paymentModalVisible: false,
     customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
@@ -582,7 +582,7 @@ customerModalVisible: false,
 
         const passengerCopy = { ...this.passengerData };
         passengerCopy.stay_duration = this.parseStayDurationDays(this.passengerData.stay_duration) || this.passengerData.stay_duration;
-        
+
         if (this.editingPassengerIndex !== null) {
             this.passengers[this.editingPassengerIndex] = { ...this.passengerData };
             this.recalculateCurrentPassenger(this.editingPassengerIndex);
@@ -866,6 +866,7 @@ Alpine.data('createBookingApp', () => ({
     selectedCustomer: null,
     passengers: [],
     passengerCount: 0,
+    passengerFiles: {},
     fingerprintCharge: 0,
     editingPassengerIndex: null,
     passengerModalVisible: false,
@@ -1040,6 +1041,7 @@ Alpine.data('createBookingApp', () => ({
             }
             this.recalculateAllPassengerValues();
         });
+
     },
 
     showForm() {
@@ -1057,6 +1059,10 @@ Alpine.data('createBookingApp', () => ({
         this.customerSuggestions = [];
         this.passengers = [];
         this.passengerCount = 0;
+        this.passengerFiles = {};
+        window.__pendingPassengerDocs = [];
+        let pendingList = document.getElementById('passenger_doc_list');
+        if (pendingList) pendingList.innerHTML = '';
         this.newCustomer = {
             name: '',
             iqama_type: '',
@@ -1588,6 +1594,9 @@ Alpine.data('createBookingApp', () => ({
     closePassengerModal() {
         this.passengerModalVisible = false;
         this.editingPassengerIndex = null;
+        window.__pendingPassengerDocs = [];
+        const list = document.getElementById('passenger_doc_list');
+        if (list) list.innerHTML = '';
     },
 
     savePassenger() {
@@ -1606,14 +1615,26 @@ Alpine.data('createBookingApp', () => ({
             }
         }
 
-        if (this.editingPassengerIndex !== null) {
-            this.passengers[this.editingPassengerIndex] = { ...passengerCopy };
-            this.recalculateCurrentPassenger(this.editingPassengerIndex);
+        const isEditing = this.editingPassengerIndex !== null;
+        const passengerIndex = isEditing ? this.editingPassengerIndex : this.passengers.length;
+
+        if (isEditing) {
+            this.passengers[passengerIndex] = { ...passengerCopy };
+            this.recalculateCurrentPassenger(passengerIndex);
         } else {
             this.passengers.push({ ...passengerCopy });
             this.recalculateAllPassengerValues();
         }
         this.passengerCount = this.passengers.length;
+
+        if (window.__pendingPassengerDocs && window.__pendingPassengerDocs.length > 0) {
+            if (!this.passengerFiles) this.passengerFiles = {};
+            this.passengerFiles[passengerIndex] = [...window.__pendingPassengerDocs];
+            window.__pendingPassengerDocs = [];
+            const list = document.getElementById('passenger_doc_list');
+            if (list) list.innerHTML = '';
+        }
+
         this.closePassengerModal();
     },
 
@@ -2193,6 +2214,17 @@ Alpine.data('createBookingApp', () => ({
         }
 
         const formData = new FormData(e.target);
+
+        if (this.passengerFiles) {
+            Object.keys(this.passengerFiles).forEach(index => {
+                const files = this.passengerFiles[index];
+                if (files && files.length > 0) {
+                    files.forEach(file => {
+                        formData.append(`passenger_docs[${index}][]`, file, file.name);
+                    });
+                }
+            });
+        }
 
         fetch(e.target.action, {
             method: 'POST',
