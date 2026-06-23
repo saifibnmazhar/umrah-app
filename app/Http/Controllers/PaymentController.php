@@ -3,22 +3,23 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
-use App\Models\Booking;
-use App\Models\Branch;
 use App\Models\User;
 use App\Models\CurrencyRate;
 use App\Models\Bank;
 use App\Models\TicketAgent;
 use App\Models\VisaAgent;
 use App\Models\CommissionAgent;
-use App\Services\CurrencyRateService;
+use App\Models\TransactionType;
+use App\Models\Voucher;
+use App\Services\VoucherService;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
     public function index()
     {
-        $payments = Payment::with(['booking', 'branch', 'user', 'bank'])
+        $payments = Payment::with(['user', 'bank'])
             ->orderBy('payment_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->paginate(10)
@@ -29,16 +30,21 @@ class PaymentController extends Controller
 
     public function create()
     {
-        $bookings = Booking::orderBy('id', 'desc')->get();
-        $branches = Branch::orderBy('name')->get();
-        $currencyRates = CurrencyRate::orderBy('created_at', 'desc')->get();
+        $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
         $banks = Bank::orderBy('name')->get();
+        $transactionTypes = TransactionType::whereIn('name', [
+            'Commission Agent Payment', 'Ticket Agent Payment', 'Visa Agent Payment',
+        ])->get();
+        $ticketPaymentTypeId = $transactionTypes->where('name', 'Ticket Agent Payment')->first()?->id;
+        $visaPaymentTypeId = $transactionTypes->where('name', 'Visa Agent Payment')->first()?->id;
+        $commissionPaymentTypeId = $transactionTypes->where('name', 'Commission Agent Payment')->first()?->id;
         $ticketAgents = TicketAgent::orderBy('name')->get();
         $visaAgents = VisaAgent::orderBy('name')->get();
         $commissionAgents = CommissionAgent::orderBy('name')->get();
         
         return view('payments.create', compact(
-            'bookings', 'branches', 'currencyRates', 'banks',
+            'currentCurrencyRate', 'banks', 'transactionTypes',
+            'ticketPaymentTypeId', 'visaPaymentTypeId', 'commissionPaymentTypeId',
             'ticketAgents', 'visaAgents', 'commissionAgents'
         ));
     }
@@ -46,25 +52,45 @@ class PaymentController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-            'branch_id' => 'required|exists:branches,id',
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:cash,bank',
             'amount' => 'required|numeric|min:0',
             'bdt_amount' => 'required|numeric|min:0',
-            'currency_rate_id' => 'nullable|exists:currency_rates,id',
             'bank_id' => 'nullable|exists:banks,id',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'visa_agent_id' => 'nullable|exists:visa_agents,id',
             'commission_agent_id' => 'nullable|exists:commission_agents,id',
             'transaction_id' => 'nullable|string|max:255',
+            'transaction_type_id' => 'required|exists:transaction_types,id',
         ]);
 
         $userId = auth()->id() ?? User::first()?->id;
         $validated['user_id'] = $userId;
 
+        $currentRate = CurrencyRate::orderBy('created_at', 'desc')->first();
+        $validated['currency_rate_id'] = $currentRate?->id;
+
         try {
-            Payment::create($validated);
+            DB::transaction(function () use ($validated) {
+                $payment = Payment::create($validated);
+
+                app(VoucherService::class)->createVoucher([
+                    'payment_id' => $payment->id,
+                    'user_id' => $validated['user_id'],
+                    'transaction_type_id' => $validated['transaction_type_id'],
+                    'payment_date' => $validated['payment_date'],
+                    'payment_method' => $validated['payment_method'],
+                    'amount' => $validated['amount'],
+                    'bdt_amount' => $validated['bdt_amount'],
+                    'bank_id' => $validated['bank_id'] ?? null,
+                    'transaction_id' => $validated['transaction_id'] ?? null,
+                    'currency_rate_id' => $validated['currency_rate_id'] ?? null,
+                    'ticket_agent_id' => $validated['ticket_agent_id'] ?? null,
+                    'visa_agent_id' => $validated['visa_agent_id'] ?? null,
+                    'commission_agent_id' => $validated['commission_agent_id'] ?? null,
+                ]);
+            });
+
             return redirect()->route('payments.index')->with('success', 'Payment created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create payment.')->withInput();
@@ -73,26 +99,28 @@ class PaymentController extends Controller
 
     public function show(Payment $payment)
     {
-        $payment->load(['booking', 'branch', 'user', 'currencyRate', 'bank', 'ticketAgent', 'visaAgent', 'commissionAgent']);
-        $currencyRateService = app(CurrencyRateService::class);
-        $rate = $payment->booking?->currencyRate?->rate
-            ?? $currencyRateService->getRateForDate($payment->booking?->created_at)?->rate
-            ?? 0;
+        $payment->load(['user', 'currencyRate', 'bank', 'ticketAgent', 'visaAgent', 'commissionAgent']);
+        $rate = $payment->currencyRate?->rate ?? 0;
         return view('payments.show', compact('payment', 'rate'));
     }
 
     public function edit(Payment $payment)
     {
-        $bookings = Booking::orderBy('id', 'desc')->get();
-        $branches = Branch::orderBy('name')->get();
-        $currencyRates = CurrencyRate::orderBy('created_at', 'desc')->get();
+        $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
         $banks = Bank::orderBy('name')->get();
+        $transactionTypes = TransactionType::whereIn('name', [
+            'Commission Agent Payment', 'Ticket Agent Payment', 'Visa Agent Payment',
+        ])->get();
+        $ticketPaymentTypeId = $transactionTypes->where('name', 'Ticket Agent Payment')->first()?->id;
+        $visaPaymentTypeId = $transactionTypes->where('name', 'Visa Agent Payment')->first()?->id;
+        $commissionPaymentTypeId = $transactionTypes->where('name', 'Commission Agent Payment')->first()?->id;
         $ticketAgents = TicketAgent::orderBy('name')->get();
         $visaAgents = VisaAgent::orderBy('name')->get();
         $commissionAgents = CommissionAgent::orderBy('name')->get();
         
         return view('payments.edit', compact(
-            'payment', 'bookings', 'branches', 'currencyRates', 'banks',
+            'payment', 'currentCurrencyRate', 'banks', 'transactionTypes',
+            'ticketPaymentTypeId', 'visaPaymentTypeId', 'commissionPaymentTypeId',
             'ticketAgents', 'visaAgents', 'commissionAgents'
         ));
     }
@@ -100,22 +128,43 @@ class PaymentController extends Controller
     public function update(Request $request, Payment $payment)
     {
         $validated = $request->validate([
-            'booking_id' => 'required|exists:bookings,id',
-            'branch_id' => 'required|exists:branches,id',
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:cash,bank',
             'amount' => 'required|numeric|min:0',
             'bdt_amount' => 'required|numeric|min:0',
-            'currency_rate_id' => 'nullable|exists:currency_rates,id',
             'bank_id' => 'nullable|exists:banks,id',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'visa_agent_id' => 'nullable|exists:visa_agents,id',
             'commission_agent_id' => 'nullable|exists:commission_agents,id',
             'transaction_id' => 'nullable|string|max:255',
+            'transaction_type_id' => 'nullable|exists:transaction_types,id',
         ]);
 
+        $currentRate = CurrencyRate::orderBy('created_at', 'desc')->first();
+        $validated['currency_rate_id'] = $currentRate?->id;
+
         try {
-            $payment->update($validated);
+            DB::transaction(function () use ($payment, $validated) {
+                $payment->update($validated);
+
+                $voucher = Voucher::where('payment_id', $payment->id)->first();
+                if ($voucher) {
+                    $voucher->update([
+                        'transaction_type_id' => $validated['transaction_type_id'],
+                        'payment_date' => $validated['payment_date'],
+                        'payment_method' => $validated['payment_method'],
+                        'amount' => $validated['amount'],
+                        'bdt_amount' => $validated['bdt_amount'],
+                        'bank_id' => $validated['bank_id'] ?? null,
+                        'transaction_id' => $validated['transaction_id'] ?? null,
+                        'ticket_agent_id' => $validated['ticket_agent_id'] ?? null,
+                        'visa_agent_id' => $validated['visa_agent_id'] ?? null,
+                        'commission_agent_id' => $validated['commission_agent_id'] ?? null,
+                        'currency_rate_id' => $validated['currency_rate_id'] ?? null,
+                    ]);
+                }
+            });
+
             return redirect()->route('payments.index')->with('success', 'Payment updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update payment.')->withInput();

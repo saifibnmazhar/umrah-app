@@ -34,6 +34,8 @@ use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\FingerprintLocation;
 use App\Enums\DiscountType;
+use App\Enums\VisaStatus;
+use App\Enums\TicketStatus;
 use App\Services\BookingService;
 use App\Services\PaymentService;
 use App\Services\InvoiceService;
@@ -135,6 +137,13 @@ class BookingController extends Controller
 
         $bookingBranches = $userBranchId ? collect() : Branch::orderBy('name')->get(['id', 'name']);
         $selectedBranchId = $userBranchId ? null : $request->get('booking_branch_id');
+        $selectedFingerprintStatus = $request->get('fingerprint_status');
+        $selectedVisaStatus = $request->get('visa_status');
+        $selectedTicketStatus = $request->get('ticket_status');
+        $selectedVisaAgentId = $request->get('visa_agent_id');
+        $selectedBookingDateFrom = $request->get('booking_date_from');
+        $selectedBookingDateTo = $request->get('booking_date_to');
+        $selectedFingerprintLocation = $request->get('fingerprint_location');
 
         $branchCounts = !$userBranchId
             ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
@@ -163,15 +172,25 @@ class BookingController extends Controller
                         ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
                 });
             })
+            ->when($request->filled('booking_date_from'), fn ($q) =>
+                $q->whereDate('created_at', '>=', $request->input('booking_date_from'))
+            )
+            ->when($request->filled('booking_date_to'), fn ($q) =>
+                $q->whereDate('created_at', '<=', $request->input('booking_date_to'))
+            )
+            ->when($request->filled('fingerprint_location'), fn ($q) =>
+                $q->where('fingerprint_location', $request->input('fingerprint_location'))
+            )
             ->orderBy('created_at', 'desc');
 
         $totalBookingCount = (clone $bookingQuery)->count();
+        $totalBookingPassengerCount = (clone $bookingQuery)->sum('pax_qty');
 
         $bookings = $bookingQuery->paginate(10)
             ->appends(['tab' => $tab])
             ->withQueryString();
 
-        $passengers = Passenger::approvedFingerprint()
+        $passengerQuery = Passenger::approvedFingerprint()
             ->when(auth()->user()->branch_id, fn ($q) =>
                 $q->whereHas('booking', fn ($q) =>
                     $q->where(function ($q) {
@@ -180,6 +199,22 @@ class BookingController extends Controller
                     })
                 )
             )
+            ->when($request->filled('fingerprint_status'), fn ($q) =>
+                $q->whereHas('fingerprintDetail', fn ($q) => $q->where('status', $request->input('fingerprint_status')))
+            )
+            ->when($request->filled('visa_status'), fn ($q) =>
+                $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status')))
+            )
+            ->when($request->filled('ticket_status'), fn ($q) =>
+                $q->where('ticket_status', $request->input('ticket_status'))
+            )
+            ->when($request->filled('visa_agent_id'), fn ($q) =>
+                $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
+            );
+
+        $totalPassengerCount = (clone $passengerQuery)->count();
+
+        $passengers = (clone $passengerQuery)
             ->with([
                 'booking',
                 'booking.customer',
@@ -221,10 +256,19 @@ class BookingController extends Controller
 
         $currencyRateService = app(CurrencyRateService::class);
 
+        $fingerprintStatuses = FingerprintStatus::cases();
+        $visaStatuses = VisaStatus::cases();
+        $ticketStatuses = TicketStatus::cases();
+        $fingerprintLocations = FingerprintLocation::cases();
+
         return view('bookings.index', compact(
             'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa',
             'currencyRateService', 'bookingBranches', 'selectedBranchId', 'totalBookingCount',
-            'branchCounts', 'allBookingCount'
+            'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
+            'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
+            'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
+            'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
+            'totalPassengerCount'
         ));
     }
 
@@ -351,6 +395,9 @@ class BookingController extends Controller
             'passengers.*.ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'booking_customer_docs' => 'nullable|array',
             'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'passenger_docs' => 'nullable|array',
+            'passenger_docs.*' => 'nullable|array',
+            'passenger_docs.*.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'payment' => 'required|array',
             'payment.amount' => 'required|numeric|min:0.01',
             'payment.bdt_amount' => 'nullable|numeric|min:0',
@@ -444,7 +491,8 @@ class BookingController extends Controller
                 }
             }
 
-            foreach ($validated['passengers'] as $passengerData) {
+            $createdPassengers = [];
+            foreach ($validated['passengers'] as $passengerIndex => $passengerData) {
                 $passengerType = $this->bookingService->calculatePassengerType(
                     $passengerData['date_of_birth'],
                     $passengerData['stay_duration'] ?? null
@@ -471,6 +519,8 @@ class BookingController extends Controller
                     'package_value' => 0,
                 ]);
 
+                $createdPassengers[$passengerIndex] = $passenger;
+
                 if (($passengerData['service_required'] ?? 'all') !== 'ticket_only') {
                     VisaSubmission::create([
                         'passenger_id' => $passenger->id,
@@ -487,6 +537,22 @@ class BookingController extends Controller
                         'user_id' => auth()->id(),
                         'status' => 'pending',
                     ]);
+                }
+            }
+
+            $passengerDocs = $request->file('passenger_docs', []);
+            if (is_array($passengerDocs) && count($passengerDocs) > 0) {
+                foreach ($passengerDocs as $passengerIndex => $files) {
+                    if (!isset($createdPassengers[$passengerIndex])) continue;
+                    $passenger = $createdPassengers[$passengerIndex];
+                    foreach ($files as $fileIdx => $file) {
+                        if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+                            $passenger->documents()->create([
+                                'file_path' => $file->store('passenger-documents'),
+                                'display_name' => "{$invoiceId} {$passenger->first_name} {$passenger->last_name} {$passenger->passport_no} " . ($fileIdx + 1),
+                            ]);
+                        }
+                    }
                 }
             }
 

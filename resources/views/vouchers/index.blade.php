@@ -57,7 +57,7 @@
                             </td>
                             <td class="px-3 py-2 text-slate-600">{{ $voucher->payment_date }}</td>
                             <td class="px-3 py-2">
-                                @if($voucher->payment_method === 'cash')
+                                @if($voucher->payment_method->value === 'cash')
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Cash</span>
                                 @else
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Bank</span>

@@ -30,6 +30,10 @@ class TransactionTypeSeeder extends Seeder
                 'name' => 'Visa Agent Payment',
                 'type' => 'debit',
             ],
+            [
+                'name' => 'Commission Agent Payment',
+                'type' => 'debit',
+            ],
         ];
 
         foreach ($transactionTypes as $type) {

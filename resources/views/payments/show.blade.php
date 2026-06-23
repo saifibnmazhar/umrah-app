@@ -10,7 +10,7 @@
             <h1 class="text-2xl font-bold text-slate-800 mt-2">Payment #{{ $payment->id }}</h1>
         </div>
         <div class="flex gap-2">
-            @if($payment->payment_method === 'cash')
+            @if($payment->payment_method->value === 'cash')
                 <span class="px-3 py-1 text-sm font-medium rounded-full bg-amber-100 text-amber-700">Cash</span>
             @else
                 <span class="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-700">Bank</span>
@@ -33,14 +33,6 @@
                 <div>
                     <p class="text-sm text-slate-500">Payment ID</p>
                     <p class="font-medium text-slate-800">#{{ $payment->id }}</p>
-                </div>
-                <div>
-                    <p class="text-sm text-slate-500">Booking</p>
-                    <p class="font-medium text-slate-800">{{ $payment->booking->id ?? 'N/A' }}</p>
-                </div>
-                <div>
-                    <p class="text-sm text-slate-500">Branch</p>
-                    <p class="font-medium text-slate-800">{{ $payment->branch->name ?? 'N/A' }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-slate-500">Payment Date</p>
@@ -106,22 +98,10 @@
         </div>
     </div>
 
-    <div class="flex justify-between">
+    <div class="flex justify-start">
         <a href="{{ route('payments.index') }}" class="px-4 py-2 bg-slate-600 text-white rounded-md hover:bg-slate-700 transition">
             Back to List
         </a>
-        <div class="flex gap-2">
-            <a href="{{ route('payments.edit', $payment->id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition">
-                Edit
-            </a>
-            <form method="POST" action="{{ route('payments.destroy', $payment->id) }}" onsubmit="return confirm('Are you sure you want to delete this payment?')" class="inline">
-                @csrf
-                @method('DELETE')
-                <button type="submit" class="px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition">
-                    Delete
-                </button>
-            </form>
-        </div>
     </div>
 </div>
 @endsection
