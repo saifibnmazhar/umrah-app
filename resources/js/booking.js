@@ -4588,8 +4588,7 @@ window.removeBookingCustomerDoc = function(btn) {
 window.handlePassengerDocUpload = function(input) {
     const list = document.getElementById('passenger_doc_list');
     if (!list) return;
-    list.innerHTML = '';
-    window.__pendingPassengerDocs = [];
+    if (!window.__pendingPassengerDocs) window.__pendingPassengerDocs = [];
     Array.from(input.files).forEach((file) => {
         window.__pendingPassengerDocs.push(file);
         const item = document.createElement('div');
@@ -4598,6 +4597,7 @@ window.handlePassengerDocUpload = function(input) {
         item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removePassengerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
         list.appendChild(item);
     });
+    input.value = '';
 };
 
 window.removePassengerDoc = function(btn) {
