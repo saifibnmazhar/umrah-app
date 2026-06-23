@@ -4,12 +4,14 @@
 <div class="max-w-5xl mx-auto">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Payments</h1>
+        @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin'))
         <a href="{{ route('payments.create') }}" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2">
             <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                 <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
             </svg>
             Add Payment
         </a>
+        @endif
     </div>
 
     @if(session('success'))
@@ -44,7 +46,7 @@
                             <td class="px-3 py-2 text-slate-800 font-medium">#{{ $payment->id }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->payment_date->format('d/m/Y') }}</td>
                             <td class="px-3 py-2">
-                                @if($payment->payment_method === 'cash')
+                                @if($payment->payment_method->value === 'cash')
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Cash</span>
                                 @else
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Bank</span>
@@ -56,12 +58,6 @@
                             <td class="px-3 py-2">
                                 <div class="flex gap-2">
                                     <a href="{{ route('payments.show', $payment->id) }}" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded">View</a>
-                                    <a href="{{ route('payments.edit', $payment->id) }}" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">Edit</a>
-                                    <form method="POST" action="{{ route('payments.destroy', $payment->id) }}" onsubmit="return confirm('Are you sure you want to delete this payment?')" class="inline">
-                                        @csrf
-                                        @method('DELETE')
-                                        <button type="submit" class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded">Delete</button>
-                                    </form>
                                 </div>
                             </td>
                         </tr>

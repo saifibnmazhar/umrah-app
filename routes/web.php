@@ -218,7 +218,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
 
     // Detail Pages with parameters
-    Route::resource('payments', PaymentController::class)->middleware('role:Super Admin,Co Admin');
+    Route::resource('payments', PaymentController::class)->only(['index', 'create', 'store', 'show'])->middleware('role:Super Admin,Co Admin');
 
     /* Temporarily disabled
     Route::resource('invoices', InvoiceController::class)->middleware('role:Super Admin,Co Admin');

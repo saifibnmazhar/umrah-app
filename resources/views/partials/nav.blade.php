@@ -70,7 +70,7 @@
                         @if($canAccessAdmin)<a href="{{ route('currency-rates.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Currency Rates</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('transaction-types.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Transaction Types</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('routes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Routes</a>@endif
-                        <a href="{{ route('payments.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payments</a>
+                        @if($canAccessAdmin)<a href="{{ route('payments.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payments</a>@endif
                         {{-- Temporarily disabled
                         <a href="{{ route('invoices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Invoices</a>
                         <a href="{{ route('vouchers.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Vouchers</a>
@@ -169,7 +169,7 @@
                 @if($canAccessAdmin)<a href="{{ route('currency-rates.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Currency Rates</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('transaction-types.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Transaction Types</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('routes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Routes</a>@endif
-                <a href="{{ route('payments.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payments</a>
+                @if($canAccessAdmin)<a href="{{ route('payments.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payments</a>@endif
                 {{-- Temporarily disabled
                 <a href="{{ route('invoices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Invoices</a>
                 <a href="{{ route('vouchers.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Vouchers</a>
