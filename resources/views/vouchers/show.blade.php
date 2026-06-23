@@ -17,7 +17,7 @@
                     <span class="px-3 py-1 text-sm font-medium rounded-full bg-teal-100 text-teal-700">{{ $voucher->transactionType->name }}</span>
                 @endif
             @endif
-            @if($voucher->payment_method === 'cash')
+            @if($voucher->payment_method->value === 'cash')
                 <span class="px-3 py-1 text-sm font-medium rounded-full bg-amber-100 text-amber-700">Cash</span>
             @else
                 <span class="px-3 py-1 text-sm font-medium rounded-full bg-blue-100 text-blue-700">Bank</span>
