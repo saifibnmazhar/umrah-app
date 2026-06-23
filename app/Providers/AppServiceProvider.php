@@ -2,7 +2,9 @@
 
 namespace App\Providers;
 
+use App\Models\IssuedTicket;
 use App\Models\VisaSubmission;
+use App\Observers\IssuedTicketObserver;
 use App\Observers\VisaSubmissionObserver;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
@@ -23,6 +25,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         VisaSubmission::observe(VisaSubmissionObserver::class);
+        IssuedTicket::observe(IssuedTicketObserver::class);
 
         Blade::directive('currency', function ($expression) {
             $parts = explode(',', $expression);
