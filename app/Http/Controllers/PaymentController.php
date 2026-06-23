@@ -28,13 +28,14 @@ class PaymentController extends Controller
     public function create()
     {
         $currencyRates = CurrencyRate::orderBy('created_at', 'desc')->get();
+        $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
         $banks = Bank::orderBy('name')->get();
         $ticketAgents = TicketAgent::orderBy('name')->get();
         $visaAgents = VisaAgent::orderBy('name')->get();
         $commissionAgents = CommissionAgent::orderBy('name')->get();
         
         return view('payments.create', compact(
-            'currencyRates', 'banks',
+            'currencyRates', 'currentCurrencyRate', 'banks',
             'ticketAgents', 'visaAgents', 'commissionAgents'
         ));
     }
@@ -78,13 +79,14 @@ class PaymentController extends Controller
     public function edit(Payment $payment)
     {
         $currencyRates = CurrencyRate::orderBy('created_at', 'desc')->get();
+        $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
         $banks = Bank::orderBy('name')->get();
         $ticketAgents = TicketAgent::orderBy('name')->get();
         $visaAgents = VisaAgent::orderBy('name')->get();
         $commissionAgents = CommissionAgent::orderBy('name')->get();
         
         return view('payments.edit', compact(
-            'payment', 'currencyRates', 'banks',
+            'payment', 'currencyRates', 'currentCurrencyRate', 'banks',
             'ticketAgents', 'visaAgents', 'commissionAgents'
         ));
     }
