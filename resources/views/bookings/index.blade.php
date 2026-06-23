@@ -224,22 +224,29 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     <div x-show="activeTab === 'booking'" x-cloak>
         <div class="bg-white rounded-xl shadow-lg p-6">
-            <div class="mb-4 flex flex-wrap items-center justify-between gap-4">
+            <div class="mb-4 flex flex-wrap items-center gap-4">
                 <input type="text" x-model="searchTerm" x-ref="searchInput" class="w-full md:w-64 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search by Mobile or Invoice No...">
+                <input type="date" x-model="selectedBookingDateFrom" @change="onBookingDateFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                <input type="date" x-model="selectedBookingDateTo" @change="onBookingDateToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                <select x-model="selectedFingerprintLocation" @change="onFingerprintLocationChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <option value="">Fingerprint Location</option>
+                    @foreach($fingerprintLocations as $location)
+                    <option value="{{ $location->value }}" {{ $selectedFingerprintLocation === $location->value ? 'selected' : '' }}>{{ ucfirst($location->value) }}</option>
+                    @endforeach
+                </select>
                 @unless(auth()->user()->branch_id)
-                <div class="flex items-center gap-4">
-                    <select
-                        x-model="selectedBranchId"
-                        @change="onBranchChange"
-                        class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">All Branches</option>
-                        @foreach($bookingBranches as $branch)
-                        <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
-                        @endforeach
-                    </select>
-                    <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm" x-text="'Total Booking - ' + totalBookingCount">Total Booking - {{ $totalBookingCount }}</span>
-                </div>
+                <select
+                    x-model="selectedBranchId"
+                    @change="onBranchChange"
+                    class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <option value="">All Branches</option>
+                    @foreach($bookingBranches as $branch)
+                    <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                    @endforeach
+                </select>
                 @endunless
+                <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm" x-text="'Total Booking - ' + totalBookingCount">Total Booking - {{ $totalBookingCount }}</span>
+                <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm" x-text="'Total Passenger - ' + totalBookingPassengerCount">Total Passenger - {{ $totalBookingPassengerCount }}</span>
             </div>
             <div class="overflow-x-auto">
                 <table class="w-full min-w-[1000px] text-sm">
@@ -345,14 +352,6 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         <option value="">Visa Agent</option>
                         @foreach($visaAgents as $agent)
                         <option value="{{ $agent['id'] }}" {{ (string) $selectedVisaAgentId === (string) $agent['id'] ? 'selected' : '' }}>{{ $agent['name'] }}</option>
-                        @endforeach
-                    </select>
-                    <input type="date" x-model="selectedBookingDateFrom" @change="onBookingDateFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                    <input type="date" x-model="selectedBookingDateTo" @change="onBookingDateToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                    <select x-model="selectedFingerprintLocation" @change="onFingerprintLocationChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Fingerprint Location</option>
-                        @foreach($fingerprintLocations as $location)
-                        <option value="{{ $location->value }}" {{ $selectedFingerprintLocation === $location->value ? 'selected' : '' }}>{{ ucfirst($location->value) }}</option>
                         @endforeach
                     </select>
                 </div>
@@ -1041,6 +1040,7 @@ function bookingIndexApp() {
         searchTimeout: null,
         selectedBranchId: '{{ $selectedBranchId }}',
         totalBookingCount: {{ $totalBookingCount }},
+        totalBookingPassengerCount: {{ $totalBookingPassengerCount }},
         branchCounts: @json($branchCounts),
         allBookingCount: {{ $allBookingCount }},
         selectedFingerprintStatus: '{{ $selectedFingerprintStatus ?? '' }}',

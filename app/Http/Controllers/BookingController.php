@@ -172,9 +172,19 @@ class BookingController extends Controller
                         ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
                 });
             })
+            ->when($request->filled('booking_date_from'), fn ($q) =>
+                $q->whereDate('created_at', '>=', $request->input('booking_date_from'))
+            )
+            ->when($request->filled('booking_date_to'), fn ($q) =>
+                $q->whereDate('created_at', '<=', $request->input('booking_date_to'))
+            )
+            ->when($request->filled('fingerprint_location'), fn ($q) =>
+                $q->where('fingerprint_location', $request->input('fingerprint_location'))
+            )
             ->orderBy('created_at', 'desc');
 
         $totalBookingCount = (clone $bookingQuery)->count();
+        $totalBookingPassengerCount = (clone $bookingQuery)->sum('pax_qty');
 
         $bookings = $bookingQuery->paginate(10)
             ->appends(['tab' => $tab])
@@ -200,15 +210,6 @@ class BookingController extends Controller
             )
             ->when($request->filled('visa_agent_id'), fn ($q) =>
                 $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
-            )
-            ->when($request->filled('booking_date_from'), fn ($q) =>
-                $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from')))
-            )
-            ->when($request->filled('booking_date_to'), fn ($q) =>
-                $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to')))
-            )
-            ->when($request->filled('fingerprint_location'), fn ($q) =>
-                $q->whereHas('booking', fn ($q) => $q->where('fingerprint_location', $request->input('fingerprint_location')))
             );
 
         $totalPassengerCount = (clone $passengerQuery)->count();
@@ -263,7 +264,7 @@ class BookingController extends Controller
         return view('bookings.index', compact(
             'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa',
             'currencyRateService', 'bookingBranches', 'selectedBranchId', 'totalBookingCount',
-            'branchCounts', 'allBookingCount',
+            'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
             'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
