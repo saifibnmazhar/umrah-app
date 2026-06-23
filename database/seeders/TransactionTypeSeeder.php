@@ -31,7 +31,7 @@ class TransactionTypeSeeder extends Seeder
                 'type' => 'debit',
             ],
             [
-                'name' => 'Commision Agent Payment',
+                'name' => 'Commission Agent Payment',
                 'type' => 'debit',
             ],
         ];

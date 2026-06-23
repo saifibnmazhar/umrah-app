@@ -17,6 +17,7 @@
             amount_sar: {{ old('amount', $payment->amount) }},
             amount_bdt: {{ old('bdt_amount', $payment->bdt_amount) }},
             exchangeRate: {{ $currentCurrencyRate?->rate ?? 0 }},
+            transactionType: '{{ old('transaction_type_id', $payment->voucher?->transaction_type_id) }}',
 
             handleCurrencyChange() {
                 if (this.currency === 'BDT' && this.amount_sar > 0 && this.exchangeRate > 0) {
@@ -109,29 +110,29 @@
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
             <div>
+                <label for="transaction_type_id" class="block text-sm font-medium text-slate-700 mb-1">Transaction Type *</label>
+                <select name="transaction_type_id" id="transaction_type_id" x-model="transactionType" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('transaction_type_id') border-red-500 @enderror">
+                    <option value="">Select Type</option>
+                    @foreach($transactionTypes as $tt)
+                        <option value="{{ $tt->id }}" {{ old('transaction_type_id', $payment->voucher?->transaction_type_id) == $tt->id ? 'selected' : '' }}>{{ $tt->name }}</option>
+                    @endforeach
+                </select>
+                @error('transaction_type_id')
+                    <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div>
                 <label for="payment_date" class="block text-sm font-medium text-slate-700 mb-1">Payment Date *</label>
                 <input type="date" name="payment_date" id="payment_date" value="{{ old('payment_date', $payment->payment_date) }}" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none @error('payment_date') border-red-500 @enderror">
                 @error('payment_date')
                     <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
                 @enderror
             </div>
-
-            <div>
-                <label for="currency_rate_id" class="block text-sm font-medium text-slate-700 mb-1">Currency Rate</label>
-                <select name="currency_rate_id" id="currency_rate_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('currency_rate_id') border-red-500 @enderror">
-                    <option value="">Select Rate</option>
-                    @foreach($currencyRates as $rate)
-                        <option value="{{ $rate->id }}" {{ old('currency_rate_id', $payment->currency_rate_id) == $rate->id ? 'selected' : '' }}>{{ number_format($rate->rate, 4) }}</option>
-                    @endforeach
-                </select>
-                @error('currency_rate_id')
-                    <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
-                @enderror
-            </div>
         </div>
 
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-5">
-            <div>
+        <div class="grid grid-cols-1 gap-5">
+            <div x-show="transactionType === '{{ $ticketPaymentTypeId }}'" x-cloak>
                 <label for="ticket_agent_id" class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent</label>
                 <select name="ticket_agent_id" id="ticket_agent_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('ticket_agent_id') border-red-500 @enderror">
                     <option value="">Select Agent</option>
@@ -144,7 +145,7 @@
                 @enderror
             </div>
 
-            <div>
+            <div x-show="transactionType === '{{ $visaPaymentTypeId }}'" x-cloak>
                 <label for="visa_agent_id" class="block text-sm font-medium text-slate-700 mb-1">Visa Agent</label>
                 <select name="visa_agent_id" id="visa_agent_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('visa_agent_id') border-red-500 @enderror">
                     <option value="">Select Agent</option>
@@ -157,7 +158,7 @@
                 @enderror
             </div>
 
-            <div>
+            <div x-show="transactionType === '{{ $commissionPaymentTypeId }}'" x-cloak>
                 <label for="commission_agent_id" class="block text-sm font-medium text-slate-700 mb-1">Commission Agent</label>
                 <select name="commission_agent_id" id="commission_agent_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('commission_agent_id') border-red-500 @enderror">
                     <option value="">Select Agent</option>
