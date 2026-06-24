@@ -223,6 +223,12 @@ class BookingController extends Controller
             ->when($request->filled('booking_date_to'), fn ($q) =>
                 $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to')))
             )
+            ->when($request->filled('flight_date_from'), fn ($q) =>
+                $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'))
+            )
+            ->when($request->filled('flight_date_to'), fn ($q) =>
+                $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'))
+            )
             ->when($request->filled('passenger_status'), fn ($q) =>
                 $q->where('passenger_status_id', $request->input('passenger_status'))
             )

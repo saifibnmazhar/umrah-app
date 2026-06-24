@@ -42,6 +42,35 @@ $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'mult
     'airline_id' => $r->airline_id,
 ])->values();
 
+$flightDateRanges = [];
+$today = (int) now()->format('d');
+$currentThird = $today <= 10 ? 1 : ($today <= 20 ? 2 : 3);
+
+$months = [
+    ['offset' => 0, 'startPart' => $currentThird],
+    ['offset' => 1, 'startPart' => 1],
+    ['offset' => 2, 'startPart' => 1],
+    ['offset' => 3, 'startPart' => 1],
+];
+
+foreach ($months as $m) {
+    if (count($flightDateRanges) >= 9) break;
+    $month = now()->copy()->addMonths($m['offset'])->startOfMonth();
+    $lastDay = (int) $month->copy()->endOfMonth()->format('d');
+    $label = $month->format('M');
+
+    $parts = [
+        1 => ['start' => $month->format('Y-m-01'), 'end' => $month->format('Y-m-10'), 'label' => "{$label} 1–10"],
+        2 => ['start' => $month->format('Y-m-11'), 'end' => $month->format('Y-m-20'), 'label' => "{$label} 11–20"],
+        3 => ['start' => $month->format('Y-m-21'), 'end' => $month->copy()->endOfMonth()->format('Y-m-d'), 'label' => "{$label} 21–{$lastDay}"],
+    ];
+
+    for ($p = $m['startPart']; $p <= 3; $p++) {
+        if (count($flightDateRanges) >= 9) break;
+        $flightDateRanges[] = array_merge(['id' => count($flightDateRanges) + 1], $parts[$p]);
+    }
+}
+
 $airlinesList = \App\Models\Airline::with('travelClasses')->get()->map(fn($a) => [
     'id' => $a->id,
     'name' => $a->name,
@@ -341,6 +370,15 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     <div class="flex flex-col">
                         <label class="text-xs text-slate-400 mb-1">Booking Date To</label>
                         <input type="date" x-model="selectedBookingDateTo" @change="onBookingDateToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-slate-400 mb-1">Required Flight</label>
+                        <select x-model="selectedFlightDateRange" @change="onFlightDateRangeChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($flightDateRanges as $range)
+                            <option value="{{ $range['id'] }}">{{ $range['label'] }}</option>
+                            @endforeach
+                        </select>
                     </div>
                     <div class="flex flex-col">
                         <label class="text-xs text-slate-400 mb-1">Fingerprint Status</label>
@@ -1121,6 +1159,8 @@ function bookingIndexApp() {
         selectedPassengerStatus: '{{ $selectedPassengerStatus ?? '' }}',
         selectedRouteId: '{{ $selectedRouteId ?? '' }}',
         selectedTicketAgentId: '{{ $selectedTicketAgentId ?? '' }}',
+        selectedFlightDateRange: '',
+        flightDateRanges: @json($flightDateRanges),
         totalPassengerCount: {{ $totalPassengerCount }},
 
         init() {
@@ -1153,6 +1193,14 @@ function bookingIndexApp() {
                     window.location.href = url.toString();
                 }, 500);
             });
+
+            const url = new URL(window.location);
+            const fFrom = url.searchParams.get('flight_date_from');
+            const fTo = url.searchParams.get('flight_date_to');
+            if (fFrom && fTo && this.flightDateRanges) {
+                const match = this.flightDateRanges.find(r => r.start === fFrom && r.end === fTo);
+                if (match) this.selectedFlightDateRange = match.id;
+            }
         },
 
         navigateToTab(tab) {
@@ -1290,11 +1338,28 @@ function bookingIndexApp() {
             window.location.href = url.toString();
         },
 
+        onFlightDateRangeChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedFlightDateRange) {
+                const range = this.flightDateRanges.find(r => r.id == this.selectedFlightDateRange);
+                if (range) {
+                    url.searchParams.set('flight_date_from', range.start);
+                    url.searchParams.set('flight_date_to', range.end);
+                }
+            } else {
+                url.searchParams.delete('flight_date_from');
+                url.searchParams.delete('flight_date_to');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
         clearPassengerFilters() {
             const url = new URL(window.location);
             ['fingerprint_status', 'visa_status', 'ticket_status',
              'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_id',
              'booking_branch_id', 'booking_date_from', 'booking_date_to',
+             'flight_date_from', 'flight_date_to',
              'search', 'page'
             ].forEach(p => url.searchParams.delete(p));
             url.searchParams.set('tab', 'passenger');
