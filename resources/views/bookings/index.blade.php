@@ -357,6 +357,12 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         <option value="{{ $agent['id'] }}" {{ (string) $selectedVisaAgentId === (string) $agent['id'] ? 'selected' : '' }}>{{ $agent['name'] }}</option>
                         @endforeach
                     </select>
+                    <select x-model="selectedTicketAgentId" @change="onTicketAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                        <option value="">Ticket Agent</option>
+                        @foreach($ticketAgents as $agent)
+                        <option value="{{ $agent->id }}" {{ (string) $selectedTicketAgentId === (string) $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
+                        @endforeach
+                    </select>
                     <select x-model="selectedPassengerStatus" @change="onPassengerStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                         <option value="">Current Status</option>
                         @foreach($passengerStatuses as $status)
@@ -1078,6 +1084,7 @@ function bookingIndexApp() {
         selectedFingerprintLocation: '{{ $selectedFingerprintLocation ?? '' }}',
         selectedPassengerStatus: '{{ $selectedPassengerStatus ?? '' }}',
         selectedRouteId: '{{ $selectedRouteId ?? '' }}',
+        selectedTicketAgentId: '{{ $selectedTicketAgentId ?? '' }}',
         totalPassengerCount: {{ $totalPassengerCount }},
 
         init() {
@@ -1236,10 +1243,21 @@ function bookingIndexApp() {
             window.location.href = url.toString();
         },
 
+        onTicketAgentChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedTicketAgentId) {
+                url.searchParams.set('ticket_agent_id', this.selectedTicketAgentId);
+            } else {
+                url.searchParams.delete('ticket_agent_id');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
         clearPassengerFilters() {
             const url = new URL(window.location);
             ['fingerprint_status', 'visa_status', 'ticket_status',
-             'visa_agent_id', 'passenger_status', 'route_id',
+             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_id',
              'booking_branch_id', 'booking_date_from', 'booking_date_to',
              'search', 'page'
             ].forEach(p => url.searchParams.delete(p));

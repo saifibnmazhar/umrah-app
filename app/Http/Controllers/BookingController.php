@@ -146,6 +146,7 @@ class BookingController extends Controller
         $selectedFingerprintLocation = $request->get('fingerprint_location');
         $selectedPassengerStatus = $request->get('passenger_status');
         $selectedRouteId = $request->get('route_id');
+        $selectedTicketAgentId = $request->get('ticket_agent_id');
 
         $branchCounts = !$userBranchId
             ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
@@ -228,6 +229,11 @@ class BookingController extends Controller
             ->when($request->filled('route_id'), fn ($q) =>
                 $q->whereHas('ticketFare', fn ($q) => $q->where('route_id', $request->input('route_id')))
             )
+            ->when($request->filled('ticket_agent_id'), fn ($q) =>
+                $q->whereHas('latestIssuedTicket.ticketAgent', fn ($q) =>
+                    $q->where('id', $request->input('ticket_agent_id'))
+                )
+            )
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->input('search');
                 $q->where(function ($query) use ($search) {
@@ -298,7 +304,7 @@ class BookingController extends Controller
             'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
             'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
-            'selectedPassengerStatus', 'selectedRouteId',
+            'selectedPassengerStatus', 'selectedRouteId', 'selectedTicketAgentId',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
             'totalPassengerCount'
         ));
