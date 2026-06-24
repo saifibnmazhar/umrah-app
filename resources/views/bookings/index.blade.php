@@ -331,57 +331,87 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             <div class="mb-4 flex items-center gap-4">
                 <div class="flex flex-1 flex-wrap items-center gap-4 min-w-0">
                     <input type="text" x-model="searchTerm" x-ref="passengerSearchInput" class="w-full md:w-48 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search Name, Mobile, Passport, Invoice, Ticket, PNR...">
-                    <input type="date" x-model="selectedBookingDateFrom" @change="onBookingDateFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                    <input type="date" x-model="selectedBookingDateTo" @change="onBookingDateToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                    <select x-model="selectedFingerprintStatus" @change="onFingerprintStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Fingerprint Status</option>
-                        @foreach($fingerprintStatuses as $status)
-                        <option value="{{ $status->value }}" {{ $selectedFingerprintStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
-                        @endforeach
-                    </select>
-                    <select x-model="selectedVisaStatus" @change="onVisaStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Visa Status</option>
-                        @foreach($visaStatuses as $status)
-                        <option value="{{ $status->value }}" {{ $selectedVisaStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
-                        @endforeach
-                    </select>
-                    <select x-model="selectedTicketStatus" @change="onTicketStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Ticket Status</option>
-                        @foreach($ticketStatuses as $status)
-                        <option value="{{ $status->value }}" {{ $selectedTicketStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
-                        @endforeach
-                    </select>
-                    <select x-model="selectedVisaAgentId" @change="onVisaAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Visa Agent</option>
-                        @foreach($visaAgents as $agent)
-                        <option value="{{ $agent['id'] }}" {{ (string) $selectedVisaAgentId === (string) $agent['id'] ? 'selected' : '' }}>{{ $agent['name'] }}</option>
-                        @endforeach
-                    </select>
-                    <select x-model="selectedTicketAgentId" @change="onTicketAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Ticket Agent</option>
-                        @foreach($ticketAgents as $agent)
-                        <option value="{{ $agent->id }}" {{ (string) $selectedTicketAgentId === (string) $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
-                        @endforeach
-                    </select>
-                    <select x-model="selectedPassengerStatus" @change="onPassengerStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Current Status</option>
-                        @foreach($passengerStatuses as $status)
-                        <option value="{{ $status->id }}" {{ (string) $selectedPassengerStatus === (string) $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
-                        @endforeach
-                    </select>
-                    <select x-model="selectedRouteId" @change="onRouteChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Route</option>
-                        @foreach($routesList as $route)
-                        <option value="{{ $route['id'] }}" {{ (string) $selectedRouteId === (string) $route['id'] ? 'selected' : '' }}>{{ $route['display'] }}</option>
-                        @endforeach
-                    </select>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-slate-400 mb-1">Booking Date From</label>
+                        <input type="date" x-model="selectedBookingDateFrom" @change="onBookingDateFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-slate-400 mb-1">Booking Date To</label>
+                        <input type="date" x-model="selectedBookingDateTo" @change="onBookingDateToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-slate-400 mb-1">Fingerprint Status</label>
+                        <select x-model="selectedFingerprintStatus" @change="onFingerprintStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($fingerprintStatuses as $status)
+                            <option value="{{ $status->value }}" {{ $selectedFingerprintStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-slate-400 mb-1">Visa Status</label>
+                        <select x-model="selectedVisaStatus" @change="onVisaStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($visaStatuses as $status)
+                            <option value="{{ $status->value }}" {{ $selectedVisaStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-slate-400 mb-1">Ticket Status</label>
+                        <select x-model="selectedTicketStatus" @change="onTicketStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($ticketStatuses as $status)
+                            <option value="{{ $status->value }}" {{ $selectedTicketStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-slate-400 mb-1">Visa Agent</label>
+                        <select x-model="selectedVisaAgentId" @change="onVisaAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($visaAgents as $agent)
+                            <option value="{{ $agent['id'] }}" {{ (string) $selectedVisaAgentId === (string) $agent['id'] ? 'selected' : '' }}>{{ $agent['name'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-slate-400 mb-1">Ticket Agent</label>
+                        <select x-model="selectedTicketAgentId" @change="onTicketAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($ticketAgents as $agent)
+                            <option value="{{ $agent->id }}" {{ (string) $selectedTicketAgentId === (string) $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-slate-400 mb-1">Current Status</label>
+                        <select x-model="selectedPassengerStatus" @change="onPassengerStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($passengerStatuses as $status)
+                            <option value="{{ $status->id }}" {{ (string) $selectedPassengerStatus === (string) $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-slate-400 mb-1">Route</label>
+                        <select x-model="selectedRouteId" @change="onRouteChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($routesList as $route)
+                            <option value="{{ $route['id'] }}" {{ (string) $selectedRouteId === (string) $route['id'] ? 'selected' : '' }}>{{ $route['display'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     @unless(auth()->user()->branch_id)
-                    <select x-model="selectedBranchId" @change="onBranchChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Booking Branch</option>
-                        @foreach($bookingBranches as $branch)
-                        <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
-                        @endforeach
-                    </select>
+                    <div class="flex flex-col">
+                        <label class="text-xs text-slate-400 mb-1">Booking Branch</label>
+                        <select x-model="selectedBranchId" @change="onBranchChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($bookingBranches as $branch)
+                            <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     @endunless
                     <button @click="clearPassengerFilters" class="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 transition text-sm">Clear</button>
                 </div>
