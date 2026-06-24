@@ -27,19 +27,19 @@
 
             handleCurrencyChange() {
                 if (this.currency === 'BDT' && this.amount_sar > 0 && this.exchangeRate > 0) {
-                    this.amount_bdt = (this.amount_sar * this.exchangeRate).toFixed(2);
+                    this.amount_bdt = (this.amount_sar * this.exchangeRate).toFixed(6);
                 } else if (this.currency === 'SAR' && this.amount_bdt > 0 && this.exchangeRate > 0) {
-                    this.amount_sar = (this.amount_bdt / this.exchangeRate).toFixed(2);
+                    this.amount_sar = (this.amount_bdt / this.exchangeRate).toFixed(6);
                 }
             },
             handleSarInput() {
                 if (this.exchangeRate > 0) {
-                    this.amount_bdt = (this.amount_sar * this.exchangeRate).toFixed(2);
+                    this.amount_bdt = (this.amount_sar * this.exchangeRate).toFixed(6);
                 }
             },
             handleBdtInput() {
                 if (this.exchangeRate > 0) {
-                    this.amount_sar = (this.amount_bdt / this.exchangeRate).toFixed(2);
+                    this.amount_sar = (this.amount_bdt / this.exchangeRate).toFixed(6);
                 }
             },
 

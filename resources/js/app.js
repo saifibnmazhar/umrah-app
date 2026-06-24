@@ -18,14 +18,15 @@ Alpine.store('currency', {
         window.dispatchEvent(new CustomEvent('currency-toggled'))
     },
 
-    format(amount, decimals = 2, rate = null) {
+    format(amount, decimals = 2, rate = null, bdt = null) {
         const num = Number(amount) || 0
         const effectiveRate = rate !== null ? rate : this.rate
-        if (this.mode === 'SAR') {
-            return 'SAR ' + num.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
-        }
-        const bdt = num * effectiveRate
-        return 'BDT ' + bdt.toLocaleString(undefined, { minimumFractionDigits: decimals, maximumFractionDigits: decimals })
+        let value = this.mode === 'BDT' && bdt !== null ? Number(bdt) : (this.mode === 'SAR' ? num : num * effectiveRate)
+        let fixed = value.toFixed(decimals)
+        fixed = fixed.replace(/\.?0+$/, '')
+        let parts = fixed.split('.')
+        parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
+        return parts.join('.')
     },
 
     convertAll() {
@@ -33,8 +34,9 @@ Alpine.store('currency', {
             const sar = parseFloat(el.dataset.sar)
             const dec = parseInt(el.dataset.dec) || 2
             const rate = el.dataset.rate ? parseFloat(el.dataset.rate) : null
+            const bdt = el.dataset.bdt !== undefined ? parseFloat(el.dataset.bdt) : null
             if (!isNaN(sar)) {
-                el.textContent = this.format(sar, dec, rate)
+                el.textContent = this.format(sar, dec, rate, bdt)
             }
         })
     }

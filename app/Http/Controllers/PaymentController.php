@@ -104,7 +104,7 @@ class PaymentController extends Controller
 
     public function show(Payment $payment)
     {
-        $payment->load(['user', 'currencyRate', 'bank', 'senderBank', 'receiverBank', 'ticketAgent', 'visaAgent', 'commissionAgent']);
+        $payment->load(['user', 'currencyRate', 'bank', 'senderBank', 'receiverBank', 'ticketAgent', 'visaAgent', 'commissionAgent', 'branch']);
         $rate = $payment->currencyRate?->rate ?? 0;
         return view('payments.show', compact('payment', 'rate'));
     }

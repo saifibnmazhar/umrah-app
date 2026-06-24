@@ -36,7 +36,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-slate-500">Payment Date</p>
-                    <p class="font-medium text-slate-800">{{ $payment->payment_date }}</p>
+                    <p class="font-medium text-slate-800">{{ $payment->payment_date->format('d/m/Y') }}</p>
                 </div>
                 <div>
                     <p class="text-sm text-slate-500">Created By</p>
@@ -44,7 +44,7 @@
                 </div>
                 <div>
                     <p class="text-sm text-slate-500">Created At</p>
-                    <p class="font-medium text-slate-800">{{ $payment->created_at->format('Y-m-d H:i') }}</p>
+                    <p class="font-medium text-slate-800">{{ $payment->created_at->format('d/m/Y') }} <span class="local-time" data-utc="{{ $payment->created_at->toIso8601String() }}"></span></p>
                 </div>
             </div>
         </div>
@@ -55,14 +55,10 @@
             <h2 class="text-lg font-semibold text-slate-700">Amount Details</h2>
         </div>
         <div class="p-6">
-            <div class="grid grid-cols-2 md:grid-cols-4 gap-6">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
                 <div>
-                    <p class="text-sm text-slate-500">Amount (SAR)</p>
-                    <p class="font-medium text-slate-800">@currency($payment->amount, 2, $rate)</p>
-                </div>
-                <div>
-                    <p class="text-sm text-slate-500">BDT Amount</p>
-                    <p class="font-medium text-slate-800">{{ number_format($payment->bdt_amount, 2) }}</p>
+                    <p class="text-sm text-slate-500">Amount</p>
+                    <p class="font-medium text-slate-800">@currency($payment->amount, 6, $rate, $payment->bdt_amount)</p>
                 </div>
                 <div>
                     <p class="text-sm text-slate-500">Currency Rate</p>
@@ -78,22 +74,52 @@
 
     <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mb-6">
         <div class="p-4 bg-slate-50 border-b border-slate-200">
-            <h2 class="text-lg font-semibold text-slate-700">Agent Information</h2>
+            <h2 class="text-lg font-semibold text-slate-700">Payment Details</h2>
         </div>
         <div class="p-6">
-            <div class="grid grid-cols-3 gap-6">
+            <div class="grid grid-cols-2 md:grid-cols-3 gap-6">
                 <div>
-                    <p class="text-sm text-slate-500">Bank</p>
-                    <p class="font-medium text-slate-800">{{ $payment->bank->name ?? 'N/A' }}</p>
+                    <p class="text-sm text-slate-500">Payment Method</p>
+                    <p class="font-medium">
+                        @if($payment->payment_method->value === 'cash')
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Cash</span>
+                        @else
+                            <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Bank</span>
+                        @endif
+                    </p>
                 </div>
+                @if($payment->payment_method->value === 'bank')
+                    <div>
+                        <p class="text-sm text-slate-500">Sender Bank</p>
+                        <p class="font-medium text-slate-800">{{ $payment->senderBank->name ?? '-' }}</p>
+                    </div>
+                    <div>
+                        <p class="text-sm text-slate-500">Receiver Bank</p>
+                        <p class="font-medium text-slate-800">{{ $payment->receiverBank->name ?? '-' }}</p>
+                    </div>
+                @endif
                 <div>
-                    <p class="text-sm text-slate-500">Ticket Agent</p>
-                    <p class="font-medium text-slate-800">{{ $payment->ticketAgent->name ?? 'N/A' }}</p>
+                    <p class="text-sm text-slate-500">Referral Branch</p>
+                    <p class="font-medium text-slate-800">{{ $payment->branch->name ?? '-' }}</p>
                 </div>
-                <div>
-                    <p class="text-sm text-slate-500">Visa Agent</p>
-                    <p class="font-medium text-slate-800">{{ $payment->visaAgent->name ?? 'N/A' }}</p>
-                </div>
+                @if($payment->ticketAgent)
+                    <div>
+                        <p class="text-sm text-slate-500">Ticket Agent</p>
+                        <p class="font-medium text-slate-800">{{ $payment->ticketAgent->name }}</p>
+                    </div>
+                @endif
+                @if($payment->visaAgent)
+                    <div>
+                        <p class="text-sm text-slate-500">Visa Agent</p>
+                        <p class="font-medium text-slate-800">{{ $payment->visaAgent->name }}</p>
+                    </div>
+                @endif
+                @if($payment->commissionAgent)
+                    <div>
+                        <p class="text-sm text-slate-500">Commission Agent</p>
+                        <p class="font-medium text-slate-800">{{ $payment->commissionAgent->name }}</p>
+                    </div>
+                @endif
             </div>
         </div>
     </div>
@@ -105,3 +131,18 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.local-time').forEach(function(el) {
+        var d = new Date(el.getAttribute('data-utc'));
+        if (!isNaN(d)) {
+            el.textContent = d.toLocaleTimeString('en-US', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+            });
+        }
+    });
+});
+</script>
+@endpush
