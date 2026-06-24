@@ -210,7 +210,24 @@ class BookingController extends Controller
             )
             ->when($request->filled('visa_agent_id'), fn ($q) =>
                 $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
-            );
+            )
+            ->when($request->filled('booking_branch_id'), fn ($q) =>
+                $q->whereHas('booking', fn ($q) => $q->where('booking_branch_id', $request->input('booking_branch_id')))
+            )
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->input('search');
+                $q->where(function ($query) use ($search) {
+                    $query->where('mobile_no', 'like', "%{$search}%")
+                        ->orWhere('passport_no', 'like', "%{$search}%")
+                        ->orWhere('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhereHas('booking', fn ($q) => $q->where('invoice_id', 'like', "%{$search}%"))
+                        ->orWhereHas('issuedTickets', fn ($q) =>
+                            $q->where('ticket_number', 'like', "%{$search}%")
+                              ->orWhere('pnr', 'like', "%{$search}%")
+                        );
+                });
+            });
 
         $totalPassengerCount = (clone $passengerQuery)->count();
 

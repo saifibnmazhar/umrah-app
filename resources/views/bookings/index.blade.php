@@ -330,6 +330,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col" style="max-height: calc(95vh - 200px);">
             <div class="mb-4 flex items-center gap-4">
                 <div class="flex flex-1 flex-wrap items-center gap-4 min-w-0">
+                    <input type="text" x-model="searchTerm" x-ref="passengerSearchInput" class="w-full md:w-48 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search Name, Mobile, Passport, Invoice, Ticket, PNR...">
                     <select x-model="selectedFingerprintStatus" @change="onFingerprintStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                         <option value="">Fingerprint Status</option>
                         @foreach($fingerprintStatuses as $status)
@@ -354,6 +355,14 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         <option value="{{ $agent['id'] }}" {{ (string) $selectedVisaAgentId === (string) $agent['id'] ? 'selected' : '' }}>{{ $agent['name'] }}</option>
                         @endforeach
                     </select>
+                    @unless(auth()->user()->branch_id)
+                    <select x-model="selectedBranchId" @change="onBranchChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                        <option value="">Booking Branch</option>
+                        @foreach($bookingBranches as $branch)
+                        <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                        @endforeach
+                    </select>
+                    @endunless
                 </div>
                 <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm flex-shrink-0" x-text="'Total Passenger - ' + totalPassengerCount">Total Passenger - {{ $totalPassengerCount }}</span>
             </div>
@@ -1061,10 +1070,11 @@ function bookingIndexApp() {
             });
 
             this.$nextTick(() => {
-                if (this.searchTerm && this.$refs.searchInput) {
-                    this.$refs.searchInput.focus();
+                const ref = this.activeTab === 'passenger' ? 'passengerSearchInput' : 'searchInput';
+                if (this.searchTerm && this.$refs[ref]) {
+                    this.$refs[ref].focus();
                     const len = this.searchTerm.length;
-                    this.$refs.searchInput.setSelectionRange(len, len);
+                    this.$refs[ref].setSelectionRange(len, len);
                 }
             });
 
