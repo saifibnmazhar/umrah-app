@@ -270,9 +270,9 @@ class BookingController extends Controller
                 });
             });
 
-        $totalPassengerCount = (clone $passengerQuery)->count();
+        $totalPassengerCount = (clone $passengers)->count();
 
-        $passengers = (clone $passengerQuery)
+        $passengers = (clone $passengers)
             ->with([
                 'booking',
                 'booking.customer',
