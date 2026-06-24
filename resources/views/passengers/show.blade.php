@@ -121,6 +121,16 @@
                                 </p>
                             </div>
                         </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <span class="text-xs text-slate-400">PNR</span>
+                                <p class="text-slate-800">{{ $passenger->latestIssuedTicket?->pnr ?? '-' }}</p>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-400">Ticket Number</span>
+                                <p class="text-slate-800">{{ $passenger->latestIssuedTicket?->ticket_number ?? '-' }}</p>
+                            </div>
+                        </div>
                         <div>
                             <span class="text-xs text-slate-400">Address (BD)</span>
                             <p class="text-slate-800">{{ $passenger->address ?? '-' }}</p>

@@ -77,6 +77,7 @@ class PassengerController extends Controller
             'visaSubmission.cancelledSubmissions',
             'visaSubmission.cancelledSubmission',
             'visaSubmission.logs.user',
+            'latestIssuedTicket',
         ]);
 
         $routeDisplay = null;
