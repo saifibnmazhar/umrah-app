@@ -360,19 +360,27 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             <div class="mb-4 flex items-center gap-4">
                 <div class="flex flex-1 flex-wrap items-center gap-4 min-w-0">
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Search</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Search</label>
                         <input type="text" x-model="searchTerm" x-ref="passengerSearchInput" class="w-full md:w-48 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search Name, Mobile, Passport, Invoice, Ticket, PNR...">
                     </div>
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Booking Date From</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Booking Date From</label>
                         <input type="date" x-model="selectedBookingDateFrom" @change="onBookingDateFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                     </div>
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Booking Date To</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Booking Date To</label>
                         <input type="date" x-model="selectedBookingDateTo" @change="onBookingDateToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                     </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Actual Flight From</label>
+                        <input type="date" x-model="selectedActualFlightFrom" @change="onActualFlightFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                     </div>
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Required Flight</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Actual Flight To</label>
+                        <input type="date" x-model="selectedActualFlightTo" @change="onActualFlightToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Required Flight</label>
                         <select x-model="selectedFlightDateRange" @change="onFlightDateRangeChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($flightDateRanges as $range)
@@ -381,7 +389,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </select>
                     </div>
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Fingerprint Status</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Fingerprint Status</label>
                         <select x-model="selectedFingerprintStatus" @change="onFingerprintStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($fingerprintStatuses as $status)
@@ -390,7 +398,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </select>
                     </div>
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Visa Status</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Visa Status</label>
                         <select x-model="selectedVisaStatus" @change="onVisaStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($visaStatuses as $status)
@@ -399,7 +407,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </select>
                     </div>
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Ticket Status</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Ticket Status</label>
                         <select x-model="selectedTicketStatus" @change="onTicketStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($ticketStatuses as $status)
@@ -408,7 +416,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </select>
                     </div>
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Visa Agent</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Visa Agent</label>
                         <select x-model="selectedVisaAgentId" @change="onVisaAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($visaAgents as $agent)
@@ -417,7 +425,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </select>
                     </div>
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Ticket Agent</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Ticket Agent</label>
                         <select x-model="selectedTicketAgentId" @change="onTicketAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($ticketAgents as $agent)
@@ -426,7 +434,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </select>
                     </div>
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Current Status</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Current Status</label>
                         <select x-model="selectedPassengerStatus" @change="onPassengerStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($passengerStatuses as $status)
@@ -435,7 +443,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </select>
                     </div>
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Route</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Route</label>
                         <select x-model="selectedRouteId" @change="onRouteChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($routesList as $route)
@@ -445,7 +453,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     </div>
                     @unless(auth()->user()->branch_id)
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">Booking Branch</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Booking Branch</label>
                         <select x-model="selectedBranchId" @change="onBranchChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($bookingBranches as $branch)
@@ -455,7 +463,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     </div>
                     @endunless
                     <div class="flex flex-col">
-                        <label class="text-xs text-slate-400 mb-1">&nbsp;</label>
+                        <label class="text-xs font-semibold text-slate-400 mb-1">&nbsp;</label>
                         <button @click="clearPassengerFilters" class="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 transition text-sm">Clear</button>
                     </div>
                 </div>
@@ -1159,6 +1167,8 @@ function bookingIndexApp() {
         selectedPassengerStatus: '{{ $selectedPassengerStatus ?? '' }}',
         selectedRouteId: '{{ $selectedRouteId ?? '' }}',
         selectedTicketAgentId: '{{ $selectedTicketAgentId ?? '' }}',
+        selectedActualFlightFrom: '{{ $selectedActualFlightFrom ?? '' }}',
+        selectedActualFlightTo: '{{ $selectedActualFlightTo ?? '' }}',
         selectedFlightDateRange: '',
         flightDateRanges: @json($flightDateRanges),
         totalPassengerCount: {{ $totalPassengerCount }},
@@ -1338,6 +1348,28 @@ function bookingIndexApp() {
             window.location.href = url.toString();
         },
 
+        onActualFlightFromChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedActualFlightFrom) {
+                url.searchParams.set('actual_flight_from', this.selectedActualFlightFrom);
+            } else {
+                url.searchParams.delete('actual_flight_from');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onActualFlightToChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedActualFlightTo) {
+                url.searchParams.set('actual_flight_to', this.selectedActualFlightTo);
+            } else {
+                url.searchParams.delete('actual_flight_to');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
         onFlightDateRangeChange() {
             const url = new URL(window.location.href);
             if (this.selectedFlightDateRange) {
@@ -1359,6 +1391,7 @@ function bookingIndexApp() {
             ['fingerprint_status', 'visa_status', 'ticket_status',
              'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_id',
              'booking_branch_id', 'booking_date_from', 'booking_date_to',
+             'actual_flight_from', 'actual_flight_to',
              'flight_date_from', 'flight_date_to',
              'search', 'page'
             ].forEach(p => url.searchParams.delete(p));
