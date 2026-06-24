@@ -144,6 +144,13 @@ class BookingController extends Controller
         $selectedBookingDateFrom = $request->get('booking_date_from');
         $selectedBookingDateTo = $request->get('booking_date_to');
         $selectedFingerprintLocation = $request->get('fingerprint_location');
+        $selectedPassengerStatus = $request->get('passenger_status');
+        $selectedRouteId = $request->get('route_id');
+        $selectedTicketAgentId = $request->get('ticket_agent_id');
+        $selectedActualFlightFrom = $request->get('actual_flight_from');
+        $selectedActualFlightTo = $request->get('actual_flight_to');
+        $selectedActualFlightFrom = $request->get('actual_flight_from');
+        $selectedActualFlightTo = $request->get('actual_flight_to');
 
         $branchCounts = !$userBranchId
             ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
@@ -210,7 +217,53 @@ class BookingController extends Controller
             )
             ->when($request->filled('visa_agent_id'), fn ($q) =>
                 $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
-            );
+            )
+            ->when($request->filled('booking_branch_id'), fn ($q) =>
+                $q->whereHas('booking', fn ($q) => $q->where('booking_branch_id', $request->input('booking_branch_id')))
+            )
+            ->when($request->filled('booking_date_from'), fn ($q) =>
+                $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from')))
+            )
+            ->when($request->filled('booking_date_to'), fn ($q) =>
+                $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to')))
+            )
+            ->when($request->filled('flight_date_from'), fn ($q) =>
+                $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'))
+            )
+            ->when($request->filled('flight_date_to'), fn ($q) =>
+                $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'))
+            )
+            ->when($request->filled('actual_flight_from'), fn ($q) =>
+                $q->whereDate('actual_flight_date', '>=', $request->input('actual_flight_from'))
+            )
+            ->when($request->filled('actual_flight_to'), fn ($q) =>
+                $q->whereDate('actual_flight_date', '<=', $request->input('actual_flight_to'))
+            )
+            ->when($request->filled('passenger_status'), fn ($q) =>
+                $q->where('passenger_status_id', $request->input('passenger_status'))
+            )
+            ->when($request->filled('route_id'), fn ($q) =>
+                $q->whereHas('ticketFare', fn ($q) => $q->where('route_id', $request->input('route_id')))
+            )
+            ->when($request->filled('ticket_agent_id'), fn ($q) =>
+                $q->whereHas('latestIssuedTicket.ticketAgent', fn ($q) =>
+                    $q->where('id', $request->input('ticket_agent_id'))
+                )
+            )
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->input('search');
+                $q->where(function ($query) use ($search) {
+                    $query->where('mobile_no', 'like', "%{$search}%")
+                        ->orWhere('passport_no', 'like', "%{$search}%")
+                        ->orWhere('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhereHas('booking', fn ($q) => $q->where('invoice_id', 'like', "%{$search}%"))
+                        ->orWhereHas('issuedTickets', fn ($q) =>
+                            $q->where('ticket_number', 'like', "%{$search}%")
+                              ->orWhere('pnr', 'like', "%{$search}%")
+                        );
+                });
+            });
 
         $totalPassengerCount = (clone $passengerQuery)->count();
 
@@ -267,6 +320,8 @@ class BookingController extends Controller
             'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
             'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
+            'selectedPassengerStatus', 'selectedRouteId', 'selectedTicketAgentId',
+            'selectedActualFlightFrom', 'selectedActualFlightTo',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
             'totalPassengerCount'
         ));
