@@ -23,8 +23,21 @@
                     && auth()->user()->branch_id === $booking->fingerprint_branch_id
                     && auth()->user()->branch_id !== $booking->booking_branch_id;
 
-                $canEditBooking = !$isFingerprintOnlyViewer && (auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || $booking->created_at->diffInHours(now()) < 12);
-                $canViewRequestButtons = !$isFingerprintOnlyViewer && (auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty());
+                $isCrossBranchViewer = auth()->user()->branch_id
+                    && auth()->user()->branch_id !== $booking->booking_branch_id
+                    && auth()->user()->branch_id !== $booking->fingerprint_branch_id;
+
+                $canEditBooking = !$isFingerprintOnlyViewer && !$isCrossBranchViewer
+                    && (auth()->user()->hasRole('Super Admin')
+                    || auth()->user()->hasRole('Co Admin')
+                    || ($booking->created_at->diffInHours(now()) < 12
+                        && (auth()->user()->branch_id || $booking->user_id === auth()->id())));
+                $canViewRequestButtons = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && (auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty());
+                $canAddPassenger = !$isFingerprintOnlyViewer && !$isCrossBranchViewer
+                    && (auth()->user()->hasRole('Super Admin')
+                    || auth()->user()->hasRole('Co Admin')
+                    || auth()->user()->branch_id
+                    || $booking->user_id === auth()->id());
                 $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
                 $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             @endphp
@@ -106,6 +119,7 @@
 </div>
         </div>
 
+        @if(!$isFingerprintOnlyViewer && !$isCrossBranchViewer)
         {{-- Passengers Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="flex justify-between items-center mb-4">
@@ -132,13 +146,15 @@
             @endforelse
             </div>
             
+            @if($canAddPassenger)
             <div class="flex justify-end mt-4">
-                @if(!$isFingerprintOnlyViewer)
                 <button @click="openPassengerModal()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
-                @endif
             </div>
+            @endif
         </div>
+        @endif
 
+        @if(!$isFingerprintOnlyViewer && !$isCrossBranchViewer)
         {{-- Documents Section --}}
         <div class="grid grid-cols-2 gap-5">
             <div class="bg-slate-50 rounded-lg p-5">
@@ -196,6 +212,7 @@
                 </div>
             </div>
         </div>
+        @endif
 
         {{-- Action Buttons Row --}}
         <div class="flex justify-end gap-3 mt-8">
@@ -210,24 +227,22 @@
                 Request Ticket Refund
             </button>
             @endif
+            @if(!$isFingerprintOnlyViewer && !$isCrossBranchViewer)
             <button onclick="downloadAllDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
                 Download All Docs
             </button>
-            @if(!$isFingerprintOnlyViewer)
+            @endif
             <button @click="openPaymentModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                 Payment
             </button>
-            @endif
         </div>
 
         {{-- Tab Navigation --}}
         <div class="bg-white rounded-xl shadow-lg mb-6">
             <div class="flex border-b border-slate-200">
-                @if(!$isFingerprintOnlyViewer)
                 <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
                     Payment History
                 </button>
-                @endif
                 @if($canViewRequestButtons)
                 <button onclick="switchTab('reissue')" id="tab-reissue" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
                     Re-issue History
@@ -243,7 +258,6 @@
         </div>
 
         {{-- Payment History Tab --}}
-        @if(!$isFingerprintOnlyViewer)
         <div id="content-payment" class="tab-content block bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Payment History</h3>
             <div class="overflow-x-auto">
@@ -275,7 +289,6 @@
                 </table>
             </div>
         </div>
-        @endif
 
         @if($canViewRequestButtons)
         {{-- Re-issue History Tab --}}

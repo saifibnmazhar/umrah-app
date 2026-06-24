@@ -32,11 +32,14 @@
                 <thead class="bg-slate-50 text-slate-600">
                     <tr>
                         <th class="px-3 py-2 text-left font-medium">ID</th>
-                        <th class="px-3 py-2 text-left font-medium">Date</th>
+                        <th class="px-3 py-2 text-left font-medium">Created By</th>
+                        <th class="px-3 py-2 text-left font-medium">Payment Date</th>
+                        <th class="px-3 py-2 text-left font-medium">Created At</th>
                         <th class="px-3 py-2 text-left font-medium">Method</th>
                         <th class="px-3 py-2 text-right font-medium">Amount (SAR)</th>
                         <th class="px-3 py-2 text-right font-medium">BDT Amount</th>
-                        <th class="px-3 py-2 text-left font-medium">Bank</th>
+                        <th class="px-3 py-2 text-left font-medium">Sender Bank</th>
+                        <th class="px-3 py-2 text-left font-medium">Receiver Bank</th>
                         <th class="px-3 py-2 text-left font-medium">Actions</th>
                     </tr>
                 </thead>
@@ -44,7 +47,14 @@
                     @forelse($payments as $payment)
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-2 text-slate-800 font-medium">#{{ $payment->id }}</td>
-                            <td class="px-3 py-2 text-slate-600">{{ $payment->payment_date->format('d/m/Y') }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->user->name ?? '-' }}</td>
+                            <td class="px-3 py-2 text-slate-600">
+                                {{ $payment->payment_date->format('d/m/Y') }}
+                            </td>
+                            <td class="px-3 py-2 text-slate-600">
+                                {{ $payment->created_at->format('d/m/Y') }}
+                                <span class="local-time" data-utc="{{ $payment->created_at->toIso8601String() }}"></span>
+                            </td>
                             <td class="px-3 py-2">
                                 @if($payment->payment_method->value === 'cash')
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Cash</span>
@@ -54,7 +64,8 @@
                             </td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->amount, 2) }} SAR</td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->bdt_amount, 2) }}</td>
-                            <td class="px-3 py-2 text-slate-600">{{ $payment->bank->name ?? '-' }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->senderBank->name ?? '-' }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->receiverBank->name ?? '-' }}</td>
                             <td class="px-3 py-2">
                                 <div class="flex gap-2">
                                     <a href="{{ route('payments.show', $payment->id) }}" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded">View</a>
@@ -63,7 +74,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="7" class="px-3 py-8 text-center text-slate-500">
+                            <td colspan="9" class="px-3 py-8 text-center text-slate-500">
                                 No payments yet. Click "Add Payment" to create a new one.
                             </td>
                         </tr>
@@ -78,3 +89,18 @@
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    document.querySelectorAll('.local-time').forEach(function(el) {
+        var d = new Date(el.getAttribute('data-utc'));
+        if (!isNaN(d)) {
+            el.textContent = d.toLocaleTimeString('en-US', {
+                hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true
+            });
+        }
+    });
+});
+</script>
+@endpush

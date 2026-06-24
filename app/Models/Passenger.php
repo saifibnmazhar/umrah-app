@@ -7,7 +7,6 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Enums\FingerprintStatus;
 use App\Enums\Gender;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
@@ -89,16 +88,6 @@ class Passenger extends Model
     public function latestIssuedTicket(): HasOne
     {
         return $this->hasOne(IssuedTicket::class)->latestOfMany();
-    }
-
-    public function scopeApprovedFingerprint($query): void
-    {
-        $user = auth()->user();
-        if ($user && ($user->hasRole('Visa Staff') || $user->hasRole('Ticket Staff'))) {
-            $query->whereHas('fingerprintDetail', function ($q) {
-                $q->where('status', FingerprintStatus::APPROVED);
-            });
-        }
     }
 
     public function getRouteDisplayAttribute(): string

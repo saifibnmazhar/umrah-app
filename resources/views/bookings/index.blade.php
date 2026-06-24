@@ -42,6 +42,35 @@ $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'mult
     'airline_id' => $r->airline_id,
 ])->values();
 
+$flightDateRanges = [];
+$today = (int) now()->format('d');
+$currentThird = $today <= 10 ? 1 : ($today <= 20 ? 2 : 3);
+
+$months = [
+    ['offset' => 0, 'startPart' => $currentThird],
+    ['offset' => 1, 'startPart' => 1],
+    ['offset' => 2, 'startPart' => 1],
+    ['offset' => 3, 'startPart' => 1],
+];
+
+foreach ($months as $m) {
+    if (count($flightDateRanges) >= 9) break;
+    $month = now()->copy()->addMonths($m['offset'])->startOfMonth();
+    $lastDay = (int) $month->copy()->endOfMonth()->format('d');
+    $label = $month->format('M');
+
+    $parts = [
+        1 => ['start' => $month->format('Y-m-01'), 'end' => $month->format('Y-m-10'), 'label' => "{$label} 1–10"],
+        2 => ['start' => $month->format('Y-m-11'), 'end' => $month->format('Y-m-20'), 'label' => "{$label} 11–20"],
+        3 => ['start' => $month->format('Y-m-21'), 'end' => $month->copy()->endOfMonth()->format('Y-m-d'), 'label' => "{$label} 21–{$lastDay}"],
+    ];
+
+    for ($p = $m['startPart']; $p <= 3; $p++) {
+        if (count($flightDateRanges) >= 9) break;
+        $flightDateRanges[] = array_merge(['id' => count($flightDateRanges) + 1], $parts[$p]);
+    }
+}
+
 $airlinesList = \App\Models\Airline::with('travelClasses')->get()->map(fn($a) => [
     'id' => $a->id,
     'name' => $a->name,
@@ -245,6 +274,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     @endforeach
                 </select>
                 @endunless
+                <button @click="clearBookingFilters" class="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 transition text-sm">Clear</button>
+                <span class="flex-1 min-w-0"></span>
                 <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm" x-text="'Total Booking - ' + totalBookingCount">Total Booking - {{ $totalBookingCount }}</span>
                 <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm" x-text="'Total Passenger - ' + totalBookingPassengerCount">Total Passenger - {{ $totalBookingPassengerCount }}</span>
             </div>
@@ -330,30 +361,113 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col" style="max-height: calc(95vh - 200px);">
             <div class="mb-4 flex items-center gap-4">
                 <div class="flex flex-1 flex-wrap items-center gap-4 min-w-0">
-                    <select x-model="selectedFingerprintStatus" @change="onFingerprintStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Fingerprint Status</option>
-                        @foreach($fingerprintStatuses as $status)
-                        <option value="{{ $status->value }}" {{ $selectedFingerprintStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
-                        @endforeach
-                    </select>
-                    <select x-model="selectedVisaStatus" @change="onVisaStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Visa Status</option>
-                        @foreach($visaStatuses as $status)
-                        <option value="{{ $status->value }}" {{ $selectedVisaStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
-                        @endforeach
-                    </select>
-                    <select x-model="selectedTicketStatus" @change="onTicketStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Ticket Status</option>
-                        @foreach($ticketStatuses as $status)
-                        <option value="{{ $status->value }}" {{ $selectedTicketStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
-                        @endforeach
-                    </select>
-                    <select x-model="selectedVisaAgentId" @change="onVisaAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                        <option value="">Visa Agent</option>
-                        @foreach($visaAgents as $agent)
-                        <option value="{{ $agent['id'] }}" {{ (string) $selectedVisaAgentId === (string) $agent['id'] ? 'selected' : '' }}>{{ $agent['name'] }}</option>
-                        @endforeach
-                    </select>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Search</label>
+                        <input type="text" x-model="searchTerm" x-ref="passengerSearchInput" class="w-full md:w-48 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search Name, Mobile, Passport, Invoice, Ticket, PNR...">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Booking Date From</label>
+                        <input type="date" x-model="selectedBookingDateFrom" @change="onBookingDateFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Booking Date To</label>
+                        <input type="date" x-model="selectedBookingDateTo" @change="onBookingDateToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                     </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Actual Flight From</label>
+                        <input type="date" x-model="selectedActualFlightFrom" @change="onActualFlightFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Actual Flight To</label>
+                        <input type="date" x-model="selectedActualFlightTo" @change="onActualFlightToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Required Flight</label>
+                        <select x-model="selectedFlightDateRange" @change="onFlightDateRangeChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($flightDateRanges as $range)
+                            <option value="{{ $range['id'] }}">{{ $range['label'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Fingerprint Status</label>
+                        <select x-model="selectedFingerprintStatus" @change="onFingerprintStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($fingerprintStatuses as $status)
+                            <option value="{{ $status->value }}" {{ $selectedFingerprintStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Visa Status</label>
+                        <select x-model="selectedVisaStatus" @change="onVisaStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($visaStatuses as $status)
+                            <option value="{{ $status->value }}" {{ $selectedVisaStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Ticket Status</label>
+                        <select x-model="selectedTicketStatus" @change="onTicketStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($ticketStatuses as $status)
+                            <option value="{{ $status->value }}" {{ $selectedTicketStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Visa Agent</label>
+                        <select x-model="selectedVisaAgentId" @change="onVisaAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($visaAgents as $agent)
+                            <option value="{{ $agent['id'] }}" {{ (string) $selectedVisaAgentId === (string) $agent['id'] ? 'selected' : '' }}>{{ $agent['name'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Ticket Agent</label>
+                        <select x-model="selectedTicketAgentId" @change="onTicketAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($ticketAgents as $agent)
+                            <option value="{{ $agent->id }}" {{ (string) $selectedTicketAgentId === (string) $agent->id ? 'selected' : '' }}>{{ $agent->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Current Status</label>
+                        <select x-model="selectedPassengerStatus" @change="onPassengerStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($passengerStatuses as $status)
+                            <option value="{{ $status->id }}" {{ (string) $selectedPassengerStatus === (string) $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Route</label>
+                        <select x-model="selectedRouteId" @change="onRouteChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($routesList as $route)
+                            <option value="{{ $route['id'] }}" {{ (string) $selectedRouteId === (string) $route['id'] ? 'selected' : '' }}>{{ $route['display'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @unless(auth()->user()->branch_id)
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Booking Branch</label>
+                        <select x-model="selectedBranchId" @change="onBranchChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($bookingBranches as $branch)
+                            <option value="{{ $branch->id }}" {{ $selectedBranchId == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    @endunless
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">&nbsp;</label>
+                        <button @click="clearPassengerFilters" class="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 transition text-sm">Clear</button>
+                    </div>
                 </div>
                 <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm flex-shrink-0" x-text="'Total Passenger - ' + totalPassengerCount">Total Passenger - {{ $totalPassengerCount }}</span>
             </div>
@@ -381,6 +495,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
                             @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Fare</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Ticket Agent</th>
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
@@ -515,6 +630,7 @@ if ($route) {
         </div>
     </td>
     @endif
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->latestIssuedTicket?->ticketAgent?->name ?? '—' }}</td>
     <td class="px-3 py-2">
         <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
@@ -1050,6 +1166,13 @@ function bookingIndexApp() {
         selectedBookingDateFrom: '{{ $selectedBookingDateFrom ?? '' }}',
         selectedBookingDateTo: '{{ $selectedBookingDateTo ?? '' }}',
         selectedFingerprintLocation: '{{ $selectedFingerprintLocation ?? '' }}',
+        selectedPassengerStatus: '{{ $selectedPassengerStatus ?? '' }}',
+        selectedRouteId: '{{ $selectedRouteId ?? '' }}',
+        selectedTicketAgentId: '{{ $selectedTicketAgentId ?? '' }}',
+        selectedActualFlightFrom: '{{ $selectedActualFlightFrom ?? '' }}',
+        selectedActualFlightTo: '{{ $selectedActualFlightTo ?? '' }}',
+        selectedFlightDateRange: '',
+        flightDateRanges: @json($flightDateRanges),
         totalPassengerCount: {{ $totalPassengerCount }},
 
         init() {
@@ -1061,10 +1184,11 @@ function bookingIndexApp() {
             });
 
             this.$nextTick(() => {
-                if (this.searchTerm && this.$refs.searchInput) {
-                    this.$refs.searchInput.focus();
+                const ref = this.activeTab === 'passenger' ? 'passengerSearchInput' : 'searchInput';
+                if (this.searchTerm && this.$refs[ref]) {
+                    this.$refs[ref].focus();
                     const len = this.searchTerm.length;
-                    this.$refs.searchInput.setSelectionRange(len, len);
+                    this.$refs[ref].setSelectionRange(len, len);
                 }
             });
 
@@ -1081,6 +1205,14 @@ function bookingIndexApp() {
                     window.location.href = url.toString();
                 }, 500);
             });
+
+            const url = new URL(window.location);
+            const fFrom = url.searchParams.get('flight_date_from');
+            const fTo = url.searchParams.get('flight_date_to');
+            if (fFrom && fTo && this.flightDateRanges) {
+                const match = this.flightDateRanges.find(r => r.start === fFrom && r.end === fTo);
+                if (match) this.selectedFlightDateRange = match.id;
+            }
         },
 
         navigateToTab(tab) {
@@ -1182,6 +1314,98 @@ function bookingIndexApp() {
                 url.searchParams.delete('fingerprint_location');
             }
             url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        clearBookingFilters() {
+            const url = new URL(window.location);
+            ['search', 'booking_date_from', 'booking_date_to',
+             'fingerprint_location', 'booking_branch_id', 'page'
+            ].forEach(p => url.searchParams.delete(p));
+            window.location.href = url.toString();
+        },
+
+        onPassengerStatusChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedPassengerStatus) {
+                url.searchParams.set('passenger_status', this.selectedPassengerStatus);
+            } else {
+                url.searchParams.delete('passenger_status');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onRouteChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedRouteId) {
+                url.searchParams.set('route_id', this.selectedRouteId);
+            } else {
+                url.searchParams.delete('route_id');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onTicketAgentChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedTicketAgentId) {
+                url.searchParams.set('ticket_agent_id', this.selectedTicketAgentId);
+            } else {
+                url.searchParams.delete('ticket_agent_id');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onActualFlightFromChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedActualFlightFrom) {
+                url.searchParams.set('actual_flight_from', this.selectedActualFlightFrom);
+            } else {
+                url.searchParams.delete('actual_flight_from');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onActualFlightToChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedActualFlightTo) {
+                url.searchParams.set('actual_flight_to', this.selectedActualFlightTo);
+            } else {
+                url.searchParams.delete('actual_flight_to');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onFlightDateRangeChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedFlightDateRange) {
+                const range = this.flightDateRanges.find(r => r.id == this.selectedFlightDateRange);
+                if (range) {
+                    url.searchParams.set('flight_date_from', range.start);
+                    url.searchParams.set('flight_date_to', range.end);
+                }
+            } else {
+                url.searchParams.delete('flight_date_from');
+                url.searchParams.delete('flight_date_to');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        clearPassengerFilters() {
+            const url = new URL(window.location);
+            ['fingerprint_status', 'visa_status', 'ticket_status',
+             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_id',
+             'booking_branch_id', 'booking_date_from', 'booking_date_to',
+             'actual_flight_from', 'actual_flight_to',
+             'flight_date_from', 'flight_date_to',
+             'search', 'page'
+            ].forEach(p => url.searchParams.delete(p));
+            url.searchParams.set('tab', 'passenger');
             window.location.href = url.toString();
         },
 

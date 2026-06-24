@@ -19,7 +19,14 @@
                     <p class="text-slate-500 text-sm mt-1">Invoice: <span>{{ $passenger->booking?->invoice?->id ?? '-' }}</span></p>
                 </div>
                 <div class="flex items-center gap-2">
-                    @if(!$isFingerprintOnlyViewer)
+                    @php
+                        $canEditPassenger = !$isFingerprintOnlyViewer
+                            && (auth()->user()->hasRole('Super Admin')
+                            || auth()->user()->hasRole('Co Admin')
+                            || auth()->user()->branch_id
+                            || $passenger->booking->user_id === auth()->id());
+                    @endphp
+                    @if($canEditPassenger)
                     <a href="{{ route('passengers.edit', $passenger->id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm flex items-center gap-1.5">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -119,6 +126,16 @@
                                         -
                                     @endif
                                 </p>
+                            </div>
+                        </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <span class="text-xs text-slate-400">PNR</span>
+                                <p class="text-slate-800">{{ $passenger->latestIssuedTicket?->pnr ?? '-' }}</p>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-400">Ticket Number</span>
+                                <p class="text-slate-800">{{ $passenger->latestIssuedTicket?->ticket_number ?? '-' }}</p>
                             </div>
                         </div>
                         <div>

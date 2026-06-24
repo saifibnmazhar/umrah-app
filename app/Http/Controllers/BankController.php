@@ -66,4 +66,29 @@ class BankController extends Controller
             return redirect()->back()->with('error', 'Failed to delete bank.');
         }
     }
+
+    public function quickStore(Request $request)
+    {
+        $data = $request->all();
+
+        foreach (['description', 'currency', 'location'] as $field) {
+            if (empty($data[$field])) {
+                $data[$field] = null;
+            }
+        }
+
+        $validated = validator($data, [
+            'name' => 'required|string|max:255|unique:banks,name',
+            'description' => 'nullable|string|max:255',
+            'currency' => 'nullable|in:SAR,BDT',
+            'location' => 'nullable|in:KSA,BD',
+        ])->validate();
+
+        try {
+            $bank = Bank::create($validated);
+            return response()->json(['success' => true, 'bank' => $bank]);
+        } catch (\Exception $e) {
+            return response()->json(['success' => false, 'message' => 'Failed to create bank.'], 500);
+        }
+    }
 }
