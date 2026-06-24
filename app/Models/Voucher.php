@@ -16,6 +16,8 @@ class Voucher extends Model
         'user_id',
         'currency_rate_id',
         'bank_id',
+        'sender_bank_id',
+        'receiver_bank_id',
         'ticket_agent_id',
         'visa_agent_id',
         'commission_agent_id',
@@ -26,6 +28,7 @@ class Voucher extends Model
         'amount',
         'bdt_amount',
         'notes',
+        'remarks',
     ];
 
     protected $casts = [

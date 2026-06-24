@@ -19,6 +19,12 @@
             exchangeRate: {{ $currentCurrencyRate?->rate ?? 0 }},
             transactionType: '{{ old('transaction_type_id', $payment->voucher?->transaction_type_id) }}',
 
+            bankModalOpen: false,
+            bankSaving: false,
+            activeBankField: '',
+            bankData: { name: '', description: '', currency: '', location: '' },
+            bankErrors: {},
+
             handleCurrencyChange() {
                 if (this.currency === 'BDT' && this.amount_sar > 0 && this.exchangeRate > 0) {
                     this.amount_bdt = (this.amount_sar * this.exchangeRate).toFixed(2);
@@ -34,6 +40,55 @@
             handleBdtInput() {
                 if (this.exchangeRate > 0) {
                     this.amount_sar = (this.amount_bdt / this.exchangeRate).toFixed(2);
+                }
+            },
+
+            openBankModal(field) {
+                this.activeBankField = field;
+                this.bankData = { name: '', description: '', currency: '', location: '' };
+                this.bankErrors = {};
+                this.bankModalOpen = true;
+            },
+            closeBankModal() {
+                this.bankModalOpen = false;
+                this.activeBankField = '';
+                this.bankErrors = {};
+            },
+            async saveBank() {
+                this.bankSaving = true;
+                this.bankErrors = {};
+                try {
+                    const response = await fetch('/api/banks/quick-create', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
+                        body: JSON.stringify(this.bankData)
+                    });
+                    const data = await response.json();
+                    if (data.success) {
+                        const senderOpt = document.createElement('option');
+                        senderOpt.value = data.bank.id;
+                        senderOpt.text = data.bank.name;
+                        senderOpt.selected = (this.activeBankField === 'sender');
+                        document.getElementById('sender_bank_id').add(senderOpt);
+
+                        const receiverOpt = document.createElement('option');
+                        receiverOpt.value = data.bank.id;
+                        receiverOpt.text = data.bank.name;
+                        receiverOpt.selected = (this.activeBankField === 'receiver');
+                        document.getElementById('receiver_bank_id').add(receiverOpt);
+                        this.closeBankModal();
+                        window.showToast('Bank created successfully', 'success');
+                    } else {
+                        if (data.errors) {
+                            this.bankErrors = data.errors;
+                        } else {
+                            window.showToast(data.message || 'Failed to create bank', 'error');
+                        }
+                    }
+                } catch (e) {
+                    window.showToast('An error occurred', 'error');
+                } finally {
+                    this.bankSaving = false;
                 }
             }
           }">
@@ -60,14 +115,33 @@
             </div>
 
             <div x-show="method === 'bank'" x-cloak>
-                <label for="bank_id" class="block text-sm font-medium text-slate-700 mb-1">Bank</label>
-                <select name="bank_id" id="bank_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('bank_id') border-red-500 @enderror">
-                    <option value="">Select Bank</option>
+                <div class="flex items-center justify-between mb-1">
+                    <label for="sender_bank_id" class="block text-sm font-medium text-slate-700">Sender Bank</label>
+                    <button type="button" @click="openBankModal('sender')" class="text-sky-600 hover:text-sky-700 text-xs font-medium">+ Add Bank</button>
+                </div>
+                <select name="sender_bank_id" id="sender_bank_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('sender_bank_id') border-red-500 @enderror">
+                    <option value="">Select Sender Bank</option>
                     @foreach($banks as $bank)
-                        <option value="{{ $bank->id }}" {{ old('bank_id', $payment->bank_id) == $bank->id ? 'selected' : '' }}>{{ $bank->name }}</option>
+                        <option value="{{ $bank->id }}" {{ old('sender_bank_id', $payment->sender_bank_id) == $bank->id ? 'selected' : '' }}>{{ $bank->name }}</option>
                     @endforeach
                 </select>
-                @error('bank_id')
+                @error('sender_bank_id')
+                    <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div x-show="method === 'bank'" x-cloak>
+                <div class="flex items-center justify-between mb-1">
+                    <label for="receiver_bank_id" class="block text-sm font-medium text-slate-700">Receiver Bank</label>
+                    <button type="button" @click="openBankModal('receiver')" class="text-sky-600 hover:text-sky-700 text-xs font-medium">+ Add Bank</button>
+                </div>
+                <select name="receiver_bank_id" id="receiver_bank_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('receiver_bank_id') border-red-500 @enderror">
+                    <option value="">Select Receiver Bank</option>
+                    @foreach($banks as $bank)
+                        <option value="{{ $bank->id }}" {{ old('receiver_bank_id', $payment->receiver_bank_id) == $bank->id ? 'selected' : '' }}>{{ $bank->name }}</option>
+                    @endforeach
+                </select>
+                @error('receiver_bank_id')
                     <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
                 @enderror
             </div>
@@ -131,6 +205,29 @@
             </div>
         </div>
 
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-5">
+            <div>
+                <label for="branch_id" class="block text-sm font-medium text-slate-700 mb-1">Referral Branch</label>
+                <select name="branch_id" id="branch_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('branch_id') border-red-500 @enderror">
+                    <option value="">Select Branch</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ old('branch_id', $payment->branch_id) == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+                @error('branch_id')
+                    <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
+                @enderror
+            </div>
+
+            <div>
+                <label for="remarks" class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                <input type="text" name="remarks" id="remarks" value="{{ old('remarks', $payment->remarks) }}" maxlength="255" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none @error('remarks') border-red-500 @enderror" placeholder="Enter remarks">
+                @error('remarks')
+                    <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
+                @enderror
+            </div>
+        </div>
+
         <div class="grid grid-cols-1 gap-5">
             <div x-show="transactionType === '{{ $ticketPaymentTypeId }}'" x-cloak>
                 <label for="ticket_agent_id" class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent</label>
@@ -171,6 +268,8 @@
                 @enderror
             </div>
         </div>
+
+        @include('partials.bank-form-modal')
 
         <div class="pt-4 flex items-center gap-4">
             <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
