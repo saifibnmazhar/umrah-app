@@ -33,7 +33,8 @@
                     <tr>
                         <th class="px-3 py-2 text-left font-medium">ID</th>
                         <th class="px-3 py-2 text-left font-medium">Created By</th>
-                        <th class="px-3 py-2 text-left font-medium">Date</th>
+                        <th class="px-3 py-2 text-left font-medium">Payment Date</th>
+                        <th class="px-3 py-2 text-left font-medium">Created At</th>
                         <th class="px-3 py-2 text-left font-medium">Method</th>
                         <th class="px-3 py-2 text-right font-medium">Amount (SAR)</th>
                         <th class="px-3 py-2 text-right font-medium">BDT Amount</th>
@@ -49,6 +50,9 @@
                             <td class="px-3 py-2 text-slate-600">{{ $payment->user->name ?? '-' }}</td>
                             <td class="px-3 py-2 text-slate-600">
                                 {{ $payment->payment_date->format('d/m/Y') }}
+                            </td>
+                            <td class="px-3 py-2 text-slate-600">
+                                {{ $payment->created_at->format('d/m/Y') }}
                                 <span class="local-time" data-utc="{{ $payment->created_at->toIso8601String() }}"></span>
                             </td>
                             <td class="px-3 py-2">
