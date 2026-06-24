@@ -41,9 +41,12 @@ class PaymentService
                 'amount' => $processedData['amount'],
                 'bdt_amount' => $processedData['bdt_amount'],
                 'bank_id' => $processedData['bank_id'] ?? null,
+                'sender_bank_id' => $processedData['sender_bank_id'] ?? null,
+                'receiver_bank_id' => $processedData['receiver_bank_id'] ?? null,
                 'transaction_id' => $processedData['transaction_id'] ?? null,
                 'currency_rate_id' => $processedData['currency_rate_id'] ?? null,
                 'notes' => $processedData['notes'] ?? null,
+                'remarks' => $processedData['remarks'] ?? null,
             ]);
 
             $voucher = $this->voucherService->createVoucher([
@@ -102,9 +105,12 @@ class PaymentService
                 'amount' => $processedData['amount'],
                 'bdt_amount' => $processedData['bdt_amount'],
                 'bank_id' => $processedData['bank_id'] ?? null,
+                'sender_bank_id' => $processedData['sender_bank_id'] ?? null,
+                'receiver_bank_id' => $processedData['receiver_bank_id'] ?? null,
                 'transaction_id' => $processedData['transaction_id'] ?? null,
                 'currency_rate_id' => $processedData['currency_rate_id'] ?? null,
                 'notes' => $processedData['notes'] ?? null,
+                'remarks' => $processedData['remarks'] ?? null,
             ]);
 
             \Log::info('PaymentService: Payment created with ID: ' . $payment->id);
@@ -164,9 +170,12 @@ class PaymentService
                 'amount' => $processedData['amount'],
                 'bdt_amount' => $processedData['bdt_amount'],
                 'bank_id' => $processedData['bank_id'] ?? null,
+                'sender_bank_id' => $processedData['sender_bank_id'] ?? null,
+                'receiver_bank_id' => $processedData['receiver_bank_id'] ?? null,
                 'transaction_id' => $processedData['transaction_id'] ?? null,
                 'currency_rate_id' => $processedData['currency_rate_id'] ?? null,
                 'notes' => $processedData['notes'] ?? null,
+                'remarks' => $processedData['remarks'] ?? null,
             ]);
 
             $voucher = $this->voucherService->createVoucher([

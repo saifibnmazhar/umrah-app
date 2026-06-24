@@ -6,6 +6,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Models\CurrencyRate;
 use App\Models\Bank;
+use App\Models\Branch;
 use App\Models\TicketAgent;
 use App\Models\VisaAgent;
 use App\Models\CommissionAgent;
@@ -19,7 +20,7 @@ class PaymentController extends Controller
 {
     public function index()
     {
-        $payments = Payment::with(['user', 'bank'])
+        $payments = Payment::with(['user', 'bank', 'senderBank', 'receiverBank'])
             ->orderBy('payment_date', 'desc')
             ->orderBy('created_at', 'desc')
             ->paginate(10)
@@ -32,6 +33,7 @@ class PaymentController extends Controller
     {
         $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
         $banks = Bank::orderBy('name')->get();
+        $branches = Branch::orderBy('name')->get();
         $transactionTypes = TransactionType::whereIn('name', [
             'Commission Agent Payment', 'Ticket Agent Payment', 'Visa Agent Payment',
         ])->get();
@@ -43,7 +45,7 @@ class PaymentController extends Controller
         $commissionAgents = CommissionAgent::orderBy('name')->get();
         
         return view('payments.create', compact(
-            'currentCurrencyRate', 'banks', 'transactionTypes',
+            'currentCurrencyRate', 'banks', 'branches', 'transactionTypes',
             'ticketPaymentTypeId', 'visaPaymentTypeId', 'commissionPaymentTypeId',
             'ticketAgents', 'visaAgents', 'commissionAgents'
         ));
@@ -56,12 +58,15 @@ class PaymentController extends Controller
             'payment_method' => 'required|in:cash,bank',
             'amount' => 'required|numeric|min:0',
             'bdt_amount' => 'required|numeric|min:0',
-            'bank_id' => 'nullable|exists:banks,id',
+            'sender_bank_id' => 'nullable|exists:banks,id',
+            'receiver_bank_id' => 'nullable|exists:banks,id',
+            'branch_id' => 'nullable|exists:branches,id',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'visa_agent_id' => 'nullable|exists:visa_agents,id',
             'commission_agent_id' => 'nullable|exists:commission_agents,id',
             'transaction_id' => 'nullable|string|max:255',
             'transaction_type_id' => 'required|exists:transaction_types,id',
+            'remarks' => 'nullable|string|max:255',
         ]);
 
         $userId = auth()->id() ?? User::first()?->id;
@@ -82,7 +87,7 @@ class PaymentController extends Controller
                     'payment_method' => $validated['payment_method'],
                     'amount' => $validated['amount'],
                     'bdt_amount' => $validated['bdt_amount'],
-                    'bank_id' => $validated['bank_id'] ?? null,
+                    'branch_id' => $validated['branch_id'] ?? null,
                     'transaction_id' => $validated['transaction_id'] ?? null,
                     'currency_rate_id' => $validated['currency_rate_id'] ?? null,
                     'ticket_agent_id' => $validated['ticket_agent_id'] ?? null,
@@ -99,7 +104,7 @@ class PaymentController extends Controller
 
     public function show(Payment $payment)
     {
-        $payment->load(['user', 'currencyRate', 'bank', 'ticketAgent', 'visaAgent', 'commissionAgent']);
+        $payment->load(['user', 'currencyRate', 'bank', 'senderBank', 'receiverBank', 'ticketAgent', 'visaAgent', 'commissionAgent', 'branch']);
         $rate = $payment->currencyRate?->rate ?? 0;
         return view('payments.show', compact('payment', 'rate'));
     }
@@ -108,6 +113,7 @@ class PaymentController extends Controller
     {
         $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
         $banks = Bank::orderBy('name')->get();
+        $branches = Branch::orderBy('name')->get();
         $transactionTypes = TransactionType::whereIn('name', [
             'Commission Agent Payment', 'Ticket Agent Payment', 'Visa Agent Payment',
         ])->get();
@@ -119,7 +125,7 @@ class PaymentController extends Controller
         $commissionAgents = CommissionAgent::orderBy('name')->get();
         
         return view('payments.edit', compact(
-            'payment', 'currentCurrencyRate', 'banks', 'transactionTypes',
+            'payment', 'currentCurrencyRate', 'banks', 'branches', 'transactionTypes',
             'ticketPaymentTypeId', 'visaPaymentTypeId', 'commissionPaymentTypeId',
             'ticketAgents', 'visaAgents', 'commissionAgents'
         ));
@@ -132,12 +138,15 @@ class PaymentController extends Controller
             'payment_method' => 'required|in:cash,bank',
             'amount' => 'required|numeric|min:0',
             'bdt_amount' => 'required|numeric|min:0',
-            'bank_id' => 'nullable|exists:banks,id',
+            'sender_bank_id' => 'nullable|exists:banks,id',
+            'receiver_bank_id' => 'nullable|exists:banks,id',
+            'branch_id' => 'nullable|exists:branches,id',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'visa_agent_id' => 'nullable|exists:visa_agents,id',
             'commission_agent_id' => 'nullable|exists:commission_agents,id',
             'transaction_id' => 'nullable|string|max:255',
             'transaction_type_id' => 'nullable|exists:transaction_types,id',
+            'remarks' => 'nullable|string|max:255',
         ]);
 
         $currentRate = CurrencyRate::orderBy('created_at', 'desc')->first();
@@ -155,7 +164,7 @@ class PaymentController extends Controller
                         'payment_method' => $validated['payment_method'],
                         'amount' => $validated['amount'],
                         'bdt_amount' => $validated['bdt_amount'],
-                        'bank_id' => $validated['bank_id'] ?? null,
+                        'branch_id' => $validated['branch_id'] ?? null,
                         'transaction_id' => $validated['transaction_id'] ?? null,
                         'ticket_agent_id' => $validated['ticket_agent_id'] ?? null,
                         'visa_agent_id' => $validated['visa_agent_id'] ?? null,

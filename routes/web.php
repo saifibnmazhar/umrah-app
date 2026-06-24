@@ -239,6 +239,7 @@ Route::middleware('auth')->group(function () {
             ->name('bookings.passengers.ticket-edit');
     });
 
+    Route::post('/api/banks/quick-create', [BankController::class, 'quickStore']);
     Route::post('/api/ticket-fares/quick-create', [TicketFareController::class, 'quickStore'])
         ->middleware('auth');
 });
