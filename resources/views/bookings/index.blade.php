@@ -245,6 +245,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     @endforeach
                 </select>
                 @endunless
+                <button @click="clearBookingFilters" class="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 transition text-sm">Clear</button>
+                <span class="flex-1 min-w-0"></span>
                 <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm" x-text="'Total Booking - ' + totalBookingCount">Total Booking - {{ $totalBookingCount }}</span>
                 <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm" x-text="'Total Passenger - ' + totalBookingPassengerCount">Total Passenger - {{ $totalBookingPassengerCount }}</span>
             </div>
@@ -1182,6 +1184,14 @@ function bookingIndexApp() {
                 url.searchParams.delete('fingerprint_location');
             }
             url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        clearBookingFilters() {
+            const url = new URL(window.location);
+            ['search', 'booking_date_from', 'booking_date_to',
+             'fingerprint_location', 'booking_branch_id', 'page'
+            ].forEach(p => url.searchParams.delete(p));
             window.location.href = url.toString();
         },
 
