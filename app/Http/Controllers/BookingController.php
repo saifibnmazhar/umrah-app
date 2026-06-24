@@ -64,6 +64,11 @@ class BookingController extends Controller
             && ($user->hasRole('Branch Manager') || $user->hasRole('Branch Staff'));
     }
 
+    private function isGlobalNonAdmin(): bool
+    {
+        return !auth()->user()->branch_id && !$this->isAdminRole();
+    }
+
     private function resolveBookingBranch(Request $request, bool $forUpdate): int
     {
         $user = auth()->user();
@@ -197,7 +202,7 @@ class BookingController extends Controller
             ->appends(['tab' => $tab])
             ->withQueryString();
 
-        $passengerQuery = Passenger::approvedFingerprint()
+        $passengers = Passenger::query()
             ->when(auth()->user()->branch_id, fn ($q) =>
                 $q->whereHas('booking', fn ($q) =>
                     $q->where(function ($q) {
@@ -716,12 +721,14 @@ class BookingController extends Controller
 
     public function show(Booking $booking)
     {
-        $this->ensureBranchAccess($booking);
+        $isCrossBranchViewer = auth()->user()->branch_id
+            && auth()->user()->branch_id !== $booking->booking_branch_id
+            && auth()->user()->branch_id !== $booking->fingerprint_branch_id;
 
         $booking->load([
             'customer',
             'customer.documents',
-            'passengers' => fn($q) => $q->approvedFingerprint(),
+            'passengers',
             'passengers.documents',
             'passengers.ticketFare',
             'user',
@@ -818,7 +825,7 @@ class BookingController extends Controller
             'booking', 'ticketFares', 'packages', 'currentCurrencyRate',
             'totalAmountBdt', 'paidAmountBdt', 'balanceBdt',
             'originalTotal', 'originalTotalBdt', 'discountedTotalBdt',
-            'userBranchLocation', 'banks'
+            'userBranchLocation', 'banks', 'isCrossBranchViewer'
         ));
     }
 
@@ -827,7 +834,11 @@ class BookingController extends Controller
         $this->ensureBranchAccess($booking);
         $this->ensureEditWindow($booking);
 
-        $booking->load(['customer', 'passengers' => fn($q) => $q->approvedFingerprint(), 'district', 'fingerprintBranch', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
+        if ($this->isGlobalNonAdmin() && $booking->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $booking->load(['customer', 'passengers', 'district', 'fingerprintBranch', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
 
         $bookingBranches = $this->isAdminRole() ? Branch::orderBy('name')->get(['id', 'name']) : collect();
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get(['id', 'name']);
@@ -909,6 +920,10 @@ class BookingController extends Controller
     {
         $this->ensureBranchAccess($booking);
         $this->ensureEditWindow($booking);
+
+        if ($this->isGlobalNonAdmin() && $booking->user_id !== auth()->id()) {
+            abort(403);
+        }
 
         $validated = $request->validate([
             'customer_id' => 'sometimes|required|exists:customers,id',
@@ -1063,6 +1078,10 @@ class BookingController extends Controller
     {
         $this->ensureBranchAccess($booking);
 
+        if ($this->isGlobalNonAdmin() && $booking->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -1210,15 +1229,13 @@ class BookingController extends Controller
 
     public function print(Booking $booking)
     {
-        $this->ensureBranchAccess($booking);
-
         $booking = Booking::with([
             'customer',
             'bookingBranch',
             'fingerprintBranch',
             'package',
             'currencyRate',
-            'passengers' => fn($q) => $q->approvedFingerprint(),
+            'passengers',
             'passengers.ticketFare.airline',
             'passengers.ticketFare.airlineClass.travelClass',
             'passengers.ticketFare.route',
@@ -1328,8 +1345,6 @@ class BookingController extends Controller
 
     public function storePayment(Request $request, Booking $booking)
     {
-        $this->ensureBranchAccess($booking);
-
         $validated = $request->validate([
             'amount' => 'nullable|numeric|min:0',
             'amount_bdt' => 'nullable|numeric|min:0',
@@ -1372,7 +1387,7 @@ class BookingController extends Controller
             }
 
             $paymentData = [
-                'branch_id' => $booking->booking_branch_id,
+                'branch_id' => auth()->user()->branch_id ?? $booking->booking_branch_id,
                 'user_id' => auth()->id(),
                 'payment_date' => now()->toDateString(),
                 'payment_method' => $validated['payment_method'] ?? 'cash',
@@ -1517,6 +1532,21 @@ class BookingController extends Controller
         return response()->streamDownload(function () use ($mergedContent) {
             echo $mergedContent;
         }, $fileName);
+    }
+
+    public function searchInvoice(Request $request)
+    {
+        $query = $request->input('q', '');
+
+        if (strlen($query) < 1) {
+            return response()->json([]);
+        }
+
+        $bookings = Booking::where('invoice_id', 'like', "%{$query}%")
+            ->limit(10)
+            ->get(['id', 'invoice_id']);
+
+        return response()->json($bookings);
     }
 
     private function resolveDocumentPath(Document $doc): ?string
