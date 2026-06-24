@@ -62,6 +62,11 @@ class BookingController extends Controller
             && ($user->hasRole('Branch Manager') || $user->hasRole('Branch Staff'));
     }
 
+    private function isGlobalNonAdmin(): bool
+    {
+        return !auth()->user()->branch_id && !$this->isAdminRole();
+    }
+
     private function resolveBookingBranch(Request $request, bool $forUpdate): int
     {
         $user = auth()->user();
@@ -171,7 +176,7 @@ class BookingController extends Controller
             ->appends(['tab' => $tab])
             ->withQueryString();
 
-        $passengers = Passenger::approvedFingerprint()
+        $passengers = Passenger::query()
             ->when(auth()->user()->branch_id, fn ($q) =>
                 $q->whereHas('booking', fn ($q) =>
                     $q->where(function ($q) {
@@ -602,7 +607,7 @@ class BookingController extends Controller
         $booking->load([
             'customer',
             'customer.documents',
-            'passengers' => fn($q) => $q->approvedFingerprint(),
+            'passengers',
             'passengers.documents',
             'passengers.ticketFare',
             'user',
@@ -708,7 +713,11 @@ class BookingController extends Controller
         $this->ensureBranchAccess($booking);
         $this->ensureEditWindow($booking);
 
-        $booking->load(['customer', 'passengers' => fn($q) => $q->approvedFingerprint(), 'district', 'fingerprintBranch', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
+        if ($this->isGlobalNonAdmin() && $booking->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $booking->load(['customer', 'passengers', 'district', 'fingerprintBranch', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
 
         $bookingBranches = $this->isAdminRole() ? Branch::orderBy('name')->get(['id', 'name']) : collect();
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get(['id', 'name']);
@@ -790,6 +799,10 @@ class BookingController extends Controller
     {
         $this->ensureBranchAccess($booking);
         $this->ensureEditWindow($booking);
+
+        if ($this->isGlobalNonAdmin() && $booking->user_id !== auth()->id()) {
+            abort(403);
+        }
 
         $validated = $request->validate([
             'customer_id' => 'sometimes|required|exists:customers,id',
@@ -944,6 +957,10 @@ class BookingController extends Controller
     {
         $this->ensureBranchAccess($booking);
 
+        if ($this->isGlobalNonAdmin() && $booking->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -1097,7 +1114,7 @@ class BookingController extends Controller
             'fingerprintBranch',
             'package',
             'currencyRate',
-            'passengers' => fn($q) => $q->approvedFingerprint(),
+            'passengers',
             'passengers.ticketFare.airline',
             'passengers.ticketFare.airlineClass.travelClass',
             'passengers.ticketFare.route',

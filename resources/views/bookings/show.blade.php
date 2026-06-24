@@ -27,8 +27,17 @@
                     && auth()->user()->branch_id !== $booking->booking_branch_id
                     && auth()->user()->branch_id !== $booking->fingerprint_branch_id;
 
-                $canEditBooking = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && (auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || $booking->created_at->diffInHours(now()) < 12);
+                $canEditBooking = !$isFingerprintOnlyViewer && !$isCrossBranchViewer
+                    && (auth()->user()->hasRole('Super Admin')
+                    || auth()->user()->hasRole('Co Admin')
+                    || ($booking->created_at->diffInHours(now()) < 12
+                        && (auth()->user()->branch_id || $booking->user_id === auth()->id())));
                 $canViewRequestButtons = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && (auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty());
+                $canAddPassenger = !$isFingerprintOnlyViewer && !$isCrossBranchViewer
+                    && (auth()->user()->hasRole('Super Admin')
+                    || auth()->user()->hasRole('Co Admin')
+                    || auth()->user()->branch_id
+                    || $booking->user_id === auth()->id());
                 $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
                 $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             @endphp
@@ -137,9 +146,11 @@
             @endforelse
             </div>
             
+            @if($canAddPassenger)
             <div class="flex justify-end mt-4">
                 <button @click="openPassengerModal()" class="px-4 py-2 border-2 border-slate-700 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">+ Add Passenger</button>
             </div>
+            @endif
         </div>
         @endif
 
