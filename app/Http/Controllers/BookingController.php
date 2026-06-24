@@ -595,7 +595,9 @@ class BookingController extends Controller
 
     public function show(Booking $booking)
     {
-        $this->ensureBranchAccess($booking);
+        $isCrossBranchViewer = auth()->user()->branch_id
+            && auth()->user()->branch_id !== $booking->booking_branch_id
+            && auth()->user()->branch_id !== $booking->fingerprint_branch_id;
 
         $booking->load([
             'customer',
@@ -697,7 +699,7 @@ class BookingController extends Controller
             'booking', 'ticketFares', 'packages', 'currentCurrencyRate',
             'totalAmountBdt', 'paidAmountBdt', 'balanceBdt',
             'originalTotal', 'originalTotalBdt', 'discountedTotalBdt',
-            'userBranchLocation', 'banks'
+            'userBranchLocation', 'banks', 'isCrossBranchViewer'
         ));
     }
 
@@ -1089,8 +1091,6 @@ class BookingController extends Controller
 
     public function print(Booking $booking)
     {
-        $this->ensureBranchAccess($booking);
-
         $booking = Booking::with([
             'customer',
             'bookingBranch',
@@ -1207,8 +1207,6 @@ class BookingController extends Controller
 
     public function storePayment(Request $request, Booking $booking)
     {
-        $this->ensureBranchAccess($booking);
-
         $validated = $request->validate([
             'amount' => 'nullable|numeric|min:0',
             'amount_bdt' => 'nullable|numeric|min:0',
@@ -1251,7 +1249,7 @@ class BookingController extends Controller
             }
 
             $paymentData = [
-                'branch_id' => $booking->booking_branch_id,
+                'branch_id' => auth()->user()->branch_id ?? $booking->booking_branch_id,
                 'user_id' => auth()->id(),
                 'payment_date' => now()->toDateString(),
                 'payment_method' => $validated['payment_method'] ?? 'cash',

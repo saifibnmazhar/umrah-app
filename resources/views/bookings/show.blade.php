@@ -23,8 +23,12 @@
                     && auth()->user()->branch_id === $booking->fingerprint_branch_id
                     && auth()->user()->branch_id !== $booking->booking_branch_id;
 
-                $canEditBooking = !$isFingerprintOnlyViewer && (auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || $booking->created_at->diffInHours(now()) < 12);
-                $canViewRequestButtons = !$isFingerprintOnlyViewer && (auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty());
+                $isCrossBranchViewer = auth()->user()->branch_id
+                    && auth()->user()->branch_id !== $booking->booking_branch_id
+                    && auth()->user()->branch_id !== $booking->fingerprint_branch_id;
+
+                $canEditBooking = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && (auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || $booking->created_at->diffInHours(now()) < 12);
+                $canViewRequestButtons = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && (auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty());
                 $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
                 $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             @endphp
@@ -106,7 +110,7 @@
 </div>
         </div>
 
-        @if(!$isFingerprintOnlyViewer)
+        @if(!$isFingerprintOnlyViewer && !$isCrossBranchViewer)
         {{-- Passengers Section --}}
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="flex justify-between items-center mb-4">
@@ -139,7 +143,7 @@
         </div>
         @endif
 
-        @if(!$isFingerprintOnlyViewer)
+        @if(!$isFingerprintOnlyViewer && !$isCrossBranchViewer)
         {{-- Documents Section --}}
         <div class="grid grid-cols-2 gap-5">
             <div class="bg-slate-50 rounded-lg p-5">
@@ -212,7 +216,7 @@
                 Request Ticket Refund
             </button>
             @endif
-            @if(!$isFingerprintOnlyViewer)
+            @if(!$isFingerprintOnlyViewer && !$isCrossBranchViewer)
             <button onclick="downloadAllDocs()" class="px-6 py-3 bg-green-600 text-white rounded-lg hover:bg-green-700 transition font-medium">
                 Download All Docs
             </button>
