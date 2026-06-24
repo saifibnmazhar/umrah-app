@@ -87,15 +87,12 @@ class PaymentController extends Controller
                     'payment_method' => $validated['payment_method'],
                     'amount' => $validated['amount'],
                     'bdt_amount' => $validated['bdt_amount'],
-                    'sender_bank_id' => $validated['sender_bank_id'] ?? null,
-                    'receiver_bank_id' => $validated['receiver_bank_id'] ?? null,
                     'branch_id' => $validated['branch_id'] ?? null,
                     'transaction_id' => $validated['transaction_id'] ?? null,
                     'currency_rate_id' => $validated['currency_rate_id'] ?? null,
                     'ticket_agent_id' => $validated['ticket_agent_id'] ?? null,
                     'visa_agent_id' => $validated['visa_agent_id'] ?? null,
                     'commission_agent_id' => $validated['commission_agent_id'] ?? null,
-                    'remarks' => $validated['remarks'] ?? null,
                 ]);
             });
 
@@ -167,15 +164,12 @@ class PaymentController extends Controller
                         'payment_method' => $validated['payment_method'],
                         'amount' => $validated['amount'],
                         'bdt_amount' => $validated['bdt_amount'],
-                        'sender_bank_id' => $validated['sender_bank_id'] ?? null,
-                        'receiver_bank_id' => $validated['receiver_bank_id'] ?? null,
                         'branch_id' => $validated['branch_id'] ?? null,
                         'transaction_id' => $validated['transaction_id'] ?? null,
                         'ticket_agent_id' => $validated['ticket_agent_id'] ?? null,
                         'visa_agent_id' => $validated['visa_agent_id'] ?? null,
                         'commission_agent_id' => $validated['commission_agent_id'] ?? null,
                         'currency_rate_id' => $validated['currency_rate_id'] ?? null,
-                        'remarks' => $validated['remarks'] ?? null,
                     ]);
                 }
             });
