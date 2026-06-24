@@ -331,6 +331,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             <div class="mb-4 flex items-center gap-4">
                 <div class="flex flex-1 flex-wrap items-center gap-4 min-w-0">
                     <input type="text" x-model="searchTerm" x-ref="passengerSearchInput" class="w-full md:w-48 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search Name, Mobile, Passport, Invoice, Ticket, PNR...">
+                    <input type="date" x-model="selectedBookingDateFrom" @change="onBookingDateFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <input type="date" x-model="selectedBookingDateTo" @change="onBookingDateToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                     <select x-model="selectedFingerprintStatus" @change="onFingerprintStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                         <option value="">Fingerprint Status</option>
                         @foreach($fingerprintStatuses as $status)
@@ -1199,7 +1201,8 @@ function bookingIndexApp() {
         clearPassengerFilters() {
             const url = new URL(window.location);
             ['fingerprint_status', 'visa_status', 'ticket_status',
-             'visa_agent_id', 'booking_branch_id', 'search', 'page'
+             'visa_agent_id', 'booking_branch_id', 'booking_date_from', 'booking_date_to',
+             'search', 'page'
             ].forEach(p => url.searchParams.delete(p));
             url.searchParams.set('tab', 'passenger');
             window.location.href = url.toString();

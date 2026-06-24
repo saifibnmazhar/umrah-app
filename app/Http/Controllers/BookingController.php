@@ -214,6 +214,12 @@ class BookingController extends Controller
             ->when($request->filled('booking_branch_id'), fn ($q) =>
                 $q->whereHas('booking', fn ($q) => $q->where('booking_branch_id', $request->input('booking_branch_id')))
             )
+            ->when($request->filled('booking_date_from'), fn ($q) =>
+                $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from')))
+            )
+            ->when($request->filled('booking_date_to'), fn ($q) =>
+                $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to')))
+            )
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->input('search');
                 $q->where(function ($query) use ($search) {
