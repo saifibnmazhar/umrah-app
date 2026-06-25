@@ -862,26 +862,62 @@ if ($route) {
                             </template>
                         </select>
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (BDT)</label>
+                            <input type="number" x-model="visaEditForm.sellingPriceBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (SAR)</label>
                         <input type="number" x-model="visaEditForm.sellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (BDT)</label>
+                            <input type="number" x-model="visaEditForm.agentCommissionBDT" min="0" @input="convertEditAgentCommissionToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
-                        <input type="number" x-model="visaEditForm.agentCommission" min="0" @input="calculateVisaEditFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" x-model="visaEditForm.agentCommission"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateVisaEditFinal()" placeholder="0">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (BDT)</label>
+                            <input type="number" x-model="visaEditForm.netVisaCostBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
                         <input type="number" x-model="visaEditForm.netVisaCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (BDT)</label>
+                            <input type="number" x-model="visaEditForm.additionalCostBDT" min="0" @input="convertEditAdditionalCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (SAR)</label>
-                        <input type="number" x-model="visaEditForm.additionalCost" min="0" @input="calculateVisaEditFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" x-model="visaEditForm.additionalCost"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateVisaEditFinal()" placeholder="0">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
                         <textarea x-model="visaEditForm.remarks" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter remarks" rows="2"></textarea>
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (BDT)</label>
+                            <input type="number" x-model="visaEditForm.finalCostBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (SAR)</label>
                         <input type="number" x-model="visaEditForm.finalCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
@@ -1520,7 +1556,12 @@ function bookingIndexApp() {
             remarks: '',
             finalCost: 0,
             statusLabel: '',
-            commissionAgents: []
+            commissionAgents: [],
+            sellingPriceBDT: 0,
+            agentCommissionBDT: 0,
+            netVisaCostBDT: 0,
+            additionalCostBDT: 0,
+            finalCostBDT: 0,
         },
 
         getCommissionAgents(agentId) {
@@ -1751,6 +1792,7 @@ function bookingIndexApp() {
             const data = this.passengersVisaData[index];
             const visa = data?.visa;
             if (!visa) return;
+            const rate = data?.rate || 0;
 
             this.visaEditForm.agentId = visa.agent_id || '';
             this.visaEditForm.visaNumber = visa.visa_number || '';
@@ -1767,6 +1809,11 @@ function bookingIndexApp() {
             this.visaEditForm.remarks = visa.remarks || '';
             this.visaEditForm.statusLabel = visa.status === 'issued' ? 'Issued' : 'Pending';
 
+            this.visaEditForm.sellingPriceBDT = rate > 0 ? this.visaEditForm.sellingPrice * rate : 0;
+            this.visaEditForm.agentCommissionBDT = rate > 0 ? this.visaEditForm.agentCommission * rate : 0;
+            this.visaEditForm.netVisaCostBDT = rate > 0 ? this.visaEditForm.netVisaCost * rate : 0;
+            this.visaEditForm.additionalCostBDT = rate > 0 ? this.visaEditForm.additionalCost * rate : 0;
+
             this.calculateVisaEditFinal();
             this.visaEditModalVisible = true;
         },
@@ -1780,6 +1827,22 @@ function bookingIndexApp() {
             this.visaEditForm.commissionAgents = this.getCommissionAgents(agentId);
             this.visaEditForm.commissionAgentId = '';
             this.visaEditForm.netVisaCost = this.getVisaAgentCost(agentId);
+            const rate = this.getCurrentRate();
+            this.visaEditForm.netVisaCostBDT = rate > 0 ? this.visaEditForm.netVisaCost * rate : 0;
+            this.calculateVisaEditFinal();
+        },
+
+        convertEditAgentCommissionToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaEditForm.agentCommissionBDT) || 0;
+            this.visaEditForm.agentCommission = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
+            this.calculateVisaEditFinal();
+        },
+
+        convertEditAdditionalCostToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaEditForm.additionalCostBDT) || 0;
+            this.visaEditForm.additionalCost = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
             this.calculateVisaEditFinal();
         },
 
@@ -1788,6 +1851,8 @@ function bookingIndexApp() {
             const net = parseFloat(this.visaEditForm.netVisaCost) || 0;
             const additional = parseFloat(this.visaEditForm.additionalCost) || 0;
             this.visaEditForm.finalCost = commission + net + additional;
+            const rate = this.getCurrentRate();
+            this.visaEditForm.finalCostBDT = rate > 0 ? this.visaEditForm.finalCost * rate : 0;
         },
 
         handleVisaEdit() {
