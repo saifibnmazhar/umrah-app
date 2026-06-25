@@ -292,7 +292,7 @@
             @endif
 
             <div class="mt-6 pt-4 border-t border-slate-200 flex gap-3">
-                <a href="{{ route('bookings.index', ['tab' => 'passenger']) }}" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Back to List</a>
+                <a href="{{ request('return_url', route('bookings.index', ['tab' => 'passenger'])) }}" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Back to List</a>
             </div>
         </div>
     </div>
