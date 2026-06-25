@@ -65,7 +65,7 @@
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->amount, 2) }} SAR</td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->bdt_amount, 2) }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->senderBank->name ?? '-' }}</td>
-                            <td class="px-3 py-2 text-slate-600">{{ $payment->receiverBank->name ?? '-' }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->receiver_bank ?? '-' }}</td>
                             <td class="px-3 py-2">
                                 <div class="flex gap-2">
                                     <a href="{{ route('payments.show', $payment->id) }}" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded">View</a>
