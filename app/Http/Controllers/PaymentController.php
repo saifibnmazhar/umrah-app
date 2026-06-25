@@ -52,6 +52,10 @@ class PaymentController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->input('branch_id') === 'other') {
+            $request->merge(['branch_id' => null]);
+        }
+
         $validated = $request->validate([
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:cash,bank',
@@ -133,6 +137,10 @@ class PaymentController extends Controller
 
     public function update(Request $request, Payment $payment)
     {
+        if ($request->input('branch_id') === 'other') {
+            $request->merge(['branch_id' => null]);
+        }
+
         $validated = $request->validate([
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:cash,bank',
