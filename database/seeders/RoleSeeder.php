@@ -21,6 +21,7 @@ class RoleSeeder extends Seeder
             ['name' => 'Fingerprint Staff'],
             ['name' => 'Branch Manager'],
             ['name' => 'Branch Staff'],
+            ['name' => 'Delivery Staff'],
         ];
 
         foreach ($roles as $role) {
