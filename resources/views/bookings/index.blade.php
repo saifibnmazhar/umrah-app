@@ -212,7 +212,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 <div class="w-full mx-auto" x-data="bookingIndexApp()">
     <div class="flex justify-between items-center mb-6">
         @php
-            $canCreateBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff', 'Auditor', 'Visa Admin', 'Visa Staff', 'Ticket Admin', 'Ticket Staff', 'Fingerprint Admin', 'Fingerprint Staff'])->isNotEmpty();
+            $canCreateBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff', 'Auditor', 'Visa Admin', 'Visa Staff', 'Ticket Admin', 'Ticket Staff', 'Fingerprint Admin', 'Fingerprint Staff', 'Delivery Staff'])->isNotEmpty();
             $canViewFinancialColumns = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
             $canViewVisaColumns = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
             $canViewTicketFareColumn = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
