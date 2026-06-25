@@ -100,6 +100,7 @@ class VisaSubmissionController extends Controller
             'visa_agent_id' => 'required|exists:visa_agents,id',
             'commission_agent_id' => 'nullable|exists:commission_agents,id',
             'agent_commission' => 'nullable|numeric|min:0',
+            'net_visa_cost' => 'nullable|numeric|min:0',
             'additional_cost' => 'nullable|numeric|min:0',
             'visa_number' => 'nullable|string|max:255',
             'remarks' => 'nullable|string|max:1000',
@@ -113,7 +114,7 @@ class VisaSubmissionController extends Controller
 
         $agentCommission = (float) ($validated['agent_commission'] ?? 0);
         $additionalCost = (float) ($validated['additional_cost'] ?? 0);
-        $netVisaCost = (float) ($visaSubmission->net_visa_cost ?? 0);
+        $netVisaCost = (float) ($validated['net_visa_cost'] ?? $visaSubmission->net_visa_cost ?? 0);
         $finalCost = $netVisaCost + $agentCommission + $additionalCost;
 
         $visaSubmission->update([
@@ -121,6 +122,7 @@ class VisaSubmissionController extends Controller
             'commission_agent_id' => $validated['commission_agent_id'] ?? null,
             'agent_commission' => $agentCommission ?: null,
             'additional_cost' => $additionalCost ?: null,
+            'net_visa_cost' => $netVisaCost ?: null,
             'visa_number' => $validated['visa_number'] ?? $visaSubmission->visa_number,
             'remarks' => $validated['remarks'] ?? null,
             'final_cost' => $finalCost ?: null,
