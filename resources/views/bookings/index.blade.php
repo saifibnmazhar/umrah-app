@@ -787,14 +787,35 @@ if ($route) {
                         <label class="block text-sm font-medium text-slate-700 mb-1">Visa Number *</label>
                         <input type="text" x-model="visaIssueForm.visaNumber" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter visa number">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (BDT)</label>
+                            <input type="number" x-model="visaIssueForm.sellingPriceBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (SAR)</label>
                         <input type="number" x-model="visaIssueForm.sellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (BDT)</label>
+                            <input type="number" x-model="visaIssueForm.additionalCostBDT" min="0" @input="convertAdditionalCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (SAR)</label>
-                        <input type="number" x-model="visaIssueForm.additionalCost" min="0" @input="calculateVisaIssueFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" x-model="visaIssueForm.additionalCost"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateVisaIssueFinal()" placeholder="0">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (BDT)</label>
+                            <input type="number" x-model="visaIssueForm.finalCostBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (SAR)</label>
                         <input type="number" x-model="visaIssueForm.finalCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
@@ -1482,7 +1503,10 @@ function bookingIndexApp() {
             sellingPrice: 0,
             additionalCost: 0,
             finalCost: 0,
-            remarks: ''
+            remarks: '',
+            sellingPriceBDT: 0,
+            additionalCostBDT: 0,
+            finalCostBDT: 0,
         },
 
         visaEditForm: {
@@ -1642,6 +1666,7 @@ function bookingIndexApp() {
             this.editingVisaIndex = index;
             const data = this.passengersVisaData[index];
             const visa = data?.visa;
+            const rate = data?.rate || 0;
 
             const baseCost = (visa?.final_cost || 0) - (visa?.additional_cost || 0);
             this._visaIssueBaseCost = baseCost;
@@ -1652,6 +1677,9 @@ function bookingIndexApp() {
             this.visaIssueForm.finalCost = visa?.final_cost || 0;
             this.visaIssueForm.remarks = visa?.remarks || '';
 
+            this.visaIssueForm.sellingPriceBDT = rate > 0 ? this.visaIssueForm.sellingPrice * rate : 0;
+            this.visaIssueForm.additionalCostBDT = rate > 0 ? this.visaIssueForm.additionalCost * rate : 0;
+
             this.calculateVisaIssueFinal();
             this.visaIssueModalVisible = true;
         },
@@ -1661,9 +1689,18 @@ function bookingIndexApp() {
             this.visaIssueModalVisible = false;
         },
 
+        convertAdditionalCostToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaIssueForm.additionalCostBDT) || 0;
+            this.visaIssueForm.additionalCost = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
+            this.calculateVisaIssueFinal();
+        },
+
         calculateVisaIssueFinal() {
             const additional = parseFloat(this.visaIssueForm.additionalCost) || 0;
             this.visaIssueForm.finalCost = (this._visaIssueBaseCost || 0) + additional;
+            const rate = this.getCurrentRate();
+            this.visaIssueForm.finalCostBDT = rate > 0 ? this.visaIssueForm.finalCost * rate : 0;
         },
 
         handleVisaIssue() {
