@@ -291,9 +291,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Branch</th>
                             <th class="px-3 py-2 text-left font-medium">District</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Paid</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Total</th>
+                            <th class="px-3 py-2 text-left font-medium">Paid</th>
+                            <th class="px-3 py-2 text-left font-medium">Due</th>
                             @if($canViewActionColumn)<th class="px-3 py-2 text-left font-medium">Actions</th>@endif
                         </tr>
                     </thead>
@@ -324,9 +324,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprintBranch->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->total_amount ?? 0, 2, $bookingCurrencyRate)</td>@endif
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->paid_amount ?? 0, 2, $bookingCurrencyRate)</td>@endif
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->balance ?? 0, 2, $bookingCurrencyRate)</td>@endif
+                            <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->total_amount ?? 0, 2, $bookingCurrencyRate)</td>
+                            <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->paid_amount ?? 0, 2, $bookingCurrencyRate)</td>
+                            <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->balance ?? 0, 2, $bookingCurrencyRate)</td>
                             @if($canViewActionColumn)
                             <td class="px-3 py-2">
                                 <a href="{{ route('bookings.show', $booking->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
@@ -342,7 +342,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="{{ 10 + ($canViewFinancialColumns ? 3 : 0) + ($canViewActionColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
+                            <td colspan="{{ 13 + ($canViewActionColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -492,7 +492,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Package Value</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Due</th>
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
@@ -567,7 +567,7 @@ if ($route) {
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
-    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice?->balance)@currency($passenger->booking->invoice->balance, 2, $passBookingRate)@else—@endif @endif</td>@endif
+    <td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice?->balance)@currency($passenger->booking->invoice->balance, 2, $passBookingRate)@else—@endif @endif</td>
     @if($canViewVisaColumns)
     <td class="px-3 py-2">
         <div class="flex items-center gap-1 flex-wrap">
@@ -680,7 +680,7 @@ if ($route) {
 </tr>
 @empty
 <tr>
-    <td colspan="{{ 16 + ($canViewFinancialColumns ? 4 : 0) + ($canViewVisaColumns ? 2 : 0) + ($canViewTicketFareColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="{{ 17 + ($canViewFinancialColumns ? 3 : 0) + ($canViewVisaColumns ? 2 : 0) + ($canViewTicketFareColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 @endforelse
                     </tbody>
                 </table>
@@ -2561,14 +2561,12 @@ function updateFingerprintLocation(bookingId, location, select) {
             if (data.invoice) {
                 const row = selectEl.closest('tr');
                 const cells = row.querySelectorAll('td');
-                @if($canViewFinancialColumns)
                 if (cells.length >= 12) {
                     const rate = parseFloat(selectEl.dataset.rate) || 0;
                     cells[9].textContent = Alpine.store('currency').format(data.invoice.total_amount, 2, rate);
                     cells[10].textContent = Alpine.store('currency').format(data.invoice.paid_amount, 2, rate);
                     cells[11].textContent = Alpine.store('currency').format(data.invoice.balance, 2, rate);
                 }
-                @endif
             }
         } else {
             alert('Failed to update fingerprint location');
