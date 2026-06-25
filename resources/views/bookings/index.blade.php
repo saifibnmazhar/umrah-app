@@ -28,8 +28,6 @@ $passengersVisaData = ($passengers ?? collect())->map(function($p) {
     ];
 })->values();
 
-$ticketAgents = \App\Models\TicketAgent::orderBy('name')->get();
-
 $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])->get()->map(fn($r) => [
     'id' => $r->id,
     'display' => match($r->route_type?->value) {
@@ -417,6 +415,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @endforeach
                         </select>
                     </div>
+                    @if($canFilterByVisaAgent)
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Visa Agent</label>
                         <select x-model="selectedVisaAgentId" @change="onVisaAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
@@ -426,6 +425,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @endforeach
                         </select>
                     </div>
+                    @endif
+                    @if($canFilterByTicketAgent)
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Ticket Agent</label>
                         <select x-model="selectedTicketAgentId" @change="onTicketAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
@@ -435,6 +436,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @endforeach
                         </select>
                     </div>
+                    @endif
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Current Status</label>
                         <select x-model="selectedPassengerStatus" @change="onPassengerStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">

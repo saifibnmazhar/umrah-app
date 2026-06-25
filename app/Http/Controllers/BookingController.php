@@ -29,6 +29,7 @@ use App\Services\CurrencyRateService;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Models\IssuedTicket;
+use App\Models\TicketAgent;
 use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
@@ -220,7 +221,7 @@ class BookingController extends Controller
             ->when($request->filled('ticket_status'), fn ($q) =>
                 $q->where('ticket_status', $request->input('ticket_status'))
             )
-            ->when($request->filled('visa_agent_id'), fn ($q) =>
+            ->when($request->filled('visa_agent_id') && $canFilterByVisaAgent, fn ($q) =>
                 $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
             )
             ->when($request->filled('booking_branch_id'), fn ($q) =>
@@ -250,7 +251,7 @@ class BookingController extends Controller
             ->when($request->filled('route_id'), fn ($q) =>
                 $q->whereHas('ticketFare', fn ($q) => $q->where('route_id', $request->input('route_id')))
             )
-            ->when($request->filled('ticket_agent_id'), fn ($q) =>
+            ->when($request->filled('ticket_agent_id') && $canFilterByTicketAgent, fn ($q) =>
                 $q->whereHas('latestIssuedTicket.ticketAgent', fn ($q) =>
                     $q->where('id', $request->input('ticket_agent_id'))
                 )
@@ -297,18 +298,31 @@ class BookingController extends Controller
 
         $passengerStatuses = PassengerStatus::all();
 
-        $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
-            ->orderBy('name')
-            ->get()
-            ->map(fn($a) => [
-                'id' => $a->id,
-                'name' => $a->name,
-                'cost' => (float)($a->visaAgentCost?->visa_agent_cost ?? 0),
-                'commission_agents' => $a->commissionAgents->map(fn($ca) => [
-                    'id' => $ca->id,
-                    'name' => $ca->name,
-                ]),
-            ]);
+        $canFilterByVisaAgent = auth()->user()->roles->pluck('name')
+            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
+        $canFilterByTicketAgent = auth()->user()->roles->pluck('name')
+            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
+
+        $visaAgents = collect();
+        if ($canFilterByVisaAgent) {
+            $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
+                ->orderBy('name')
+                ->get()
+                ->map(fn($a) => [
+                    'id' => $a->id,
+                    'name' => $a->name,
+                    'cost' => (float)($a->visaAgentCost?->visa_agent_cost ?? 0),
+                    'commission_agents' => $a->commissionAgents->map(fn($ca) => [
+                        'id' => $ca->id,
+                        'name' => $ca->name,
+                    ]),
+                ]);
+        }
+
+        $ticketAgents = collect();
+        if ($canFilterByTicketAgent) {
+            $ticketAgents = TicketAgent::orderBy('name')->get();
+        }
 
         $canEditVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
 
@@ -320,7 +334,8 @@ class BookingController extends Controller
         $fingerprintLocations = FingerprintLocation::cases();
 
         return view('bookings.index', compact(
-            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa',
+            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'ticketAgents', 'canEditVisa',
+            'canFilterByVisaAgent', 'canFilterByTicketAgent',
             'currencyRateService', 'bookingBranches', 'selectedBranchId', 'totalBookingCount',
             'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
