@@ -361,7 +361,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                 <div class="flex flex-1 flex-wrap items-center gap-4 min-w-0">
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Search</label>
-                        <input type="text" x-model.debounce.350ms="searchTerm" x-ref="passengerSearchInput" class="w-full md:w-48 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search Name, Mobile, Passport, Invoice, Ticket, PNR...">
+                        <input type="text" x-ref="passengerSearchInput" @input.debounce.500ms="searchTerm = $refs.passengerSearchInput.value" class="w-full md:w-48 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search Name, Mobile, Passport, Invoice, Ticket, PNR...">
                     </div>
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Booking Date From</label>
@@ -1158,6 +1158,7 @@ function bookingIndexApp() {
     return {
         activeTab: '{{ $tab ?? 'booking' }}',
         searchTerm: new URL(window.location).searchParams.get('search') || '',
+        searchTimeout: null,
         selectedBranchId: '{{ $selectedBranchId }}',
         totalBookingCount: {{ $totalBookingCount }},
         totalBookingPassengerCount: {{ $totalBookingPassengerCount }},
@@ -1190,23 +1191,29 @@ function bookingIndexApp() {
             this.$nextTick(() => {
                 const ref = this.activeTab === 'passenger' ? 'passengerSearchInput' : 'searchInput';
                 if (this.$refs[ref]) {
+                    if (!this.$refs[ref].value && this.searchTerm) {
+                        this.$refs[ref].value = this.searchTerm;
+                    }
                     this.$refs[ref].focus();
-                    if (this.searchTerm) {
-                        const len = this.searchTerm.length;
+                    if (this.$refs[ref].value) {
+                        const len = this.$refs[ref].value.length;
                         this.$refs[ref].setSelectionRange(len, len);
                     }
                 }
             });
 
             this.$watch('searchTerm', (val) => {
-                const url = new URL(window.location);
-                if (val) {
-                    url.searchParams.set('search', val);
-                } else {
-                    url.searchParams.delete('search');
-                }
-                url.searchParams.delete('page');
-                window.location.href = url.toString();
+                if (this.searchTimeout) clearTimeout(this.searchTimeout);
+                this.searchTimeout = setTimeout(() => {
+                    const url = new URL(window.location);
+                    if (val) {
+                        url.searchParams.set('search', val);
+                    } else {
+                        url.searchParams.delete('search');
+                    }
+                    url.searchParams.delete('page');
+                    window.location.href = url.toString();
+                }, 500);
             });
 
             const url = new URL(window.location);
