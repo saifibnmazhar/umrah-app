@@ -9,15 +9,18 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            $table->string('receiver_bank')->nullable()->after('sender_bank_id');
-            $table->string('payment_referral')->nullable()->after('branch_id');
+            $table->dropForeign(['receiver_bank_id']);
+            $table->dropColumn('receiver_bank_id');
         });
     }
 
     public function down(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            $table->dropColumn(['receiver_bank', 'payment_referral']);
+            $table->foreignId('receiver_bank_id')
+                ->nullable()
+                ->constrained('banks')
+                ->nullOnDelete();
         });
     }
 };

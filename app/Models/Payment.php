@@ -73,11 +73,6 @@ class Payment extends Model
         return $this->belongsTo(Bank::class, 'sender_bank_id');
     }
 
-    public function receiverBank(): BelongsTo
-    {
-        return $this->belongsTo(Bank::class, 'sender_bank_id');
-    }
-
     public function ticketAgent(): BelongsTo
     {
         return $this->belongsTo(TicketAgent::class);

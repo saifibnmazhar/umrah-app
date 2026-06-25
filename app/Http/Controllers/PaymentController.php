@@ -20,7 +20,7 @@ class PaymentController extends Controller
 {
     public function index()
     {
-        $payments = Payment::with(['user', 'bank', 'senderBank', 'receiverBank'])
+        $payments = Payment::with(['user', 'bank', 'senderBank'])
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -108,7 +108,7 @@ class PaymentController extends Controller
 
     public function show(Payment $payment)
     {
-        $payment->load(['user', 'currencyRate', 'bank', 'senderBank', 'receiverBank', 'ticketAgent', 'visaAgent', 'commissionAgent', 'branch']);
+        $payment->load(['user', 'currencyRate', 'bank', 'senderBank', 'ticketAgent', 'visaAgent', 'commissionAgent', 'branch']);
         $rate = $payment->currencyRate?->rate ?? 0;
         return view('payments.show', compact('payment', 'rate'));
     }
