@@ -100,7 +100,7 @@
                 @endif
                 <div>
                     <p class="text-sm text-slate-500">Referral Branch</p>
-                    <p class="font-medium text-slate-800">{{ $payment->branch->name ?? '-' }}</p>
+                    <p class="font-medium text-slate-800">{{ $payment->branch->name ?? $payment->payment_referral ?? '-' }}</p>
                 </div>
                 @if($payment->ticketAgent)
                     <div>

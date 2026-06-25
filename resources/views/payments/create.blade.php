@@ -18,6 +18,7 @@
             amount_bdt: {{ old('bdt_amount', 0) }},
             exchangeRate: {{ $currentCurrencyRate?->rate ?? 0 }},
             transactionType: '{{ old('transaction_type_id') }}',
+            referralBranch: '{{ old('branch_id') }}',
 
             bankModalOpen: false,
             bankSaving: false,
@@ -196,8 +197,8 @@
         {{-- 4. Referral Branch --}}
         <div>
             <label for="branch_id" class="block text-sm font-semibold text-slate-700 mb-1">Referral Branch</label>
-            <select name="branch_id" id="branch_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('branch_id') border-red-500 @enderror">
-                <option value="">Select Branch</option>
+            <select name="branch_id" id="branch_id" x-model="referralBranch" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white @error('branch_id') border-red-500 @enderror">
+                <option value="">Other</option>
                 @foreach($branches as $branch)
                     <option value="{{ $branch->id }}" {{ old('branch_id') == $branch->id ? 'selected' : '' }}>{{ $branch->name }}</option>
                 @endforeach
@@ -205,6 +206,14 @@
             @error('branch_id')
                 <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
             @enderror
+
+            <div x-show="referralBranch === ''" x-cloak class="mt-3">
+                <label for="payment_referral" class="block text-sm font-medium text-slate-700 mb-1">Payment Referral</label>
+                <input type="text" name="payment_referral" id="payment_referral" value="{{ old('payment_referral') }}" maxlength="255" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none @error('payment_referral') border-red-500 @enderror" placeholder="Enter referral name">
+                @error('payment_referral')
+                    <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
+                @enderror
+            </div>
         </div>
 
         {{-- 5. Transaction Type --}}

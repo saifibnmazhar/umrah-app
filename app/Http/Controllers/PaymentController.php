@@ -67,6 +67,7 @@ class PaymentController extends Controller
             'transaction_id' => 'nullable|string|max:255',
             'transaction_type_id' => 'required|exists:transaction_types,id',
             'remarks' => 'nullable|string|max:255',
+            'payment_referral' => 'nullable|string|max:255',
         ]);
 
         $userId = auth()->id() ?? User::first()?->id;
@@ -147,6 +148,7 @@ class PaymentController extends Controller
             'transaction_id' => 'nullable|string|max:255',
             'transaction_type_id' => 'nullable|exists:transaction_types,id',
             'remarks' => 'nullable|string|max:255',
+            'payment_referral' => 'nullable|string|max:255',
         ]);
 
         $currentRate = CurrencyRate::orderBy('created_at', 'desc')->first();

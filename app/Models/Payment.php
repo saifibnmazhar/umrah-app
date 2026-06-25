@@ -28,6 +28,7 @@ class Payment extends Model
         'bdt_amount',
         'notes',
         'remarks',
+        'payment_referral',
     ];
 
     protected $casts = [
