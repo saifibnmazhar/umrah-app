@@ -95,7 +95,7 @@
                     </div>
                     <div>
                         <p class="text-sm text-slate-500">Receiver Bank</p>
-                        <p class="font-medium text-slate-800">{{ $payment->receiverBank->name ?? '-' }}</p>
+                        <p class="font-medium text-slate-800">{{ $payment->receiver_bank ?? '-' }}</p>
                     </div>
                 @endif
                 <div>
