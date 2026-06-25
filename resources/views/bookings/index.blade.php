@@ -717,18 +717,48 @@ if ($route) {
                             </template>
                         </select>
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (BDT)</label>
+                            <input type="number" x-model="visaSubmitForm.agentCommissionBDT" min="0" @input="convertAgentCommissionToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
-                        <input type="number" x-model="visaSubmitForm.agentCommission" min="0" @input="calculateVisaCost()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" x-model="visaSubmitForm.agentCommission" min="0"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateVisaCost()" placeholder="0">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (BDT)</label>
+                            <input type="number" x-model="visaSubmitForm.netVisaCostBDT" min="0" @input="convertNetVisaCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
-                        <input type="number" x-model="visaSubmitForm.netVisaCost" @input="calculateVisaCost()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" x-model="visaSubmitForm.netVisaCost"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateVisaCost()" placeholder="0">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (BDT)</label>
+                            <input type="number" x-model="visaSubmitForm.sellingPriceBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (SAR)</label>
                         <input type="number" x-model="visaSubmitForm.sellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (BDT)</label>
+                            <input type="number" x-model="visaSubmitForm.finalCostBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (SAR)</label>
                         <input type="number" x-model="visaSubmitForm.finalCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
@@ -1439,7 +1469,11 @@ function bookingIndexApp() {
             agentCommission: 0,
             netVisaCost: 0,
             finalCost: 0,
-            commissionAgents: []
+            commissionAgents: [],
+            agentCommissionBDT: 0,
+            netVisaCostBDT: 0,
+            sellingPriceBDT: 0,
+            finalCostBDT: 0,
         },
 
         visaIssueForm: {
@@ -1478,10 +1512,15 @@ function bookingIndexApp() {
         openVisaSubmitModal(index) {
             this.editingVisaIndex = index;
             const data = this.passengersVisaData[index];
+            const rate = data?.rate || 0;
 
             this.visaSubmitForm.sellingPrice = data?.visa?.selling_price || 0;
             this.visaSubmitForm.agentCommission = data?.visa?.agent_commission || 0;
             this.visaSubmitForm.netVisaCost = data?.visa?.net_visa_cost || 0;
+
+            this.visaSubmitForm.agentCommissionBDT = rate > 0 ? this.visaSubmitForm.agentCommission * rate : 0;
+            this.visaSubmitForm.netVisaCostBDT = rate > 0 ? this.visaSubmitForm.netVisaCost * rate : 0;
+            this.visaSubmitForm.sellingPriceBDT = rate > 0 ? this.visaSubmitForm.sellingPrice * rate : 0;
 
             this.visaSubmitForm.agentId = '';
             this.visaSubmitForm.commissionAgentId = '';
@@ -1500,6 +1539,27 @@ function bookingIndexApp() {
             this.visaSubmitForm.commissionAgents = this.getCommissionAgents(agentId);
             this.visaSubmitForm.commissionAgentId = '';
             this.visaSubmitForm.netVisaCost = this.getVisaAgentCost(agentId);
+            const rate = this.getCurrentRate();
+            this.visaSubmitForm.netVisaCostBDT = rate > 0 ? this.visaSubmitForm.netVisaCost * rate : 0;
+            this.calculateVisaCost();
+        },
+
+        getCurrentRate() {
+            const data = this.passengersVisaData[this.editingVisaIndex];
+            return data?.rate || 0;
+        },
+
+        convertAgentCommissionToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaSubmitForm.agentCommissionBDT) || 0;
+            this.visaSubmitForm.agentCommission = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
+            this.calculateVisaCost();
+        },
+
+        convertNetVisaCostToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaSubmitForm.netVisaCostBDT) || 0;
+            this.visaSubmitForm.netVisaCost = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
             this.calculateVisaCost();
         },
 
@@ -1507,6 +1567,8 @@ function bookingIndexApp() {
             const commission = parseFloat(this.visaSubmitForm.agentCommission) || 0;
             const net = parseFloat(this.visaSubmitForm.netVisaCost) || 0;
             this.visaSubmitForm.finalCost = commission + net;
+            const rate = this.getCurrentRate();
+            this.visaSubmitForm.finalCostBDT = rate > 0 ? this.visaSubmitForm.finalCost * rate : 0;
         },
 
         handleVisaSubmit() {
