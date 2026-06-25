@@ -185,10 +185,10 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:Super Admin,Fingerprint Staff');
     Route::put('/api/fingerprints/detail/{fingerprintDetail}/status', [FingerprintController::class, 'updateStatus'])
         ->name('api.fingerprints.update-status')
-        ->middleware('role:Fingerprint Admin,Fingerprint Staff');
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
     Route::post('/api/fingerprints/detail/{fingerprintDetail}/hold', [FingerprintController::class, 'hold'])
         ->name('api.fingerprints.hold')
-        ->middleware('role:Fingerprint Admin,Fingerprint Staff');
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
 
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings')->middleware('role:Super Admin,Co Admin');
     Route::put('/settings/flight-date-gap', [SettingsController::class, 'updateFlightDateGap'])->name('settings.flight-date-gap.update')->middleware('role:Super Admin,Co Admin');
