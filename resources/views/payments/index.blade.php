@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Payments')
 @section('content')
-<div class="max-w-5xl mx-auto">
+<div class="max-w-7xl mx-auto">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Payments</h1>
         @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin'))
@@ -37,7 +37,7 @@
                         <th class="px-3 py-2 text-left font-medium">Created At</th>
                         <th class="px-3 py-2 text-left font-medium">Method</th>
                         <th class="px-3 py-2 text-right font-medium">Amount (SAR)</th>
-                        <th class="px-3 py-2 text-right font-medium">BDT Amount</th>
+                        <th class="px-3 py-2 text-right font-medium">Amount (BDT)</th>
                         <th class="px-3 py-2 text-left font-medium">Sender Bank</th>
                         <th class="px-3 py-2 text-left font-medium">Receiver Bank</th>
                         <th class="px-3 py-2 text-left font-medium">Actions</th>
@@ -62,7 +62,7 @@
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-blue-100 text-blue-700">Bank</span>
                                 @endif
                             </td>
-                            <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->amount, 2) }} SAR</td>
+                            <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->amount, 2) }}</td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">{{ number_format($payment->bdt_amount, 2) }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->senderBank->name ?? '-' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->receiver_bank ?? '-' }}</td>
