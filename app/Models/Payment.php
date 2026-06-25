@@ -17,7 +17,7 @@ class Payment extends Model
         'currency_rate_id',
         'bank_id',
         'sender_bank_id',
-        'receiver_bank_id',
+        'receiver_bank',
         'ticket_agent_id',
         'visa_agent_id',
         'commission_agent_id',
@@ -28,6 +28,7 @@ class Payment extends Model
         'bdt_amount',
         'notes',
         'remarks',
+        'payment_referral',
     ];
 
     protected $casts = [
@@ -70,11 +71,6 @@ class Payment extends Model
     public function senderBank(): BelongsTo
     {
         return $this->belongsTo(Bank::class, 'sender_bank_id');
-    }
-
-    public function receiverBank(): BelongsTo
-    {
-        return $this->belongsTo(Bank::class, 'receiver_bank_id');
     }
 
     public function ticketAgent(): BelongsTo

@@ -20,8 +20,7 @@ class PaymentController extends Controller
 {
     public function index()
     {
-        $payments = Payment::with(['user', 'bank', 'senderBank', 'receiverBank'])
-            ->orderBy('payment_date', 'desc')
+        $payments = Payment::with(['user', 'bank', 'senderBank'])
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
@@ -53,13 +52,17 @@ class PaymentController extends Controller
 
     public function store(Request $request)
     {
+        if ($request->input('branch_id') === 'other') {
+            $request->merge(['branch_id' => null]);
+        }
+
         $validated = $request->validate([
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:cash,bank',
             'amount' => 'required|numeric|min:0',
             'bdt_amount' => 'required|numeric|min:0',
             'sender_bank_id' => 'nullable|exists:banks,id',
-            'receiver_bank_id' => 'nullable|exists:banks,id',
+            'receiver_bank' => 'nullable|string|max:255',
             'branch_id' => 'nullable|exists:branches,id',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'visa_agent_id' => 'nullable|exists:visa_agents,id',
@@ -67,6 +70,7 @@ class PaymentController extends Controller
             'transaction_id' => 'nullable|string|max:255',
             'transaction_type_id' => 'required|exists:transaction_types,id',
             'remarks' => 'nullable|string|max:255',
+            'payment_referral' => 'nullable|string|max:255',
         ]);
 
         $userId = auth()->id() ?? User::first()?->id;
@@ -104,7 +108,7 @@ class PaymentController extends Controller
 
     public function show(Payment $payment)
     {
-        $payment->load(['user', 'currencyRate', 'bank', 'senderBank', 'receiverBank', 'ticketAgent', 'visaAgent', 'commissionAgent', 'branch']);
+        $payment->load(['user', 'currencyRate', 'bank', 'senderBank', 'ticketAgent', 'visaAgent', 'commissionAgent', 'branch']);
         $rate = $payment->currencyRate?->rate ?? 0;
         return view('payments.show', compact('payment', 'rate'));
     }
@@ -133,13 +137,17 @@ class PaymentController extends Controller
 
     public function update(Request $request, Payment $payment)
     {
+        if ($request->input('branch_id') === 'other') {
+            $request->merge(['branch_id' => null]);
+        }
+
         $validated = $request->validate([
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:cash,bank',
             'amount' => 'required|numeric|min:0',
             'bdt_amount' => 'required|numeric|min:0',
             'sender_bank_id' => 'nullable|exists:banks,id',
-            'receiver_bank_id' => 'nullable|exists:banks,id',
+            'receiver_bank' => 'nullable|string|max:255',
             'branch_id' => 'nullable|exists:branches,id',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'visa_agent_id' => 'nullable|exists:visa_agents,id',
@@ -147,6 +155,7 @@ class PaymentController extends Controller
             'transaction_id' => 'nullable|string|max:255',
             'transaction_type_id' => 'nullable|exists:transaction_types,id',
             'remarks' => 'nullable|string|max:255',
+            'payment_referral' => 'nullable|string|max:255',
         ]);
 
         $currentRate = CurrencyRate::orderBy('created_at', 'desc')->first();
