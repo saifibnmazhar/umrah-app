@@ -361,7 +361,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                 <div class="flex flex-1 flex-wrap items-center gap-4 min-w-0">
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Search</label>
-                        <input type="text" x-ref="passengerSearchInput" @input.debounce.500ms="searchTerm = $refs.passengerSearchInput.value" class="w-full md:w-48 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search Name, Mobile, Passport, Invoice, Ticket, PNR...">
+                        <input type="text" x-model="searchTerm" x-ref="passengerSearchInput" class="w-full md:w-48 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition" placeholder="Search Name, Mobile, Passport, Invoice, Ticket, PNR...">
                     </div>
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Booking Date From</label>
@@ -1181,11 +1181,34 @@ function bookingIndexApp() {
         totalPassengerCount: {{ $totalPassengerCount }},
 
         init() {
+            const raw = sessionStorage.getItem('searchInputBuffer');
+            if (raw) {
+                sessionStorage.removeItem('searchInputBuffer');
+                try {
+                    const { value: buffered, time } = JSON.parse(raw);
+                    const urlSearch = new URL(window.location).searchParams.get('search') || '';
+                    if (buffered !== urlSearch && Date.now() - time < 3000) {
+                        this.searchTerm = buffered;
+                    }
+                } catch (e) {}
+            }
+
             if (this.activeTab === 'passenger') {
                 document.body.style.overflow = 'hidden';
             }
             this.$watch('activeTab', (newVal) => {
                 document.body.style.overflow = newVal === 'passenger' ? 'hidden' : '';
+            });
+
+            window.addEventListener('beforeunload', () => {
+                const ref = this.activeTab === 'passenger' ? 'passengerSearchInput' : 'searchInput';
+                const input = this.$refs[ref];
+                if (input) {
+                    sessionStorage.setItem('searchInputBuffer', JSON.stringify({
+                        value: input.value,
+                        time: Date.now()
+                    }));
+                }
             });
 
             this.$nextTick(() => {
@@ -1212,8 +1235,17 @@ function bookingIndexApp() {
                         url.searchParams.delete('search');
                     }
                     url.searchParams.delete('page');
+
+                    const input = this.$refs[this.activeTab === 'passenger' ? 'passengerSearchInput' : 'searchInput'];
+                    if (input) {
+                        sessionStorage.setItem('searchInputBuffer', JSON.stringify({
+                            value: input.value,
+                            time: Date.now()
+                        }));
+                    }
+
                     window.location.href = url.toString();
-                }, 500);
+                }, 1500);
             });
 
             const url = new URL(window.location);
