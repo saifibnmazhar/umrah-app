@@ -162,6 +162,7 @@
                     <h3 class="text-sm font-medium text-slate-500">Customer Documents</h3>
                     <div class="flex gap-2">
                         <input type="file" id="customerDocInput" class="hidden" accept=".pdf,image/*" multiple onchange="handleCustomerDocSelect(event)">
+                        <p class="text-xs text-slate-400 mr-auto self-end">Max 5 MB per file, 20 MB total</p>
                         <button onclick="document.getElementById('customerDocInput').click()" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">Upload</button>
                         <button onclick="downloadAllCustomerDocs()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
                     </div>

@@ -384,6 +384,7 @@
                                 <span>click to upload</span>
                             </div>
                         </div>
+                        <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                         <div id="customer_docs_list" class="mt-2 space-y-1"></div>
                     </div>
                     <div x-show="newCustomer.iqama_type === 'referral'">
@@ -405,6 +406,7 @@
                                 <span id="ref_iqama_doc_filename">click to upload</span>
                             </div>
                         </div>
+                        <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                     </div>
                 </div>
                 <div class="flex gap-3 pt-4 border-t border-slate-200">
