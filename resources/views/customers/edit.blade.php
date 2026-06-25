@@ -103,6 +103,7 @@
                             <span>click to upload</span>
                         </div>
                     </div>
+                    <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                     <div id="customer_docs_list" class="mt-2 space-y-1"></div>
                 </div>
                 <div x-show="form.iqama_type === 'referral'">
@@ -134,6 +135,7 @@
                             <span id="ref_iqama_doc_filename">@if($customer->ref_iqama_doc) {{ $customer->ref_iqama_doc }} @else click to upload @endif</span>
                         </div>
                     </div>
+                    <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                     @error('ref_iqama_doc')
                         <p class="text-xs text-red-500 mt-1">{{ $message }}</p>
                     @enderror

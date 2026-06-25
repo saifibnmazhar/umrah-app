@@ -29,6 +29,7 @@ use App\Services\CurrencyRateService;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Models\IssuedTicket;
+use App\Models\TicketAgent;
 use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
@@ -220,7 +221,7 @@ class BookingController extends Controller
             ->when($request->filled('ticket_status'), fn ($q) =>
                 $q->where('ticket_status', $request->input('ticket_status'))
             )
-            ->when($request->filled('visa_agent_id'), fn ($q) =>
+            ->when($request->filled('visa_agent_id') && $canFilterByVisaAgent, fn ($q) =>
                 $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
             )
             ->when($request->filled('booking_branch_id'), fn ($q) =>
@@ -250,7 +251,7 @@ class BookingController extends Controller
             ->when($request->filled('route_id'), fn ($q) =>
                 $q->whereHas('ticketFare', fn ($q) => $q->where('route_id', $request->input('route_id')))
             )
-            ->when($request->filled('ticket_agent_id'), fn ($q) =>
+            ->when($request->filled('ticket_agent_id') && $canFilterByTicketAgent, fn ($q) =>
                 $q->whereHas('latestIssuedTicket.ticketAgent', fn ($q) =>
                     $q->where('id', $request->input('ticket_agent_id'))
                 )
@@ -297,18 +298,31 @@ class BookingController extends Controller
 
         $passengerStatuses = PassengerStatus::all();
 
-        $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
-            ->orderBy('name')
-            ->get()
-            ->map(fn($a) => [
-                'id' => $a->id,
-                'name' => $a->name,
-                'cost' => (float)($a->visaAgentCost?->visa_agent_cost ?? 0),
-                'commission_agents' => $a->commissionAgents->map(fn($ca) => [
-                    'id' => $ca->id,
-                    'name' => $ca->name,
-                ]),
-            ]);
+        $canFilterByVisaAgent = auth()->user()->roles->pluck('name')
+            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
+        $canFilterByTicketAgent = auth()->user()->roles->pluck('name')
+            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
+
+        $visaAgents = collect();
+        if ($canFilterByVisaAgent) {
+            $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
+                ->orderBy('name')
+                ->get()
+                ->map(fn($a) => [
+                    'id' => $a->id,
+                    'name' => $a->name,
+                    'cost' => (float)($a->visaAgentCost?->visa_agent_cost ?? 0),
+                    'commission_agents' => $a->commissionAgents->map(fn($ca) => [
+                        'id' => $ca->id,
+                        'name' => $ca->name,
+                    ]),
+                ]);
+        }
+
+        $ticketAgents = collect();
+        if ($canFilterByTicketAgent) {
+            $ticketAgents = TicketAgent::orderBy('name')->get();
+        }
 
         $canEditVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
 
@@ -320,7 +334,8 @@ class BookingController extends Controller
         $fingerprintLocations = FingerprintLocation::cases();
 
         return view('bookings.index', compact(
-            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa',
+            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'ticketAgents', 'canEditVisa',
+            'canFilterByVisaAgent', 'canFilterByTicketAgent',
             'currencyRateService', 'bookingBranches', 'selectedBranchId', 'totalBookingCount',
             'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
@@ -466,7 +481,29 @@ class BookingController extends Controller
             'payment.payment_date' => 'nullable|date',
             'payment.bank_id' => 'nullable|exists:banks,id',
             'payment.transaction_id' => 'nullable|string|max:255',
+        ], [
+            'booking_customer_docs.*.max' => 'Each file must not exceed 5 MB.',
+            'booking_customer_docs.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
+            'passenger_docs.*.*.max' => 'Each file must not exceed 5 MB.',
+            'passenger_docs.*.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $totalSize = 0;
+            if ($request->hasFile('booking_customer_docs')) {
+                $totalSize += collect($request->file('booking_customer_docs'))->sum(fn($f) => $f->getSize());
+            }
+            if ($request->hasFile('passenger_docs')) {
+                foreach ($request->file('passenger_docs') as $passengerFiles) {
+                    if (is_array($passengerFiles)) {
+                        $totalSize += collect($passengerFiles)->sum(fn($f) => $f instanceof \Illuminate\Http\UploadedFile ? $f->getSize() : 0);
+                    }
+                }
+            }
+            if ($totalSize > 20 * 1024 * 1024) {
+                $validator->errors()->add('files', 'The total size of all uploaded files must not exceed 20 MB.');
+            }
+        });
 
         if ($validator->fails()) {
             \Log::warning('Booking store validation failed', [
@@ -935,7 +972,25 @@ class BookingController extends Controller
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:1000',
+            'booking_customer_docs' => 'nullable|array',
+            'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ], [
+            'booking_customer_docs.*.max' => 'Each file must not exceed 5 MB.',
+            'booking_customer_docs.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
+
+        if ($request->hasFile('booking_customer_docs')) {
+            $totalSize = collect($request->file('booking_customer_docs'))->sum(fn($f) => $f->getSize());
+            if ($totalSize > 20 * 1024 * 1024) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The total size of all uploaded files must not exceed 20 MB.',
+                    ], 422);
+                }
+                return redirect()->back()->withErrors(['files' => 'The total size of all uploaded files must not exceed 20 MB.'])->withInput();
+            }
+        }
 
         try {
             DB::beginTransaction();

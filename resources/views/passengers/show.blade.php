@@ -190,6 +190,7 @@
                         </div>
                     </div>
                     <input type="file" id="passenger_doc_input" class="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="handleDocumentUpload(this)">
+                    <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                     <div id="documents_list" class="space-y-2">
                         @forelse($passenger->documents as $doc)
                         <div class="flex items-center justify-between bg-white rounded px-3 py-2 border border-slate-200">
@@ -299,7 +300,7 @@
             @endif
 
             <div class="mt-6 pt-4 border-t border-slate-200 flex gap-3">
-                <a href="{{ route('bookings.index', ['tab' => 'passenger']) }}" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Back to List</a>
+                <a href="{{ request('return_url', route('bookings.index', ['tab' => 'passenger'])) }}" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Back to List</a>
             </div>
         </div>
     </div>

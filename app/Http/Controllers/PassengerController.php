@@ -300,7 +300,18 @@ class PassengerController extends Controller
         $request->validate([
             'files' => 'required|array',
             'files.*' => 'file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ], [
+            'files.*.max' => 'Each file must not exceed 5 MB.',
+            'files.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
+
+        $totalSize = collect($request->file('files'))->sum(fn($f) => $f->getSize());
+        if ($totalSize > 20 * 1024 * 1024) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The total size of all uploaded files must not exceed 20 MB.',
+            ], 422);
+        }
 
         try {
             $passenger->load('booking');

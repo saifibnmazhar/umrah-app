@@ -167,7 +167,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         <p class="text-sm text-slate-600">Click to upload documents</p>
-                        <p class="text-xs text-slate-400">PDF, JPG, PNG</p>
+                        <p class="text-xs text-slate-400">PDF, JPG, PNG. Max 5 MB per file, 20 MB total</p>
                     </div>
                 </div>
                 <div id="passenger_doc_list" class="mt-3 space-y-2"></div>

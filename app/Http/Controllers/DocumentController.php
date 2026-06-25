@@ -14,9 +14,21 @@ class DocumentController extends Controller
     public function upload(Request $request)
     {
         $request->validate([
-            'documents.*' => 'required|file|max:10240',
+            'documents' => 'required|array',
+            'documents.*' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
             'booking_id' => 'required|exists:bookings,id',
+        ], [
+            'documents.*.max' => 'Each file must not exceed 5 MB.',
+            'documents.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
+
+        $totalSize = collect($request->file('documents'))->sum(fn($f) => $f->getSize());
+        if ($totalSize > 20 * 1024 * 1024) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The total size of all uploaded files must not exceed 20 MB.',
+            ], 422);
+        }
 
         $booking = \App\Models\Booking::with('customer')->findOrFail($request->booking_id);
         $invoiceId = $booking->invoice_id ?? 'INV';
@@ -75,9 +87,21 @@ class DocumentController extends Controller
     public function uploadPassenger(Request $request)
     {
         $request->validate([
-            'documents.*' => 'required|file|max:10240',
+            'documents' => 'required|array',
+            'documents.*' => 'required|file|mimes:pdf,jpg,jpeg,png|max:5120',
             'passenger_id' => 'required|exists:passengers,id',
+        ], [
+            'documents.*.max' => 'Each file must not exceed 5 MB.',
+            'documents.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
+
+        $totalSize = collect($request->file('documents'))->sum(fn($f) => $f->getSize());
+        if ($totalSize > 20 * 1024 * 1024) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The total size of all uploaded files must not exceed 20 MB.',
+            ], 422);
+        }
 
         $uploadedDocs = [];
 

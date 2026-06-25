@@ -26,9 +26,7 @@ $passengersVisaData = ($passengers ?? collect())->map(function($p) {
             'status' => $p->visaSubmission->status?->value ?? 'pending',
         ] : null,
     ];
-})->values();
-
-$ticketAgents = \App\Models\TicketAgent::orderBy('name')->get();
+})->unique('display')->values();
 
 $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])->get()->map(fn($r) => [
     'id' => $r->id,
@@ -40,7 +38,7 @@ $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'mult
     'route_type' => $r->route_type?->value,
     'flight_type' => $r->flight_type?->value,
     'airline_id' => $r->airline_id,
-])->values();
+])->unique('display')->values();
 
 $flightDateRanges = [];
 $today = (int) now()->format('d');
@@ -214,11 +212,11 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 <div class="w-full mx-auto" x-data="bookingIndexApp()">
     <div class="flex justify-between items-center mb-6">
         @php
-            $canCreateBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff', 'Auditor', 'Visa Admin', 'Visa Staff', 'Ticket Admin', 'Ticket Staff', 'Fingerprint Admin', 'Fingerprint Staff'])->isNotEmpty();
+            $canCreateBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff', 'Auditor', 'Visa Admin', 'Visa Staff', 'Ticket Admin', 'Ticket Staff', 'Fingerprint Admin', 'Fingerprint Staff', 'Delivery Staff'])->isNotEmpty();
             $canViewFinancialColumns = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
             $canViewVisaColumns = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
             $canViewTicketFareColumn = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
-            $canEditInline = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
+            $canEditInline = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Delivery Staff'])->isNotEmpty();
             $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin'])->isNotEmpty();
             $canViewActionColumn = true;
             $canViewPassengerIndex = true;
@@ -293,9 +291,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Branch</th>
                             <th class="px-3 py-2 text-left font-medium">District</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Paid</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Total</th>
+                            <th class="px-3 py-2 text-left font-medium">Paid</th>
+                            <th class="px-3 py-2 text-left font-medium">Due</th>
                             @if($canViewActionColumn)<th class="px-3 py-2 text-left font-medium">Actions</th>@endif
                         </tr>
                     </thead>
@@ -326,9 +324,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprintBranch->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->total_amount ?? 0, 2, $bookingCurrencyRate)</td>@endif
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->paid_amount ?? 0, 2, $bookingCurrencyRate)</td>@endif
-                            @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->balance ?? 0, 2, $bookingCurrencyRate)</td>@endif
+                            <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->total_amount ?? 0, 2, $bookingCurrencyRate)</td>
+                            <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->paid_amount ?? 0, 2, $bookingCurrencyRate)</td>
+                            <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->balance ?? 0, 2, $bookingCurrencyRate)</td>
                             @if($canViewActionColumn)
                             <td class="px-3 py-2">
                                 <a href="{{ route('bookings.show', $booking->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
@@ -344,7 +342,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="{{ 10 + ($canViewFinancialColumns ? 3 : 0) + ($canViewActionColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
+                            <td colspan="{{ 13 + ($canViewActionColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -417,6 +415,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @endforeach
                         </select>
                     </div>
+                    @if($canFilterByVisaAgent)
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Visa Agent</label>
                         <select x-model="selectedVisaAgentId" @change="onVisaAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
@@ -426,6 +425,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @endforeach
                         </select>
                     </div>
+                    @endif
+                    @if($canFilterByTicketAgent)
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Ticket Agent</label>
                         <select x-model="selectedTicketAgentId" @change="onTicketAgentChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
@@ -435,6 +436,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @endforeach
                         </select>
                     </div>
+                    @endif
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Current Status</label>
                         <select x-model="selectedPassengerStatus" @change="onPassengerStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
@@ -490,7 +492,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Package Value</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Due</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Due</th>
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
@@ -565,7 +567,7 @@ if ($route) {
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
-    @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice?->balance)@currency($passenger->booking->invoice->balance, 2, $passBookingRate)@else—@endif @endif</td>@endif
+    <td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice?->balance)@currency($passenger->booking->invoice->balance, 2, $passBookingRate)@else—@endif @endif</td>
     @if($canViewVisaColumns)
     <td class="px-3 py-2">
         <div class="flex items-center gap-1 flex-wrap">
@@ -582,7 +584,7 @@ if ($route) {
             <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                 <button @click="openVisaIssueModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
             </template>
-            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued' && canEditVisa && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
+            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                 <button @click="openVisaEditModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
             </template>
             <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
@@ -670,12 +672,15 @@ if ($route) {
         @endif
     </td>
     <td class="px-3 py-2">
-        <a href="{{ route('passengers.show', $passenger->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
+        <div class="flex flex-col gap-1">
+            <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" class="text-slate-600 hover:text-slate-800">View</a>
+            <a href="{{ route('passengers.download-all-docs', $passenger->id) }}" class="text-green-600 hover:text-green-800 font-medium">Download</a>
+        </div>
     </td>
 </tr>
 @empty
 <tr>
-    <td colspan="{{ 16 + ($canViewFinancialColumns ? 4 : 0) + ($canViewVisaColumns ? 2 : 0) + ($canViewTicketFareColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="{{ 17 + ($canViewFinancialColumns ? 3 : 0) + ($canViewVisaColumns ? 2 : 0) + ($canViewTicketFareColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 @endforelse
                     </tbody>
                 </table>
@@ -712,18 +717,48 @@ if ($route) {
                             </template>
                         </select>
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (BDT)</label>
+                            <input type="number" x-model="visaSubmitForm.agentCommissionBDT" min="0" @input="convertAgentCommissionToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
-                        <input type="number" x-model="visaSubmitForm.agentCommission" min="0" @input="calculateVisaCost()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" x-model="visaSubmitForm.agentCommission" min="0"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateVisaCost()" placeholder="0">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (BDT)</label>
+                            <input type="number" x-model="visaSubmitForm.netVisaCostBDT" min="0" @input="convertNetVisaCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
-                        <input type="number" x-model="visaSubmitForm.netVisaCost" @input="calculateVisaCost()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" x-model="visaSubmitForm.netVisaCost"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateVisaCost()" placeholder="0">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (BDT)</label>
+                            <input type="number" x-model="visaSubmitForm.sellingPriceBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (SAR)</label>
                         <input type="number" x-model="visaSubmitForm.sellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (BDT)</label>
+                            <input type="number" x-model="visaSubmitForm.finalCostBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (SAR)</label>
                         <input type="number" x-model="visaSubmitForm.finalCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
@@ -752,14 +787,35 @@ if ($route) {
                         <label class="block text-sm font-medium text-slate-700 mb-1">Visa Number *</label>
                         <input type="text" x-model="visaIssueForm.visaNumber" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter visa number">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (BDT)</label>
+                            <input type="number" x-model="visaIssueForm.sellingPriceBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (SAR)</label>
                         <input type="number" x-model="visaIssueForm.sellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (BDT)</label>
+                            <input type="number" x-model="visaIssueForm.additionalCostBDT" min="0" @input="convertAdditionalCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (SAR)</label>
-                        <input type="number" x-model="visaIssueForm.additionalCost" min="0" @input="calculateVisaIssueFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" x-model="visaIssueForm.additionalCost"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateVisaIssueFinal()" placeholder="0">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (BDT)</label>
+                            <input type="number" x-model="visaIssueForm.finalCostBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (SAR)</label>
                         <input type="number" x-model="visaIssueForm.finalCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
@@ -806,26 +862,65 @@ if ($route) {
                             </template>
                         </select>
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (BDT)</label>
+                            <input type="number" x-model="visaEditForm.sellingPriceBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Selling Price (SAR)</label>
                         <input type="number" x-model="visaEditForm.sellingPrice" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (BDT)</label>
+                            <input type="number" x-model="visaEditForm.agentCommissionBDT" min="0" @input="convertEditAgentCommissionToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
-                        <input type="number" x-model="visaEditForm.agentCommission" min="0" @input="calculateVisaEditFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" x-model="visaEditForm.agentCommission"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateVisaEditFinal()" placeholder="0">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (BDT)</label>
+                            <input type="number" x-model="visaEditForm.netVisaCostBDT" min="0" @input="convertEditNetVisaCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
-                        <input type="number" x-model="visaEditForm.netVisaCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        <input type="number" x-model="visaEditForm.netVisaCost"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateVisaEditFinal()" placeholder="0">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (BDT)</label>
+                            <input type="number" x-model="visaEditForm.additionalCostBDT" min="0" @input="convertEditAdditionalCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (SAR)</label>
-                        <input type="number" x-model="visaEditForm.additionalCost" min="0" @input="calculateVisaEditFinal()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" x-model="visaEditForm.additionalCost"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateVisaEditFinal()" placeholder="0">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
                         <textarea x-model="visaEditForm.remarks" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter remarks" rows="2"></textarea>
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (BDT)</label>
+                            <input type="number" x-model="visaEditForm.finalCostBDT" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Final Cost (SAR)</label>
                         <input type="number" x-model="visaEditForm.finalCost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
@@ -1434,7 +1529,11 @@ function bookingIndexApp() {
             agentCommission: 0,
             netVisaCost: 0,
             finalCost: 0,
-            commissionAgents: []
+            commissionAgents: [],
+            agentCommissionBDT: 0,
+            netVisaCostBDT: 0,
+            sellingPriceBDT: 0,
+            finalCostBDT: 0,
         },
 
         visaIssueForm: {
@@ -1443,7 +1542,10 @@ function bookingIndexApp() {
             sellingPrice: 0,
             additionalCost: 0,
             finalCost: 0,
-            remarks: ''
+            remarks: '',
+            sellingPriceBDT: 0,
+            additionalCostBDT: 0,
+            finalCostBDT: 0,
         },
 
         visaEditForm: {
@@ -1457,7 +1559,12 @@ function bookingIndexApp() {
             remarks: '',
             finalCost: 0,
             statusLabel: '',
-            commissionAgents: []
+            commissionAgents: [],
+            sellingPriceBDT: 0,
+            agentCommissionBDT: 0,
+            netVisaCostBDT: 0,
+            additionalCostBDT: 0,
+            finalCostBDT: 0,
         },
 
         getCommissionAgents(agentId) {
@@ -1473,10 +1580,15 @@ function bookingIndexApp() {
         openVisaSubmitModal(index) {
             this.editingVisaIndex = index;
             const data = this.passengersVisaData[index];
+            const rate = data?.rate || 0;
 
             this.visaSubmitForm.sellingPrice = data?.visa?.selling_price || 0;
             this.visaSubmitForm.agentCommission = data?.visa?.agent_commission || 0;
             this.visaSubmitForm.netVisaCost = data?.visa?.net_visa_cost || 0;
+
+            this.visaSubmitForm.agentCommissionBDT = rate > 0 ? this.visaSubmitForm.agentCommission * rate : 0;
+            this.visaSubmitForm.netVisaCostBDT = rate > 0 ? this.visaSubmitForm.netVisaCost * rate : 0;
+            this.visaSubmitForm.sellingPriceBDT = rate > 0 ? this.visaSubmitForm.sellingPrice * rate : 0;
 
             this.visaSubmitForm.agentId = '';
             this.visaSubmitForm.commissionAgentId = '';
@@ -1495,6 +1607,27 @@ function bookingIndexApp() {
             this.visaSubmitForm.commissionAgents = this.getCommissionAgents(agentId);
             this.visaSubmitForm.commissionAgentId = '';
             this.visaSubmitForm.netVisaCost = this.getVisaAgentCost(agentId);
+            const rate = this.getCurrentRate();
+            this.visaSubmitForm.netVisaCostBDT = rate > 0 ? this.visaSubmitForm.netVisaCost * rate : 0;
+            this.calculateVisaCost();
+        },
+
+        getCurrentRate() {
+            const data = this.passengersVisaData[this.editingVisaIndex];
+            return data?.rate || 0;
+        },
+
+        convertAgentCommissionToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaSubmitForm.agentCommissionBDT) || 0;
+            this.visaSubmitForm.agentCommission = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
+            this.calculateVisaCost();
+        },
+
+        convertNetVisaCostToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaSubmitForm.netVisaCostBDT) || 0;
+            this.visaSubmitForm.netVisaCost = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
             this.calculateVisaCost();
         },
 
@@ -1502,6 +1635,8 @@ function bookingIndexApp() {
             const commission = parseFloat(this.visaSubmitForm.agentCommission) || 0;
             const net = parseFloat(this.visaSubmitForm.netVisaCost) || 0;
             this.visaSubmitForm.finalCost = commission + net;
+            const rate = this.getCurrentRate();
+            this.visaSubmitForm.finalCostBDT = rate > 0 ? this.visaSubmitForm.finalCost * rate : 0;
         },
 
         handleVisaSubmit() {
@@ -1575,6 +1710,7 @@ function bookingIndexApp() {
             this.editingVisaIndex = index;
             const data = this.passengersVisaData[index];
             const visa = data?.visa;
+            const rate = data?.rate || 0;
 
             const baseCost = (visa?.final_cost || 0) - (visa?.additional_cost || 0);
             this._visaIssueBaseCost = baseCost;
@@ -1585,6 +1721,9 @@ function bookingIndexApp() {
             this.visaIssueForm.finalCost = visa?.final_cost || 0;
             this.visaIssueForm.remarks = visa?.remarks || '';
 
+            this.visaIssueForm.sellingPriceBDT = rate > 0 ? this.visaIssueForm.sellingPrice * rate : 0;
+            this.visaIssueForm.additionalCostBDT = rate > 0 ? this.visaIssueForm.additionalCost * rate : 0;
+
             this.calculateVisaIssueFinal();
             this.visaIssueModalVisible = true;
         },
@@ -1594,9 +1733,18 @@ function bookingIndexApp() {
             this.visaIssueModalVisible = false;
         },
 
+        convertAdditionalCostToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaIssueForm.additionalCostBDT) || 0;
+            this.visaIssueForm.additionalCost = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
+            this.calculateVisaIssueFinal();
+        },
+
         calculateVisaIssueFinal() {
             const additional = parseFloat(this.visaIssueForm.additionalCost) || 0;
             this.visaIssueForm.finalCost = (this._visaIssueBaseCost || 0) + additional;
+            const rate = this.getCurrentRate();
+            this.visaIssueForm.finalCostBDT = rate > 0 ? this.visaIssueForm.finalCost * rate : 0;
         },
 
         handleVisaIssue() {
@@ -1647,6 +1795,7 @@ function bookingIndexApp() {
             const data = this.passengersVisaData[index];
             const visa = data?.visa;
             if (!visa) return;
+            const rate = data?.rate || 0;
 
             this.visaEditForm.agentId = visa.agent_id || '';
             this.visaEditForm.visaNumber = visa.visa_number || '';
@@ -1663,6 +1812,11 @@ function bookingIndexApp() {
             this.visaEditForm.remarks = visa.remarks || '';
             this.visaEditForm.statusLabel = visa.status === 'issued' ? 'Issued' : 'Pending';
 
+            this.visaEditForm.sellingPriceBDT = rate > 0 ? this.visaEditForm.sellingPrice * rate : 0;
+            this.visaEditForm.agentCommissionBDT = rate > 0 ? this.visaEditForm.agentCommission * rate : 0;
+            this.visaEditForm.netVisaCostBDT = rate > 0 ? this.visaEditForm.netVisaCost * rate : 0;
+            this.visaEditForm.additionalCostBDT = rate > 0 ? this.visaEditForm.additionalCost * rate : 0;
+
             this.calculateVisaEditFinal();
             this.visaEditModalVisible = true;
         },
@@ -1676,6 +1830,29 @@ function bookingIndexApp() {
             this.visaEditForm.commissionAgents = this.getCommissionAgents(agentId);
             this.visaEditForm.commissionAgentId = '';
             this.visaEditForm.netVisaCost = this.getVisaAgentCost(agentId);
+            const rate = this.getCurrentRate();
+            this.visaEditForm.netVisaCostBDT = rate > 0 ? this.visaEditForm.netVisaCost * rate : 0;
+            this.calculateVisaEditFinal();
+        },
+
+        convertEditAgentCommissionToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaEditForm.agentCommissionBDT) || 0;
+            this.visaEditForm.agentCommission = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
+            this.calculateVisaEditFinal();
+        },
+
+        convertEditAdditionalCostToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaEditForm.additionalCostBDT) || 0;
+            this.visaEditForm.additionalCost = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
+            this.calculateVisaEditFinal();
+        },
+
+        convertEditNetVisaCostToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaEditForm.netVisaCostBDT) || 0;
+            this.visaEditForm.netVisaCost = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
             this.calculateVisaEditFinal();
         },
 
@@ -1684,6 +1861,8 @@ function bookingIndexApp() {
             const net = parseFloat(this.visaEditForm.netVisaCost) || 0;
             const additional = parseFloat(this.visaEditForm.additionalCost) || 0;
             this.visaEditForm.finalCost = commission + net + additional;
+            const rate = this.getCurrentRate();
+            this.visaEditForm.finalCostBDT = rate > 0 ? this.visaEditForm.finalCost * rate : 0;
         },
 
         handleVisaEdit() {
@@ -2556,14 +2735,12 @@ function updateFingerprintLocation(bookingId, location, select) {
             if (data.invoice) {
                 const row = selectEl.closest('tr');
                 const cells = row.querySelectorAll('td');
-                @if($canViewFinancialColumns)
                 if (cells.length >= 12) {
                     const rate = parseFloat(selectEl.dataset.rate) || 0;
                     cells[9].textContent = Alpine.store('currency').format(data.invoice.total_amount, 2, rate);
                     cells[10].textContent = Alpine.store('currency').format(data.invoice.paid_amount, 2, rate);
                     cells[11].textContent = Alpine.store('currency').format(data.invoice.balance, 2, rate);
                 }
-                @endif
             }
         } else {
             alert('Failed to update fingerprint location');

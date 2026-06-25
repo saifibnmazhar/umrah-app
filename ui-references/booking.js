@@ -1912,7 +1912,10 @@ function handleDocFileSelect(event) {
 
 function processDocFiles(files) {
     const maxSize = 5 * 1024 * 1024; // 5MB
+    const totalMaxSize = 20 * 1024 * 1024; // 20MB
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    
+    const currentTotal = pendingDocFiles.reduce((sum, f) => sum + f.size, 0);
     
     Array.from(files).forEach(file => {
         if (!allowedTypes.includes(file.type)) {
@@ -1920,7 +1923,11 @@ function processDocFiles(files) {
             return;
         }
         if (file.size > maxSize) {
-            showToast('File too large: ' + file.name);
+            showToast('File must not exceed 5 MB: ' + file.name);
+            return;
+        }
+        if (currentTotal + file.size > totalMaxSize) {
+            showToast('Total file size must not exceed 20 MB.');
             return;
         }
         
@@ -2029,7 +2036,10 @@ function downloadSinglePassengerDocs(index) {
 function handlePassengerDocSelect(event) {
     const files = event.target.files;
     const maxSize = 5 * 1024 * 1024;
+    const totalMaxSize = 20 * 1024 * 1024;
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    
+    const currentTotal = state.passengerDocFiles.reduce((sum, f) => sum + f.size, 0);
     
     Array.from(files).forEach(file => {
         if (!allowedTypes.includes(file.type)) {
@@ -2037,7 +2047,11 @@ function handlePassengerDocSelect(event) {
             return;
         }
         if (file.size > maxSize) {
-            showToast('File too large: ' + file.name);
+            showToast('File must not exceed 5 MB: ' + file.name);
+            return;
+        }
+        if (currentTotal + file.size > totalMaxSize) {
+            showToast('Total file size must not exceed 20 MB.');
             return;
         }
         
@@ -2085,7 +2099,10 @@ function clearPassengerDocFiles() {
 function handleBookingDocSelect(event) {
     const files = event.target.files;
     const maxSize = 5 * 1024 * 1024;
+    const totalMaxSize = 20 * 1024 * 1024;
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    
+    const currentTotal = state.bookingDocFiles.reduce((sum, f) => sum + f.size, 0);
     
     Array.from(files).forEach(file => {
         if (!allowedTypes.includes(file.type)) {
@@ -2093,7 +2110,11 @@ function handleBookingDocSelect(event) {
             return;
         }
         if (file.size > maxSize) {
-            showToast('File too large: ' + file.name);
+            showToast('File must not exceed 5 MB: ' + file.name);
+            return;
+        }
+        if (currentTotal + file.size > totalMaxSize) {
+            showToast('Total file size must not exceed 20 MB.');
             return;
         }
         
@@ -2135,7 +2156,10 @@ function removeBookingDoc(index) {
 function handleCustomerDocSelect(event) {
     const files = event.target.files;
     const maxSize = 5 * 1024 * 1024;
+    const totalMaxSize = 20 * 1024 * 1024;
     const allowedTypes = ['application/pdf', 'image/jpeg', 'image/png'];
+    
+    const currentTotal = state.customerDocFiles.reduce((sum, f) => sum + f.size, 0);
     
     Array.from(files).forEach(file => {
         if (!allowedTypes.includes(file.type)) {
@@ -2143,7 +2167,11 @@ function handleCustomerDocSelect(event) {
             return;
         }
         if (file.size > maxSize) {
-            showToast('File too large: ' + file.name);
+            showToast('File must not exceed 5 MB: ' + file.name);
+            return;
+        }
+        if (currentTotal + file.size > totalMaxSize) {
+            showToast('Total file size must not exceed 20 MB.');
             return;
         }
         

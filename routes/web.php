@@ -66,7 +66,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('airline-cities', AirlineCityController::class)->middleware('role:Super Admin,Co Admin');
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index')->middleware('role:Super Admin,Co Admin,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
     Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create')->middleware('role:Super Admin,Co Admin');
-    Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
+    Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff,Delivery Staff');
     Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit')->middleware('role:Super Admin,Co Admin');
     Route::match(['PUT', 'PATCH'], '/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update')->middleware('role:Super Admin,Co Admin');
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy')->middleware('role:Super Admin,Co Admin');
@@ -103,7 +103,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy')->middleware('role:Super Admin');
     Route::resource('passengers', PassengerController::class)->except(['destroy']);
     Route::delete('/passengers/{passenger}', [PassengerController::class, 'destroy'])->name('passengers.destroy')->middleware('role:Super Admin,Co Admin');
-    Route::patch('/passengers/{passenger}/status', [PassengerController::class, 'updateStatus'])->name('passengers.update-status')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
+    Route::patch('/passengers/{passenger}/status', [PassengerController::class, 'updateStatus'])->name('passengers.update-status')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Delivery Staff');
     Route::post('/passengers/{passenger}/documents', [PassengerController::class, 'uploadDocument'])->name('passengers.documents.store');
     Route::get('/passengers/{passenger}/documents/{document}/download', [PassengerController::class, 'downloadDocument'])->name('passengers.documents.download');
     Route::delete('/passengers/{passenger}/documents/{document}', [PassengerController::class, 'destroyDocument'])->name('passengers.documents.destroy')->middleware('role:Super Admin,Co Admin');
@@ -185,17 +185,17 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:Super Admin,Fingerprint Staff');
     Route::put('/api/fingerprints/detail/{fingerprintDetail}/status', [FingerprintController::class, 'updateStatus'])
         ->name('api.fingerprints.update-status')
-        ->middleware('role:Fingerprint Admin,Fingerprint Staff');
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
     Route::post('/api/fingerprints/detail/{fingerprintDetail}/hold', [FingerprintController::class, 'hold'])
         ->name('api.fingerprints.hold')
-        ->middleware('role:Fingerprint Admin,Fingerprint Staff');
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
 
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings')->middleware('role:Super Admin,Co Admin');
     Route::put('/settings/flight-date-gap', [SettingsController::class, 'updateFlightDateGap'])->name('settings.flight-date-gap.update')->middleware('role:Super Admin,Co Admin');
     Route::put('/settings/fingerprint-charge', [SettingsController::class, 'updateFingerprintCharge'])->name('settings.fingerprint-charge.update')->middleware('role:Super Admin,Co Admin');
     Route::put('/settings/package-configuration', [SettingsController::class, 'updatePackageConfiguration'])->name('settings.package-configuration.update')->middleware('role:Super Admin,Co Admin');
     Route::post('/settings/package', [SettingsController::class, 'storePackage'])->name('settings.package.store')->middleware('role:Super Admin,Co Admin');
-    Route::get('/settings/package/{package}', [SettingsController::class, 'showPackage'])->name('settings.package.show')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
+    Route::get('/settings/package/{package}', [SettingsController::class, 'showPackage'])->name('settings.package.show');
     Route::put('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->name('settings.package.update')->middleware('role:Super Admin,Co Admin');
     Route::post('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->middleware('role:Super Admin,Co Admin');
     Route::delete('/settings/package/{package}', [SettingsController::class, 'destroyPackage'])->name('settings.package.destroy')->middleware('role:Super Admin,Co Admin');
