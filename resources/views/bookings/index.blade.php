@@ -26,7 +26,7 @@ $passengersVisaData = ($passengers ?? collect())->map(function($p) {
             'status' => $p->visaSubmission->status?->value ?? 'pending',
         ] : null,
     ];
-})->unique('display')->values();
+})->values();
 
 $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])->get()->map(fn($r) => [
     'id' => $r->id,
@@ -38,7 +38,7 @@ $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'mult
     'route_type' => $r->route_type?->value,
     'flight_type' => $r->flight_type?->value,
     'airline_id' => $r->airline_id,
-])->unique('display')->values();
+])->values();
 
 $flightDateRanges = [];
 $today = (int) now()->format('d');
