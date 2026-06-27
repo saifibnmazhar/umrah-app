@@ -5,6 +5,7 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Fingerprint extends Model
 {
@@ -17,7 +18,7 @@ class Fingerprint extends Model
 
     protected $casts = [
         'deadline' => 'date',
-        'cost' => 'decimal:2',
+        'cost' => 'decimal:6',
     ];
 
     public function booking(): BelongsTo
@@ -33,5 +34,15 @@ class Fingerprint extends Model
     public function fingerprintDetails(): HasMany
     {
         return $this->hasMany(FingerprintDetail::class);
+    }
+
+    public function costLogs(): HasMany
+    {
+        return $this->hasMany(FingerprintCostLog::class);
+    }
+
+    public function firstCostLog(): HasOne
+    {
+        return $this->hasOne(FingerprintCostLog::class)->ofMany('created_at', 'min');
     }
 }

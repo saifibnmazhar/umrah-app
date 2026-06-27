@@ -81,7 +81,7 @@
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? (row.deadline || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.reschedule_deadline || '-'"></td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">
-                                <span x-show="row._isFirstPassenger" x-text="row.cost != null && row.cost != '' ? $currency(row.cost, 2, row.rate) : 'N/A'"></span>
+                                <span x-show="row._isFirstPassenger" x-text="formatCost(row.cost, row.rate, currencyToggleCounter)"></span>
                             </td>
                             <td class="px-3 py-2 text-slate-600">
                                 <span x-show="row._isFirstPassenger" x-text="row.fingerprint_location || '-'"></span>
@@ -211,6 +211,7 @@ function fingerprintAdmin(options = {}) {
         lastPage: 1,
         totalRecords: 0,
         canAssignStaff: options.canAssignStaff ?? false,
+        currencyToggleCounter: 0,
         showHoldModal: false,
         currentFingerprintDetailId: null,
         holdForm: {
@@ -236,6 +237,9 @@ function fingerprintAdmin(options = {}) {
         // },
 
         async init() {
+            window.addEventListener('currency-toggled', () => {
+                this.currencyToggleCounter++;
+            });
             await this.loadData();
         },
 
@@ -476,6 +480,11 @@ function fingerprintAdmin(options = {}) {
         //         window.showToast('Failed to save hold', 'error');
         //     }
         // },
+
+        formatCost(cost, rate, _) {
+            if (cost == null || cost === '') return 'N/A';
+            return Alpine.store('currency').format(cost, 2, rate);
+        },
     };
 }
 </script>
