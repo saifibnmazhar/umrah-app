@@ -22,6 +22,8 @@ Alpine.store('currency', {
         const num = Number(amount) || 0
         const effectiveRate = rate !== null ? rate : this.rate
         let value = this.mode === 'BDT' && bdt !== null ? Number(bdt) : (this.mode === 'SAR' ? num : num * effectiveRate)
+        let clean = Math.round(value * 100) / 100
+        if (Math.abs(value - clean) < 0.001) value = clean
         let fixed = value.toFixed(decimals)
         fixed = fixed.replace(/\.?0+$/, '')
         let parts = fixed.split('.')

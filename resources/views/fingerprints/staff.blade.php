@@ -49,7 +49,7 @@
                                 <input type="number"
                                        x-show="row.isFirstInGroup && canEditCost"
                                         :value="inputValue(row.cost, row.rate, currencyToggleCounter)"
-                                        @change="updateCost(row.fingerprint_id, $event.target.value)"
+                                        @change="updateCost(row.fingerprint_id, $event.target.value, row.rate)"
                                        class="w-20 text-right text-sm border border-slate-300 rounded px-2 py-1"
                                        min="0">
 <span x-show="row.isFirstInGroup && !canEditCost"
@@ -370,14 +370,17 @@ function fingerprintStaff(options = {}) {
             }
         },
 
-        async updateCost(fingerprintId, cost) {
+        async updateCost(fingerprintId, cost, rate) {
             if (!fingerprintId) return;
             const store = Alpine.store('currency');
             let inputVal = parseFloat(cost) || 0;
             let costInSar = inputVal;
-            if (store.mode === 'BDT' && store.rate > 0) {
-                costInSar = inputVal / store.rate;
+            const effectiveRate = rate !== null ? rate : store.rate;
+            if (store.mode === 'BDT' && effectiveRate > 0) {
+                costInSar = inputVal / effectiveRate;
             }
+            let clean = Math.round(costInSar * 100) / 100;
+            if (Math.abs(costInSar - clean) < 0.001) costInSar = clean;
             costInSar = parseFloat(costInSar.toFixed(6));
             try {
                 const response = await fetch(`/api/fingerprints/${fingerprintId}/cost`, {
@@ -464,7 +467,10 @@ function fingerprintStaff(options = {}) {
             if (store.mode === 'SAR') return num;
             const effectiveRate = rate !== null ? rate : store.rate;
             if (effectiveRate <= 0) return '';
-            return parseFloat((num * effectiveRate).toFixed(6));
+            let value = num * effectiveRate;
+            let clean = Math.round(value * 100) / 100;
+            if (Math.abs(value - clean) < 0.001) value = clean;
+            return parseFloat(value.toFixed(6));
         },
     };
 }
