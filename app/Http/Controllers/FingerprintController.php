@@ -75,6 +75,7 @@ class FingerprintController extends Controller
 
                     $rate = $booking?->currencyRate?->rate
                         ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
+                        ?? $currencyRateService->getFirstRate()?->rate
                         ?? 0;
 
                     return [
@@ -179,6 +180,7 @@ class FingerprintController extends Controller
 
                     $rate = $booking?->currencyRate?->rate
                         ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
+                        ?? $currencyRateService->getFirstRate()?->rate
                         ?? 0;
 
                     return [

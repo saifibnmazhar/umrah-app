@@ -463,7 +463,7 @@ function fingerprintStaff(options = {}) {
             const num = Number(cost) || 0;
             if (store.mode === 'SAR') return num;
             const effectiveRate = rate !== null ? rate : store.rate;
-            if (effectiveRate <= 0) return '';
+            if (effectiveRate <= 0) return num;
             let value = num * effectiveRate;
             let clean = Math.round(value * 100) / 100;
             if (Math.abs(value - clean) < 0.001) value = clean;
