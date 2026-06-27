@@ -140,6 +140,10 @@ class FingerprintController extends Controller
             $query->where('assigned_staff_id', $user->id);
         }
 
+        $query->whereHas('booking', function ($q) {
+            $q->where('fingerprint_location', FingerprintLocation::HOME);
+        });
+
         $twentyFourHoursAgo = now()->subHours(24);
         $isSuperOrCoAdmin = $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
         $isFingerprintStaffRole = $user->hasRole('Fingerprint Staff');
