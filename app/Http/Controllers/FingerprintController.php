@@ -262,7 +262,7 @@ class FingerprintController extends Controller
     public function updateCost(Request $request, Fingerprint $fingerprint): JsonResponse
     {
         $user = auth()->user();
-        if (!$user->hasRole('Super Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Co Admin') && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
         }
 

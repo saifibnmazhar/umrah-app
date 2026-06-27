@@ -180,7 +180,7 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::put('/api/fingerprints/{fingerprint}/cost', [FingerprintController::class, 'updateCost'])
         ->name('api.fingerprints.update-cost')
-        ->middleware('role:Super Admin,Fingerprint Staff');
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
     Route::put('/api/fingerprints/detail/{fingerprintDetail}/status', [FingerprintController::class, 'updateStatus'])
         ->name('api.fingerprints.update-status')
         ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
