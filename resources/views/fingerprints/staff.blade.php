@@ -19,7 +19,7 @@
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Deadline</th>
                         <th class="px-3 py-2 text-left font-medium">Passenger</th>
                         <th class="px-3 py-2 text-left font-medium">Passenger Address</th>
-                        <th class="px-3 py-2 text-right font-medium">Cost (SAR)</th>
+                        <th class="px-3 py-2 text-right font-medium" x-text="'Cost (' + $store.currency.mode + ')'"></th>
                         <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
                     </tr>
                 </thead>
@@ -48,13 +48,13 @@
                             <td class="px-3 py-2 text-right">
                                 <input type="number"
                                        x-show="row.isFirstInGroup && canEditCost"
-                                       :value="row.cost"
-                                       @change="updateCost(row.fingerprint_id, $event.target.value)"
+                                        :value="inputValue(row.cost, row.rate, currencyToggleCounter)"
+                                        @change="updateCost(row.fingerprint_id, $event.target.value)"
                                        class="w-20 text-right text-sm border border-slate-300 rounded px-2 py-1"
                                        min="0">
 <span x-show="row.isFirstInGroup && !canEditCost"
       class="text-sm text-slate-700 font-medium"
-      x-text="row.cost != null && row.cost !== '' ? $currency(row.cost, 2, row.rate) : ''"></span>
+      x-text="formatCost(row.cost, row.rate, currencyToggleCounter)"></span>
                             </td>
                             <td class="px-3 py-2">
                                 <select x-show="canEditStatus"
@@ -181,6 +181,7 @@ function fingerprintStaff(options = {}) {
         totalRecords: 0,
         canEditStatus: options.isFingerprintStaff ?? false,
         canEditCost: options.canEditCost ?? false,
+        currencyToggleCounter: 0,
         showHoldModal: false,
         currentFingerprintDetailId: null,
         toastMessage: '',
@@ -202,6 +203,9 @@ function fingerprintStaff(options = {}) {
         ],
 
         async init() {
+            window.addEventListener('currency-toggled', () => {
+                this.currencyToggleCounter++;
+            });
             await this.loadData();
         },
 
@@ -368,6 +372,13 @@ function fingerprintStaff(options = {}) {
 
         async updateCost(fingerprintId, cost) {
             if (!fingerprintId) return;
+            const store = Alpine.store('currency');
+            let inputVal = parseFloat(cost) || 0;
+            let costInSar = inputVal;
+            if (store.mode === 'BDT' && store.rate > 0) {
+                costInSar = inputVal / store.rate;
+            }
+            costInSar = parseFloat(costInSar.toFixed(6));
             try {
                 const response = await fetch(`/api/fingerprints/${fingerprintId}/cost`, {
                     method: 'PUT',
@@ -375,14 +386,14 @@ function fingerprintStaff(options = {}) {
                         'Content-Type': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
                     },
-                    body: JSON.stringify({ cost: parseFloat(cost) || 0 }),
+                    body: JSON.stringify({ cost: costInSar }),
                 });
                 const result = await response.json();
                 if (result.success) {
                     this.showToast('Cost updated successfully');
                     this.data.forEach(row => {
                         if (row.fingerprint_id === fingerprintId) {
-                            row.cost = parseFloat(cost) || 0;
+                            row.cost = costInSar;
                         }
                     });
                     this.data = this.enrichData(this.data);
@@ -439,6 +450,21 @@ function fingerprintStaff(options = {}) {
             this.toastVisible = true;
             if (this._toastTimer) clearTimeout(this._toastTimer);
             this._toastTimer = setTimeout(() => this.toastVisible = false, 3000);
+        },
+
+        formatCost(cost, rate, _) {
+            if (cost == null || cost === '') return '';
+            return Alpine.store('currency').format(cost, 6, rate);
+        },
+
+        inputValue(cost, rate, _) {
+            if (cost == null || cost === '') return '';
+            const store = Alpine.store('currency');
+            const num = Number(cost) || 0;
+            if (store.mode === 'SAR') return num;
+            const effectiveRate = rate !== null ? rate : store.rate;
+            if (effectiveRate <= 0) return '';
+            return parseFloat((num * effectiveRate).toFixed(6));
         },
     };
 }

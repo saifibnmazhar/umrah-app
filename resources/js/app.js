@@ -18,7 +18,7 @@ Alpine.store('currency', {
         window.dispatchEvent(new CustomEvent('currency-toggled'))
     },
 
-    format(amount, decimals = 2, rate = null, bdt = null) {
+    format(amount, decimals = 6, rate = null, bdt = null) {
         const num = Number(amount) || 0
         const effectiveRate = rate !== null ? rate : this.rate
         let value = this.mode === 'BDT' && bdt !== null ? Number(bdt) : (this.mode === 'SAR' ? num : num * effectiveRate)
