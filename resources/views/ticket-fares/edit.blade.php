@@ -4,9 +4,9 @@
 <div class="max-w-4xl mx-auto">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Edit Ticket Fare</h1>
-        <a href="{{ route('ticket-fares.index') }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
-            Back to List
-        </a>
+<a href="{{ route('fare.admin', ['tab' => 'fares']) }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
+    Back to List
+</a>
     </div>
 
     @php
@@ -289,9 +289,9 @@
         </div>
 
         <div class="flex justify-end gap-3">
-            <a href="{{ route('ticket-fares.index') }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
-                Cancel
-            </a>
+<a href="{{ route('fare.admin', ['tab' => 'fares']) }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
+    Cancel
+</a>
             <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition text-sm font-medium">
                 Update Ticket Fare
             </button>
