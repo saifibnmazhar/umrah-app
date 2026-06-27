@@ -378,8 +378,6 @@ function fingerprintStaff(options = {}) {
             if (store.mode === 'BDT' && effectiveRate > 0) {
                 costInSar = inputVal / effectiveRate;
             }
-            let clean = Math.round(costInSar * 100) / 100;
-            if (Math.abs(costInSar - clean) < 0.001) costInSar = clean;
             costInSar = parseFloat(costInSar.toFixed(6));
             try {
                 const response = await fetch(`/api/fingerprints/${fingerprintId}/cost`, {

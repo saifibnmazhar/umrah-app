@@ -18,7 +18,7 @@ class Fingerprint extends Model
 
     protected $casts = [
         'deadline' => 'date',
-        'cost' => 'decimal:2',
+        'cost' => 'decimal:6',
     ];
 
     public function booking(): BelongsTo
