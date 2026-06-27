@@ -17,6 +17,7 @@ class Payment extends Model
         'currency_rate_id',
         'bank_id',
         'sender_bank_id',
+        'other_sender_bank',
         'receiver_bank',
         'ticket_agent_id',
         'visa_agent_id',
