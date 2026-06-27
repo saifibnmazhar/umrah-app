@@ -402,38 +402,50 @@ function ticketFareForm() {
             offer_price: { sar: {{ old('offer_price', 0) }}, bdt: 0 },
         },
 
+        _converting: false,
+
         init() {
             const rate = window.__currencyRate || 0;
             if (rate > 0) {
-                this.fares.net_fare.bdt = (parseFloat(this.fares.net_fare.sar) * rate).toFixed(6);
-                this.fares.selling_fare.bdt = (parseFloat(this.fares.selling_fare.sar) * rate).toFixed(6);
-                this.fares.offer_price.bdt = (parseFloat(this.fares.offer_price.sar) * rate).toFixed(6);
+                this.fares.net_fare.bdt = Math.round(parseFloat(this.fares.net_fare.sar) * rate);
+                this.fares.selling_fare.bdt = Math.round(parseFloat(this.fares.selling_fare.sar) * rate);
+                this.fares.offer_price.bdt = Math.round(parseFloat(this.fares.offer_price.sar) * rate);
             }
             const component = this;
             window.addEventListener('currency-toggled', function () {
                 const r = window.__currencyRate || 0;
                 if (r > 0) {
-                    component.fares.net_fare.bdt = (parseFloat(component.fares.net_fare.sar) * r).toFixed(6);
-                    component.fares.selling_fare.bdt = (parseFloat(component.fares.selling_fare.sar) * r).toFixed(6);
-                    component.fares.offer_price.bdt = (parseFloat(component.fares.offer_price.sar) * r).toFixed(6);
+                    component._converting = true;
+                    component.fares.net_fare.bdt = Math.round(parseFloat(component.fares.net_fare.sar) * r);
+                    component.fares.selling_fare.bdt = Math.round(parseFloat(component.fares.selling_fare.sar) * r);
+                    component.fares.offer_price.bdt = Math.round(parseFloat(component.fares.offer_price.sar) * r);
+                    component._converting = false;
                 }
             });
         },
 
         handleSarInput(field) {
+            if (this._converting) return;
+            this._converting = true;
             const fare = this.fares[field];
             const rate = window.__currencyRate || 0;
             if (rate > 0) {
-                fare.bdt = (parseFloat(fare.sar) * rate).toFixed(6);
+                const sar = parseFloat(fare.sar) || 0;
+                fare.bdt = Math.round(sar * rate);
             }
+            this._converting = false;
         },
 
         handleBdtInput(field) {
+            if (this._converting) return;
+            this._converting = true;
             const fare = this.fares[field];
             const rate = window.__currencyRate || 0;
             if (rate > 0) {
-                fare.sar = (parseFloat(fare.bdt) / rate).toFixed(6);
+                const bdt = parseFloat(fare.bdt) || 0;
+                fare.sar = (Math.round(bdt / rate * 1e6) / 1e6).toFixed(6);
             }
+            this._converting = false;
         },
 
         showRouteModal: false,
