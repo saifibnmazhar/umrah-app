@@ -91,7 +91,7 @@
                 @if($payment->payment_method->value === 'bank')
                     <div>
                         <p class="text-sm text-slate-500">Sender Bank</p>
-                        <p class="font-medium text-slate-800">{{ $payment->senderBank->name ?? '-' }}</p>
+                        <p class="font-medium text-slate-800">{{ $payment->senderBank->name ?? $payment->other_sender_bank ?? '-' }}</p>
                     </div>
                     <div>
                         <p class="text-sm text-slate-500">Receiver Bank</p>
