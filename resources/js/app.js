@@ -21,7 +21,7 @@ Alpine.store('currency', {
     format(amount, decimals = 6, rate = null, bdt = null) {
         const num = Number(amount) || 0
         const effectiveRate = rate !== null ? rate : this.rate
-        let value = this.mode === 'BDT' && bdt !== null ? Number(bdt) : (this.mode === 'SAR' ? num : num * effectiveRate)
+        let value = this.mode === 'BDT' && bdt !== null ? Number(bdt) : (this.mode === 'SAR' || effectiveRate <= 0 ? num : num * effectiveRate)
         let clean = Math.round(value * 100) / 100
         if (Math.abs(value - clean) < 0.001) value = clean
         let fixed = value.toFixed(decimals)

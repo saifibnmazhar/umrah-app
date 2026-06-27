@@ -75,6 +75,7 @@ class FingerprintController extends Controller
 
                     $rate = $booking?->currencyRate?->rate
                         ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
+                        ?? $currencyRateService->getFirstRate()?->rate
                         ?? 0;
 
                     return [
@@ -140,6 +141,10 @@ class FingerprintController extends Controller
             $query->where('assigned_staff_id', $user->id);
         }
 
+        $query->whereHas('booking', function ($q) {
+            $q->where('fingerprint_location', FingerprintLocation::HOME);
+        });
+
         $twentyFourHoursAgo = now()->subHours(24);
         $isSuperOrCoAdmin = $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
         $isFingerprintStaffRole = $user->hasRole('Fingerprint Staff');
@@ -175,6 +180,7 @@ class FingerprintController extends Controller
 
                     $rate = $booking?->currencyRate?->rate
                         ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
+                        ?? $currencyRateService->getFirstRate()?->rate
                         ?? 0;
 
                     return [
