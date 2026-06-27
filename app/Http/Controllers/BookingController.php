@@ -139,6 +139,7 @@ class BookingController extends Controller
         $tab = $request->get('tab', 'booking');
 
         $user = auth()->user();
+        abort_unless($user, 401, 'Unauthenticated');
         $userBranchId = $user->branch_id;
 
         $bookingBranches = $userBranchId ? collect() : Branch::orderBy('name')->get(['id', 'name']);
