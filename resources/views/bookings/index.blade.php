@@ -488,6 +488,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Route</th>
                             <th class="px-3 py-2 text-left font-medium">Required Flight Date</th>
                             <th class="px-3 py-2 text-left font-medium">Actual Flight Date</th>
+                            <th class="px-3 py-2 text-left font-medium">Return Date</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Package Value</th>@endif
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
@@ -562,7 +563,8 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-600">{{ $routeDisplay }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
-    <td class="px-3 py-2 text-slate-700">{{ optional($passenger->actual_flight_date)->format('d M Y') ?: 'N/A' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->latestIssuedTicket?->inbound_date?->format('d M Y') ?? 'N/A' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->latestIssuedTicket?->outbound_date?->format('d M Y') ?? 'N/A' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
@@ -684,7 +686,7 @@ if ($route) {
 </tr>
 @empty
 <tr>
-    <td colspan="{{ 17 + ($canViewFinancialColumns ? 3 : 0) + ($canViewVisaColumns ? 2 : 0) + ($canViewTicketFareColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="{{ 18 + ($canViewFinancialColumns ? 3 : 0) + ($canViewVisaColumns ? 2 : 0) + ($canViewTicketFareColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 @endforelse
                     </tbody>
                 </table>
