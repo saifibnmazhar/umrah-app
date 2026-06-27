@@ -4,6 +4,7 @@ namespace App\Traits;
 
 use App\Models\Document;
 use Illuminate\Support\Facades\Storage;
+use setasign\Fpdi\Fpdi;
 
 trait ConvertsDocumentsToPdf
 {
@@ -42,5 +43,24 @@ trait ConvertsDocumentsToPdf
             return Storage::path($doc->file_path);
         }
         return null;
+    }
+
+    private function mergePdfs(array $pdfFiles, string $outputPath): void
+    {
+        $pdf = new Fpdi();
+
+        foreach ($pdfFiles as $file) {
+            $pageCount = $pdf->setSourceFile($file);
+            for ($i = 1; $i <= $pageCount; $i++) {
+                $templateId = $pdf->importPage($i);
+                $size = $pdf->getTemplateSize($templateId);
+
+                $orientation = ($size['width'] > $size['height']) ? 'L' : 'P';
+                $pdf->AddPage($orientation, [$size['width'], $size['height']]);
+                $pdf->useTemplate($templateId);
+            }
+        }
+
+        $pdf->Output('F', $outputPath);
     }
 }
