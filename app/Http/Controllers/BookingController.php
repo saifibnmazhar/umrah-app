@@ -37,6 +37,7 @@ use App\Enums\FingerprintLocation;
 use App\Enums\DiscountType;
 use App\Enums\VisaStatus;
 use App\Enums\TicketStatus;
+use App\Traits\ConvertsDocumentsToPdf;
 use App\Services\BookingService;
 use App\Services\PaymentService;
 use App\Services\InvoiceService;
@@ -47,6 +48,7 @@ use Carbon\Carbon;
 
 class BookingController extends Controller
 {
+    use ConvertsDocumentsToPdf;
     public function __construct(
         private BookingService $bookingService,
         private InvoiceService $invoiceService,
@@ -278,7 +280,7 @@ class BookingController extends Controller
             ->with([
                 'booking',
                 'booking.customer',
-                'booking.customer.documents',
+                'booking.documents',
                 'booking.package.ticketFare.route',
                 'booking.invoice',
                 'ticketFare.route',
