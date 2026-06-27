@@ -681,6 +681,11 @@ if ($route) {
             @else
                 <span class="text-slate-300 cursor-not-allowed font-medium">Download</span>
             @endif
+            @if($passenger->booking->documents->isNotEmpty())
+                <a href="{{ route('bookings.download-all-docs', $passenger->booking_id) }}" class="text-green-600 hover:text-green-800 font-medium">Download All</a>
+            @else
+                <span class="text-slate-300 cursor-not-allowed font-medium">Download All</span>
+            @endif
         </div>
     </td>
 </tr>
