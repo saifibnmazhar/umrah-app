@@ -291,6 +291,7 @@ class BookingController extends Controller
                 'latestIssuedTicket.ticketFare.airlineClass.class',
                 'latestIssuedTicket.ticketFare.route',
             ])
+            ->withCount('documents')
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->appends(['tab' => $tab])
