@@ -155,8 +155,6 @@ class BookingController extends Controller
         $selectedTicketAgentId = $request->get('ticket_agent_id');
         $selectedActualFlightFrom = $request->get('actual_flight_from');
         $selectedActualFlightTo = $request->get('actual_flight_to');
-        $selectedActualFlightFrom = $request->get('actual_flight_from');
-        $selectedActualFlightTo = $request->get('actual_flight_to');
 
         $branchCounts = !$userBranchId
             ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
@@ -202,6 +200,11 @@ class BookingController extends Controller
         $bookings = $bookingQuery->paginate(10)
             ->appends(['tab' => $tab])
             ->withQueryString();
+
+        $canFilterByVisaAgent = auth()->user()->roles->pluck('name')
+            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
+        $canFilterByTicketAgent = auth()->user()->roles->pluck('name')
+            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
 
         $passengers = Passenger::query()
             ->when(auth()->user()->branch_id, fn ($q) =>
@@ -297,11 +300,6 @@ class BookingController extends Controller
             ->withQueryString();
 
         $passengerStatuses = PassengerStatus::all();
-
-        $canFilterByVisaAgent = auth()->user()->roles->pluck('name')
-            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
-        $canFilterByTicketAgent = auth()->user()->roles->pluck('name')
-            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
 
         $visaAgents = collect();
         if ($canFilterByVisaAgent) {
