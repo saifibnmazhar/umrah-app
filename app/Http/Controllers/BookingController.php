@@ -1527,10 +1527,12 @@ class BookingController extends Controller
                     });
                 }
             }
-        })->when(!$scope || $scope === 'all', function ($q) use ($passengerIds) {
-            $q->orWhere(function ($q) use ($passengerIds) {
+        })->when(!$scope || $scope === 'all', function ($q) use ($passengerIds, $booking) {
+            $passengerId = request()->query('passenger_id');
+            $targetIds = $passengerId ? [$passengerId] : $passengerIds;
+            $q->orWhere(function ($q) use ($targetIds) {
                 $q->where('owner_type', 'App\Models\Passenger')
-                  ->whereIn('owner_id', $passengerIds);
+                  ->whereIn('owner_id', $targetIds);
             });
         })->get();
 
