@@ -674,7 +674,11 @@ if ($route) {
     <td class="px-3 py-2">
         <div class="flex flex-col gap-1">
             <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" class="text-slate-600 hover:text-slate-800">View</a>
-            <a href="{{ route('passengers.download-all-docs', $passenger->id) }}" class="text-green-600 hover:text-green-800 font-medium">Download</a>
+            @if($passenger->documents_count > 0)
+                <a href="{{ route('passengers.download-all-docs', $passenger->id) }}" class="text-green-600 hover:text-green-800 font-medium">Download</a>
+            @else
+                <span class="text-slate-300 cursor-not-allowed font-medium">Download</span>
+            @endif
         </div>
     </td>
 </tr>

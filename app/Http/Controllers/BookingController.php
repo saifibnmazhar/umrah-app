@@ -294,6 +294,7 @@ class BookingController extends Controller
                 'latestIssuedTicket.ticketFare.airlineClass.class',
                 'latestIssuedTicket.ticketFare.route',
             ])
+            ->withCount('documents')
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->appends(['tab' => $tab])
@@ -1569,12 +1570,7 @@ class BookingController extends Controller
             abort_if(empty($pdfFiles), 404, 'No processable documents found');
 
             $outputPdf = $tmpDir . '/merged.pdf';
-            $inputList = implode(' ', array_map('escapeshellarg', $pdfFiles));
-            exec("gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=" . escapeshellarg($outputPdf) . " {$inputList} 2>/dev/null", $output, $code);
-
-            if ($code !== 0 || !file_exists($outputPdf)) {
-                throw new \RuntimeException('Ghostscript merge failed');
-            }
+            $this->mergePdfs($pdfFiles, $outputPdf);
 
             $mergedContent = file_get_contents($outputPdf);
         } finally {
