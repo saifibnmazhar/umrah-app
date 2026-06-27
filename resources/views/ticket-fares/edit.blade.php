@@ -26,7 +26,44 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('ticket-fares.update', $ticketFare->id) }}">
+    <form method="POST" action="{{ route('ticket-fares.update', $ticketFare->id) }}" x-data="{
+        fares: {
+            net_fare: { sar: {{ old('net_fare', $ticketFare->net_fare) }}, bdt: 0 },
+            selling_fare: { sar: {{ old('selling_fare', $ticketFare->selling_fare) }}, bdt: 0 },
+            offer_price: { sar: {{ old('offer_price', $ticketFare->offer_price) }}, bdt: 0 },
+        },
+        init() {
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                this.fares.net_fare.bdt = (parseFloat(this.fares.net_fare.sar) * rate).toFixed(6);
+                this.fares.selling_fare.bdt = (parseFloat(this.fares.selling_fare.sar) * rate).toFixed(6);
+                this.fares.offer_price.bdt = (parseFloat(this.fares.offer_price.sar) * rate).toFixed(6);
+            }
+            const component = this;
+            window.addEventListener('currency-toggled', function () {
+                const r = window.__currencyRate || 0;
+                if (r > 0) {
+                    component.fares.net_fare.bdt = (parseFloat(component.fares.net_fare.sar) * r).toFixed(6);
+                    component.fares.selling_fare.bdt = (parseFloat(component.fares.selling_fare.sar) * r).toFixed(6);
+                    component.fares.offer_price.bdt = (parseFloat(component.fares.offer_price.sar) * r).toFixed(6);
+                }
+            });
+        },
+        handleSarInput(field) {
+            const fare = this.fares[field];
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                fare.bdt = (parseFloat(fare.sar) * rate).toFixed(6);
+            }
+        },
+        handleBdtInput(field) {
+            const fare = this.fares[field];
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                fare.sar = (parseFloat(fare.bdt) / rate).toFixed(6);
+            }
+        },
+    }">
         @csrf
         @method('PUT')
 
@@ -133,15 +170,27 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR) *</label>
-                    <input type="number" name="net_fare" value="{{ old('net_fare', $ticketFare->net_fare) }}" step="0.01" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <input type="number" name="net_fare" x-model="fares.net_fare.sar" @input="handleSarInput('net_fare')" :readonly="$store.currency.mode === 'BDT'" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mt-1">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT) *</label>
+                        <input type="number" x-model="fares.net_fare.bdt" @input="handleBdtInput('net_fare')" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
-                    <input type="number" name="selling_fare" value="{{ old('selling_fare', $ticketFare->selling_fare) }}" step="0.01" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <input type="number" name="selling_fare" x-model="fares.selling_fare.sar" @input="handleSarInput('selling_fare')" :readonly="$store.currency.mode === 'BDT'" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mt-1">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) *</label>
+                        <input type="number" x-model="fares.selling_fare.bdt" @input="handleBdtInput('selling_fare')" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    </div>
                 </div>
                 <div id="offerPriceField" class="{{ $currentTicketType !== 'offer' ? 'hidden' : '' }}">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
-                    <input type="number" name="offer_price" value="{{ old('offer_price', $ticketFare->offer_price) }}" step="0.01" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <input type="number" name="offer_price" x-model="fares.offer_price.sar" @input="handleSarInput('offer_price')" :readonly="$store.currency.mode === 'BDT'" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}" step="any" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mt-1">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) *</label>
+                        <input type="number" x-model="fares.offer_price.bdt" @input="handleBdtInput('offer_price')" step="any" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Child Fare (%) *</label>
