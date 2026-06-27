@@ -20,7 +20,7 @@ class PaymentController extends Controller
 {
     public function index()
     {
-        $payments = Payment::with(['user', 'bank', 'senderBank'])
+        $payments = Payment::with(['user', 'bank', 'senderBank', 'voucher.transactionType'])
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();

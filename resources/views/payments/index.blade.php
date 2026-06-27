@@ -35,6 +35,7 @@
                         <th class="px-3 py-2 text-left font-medium">Created By</th>
                         <th class="px-3 py-2 text-left font-medium">Payment Date</th>
                         <th class="px-3 py-2 text-left font-medium">Created At</th>
+                        <th class="px-3 py-2 text-left font-medium">Transaction Type</th>
                         <th class="px-3 py-2 text-left font-medium">Method</th>
                         <th class="px-3 py-2 text-right font-medium">Amount (SAR)</th>
                         <th class="px-3 py-2 text-right font-medium">Amount (BDT)</th>
@@ -54,6 +55,15 @@
                             <td class="px-3 py-2 text-slate-600">
                                 {{ $payment->created_at->format('d/m/Y') }}
                                 <span class="local-time" data-utc="{{ $payment->created_at->toIso8601String() }}"></span>
+                            </td>
+                            <td class="px-3 py-2">
+                                @if($payment->voucher?->transactionType)
+                                    <span class="px-2 py-1 text-xs font-medium rounded-full {{ $payment->voucher->transactionType->type === 'debit' ? 'bg-amber-100 text-amber-700' : 'bg-teal-100 text-teal-700' }}">
+                                        {{ $payment->voucher->transactionType->name }}
+                                    </span>
+                                @else
+                                    <span class="text-slate-400">-</span>
+                                @endif
                             </td>
                             <td class="px-3 py-2">
                                 @if($payment->payment_method->value === 'cash')
