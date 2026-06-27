@@ -263,9 +263,9 @@ Alpine.data('bookingApp', () => ({
         }
 
         let calculatedType = 'Adult';
-        if (ageInMonths < 24) {
+        if (ageInMonths < 19) {
             calculatedType = 'Infant';
-        } else if (ageInMonths < 144) {
+        } else if (ageInMonths < 139) {
             calculatedType = 'Child';
         }
 
@@ -1179,9 +1179,9 @@ Alpine.data('createBookingApp', () => ({
         }
 
         let calculatedType = 'Adult';
-        if (ageInMonths < 24) {
+        if (ageInMonths < 19) {
             calculatedType = 'Infant';
-        } else if (ageInMonths < 144) {
+        } else if (ageInMonths < 139) {
             calculatedType = 'Child';
         }
 
@@ -2784,9 +2784,9 @@ Alpine.data('editBookingApp', () => ({
         }
 
         let calculatedType = 'Adult';
-        if (ageInMonths < 24) {
+        if (ageInMonths < 19) {
             calculatedType = 'Infant';
-        } else if (ageInMonths < 144) {
+        } else if (ageInMonths < 139) {
             calculatedType = 'Child';
         }
 
@@ -4056,9 +4056,9 @@ Alpine.data('showBookingApp', () => ({
             ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
         }
         let calculatedType = 'Adult';
-        if (ageInMonths < 24) {
+        if (ageInMonths < 19) {
             calculatedType = 'Infant';
-        } else if (ageInMonths < 144) {
+        } else if (ageInMonths < 139) {
             calculatedType = 'Child';
         }
         this.passengerData.passenger_type = calculatedType;

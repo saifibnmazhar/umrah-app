@@ -35,8 +35,8 @@ class BookingService
         }
 
         return match (true) {
-            $ageInMonths < 24 => PassengerType::INFANT->value,
-            $ageInMonths < 144 => PassengerType::CHILD->value,
+            $ageInMonths < 19 => PassengerType::INFANT->value,
+            $ageInMonths < 139 => PassengerType::CHILD->value,
             default => PassengerType::ADULT->value,
         };
     }

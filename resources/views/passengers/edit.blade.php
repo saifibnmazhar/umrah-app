@@ -422,9 +422,9 @@
             }
 
             let calculatedType = 'Adult';
-            if (ageInMonths < 24) {
+            if (ageInMonths < 19) {
                 calculatedType = 'Infant';
-            } else if (ageInMonths < 144) {
+            } else if (ageInMonths < 139) {
                 calculatedType = 'Child';
             }
 
