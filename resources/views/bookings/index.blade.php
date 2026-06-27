@@ -1174,16 +1174,37 @@ if ($route) {
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
-                            <input type="number" x-model="ticketFareForm.selling_fare" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
+                                <input type="number" x-model="ticketFareForm.selling_fare" min="0" @input="handleTicketFareSarInput('selling_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
+                                <input type="number" x-model="ticketFareForm.selling_fare_bdt" min="0" @input="handleTicketFareBdtInput('selling_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="ticketFareForm.selling_fare" min="0" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
-                            <input type="number" x-model="ticketFareForm.net_fare" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
+                                <input type="number" x-model="ticketFareForm.net_fare" min="0" @input="handleTicketFareSarInput('net_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
+                                <input type="number" x-model="ticketFareForm.net_fare_bdt" min="0" @input="handleTicketFareBdtInput('net_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="ticketFareForm.net_fare" min="0" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
                         </div>
                         <div x-show="ticketFareForm.ticket_type === 'offer'">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
-                            <input type="number" x-model="ticketFareForm.offer_price" min="0" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
+                                <input type="number" x-model="ticketFareForm.offer_price" min="0" @input="handleTicketFareSarInput('offer_price')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
+                                <input type="number" x-model="ticketFareForm.offer_price_bdt" min="0" @input="handleTicketFareBdtInput('offer_price')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="ticketFareForm.offer_price" min="0" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
                         </div>
                     </div>
                 </div>
@@ -1302,6 +1323,18 @@ function bookingIndexApp() {
                         value: input.value,
                         time: Date.now()
                     }));
+                }
+            });
+
+            window.addEventListener('currency-toggled', () => {
+                const r = window.__currencyRate || 0;
+                if (r > 0) {
+                    const f = this.ticketFareForm;
+                    this._converting = true;
+                    f.selling_fare_bdt = Math.round(parseFloat(f.selling_fare || 0) * r);
+                    f.net_fare_bdt = Math.round(parseFloat(f.net_fare || 0) * r);
+                    f.offer_price_bdt = Math.round(parseFloat(f.offer_price || 0) * r);
+                    this._converting = false;
                 }
             });
 
@@ -1979,8 +2012,11 @@ function bookingIndexApp() {
             travel_class: '',
             passenger_type: '',
             selling_fare: 0,
+            selling_fare_bdt: '',
             net_fare: 0,
+            net_fare_bdt: '',
             offer_price: 0,
+            offer_price_bdt: '',
             baggage_inbound: '',
             baggage_outbound: '',
             non_refundable: false,
@@ -1991,6 +2027,7 @@ function bookingIndexApp() {
             showBaggage: false,
         },
 
+        _converting: false,
         _initLock: false,
 
         newTicketFareForm: {
@@ -2065,6 +2102,12 @@ function bookingIndexApp() {
                 this.ticketFareForm.flight_type = row.ticket_fare?.flight_type || '';
                 this.ticketFareForm.route_id = row.ticket_fare?.route_id || '';
                 this.ticketFareForm.airline_id = row.ticket_fare?.airline_id || '';
+                const r1 = window.__currencyRate || 0;
+                if (r1 > 0) {
+                    this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * r1);
+                    this.ticketFareForm.net_fare_bdt = Math.round(parseFloat(this.ticketFareForm.net_fare) * r1);
+                    this.ticketFareForm.offer_price_bdt = Math.round(parseFloat(this.ticketFareForm.offer_price) * r1);
+                }
             } else if (row.ticket_fare) {
                 this.ticketFareForm.ticket_type = row.ticket_fare.ticket_type || '';
                 this.ticketFareForm.route_type = row.ticket_fare.route_type || '';
@@ -2085,6 +2128,12 @@ function bookingIndexApp() {
                 this.ticketFareForm.outbound_pending = row.ticket_fare.outbound_pending || false;
                 this.ticketFareForm.route_id = row.ticket_fare.route_id || '';
                 this.ticketFareForm.airline_id = row.ticket_fare.airline_id || '';
+                const r2 = window.__currencyRate || 0;
+                if (r2 > 0) {
+                    this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * r2);
+                    this.ticketFareForm.net_fare_bdt = Math.round(parseFloat(this.ticketFareForm.net_fare) * r2);
+                    this.ticketFareForm.offer_price_bdt = Math.round(parseFloat(this.ticketFareForm.offer_price) * r2);
+                }
             } else {
                 this.ticketFareForm.ticket_type = '';
                 this.ticketFareForm.route_type = '';
@@ -2102,6 +2151,9 @@ function bookingIndexApp() {
                 this.ticketFareForm.baggage_inbound = '';
                 this.ticketFareForm.baggage_outbound = '';
                 this.ticketFareForm.outbound_pending = false;
+                this.ticketFareForm.selling_fare_bdt = '';
+                this.ticketFareForm.net_fare_bdt = '';
+                this.ticketFareForm.offer_price_bdt = '';
             }
 
             this._initLock = true;
@@ -2126,6 +2178,28 @@ function bookingIndexApp() {
             if (passengerType === 'child') return Math.round((baseFare * (childPct || 70)) / 100);
             if (passengerType === 'infant') return Math.round((baseFare * (infantPct || 30)) / 100);
             return baseFare;
+        },
+
+        handleTicketFareSarInput(field) {
+            if (this._converting) return;
+            this._converting = true;
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                const sar = parseFloat(this.ticketFareForm[field]) || 0;
+                this.ticketFareForm[field + '_bdt'] = Math.round(sar * rate);
+            }
+            this._converting = false;
+        },
+
+        handleTicketFareBdtInput(field) {
+            if (this._converting) return;
+            this._converting = true;
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                const bdt = parseFloat(this.ticketFareForm[field + '_bdt']) || 0;
+                this.ticketFareForm[field] = (Math.round(bdt / rate * 1e6) / 1e6).toFixed(6);
+            }
+            this._converting = false;
         },
 
         closeTicketFareModal() {
@@ -2169,7 +2243,9 @@ function bookingIndexApp() {
                 this.ticketFareForm.selling_fare = 0;
                 this.ticketFareForm.net_fare = 0;
                 this.ticketFareForm.offer_price = 0;
-            this.ticketFareForm.offer_price = 0;
+            this.ticketFareForm.selling_fare_bdt = '';
+            this.ticketFareForm.net_fare_bdt = '';
+            this.ticketFareForm.offer_price_bdt = '';
             this.ticketFareForm.baggage_inbound = '';
             this.ticketFareForm.baggage_outbound = '';
             this.ticketFareForm.pnr = '';
@@ -2375,6 +2451,9 @@ function bookingIndexApp() {
                 this.ticketFareForm.net_fare = 0;
                 this.ticketFareForm.baggage_inbound = '';
                 this.ticketFareForm.baggage_outbound = '';
+                this.ticketFareForm.selling_fare_bdt = '';
+                this.ticketFareForm.net_fare_bdt = '';
+                this.ticketFareForm.offer_price_bdt = '';
                 return;
             }
             const fare = this.ticketFaresList.find(f => f.id == val);
@@ -2400,12 +2479,24 @@ function bookingIndexApp() {
                     if (row.ticket_fare.with_offer && row.ticket_fare.offer_price) {
                         this.ticketFareForm.offer_price = row.ticket_fare.offer_price;
                     }
+                    const r3 = window.__currencyRate || 0;
+                    if (r3 > 0) {
+                        this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * r3);
+                        this.ticketFareForm.net_fare_bdt = Math.round(parseFloat(this.ticketFareForm.net_fare) * r3);
+                        this.ticketFareForm.offer_price_bdt = Math.round(parseFloat(this.ticketFareForm.offer_price) * r3);
+                    }
                 } else {
                     const pType = row?.passenger_type || 'adult';
                     this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(fare.selling_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                     this.ticketFareForm.net_fare = this.calculateFareForPassengerType(fare.net_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                     if (fare.ticket_type === 'offer' && fare.offer_price) {
                         this.ticketFareForm.offer_price = fare.offer_price;
+                    }
+                    const r4 = window.__currencyRate || 0;
+                    if (r4 > 0) {
+                        this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * r4);
+                        this.ticketFareForm.net_fare_bdt = Math.round(parseFloat(this.ticketFareForm.net_fare) * r4);
+                        this.ticketFareForm.offer_price_bdt = Math.round(parseFloat(this.ticketFareForm.offer_price) * r4);
                     }
                 }
             }
