@@ -3,7 +3,7 @@
 @section('title', 'Fingerprint Staff')
 
 @section('content')
-<div class="w-full mx-auto pt-6" x-data="fingerprintStaff({ isFingerprintStaff: @json($isFingerprintStaff), canEditCost: @json($canEditCost) })">
+<div class="w-full mx-auto pt-6" x-data="fingerprintStaff({ isFingerprintStaff: @json($isFingerprintStaff) })">
     <div class="bg-white rounded-xl shadow-lg p-6">
         <h2 class="text-xl font-semibold text-slate-700 mb-6">Fingerprint Staff</h2>
         <div class="overflow-x-auto">
@@ -47,12 +47,12 @@
                             <td class="px-3 py-2 text-slate-600" x-text="row.passenger_address || '-'"></td>
                             <td class="px-3 py-2 text-right">
                                 <input type="number"
-                                       x-show="row.isFirstInGroup && canEditCost"
+                                       x-show="row.isFirstInGroup && row.can_edit_cost"
                                         :value="inputValue(row.cost, row.rate, currencyToggleCounter)"
                                         @change="updateCost(row.fingerprint_id, $event.target.value, row.rate)"
                                        class="w-20 text-right text-sm border border-slate-300 rounded px-2 py-1"
                                        min="0">
-<span x-show="row.isFirstInGroup && !canEditCost"
+<span x-show="row.isFirstInGroup && !row.can_edit_cost"
       class="text-sm text-slate-700 font-medium"
       x-text="formatCost(row.cost, row.rate, currencyToggleCounter)"></span>
                             </td>
@@ -180,7 +180,6 @@ function fingerprintStaff(options = {}) {
         lastPage: 1,
         totalRecords: 0,
         canEditStatus: options.isFingerprintStaff ?? false,
-        canEditCost: options.canEditCost ?? false,
         currencyToggleCounter: 0,
         showHoldModal: false,
         currentFingerprintDetailId: null,

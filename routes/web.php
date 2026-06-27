@@ -162,10 +162,8 @@ Route::middleware('auth')->group(function () {
         return view('fingerprints.admin', compact('canAssignStaff', 'divisions', 'districts'));
     })->name('fingerprint.admin')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::get('/fingerprints/staff', function () {
-        $user = auth()->user();
-        $isFingerprintStaff = $user->hasRole('Fingerprint Staff');
-        $canEditCost = $user->hasRole('Super Admin') || $user->hasRole('Fingerprint Staff');
-        return view('fingerprints.staff', compact('isFingerprintStaff', 'canEditCost'));
+        $isFingerprintStaff = auth()->user()->hasRole('Fingerprint Staff');
+        return view('fingerprints.staff', compact('isFingerprintStaff'));
     })->name('fingerprint.staff')->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
 
     Route::get('/api/fingerprints/admin', [FingerprintController::class, 'adminIndex'])
