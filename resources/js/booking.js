@@ -247,20 +247,17 @@ Alpine.data('bookingApp', () => ({
             ageInMonths -= 1;
         }
 
-        const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
-
-        if (stayDays !== null) {
-            const adjustmentDays = stayDays < 30 ? 30 : 90;
-
-            const effectiveDate = new Date(dobDate);
-            effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
-
-            const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
-            const dayDiff = today.getDate() - effectiveDate.getDate();
-            const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
-
-            ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
-        }
+        // // Stay duration adjustment (no longer applied)
+        // const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
+        // if (stayDays !== null) {
+        //     const adjustmentDays = stayDays < 30 ? 30 : 90;
+        //     const effectiveDate = new Date(dobDate);
+        //     effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
+        //     const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
+        //     const dayDiff = today.getDate() - effectiveDate.getDate();
+        //     const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
+        //     ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
+        // }
 
         let calculatedType = 'Adult';
         if (ageInMonths < 19) {
@@ -1163,20 +1160,17 @@ Alpine.data('createBookingApp', () => ({
             ageInMonths -= 1;
         }
 
-        const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
-
-        if (stayDays !== null) {
-            const adjustmentDays = stayDays < 30 ? 30 : 90;
-
-            const effectiveDate = new Date(dobDate);
-            effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
-
-            const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
-            const dayDiff = today.getDate() - effectiveDate.getDate();
-            const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
-
-            ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
-        }
+        // // Stay duration adjustment (no longer applied)
+        // const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
+        // if (stayDays !== null) {
+        //     const adjustmentDays = stayDays < 30 ? 30 : 90;
+        //     const effectiveDate = new Date(dobDate);
+        //     effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
+        //     const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
+        //     const dayDiff = today.getDate() - effectiveDate.getDate();
+        //     const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
+        //     ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
+        // }
 
         let calculatedType = 'Adult';
         if (ageInMonths < 19) {
@@ -2768,20 +2762,17 @@ Alpine.data('editBookingApp', () => ({
             ageInMonths -= 1;
         }
 
-        const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
-
-        if (stayDays !== null) {
-            const adjustmentDays = stayDays < 30 ? 30 : 90;
-
-            const effectiveDate = new Date(dobDate);
-            effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
-
-            const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
-            const dayDiff = today.getDate() - effectiveDate.getDate();
-            const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
-
-            ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
-        }
+        // // Stay duration adjustment (no longer applied)
+        // const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
+        // if (stayDays !== null) {
+        //     const adjustmentDays = stayDays < 30 ? 30 : 90;
+        //     const effectiveDate = new Date(dobDate);
+        //     effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
+        //     const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
+        //     const dayDiff = today.getDate() - effectiveDate.getDate();
+        //     const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
+        //     ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
+        // }
 
         let calculatedType = 'Adult';
         if (ageInMonths < 19) {
@@ -4045,16 +4036,17 @@ Alpine.data('showBookingApp', () => ({
         if (todayDay < dobDay) {
             ageInMonths -= 1;
         }
-        const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
-        if (stayDays !== null) {
-            const adjustmentDays = stayDays < 30 ? 30 : 90;
-            const effectiveDate = new Date(dobDate);
-            effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
-            const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
-            const dayDiff = today.getDate() - effectiveDate.getDate();
-            const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
-            ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
-        }
+        // // Stay duration adjustment (no longer applied)
+        // const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
+        // if (stayDays !== null) {
+        //     const adjustmentDays = stayDays < 30 ? 30 : 90;
+        //     const effectiveDate = new Date(dobDate);
+        //     effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
+        //     const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
+        //     const dayDiff = today.getDate() - effectiveDate.getDate();
+        //     const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
+        //     ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
+        // }
         let calculatedType = 'Adult';
         if (ageInMonths < 19) {
             calculatedType = 'Infant';

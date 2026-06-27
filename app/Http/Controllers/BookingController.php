@@ -591,7 +591,7 @@ class BookingController extends Controller
             foreach ($validated['passengers'] as $passengerIndex => $passengerData) {
                 $passengerType = $this->bookingService->calculatePassengerType(
                     $passengerData['date_of_birth'],
-                    $passengerData['stay_duration'] ?? null
+                    // $passengerData['stay_duration'] ?? null
                 );
 
                 $passenger = Passenger::create([
@@ -1154,7 +1154,7 @@ class BookingController extends Controller
 
         $passengerType = $this->bookingService->calculatePassengerType(
             $validated['date_of_birth'],
-            $validated['stay_duration'] ?? null
+            // $validated['stay_duration'] ?? null
         );
 
         $validated['booking_id'] = $booking->id;
@@ -1245,13 +1245,13 @@ class BookingController extends Controller
     public function calculatePassengerType(Request $request)
     {
         $dateOfBirth = $request->input('date_of_birth');
-        $stayDuration = $request->input('stay_duration');
+        // $stayDuration = $request->input('stay_duration');
         
         if (!$dateOfBirth) {
             return response()->json(['passenger_type' => null]);
         }
 
-        $passengerType = $this->bookingService->calculatePassengerType($dateOfBirth, $stayDuration);
+        $passengerType = $this->bookingService->calculatePassengerType($dateOfBirth /*, $stayDuration*/);
 
         return response()->json([
             'passenger_type' => $passengerType,

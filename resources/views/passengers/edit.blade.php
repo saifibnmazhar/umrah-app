@@ -85,8 +85,7 @@
                                    placeholder="Enter DOB to auto-calculate">
                         </div>
                         <p x-show="passengerData.date_of_birth && !passengerData.passenger_type" class="text-xs text-slate-400 mt-1">Calculating...</p>
-                        <p x-show="passengerData.passenger_type && !passengerData.stay_duration" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth</p>
-                        <p x-show="passengerData.passenger_type && passengerData.stay_duration" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth & stay duration</p>
+                        <p x-show="passengerData.passenger_type" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Passport Expiry Date</label>
@@ -100,7 +99,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Stay Duration *</label>
-                        <select x-model="passengerData.stay_duration" @change="handleStayDurationChange(); calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select x-model="passengerData.stay_duration" @change="handleStayDurationChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Stay Duration</option>
                             <option value="14">Group (14 Days)</option>
                             {{-- <option value="85">Family (85 Days)</option> --}}
@@ -409,17 +408,17 @@
                 ageInMonths -= 1;
             }
 
-            const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
-
-            if (stayDays !== null) {
-                const adjustmentDays = stayDays < 30 ? 30 : 90;
-                const effectiveDate = new Date(dobDate);
-                effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
-                const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
-                const dayDiff = today.getDate() - effectiveDate.getDate();
-                const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
-                ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
-            }
+            // // Stay duration adjustment (no longer applied)
+            // const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
+            // if (stayDays !== null) {
+            //     const adjustmentDays = stayDays < 30 ? 30 : 90;
+            //     const effectiveDate = new Date(dobDate);
+            //     effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
+            //     const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
+            //     const dayDiff = today.getDate() - effectiveDate.getDate();
+            //     const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
+            //     ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
+            // }
 
             let calculatedType = 'Adult';
             if (ageInMonths < 19) {
