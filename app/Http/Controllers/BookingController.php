@@ -278,6 +278,7 @@ class BookingController extends Controller
             ->with([
                 'booking',
                 'booking.customer',
+                'booking.customer.documents',
                 'booking.package.ticketFare.route',
                 'booking.invoice',
                 'ticketFare.route',
