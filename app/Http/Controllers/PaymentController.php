@@ -18,14 +18,22 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
-    public function index()
+    public function index(Request $request)
     {
-        $payments = Payment::with(['user', 'bank', 'senderBank', 'voucher.transactionType'])
-            ->orderBy('created_at', 'desc')
-            ->paginate(10)
-            ->withQueryString();
-        
-        return view('payments.index', compact('payments'));
+        $query = Payment::with(['user', 'bank', 'senderBank', 'voucher.transactionType'])
+            ->orderBy('created_at', 'desc');
+
+        if ($request->filled('transaction_type_id')) {
+            $query->whereHas('voucher', function ($q) use ($request) {
+                $q->where('transaction_type_id', $request->transaction_type_id);
+            });
+        }
+
+        $payments = $query->paginate(10)->withQueryString();
+
+        $transactionTypes = TransactionType::orderBy('name')->get();
+
+        return view('payments.index', compact('payments', 'transactionTypes'));
     }
 
     public function create()

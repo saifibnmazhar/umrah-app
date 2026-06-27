@@ -26,6 +26,30 @@
         </div>
     @endif
 
+    <div class="bg-white rounded-lg shadow-lg p-6 mb-4">
+        <form method="GET" action="{{ route('payments.index') }}" id="payment-filter-form" class="flex items-end gap-4">
+            <div class="min-w-[220px]">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Transaction Type</label>
+                <select name="transaction_type_id"
+                        onchange="document.getElementById('payment-filter-form').submit()"
+                        class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <option value="">All Transaction Types</option>
+                    @foreach($transactionTypes as $type)
+                        <option value="{{ $type->id }}" {{ request('transaction_type_id') == $type->id ? 'selected' : '' }}>
+                            {{ $type->name }}
+                        </option>
+                    @endforeach
+                </select>
+            </div>
+            <div>
+                <a href="{{ route('payments.index') }}"
+                   class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
+                    Clear
+                </a>
+            </div>
+        </form>
+    </div>
+
     <div class="bg-white rounded-lg shadow-lg p-6">
         <div class="overflow-x-auto">
             <table class="w-full min-w-[800px] text-sm">
