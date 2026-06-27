@@ -1653,27 +1653,45 @@ Alpine.data('createBookingApp', () => ({
     },
 
     getPassengerFare(passenger) {
-        let ticket = passenger.ticket_fare || null;
-        if (!ticket && passenger.ticket_fare_id) {
-            ticket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_id));
+        const serviceRequired = passenger.service_required || 'all';
+        const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
+
+        let ticketAmount = 0;
+        if (serviceRequired !== 'visa_only') {
+            let ticket = passenger.ticket_fare || null;
+            if (!ticket && passenger.ticket_fare_id) {
+                ticket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_id));
+            }
+            if (ticket) {
+                const baseFare = ticket.ticket_type === 'offer'
+                    ? (parseFloat(ticket.offer_price) || 0)
+                    : (parseFloat(ticket.selling_fare) || 0);
+                ticketAmount = baseFare;
+                if (passengerType === 'child') {
+                    const pct = parseFloat(ticket.child_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                } else if (passengerType === 'infant') {
+                    const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                }
+            }
         }
-        if (!ticket) return '-';
 
-        const baseFare = ticket.ticket_type === 'offer'
-            ? (parseFloat(ticket.offer_price) || 0)
-            : (parseFloat(ticket.selling_fare) || 0);
+        const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+        const visaPrice = parseFloat(pkg?.visa_selling_price) || 0;
+        const serviceCharge = parseFloat(pkg?.service_charge) || 0;
 
-        const type = (passenger.passenger_type || 'adult').toLowerCase();
-        let fare = baseFare;
-        if (type === 'child') {
-            const pct = parseFloat(ticket.child_fare_percentage) || 0;
-            fare = baseFare * pct / 100;
-        } else if (type === 'infant') {
-            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-            fare = baseFare * pct / 100;
+        let visaAmount = 0;
+        let scAmount = 0;
+        if (serviceRequired !== 'ticket_only') {
+            visaAmount = visaPrice;
+            scAmount = serviceCharge;
+        } else {
+            scAmount = serviceCharge;
         }
 
-        return fare > 0 ? Alpine.store('currency').format(fare) : '-';
+        const total = ticketAmount + visaAmount + scAmount;
+        return total > 0 ? Alpine.store('currency').format(total) : '-';
     },
 
     parseFlightDateRange(rangeString) {
@@ -3497,27 +3515,45 @@ Alpine.data('editBookingApp', () => ({
     },
 
     getPassengerFare(passenger) {
-        let ticket = passenger.ticket_fare || null;
-        if (!ticket && passenger.ticket_fare_id) {
-            ticket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_id));
+        const serviceRequired = passenger.service_required || 'all';
+        const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
+
+        let ticketAmount = 0;
+        if (serviceRequired !== 'visa_only') {
+            let ticket = passenger.ticket_fare || null;
+            if (!ticket && passenger.ticket_fare_id) {
+                ticket = this.allTickets.find(t => String(t.id) === String(passenger.ticket_fare_id));
+            }
+            if (ticket) {
+                const baseFare = ticket.ticket_type === 'offer'
+                    ? (parseFloat(ticket.offer_price) || 0)
+                    : (parseFloat(ticket.selling_fare) || 0);
+                ticketAmount = baseFare;
+                if (passengerType === 'child') {
+                    const pct = parseFloat(ticket.child_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                } else if (passengerType === 'infant') {
+                    const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+                    ticketAmount = baseFare * pct / 100;
+                }
+            }
         }
-        if (!ticket) return '-';
 
-        const baseFare = ticket.ticket_type === 'offer'
-            ? (parseFloat(ticket.offer_price) || 0)
-            : (parseFloat(ticket.selling_fare) || 0);
+        const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+        const visaPrice = parseFloat(pkg?.visa_selling_price) || 0;
+        const serviceCharge = parseFloat(pkg?.service_charge) || 0;
 
-        const type = (passenger.passenger_type || 'adult').toLowerCase();
-        let fare = baseFare;
-        if (type === 'child') {
-            const pct = parseFloat(ticket.child_fare_percentage) || 0;
-            fare = baseFare * pct / 100;
-        } else if (type === 'infant') {
-            const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-            fare = baseFare * pct / 100;
+        let visaAmount = 0;
+        let scAmount = 0;
+        if (serviceRequired !== 'ticket_only') {
+            visaAmount = visaPrice;
+            scAmount = serviceCharge;
+        } else {
+            scAmount = serviceCharge;
         }
 
-        return fare > 0 ? Alpine.store('currency').format(fare) : '-';
+        const total = ticketAmount + visaAmount + scAmount;
+        return total > 0 ? Alpine.store('currency').format(total) : '-';
     },
 
     openCustomerModal() {
