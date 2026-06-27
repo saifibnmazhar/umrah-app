@@ -157,7 +157,7 @@
                                         <div><span class="text-slate-500">Airline:</span> <span class="text-slate-700 ml-1" x-text="passenger.airline || '-'"></span></div>
                                         <div><span class="text-slate-500">Flight:</span> <span class="text-slate-700 ml-1" x-text="passenger.flight_type || '-'"></span></div>
                                         <div><span class="text-slate-500">Duration:</span> <span class="text-slate-700 ml-1" x-text="passenger.stay_duration || '-'"></span></div>
-                                        <div><span class="text-slate-500">Passenger Fare:</span> <span class="text-slate-700 ml-1" x-text="getPassengerFare(passenger)"></span></div>
+                                        <div><span class="text-slate-500">Passenger Value:</span> <span class="text-slate-700 ml-1" x-text="getPassengerFare(passenger)"></span></div>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2 ml-4">
