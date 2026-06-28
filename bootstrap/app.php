@@ -1,6 +1,9 @@
 <?php
 
+use App\Exceptions\DatabaseErrorHumanizer;
 use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\Eloquent\ModelNotFoundException;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -24,5 +27,30 @@ return Application::configure(basePath: dirname(__DIR__))
         $schedule->command('ticket-fares:expire')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        //
+        $exceptions->render(function (QueryException $e, \Illuminate\Http\Request $request) {
+            $message = DatabaseErrorHumanizer::humanize($e);
+
+            \Log::error('Database error: ' . $e->getMessage(), [
+                'sql' => $e->getSql(),
+                'bindings' => $e->getBindings(),
+                'url' => $request->fullUrl(),
+                'user_id' => auth()->id(),
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 500);
+            }
+
+            return redirect()->back()->with('error', $message)->withInput();
+        });
+
+        $exceptions->render(function (ModelNotFoundException $e, \Illuminate\Http\Request $request) {
+            $message = 'The requested record was not found.';
+
+            if ($request->expectsJson()) {
+                return response()->json(['success' => false, 'message' => $message], 404);
+            }
+
+            return redirect()->back()->with('error', $message);
+        });
     })->create();

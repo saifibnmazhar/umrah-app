@@ -45,7 +45,10 @@ class VisaAgentCostController extends Controller
             return redirect()->route('visa.admin', ['tab' => 'visa-agent-costs'])->with('success', 'Visa agent cost created successfully.');
         } catch (\Exception $e) {
             \Log::error('VisaAgentCost Create Error: ' . $e->getMessage());
-            return redirect()->back()->with('error', 'Failed to create visa agent cost: ' . $e->getMessage())->withInput();
+            $message = $e instanceof \Illuminate\Database\QueryException
+                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                : 'Failed to create visa agent cost.';
+            return redirect()->back()->with('error', $message)->withInput();
         }
     }
 

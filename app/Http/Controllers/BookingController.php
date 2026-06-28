@@ -758,13 +758,17 @@ class BookingController extends Controller
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
+            $dbMessage = $e instanceof \Illuminate\Database\QueryException
+                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                : 'An unexpected error occurred. Please try again.';
+
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to create booking: ' . $e->getMessage()
+                    'message' => $dbMessage,
                 ], 500);
             }
-            return redirect()->back()->with('error', 'Failed to create booking: ' . $e->getMessage())->withInput();
+            return redirect()->back()->with('error', $dbMessage)->withInput();
         }
     }
 
@@ -1477,7 +1481,9 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to save payment: ' . $e->getMessage()
+                'message' => $e instanceof \Illuminate\Database\QueryException
+                    ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                    : 'Failed to save payment.'
             ], 500);
         }
     }

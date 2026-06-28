@@ -345,7 +345,9 @@ class PassengerController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to upload documents: ' . $e->getMessage(),
+                'message' => $e instanceof \Illuminate\Database\QueryException
+                    ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                    : 'Failed to upload documents.',
             ], 500);
         }
     }
@@ -513,15 +515,19 @@ class PassengerController extends Controller
             return redirect()->route('passengers.show', $passenger->id)
                 ->with('success', 'Passenger updated successfully.');
         } catch (\Exception $e) {
+            $dbMessage = $e instanceof \Illuminate\Database\QueryException
+                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                : 'Failed to update passenger.';
+
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'message' => 'Failed to update passenger'
+                    'message' => $dbMessage,
                 ], 500);
             }
 
             return redirect()->route('passengers.edit', $passenger->id)
-                ->with('error', 'Failed to update passenger: ' . $e->getMessage());
+                ->with('error', $dbMessage);
         }
     }
 

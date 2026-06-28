@@ -142,7 +142,10 @@ class TicketFareController extends Controller
 
             return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare created successfully.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to create ticket fare: ' . $e->getMessage())->withInput();
+            $message = $e instanceof \Illuminate\Database\QueryException
+                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                : 'Failed to create ticket fare.';
+            return redirect()->back()->with('error', $message)->withInput();
         }
     }
 
@@ -255,7 +258,10 @@ class TicketFareController extends Controller
 
             return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare updated successfully.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to update ticket fare: ' . $e->getMessage())->withInput();
+            $message = $e instanceof \Illuminate\Database\QueryException
+                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                : 'Failed to update ticket fare.';
+            return redirect()->back()->with('error', $message)->withInput();
         }
     }
 
@@ -418,7 +424,10 @@ class TicketFareController extends Controller
             ]);
         } catch (\Exception $e) {
             \Log::error('Baggage allowance error: ' . $e->getMessage());
-            return response()->json(['allowances' => [], 'message' => 'Error: ' . $e->getMessage()], 500);
+            $message = $e instanceof \Illuminate\Database\QueryException
+                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                : 'An unexpected error occurred.';
+            return response()->json(['allowances' => [], 'message' => $message], 500);
         }
     }
 

@@ -101,7 +101,9 @@ class CustomerController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to create customer: ' . $e->getMessage()
+                'message' => $e instanceof \Illuminate\Database\QueryException
+                    ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                    : 'Failed to create customer.'
             ], 500);
         }
     }

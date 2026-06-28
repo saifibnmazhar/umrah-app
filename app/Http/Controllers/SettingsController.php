@@ -147,7 +147,10 @@ class SettingsController extends Controller
             $tab = $request->input('tab', 'package-configuration');
             return redirect()->route('settings', ['tab' => $tab])->with('success', 'Package created successfully.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to create package: ' . $e->getMessage())->withInput();
+            $message = $e instanceof \Illuminate\Database\QueryException
+                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                : 'Failed to create package.';
+            return redirect()->back()->with('error', $message)->withInput();
         }
     }
 
@@ -180,7 +183,10 @@ class SettingsController extends Controller
             $tab = $request->input('tab', 'package-configuration');
             return redirect()->route('settings', ['tab' => $tab])->with('success', 'Package updated successfully.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to update package: ' . $e->getMessage())->withInput();
+            $message = $e instanceof \Illuminate\Database\QueryException
+                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                : 'Failed to update package.';
+            return redirect()->back()->with('error', $message)->withInput();
         }
     }
 
