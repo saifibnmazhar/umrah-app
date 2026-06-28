@@ -8,4 +8,5 @@ enum FingerprintStatus: string
     case PROCESSING = 'processing';
     case APPROVED = 'approved';
     case CANCELLED = 'cancelled';
+    case DONE = 'done';
 }
