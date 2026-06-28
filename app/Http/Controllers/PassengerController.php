@@ -10,7 +10,6 @@ use App\Models\TicketFare;
 use App\Models\VisaAgent;
 use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
-use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Services\BookingService;
 use App\Services\CurrencyRateService;
@@ -39,22 +38,18 @@ class PassengerController extends Controller
         }
     }
 
-    private function authorizeFingerprintAccess(Passenger $passenger): void
+    private function isGlobalNonAdmin(): bool
     {
         $user = auth()->user();
-        if ($user && ($user->hasRole('Visa Staff') || $user->hasRole('Ticket Staff'))) {
-            $passenger->load('fingerprintDetail');
-            if (!$passenger->fingerprintDetail || $passenger->fingerprintDetail->status !== FingerprintStatus::APPROVED) {
-                abort(403, 'Passenger data requires fingerprint approval.');
-            }
-        }
+        return !$user->branch_id
+            && !$user->hasRole('Super Admin')
+            && !$user->hasRole('Co Admin');
     }
 
     public function show(Passenger $passenger)
     {
         $this->ensureBranchAccess($passenger);
-        $this->authorizeFingerprintAccess($passenger);
-
+        
         $passenger->load([
             'booking',
             'booking.customer',
@@ -77,6 +72,7 @@ class PassengerController extends Controller
             'visaSubmission.cancelledSubmissions',
             'visaSubmission.cancelledSubmission',
             'visaSubmission.logs.user',
+            'latestIssuedTicket',
         ]);
 
         $routeDisplay = null;
@@ -210,7 +206,10 @@ class PassengerController extends Controller
     public function edit(Passenger $passenger)
     {
         $this->ensureBranchAccess($passenger);
-        $this->authorizeFingerprintAccess($passenger);
+
+        if ($this->isGlobalNonAdmin() && $passenger->booking->user_id !== auth()->id()) {
+            abort(403);
+        }
 
         $passenger->load([
             'booking',
@@ -297,12 +296,22 @@ class PassengerController extends Controller
 
     public function uploadDocument(Request $request, Passenger $passenger)
     {
-        $this->authorizeFingerprintAccess($passenger);
-
+        
         $request->validate([
             'files' => 'required|array',
             'files.*' => 'file|mimes:pdf,jpg,jpeg,png|max:5120',
+        ], [
+            'files.*.max' => 'Each file must not exceed 5 MB.',
+            'files.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
+
+        $totalSize = collect($request->file('files'))->sum(fn($f) => $f->getSize());
+        if ($totalSize > 20 * 1024 * 1024) {
+            return response()->json([
+                'success' => false,
+                'message' => 'The total size of all uploaded files must not exceed 20 MB.',
+            ], 422);
+        }
 
         try {
             $passenger->load('booking');
@@ -343,8 +352,7 @@ class PassengerController extends Controller
 
     public function downloadDocument(Passenger $passenger, Document $document)
     {
-        $this->authorizeFingerprintAccess($passenger);
-
+        
         if ($document->owner_id !== $passenger->id || $document->owner_type !== Passenger::class) {
             abort(403, 'Unauthorized');
         }
@@ -373,8 +381,7 @@ class PassengerController extends Controller
 
     public function destroyDocument(Passenger $passenger, Document $document)
     {
-        $this->authorizeFingerprintAccess($passenger);
-
+        
         if ($document->owner_id !== $passenger->id || $document->owner_type !== Passenger::class) {
             return response()->json([
                 'success' => false,
@@ -402,8 +409,7 @@ class PassengerController extends Controller
 
     public function downloadAllDocuments(Passenger $passenger)
     {
-        $this->authorizeFingerprintAccess($passenger);
-
+        
         $passenger->load('booking.customer');
         $allDocs = $passenger->documents;
 
@@ -430,12 +436,7 @@ class PassengerController extends Controller
             abort_if(empty($pdfFiles), 404, 'No processable documents found');
 
             $outputPdf = $tmpDir . '/merged.pdf';
-            $inputList = implode(' ', array_map('escapeshellarg', $pdfFiles));
-            exec("gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=" . escapeshellarg($outputPdf) . " {$inputList} 2>/dev/null", $output, $code);
-
-            if ($code !== 0 || !file_exists($outputPdf)) {
-                throw new \RuntimeException('Ghostscript merge failed');
-            }
+            $this->mergePdfs($pdfFiles, $outputPdf);
 
             $mergedContent = file_get_contents($outputPdf);
         } finally {
@@ -450,7 +451,9 @@ class PassengerController extends Controller
 
     public function update(Request $request, Passenger $passenger)
     {
-        $this->authorizeFingerprintAccess($passenger);
+        if ($this->isGlobalNonAdmin() && $passenger->booking->user_id !== auth()->id()) {
+            abort(403);
+        }
 
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
@@ -524,8 +527,7 @@ class PassengerController extends Controller
 
     public function destroy(Passenger $passenger)
     {
-        $this->authorizeFingerprintAccess($passenger);
-
+        
         try {
             $booking = $passenger->booking;
             $passenger->delete();
@@ -574,8 +576,8 @@ class PassengerController extends Controller
         $ageInMonths = $dob->diffInMonths(Carbon::now());
 
         $passengerType = match(true) {
-            $ageInMonths < 24 => PassengerType::INFANT,
-            $ageInMonths < 144 => PassengerType::CHILD,
+            $ageInMonths < 19 => PassengerType::INFANT,
+            $ageInMonths < 139 => PassengerType::CHILD,
             default => PassengerType::ADULT,
         };
 
@@ -594,8 +596,7 @@ class PassengerController extends Controller
             return response()->json([]);
         }
 
-        $passengers = Passenger::approvedFingerprint()
-            ->where(function ($q) use ($query) {
+        $passengers = Passenger::where(function ($q) use ($query) {
                 $q->where('passport_no', 'like', "%{$query}%")
                     ->orWhere('first_name', 'like', "%{$query}%")
                     ->orWhere('last_name', 'like', "%{$query}%")
@@ -610,8 +611,7 @@ class PassengerController extends Controller
 
     public function updateStatus(Request $request, Passenger $passenger)
     {
-        $this->authorizeFingerprintAccess($passenger);
-
+        
         $validated = $request->validate([
             'passenger_status_id' => 'nullable|exists:passenger_statuses,id',
         ]);

@@ -4,6 +4,7 @@ namespace App\Models;
 
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Payment extends Model
@@ -15,6 +16,9 @@ class Payment extends Model
         'user_id',
         'currency_rate_id',
         'bank_id',
+        'sender_bank_id',
+        'other_sender_bank',
+        'receiver_bank',
         'ticket_agent_id',
         'visa_agent_id',
         'commission_agent_id',
@@ -24,6 +28,8 @@ class Payment extends Model
         'amount',
         'bdt_amount',
         'notes',
+        'remarks',
+        'payment_referral',
     ];
 
     protected $casts = [
@@ -63,6 +69,11 @@ class Payment extends Model
         return $this->belongsTo(Bank::class);
     }
 
+    public function senderBank(): BelongsTo
+    {
+        return $this->belongsTo(Bank::class, 'sender_bank_id');
+    }
+
     public function ticketAgent(): BelongsTo
     {
         return $this->belongsTo(TicketAgent::class);
@@ -81,5 +92,10 @@ class Payment extends Model
     public function vouchers(): HasMany
     {
         return $this->hasMany(Voucher::class);
+    }
+
+    public function voucher(): HasOne
+    {
+        return $this->hasOne(Voucher::class)->latestOfMany();
     }
 }

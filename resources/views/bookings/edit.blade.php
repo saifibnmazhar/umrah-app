@@ -157,7 +157,7 @@
                                         <div><span class="text-slate-500">Airline:</span> <span class="text-slate-700 ml-1" x-text="passenger.airline || '-'"></span></div>
                                         <div><span class="text-slate-500">Flight:</span> <span class="text-slate-700 ml-1" x-text="passenger.flight_type || '-'"></span></div>
                                         <div><span class="text-slate-500">Duration:</span> <span class="text-slate-700 ml-1" x-text="passenger.stay_duration || '-'"></span></div>
-                                        <div><span class="text-slate-500">Passenger Fare:</span> <span class="text-slate-700 ml-1" x-text="getPassengerFare(passenger)"></span></div>
+                                        <div><span class="text-slate-500">Passenger Value:</span> <span class="text-slate-700 ml-1" x-text="getPassengerFare(passenger)"></span></div>
                                     </div>
                                 </div>
                                 <div class="flex items-center gap-2 ml-4">
@@ -384,6 +384,7 @@
                                 <span>click to upload</span>
                             </div>
                         </div>
+                        <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                         <div id="customer_docs_list" class="mt-2 space-y-1"></div>
                     </div>
                     <div x-show="newCustomer.iqama_type === 'referral'">
@@ -405,6 +406,7 @@
                                 <span id="ref_iqama_doc_filename">click to upload</span>
                             </div>
                         </div>
+                        <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                     </div>
                 </div>
                 <div class="flex gap-3 pt-4 border-t border-slate-200">

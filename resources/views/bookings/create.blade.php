@@ -33,7 +33,7 @@
     @endif
 
     <div class="bg-white rounded-xl shadow-lg p-6">
-        <form method="POST" action="{{ route('bookings.store') }}" @submit="submitForm($event)">
+        <form method="POST" action="{{ route('bookings.store') }}" enctype="multipart/form-data" @submit="submitForm($event)">
             @csrf
             <input type="hidden" name="payment[amount]" :value="paymentSaved ? (parseFloat(paymentData.amount_sar) || 0) : 0">
             <input type="hidden" name="payment[bdt_amount]" :value="paymentSaved ? (parseFloat(paymentData.amount_bdt) || 0) : 0">
@@ -149,6 +149,7 @@
                         <span>click to upload</span>
                     </div>
                 </div>
+                <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                 <div id="booking_customer_docs_list" class="mt-2 space-y-1"></div>
             </div>
 
@@ -181,7 +182,7 @@
                                         <div><span class="text-slate-500">Airline:</span> <span class="text-slate-700 ml-1" x-text="passenger.airline || '-'"></span></div>
                                         <div><span class="text-slate-500">Flight:</span> <span class="text-slate-700 ml-1" x-text="passenger.flight_type || '-'"></span></div>
                                         <div><span class="text-slate-500">Duration:</span> <span class="text-slate-700 ml-1" x-text="passenger.stay_duration || '-'"></span></div>
-                                        <div><span class="text-slate-500">Passenger Fare:</span> <span class="text-slate-700 ml-1" x-text="getPassengerFare(passenger)"></span></div>
+                                        <div><span class="text-slate-500">Passenger Value:</span> <span class="text-slate-700 ml-1" x-text="getPassengerFare(passenger)"></span></div>
                                     </div>
                                     <input type="hidden" :name="'passengers[' + index + '][first_name]'" :value="passenger.first_name">
                                     <input type="hidden" :name="'passengers[' + index + '][last_name]'" :value="passenger.last_name">
@@ -447,6 +448,7 @@
                                 <span>click to upload</span>
                             </div>
                         </div>
+                        <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                         <div id="customer_docs_list" class="mt-2 space-y-1"></div>
                     </div>
                     <div x-show="newCustomer.iqama_type === 'referral'">
@@ -468,6 +470,7 @@
                                 <span id="ref_iqama_doc_filename">click to upload</span>
                             </div>
                         </div>
+                        <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                     </div>
                 </div>
                 <div class="flex gap-3 pt-4 border-t border-slate-200">

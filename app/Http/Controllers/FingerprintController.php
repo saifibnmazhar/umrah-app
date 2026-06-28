@@ -75,6 +75,7 @@ class FingerprintController extends Controller
 
                     $rate = $booking?->currencyRate?->rate
                         ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
+                        ?? $currencyRateService->getFirstRate()?->rate
                         ?? 0;
 
                     return [
@@ -127,6 +128,7 @@ class FingerprintController extends Controller
     public function staffIndex(Request $request): JsonResponse
     {
         $query = Fingerprint::with([
+            'firstCostLog',
             'booking.customer',
             'booking.district',
             'booking.fingerprintBranch',
@@ -139,10 +141,18 @@ class FingerprintController extends Controller
             $query->where('assigned_staff_id', $user->id);
         }
 
+        $query->whereHas('booking', function ($q) {
+            $q->where('fingerprint_location', FingerprintLocation::HOME);
+        });
+
+        $twentyFourHoursAgo = now()->subHours(24);
+        $isSuperOrCoAdmin = $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
+        $isFingerprintStaffRole = $user->hasRole('Fingerprint Staff');
+
         $fingerprints = $query->paginate(10);
 
         $items = collect($fingerprints->items())
-            ->map(function ($fingerprint) {
+            ->map(function ($fingerprint) use ($isSuperOrCoAdmin, $isFingerprintStaffRole, $twentyFourHoursAgo) {
                 $booking = $fingerprint->booking;
                 if (!$booking) return collect([]);
 
@@ -150,7 +160,14 @@ class FingerprintController extends Controller
 
                 $currencyRateService = app(CurrencyRateService::class);
 
-                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $currencyRateService) {
+                $firstLog = $fingerprint->firstCostLog;
+                $canEditCost = $isSuperOrCoAdmin
+                    || ($isFingerprintStaffRole && (
+                        !$firstLog
+                        || $firstLog->created_at >= $twentyFourHoursAgo
+                    ));
+
+                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $currencyRateService, $canEditCost) {
                     $detail = $fingerprint->fingerprintDetails()
                         ->where('passenger_id', $passenger->id)
                         ->first();
@@ -163,6 +180,7 @@ class FingerprintController extends Controller
 
                     $rate = $booking?->currencyRate?->rate
                         ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
+                        ?? $currencyRateService->getFirstRate()?->rate
                         ?? 0;
 
                     return [
@@ -181,6 +199,7 @@ class FingerprintController extends Controller
                         'passenger_address' => $passenger->address ?? '-',
                         'cost' => $fingerprint->cost,
                         'rate' => $rate,
+                        'can_edit_cost' => $canEditCost,
                         'fingerprint_status' => $detail?->status?->value ?? 'none',
                         'fingerprint_status_display' => $statusDisplay,
                         'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
@@ -249,7 +268,7 @@ class FingerprintController extends Controller
     public function updateCost(Request $request, Fingerprint $fingerprint): JsonResponse
     {
         $user = auth()->user();
-        if (!$user->hasRole('Super Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Co Admin') && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
         }
 
@@ -261,6 +280,11 @@ class FingerprintController extends Controller
         ]);
 
         $fingerprint->update(['cost' => $validated['cost']]);
+
+        $fingerprint->costLogs()->create([
+            'cost' => $validated['cost'],
+            'cost_updated_by' => auth()->id(),
+        ]);
 
         return response()->json([
             'success' => true,
@@ -276,7 +300,7 @@ class FingerprintController extends Controller
     {
         $user = auth()->user();
         $fingerprint = $fingerprintDetail->fingerprint;
-        if (!$user->hasRole('Super Admin') && !$user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Co Admin') && !$user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
         }
 
@@ -308,7 +332,7 @@ class FingerprintController extends Controller
     {
         $user = auth()->user();
         $fingerprint = $fingerprintDetail->fingerprint;
-        if (!$user->hasRole('Super Admin') && !$user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Co Admin') && !$user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
         }
 

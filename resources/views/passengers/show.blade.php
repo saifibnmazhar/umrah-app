@@ -19,7 +19,14 @@
                     <p class="text-slate-500 text-sm mt-1">Invoice: <span>{{ $passenger->booking?->invoice?->id ?? '-' }}</span></p>
                 </div>
                 <div class="flex items-center gap-2">
-                    @if(!$isFingerprintOnlyViewer)
+                    @php
+                        $canEditPassenger = !$isFingerprintOnlyViewer
+                            && (auth()->user()->hasRole('Super Admin')
+                            || auth()->user()->hasRole('Co Admin')
+                            || auth()->user()->branch_id
+                            || $passenger->booking->user_id === auth()->id());
+                    @endphp
+                    @if($canEditPassenger)
                     <a href="{{ route('passengers.edit', $passenger->id) }}" class="px-4 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium text-sm flex items-center gap-1.5">
                         <svg xmlns="http://www.w3.org/2000/svg" class="h-4 w-4" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M11 5H6a2 2 0 00-2 2v11a2 2 0 002 2h11a2 2 0 002-2v-5m-1.414-9.414a2 2 0 112.828 2.828L11.828 15H9v-2.828l8.586-8.586z" />
@@ -121,6 +128,16 @@
                                 </p>
                             </div>
                         </div>
+                        <div class="grid grid-cols-2 gap-3">
+                            <div>
+                                <span class="text-xs text-slate-400">PNR</span>
+                                <p class="text-slate-800">{{ $passenger->latestIssuedTicket?->pnr ?? '-' }}</p>
+                            </div>
+                            <div>
+                                <span class="text-xs text-slate-400">Ticket Number</span>
+                                <p class="text-slate-800">{{ $passenger->latestIssuedTicket?->ticket_number ?? '-' }}</p>
+                            </div>
+                        </div>
                         <div>
                             <span class="text-xs text-slate-400">Address (BD)</span>
                             <p class="text-slate-800">{{ $passenger->address ?? '-' }}</p>
@@ -173,6 +190,7 @@
                         </div>
                     </div>
                     <input type="file" id="passenger_doc_input" class="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="handleDocumentUpload(this)">
+                    <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                     <div id="documents_list" class="space-y-2">
                         @forelse($passenger->documents as $doc)
                         <div class="flex items-center justify-between bg-white rounded px-3 py-2 border border-slate-200">
@@ -282,7 +300,7 @@
             @endif
 
             <div class="mt-6 pt-4 border-t border-slate-200 flex gap-3">
-                <a href="{{ route('bookings.index', ['tab' => 'passenger']) }}" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Back to List</a>
+                <a href="{{ request('return_url', route('bookings.index', ['tab' => 'passenger'])) }}" class="px-6 py-2 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Back to List</a>
             </div>
         </div>
     </div>

@@ -26,10 +26,10 @@ class VisaSubmission extends Model
     ];
 
     protected $casts = [
-        'agent_commission' => 'decimal:2',
-        'net_visa_cost' => 'decimal:2',
-        'additional_cost' => 'decimal:2',
-        'final_cost' => 'decimal:2',
+        'agent_commission' => 'decimal:6',
+        'net_visa_cost' => 'decimal:6',
+        'additional_cost' => 'decimal:6',
+        'final_cost' => 'decimal:6',
         'is_cancelled' => 'boolean',
         'status' => VisaStatus::class,
     ];

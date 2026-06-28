@@ -66,7 +66,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('airline-cities', AirlineCityController::class)->middleware('role:Super Admin,Co Admin');
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index')->middleware('role:Super Admin,Co Admin,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
     Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create')->middleware('role:Super Admin,Co Admin');
-    Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
+    Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff,Delivery Staff');
     Route::get('/customers/{customer}/edit', [CustomerController::class, 'edit'])->name('customers.edit')->middleware('role:Super Admin,Co Admin');
     Route::match(['PUT', 'PATCH'], '/customers/{customer}', [CustomerController::class, 'update'])->name('customers.update')->middleware('role:Super Admin,Co Admin');
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy')->middleware('role:Super Admin,Co Admin');
@@ -103,7 +103,7 @@ Route::middleware('auth')->group(function () {
     Route::delete('/bookings/{booking}', [BookingController::class, 'destroy'])->name('bookings.destroy')->middleware('role:Super Admin');
     Route::resource('passengers', PassengerController::class)->except(['destroy']);
     Route::delete('/passengers/{passenger}', [PassengerController::class, 'destroy'])->name('passengers.destroy')->middleware('role:Super Admin,Co Admin');
-    Route::patch('/passengers/{passenger}/status', [PassengerController::class, 'updateStatus'])->name('passengers.update-status')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
+    Route::patch('/passengers/{passenger}/status', [PassengerController::class, 'updateStatus'])->name('passengers.update-status')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Delivery Staff');
     Route::post('/passengers/{passenger}/documents', [PassengerController::class, 'uploadDocument'])->name('passengers.documents.store');
     Route::get('/passengers/{passenger}/documents/{document}/download', [PassengerController::class, 'downloadDocument'])->name('passengers.documents.download');
     Route::delete('/passengers/{passenger}/documents/{document}', [PassengerController::class, 'destroyDocument'])->name('passengers.documents.destroy')->middleware('role:Super Admin,Co Admin');
@@ -145,6 +145,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/bookings/calculate-type', [BookingController::class, 'calculatePassengerType'])->name('api.bookings.calculate-type');
     Route::get('/api/bookings/fingerprint-charge', [BookingController::class, 'getFingerprintCharge'])->name('api.bookings.fingerprint-charge');
     Route::get('/api/customers/search', [CustomerController::class, 'search'])->name('api.customers.search');
+    Route::get('/api/bookings/search-invoice', [BookingController::class, 'searchInvoice'])->name('api.bookings.search-invoice');
     Route::get('/api/ticket-fares/filter', [TicketFareController::class, 'filter'])->name('api.ticket-fares.filter');
     Route::get('/fares/admin', [FareAdminController::class, 'index'])->name('fare.admin')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::post('/fares/admin/agent', [FareAdminController::class, 'storeAgent'])->name('fare.admin.agent.store')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
@@ -161,10 +162,8 @@ Route::middleware('auth')->group(function () {
         return view('fingerprints.admin', compact('canAssignStaff', 'divisions', 'districts'));
     })->name('fingerprint.admin')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::get('/fingerprints/staff', function () {
-        $user = auth()->user();
-        $isFingerprintStaff = $user->hasRole('Fingerprint Staff');
-        $canEditCost = $user->hasRole('Super Admin') || $user->hasRole('Fingerprint Staff');
-        return view('fingerprints.staff', compact('isFingerprintStaff', 'canEditCost'));
+        $isFingerprintStaff = auth()->user()->hasRole('Fingerprint Staff');
+        return view('fingerprints.staff', compact('isFingerprintStaff'));
     })->name('fingerprint.staff')->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
 
     Route::get('/api/fingerprints/admin', [FingerprintController::class, 'adminIndex'])
@@ -181,20 +180,20 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::put('/api/fingerprints/{fingerprint}/cost', [FingerprintController::class, 'updateCost'])
         ->name('api.fingerprints.update-cost')
-        ->middleware('role:Super Admin,Fingerprint Staff');
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
     Route::put('/api/fingerprints/detail/{fingerprintDetail}/status', [FingerprintController::class, 'updateStatus'])
         ->name('api.fingerprints.update-status')
-        ->middleware('role:Fingerprint Admin,Fingerprint Staff');
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
     Route::post('/api/fingerprints/detail/{fingerprintDetail}/hold', [FingerprintController::class, 'hold'])
         ->name('api.fingerprints.hold')
-        ->middleware('role:Fingerprint Admin,Fingerprint Staff');
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
 
     Route::get('/settings', [SettingsController::class, 'index'])->name('settings')->middleware('role:Super Admin,Co Admin');
     Route::put('/settings/flight-date-gap', [SettingsController::class, 'updateFlightDateGap'])->name('settings.flight-date-gap.update')->middleware('role:Super Admin,Co Admin');
     Route::put('/settings/fingerprint-charge', [SettingsController::class, 'updateFingerprintCharge'])->name('settings.fingerprint-charge.update')->middleware('role:Super Admin,Co Admin');
     Route::put('/settings/package-configuration', [SettingsController::class, 'updatePackageConfiguration'])->name('settings.package-configuration.update')->middleware('role:Super Admin,Co Admin');
     Route::post('/settings/package', [SettingsController::class, 'storePackage'])->name('settings.package.store')->middleware('role:Super Admin,Co Admin');
-    Route::get('/settings/package/{package}', [SettingsController::class, 'showPackage'])->name('settings.package.show')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
+    Route::get('/settings/package/{package}', [SettingsController::class, 'showPackage'])->name('settings.package.show');
     Route::put('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->name('settings.package.update')->middleware('role:Super Admin,Co Admin');
     Route::post('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->middleware('role:Super Admin,Co Admin');
     Route::delete('/settings/package/{package}', [SettingsController::class, 'destroyPackage'])->name('settings.package.destroy')->middleware('role:Super Admin,Co Admin');
@@ -218,9 +217,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
 
     // Detail Pages with parameters
+    Route::resource('payments', PaymentController::class)->only(['index', 'create', 'store', 'show'])->middleware('role:Super Admin,Co Admin');
+
     /* Temporarily disabled
     Route::resource('invoices', InvoiceController::class)->middleware('role:Super Admin,Co Admin');
-    Route::resource('payments', PaymentController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('vouchers', VoucherController::class)->middleware('role:Super Admin,Co Admin');
     */
     Route::get('/invoices/{id}/print', fn($id) => view('invoices.print', compact('id')))->name('invoices.print');
@@ -237,6 +237,7 @@ Route::middleware('auth')->group(function () {
             ->name('bookings.passengers.ticket-edit');
     });
 
+    Route::post('/api/banks/quick-create', [BankController::class, 'quickStore']);
     Route::post('/api/ticket-fares/quick-create', [TicketFareController::class, 'quickStore'])
         ->middleware('auth');
 });

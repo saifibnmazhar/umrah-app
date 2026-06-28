@@ -36,9 +36,30 @@ class CustomerController extends Controller
                 'ref_mobile_no' => 'nullable|string|max:20',
                 'ref_iqama_doc' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
                 'customer_docs' => 'nullable|array',
-                'customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:10240',
+                'customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
                 'address' => 'nullable|string|max:500',
+            ], [
+                'ref_iqama_doc.max' => 'Each file must not exceed 5 MB.',
+                'customer_docs.*.max' => 'Each file must not exceed 5 MB.',
+                'ref_iqama_doc.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
+                'customer_docs.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
             ]);
+
+            if ($request->hasFile('ref_iqama_doc') || $request->hasFile('customer_docs')) {
+                $totalSize = 0;
+                if ($request->hasFile('ref_iqama_doc')) {
+                    $totalSize += $request->file('ref_iqama_doc')->getSize();
+                }
+                if ($request->hasFile('customer_docs')) {
+                    $totalSize += collect($request->file('customer_docs'))->sum(fn($f) => $f->getSize());
+                }
+                if ($totalSize > 20 * 1024 * 1024) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The total size of all uploaded files must not exceed 20 MB.',
+                    ], 422);
+                }
+            }
 
             $data = $request->except(['ref_iqama_doc', 'customer_docs']);
 
@@ -104,7 +125,25 @@ class CustomerController extends Controller
             'customer_docs' => 'nullable|array',
             'customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'address' => 'nullable|string|max:500',
+        ], [
+            'ref_iqama_doc.max' => 'Each file must not exceed 5 MB.',
+            'customer_docs.*.max' => 'Each file must not exceed 5 MB.',
+            'ref_iqama_doc.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
+            'customer_docs.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
+
+        if ($request->hasFile('ref_iqama_doc') || $request->hasFile('customer_docs')) {
+            $totalSize = 0;
+            if ($request->hasFile('ref_iqama_doc')) {
+                $totalSize += $request->file('ref_iqama_doc')->getSize();
+            }
+            if ($request->hasFile('customer_docs')) {
+                $totalSize += collect($request->file('customer_docs'))->sum(fn($f) => $f->getSize());
+            }
+            if ($totalSize > 20 * 1024 * 1024) {
+                return redirect()->back()->withErrors(['files' => 'The total size of all uploaded files must not exceed 20 MB.'])->withInput();
+            }
+        }
 
         try {
             if ($request->hasFile('ref_iqama_doc')) {

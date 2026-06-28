@@ -53,8 +53,7 @@
                                    placeholder="Enter DOB to auto-calculate">
                         </div>
                         <p x-show="passengerData.date_of_birth && !passengerData.passenger_type" class="text-xs text-slate-400 mt-1">Calculating...</p>
-                        <p x-show="passengerData.passenger_type && !passengerData.stay_duration" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth</p>
-                        <p x-show="passengerData.passenger_type && passengerData.stay_duration" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth & stay duration</p>
+                        <p x-show="passengerData.passenger_type" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Passport Expiry Date</label>
@@ -68,7 +67,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Stay Duration *</label>
-                        <select x-model="passengerData.stay_duration" @change="handleStayDurationChange(); calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select x-model="passengerData.stay_duration" @change="handleStayDurationChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Stay Duration</option>
                             <option value="14">Group (14 Days)</option>
                             {{-- <option value="85">Family (85 Days)</option> --}}
@@ -167,7 +166,7 @@
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
                         </svg>
                         <p class="text-sm text-slate-600">Click to upload documents</p>
-                        <p class="text-xs text-slate-400">PDF, JPG, PNG</p>
+                        <p class="text-xs text-slate-400">PDF, JPG, PNG. Max 5 MB per file, 20 MB total</p>
                     </div>
                 </div>
                 <div id="passenger_doc_list" class="mt-3 space-y-2"></div>

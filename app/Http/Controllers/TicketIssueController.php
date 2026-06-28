@@ -48,11 +48,6 @@ class TicketIssueController extends Controller
         try {
             DB::beginTransaction();
 
-            if (!empty($validated['group_ticket_id'])) {
-                \App\Models\GroupTicket::where('id', $validated['group_ticket_id'])
-                    ->decrement('ticket_qty');
-            }
-
             $oldData = $issuedTicket->toArray();
 
             $issuedTicket->update(array_merge($validated, [

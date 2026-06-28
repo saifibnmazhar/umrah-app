@@ -18,6 +18,11 @@ class CurrencyRateService
         return $this->getRateForDate(now());
     }
 
+    public function getFirstRate(): ?CurrencyRate
+    {
+        return CurrencyRate::orderBy('created_at')->first();
+    }
+
     public function getCurrentRateValue(): float
     {
         $rate = $this->getCurrentRate();

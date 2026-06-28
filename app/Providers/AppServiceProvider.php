@@ -33,11 +33,14 @@ class AppServiceProvider extends ServiceProvider
             $decimals = isset($parts[1]) ? trim($parts[1]) : 2;
             $decimals = is_numeric($decimals) ? (int) $decimals : 2;
             $rate = isset($parts[2]) ? trim($parts[2]) : 'null';
+            $bdtAmount = isset($parts[3]) ? trim($parts[3]) : 'null';
             return "<?php
                 \$__val = {$amount} ?? 0;
                 \$__dec = {$decimals};
                 \$__rate = {$rate};
-                echo '<span class=\"currency-display\" data-sar=\"' . number_format((float) \$__val, 6, '.', '') . '\" data-dec=\"' . \$__dec . '\" data-rate=\"' . (\$__rate !== null ? (float) \$__rate : '') . '\">SAR ' . number_format((float) \$__val, \$__dec) . '</span>';
+                \$__bdt = {$bdtAmount};
+                \$__dataBdt = \$__bdt !== null ? ' data-bdt=\"' . number_format((float) \$__bdt, 6, '.', '') . '\"' : '';
+                echo '<span class=\"currency-display\" data-sar=\"' . number_format((float) \$__val, 6, '.', '') . '\" data-dec=\"' . \$__dec . '\" data-rate=\"' . (\$__rate !== null ? (float) \$__rate : '') . '\"' . \$__dataBdt . '>' . rtrim(rtrim(number_format((float) \$__val, \$__dec, '.', ','), '0'), '.') . '</span>';
             ?>";
         });
 

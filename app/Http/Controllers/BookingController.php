@@ -29,11 +29,15 @@ use App\Services\CurrencyRateService;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Models\IssuedTicket;
+use App\Models\TicketAgent;
 use App\Enums\FingerprintStatus;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\FingerprintLocation;
 use App\Enums\DiscountType;
+use App\Enums\VisaStatus;
+use App\Enums\TicketStatus;
+use App\Traits\ConvertsDocumentsToPdf;
 use App\Services\BookingService;
 use App\Services\PaymentService;
 use App\Services\InvoiceService;
@@ -44,6 +48,7 @@ use Carbon\Carbon;
 
 class BookingController extends Controller
 {
+    use ConvertsDocumentsToPdf;
     public function __construct(
         private BookingService $bookingService,
         private InvoiceService $invoiceService,
@@ -60,6 +65,11 @@ class BookingController extends Controller
         $user = auth()->user();
         return ! $this->isAdminRole()
             && ($user->hasRole('Branch Manager') || $user->hasRole('Branch Staff'));
+    }
+
+    private function isGlobalNonAdmin(): bool
+    {
+        return !auth()->user()->branch_id && !$this->isAdminRole();
     }
 
     private function resolveBookingBranch(Request $request, bool $forUpdate): int
@@ -131,10 +141,23 @@ class BookingController extends Controller
         $tab = $request->get('tab', 'booking');
 
         $user = auth()->user();
+        abort_unless($user, 401, 'Unauthenticated');
         $userBranchId = $user->branch_id;
 
         $bookingBranches = $userBranchId ? collect() : Branch::orderBy('name')->get(['id', 'name']);
         $selectedBranchId = $userBranchId ? null : $request->get('booking_branch_id');
+        $selectedFingerprintStatus = $request->get('fingerprint_status');
+        $selectedVisaStatus = $request->get('visa_status');
+        $selectedTicketStatus = $request->get('ticket_status');
+        $selectedVisaAgentId = $request->get('visa_agent_id');
+        $selectedBookingDateFrom = $request->get('booking_date_from');
+        $selectedBookingDateTo = $request->get('booking_date_to');
+        $selectedFingerprintLocation = $request->get('fingerprint_location');
+        $selectedPassengerStatus = $request->get('passenger_status');
+        $selectedRouteId = $request->get('route_id');
+        $selectedTicketAgentId = $request->get('ticket_agent_id');
+        $selectedActualFlightFrom = $request->get('actual_flight_from');
+        $selectedActualFlightTo = $request->get('actual_flight_to');
 
         $branchCounts = !$userBranchId
             ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
@@ -163,15 +186,30 @@ class BookingController extends Controller
                         ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
                 });
             })
+            ->when($request->filled('booking_date_from'), fn ($q) =>
+                $q->whereDate('created_at', '>=', $request->input('booking_date_from'))
+            )
+            ->when($request->filled('booking_date_to'), fn ($q) =>
+                $q->whereDate('created_at', '<=', $request->input('booking_date_to'))
+            )
+            ->when($request->filled('fingerprint_location'), fn ($q) =>
+                $q->where('fingerprint_location', $request->input('fingerprint_location'))
+            )
             ->orderBy('created_at', 'desc');
 
         $totalBookingCount = (clone $bookingQuery)->count();
+        $totalBookingPassengerCount = (clone $bookingQuery)->sum('pax_qty');
 
         $bookings = $bookingQuery->paginate(10)
             ->appends(['tab' => $tab])
             ->withQueryString();
 
-        $passengers = Passenger::approvedFingerprint()
+        $canFilterByVisaAgent = auth()->user()->roles->pluck('name')
+            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
+        $canFilterByTicketAgent = auth()->user()->roles->pluck('name')
+            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
+
+        $passengers = Passenger::query()
             ->when(auth()->user()->branch_id, fn ($q) =>
                 $q->whereHas('booking', fn ($q) =>
                     $q->where(function ($q) {
@@ -180,9 +218,72 @@ class BookingController extends Controller
                     })
                 )
             )
+            ->when($request->filled('fingerprint_status'), fn ($q) =>
+                $q->whereHas('fingerprintDetail', fn ($q) => $q->where('status', $request->input('fingerprint_status')))
+            )
+            ->when($request->filled('visa_status'), fn ($q) =>
+                $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status')))
+            )
+            ->when($request->filled('ticket_status'), fn ($q) =>
+                $q->where('ticket_status', $request->input('ticket_status'))
+            )
+            ->when($request->filled('visa_agent_id') && $canFilterByVisaAgent, fn ($q) =>
+                $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
+            )
+            ->when($request->filled('booking_branch_id'), fn ($q) =>
+                $q->whereHas('booking', fn ($q) => $q->where('booking_branch_id', $request->input('booking_branch_id')))
+            )
+            ->when($request->filled('booking_date_from'), fn ($q) =>
+                $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from')))
+            )
+            ->when($request->filled('booking_date_to'), fn ($q) =>
+                $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to')))
+            )
+            ->when($request->filled('flight_date_from'), fn ($q) =>
+                $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'))
+            )
+            ->when($request->filled('flight_date_to'), fn ($q) =>
+                $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'))
+            )
+            ->when($request->filled('actual_flight_from'), fn ($q) =>
+                $q->whereDate('actual_flight_date', '>=', $request->input('actual_flight_from'))
+            )
+            ->when($request->filled('actual_flight_to'), fn ($q) =>
+                $q->whereDate('actual_flight_date', '<=', $request->input('actual_flight_to'))
+            )
+            ->when($request->filled('passenger_status'), fn ($q) =>
+                $q->where('passenger_status_id', $request->input('passenger_status'))
+            )
+            ->when($request->filled('route_id'), fn ($q) =>
+                $q->whereHas('ticketFare', fn ($q) => $q->where('route_id', $request->input('route_id')))
+            )
+            ->when($request->filled('ticket_agent_id') && $canFilterByTicketAgent, fn ($q) =>
+                $q->whereHas('latestIssuedTicket.ticketAgent', fn ($q) =>
+                    $q->where('id', $request->input('ticket_agent_id'))
+                )
+            )
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->input('search');
+                $q->where(function ($query) use ($search) {
+                    $query->where('mobile_no', 'like', "%{$search}%")
+                        ->orWhere('passport_no', 'like', "%{$search}%")
+                        ->orWhere('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhereHas('booking', fn ($q) => $q->where('invoice_id', 'like', "%{$search}%"))
+                        ->orWhereHas('issuedTickets', fn ($q) =>
+                            $q->where('ticket_number', 'like', "%{$search}%")
+                              ->orWhere('pnr', 'like', "%{$search}%")
+                        );
+                });
+            });
+
+        $totalPassengerCount = (clone $passengers)->count();
+
+        $passengers = (clone $passengers)
             ->with([
                 'booking',
                 'booking.customer',
+                'booking.documents',
                 'booking.package.ticketFare.route',
                 'booking.invoice',
                 'ticketFare.route',
@@ -197,6 +298,7 @@ class BookingController extends Controller
                 'latestIssuedTicket.ticketFare.airlineClass.class',
                 'latestIssuedTicket.ticketFare.route',
             ])
+            ->withCount('documents')
             ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->appends(['tab' => $tab])
@@ -204,27 +306,47 @@ class BookingController extends Controller
 
         $passengerStatuses = PassengerStatus::all();
 
-        $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
-            ->orderBy('name')
-            ->get()
-            ->map(fn($a) => [
-                'id' => $a->id,
-                'name' => $a->name,
-                'cost' => (float)($a->visaAgentCost?->visa_agent_cost ?? 0),
-                'commission_agents' => $a->commissionAgents->map(fn($ca) => [
-                    'id' => $ca->id,
-                    'name' => $ca->name,
-                ]),
-            ]);
+        $visaAgents = collect();
+        if ($canFilterByVisaAgent) {
+            $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
+                ->orderBy('name')
+                ->get()
+                ->map(fn($a) => [
+                    'id' => $a->id,
+                    'name' => $a->name,
+                    'cost' => (float)($a->visaAgentCost?->visa_agent_cost ?? 0),
+                    'commission_agents' => $a->commissionAgents->map(fn($ca) => [
+                        'id' => $ca->id,
+                        'name' => $ca->name,
+                    ]),
+                ]);
+        }
+
+        $ticketAgents = collect();
+        if ($canFilterByTicketAgent) {
+            $ticketAgents = TicketAgent::orderBy('name')->get();
+        }
 
         $canEditVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
 
         $currencyRateService = app(CurrencyRateService::class);
 
+        $fingerprintStatuses = FingerprintStatus::cases();
+        $visaStatuses = VisaStatus::cases();
+        $ticketStatuses = TicketStatus::cases();
+        $fingerprintLocations = FingerprintLocation::cases();
+
         return view('bookings.index', compact(
-            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'canEditVisa',
+            'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'ticketAgents', 'canEditVisa',
+            'canFilterByVisaAgent', 'canFilterByTicketAgent',
             'currencyRateService', 'bookingBranches', 'selectedBranchId', 'totalBookingCount',
-            'branchCounts', 'allBookingCount'
+            'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
+            'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
+            'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
+            'selectedPassengerStatus', 'selectedRouteId', 'selectedTicketAgentId',
+            'selectedActualFlightFrom', 'selectedActualFlightTo',
+            'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
+            'totalPassengerCount'
         ));
     }
 
@@ -351,6 +473,9 @@ class BookingController extends Controller
             'passengers.*.ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'booking_customer_docs' => 'nullable|array',
             'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+            'passenger_docs' => 'nullable|array',
+            'passenger_docs.*' => 'nullable|array',
+            'passenger_docs.*.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'payment' => 'required|array',
             'payment.amount' => 'required|numeric|min:0.01',
             'payment.bdt_amount' => 'nullable|numeric|min:0',
@@ -359,7 +484,29 @@ class BookingController extends Controller
             'payment.payment_date' => 'nullable|date',
             'payment.bank_id' => 'nullable|exists:banks,id',
             'payment.transaction_id' => 'nullable|string|max:255',
+        ], [
+            'booking_customer_docs.*.max' => 'Each file must not exceed 5 MB.',
+            'booking_customer_docs.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
+            'passenger_docs.*.*.max' => 'Each file must not exceed 5 MB.',
+            'passenger_docs.*.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
+
+        $validator->after(function ($validator) use ($request) {
+            $totalSize = 0;
+            if ($request->hasFile('booking_customer_docs')) {
+                $totalSize += collect($request->file('booking_customer_docs'))->sum(fn($f) => $f->getSize());
+            }
+            if ($request->hasFile('passenger_docs')) {
+                foreach ($request->file('passenger_docs') as $passengerFiles) {
+                    if (is_array($passengerFiles)) {
+                        $totalSize += collect($passengerFiles)->sum(fn($f) => $f instanceof \Illuminate\Http\UploadedFile ? $f->getSize() : 0);
+                    }
+                }
+            }
+            if ($totalSize > 20 * 1024 * 1024) {
+                $validator->errors()->add('files', 'The total size of all uploaded files must not exceed 20 MB.');
+            }
+        });
 
         if ($validator->fails()) {
             \Log::warning('Booking store validation failed', [
@@ -444,10 +591,11 @@ class BookingController extends Controller
                 }
             }
 
-            foreach ($validated['passengers'] as $passengerData) {
+            $createdPassengers = [];
+            foreach ($validated['passengers'] as $passengerIndex => $passengerData) {
                 $passengerType = $this->bookingService->calculatePassengerType(
                     $passengerData['date_of_birth'],
-                    $passengerData['stay_duration'] ?? null
+                    // $passengerData['stay_duration'] ?? null
                 );
 
                 $passenger = Passenger::create([
@@ -471,6 +619,8 @@ class BookingController extends Controller
                     'package_value' => 0,
                 ]);
 
+                $createdPassengers[$passengerIndex] = $passenger;
+
                 if (($passengerData['service_required'] ?? 'all') !== 'ticket_only') {
                     VisaSubmission::create([
                         'passenger_id' => $passenger->id,
@@ -487,6 +637,22 @@ class BookingController extends Controller
                         'user_id' => auth()->id(),
                         'status' => 'pending',
                     ]);
+                }
+            }
+
+            $passengerDocs = $request->file('passenger_docs', []);
+            if (is_array($passengerDocs) && count($passengerDocs) > 0) {
+                foreach ($passengerDocs as $passengerIndex => $files) {
+                    if (!isset($createdPassengers[$passengerIndex])) continue;
+                    $passenger = $createdPassengers[$passengerIndex];
+                    foreach ($files as $fileIdx => $file) {
+                        if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+                            $passenger->documents()->create([
+                                'file_path' => $file->store('passenger-documents'),
+                                'display_name' => "{$invoiceId} {$passenger->first_name} {$passenger->last_name} {$passenger->passport_no} " . ($fileIdx + 1),
+                            ]);
+                        }
+                    }
                 }
             }
 
@@ -595,12 +761,14 @@ class BookingController extends Controller
 
     public function show(Booking $booking)
     {
-        $this->ensureBranchAccess($booking);
+        $isCrossBranchViewer = auth()->user()->branch_id
+            && auth()->user()->branch_id !== $booking->booking_branch_id
+            && auth()->user()->branch_id !== $booking->fingerprint_branch_id;
 
         $booking->load([
             'customer',
             'customer.documents',
-            'passengers' => fn($q) => $q->approvedFingerprint(),
+            'passengers',
             'passengers.documents',
             'passengers.ticketFare',
             'user',
@@ -697,7 +865,7 @@ class BookingController extends Controller
             'booking', 'ticketFares', 'packages', 'currentCurrencyRate',
             'totalAmountBdt', 'paidAmountBdt', 'balanceBdt',
             'originalTotal', 'originalTotalBdt', 'discountedTotalBdt',
-            'userBranchLocation', 'banks'
+            'userBranchLocation', 'banks', 'isCrossBranchViewer'
         ));
     }
 
@@ -706,7 +874,11 @@ class BookingController extends Controller
         $this->ensureBranchAccess($booking);
         $this->ensureEditWindow($booking);
 
-        $booking->load(['customer', 'passengers' => fn($q) => $q->approvedFingerprint(), 'district', 'fingerprintBranch', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
+        if ($this->isGlobalNonAdmin() && $booking->user_id !== auth()->id()) {
+            abort(403);
+        }
+
+        $booking->load(['customer', 'passengers', 'district', 'fingerprintBranch', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
 
         $bookingBranches = $this->isAdminRole() ? Branch::orderBy('name')->get(['id', 'name']) : collect();
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get(['id', 'name']);
@@ -789,6 +961,10 @@ class BookingController extends Controller
         $this->ensureBranchAccess($booking);
         $this->ensureEditWindow($booking);
 
+        if ($this->isGlobalNonAdmin() && $booking->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'customer_id' => 'sometimes|required|exists:customers,id',
             'district_id' => 'nullable|exists:districts,id',
@@ -799,7 +975,25 @@ class BookingController extends Controller
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:1000',
+            'booking_customer_docs' => 'nullable|array',
+            'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
+        ], [
+            'booking_customer_docs.*.max' => 'Each file must not exceed 5 MB.',
+            'booking_customer_docs.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
+
+        if ($request->hasFile('booking_customer_docs')) {
+            $totalSize = collect($request->file('booking_customer_docs'))->sum(fn($f) => $f->getSize());
+            if ($totalSize > 20 * 1024 * 1024) {
+                if ($request->expectsJson()) {
+                    return response()->json([
+                        'success' => false,
+                        'message' => 'The total size of all uploaded files must not exceed 20 MB.',
+                    ], 422);
+                }
+                return redirect()->back()->withErrors(['files' => 'The total size of all uploaded files must not exceed 20 MB.'])->withInput();
+            }
+        }
 
         try {
             DB::beginTransaction();
@@ -942,6 +1136,10 @@ class BookingController extends Controller
     {
         $this->ensureBranchAccess($booking);
 
+        if ($this->isGlobalNonAdmin() && $booking->user_id !== auth()->id()) {
+            abort(403);
+        }
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -960,7 +1158,7 @@ class BookingController extends Controller
 
         $passengerType = $this->bookingService->calculatePassengerType(
             $validated['date_of_birth'],
-            $validated['stay_duration'] ?? null
+            // $validated['stay_duration'] ?? null
         );
 
         $validated['booking_id'] = $booking->id;
@@ -1051,13 +1249,13 @@ class BookingController extends Controller
     public function calculatePassengerType(Request $request)
     {
         $dateOfBirth = $request->input('date_of_birth');
-        $stayDuration = $request->input('stay_duration');
+        // $stayDuration = $request->input('stay_duration');
         
         if (!$dateOfBirth) {
             return response()->json(['passenger_type' => null]);
         }
 
-        $passengerType = $this->bookingService->calculatePassengerType($dateOfBirth, $stayDuration);
+        $passengerType = $this->bookingService->calculatePassengerType($dateOfBirth /*, $stayDuration*/);
 
         return response()->json([
             'passenger_type' => $passengerType,
@@ -1089,15 +1287,13 @@ class BookingController extends Controller
 
     public function print(Booking $booking)
     {
-        $this->ensureBranchAccess($booking);
-
         $booking = Booking::with([
             'customer',
             'bookingBranch',
             'fingerprintBranch',
             'package',
             'currencyRate',
-            'passengers' => fn($q) => $q->approvedFingerprint(),
+            'passengers',
             'passengers.ticketFare.airline',
             'passengers.ticketFare.airlineClass.travelClass',
             'passengers.ticketFare.route',
@@ -1207,8 +1403,6 @@ class BookingController extends Controller
 
     public function storePayment(Request $request, Booking $booking)
     {
-        $this->ensureBranchAccess($booking);
-
         $validated = $request->validate([
             'amount' => 'nullable|numeric|min:0',
             'amount_bdt' => 'nullable|numeric|min:0',
@@ -1251,7 +1445,7 @@ class BookingController extends Controller
             }
 
             $paymentData = [
-                'branch_id' => $booking->booking_branch_id,
+                'branch_id' => auth()->user()->branch_id ?? $booking->booking_branch_id,
                 'user_id' => auth()->id(),
                 'payment_date' => now()->toDateString(),
                 'payment_method' => $validated['payment_method'] ?? 'cash',
@@ -1331,10 +1525,12 @@ class BookingController extends Controller
                     });
                 }
             }
-        })->when(!$scope || $scope === 'all', function ($q) use ($passengerIds) {
-            $q->orWhere(function ($q) use ($passengerIds) {
+        })->when(!$scope || $scope === 'all', function ($q) use ($passengerIds, $booking) {
+            $passengerId = request()->query('passenger_id');
+            $targetIds = $passengerId ? [$passengerId] : $passengerIds;
+            $q->orWhere(function ($q) use ($targetIds) {
                 $q->where('owner_type', 'App\Models\Passenger')
-                  ->whereIn('owner_id', $passengerIds);
+                  ->whereIn('owner_id', $targetIds);
             });
         })->get();
 
@@ -1380,12 +1576,7 @@ class BookingController extends Controller
             abort_if(empty($pdfFiles), 404, 'No processable documents found');
 
             $outputPdf = $tmpDir . '/merged.pdf';
-            $inputList = implode(' ', array_map('escapeshellarg', $pdfFiles));
-            exec("gs -dBATCH -dNOPAUSE -q -sDEVICE=pdfwrite -dCompatibilityLevel=1.4 -sOutputFile=" . escapeshellarg($outputPdf) . " {$inputList} 2>/dev/null", $output, $code);
-
-            if ($code !== 0 || !file_exists($outputPdf)) {
-                throw new \RuntimeException('Ghostscript merge failed');
-            }
+            $this->mergePdfs($pdfFiles, $outputPdf);
 
             $mergedContent = file_get_contents($outputPdf);
         } finally {
@@ -1396,6 +1587,21 @@ class BookingController extends Controller
         return response()->streamDownload(function () use ($mergedContent) {
             echo $mergedContent;
         }, $fileName);
+    }
+
+    public function searchInvoice(Request $request)
+    {
+        $query = $request->input('q', '');
+
+        if (strlen($query) < 1) {
+            return response()->json([]);
+        }
+
+        $bookings = Booking::where('invoice_id', 'like', "%{$query}%")
+            ->limit(10)
+            ->get(['id', 'invoice_id']);
+
+        return response()->json($bookings);
     }
 
     private function resolveDocumentPath(Document $doc): ?string
