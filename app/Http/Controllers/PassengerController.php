@@ -576,8 +576,8 @@ class PassengerController extends Controller
         $ageInMonths = $dob->diffInMonths(Carbon::now());
 
         $passengerType = match(true) {
-            $ageInMonths < 24 => PassengerType::INFANT,
-            $ageInMonths < 144 => PassengerType::CHILD,
+            $ageInMonths < 19 => PassengerType::INFANT,
+            $ageInMonths < 139 => PassengerType::CHILD,
             default => PassengerType::ADULT,
         };
 

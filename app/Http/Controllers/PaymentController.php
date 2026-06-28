@@ -64,12 +64,17 @@ class PaymentController extends Controller
             $request->merge(['branch_id' => null]);
         }
 
+        if ($request->input('sender_bank_id') === 'other') {
+            $request->merge(['sender_bank_id' => null]);
+        }
+
         $validated = $request->validate([
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:cash,bank',
             'amount' => 'required|numeric|min:0',
             'bdt_amount' => 'required|numeric|min:0',
             'sender_bank_id' => 'nullable|exists:banks,id',
+            'other_sender_bank' => 'nullable|string|max:255',
             'receiver_bank' => 'nullable|string|max:255',
             'branch_id' => 'nullable|exists:branches,id',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
@@ -149,12 +154,17 @@ class PaymentController extends Controller
             $request->merge(['branch_id' => null]);
         }
 
+        if ($request->input('sender_bank_id') === 'other') {
+            $request->merge(['sender_bank_id' => null]);
+        }
+
         $validated = $request->validate([
             'payment_date' => 'required|date',
             'payment_method' => 'required|in:cash,bank',
             'amount' => 'required|numeric|min:0',
             'bdt_amount' => 'required|numeric|min:0',
             'sender_bank_id' => 'nullable|exists:banks,id',
+            'other_sender_bank' => 'nullable|string|max:255',
             'receiver_bank' => 'nullable|string|max:255',
             'branch_id' => 'nullable|exists:branches,id',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',

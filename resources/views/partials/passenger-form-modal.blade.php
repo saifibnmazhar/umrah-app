@@ -53,8 +53,7 @@
                                    placeholder="Enter DOB to auto-calculate">
                         </div>
                         <p x-show="passengerData.date_of_birth && !passengerData.passenger_type" class="text-xs text-slate-400 mt-1">Calculating...</p>
-                        <p x-show="passengerData.passenger_type && !passengerData.stay_duration" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth</p>
-                        <p x-show="passengerData.passenger_type && passengerData.stay_duration" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth & stay duration</p>
+                        <p x-show="passengerData.passenger_type" class="text-xs text-slate-500 mt-1">Auto-filled based on date of birth</p>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Passport Expiry Date</label>
@@ -68,7 +67,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Stay Duration *</label>
-                        <select x-model="passengerData.stay_duration" @change="handleStayDurationChange(); calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select x-model="passengerData.stay_duration" @change="handleStayDurationChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Stay Duration</option>
                             <option value="14">Group (14 Days)</option>
                             {{-- <option value="85">Family (85 Days)</option> --}}

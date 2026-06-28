@@ -4,9 +4,9 @@
 <div class="max-w-4xl mx-auto">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Edit Ticket Fare</h1>
-        <a href="{{ route('ticket-fares.index') }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
-            Back to List
-        </a>
+<a href="{{ route('fare.admin', ['tab' => 'fares']) }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
+    Back to List
+</a>
     </div>
 
     @php
@@ -26,7 +26,55 @@
         </div>
     @endif
 
-    <form method="POST" action="{{ route('ticket-fares.update', $ticketFare->id) }}">
+    <form method="POST" action="{{ route('ticket-fares.update', $ticketFare->id) }}" x-data="{
+        fares: {
+            net_fare: { sar: {{ old('net_fare', $ticketFare->net_fare) }}, bdt: 0 },
+            selling_fare: { sar: {{ old('selling_fare', $ticketFare->selling_fare) }}, bdt: 0 },
+            offer_price: { sar: {{ old('offer_price', $ticketFare->offer_price) }}, bdt: 0 },
+        },
+        _converting: false,
+        init() {
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                this.fares.net_fare.bdt = Math.round(parseFloat(this.fares.net_fare.sar) * rate);
+                this.fares.selling_fare.bdt = Math.round(parseFloat(this.fares.selling_fare.sar) * rate);
+                this.fares.offer_price.bdt = Math.round(parseFloat(this.fares.offer_price.sar) * rate);
+            }
+            const component = this;
+            window.addEventListener('currency-toggled', function () {
+                const r = window.__currencyRate || 0;
+                if (r > 0) {
+                    component._converting = true;
+                    component.fares.net_fare.bdt = Math.round(parseFloat(component.fares.net_fare.sar) * r);
+                    component.fares.selling_fare.bdt = Math.round(parseFloat(component.fares.selling_fare.sar) * r);
+                    component.fares.offer_price.bdt = Math.round(parseFloat(component.fares.offer_price.sar) * r);
+                    component._converting = false;
+                }
+            });
+        },
+        handleSarInput(field) {
+            if (this._converting) return;
+            this._converting = true;
+            const fare = this.fares[field];
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                const sar = parseFloat(fare.sar) || 0;
+                fare.bdt = Math.round(sar * rate);
+            }
+            this._converting = false;
+        },
+        handleBdtInput(field) {
+            if (this._converting) return;
+            this._converting = true;
+            const fare = this.fares[field];
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                const bdt = parseFloat(fare.bdt) || 0;
+                fare.sar = (Math.round(bdt / rate * 1e6) / 1e6).toFixed(6);
+            }
+            this._converting = false;
+        },
+    }">
         @csrf
         @method('PUT')
 
@@ -133,15 +181,27 @@
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR) *</label>
-                    <input type="number" name="net_fare" value="{{ old('net_fare', $ticketFare->net_fare) }}" step="0.01" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <input type="number" name="net_fare" x-model="fares.net_fare.sar" @input="handleSarInput('net_fare')" :readonly="$store.currency.mode === 'BDT'" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mt-1">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT) *</label>
+                        <input type="number" x-model="fares.net_fare.bdt" @input="handleBdtInput('net_fare')" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
-                    <input type="number" name="selling_fare" value="{{ old('selling_fare', $ticketFare->selling_fare) }}" step="0.01" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <input type="number" name="selling_fare" x-model="fares.selling_fare.sar" @input="handleSarInput('selling_fare')" :readonly="$store.currency.mode === 'BDT'" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mt-1">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) *</label>
+                        <input type="number" x-model="fares.selling_fare.bdt" @input="handleBdtInput('selling_fare')" step="any" min="0" required class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    </div>
                 </div>
                 <div id="offerPriceField" class="{{ $currentTicketType !== 'offer' ? 'hidden' : '' }}">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
-                    <input type="number" name="offer_price" value="{{ old('offer_price', $ticketFare->offer_price) }}" step="0.01" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <input type="number" name="offer_price" x-model="fares.offer_price.sar" @input="handleSarInput('offer_price')" :readonly="$store.currency.mode === 'BDT'" :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}" step="any" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mt-1">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) *</label>
+                        <input type="number" x-model="fares.offer_price.bdt" @input="handleBdtInput('offer_price')" step="any" min="0" class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    </div>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Child Fare (%) *</label>
@@ -229,9 +289,9 @@
         </div>
 
         <div class="flex justify-end gap-3">
-            <a href="{{ route('ticket-fares.index') }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
-                Cancel
-            </a>
+<a href="{{ route('fare.admin', ['tab' => 'fares']) }}" class="px-4 py-2 border border-slate-300 text-slate-700 rounded-md hover:bg-slate-50 transition text-sm font-medium">
+    Cancel
+</a>
             <button type="submit" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition text-sm font-medium">
                 Update Ticket Fare
             </button>

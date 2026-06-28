@@ -37,6 +37,7 @@ use App\Enums\FingerprintLocation;
 use App\Enums\DiscountType;
 use App\Enums\VisaStatus;
 use App\Enums\TicketStatus;
+use App\Traits\ConvertsDocumentsToPdf;
 use App\Services\BookingService;
 use App\Services\PaymentService;
 use App\Services\InvoiceService;
@@ -47,6 +48,7 @@ use Carbon\Carbon;
 
 class BookingController extends Controller
 {
+    use ConvertsDocumentsToPdf;
     public function __construct(
         private BookingService $bookingService,
         private InvoiceService $invoiceService,
@@ -139,6 +141,7 @@ class BookingController extends Controller
         $tab = $request->get('tab', 'booking');
 
         $user = auth()->user();
+        abort_unless($user, 401, 'Unauthenticated');
         $userBranchId = $user->branch_id;
 
         $bookingBranches = $userBranchId ? collect() : Branch::orderBy('name')->get(['id', 'name']);
@@ -280,6 +283,7 @@ class BookingController extends Controller
             ->with([
                 'booking',
                 'booking.customer',
+                'booking.documents',
                 'booking.package.ticketFare.route',
                 'booking.invoice',
                 'ticketFare.route',
@@ -591,7 +595,7 @@ class BookingController extends Controller
             foreach ($validated['passengers'] as $passengerIndex => $passengerData) {
                 $passengerType = $this->bookingService->calculatePassengerType(
                     $passengerData['date_of_birth'],
-                    $passengerData['stay_duration'] ?? null
+                    // $passengerData['stay_duration'] ?? null
                 );
 
                 $passenger = Passenger::create([
@@ -1154,7 +1158,7 @@ class BookingController extends Controller
 
         $passengerType = $this->bookingService->calculatePassengerType(
             $validated['date_of_birth'],
-            $validated['stay_duration'] ?? null
+            // $validated['stay_duration'] ?? null
         );
 
         $validated['booking_id'] = $booking->id;
@@ -1245,13 +1249,13 @@ class BookingController extends Controller
     public function calculatePassengerType(Request $request)
     {
         $dateOfBirth = $request->input('date_of_birth');
-        $stayDuration = $request->input('stay_duration');
+        // $stayDuration = $request->input('stay_duration');
         
         if (!$dateOfBirth) {
             return response()->json(['passenger_type' => null]);
         }
 
-        $passengerType = $this->bookingService->calculatePassengerType($dateOfBirth, $stayDuration);
+        $passengerType = $this->bookingService->calculatePassengerType($dateOfBirth /*, $stayDuration*/);
 
         return response()->json([
             'passenger_type' => $passengerType,
@@ -1521,10 +1525,12 @@ class BookingController extends Controller
                     });
                 }
             }
-        })->when(!$scope || $scope === 'all', function ($q) use ($passengerIds) {
-            $q->orWhere(function ($q) use ($passengerIds) {
+        })->when(!$scope || $scope === 'all', function ($q) use ($passengerIds, $booking) {
+            $passengerId = request()->query('passenger_id');
+            $targetIds = $passengerId ? [$passengerId] : $passengerIds;
+            $q->orWhere(function ($q) use ($targetIds) {
                 $q->where('owner_type', 'App\Models\Passenger')
-                  ->whereIn('owner_id', $passengerIds);
+                  ->whereIn('owner_id', $targetIds);
             });
         })->get();
 
