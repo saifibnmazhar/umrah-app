@@ -129,6 +129,15 @@ class DocumentController extends Controller
 
     public function destroy(Document $document)
     {
+        $user = auth()->user();
+        $isSuperOrCoAdmin = $user->roles()->whereIn('name', ['Super Admin', 'Co Admin'])->exists();
+        $isFingerprintAdmin = $user->hasRole('Fingerprint Admin');
+        $isPassengerDoc = $document->owner_type === 'App\Models\Passenger';
+
+        if (!$isSuperOrCoAdmin && !($isFingerprintAdmin && $isPassengerDoc)) {
+            abort(403, 'Unauthorized action.');
+        }
+
         if (Storage::disk('public')->exists($document->file_path)) {
             Storage::disk('public')->delete($document->file_path);
         }

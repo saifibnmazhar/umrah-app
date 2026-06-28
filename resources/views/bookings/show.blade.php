@@ -39,6 +39,7 @@
                     || auth()->user()->branch_id
                     || $booking->user_id === auth()->id());
                 $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
+                $canDeletePassengerDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Fingerprint Admin'])->isNotEmpty();
                 $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
             @endphp
         <div class="flex justify-between items-start mb-6 pb-4 border-b border-slate-200">
@@ -201,7 +202,7 @@
                     <div class="flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200">
                         <span class="text-sm text-slate-700 truncate">{{ $doc->display_name ?? 'Document' }}</span>
                         <div class="flex gap-2">
-                            @if($canDeleteDocument)
+                            @if($canDeletePassengerDocument)
                             <button onclick="deleteDocument({{ $doc->id }})" class="text-red-500 hover:text-red-700 text-xs">Delete</button>
                             @endif
                             <button onclick="downloadDoc({{ $doc->id }})" class="text-blue-600 hover:text-blue-800 text-xs">Download</button>
@@ -1721,7 +1722,7 @@ function appendPassengerDocToList(doc) {
     if (emptyState) emptyState.remove();
     const item = document.createElement('div');
     item.className = 'flex justify-between items-center bg-white p-3 rounded-lg border border-slate-200';
-    var deleteBtn = {{ $canDeleteDocument ? 'true' : 'false' }} ? '<button onclick="deleteDocument(' + doc.id + ')" class="text-red-500 hover:text-red-700 text-xs mr-2">Delete</button>' : '';
+    var deleteBtn = {{ $canDeletePassengerDocument ? 'true' : 'false' }} ? '<button onclick="deleteDocument(' + doc.id + ')" class="text-red-500 hover:text-red-700 text-xs mr-2">Delete</button>' : '';
     item.innerHTML = '<span class="text-sm text-slate-700 truncate">' + (doc.display_name || 'Document') + '</span><div class="flex gap-2">' + deleteBtn + '<button onclick="downloadDoc(' + doc.id + ')" class="text-blue-600 hover:text-blue-800 text-xs">Download</button></div>';
     list.appendChild(item);
 }
