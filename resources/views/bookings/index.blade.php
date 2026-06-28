@@ -672,12 +672,14 @@ if ($route) {
                 if (!$allApproved) {
                     $displayStatus = 'Partially Approved';
                 }
+            } elseif ($rawStatus === 'done') {
+                $displayStatus = 'Pending Pax Completion';
             }
         @endphp
         @if($displayStatus)
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium
-                {{ $rawStatus === 'approved' ? 'bg-green-100 text-green-700' : ($rawStatus === 'processing' ? 'bg-blue-100 text-blue-700' : ($rawStatus === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600')) }}">
-                {{ $displayStatus === 'Partially Approved' ? 'Partially Approved' : ucfirst($rawStatus) }}
+                {{ $rawStatus === 'approved' ? 'bg-green-100 text-green-700' : ($rawStatus === 'done' ? 'bg-blue-100 text-blue-700' : ($rawStatus === 'processing' ? 'bg-blue-100 text-blue-700' : ($rawStatus === 'cancelled' ? 'bg-red-100 text-red-700' : 'bg-slate-100 text-slate-600'))) }}">
+                {{ $displayStatus === 'Partially Approved' ? 'Partially Approved' : ($rawStatus === 'done' ? 'Pending Pax Completion' : ucfirst($rawStatus)) }}
             </span>
         @else
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
