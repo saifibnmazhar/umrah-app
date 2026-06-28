@@ -520,7 +520,9 @@ $isFirstRow = ($lastBookingId !== $passenger->booking_id);
 $lastBookingId = $passenger->booking_id;
 
 $ticketFare = $passenger->ticketFare;
-$baseFare = $ticketFare?->selling_fare ?? $ticketFare?->net_fare ?? 0;
+$baseFare = $ticketFare?->ticket_type?->value === 'offer'
+    ? ($ticketFare->offer_price ?? $ticketFare->selling_fare ?? $ticketFare->net_fare ?? 0)
+    : ($ticketFare?->selling_fare ?? $ticketFare?->net_fare ?? 0);
 $passengerTypeVal = $passenger->passenger_type?->value;
 $fareAmount = match($passengerTypeVal) {
     'child' => $baseFare * ($ticketFare?->child_fare_percentage ?? 75) / 100,
