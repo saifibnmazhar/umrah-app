@@ -158,6 +158,8 @@ class BookingController extends Controller
         $selectedTicketAgentId = $request->get('ticket_agent_id');
         $selectedActualFlightFrom = $request->get('actual_flight_from');
         $selectedActualFlightTo = $request->get('actual_flight_to');
+        $selectedReturnDateFrom = $request->get('return_date_from');
+        $selectedReturnDateTo = $request->get('return_date_to');
 
         $branchCounts = !$userBranchId
             ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
@@ -250,6 +252,12 @@ class BookingController extends Controller
             )
             ->when($request->filled('actual_flight_to'), fn ($q) =>
                 $q->whereDate('actual_flight_date', '<=', $request->input('actual_flight_to'))
+            )
+            ->when($request->filled('return_date_from'), fn ($q) =>
+                $q->whereHas('latestIssuedTicket', fn ($q) => $q->whereDate('outbound_date', '>=', $request->input('return_date_from')))
+            )
+            ->when($request->filled('return_date_to'), fn ($q) =>
+                $q->whereHas('latestIssuedTicket', fn ($q) => $q->whereDate('outbound_date', '<=', $request->input('return_date_to')))
             )
             ->when($request->filled('passenger_status'), fn ($q) =>
                 $q->where('passenger_status_id', $request->input('passenger_status'))
@@ -345,6 +353,7 @@ class BookingController extends Controller
             'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
             'selectedPassengerStatus', 'selectedRouteId', 'selectedTicketAgentId',
             'selectedActualFlightFrom', 'selectedActualFlightTo',
+            'selectedReturnDateFrom', 'selectedReturnDateTo',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
             'totalPassengerCount'
         ));

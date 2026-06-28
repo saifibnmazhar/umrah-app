@@ -380,6 +380,14 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         <input type="date" x-model="selectedActualFlightTo" @change="onActualFlightToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                     </div>
                     <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Return Date From</label>
+                        <input type="date" x-model="selectedReturnDateFrom" @change="onReturnDateFromChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Return Date To</label>
+                        <input type="date" x-model="selectedReturnDateTo" @change="onReturnDateToChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Required Flight</label>
                         <select x-model="selectedFlightDateRange" @change="onFlightDateRangeChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
@@ -1298,6 +1306,8 @@ function bookingIndexApp() {
         selectedTicketAgentId: '{{ $selectedTicketAgentId ?? '' }}',
         selectedActualFlightFrom: '{{ $selectedActualFlightFrom ?? '' }}',
         selectedActualFlightTo: '{{ $selectedActualFlightTo ?? '' }}',
+        selectedReturnDateFrom: '{{ $selectedReturnDateFrom ?? '' }}',
+        selectedReturnDateTo: '{{ $selectedReturnDateTo ?? '' }}',
         selectedFlightDateRange: '',
         flightDateRanges: @json($flightDateRanges),
         totalPassengerCount: {{ $totalPassengerCount }},
@@ -1556,6 +1566,28 @@ function bookingIndexApp() {
             window.location.href = url.toString();
         },
 
+        onReturnDateFromChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedReturnDateFrom) {
+                url.searchParams.set('return_date_from', this.selectedReturnDateFrom);
+            } else {
+                url.searchParams.delete('return_date_from');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onReturnDateToChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedReturnDateTo) {
+                url.searchParams.set('return_date_to', this.selectedReturnDateTo);
+            } else {
+                url.searchParams.delete('return_date_to');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
         onFlightDateRangeChange() {
             const url = new URL(window.location.href);
             if (this.selectedFlightDateRange) {
@@ -1578,6 +1610,7 @@ function bookingIndexApp() {
              'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_id',
              'booking_branch_id', 'booking_date_from', 'booking_date_to',
              'actual_flight_from', 'actual_flight_to',
+             'return_date_from', 'return_date_to',
              'flight_date_from', 'flight_date_to',
              'search', 'page'
             ].forEach(p => url.searchParams.delete(p));
