@@ -60,6 +60,7 @@
                         <th class="px-3 py-2 text-left font-medium">Payment Date</th>
                         <th class="px-3 py-2 text-left font-medium">Created At</th>
                         <th class="px-3 py-2 text-left font-medium">Transaction Type</th>
+                        <th class="px-3 py-2 text-left font-medium">Agent Name</th>
                         <th class="px-3 py-2 text-left font-medium">Method</th>
                         <th class="px-3 py-2 text-right font-medium">Amount (SAR)</th>
                         <th class="px-3 py-2 text-right font-medium">Amount (BDT)</th>
@@ -89,6 +90,17 @@
                                     <span class="text-slate-400">-</span>
                                 @endif
                             </td>
+                            <td class="px-3 py-2 text-slate-600">
+                                @if($payment->voucher?->transactionType?->name === 'Commission Agent Payment' && $payment->commissionAgent)
+                                    {{ $payment->commissionAgent->name }}
+                                @elseif($payment->voucher?->transactionType?->name === 'Ticket Agent Payment' && $payment->ticketAgent)
+                                    {{ $payment->ticketAgent->name }}
+                                @elseif($payment->voucher?->transactionType?->name === 'Visa Agent Payment' && $payment->visaAgent)
+                                    {{ $payment->visaAgent->name }}
+                                @else
+                                    <span class="text-slate-400">-</span>
+                                @endif
+                            </td>
                             <td class="px-3 py-2">
                                 @if($payment->payment_method->value === 'cash')
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Cash</span>
@@ -108,7 +120,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="9" class="px-3 py-8 text-center text-slate-500">
+                            <td colspan="12" class="px-3 py-8 text-center text-slate-500">
                                 No payments yet. Click "Add Payment" to create a new one.
                             </td>
                         </tr>
