@@ -217,6 +217,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             $canViewVisaColumns = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
             $canViewTicketFareColumn = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
             $canEditInline = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Delivery Staff'])->isNotEmpty();
+            $canEditFingerprintLocation = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Fingerprint Admin', 'Delivery Staff'])->isNotEmpty();
             $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin'])->isNotEmpty();
             $canViewActionColumn = true;
             $canViewPassengerIndex = true;
@@ -307,7 +308,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <td class="px-3 py-2 text-slate-700">{{ $booking->customer->mobile_no ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->passengers->count() }}</td>
                             <td class="px-3 py-2">
-                                @if($canEditInline)
+                                @if($canEditFingerprintLocation && !(auth()->user()->hasRole('Fingerprint Admin') && ($booking->fingerprint_location?->value ?? 'office') === 'home'))
                                 <select
                                     class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
                                     data-original="{{ $booking->fingerprint_location?->value ?? 'office' }}"
