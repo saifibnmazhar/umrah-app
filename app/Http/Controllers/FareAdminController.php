@@ -157,7 +157,10 @@ class FareAdminController extends Controller
 
             return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare created successfully.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to create ticket fare: ' . $e->getMessage())->withInput();
+            $message = $e instanceof \Illuminate\Database\QueryException
+                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                : 'Failed to create ticket fare.';
+            return redirect()->back()->with('error', $message)->withInput();
         }
     }
 
@@ -194,7 +197,10 @@ class FareAdminController extends Controller
 
             return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare updated successfully.');
         } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Failed to update ticket fare: ' . $e->getMessage())->withInput();
+            $message = $e instanceof \Illuminate\Database\QueryException
+                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                : 'Failed to update ticket fare.';
+            return redirect()->back()->with('error', $message)->withInput();
         }
     }
 
