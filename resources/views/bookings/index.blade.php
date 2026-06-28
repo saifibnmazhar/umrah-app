@@ -1542,13 +1542,15 @@ function bookingIndexApp() {
             this.handleTicketFareRouteTypeChange();
             this.handleTicketTypeChange();
 
-            if (!isAlreadyIssued && row.ticket_fare) {
-                const opt = this.filteredTicketOptions.find(o => o.value == row.ticket_fare.ticket_fare_id);
+            const fareId = isAlreadyIssued
+                ? row.latest_issued_ticket?.ticket_fare_id
+                : row.ticket_fare?.ticket_fare_id;
+            if (fareId) {
+                const opt = this.filteredTicketOptions.find(o => o.value == fareId);
                 if (opt) {
                     this.ticketFareForm.ticket_option = opt.value;
                     this.handleTicketOptionChange();
                 }
-
             }
 
             this._initLock = false;
@@ -1620,9 +1622,12 @@ function bookingIndexApp() {
         },
 
         getSelectedFareId() {
+            if (this.ticketFareForm.ticket_option) {
+                return this.ticketFareForm.ticket_option;
+            }
             const row = this.passengersTicketData[this.editingPassengerIndex];
             if (!row) return null;
-            return row.latest_issued_ticket?.ticket_fare_id || row.ticket_fare_id || null;
+            return row.latest_issued_ticket?.ticket_fare_id || row.ticket_fare?.ticket_fare_id || null;
         },
 
         mapIssuedTicketToForm(ticket) {
