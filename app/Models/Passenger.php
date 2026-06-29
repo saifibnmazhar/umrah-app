@@ -7,10 +7,12 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use App\Enums\FingerprintStatus;
 use App\Enums\Gender;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\TicketStatus;
+use App\Enums\VisaStatus;
 
 class Passenger extends Model
 {
@@ -182,5 +184,42 @@ class Passenger extends Model
             'multi_city' => 'Multi City',
             default => '-',
         };
+    }
+
+    public function getComputedStatusAttribute(): ?string
+    {
+        $fpStatus = $this->fingerprintDetail?->status?->value;
+        $visaStatus = $this->visaSubmission?->status?->value;
+        $ticketStatus = $this->ticket_status?->value;
+        $issuedTicketStatus = $this->latestIssuedTicket?->status;
+
+        $isFingerprintApproved = $fpStatus === FingerprintStatus::APPROVED->value;
+        $isVisaSubmitted = $visaStatus === VisaStatus::SUBMITTED->value;
+        $isVisaIssued = $visaStatus === VisaStatus::ISSUED->value;
+        $isTicketIssued = in_array($ticketStatus, ['issued', 're-issued'])
+            || in_array($issuedTicketStatus, ['issued', 're-issued']);
+
+        if ($isTicketIssued && $isVisaIssued) return 'Ticket Issued';
+        if ($isTicketIssued && !$isVisaIssued) return 'Ticket Issued before Visa';
+        if ($isVisaIssued) return 'Visa Issued';
+        if ($isVisaSubmitted) return 'Visa Submitted';
+        if ($isFingerprintApproved) return 'Fingerprint Done';
+
+        return null;
+    }
+
+    public function syncComputedStatus(): void
+    {
+        $statusName = $this->computed_status;
+
+        $statusId = null;
+        if ($statusName) {
+            $statusId = PassengerStatus::firstOrCreate(['name' => $statusName])->id;
+        }
+
+        if ($this->passenger_status_id !== $statusId) {
+            $this->passenger_status_id = $statusId;
+            $this->saveQuietly();
+        }
     }
 }

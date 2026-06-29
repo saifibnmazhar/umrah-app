@@ -2,8 +2,10 @@
 
 namespace App\Providers;
 
+use App\Models\FingerprintDetail;
 use App\Models\IssuedTicket;
 use App\Models\VisaSubmission;
+use App\Observers\FingerprintDetailObserver;
 use App\Observers\IssuedTicketObserver;
 use App\Observers\VisaSubmissionObserver;
 use Illuminate\Support\Facades\Blade;
@@ -24,6 +26,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        FingerprintDetail::observe(FingerprintDetailObserver::class);
         VisaSubmission::observe(VisaSubmissionObserver::class);
         IssuedTicket::observe(IssuedTicketObserver::class);
 

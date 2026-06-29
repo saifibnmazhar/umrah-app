@@ -557,17 +557,23 @@ if ($route) {
     </td>
     <td class="px-3 py-2 text-slate-700">{{ trim($passenger->first_name . ' ' . $passenger->last_name) ?: '—' }}</td>
     <td class="px-3 py-2">
+        @php
+            $computedStatus = $passenger->computed_status;
+            $computedStatusId = $computedStatus
+                ? ($passengerStatuses->firstWhere('name', $computedStatus)?->id ?? $passenger->passenger_status_id)
+                : null;
+        @endphp
         @if($canEditInline)
         <select
             class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
             onchange="updatePassengerStatus({{ $passenger->id }}, this.value)">
-            <option value="" {{ is_null($passenger->passenger_status_id) ? 'selected' : '' }}>None</option>
+            <option value="" {{ is_null($computedStatusId) ? 'selected' : '' }}>None</option>
             @foreach($passengerStatuses as $status)
-                <option value="{{ $status->id }}" {{ $passenger->passenger_status_id == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+                <option value="{{ $status->id }}" {{ $computedStatusId == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
             @endforeach
         </select>
         @else
-        <span class="text-slate-700">{{ $passengerStatuses->firstWhere('id', $passenger->passenger_status_id)->name ?? 'None' }}</span>
+            <span class="text-slate-700">{{ $computedStatus ?? 'None' }}</span>
         @endif
     </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
