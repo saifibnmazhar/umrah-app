@@ -305,7 +305,7 @@ class FingerprintController extends Controller
         }
 
         $validated = $request->validate([
-            'status' => 'required|in:none,processing,approved,cancelled',
+            'status' => 'required|in:none,processing,approved,cancelled,done',
         ]);
 
         $location = $fingerprint->booking->fingerprint_location;
