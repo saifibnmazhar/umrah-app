@@ -29,6 +29,23 @@
             @enderror
         </div>
 
+        <!-- Branch Code -->
+        <div>
+            <label for="branch_code" class="block text-sm font-medium text-slate-700 mb-1">Branch Code</label>
+            <input 
+                type="text" 
+                name="branch_code" 
+                id="branch_code" 
+                value="{{ old('branch_code') }}" 
+                placeholder="Enter branch code"
+                aria-describedby="branch_code-error"
+                class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('branch_code') border-red-500 @enderror"
+            >
+            @error('branch_code')
+                <span class="text-sm text-red-600 mt-1">{{ $message }}</span>
+            @enderror
+        </div>
+
         <div>
             <label for="address" class="block text-sm font-medium text-slate-700 mb-1">Address</label>
             <input 

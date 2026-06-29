@@ -20,8 +20,15 @@ class VisaSubmissionObserver
         'status',
     ];
 
+    public function created(VisaSubmission $visaSubmission): void
+    {
+        $visaSubmission->passenger->syncComputedStatus();
+    }
+
     public function updated(VisaSubmission $visaSubmission): void
     {
+        $visaSubmission->passenger->syncComputedStatus();
+
         $user = Auth::user();
         if (!$user) {
             return;

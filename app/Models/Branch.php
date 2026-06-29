@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Relations\HasMany;
 
 class Branch extends Model
 {
-    protected $fillable = ['name', 'address', 'contacts', 'location', 'fingerprint_operation'];
+    protected $fillable = ['name', 'address', 'contacts', 'location', 'fingerprint_operation', 'branch_code'];
 
     protected $casts = [
         'location' => \App\Enums\Location::class,

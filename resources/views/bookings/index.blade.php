@@ -525,8 +525,8 @@ $baseFare = $ticketFare?->ticket_type?->value === 'offer'
     : ($ticketFare?->selling_fare ?? $ticketFare?->net_fare ?? 0);
 $passengerTypeVal = $passenger->passenger_type?->value;
 $fareAmount = match($passengerTypeVal) {
-    'child' => $baseFare * ($ticketFare?->child_fare_percentage ?? 75) / 100,
-    'infant' => $baseFare * ($ticketFare?->infant_fare_percentage ?? 10) / 100,
+    'child' => $baseFare * ($ticketFare?->child_fare_percentage ?? 70) / 100,
+    'infant' => $baseFare * ($ticketFare?->infant_fare_percentage ?? 30) / 100,
     default => $baseFare,
 };
 
@@ -560,14 +560,15 @@ if ($route) {
         @if($canEditInline)
         <select
             class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
-            onchange="updatePassengerStatus({{ $passenger->id }}, this.value)">
-            <option value="" {{ is_null($passenger->passenger_status_id) ? 'selected' : '' }}>None</option>
+            x-bind:value="getComputedStatusId({{ $loop->index }})"
+            x-on:change="updatePassengerStatus({{ $passenger->id }}, $event.target.value)">
+            <option value="">None</option>
             @foreach($passengerStatuses as $status)
-                <option value="{{ $status->id }}" {{ $passenger->passenger_status_id == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+                <option value="{{ $status->id }}">{{ $status->name }}</option>
             @endforeach
         </select>
         @else
-        <span class="text-slate-700">{{ $passengerStatuses->firstWhere('id', $passenger->passenger_status_id)->name ?? 'None' }}</span>
+        <span class="text-slate-700" x-text="getComputedStatusName({{ $loop->index }})">{{ $passenger->computed_status ?? 'None' }}</span>
         @endif
     </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
@@ -647,14 +648,19 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->latestIssuedTicket?->ticketAgent?->name ?? '—' }}</td>
     <td class="px-3 py-2">
         <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status">
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                :class="{
-                    'bg-green-100 text-green-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued',
-                    'bg-purple-100 text-purple-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued',
-                    'bg-red-100 text-red-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'refunded',
-                    'bg-slate-100 text-slate-600': ['issued','re-issued','refunded'].indexOf(passengersTicketData[{{ $loop->index }}]?.ticket_status) === -1
-                }"
-                x-text="passengersTicketData[{{ $loop->index }}]?.ticket_status.charAt(0).toUpperCase() + passengersTicketData[{{ $loop->index }}]?.ticket_status.slice(1)">
+            <span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                    :class="{
+                        'bg-green-100 text-green-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued',
+                        'bg-purple-100 text-purple-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued',
+                        'bg-red-100 text-red-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'refunded',
+                        'bg-slate-100 text-slate-600': ['issued','re-issued','refunded'].indexOf(passengersTicketData[{{ $loop->index }}]?.ticket_status) === -1
+                    }"
+                    x-text="passengersTicketData[{{ $loop->index }}]?.ticket_status.charAt(0).toUpperCase() + passengersTicketData[{{ $loop->index }}]?.ticket_status.slice(1)">
+                </span>
+                <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' && passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.pnr">
+                    <div class="text-xs leading-tight">PNR: <span x-text="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.pnr"></span></div>
+                </template>
             </span>
         </template>
         <template x-if="!passengersTicketData[{{ $loop->index }}]?.ticket_status">
@@ -1624,6 +1630,7 @@ function bookingIndexApp() {
 
         passengersVisaData: @json($passengersVisaData),
         passengersTicketData: @json($passengersTicketData),
+        passengerStatusMap: @json($passengerStatuses->pluck('id', 'name')),
 
         ticketAgents: @json($ticketAgents),
 
@@ -1683,6 +1690,56 @@ function bookingIndexApp() {
             netVisaCostBDT: 0,
             additionalCostBDT: 0,
             finalCostBDT: 0,
+        },
+
+        getComputedStatusId(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return '';
+            const visa = this.passengersVisaData[index]?.visa;
+
+            const fpStatus = row.fingerprint_status;
+            const visaStatus = visa?.status;
+            const ticketStatus = row.ticket_status;
+            const issuedTicketStatus = row.latest_issued_ticket?.status;
+
+            const isFingerprintApproved = fpStatus === 'approved';
+            const isVisaSubmitted = visaStatus === 'submitted';
+            const isVisaIssued = visaStatus === 'issued';
+            const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
+                || ['issued', 're-issued'].includes(issuedTicketStatus);
+
+            let statusName = null;
+            if (isTicketIssued && isVisaIssued) statusName = 'Ticket Issued';
+            else if (isTicketIssued && !isVisaIssued) statusName = 'Ticket Issued before Visa';
+            else if (isVisaIssued) statusName = 'Visa Issued';
+            else if (isVisaSubmitted) statusName = 'Visa Submitted';
+            else if (isFingerprintApproved) statusName = 'Fingerprint Done';
+
+            return statusName ? (this.passengerStatusMap[statusName] ?? '') : '';
+        },
+
+        getComputedStatusName(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return 'None';
+            const visa = this.passengersVisaData[index]?.visa;
+
+            const fpStatus = row.fingerprint_status;
+            const visaStatus = visa?.status;
+            const ticketStatus = row.ticket_status;
+            const issuedTicketStatus = row.latest_issued_ticket?.status;
+
+            const isFingerprintApproved = fpStatus === 'approved';
+            const isVisaSubmitted = visaStatus === 'submitted';
+            const isVisaIssued = visaStatus === 'issued';
+            const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
+                || ['issued', 're-issued'].includes(issuedTicketStatus);
+
+            if (isTicketIssued && isVisaIssued) return 'Ticket Issued';
+            if (isTicketIssued && !isVisaIssued) return 'Ticket Issued before Visa';
+            if (isVisaIssued) return 'Visa Issued';
+            if (isVisaSubmitted) return 'Visa Submitted';
+            if (isFingerprintApproved) return 'Fingerprint Done';
+            return 'None';
         },
 
         getCommissionAgents(agentId) {
@@ -2526,7 +2583,7 @@ function bookingIndexApp() {
                     this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(row.ticket_fare.selling_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
                     this.ticketFareForm.net_fare = this.calculateFareForPassengerType(row.ticket_fare.net_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
                     if (row.ticket_fare.with_offer && row.ticket_fare.offer_price) {
-                        this.ticketFareForm.offer_price = row.ticket_fare.offer_price;
+                        this.ticketFareForm.offer_price = this.calculateFareForPassengerType(row.ticket_fare.offer_price, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
                     }
                     const r3 = window.__currencyRate || 0;
                     if (r3 > 0) {
@@ -2539,7 +2596,7 @@ function bookingIndexApp() {
                     this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(fare.selling_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                     this.ticketFareForm.net_fare = this.calculateFareForPassengerType(fare.net_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                     if (fare.ticket_type === 'offer' && fare.offer_price) {
-                        this.ticketFareForm.offer_price = fare.offer_price;
+                        this.ticketFareForm.offer_price = this.calculateFareForPassengerType(fare.offer_price, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                     }
                     const r4 = window.__currencyRate || 0;
                     if (r4 > 0) {
