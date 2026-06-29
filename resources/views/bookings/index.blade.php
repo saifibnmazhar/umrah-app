@@ -647,14 +647,19 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->latestIssuedTicket?->ticketAgent?->name ?? '—' }}</td>
     <td class="px-3 py-2">
         <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status">
-            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                :class="{
-                    'bg-green-100 text-green-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued',
-                    'bg-purple-100 text-purple-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued',
-                    'bg-red-100 text-red-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'refunded',
-                    'bg-slate-100 text-slate-600': ['issued','re-issued','refunded'].indexOf(passengersTicketData[{{ $loop->index }}]?.ticket_status) === -1
-                }"
-                x-text="passengersTicketData[{{ $loop->index }}]?.ticket_status.charAt(0).toUpperCase() + passengersTicketData[{{ $loop->index }}]?.ticket_status.slice(1)">
+            <span>
+                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                    :class="{
+                        'bg-green-100 text-green-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued',
+                        'bg-purple-100 text-purple-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued',
+                        'bg-red-100 text-red-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'refunded',
+                        'bg-slate-100 text-slate-600': ['issued','re-issued','refunded'].indexOf(passengersTicketData[{{ $loop->index }}]?.ticket_status) === -1
+                    }"
+                    x-text="passengersTicketData[{{ $loop->index }}]?.ticket_status.charAt(0).toUpperCase() + passengersTicketData[{{ $loop->index }}]?.ticket_status.slice(1)">
+                </span>
+                <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' && passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.pnr">
+                    <div class="text-xs leading-tight">PNR: <span x-text="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.pnr"></span></div>
+                </template>
             </span>
         </template>
         <template x-if="!passengersTicketData[{{ $loop->index }}]?.ticket_status">
