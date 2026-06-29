@@ -195,6 +195,7 @@ function fingerprintStaff(options = {}) {
         displayStatuses: [
             'None',
             'Processing',
+            'Fingerprint Done',
             'Approved',
             'Partially Approved',
             'Cancel',
@@ -292,6 +293,7 @@ function fingerprintStaff(options = {}) {
             const map = {
                 'none': 'None',
                 'processing': 'Processing',
+                'done': 'Fingerprint Done',
                 'approved': 'Approved',
                 'cancelled': 'Cancel',
             };
@@ -302,6 +304,7 @@ function fingerprintStaff(options = {}) {
             const map = {
                 'None': 'none',
                 'Processing': 'processing',
+                'Fingerprint Done': 'done',
                 'Approved': 'approved',
                 'Partially Approved': 'approved',
                 'Cancel': 'cancelled',
@@ -316,6 +319,7 @@ function fingerprintStaff(options = {}) {
                 'approved': 'bg-green-100 text-green-800',
                 'Partially Approved': 'bg-green-100 text-green-800',
                 'cancelled': 'bg-red-100 text-red-800',
+                'done': 'bg-blue-100 text-blue-800',
             };
             return classes[status] || 'bg-gray-100 text-gray-800';
         },
