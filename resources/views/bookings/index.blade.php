@@ -1195,34 +1195,34 @@ if ($route) {
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
-                                <input type="number" x-model="ticketFareForm.selling_fare" min="0" @input="handleTicketFareSarInput('selling_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="ticketFareForm.selling_fare" min="0" step="0.000001" @input="handleTicketFareSarInput('selling_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
-                                <input type="number" x-model="ticketFareForm.selling_fare_bdt" min="0" @input="handleTicketFareBdtInput('selling_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <input type="number" x-model="ticketFareForm.selling_fare" min="0" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <input type="number" x-model="ticketFareForm.selling_fare_bdt" min="0" step="0.000001" @input="handleTicketFareBdtInput('selling_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="ticketFareForm.selling_fare" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                             </div>
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
-                                <input type="number" x-model="ticketFareForm.net_fare" min="0" @input="handleTicketFareSarInput('net_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="ticketFareForm.net_fare" min="0" step="0.000001" @input="handleTicketFareSarInput('net_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
-                                <input type="number" x-model="ticketFareForm.net_fare_bdt" min="0" @input="handleTicketFareBdtInput('net_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <input type="number" x-model="ticketFareForm.net_fare" min="0" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <input type="number" x-model="ticketFareForm.net_fare_bdt" min="0" step="0.000001" @input="handleTicketFareBdtInput('net_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="ticketFareForm.net_fare" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                             </div>
                         </div>
                         <div x-show="ticketFareForm.ticket_type === 'offer'">
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
-                                <input type="number" x-model="ticketFareForm.offer_price" min="0" @input="handleTicketFareSarInput('offer_price')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="ticketFareForm.offer_price" min="0" step="0.000001" @input="handleTicketFareSarInput('offer_price')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
-                                <input type="number" x-model="ticketFareForm.offer_price_bdt" min="0" @input="handleTicketFareBdtInput('offer_price')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                                <input type="number" x-model="ticketFareForm.offer_price" min="0" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <input type="number" x-model="ticketFareForm.offer_price_bdt" min="0" step="0.000001" @input="handleTicketFareBdtInput('offer_price')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="ticketFareForm.offer_price" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                             </div>
                         </div>
                     </div>
