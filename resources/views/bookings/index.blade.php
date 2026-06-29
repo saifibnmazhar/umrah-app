@@ -743,12 +743,12 @@ if ($route) {
                     <template x-if="$store.currency.mode === 'BDT'">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (BDT)</label>
-                            <input type="number" x-model="visaSubmitForm.agentCommissionBDT" min="0" @input="convertAgentCommissionToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" x-model="visaSubmitForm.agentCommissionBDT" min="0" step="0.000001" @input="convertAgentCommissionToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                         </div>
                     </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
-                        <input type="number" x-model="visaSubmitForm.agentCommission" min="0"
+                        <input type="number" x-model="visaSubmitForm.agentCommission" min="0" step="0.000001"
                                :readonly="$store.currency.mode === 'BDT'"
                                :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
                                @input="calculateVisaCost()" placeholder="0">
@@ -756,12 +756,12 @@ if ($route) {
                     <template x-if="$store.currency.mode === 'BDT'">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (BDT)</label>
-                            <input type="number" x-model="visaSubmitForm.netVisaCostBDT" min="0" @input="convertNetVisaCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" x-model="visaSubmitForm.netVisaCostBDT" min="0" step="0.000001" @input="convertNetVisaCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                         </div>
                     </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
-                        <input type="number" x-model="visaSubmitForm.netVisaCost"
+                        <input type="number" x-model="visaSubmitForm.netVisaCost" step="0.000001"
                                :readonly="$store.currency.mode === 'BDT'"
                                :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
                                @input="calculateVisaCost()" placeholder="0">
@@ -898,12 +898,12 @@ if ($route) {
                     <template x-if="$store.currency.mode === 'BDT'">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (BDT)</label>
-                            <input type="number" x-model="visaEditForm.agentCommissionBDT" min="0" @input="convertEditAgentCommissionToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" x-model="visaEditForm.agentCommissionBDT" min="0" step="0.000001" @input="convertEditAgentCommissionToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                         </div>
                     </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
-                        <input type="number" x-model="visaEditForm.agentCommission"
+                        <input type="number" x-model="visaEditForm.agentCommission" step="0.000001"
                                :readonly="$store.currency.mode === 'BDT'"
                                :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
                                @input="calculateVisaEditFinal()" placeholder="0">
@@ -911,12 +911,12 @@ if ($route) {
                     <template x-if="$store.currency.mode === 'BDT'">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (BDT)</label>
-                            <input type="number" x-model="visaEditForm.netVisaCostBDT" min="0" @input="convertEditNetVisaCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" x-model="visaEditForm.netVisaCostBDT" min="0" step="0.000001" @input="convertEditNetVisaCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                         </div>
                     </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
-                        <input type="number" x-model="visaEditForm.netVisaCost"
+                        <input type="number" x-model="visaEditForm.netVisaCost" step="0.000001"
                                :readonly="$store.currency.mode === 'BDT'"
                                :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
                                @input="calculateVisaEditFinal()" placeholder="0">
@@ -924,12 +924,12 @@ if ($route) {
                     <template x-if="$store.currency.mode === 'BDT'">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (BDT)</label>
-                            <input type="number" x-model="visaEditForm.additionalCostBDT" min="0" @input="convertEditAdditionalCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" x-model="visaEditForm.additionalCostBDT" min="0" step="0.000001" @input="convertEditAdditionalCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                         </div>
                     </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Additional Cost (SAR)</label>
-                        <input type="number" x-model="visaEditForm.additionalCost"
+                        <input type="number" x-model="visaEditForm.additionalCost" step="0.000001"
                                :readonly="$store.currency.mode === 'BDT'"
                                :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
                                @input="calculateVisaEditFinal()" placeholder="0">
