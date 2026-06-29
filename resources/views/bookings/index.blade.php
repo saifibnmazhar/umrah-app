@@ -560,14 +560,15 @@ if ($route) {
         @if($canEditInline)
         <select
             class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
-            onchange="updatePassengerStatus({{ $passenger->id }}, this.value)">
-            <option value="" {{ is_null($passenger->passenger_status_id) ? 'selected' : '' }}>None</option>
+            x-bind:value="getComputedStatusId({{ $loop->index }})"
+            x-on:change="updatePassengerStatus({{ $passenger->id }}, $event.target.value)">
+            <option value="">None</option>
             @foreach($passengerStatuses as $status)
-                <option value="{{ $status->id }}" {{ $passenger->passenger_status_id == $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+                <option value="{{ $status->id }}">{{ $status->name }}</option>
             @endforeach
         </select>
         @else
-        <span class="text-slate-700">{{ $passengerStatuses->firstWhere('id', $passenger->passenger_status_id)->name ?? 'None' }}</span>
+        <span class="text-slate-700" x-text="getComputedStatusName({{ $loop->index }})">{{ $passenger->computed_status ?? 'None' }}</span>
         @endif
     </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
@@ -1629,6 +1630,7 @@ function bookingIndexApp() {
 
         passengersVisaData: @json($passengersVisaData),
         passengersTicketData: @json($passengersTicketData),
+        passengerStatusMap: @json($passengerStatuses->pluck('id', 'name')),
 
         ticketAgents: @json($ticketAgents),
 
@@ -1688,6 +1690,56 @@ function bookingIndexApp() {
             netVisaCostBDT: 0,
             additionalCostBDT: 0,
             finalCostBDT: 0,
+        },
+
+        getComputedStatusId(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return '';
+            const visa = this.passengersVisaData[index]?.visa;
+
+            const fpStatus = row.fingerprint_status;
+            const visaStatus = visa?.status;
+            const ticketStatus = row.ticket_status;
+            const issuedTicketStatus = row.latest_issued_ticket?.status;
+
+            const isFingerprintApproved = fpStatus === 'approved';
+            const isVisaSubmitted = visaStatus === 'submitted';
+            const isVisaIssued = visaStatus === 'issued';
+            const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
+                || ['issued', 're-issued'].includes(issuedTicketStatus);
+
+            let statusName = null;
+            if (isTicketIssued && isVisaIssued) statusName = 'Ticket Issued';
+            else if (isTicketIssued && !isVisaIssued) statusName = 'Ticket Issued before Visa';
+            else if (isVisaIssued) statusName = 'Visa Issued';
+            else if (isVisaSubmitted) statusName = 'Visa Submitted';
+            else if (isFingerprintApproved) statusName = 'Fingerprint Done';
+
+            return statusName ? (this.passengerStatusMap[statusName] ?? '') : '';
+        },
+
+        getComputedStatusName(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return 'None';
+            const visa = this.passengersVisaData[index]?.visa;
+
+            const fpStatus = row.fingerprint_status;
+            const visaStatus = visa?.status;
+            const ticketStatus = row.ticket_status;
+            const issuedTicketStatus = row.latest_issued_ticket?.status;
+
+            const isFingerprintApproved = fpStatus === 'approved';
+            const isVisaSubmitted = visaStatus === 'submitted';
+            const isVisaIssued = visaStatus === 'issued';
+            const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
+                || ['issued', 're-issued'].includes(issuedTicketStatus);
+
+            if (isTicketIssued && isVisaIssued) return 'Ticket Issued';
+            if (isTicketIssued && !isVisaIssued) return 'Ticket Issued before Visa';
+            if (isVisaIssued) return 'Visa Issued';
+            if (isVisaSubmitted) return 'Visa Submitted';
+            if (isFingerprintApproved) return 'Fingerprint Done';
+            return 'None';
         },
 
         getCommissionAgents(agentId) {
