@@ -25,6 +25,7 @@ class BranchController extends Controller
             'address' => 'required|string|max:255',
             'contacts' => 'required|string|max:255',
             'location' => 'required|in:KSA,BD',
+            'branch_code' => 'nullable|string|max:255|unique:branches,branch_code',
         ]);
 
         $validated['fingerprint_operation'] = $validated['location'] === 'BD';
@@ -49,6 +50,7 @@ class BranchController extends Controller
             'address' => 'required|string|max:255',
             'contacts' => 'required|string|max:255',
             'location' => 'required|in:KSA,BD',
+            'branch_code' => 'nullable|string|max:255|unique:branches,branch_code,' . $branch->id,
         ]);
 
         $validated['fingerprint_operation'] = $validated['location'] === 'BD';
