@@ -525,8 +525,8 @@ $baseFare = $ticketFare?->ticket_type?->value === 'offer'
     : ($ticketFare?->selling_fare ?? $ticketFare?->net_fare ?? 0);
 $passengerTypeVal = $passenger->passenger_type?->value;
 $fareAmount = match($passengerTypeVal) {
-    'child' => $baseFare * ($ticketFare?->child_fare_percentage ?? 75) / 100,
-    'infant' => $baseFare * ($ticketFare?->infant_fare_percentage ?? 10) / 100,
+    'child' => $baseFare * ($ticketFare?->child_fare_percentage ?? 70) / 100,
+    'infant' => $baseFare * ($ticketFare?->infant_fare_percentage ?? 30) / 100,
     default => $baseFare,
 };
 
@@ -2526,7 +2526,7 @@ function bookingIndexApp() {
                     this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(row.ticket_fare.selling_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
                     this.ticketFareForm.net_fare = this.calculateFareForPassengerType(row.ticket_fare.net_fare, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
                     if (row.ticket_fare.with_offer && row.ticket_fare.offer_price) {
-                        this.ticketFareForm.offer_price = row.ticket_fare.offer_price;
+                        this.ticketFareForm.offer_price = this.calculateFareForPassengerType(row.ticket_fare.offer_price, pType, row.ticket_fare.child_fare_percentage, row.ticket_fare.infant_fare_percentage);
                     }
                     const r3 = window.__currencyRate || 0;
                     if (r3 > 0) {
@@ -2539,7 +2539,7 @@ function bookingIndexApp() {
                     this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(fare.selling_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                     this.ticketFareForm.net_fare = this.calculateFareForPassengerType(fare.net_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                     if (fare.ticket_type === 'offer' && fare.offer_price) {
-                        this.ticketFareForm.offer_price = fare.offer_price;
+                        this.ticketFareForm.offer_price = this.calculateFareForPassengerType(fare.offer_price, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                     }
                     const r4 = window.__currencyRate || 0;
                     if (r4 > 0) {
