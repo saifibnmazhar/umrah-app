@@ -684,7 +684,7 @@ if ($route) {
                     {{ $displayStatus === 'Partially Approved' ? 'Partially Approved' : ($rawStatus === 'done' ? 'Pending Pax Completion' : ucfirst($rawStatus)) }}
                 </span>
                 @if($rawStatus === 'approved' && $approvedDate)
-                    <span class="text-[10px] text-slate-500 leading-tight">{{ $approvedDate->format('d|m|y') }}</span>
+                    <span class="text-xs text-slate-500 leading-tight">{{ $approvedDate->format('d|m|y') }}</span>
                 @endif
             </div>
         @else
