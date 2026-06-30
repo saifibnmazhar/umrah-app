@@ -1024,11 +1024,11 @@ if ($route) {
                         </div>
                         <div x-show="ticketFareForm.showInboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
-                            <input type="date" x-model="ticketFareForm.inbound_date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="text" x-model="ticketFareForm.inbound_date" placeholder="DD-MMM-YY" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div x-show="ticketFareForm.showOutboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
-                            <input type="date" x-model="ticketFareForm.outbound_date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="text" x-model="ticketFareForm.outbound_date" placeholder="DD-MMM-YY" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">PNR</label>
@@ -1040,7 +1040,7 @@ if ($route) {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
-                            <input type="date" x-model="ticketFareForm.date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="text" x-model="ticketFareForm.date" placeholder="DD-MMM-YY" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
@@ -2115,7 +2115,7 @@ function bookingIndexApp() {
             outbound_date: '',
             pnr: '',
             ticket_number: '',
-            date: (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })(),
+            date: (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })(),
             ticket_agent: '',
             route: '',
             airline: '',
@@ -2185,15 +2185,15 @@ function bookingIndexApp() {
             this.ticketFareForm.travel_class = row.travel_class || '';
             this.ticketFareForm.passenger_type = row.passenger_type || '';
 
-            const today = (() => { const d = new Date(); return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0'); })();
+            const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
 
             if (lit) {
                 this.ticketFareForm.ticket_number = lit.ticket_number || '';
                 this.ticketFareForm.pnr = lit.pnr || '';
                 this.ticketFareForm.ticket_agent = lit.ticket_agent_name || '';
-                this.ticketFareForm.date = lit.issued_date || today;
-                this.ticketFareForm.inbound_date = lit.inbound_date || '';
-                this.ticketFareForm.outbound_date = lit.outbound_date || '';
+                this.ticketFareForm.date = this.formatToDDMMMYY(lit.issued_date) || today;
+                this.ticketFareForm.inbound_date = this.formatToDDMMMYY(lit.inbound_date) || '';
+                this.ticketFareForm.outbound_date = this.formatToDDMMMYY(lit.outbound_date) || '';
                 this.ticketFareForm.selling_fare = lit.selling_fare || 0;
                 this.ticketFareForm.net_fare = lit.net_fare || 0;
                 this.ticketFareForm.offer_price = lit.offer_price || 0;
@@ -2222,11 +2222,11 @@ function bookingIndexApp() {
                 this.ticketFareForm.ticket_type = row.ticket_fare.ticket_type || '';
                 this.ticketFareForm.route_type = row.ticket_fare.route_type || '';
                 this.ticketFareForm.flight_type = row.ticket_fare.flight_type || '';
-                this.ticketFareForm.inbound_date = row.ticket_fare.inbound_date || '';
-                this.ticketFareForm.outbound_date = row.ticket_fare.outbound_date || '';
+                this.ticketFareForm.inbound_date = this.formatToDDMMMYY(row.ticket_fare.inbound_date) || '';
+                this.ticketFareForm.outbound_date = this.formatToDDMMMYY(row.ticket_fare.outbound_date) || '';
                 this.ticketFareForm.pnr = row.ticket_fare.pnr || '';
                 this.ticketFareForm.ticket_number = row.ticket_fare.ticket_number || '';
-                this.ticketFareForm.date = row.ticket_fare.date || today;
+                this.ticketFareForm.date = this.formatToDDMMMYY(row.ticket_fare.date) || today;
                 this.ticketFareForm.ticket_agent = row.ticket_fare.ticket_agent || '';
                 this.ticketFareForm.selling_fare = row.ticket_fare.selling_fare || 0;
                 this.ticketFareForm.net_fare = row.ticket_fare.net_fare || 0;
@@ -2314,6 +2314,30 @@ function bookingIndexApp() {
             this._converting = false;
         },
 
+        formatToDDMMMYY(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const d = parseInt(parts[2]), m = parseInt(parts[1]), y = parts[0];
+            if (isNaN(d) || isNaN(m) || m < 1 || m > 12) return dateStr;
+            return d + '-' + months[m - 1] + '-' + y.slice(-2);
+        },
+
+        parseDDMMMYY(input) {
+            if (!input) return '';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+            const parts = input.split('-');
+            if (parts.length !== 3) return null;
+            const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+            const d = parseInt(parts[0]), mmm = parts[1].toLowerCase().slice(0, 3), yy = parts[2];
+            const mi = months.indexOf(mmm);
+            if (isNaN(d) || mi === -1 || !/^\d{2}$/.test(yy)) return null;
+            const year = 2000 + parseInt(yy), month = mi + 1;
+            if (d < 1 || d > new Date(year, month, 0).getDate()) return null;
+            return year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        },
+
         closeTicketFareModal() {
             this.isTicketFareModalOpen = false;
             this.editingPassengerIndex = null;
@@ -2389,11 +2413,11 @@ function bookingIndexApp() {
                 ticket_type: fare.ticket_type || 'regular',
                 route_type: route.route_type || '',
                 flight_type: route.flight_type || '',
-                inbound_date: ticket.inbound_date || '',
-                outbound_date: ticket.outbound_date || '',
+                inbound_date: this.formatToDDMMMYY(ticket.inbound_date) || '',
+                outbound_date: this.formatToDDMMMYY(ticket.outbound_date) || '',
                 pnr: ticket.pnr || '',
                 ticket_number: ticket.ticket_number || '',
-                date: ticket.issued_date || '',
+                date: this.formatToDDMMMYY(ticket.issued_date) || '',
                 ticket_agent: ticket.ticket_agent?.name || '',
                 selling_fare: ticket.selling_fare || 0,
                 net_fare: ticket.net_fare || 0,
@@ -2425,9 +2449,9 @@ function bookingIndexApp() {
                 ticket_agent_id: this.getAgentIdByName(this.ticketFareForm.ticket_agent),
                 ticket_fare_id: this.getSelectedFareId(),
                 group_ticket_id: this.ticketFareForm.group_ticket_id || null,
-                issued_date: this.ticketFareForm.date || '',
-                inbound_date: this.ticketFareForm.inbound_date || null,
-                outbound_date: this.ticketFareForm.outbound_date || null,
+                issued_date: this.parseDDMMMYY(this.ticketFareForm.date) || '',
+                inbound_date: this.parseDDMMMYY(this.ticketFareForm.inbound_date) || null,
+                outbound_date: this.parseDDMMMYY(this.ticketFareForm.outbound_date) || null,
                 selling_fare: parseFloat(this.ticketFareForm.selling_fare) || 0,
                 net_fare: parseFloat(this.ticketFareForm.net_fare) || 0,
                 offer_price: parseFloat(this.ticketFareForm.offer_price) || 0,
@@ -2461,9 +2485,9 @@ function bookingIndexApp() {
                         ticket_agent_name: t.ticket_agent?.name || payload.ticket_agent || '',
                         ticket_fare_id: t.ticket_fare_id,
                         group_ticket_id: t.group_ticket_id,
-                        issued_date: t.issued_date,
-                        inbound_date: t.inbound_date,
-                        outbound_date: t.outbound_date,
+                        issued_date: this.formatToDDMMMYY(t.issued_date),
+                        inbound_date: this.formatToDDMMMYY(t.inbound_date),
+                        outbound_date: this.formatToDDMMMYY(t.outbound_date),
                         selling_fare: t.selling_fare,
                         net_fare: t.net_fare,
                         is_refundable: t.is_refundable,
