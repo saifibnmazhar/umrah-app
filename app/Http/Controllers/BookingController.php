@@ -1089,6 +1089,19 @@ class BookingController extends Controller
             'fingerprint_location' => 'required|in:home,office',
         ]);
 
+        $user = auth()->user();
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+            $currentLocation = $booking->fingerprint_location?->value;
+            $newLocation = $validated['fingerprint_location'];
+
+            if ($currentLocation === 'home' && $newLocation === 'office') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot change Fingerprint Location from Home to Office.',
+                ], 403);
+            }
+        }
+
         try {
             $booking->update(['fingerprint_location' => $validated['fingerprint_location']]);
 
