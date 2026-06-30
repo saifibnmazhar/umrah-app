@@ -318,10 +318,23 @@ class FingerprintController extends Controller
         }
 
         if ($validated['status'] === 'done') {
+            $fingerprintDetail->update(['status' => FingerprintStatus::DONE]);
+
             $fingerprintDetail->fingerprint->fingerprintDetails()
+                ->where('id', '!=', $fingerprintDetail->id)
                 ->where('status', FingerprintStatus::APPROVED)
                 ->get()
                 ->each(fn (FingerprintDetail $detail) => $detail->update(['status' => FingerprintStatus::DONE]));
+
+            if ($fingerprintDetail->fingerprint->fingerprintDetails()
+                ->where('status', '!=', FingerprintStatus::DONE)
+                ->doesntExist()
+            ) {
+                $fingerprintDetail->fingerprint->fingerprintDetails()
+                    ->where('status', FingerprintStatus::DONE)
+                    ->get()
+                    ->each(fn (FingerprintDetail $d) => $d->update(['status' => FingerprintStatus::APPROVED]));
+            }
         } else {
             $fingerprintDetail->update(['status' => $validated['status']]);
         }
