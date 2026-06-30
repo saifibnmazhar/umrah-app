@@ -1089,6 +1089,19 @@ class BookingController extends Controller
             'fingerprint_location' => 'required|in:home,office',
         ]);
 
+        $user = auth()->user();
+        if (!$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+            $currentLocation = $booking->fingerprint_location?->value;
+            $newLocation = $validated['fingerprint_location'];
+
+            if ($currentLocation === 'home' && $newLocation === 'office') {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot change Fingerprint Location from Home to Office.',
+                ], 403);
+            }
+        }
+
         try {
             $booking->update(['fingerprint_location' => $validated['fingerprint_location']]);
 
@@ -1183,49 +1196,53 @@ class BookingController extends Controller
             ? null
             : ($validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id);
 
-        $passenger = Passenger::create($validated);
+        return DB::transaction(function () use ($booking, $validated, $passengerType) {
+            $passenger = Passenger::create($validated);
 
-        if (($validated['service_required'] ?? 'all') !== 'ticket_only') {
-            VisaSubmission::create([
-                'passenger_id' => $passenger->id,
-                'visa_selling_price_id' => $booking->package?->visa_selling_price_id ?? VisaSellingPrice::latest('id')->value('id'),
-                'status' => 'pending',
-            ]);
-        }
+            if (($validated['service_required'] ?? 'all') !== 'ticket_only') {
+                VisaSubmission::create([
+                    'passenger_id' => $passenger->id,
+                    'visa_selling_price_id' => $booking->package?->visa_selling_price_id ?? VisaSellingPrice::latest('id')->value('id'),
+                    'status' => 'pending',
+                ]);
+            }
 
-        if ($passenger->ticket_fare_id) {
-            IssuedTicket::create([
-                'booking_id' => $booking->id,
-                'passenger_id' => $passenger->id,
-                'ticket_fare_id' => $passenger->ticket_fare_id,
-                'user_id' => auth()->id(),
-                'status' => 'pending',
-            ]);
-        }
+            if ($passenger->ticket_fare_id) {
+                IssuedTicket::create([
+                    'booking_id' => $booking->id,
+                    'passenger_id' => $passenger->id,
+                    'ticket_fare_id' => $passenger->ticket_fare_id,
+                    'user_id' => auth()->id(),
+                    'status' => 'pending',
+                ]);
+            }
 
-        $fingerprint = Fingerprint::where('booking_id', $booking->id)->first();
-        if ($fingerprint) {
+            $fingerprint = Fingerprint::firstOrCreate(
+                ['booking_id' => $booking->id],
+                ['deadline' => $booking->created_at->addDays(10), 'cost' => 0]
+            );
+
             FingerprintDetail::create([
                 'fingerprint_id' => $fingerprint->id,
                 'passenger_id' => $passenger->id,
                 'status' => 'none',
             ]);
-        }
 
-        $booking->update(['pax_qty' => $booking->passengers()->count()]);
-        $booking = $booking->fresh();
+            $booking->update(['pax_qty' => $booking->passengers()->count()]);
+            $booking = $booking->fresh();
 
-        $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking);
 
-        $passenger = $passenger->fresh()->load('ticketFare');
+            $passenger = $passenger->fresh()->load('ticketFare');
 
-        return response()->json([
-            'success' => true,
-            'message' => 'Passenger added successfully',
-            'passenger' => $passenger,
-            'display_total' => $passenger->package_value ?? 0,
-            'invoice' => $invoiceData,
-        ]);
+            return response()->json([
+                'success' => true,
+                'message' => 'Passenger added successfully',
+                'passenger' => $passenger,
+                'display_total' => $passenger->package_value ?? 0,
+                'invoice' => $invoiceData,
+            ]);
+        });
     }
 
     public function removePassenger(Booking $booking, Passenger $passenger)
