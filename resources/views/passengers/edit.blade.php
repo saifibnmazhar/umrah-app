@@ -300,7 +300,7 @@
                     if (sd === 14 || sd === 85) {
                         this.passengerData.stay_duration = String(sd);
                         this.passengerData.stay_duration_int = sd;
-                    } else if (sd >= 30 && sd <= 89) {
+                    } else if (sd >= 1 && sd <= 80) {
                         this.passengerData.stay_duration_display = `Customized (${sd} Days)`;
                         this.passengerData.stay_duration_int = sd;
                         this.$nextTick(() => {
@@ -787,8 +787,8 @@
 
         saveCustomDuration() {
             const days = parseInt(this.passengerData.customDurationDays);
-            if (isNaN(days) || days < 30 || days > 89) {
-                alert('Please enter a valid duration between 30 and 89 days');
+            if (isNaN(days) || days < 1 || days > 80) {
+                alert('Please enter a valid duration between 1 and 80 days');
                 return;
             }
 

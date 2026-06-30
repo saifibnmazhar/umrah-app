@@ -32,7 +32,7 @@ class StoreBookingRequest extends FormRequest
             'passengers.*.mobile_no' => 'nullable|string|max:20',
             'passengers.*.passport_expiry' => 'nullable|date',
             'passengers.*.service_required' => 'nullable|in:All,Visa Only,Ticket Only',
-            'passengers.*.stay_duration' => 'nullable|integer|min:1',
+            'passengers.*.stay_duration' => 'nullable|integer|min:1|max:80',
             'passengers.*.flight_date_from' => 'nullable|date',
             'passengers.*.flight_date_to' => 'nullable|date|after:passengers.*.flight_date_from',
             'passengers.*.address' => 'nullable|string|max:500',
