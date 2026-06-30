@@ -314,8 +314,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                                     data-original="{{ $booking->fingerprint_location?->value ?? 'office' }}"
                                     data-rate="{{ $bookingCurrencyRate }}"
                                     onchange="updateFingerprintLocation({{ $booking->id }}, this.value, this)">
-                                    <option value="home" {{ ($booking->fingerprint_location?->value ?? '') === 'home' ? 'selected' : '' }}>Home</option>
-                                    <option value="office" {{ ($booking->fingerprint_location?->value ?? '') === 'office' ? 'selected' : '' }}>Office</option>
+                                    <option value="home" {{ ($booking->fingerprint_location?->value ?? 'office') === 'home' ? 'selected' : '' }}>Home</option>
+                                    <option value="office" {{ ($booking->fingerprint_location?->value ?? 'office') === 'office' ? 'selected' : '' }}>Office</option>
                                 </select>
                                 @else
                                 <span class="text-slate-700">{{ ucfirst($booking->fingerprint_location?->value ?? 'Office') }}</span>
