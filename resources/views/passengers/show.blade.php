@@ -374,7 +374,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
-                    <input type="text" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600" x-model="netVisaCostDisplay">
+                    <input type="number" x-model="form.net_visa_cost" step="0.000001" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
@@ -585,6 +585,15 @@ function resubmitData() {
             visa_agent_id: '',
             commission_agent_id: '',
             agent_commission: 0,
+            net_visa_cost: 0,
+        },
+        init() {
+            this.$watch('form.visa_agent_id', (value) => {
+                const agent = this.agents.find(a => a.id == value);
+                if (agent) {
+                    this.form.net_visa_cost = agent.cost || 0;
+                }
+            });
         },
         get selectedAgent() {
             return this.agents.find(a => a.id == this.form.visa_agent_id);
@@ -592,17 +601,11 @@ function resubmitData() {
         get commissionAgents() {
             return this.selectedAgent?.commission_agents || [];
         },
-        get netVisaCost() {
-            return this.selectedAgent?.cost || 0;
-        },
         get finalCost() {
-            return this.netVisaCost + (parseFloat(this.form.agent_commission) || 0);
+            return (parseFloat(this.form.net_visa_cost) || 0) + (parseFloat(this.form.agent_commission) || 0);
         },
         get sellingPriceDisplay() {
             return sellingPrice.toFixed(2);
-        },
-        get netVisaCostDisplay() {
-            return this.netVisaCost.toFixed(2);
         },
         get finalCostDisplay() {
             return this.finalCost.toFixed(2);
@@ -611,6 +614,7 @@ function resubmitData() {
             this.form.visa_agent_id = '';
             this.form.commission_agent_id = '';
             this.form.agent_commission = 0;
+            this.form.net_visa_cost = 0;
             document.getElementById('visaResubmitModal').classList.remove('hidden');
         },
         closeModal() {
