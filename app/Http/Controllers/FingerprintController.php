@@ -325,18 +325,28 @@ class FingerprintController extends Controller
                 ->where('status', FingerprintStatus::APPROVED)
                 ->get()
                 ->each(fn (FingerprintDetail $detail) => $detail->update(['status' => FingerprintStatus::DONE]));
-
-            if ($fingerprintDetail->fingerprint->fingerprintDetails()
-                ->where('status', '!=', FingerprintStatus::DONE)
-                ->doesntExist()
-            ) {
-                $fingerprintDetail->fingerprint->fingerprintDetails()
-                    ->where('status', FingerprintStatus::DONE)
-                    ->get()
-                    ->each(fn (FingerprintDetail $d) => $d->update(['status' => FingerprintStatus::APPROVED]));
-            }
         } else {
-            $fingerprintDetail->update(['status' => $validated['status']]);
+            if ($validated['status'] === 'approved') {
+                $hasDone = $fingerprintDetail->fingerprint->fingerprintDetails()
+                    ->where('id', '!=', $fingerprintDetail->id)
+                    ->where('status', FingerprintStatus::DONE)
+                    ->exists();
+
+                $targetStatus = $hasDone ? FingerprintStatus::DONE : FingerprintStatus::APPROVED;
+                $fingerprintDetail->update(['status' => $targetStatus]);
+            } else {
+                $fingerprintDetail->update(['status' => $validated['status']]);
+            }
+        }
+
+        if ($fingerprintDetail->fingerprint->fingerprintDetails()
+            ->where('status', '!=', FingerprintStatus::DONE)
+            ->doesntExist()
+        ) {
+            $fingerprintDetail->fingerprint->fingerprintDetails()
+                ->where('status', FingerprintStatus::DONE)
+                ->get()
+                ->each(fn (FingerprintDetail $d) => $d->update(['status' => FingerprintStatus::APPROVED]));
         }
 
         return response()->json([
