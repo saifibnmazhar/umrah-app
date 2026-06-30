@@ -7,6 +7,7 @@ use App\Models\FingerprintDetail;
 use App\Models\RescheduledFingerprint;
 use App\Models\User;
 use App\Enums\FingerprintLocation;
+use App\Enums\FingerprintStatus;
 use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -316,7 +317,14 @@ class FingerprintController extends Controller
             ], 422);
         }
 
-        $fingerprintDetail->update(['status' => $validated['status']]);
+        if ($validated['status'] === 'done') {
+            $fingerprintDetail->fingerprint->fingerprintDetails()
+                ->where('status', FingerprintStatus::APPROVED)
+                ->get()
+                ->each(fn (FingerprintDetail $detail) => $detail->update(['status' => FingerprintStatus::DONE]));
+        } else {
+            $fingerprintDetail->update(['status' => $validated['status']]);
+        }
 
         return response()->json([
             'success' => true,
