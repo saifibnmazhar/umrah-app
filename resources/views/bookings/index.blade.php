@@ -40,6 +40,12 @@ $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'mult
     'airline_id' => $r->airline_id,
 ])->values();
 
+$packagesList = \App\Models\Package::where('is_active', true)
+    ->select('id', 'package_name')
+    ->get()
+    ->unique('package_name')
+    ->values();
+
 $flightDateRanges = [];
 $today = (int) now()->format('d');
 $currentThird = $today <= 10 ? 1 : ($today <= 20 ? 2 : 3);
@@ -461,6 +467,15 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <option value="">All</option>
                             @foreach($routesList as $route)
                             <option value="{{ $route['id'] }}" {{ (string) $selectedRouteId === (string) $route['id'] ? 'selected' : '' }}>{{ $route['display'] }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Package</label>
+                        <select x-model="selectedPackageId" @change="onPackageChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">Select Package</option>
+                            @foreach($packagesList as $package)
+                            <option value="{{ $package->id }}" {{ (string) $selectedPackageId === (string) $package->id ? 'selected' : '' }}>{{ $package->package_name }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -1327,6 +1342,7 @@ function bookingIndexApp() {
         selectedFingerprintLocation: '{{ $selectedFingerprintLocation ?? '' }}',
         selectedPassengerStatus: '{{ $selectedPassengerStatus ?? '' }}',
         selectedRouteId: '{{ $selectedRouteId ?? '' }}',
+        selectedPackageId: '{{ $selectedPackageId ?? '' }}',
         selectedTicketAgentId: '{{ $selectedTicketAgentId ?? '' }}',
         selectedActualFlightFrom: '{{ $selectedActualFlightFrom ?? '' }}',
         selectedActualFlightTo: '{{ $selectedActualFlightTo ?? '' }}',
@@ -1628,10 +1644,21 @@ function bookingIndexApp() {
             window.location.href = url.toString();
         },
 
+        onPackageChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedPackageId) {
+                url.searchParams.set('package_id', this.selectedPackageId);
+            } else {
+                url.searchParams.delete('package_id');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
         clearPassengerFilters() {
             const url = new URL(window.location);
             ['fingerprint_status', 'visa_status', 'ticket_status',
-             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_id',
+             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_id', 'package_id',
              'booking_branch_id', 'booking_date_from', 'booking_date_to',
              'actual_flight_from', 'actual_flight_to',
              'return_date_from', 'return_date_to',
