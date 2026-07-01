@@ -210,7 +210,7 @@ class BookingService
     {
         $year = date('y');
         $branch = Branch::find($branchId);
-        $prefix = $branch?->branch_code ?? '(###)';
+        $prefix = strtoupper($branch?->branch_code ?? '(###)');
 
         do {
             $random = strtoupper(substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 4));

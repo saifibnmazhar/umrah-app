@@ -39,6 +39,8 @@
                 value="{{ old('branch_code') }}" 
                 placeholder="Enter branch code"
                 aria-describedby="branch_code-error"
+                oninput="this.value = this.value.toUpperCase()"
+                style="text-transform: uppercase;"
                 class="block w-full rounded-md border-slate-300 shadow-sm focus:border-slate-500 focus:ring-slate-500 sm:text-sm px-3 py-2 border @error('branch_code') border-red-500 @enderror"
             >
             @error('branch_code')
