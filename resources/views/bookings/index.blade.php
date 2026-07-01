@@ -565,7 +565,7 @@ if ($route) {
             x-on:change="updatePassengerStatus({{ $passenger->id }}, $event.target.value)">
             <option value="">None</option>
             @foreach($passengerStatuses as $status)
-                <option value="{{ $status->id }}">{{ $status->name }}</option>
+                <option value="{{ $status->id }}" @if(in_array($status->name, ['Processing', 'Fingerprint Done', 'Visa Submitted', 'Visa Issued', 'Ticket Issued', 'Ticket Issued before Visa'])) disabled @endif>{{ $status->name }}</option>
             @endforeach
         </select>
         @else
@@ -1715,11 +1715,13 @@ function bookingIndexApp() {
             const isFingerprintApproved = fpStatus === 'approved';
             const isVisaSubmitted = visaStatus === 'submitted';
             const isVisaIssued = visaStatus === 'issued';
+            const isVisaCancelled = visaStatus === 'cancelled';
             const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
                 || ['issued', 're-issued'].includes(issuedTicketStatus);
 
             let statusName = null;
             if (isTicketIssued && isVisaIssued) statusName = 'Ticket Issued';
+            else if (isVisaCancelled) statusName = 'Processing';
             else if (isTicketIssued && !isVisaIssued) statusName = 'Ticket Issued before Visa';
             else if (isVisaIssued) statusName = 'Visa Issued';
             else if (isVisaSubmitted) statusName = 'Visa Submitted';
@@ -1741,10 +1743,12 @@ function bookingIndexApp() {
             const isFingerprintApproved = fpStatus === 'approved';
             const isVisaSubmitted = visaStatus === 'submitted';
             const isVisaIssued = visaStatus === 'issued';
+            const isVisaCancelled = visaStatus === 'cancelled';
             const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
                 || ['issued', 're-issued'].includes(issuedTicketStatus);
 
             if (isTicketIssued && isVisaIssued) return 'Ticket Issued';
+            if (isVisaCancelled) return 'Processing';
             if (isTicketIssued && !isVisaIssued) return 'Ticket Issued before Visa';
             if (isVisaIssued) return 'Visa Issued';
             if (isVisaSubmitted) return 'Visa Submitted';

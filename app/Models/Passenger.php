@@ -196,10 +196,12 @@ class Passenger extends Model
         $isFingerprintApproved = $fpStatus === FingerprintStatus::APPROVED->value;
         $isVisaSubmitted = $visaStatus === VisaStatus::SUBMITTED->value;
         $isVisaIssued = $visaStatus === VisaStatus::ISSUED->value;
+        $isVisaCancelled = $visaStatus === VisaStatus::CANCELLED->value;
         $isTicketIssued = in_array($ticketStatus, ['issued', 're-issued'])
             || in_array($issuedTicketStatus, ['issued', 're-issued']);
 
         if ($isTicketIssued && $isVisaIssued) return 'Ticket Issued';
+        if ($isVisaCancelled) return 'Processing';
         if ($isTicketIssued && !$isVisaIssued) return 'Ticket Issued before Visa';
         if ($isVisaIssued) return 'Visa Issued';
         if ($isVisaSubmitted) return 'Visa Submitted';
