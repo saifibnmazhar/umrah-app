@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Booking;
+use App\Models\Branch;
 use App\Models\Passenger;
 use App\Models\District;
 use App\Models\FingerprintCharge;
@@ -208,13 +209,14 @@ class BookingService
     public function generateInvoiceId(int $branchId): string
     {
         $year = date('y');
-        $branchIdPadded = str_pad($branchId, 2, '0', STR_PAD_LEFT);
-        
+        $branch = Branch::find($branchId);
+        $prefix = $branch?->branch_code ?? '(###)';
+
         do {
             $random = strtoupper(substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 4));
-            $invoiceId = 'INV' . $branchIdPadded . $random . $year;
+            $invoiceId = $prefix . $random . $year;
         } while (Booking::where('invoice_id', $invoiceId)->exists());
-        
+
         return $invoiceId;
     }
 
