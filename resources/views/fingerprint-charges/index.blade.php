@@ -29,12 +29,14 @@
                     @endforeach
                 </select>
             </div>
+            @if(auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty())
             <button type="button" onclick="showFingerprintChargeModal()" id="addChargeBtn" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed" disabled>
                 <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                 </svg>
                 Add Fingerprint Charge
             </button>
+            @endif
         </div>
 
         <div class="overflow-x-auto">
@@ -43,9 +45,11 @@
                     <tr>
                         <th class="px-3 py-2 text-left font-medium">Division</th>
                         <th class="px-3 py-2 text-left font-medium">District</th>
-                        <th class="px-3 py-2 text-left font-medium">Created By</th>
+                        <!--<th class="px-3 py-2 text-left font-medium">Created By</th>-->
                         <th class="px-3 py-2 text-right font-medium">Charge (SAR)</th>
+                        @if(auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty())
                         <th class="px-3 py-2 text-center font-medium">Action</th>
+                        @endif
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
@@ -53,8 +57,9 @@
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-2 text-slate-600">{{ $charge->district->division ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $charge->district->name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-slate-600">{{ $charge->user->name ?? 'N/A' }}</td>
+                            <!--<td class="px-3 py-2 text-slate-600">{{ $charge->user->name ?? 'N/A' }}</td>-->
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($charge->fingerprint_charge, 2)</td>
+                            @if(auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty())
                             <td class="px-3 py-2 text-center">
                                 <button onclick="editFingerprintCharge({{ $charge->id }}, {{ $charge->district_id }}, {{ $charge->fingerprint_charge }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
                                 <form method="POST" action="{{ route('fingerprint-charges.destroy', $charge->id) }}" onsubmit="return confirm('Are you sure you want to delete this fingerprint charge?')" class="inline">
@@ -63,10 +68,11 @@
                                     <button type="submit" class="text-xs text-red-500 hover:text-red-700">Delete</button>
                                 </form>
                             </td>
+                            @endif
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="5" class="px-3 py-8 text-center text-slate-500">
+                            <td colspan="{{ auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty() ? 5 : 4 }}" class="px-3 py-8 text-center text-slate-500">
                                 No fingerprint charges configured yet.
                             </td>
                         </tr>
@@ -75,7 +81,7 @@
             </table>
         </div>
         <div id="fingerprintChargesEmpty" class="{{ $fingerprintCharges->isEmpty() ? 'block' : 'hidden' }} text-center py-4 text-slate-500">
-            No fingerprint charges configured yet.
+            No fingerprint charges available.
         </div>
 
         <div class="mt-4 flex justify-center">
@@ -84,6 +90,7 @@
     </div>
 </div>
 
+@if(auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty())
 <!-- Modal -->
 <div id="fingerprintChargeModal" class="fixed inset-0 z-50 hidden">
     <div class="fixed inset-0 bg-black bg-opacity-50" onclick="hideFingerprintChargeModal()"></div>
@@ -122,6 +129,7 @@
         </form>
     </div>
 </div>
+@endif
 
 <script>
 const districts = @json($districts ?? []);
@@ -130,10 +138,12 @@ function filterByDivision() {
     const division = document.getElementById('filterDivisionSelect').value;
     const addBtn = document.getElementById('addChargeBtn');
 
-    if (division) {
-        addBtn.disabled = false;
-    } else {
-        addBtn.disabled = true;
+    if (addBtn) {
+        if (division) {
+            addBtn.disabled = false;
+        } else {
+            addBtn.disabled = true;
+        }
     }
 
     const url = new URL(window.location.href);
@@ -145,6 +155,15 @@ function filterByDivision() {
     window.location.href = url.toString();
 }
 
+document.addEventListener('DOMContentLoaded', function() {
+    const selectedDivision = document.getElementById('filterDivisionSelect').value;
+    const addBtn = document.getElementById('addChargeBtn');
+    if (addBtn && selectedDivision) {
+        addBtn.disabled = false;
+    }
+});
+
+@if(auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty())
 function showFingerprintChargeModal() {
     const selectedDivision = document.getElementById('filterDivisionSelect').value;
     const modalDistrictSelect = document.getElementById('modalDistrictSelect');
@@ -192,13 +211,6 @@ function editFingerprintCharge(id, districtId, charge) {
     document.getElementById('modalFingerprintChargeInput').value = charge;
     document.getElementById('modalDistrictSelect').value = districtId;
 }
-
-document.addEventListener('DOMContentLoaded', function() {
-    const selectedDivision = document.getElementById('filterDivisionSelect').value;
-    const addBtn = document.getElementById('addChargeBtn');
-    if (selectedDivision) {
-        addBtn.disabled = false;
-    }
-});
+@endif
 </script>
 @endsection
