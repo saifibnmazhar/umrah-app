@@ -581,7 +581,7 @@ if ($route) {
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
-    <td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice?->balance)@currency($passenger->booking->invoice->balance, 2, $passBookingRate)@else—@endif @endif</td>
+    <td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice)<div class="font-medium">Disc. Total: @currency($passenger->booking->invoice->total_amount, 2, $passBookingRate)</div><div class="font-medium">Due: @currency($passenger->booking->invoice->balance, 2, $passBookingRate)</div>@else—@endif @endif</td>
     @if($canViewVisaColumns)
     <td class="px-3 py-2">
         <div class="flex items-center gap-1 flex-wrap">
