@@ -978,7 +978,7 @@ if ($route) {
         <div class="fixed inset-0 bg-black/50" @click="closeTicketFareModal()"></div>
         <div x-show="isTicketFareModalOpen" x-cloak class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <h3 class="text-xl font-semibold text-slate-800 mb-4" id="ticketFareModalTitle" x-text="ticketFareModalTitle"></h3>
-            <form @submit.prevent="handleTicketFareSubmit()">
+            <form novalidate @submit.prevent="handleTicketFareSubmit()">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
                     <select x-model="ticketFareForm.ticket_type" @change="handleTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
