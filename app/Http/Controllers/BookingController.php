@@ -1400,6 +1400,7 @@ class BookingController extends Controller
         $totalPaid = (float) ($booking->invoice->paid_amount ?? 0);
         $currentPaid = (float) ($booking->payments->last()?->amount ?? 0);
         $dueAmount = $grandTotal - $totalPaid;
+        $invoiceDate = $booking->payments->last()?->payment_date?->format('d M Y');
 
         $conditions = BookingCondition::where('is_active', true)
             ->orderBy('sort_order')
@@ -1416,6 +1417,7 @@ class BookingController extends Controller
             'totalPaid',
             'currentPaid',
             'dueAmount',
+            'invoiceDate',
             'conditions',
             'useBdt',
             'currencySuffix',
