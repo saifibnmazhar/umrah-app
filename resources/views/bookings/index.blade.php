@@ -1019,18 +1019,18 @@ if ($route) {
                                 </template>
                             </select>
                         </div>
-                        <div x-show="ticketFareForm.showInboundDate">
+                         <div x-show="ticketFareForm.showInboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
                             <input type="text" x-model="ticketFareForm.inbound_date" placeholder="DD-MMM-YY" required
-                                   :class="ticketFareForm.errors.inbound_date ? 'border-red-500' : 'border-slate-300'"
-                                   class="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                   :class="ticketFareForm.errors.inbound_date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <p x-show="ticketFareForm.errors.inbound_date" x-text="ticketFareForm.errors.inbound_date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="ticketFareForm.showOutboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
                             <input type="text" x-model="ticketFareForm.outbound_date" placeholder="DD-MMM-YY" required
-                                   :class="ticketFareForm.errors.outbound_date ? 'border-red-500' : 'border-slate-300'"
-                                   class="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                   :class="ticketFareForm.errors.outbound_date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <p x-show="ticketFareForm.errors.outbound_date" x-text="ticketFareForm.errors.outbound_date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
@@ -1044,8 +1044,8 @@ if ($route) {
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
                             <input type="text" x-model="ticketFareForm.date" placeholder="DD-MMM-YY" required
-                                   :class="ticketFareForm.errors.date ? 'border-red-500' : 'border-slate-300'"
-                                   class="w-full px-4 py-2 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                   :class="ticketFareForm.errors.date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <p x-show="ticketFareForm.errors.date" x-text="ticketFareForm.errors.date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
