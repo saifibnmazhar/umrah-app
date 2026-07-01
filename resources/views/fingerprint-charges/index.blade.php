@@ -45,7 +45,7 @@
                     <tr>
                         <th class="px-3 py-2 text-left font-medium">Division</th>
                         <th class="px-3 py-2 text-left font-medium">District</th>
-                        <th class="px-3 py-2 text-left font-medium">Created By</th>
+                        <!--<th class="px-3 py-2 text-left font-medium">Created By</th>-->
                         <th class="px-3 py-2 text-right font-medium">Charge (SAR)</th>
                         @if(auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty())
                         <th class="px-3 py-2 text-center font-medium">Action</th>
@@ -57,7 +57,7 @@
                         <tr class="hover:bg-slate-50">
                             <td class="px-3 py-2 text-slate-600">{{ $charge->district->division ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $charge->district->name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-slate-600">{{ $charge->user->name ?? 'N/A' }}</td>
+                            <!--<td class="px-3 py-2 text-slate-600">{{ $charge->user->name ?? 'N/A' }}</td>-->
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($charge->fingerprint_charge, 2)</td>
                             @if(auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty())
                             <td class="px-3 py-2 text-center">
