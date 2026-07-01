@@ -47,6 +47,22 @@ class FingerprintController extends Controller
             });
         }
 
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('booking', function ($q) use ($search) {
+                    $q->where('invoice_id', 'LIKE', "%{$search}%")
+                        ->orWhereHas('customer', function ($q) use ($search) {
+                            $q->where('name', 'LIKE', "%{$search}%");
+                        });
+                })->orWhereHas('fingerprintDetails.passenger', function ($q) use ($search) {
+                    $q->where('first_name', 'LIKE', "%{$search}%")
+                        ->orWhere('last_name', 'LIKE', "%{$search}%")
+                        ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                });
+            });
+        }
+
         $user = auth()->user();
         if ($user->branch?->fingerprint_operation && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
             $query->whereHas('booking', function ($q) use ($user) {
@@ -145,6 +161,22 @@ class FingerprintController extends Controller
         $query->whereHas('booking', function ($q) {
             $q->where('fingerprint_location', FingerprintLocation::HOME);
         });
+
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('booking', function ($q) use ($search) {
+                    $q->where('invoice_id', 'LIKE', "%{$search}%")
+                        ->orWhereHas('customer', function ($q) use ($search) {
+                            $q->where('name', 'LIKE', "%{$search}%");
+                        });
+                })->orWhereHas('fingerprintDetails.passenger', function ($q) use ($search) {
+                    $q->where('first_name', 'LIKE', "%{$search}%")
+                        ->orWhere('last_name', 'LIKE', "%{$search}%")
+                        ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                });
+            });
+        }
 
         $twentyFourHoursAgo = now()->subHours(24);
         $isSuperOrCoAdmin = $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
