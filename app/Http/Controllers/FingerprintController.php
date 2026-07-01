@@ -162,6 +162,22 @@ class FingerprintController extends Controller
             $q->where('fingerprint_location', FingerprintLocation::HOME);
         });
 
+        if ($request->filled('search')) {
+            $search = $request->search;
+            $query->where(function ($q) use ($search) {
+                $q->whereHas('booking', function ($q) use ($search) {
+                    $q->where('invoice_id', 'LIKE', "%{$search}%")
+                        ->orWhereHas('customer', function ($q) use ($search) {
+                            $q->where('name', 'LIKE', "%{$search}%");
+                        });
+                })->orWhereHas('fingerprintDetails.passenger', function ($q) use ($search) {
+                    $q->where('first_name', 'LIKE', "%{$search}%")
+                        ->orWhere('last_name', 'LIKE', "%{$search}%")
+                        ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
+                });
+            });
+        }
+
         $twentyFourHoursAgo = now()->subHours(24);
         $isSuperOrCoAdmin = $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
         $isFingerprintStaffRole = $user->hasRole('Fingerprint Staff');
