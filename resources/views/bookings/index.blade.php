@@ -986,7 +986,7 @@ if ($route) {
         <div class="fixed inset-0 bg-black/50" @click="closeTicketFareModal()"></div>
         <div x-show="isTicketFareModalOpen" x-cloak class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <h3 class="text-xl font-semibold text-slate-800 mb-4" id="ticketFareModalTitle" x-text="ticketFareModalTitle"></h3>
-            <form @submit.prevent="handleTicketFareSubmit()">
+            <form novalidate @submit.prevent="handleTicketFareSubmit()">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
                     <select x-model="ticketFareForm.ticket_type" @change="handleTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
@@ -1027,13 +1027,19 @@ if ($route) {
                                 </template>
                             </select>
                         </div>
-                        <div x-show="ticketFareForm.showInboundDate">
+                         <div x-show="ticketFareForm.showInboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
-                            <input type="text" x-model="ticketFareForm.inbound_date" placeholder="DD-MMM-YY" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="text" x-model="ticketFareForm.inbound_date" placeholder="DD-MMM-YY" required
+                                   :class="ticketFareForm.errors.inbound_date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <p x-show="ticketFareForm.errors.inbound_date" x-text="ticketFareForm.errors.inbound_date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="ticketFareForm.showOutboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
-                            <input type="text" x-model="ticketFareForm.outbound_date" placeholder="DD-MMM-YY" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="text" x-model="ticketFareForm.outbound_date" placeholder="DD-MMM-YY" required
+                                   :class="ticketFareForm.errors.outbound_date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <p x-show="ticketFareForm.errors.outbound_date" x-text="ticketFareForm.errors.outbound_date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">PNR</label>
@@ -1045,7 +1051,10 @@ if ($route) {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
-                            <input type="text" x-model="ticketFareForm.date" placeholder="DD-MMM-YY" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="text" x-model="ticketFareForm.date" placeholder="DD-MMM-YY" required
+                                   :class="ticketFareForm.errors.date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <p x-show="ticketFareForm.errors.date" x-text="ticketFareForm.errors.date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
@@ -2140,6 +2149,11 @@ function bookingIndexApp() {
             showInboundDate: false,
             showOutboundDate: false,
             showBaggage: false,
+            errors: {
+                inbound_date: '',
+                outbound_date: '',
+                date: '',
+            },
         },
 
         _converting: false,
@@ -2189,6 +2203,8 @@ function bookingIndexApp() {
             this.ticketFareForm.airline = row.airline || '';
             this.ticketFareForm.travel_class = row.travel_class || '';
             this.ticketFareForm.passenger_type = row.passenger_type || '';
+
+            this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
 
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
 
@@ -2343,6 +2359,28 @@ function bookingIndexApp() {
             return year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
         },
 
+        validateTicketFareDates() {
+            const f = this.ticketFareForm;
+            const errors = { inbound_date: '', outbound_date: '', date: '' };
+            let valid = true;
+
+            if (!f.date || !this.parseDDMMMYY(f.date)) {
+                errors.date = 'Issue date must be in DD-MMM-YY format';
+                valid = false;
+            }
+            if (f.showInboundDate && (!f.inbound_date || !this.parseDDMMMYY(f.inbound_date))) {
+                errors.inbound_date = 'Inbound date must be in DD-MMM-YY format';
+                valid = false;
+            }
+            if (f.showOutboundDate && (!f.outbound_date || !this.parseDDMMMYY(f.outbound_date))) {
+                errors.outbound_date = 'Outbound date must be in DD-MMM-YY format';
+                valid = false;
+            }
+
+            f.errors = errors;
+            return valid;
+        },
+
         closeTicketFareModal() {
             this.isTicketFareModalOpen = false;
             this.editingPassengerIndex = null;
@@ -2437,6 +2475,12 @@ function bookingIndexApp() {
 
         handleTicketFareSubmit() {
             if (this.editingPassengerIndex === null) return;
+
+            if (!this.validateTicketFareDates()) {
+                const firstError = Object.values(this.ticketFareForm.errors).find(e => e);
+                this.showToast(firstError, 'error');
+                return;
+            }
 
             const row = this.passengersTicketData[this.editingPassengerIndex];
             if (!row) return;
