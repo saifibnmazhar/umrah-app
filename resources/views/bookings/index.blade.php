@@ -3029,5 +3029,11 @@ function updateFingerprintLocation(bookingId, location, select) {
         selectEl.value = originalValue;
     });
 }
+
+window.addEventListener('pageshow', function(event) {
+    if (event.persisted) {
+        location.reload();
+    }
+});
 </script>
 @endsection
