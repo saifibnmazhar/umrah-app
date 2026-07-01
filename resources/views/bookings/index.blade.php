@@ -38,7 +38,7 @@ $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'mult
     'route_type' => $r->route_type?->value,
     'flight_type' => $r->flight_type?->value,
     'airline_id' => $r->airline_id,
-])->values();
+])->unique('display')->values();
 
 $flightDateRanges = [];
 $today = (int) now()->format('d');
