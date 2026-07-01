@@ -30,12 +30,14 @@ class FingerprintChargeController extends Controller
 
     public function create()
     {
+        abort_if(!auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
         $districts = District::orderBy('name')->get();
         return view('fingerprint-charges.create', compact('districts'));
     }
 
     public function store(Request $request)
     {
+        abort_if(!auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
         $validated = $request->validate([
             'district_id' => [
                 'required',
@@ -63,12 +65,14 @@ class FingerprintChargeController extends Controller
 
     public function edit(FingerprintCharge $fingerprintCharge)
     {
+        abort_if(!auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
         $districts = District::orderBy('name')->get();
         return view('fingerprint-charges.edit', compact('fingerprintCharge', 'districts'));
     }
 
     public function update(Request $request, FingerprintCharge $fingerprintCharge)
     {
+        abort_if(!auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
         $validated = $request->validate([
             'district_id' => [
                 'required',
@@ -92,6 +96,7 @@ class FingerprintChargeController extends Controller
 
     public function destroy(Request $request, FingerprintCharge $fingerprintCharge)
     {
+        abort_if(!auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
         try {
             $fingerprintCharge->delete();
             $tab = $request->input('tab', 'fingerprint-charge');
