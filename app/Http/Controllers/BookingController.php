@@ -155,6 +155,7 @@ class BookingController extends Controller
         $selectedFingerprintLocation = $request->get('fingerprint_location');
         $selectedPassengerStatus = $request->get('passenger_status');
         $selectedRouteId = $request->get('route_id');
+        $selectedPackageId = $request->get('package_id');
         $selectedTicketAgentId = $request->get('ticket_agent_id');
         $selectedActualFlightFrom = $request->get('actual_flight_from');
         $selectedActualFlightTo = $request->get('actual_flight_to');
@@ -265,6 +266,9 @@ class BookingController extends Controller
             ->when($request->filled('route_id'), fn ($q) =>
                 $q->whereHas('ticketFare', fn ($q) => $q->where('route_id', $request->input('route_id')))
             )
+            ->when($request->filled('package_id'), fn ($q) =>
+                $q->whereHas('booking', fn ($q) => $q->where('package_id', $request->input('package_id')))
+            )
             ->when($request->filled('ticket_agent_id') && $canFilterByTicketAgent, fn ($q) =>
                 $q->whereHas('latestIssuedTicket.ticketAgent', fn ($q) =>
                     $q->where('id', $request->input('ticket_agent_id'))
@@ -352,7 +356,7 @@ class BookingController extends Controller
             'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
             'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
-            'selectedPassengerStatus', 'selectedRouteId', 'selectedTicketAgentId',
+            'selectedPassengerStatus', 'selectedRouteId', 'selectedPackageId', 'selectedTicketAgentId',
             'selectedActualFlightFrom', 'selectedActualFlightTo',
             'selectedReturnDateFrom', 'selectedReturnDateTo',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
@@ -1400,6 +1404,7 @@ class BookingController extends Controller
         $totalPaid = (float) ($booking->invoice->paid_amount ?? 0);
         $currentPaid = (float) ($booking->payments->last()?->amount ?? 0);
         $dueAmount = $grandTotal - $totalPaid;
+        $invoiceDate = $booking->payments->last()?->payment_date?->format('d M Y');
 
         $conditions = BookingCondition::where('is_active', true)
             ->orderBy('sort_order')
@@ -1416,6 +1421,7 @@ class BookingController extends Controller
             'totalPaid',
             'currentPaid',
             'dueAmount',
+            'invoiceDate',
             'conditions',
             'useBdt',
             'currencySuffix',

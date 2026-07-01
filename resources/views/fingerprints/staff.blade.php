@@ -4,6 +4,15 @@
 
 @section('content')
 <div class="w-full mx-auto pt-6" x-data="fingerprintStaff({ isFingerprintStaff: @json($isFingerprintStaff) })">
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div>
+            <label class="block text-sm font-medium text-slate-700 mb-1">Search</label>
+            <input type="text" x-model="filters.search" @input.debounce.400ms="currentPage = 1; loadData()"
+                   placeholder="Search by Invoice ID, Customer Name, or Passenger Name..."
+                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition">
+        </div>
+    </div>
+
     <div class="bg-white rounded-xl shadow-lg p-6">
         <h2 class="text-xl font-semibold text-slate-700 mb-6">Fingerprint Staff</h2>
         <div class="overflow-x-auto">
@@ -179,6 +188,9 @@ function fingerprintStaff(options = {}) {
         currentPage: 1,
         lastPage: 1,
         totalRecords: 0,
+        filters: {
+            search: '',
+        },
         canEditStatus: options.isFingerprintStaff ?? false,
         currencyToggleCounter: 0,
         showHoldModal: false,
@@ -212,7 +224,7 @@ function fingerprintStaff(options = {}) {
         async loadData() {
             this.loading = true;
             try {
-                const params = new URLSearchParams({ page: this.currentPage });
+                const params = new URLSearchParams({ ...this.filters, page: this.currentPage });
                 const response = await fetch(`/api/fingerprints/staff?${params}`);
                 const result = await response.json();
                 const rawData = result.data || [];

@@ -5,6 +5,12 @@
 @section('content')
 <div class="w-full mx-auto pt-6" x-data="fingerprintAdmin({ canAssignStaff: @json($canAssignStaff) })">
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+        <div class="mb-4">
+            <label class="block text-sm font-medium text-slate-700 mb-1">Search</label>
+            <input type="text" x-model="filters.search" @input.debounce.400ms="currentPage = 1; loadData()"
+                   placeholder="Search by Invoice ID, Customer Name, or Passenger Name..."
+                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition">
+        </div>
         <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Division</label>
@@ -223,6 +229,7 @@ function fingerprintAdmin(options = {}) {
         displayStatuses: ['None', 'Processing', 'Fingerprint Done', 'Approved', 'Partially Approved', 'Cancel', 'Hold & Ask for next Finger date?'],
         districtsList: @json($districts->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'division' => $d->division])),
         filters: {
+            search: '',
             division: '',
             district: '',
             fingerprint_location: '',

@@ -72,7 +72,12 @@ Route::middleware('auth')->group(function () {
     Route::delete('/customers/{customer}', [CustomerController::class, 'destroy'])->name('customers.destroy')->middleware('role:Super Admin,Co Admin');
     Route::resource('visa-agents', VisaAgentController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::resource('ticket-agents', TicketAgentController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::resource('fingerprint-charges', FingerprintChargeController::class)->middleware('role:Super Admin,Co Admin');
+    Route::get('/fingerprint-charges', [FingerprintChargeController::class, 'index'])->name('fingerprint-charges.index');
+    Route::get('/fingerprint-charges/create', [FingerprintChargeController::class, 'create'])->name('fingerprint-charges.create')->middleware('role:Super Admin,Co Admin');
+    Route::post('/fingerprint-charges', [FingerprintChargeController::class, 'store'])->name('fingerprint-charges.store')->middleware('role:Super Admin,Co Admin');
+    Route::get('/fingerprint-charges/{fingerprint_charge}/edit', [FingerprintChargeController::class, 'edit'])->name('fingerprint-charges.edit')->middleware('role:Super Admin,Co Admin');
+    Route::match(['PUT', 'PATCH'], '/fingerprint-charges/{fingerprint_charge}', [FingerprintChargeController::class, 'update'])->name('fingerprint-charges.update')->middleware('role:Super Admin,Co Admin');
+    Route::delete('/fingerprint-charges/{fingerprint_charge}', [FingerprintChargeController::class, 'destroy'])->name('fingerprint-charges.destroy')->middleware('role:Super Admin,Co Admin');
     Route::resource('flight-date-gaps', FlightDateGapController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('routes', RouteController::class)->middleware('role:Super Admin,Co Admin');
     Route::get('/api/ticket-fares/baggage', [\App\Http\Controllers\TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
@@ -188,7 +193,7 @@ Route::middleware('auth')->group(function () {
         ->name('api.fingerprints.hold')
         ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
 
-    Route::get('/settings', [SettingsController::class, 'index'])->name('settings')->middleware('role:Super Admin,Co Admin');
+    Route::get('/settings', [SettingsController::class, 'index'])->name('settings');
     Route::put('/settings/flight-date-gap', [SettingsController::class, 'updateFlightDateGap'])->name('settings.flight-date-gap.update')->middleware('role:Super Admin,Co Admin');
     Route::put('/settings/fingerprint-charge', [SettingsController::class, 'updateFingerprintCharge'])->name('settings.fingerprint-charge.update')->middleware('role:Super Admin,Co Admin');
     Route::put('/settings/package-configuration', [SettingsController::class, 'updatePackageConfiguration'])->name('settings.package-configuration.update')->middleware('role:Super Admin,Co Admin');
