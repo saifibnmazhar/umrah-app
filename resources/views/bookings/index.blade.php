@@ -510,6 +510,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Ticket Agent</th>
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Remarks</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -701,6 +702,9 @@ if ($route) {
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
         @endif
     </td>
+    <td class="px-3 py-2 text-slate-600 text-sm max-w-[250px] break-words whitespace-normal leading-snug">
+        {{ $passenger->booking?->remarks ?? '—' }}
+    </td>
     <td class="px-3 py-2">
         <div class="flex flex-col gap-1">
             <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" class="text-slate-600 hover:text-slate-800">View</a>
@@ -719,7 +723,7 @@ if ($route) {
 </tr>
 @empty
 <tr>
-    <td colspan="{{ 18 + ($canViewFinancialColumns ? 3 : 0) + ($canViewVisaColumns ? 2 : 0) + ($canViewTicketFareColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="{{ 19 + ($canViewFinancialColumns ? 3 : 0) + ($canViewVisaColumns ? 2 : 0) + ($canViewTicketFareColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 @endforelse
                     </tbody>
                 </table>
