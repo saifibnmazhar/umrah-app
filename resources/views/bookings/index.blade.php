@@ -604,6 +604,9 @@ if ($route) {
             <template x-if="(passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' || passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                 <button @click="openVisaEditModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
             </template>
+            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted'">
+                <button @click="openVisaCancelModal({{ $loop->index }})" class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Cancel</button>
+            </template>
             <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                 <button @click="openVisaResubmitModal({{ $loop->index }})" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
             </template>
@@ -1022,6 +1025,38 @@ if ($route) {
                 <div class="flex gap-3 mt-6">
                     <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
                     <button type="button" @click="closeVisaResubmitModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Visa Cancel Modal --}}
+    <div x-show="visaCancelModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeVisaCancelModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeVisaCancelModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Cancel Visa</h3>
+            <form @submit.prevent="handleVisaCancel()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Name</label>
+                        <input type="text" :value="passengersVisaData[editingVisaIndex]?.visa?.agent || '-'" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Cost (SAR)</label>
+                        <input type="text" :value="(passengersVisaData[editingVisaIndex]?.visa?.net_visa_cost || 0).toFixed(2)" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Cancellation Fee (SAR) *</label>
+                        <input type="number" x-model="visaCancelForm.cancellation_fee" required min="0" step="0.01" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter cancellation fee">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                        <textarea x-model="visaCancelForm.remarks" rows="2" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Optional remarks"></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">Submit Cancellation</button>
+                    <button type="button" @click="closeVisaCancelModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Close</button>
                 </div>
             </form>
         </div>
@@ -1760,6 +1795,12 @@ function bookingIndexApp() {
             net_visa_cost: 0,
         },
 
+        visaCancelModalVisible: false,
+        visaCancelForm: {
+            cancellation_fee: 0,
+            remarks: '',
+        },
+
         getComputedStatusId(index) {
             const row = this.passengersTicketData[index];
             if (!row) return '';
@@ -2136,6 +2177,56 @@ function bookingIndexApp() {
             .catch(err => {
                 console.error('Visa re-submit error:', err);
                 alert('Failed to re-submit visa');
+            });
+        },
+
+        openVisaCancelModal(index) {
+            this.editingVisaIndex = index;
+            this.visaCancelForm.cancellation_fee = 0;
+            this.visaCancelForm.remarks = '';
+            this.visaCancelModalVisible = true;
+        },
+
+        closeVisaCancelModal() {
+            this.editingVisaIndex = null;
+            this.visaCancelModalVisible = false;
+        },
+
+        handleVisaCancel() {
+            if (this.editingVisaIndex === null) return;
+            const data = this.passengersVisaData[this.editingVisaIndex];
+            if (!data) return;
+
+            fetch('/bookings/' + data.booking_id + '/passengers/' + data.id + '/visa-cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    cancellation_fee: this.visaCancelForm.cancellation_fee,
+                    remarks: this.visaCancelForm.remarks,
+                })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    this.$nextTick(() => {
+                        if (data.visa) {
+                            data.visa.status = 'cancelled';
+                            data.visa.agent = '';
+                            data.visa.agent_id = null;
+                        }
+                    });
+                    this.closeVisaCancelModal();
+                    this.showToast('Visa cancelled successfully');
+                } else {
+                    alert(res.message || 'Cancellation failed');
+                }
+            })
+            .catch(err => {
+                console.error('Visa cancel error:', err);
+                alert('Failed to cancel visa');
             });
         },
 
