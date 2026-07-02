@@ -38,7 +38,13 @@ $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'mult
     'route_type' => $r->route_type?->value,
     'flight_type' => $r->flight_type?->value,
     'airline_id' => $r->airline_id,
-])->values();
+])->unique('display')->values();
+
+$packagesList = \App\Models\Package::where('is_active', true)
+    ->select('id', 'package_name')
+    ->get()
+    ->unique('package_name')
+    ->values();
 
 $flightDateRanges = [];
 $today = (int) now()->format('d');
@@ -464,6 +470,15 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @endforeach
                         </select>
                     </div>
+                    <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Package</label>
+                        <select x-model="selectedPackageId" @change="onPackageChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">Select Package</option>
+                            @foreach($packagesList as $package)
+                            <option value="{{ $package->id }}" {{ (string) $selectedPackageId === (string) $package->id ? 'selected' : '' }}>{{ $package->package_name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
                     @unless(auth()->user()->branch_id)
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Booking Branch</label>
@@ -510,6 +525,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Ticket Agent</th>
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Remarks</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -565,7 +581,7 @@ if ($route) {
             x-on:change="updatePassengerStatus({{ $passenger->id }}, $event.target.value)">
             <option value="">None</option>
             @foreach($passengerStatuses as $status)
-                <option value="{{ $status->id }}">{{ $status->name }}</option>
+                <option value="{{ $status->id }}" @if(in_array($status->name, ['Processing', 'Fingerprint Done', 'Visa Submitted', 'Visa Issued', 'Ticket Issued', 'Ticket Issued before Visa'])) disabled @endif>{{ $status->name }}</option>
             @endforeach
         </select>
         @else
@@ -704,6 +720,9 @@ if ($route) {
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
         @endif
     </td>
+    <td class="px-3 py-2 text-slate-600 text-sm max-w-[250px] break-words whitespace-normal leading-snug">
+        {{ $passenger->booking?->remarks ?? '—' }}
+    </td>
     <td class="px-3 py-2">
         <div class="flex flex-col gap-1">
             <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" class="text-slate-600 hover:text-slate-800">View</a>
@@ -722,7 +741,7 @@ if ($route) {
 </tr>
 @empty
 <tr>
-    <td colspan="{{ 18 + ($canViewFinancialColumns ? 3 : 0) + ($canViewVisaColumns ? 2 : 0) + ($canViewTicketFareColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
+    <td colspan="{{ 19 + ($canViewFinancialColumns ? 3 : 0) + ($canViewVisaColumns ? 2 : 0) + ($canViewTicketFareColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No passengers found</td>
 @endforelse
                     </tbody>
                 </table>
@@ -1067,7 +1086,7 @@ if ($route) {
         <div class="fixed inset-0 bg-black/50" @click="closeTicketFareModal()"></div>
         <div x-show="isTicketFareModalOpen" x-cloak class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <h3 class="text-xl font-semibold text-slate-800 mb-4" id="ticketFareModalTitle" x-text="ticketFareModalTitle"></h3>
-            <form @submit.prevent="handleTicketFareSubmit()">
+            <form novalidate @submit.prevent="handleTicketFareSubmit()">
                 <div class="mb-4">
                     <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
                     <select x-model="ticketFareForm.ticket_type" @change="handleTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
@@ -1108,13 +1127,19 @@ if ($route) {
                                 </template>
                             </select>
                         </div>
-                        <div x-show="ticketFareForm.showInboundDate">
+                         <div x-show="ticketFareForm.showInboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
-                            <input type="text" x-model="ticketFareForm.inbound_date" placeholder="DD-MMM-YY" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="text" x-model="ticketFareForm.inbound_date" placeholder="DD-MMM-YY" required
+                                   :class="ticketFareForm.errors.inbound_date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <p x-show="ticketFareForm.errors.inbound_date" x-text="ticketFareForm.errors.inbound_date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="ticketFareForm.showOutboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
-                            <input type="text" x-model="ticketFareForm.outbound_date" placeholder="DD-MMM-YY" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="text" x-model="ticketFareForm.outbound_date" placeholder="DD-MMM-YY" required
+                                   :class="ticketFareForm.errors.outbound_date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <p x-show="ticketFareForm.errors.outbound_date" x-text="ticketFareForm.errors.outbound_date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">PNR</label>
@@ -1126,7 +1151,10 @@ if ($route) {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
-                            <input type="text" x-model="ticketFareForm.date" placeholder="DD-MMM-YY" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="text" x-model="ticketFareForm.date" placeholder="DD-MMM-YY" required
+                                   :class="ticketFareForm.errors.date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <p x-show="ticketFareForm.errors.date" x-text="ticketFareForm.errors.date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
@@ -1408,6 +1436,7 @@ function bookingIndexApp() {
         selectedFingerprintLocation: '{{ $selectedFingerprintLocation ?? '' }}',
         selectedPassengerStatus: '{{ $selectedPassengerStatus ?? '' }}',
         selectedRouteId: '{{ $selectedRouteId ?? '' }}',
+        selectedPackageId: '{{ $selectedPackageId ?? '' }}',
         selectedTicketAgentId: '{{ $selectedTicketAgentId ?? '' }}',
         selectedActualFlightFrom: '{{ $selectedActualFlightFrom ?? '' }}',
         selectedActualFlightTo: '{{ $selectedActualFlightTo ?? '' }}',
@@ -1709,10 +1738,21 @@ function bookingIndexApp() {
             window.location.href = url.toString();
         },
 
+        onPackageChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedPackageId) {
+                url.searchParams.set('package_id', this.selectedPackageId);
+            } else {
+                url.searchParams.delete('package_id');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
         clearPassengerFilters() {
             const url = new URL(window.location);
             ['fingerprint_status', 'visa_status', 'ticket_status',
-             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_id',
+             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_id', 'package_id',
              'booking_branch_id', 'booking_date_from', 'booking_date_to',
              'actual_flight_from', 'actual_flight_to',
              'return_date_from', 'return_date_to',
@@ -1814,11 +1854,13 @@ function bookingIndexApp() {
             const isFingerprintApproved = fpStatus === 'approved';
             const isVisaSubmitted = visaStatus === 'submitted';
             const isVisaIssued = visaStatus === 'issued';
+            const isVisaCancelled = visaStatus === 'cancelled';
             const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
                 || ['issued', 're-issued'].includes(issuedTicketStatus);
 
             let statusName = null;
             if (isTicketIssued && isVisaIssued) statusName = 'Ticket Issued';
+            else if (isVisaCancelled) statusName = 'Processing';
             else if (isTicketIssued && !isVisaIssued) statusName = 'Ticket Issued before Visa';
             else if (isVisaIssued) statusName = 'Visa Issued';
             else if (isVisaSubmitted) statusName = 'Visa Submitted';
@@ -1840,10 +1882,12 @@ function bookingIndexApp() {
             const isFingerprintApproved = fpStatus === 'approved';
             const isVisaSubmitted = visaStatus === 'submitted';
             const isVisaIssued = visaStatus === 'issued';
+            const isVisaCancelled = visaStatus === 'cancelled';
             const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
                 || ['issued', 're-issued'].includes(issuedTicketStatus);
 
             if (isTicketIssued && isVisaIssued) return 'Ticket Issued';
+            if (isVisaCancelled) return 'Processing';
             if (isTicketIssued && !isVisaIssued) return 'Ticket Issued before Visa';
             if (isVisaIssued) return 'Visa Issued';
             if (isVisaSubmitted) return 'Visa Submitted';
@@ -2355,6 +2399,11 @@ function bookingIndexApp() {
             showInboundDate: false,
             showOutboundDate: false,
             showBaggage: false,
+            errors: {
+                inbound_date: '',
+                outbound_date: '',
+                date: '',
+            },
         },
 
         _converting: false,
@@ -2404,6 +2453,8 @@ function bookingIndexApp() {
             this.ticketFareForm.airline = row.airline || '';
             this.ticketFareForm.travel_class = row.travel_class || '';
             this.ticketFareForm.passenger_type = row.passenger_type || '';
+
+            this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
 
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
 
@@ -2558,6 +2609,28 @@ function bookingIndexApp() {
             return year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
         },
 
+        validateTicketFareDates() {
+            const f = this.ticketFareForm;
+            const errors = { inbound_date: '', outbound_date: '', date: '' };
+            let valid = true;
+
+            if (!f.date || !this.parseDDMMMYY(f.date)) {
+                errors.date = 'Issue date must be in DD-MMM-YY format';
+                valid = false;
+            }
+            if (f.showInboundDate && (!f.inbound_date || !this.parseDDMMMYY(f.inbound_date))) {
+                errors.inbound_date = 'Inbound date must be in DD-MMM-YY format';
+                valid = false;
+            }
+            if (f.showOutboundDate && (!f.outbound_date || !this.parseDDMMMYY(f.outbound_date))) {
+                errors.outbound_date = 'Outbound date must be in DD-MMM-YY format';
+                valid = false;
+            }
+
+            f.errors = errors;
+            return valid;
+        },
+
         closeTicketFareModal() {
             this.isTicketFareModalOpen = false;
             this.editingPassengerIndex = null;
@@ -2652,6 +2725,12 @@ function bookingIndexApp() {
 
         handleTicketFareSubmit() {
             if (this.editingPassengerIndex === null) return;
+
+            if (!this.validateTicketFareDates()) {
+                const firstError = Object.values(this.ticketFareForm.errors).find(e => e);
+                this.showToast(firstError, 'error');
+                return;
+            }
 
             const row = this.passengersTicketData[this.editingPassengerIndex];
             if (!row) return;
@@ -3244,5 +3323,11 @@ function updateFingerprintLocation(bookingId, location, select) {
         selectEl.value = originalValue;
     });
 }
+
+window.addEventListener('pageshow', function(event) {
+    if (event.persisted) {
+        location.reload();
+    }
+});
 </script>
 @endsection

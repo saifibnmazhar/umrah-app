@@ -14,6 +14,11 @@ class Branch extends Model
         'fingerprint_operation' => 'boolean',
     ];
 
+    public function setBranchCodeAttribute($value): void
+    {
+        $this->attributes['branch_code'] = $value ? strtoupper($value) : null;
+    }
+
     public function users(): HasMany
     {
         return $this->hasMany(User::class);

@@ -3,9 +3,12 @@
 @section('title', 'Settings')
 
 @section('content')
+@php
+    $isSettingsAdmin = auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty();
+@endphp
 <div class="w-full pt-6 px-4 md:px-6"
      x-data="{
-         activeTab: (new URLSearchParams(window.location.search).get('tab')) || 'flight-date-gap',
+         activeTab: (new URLSearchParams(window.location.search).get('tab')) || '{{ $isSettingsAdmin ? 'flight-date-gap' : 'fingerprint-charge' }}',
          syncTabToUrl(val) {
              const url = new URL(window.location);
              url.searchParams.set('tab', val);
@@ -17,6 +20,7 @@
 
     <div class="border-b border-gray-200 mb-6">
         <nav class="-mb-px flex space-x-8">
+            @if($isSettingsAdmin)
             <button
                 @click="activeTab = 'flight-date-gap'"
                 :class="{ 'border-blue-500 text-blue-600': activeTab === 'flight-date-gap', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'flight-date-gap' }"
@@ -24,6 +28,7 @@
             >
                 Flight Date Gap
             </button>
+            @endif
             <button
                 @click="activeTab = 'fingerprint-charge'"
                 :class="{ 'border-blue-500 text-blue-600': activeTab === 'fingerprint-charge', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'fingerprint-charge' }"
@@ -31,6 +36,7 @@
             >
                 Fingerprint Charge
             </button>
+            @if($isSettingsAdmin)
             <button
                 @click="activeTab = 'package-configuration'"
                 :class="{ 'border-blue-500 text-blue-600': activeTab === 'package-configuration', 'border-transparent text-gray-500 hover:text-gray-700 hover:border-gray-300': activeTab !== 'package-configuration' }"
@@ -38,9 +44,11 @@
             >
                 Package Configuration
             </button>
+            @endif
         </nav>
     </div>
 
+    @if($isSettingsAdmin)
     <div x-show="activeTab === 'flight-date-gap'" x-cloak>
         @if(session('success'))
             <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-4">
@@ -89,6 +97,7 @@
             </form>
         </div>
     </div>
+    @endif
 
     <div x-show="activeTab === 'fingerprint-charge'" x-cloak>
         @if(session('success'))
@@ -114,12 +123,14 @@
                         @endforeach
                     </select>
                 </div>
+                @if($isSettingsAdmin)
                 <button type="button" onclick="showFingerprintChargeModal()" id="addChargeBtn" class="px-4 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium flex items-center gap-2 disabled:opacity-50 disabled:cursor-not-allowed disabled:hover:bg-slate-700" disabled>
                     <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6" />
                     </svg>
                     Add Fingerprint Charge
                 </button>
+            @endif
             </div>
 
             <div class="overflow-x-auto">
@@ -130,7 +141,9 @@
                             <th class="px-3 py-2 text-left font-medium">District</th>
                             <th class="px-3 py-2 text-left font-medium">Created By</th>
                             <th class="px-3 py-2 text-right font-medium">Charge (SAR)</th>
+                            @if($isSettingsAdmin)
                             <th class="px-3 py-2 text-center font-medium">Action</th>
+                            @endif
                         </tr>
                     </thead>
                     <tbody id="fingerprintTableBody" class="divide-y divide-slate-200">
@@ -140,6 +153,7 @@
                                 <td class="px-3 py-2 text-slate-600">{{ $charge->district->name ?? 'N/A' }}</td>
                                 <td class="px-3 py-2 text-slate-600">{{ $charge->user->name ?? 'N/A' }}</td>
                                 <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($charge->fingerprint_charge, 2)</td>
+                                @if($isSettingsAdmin)
                                 <td class="px-3 py-2 text-center">
                                     <button onclick="editFingerprintCharge({{ $charge->id }}, {{ $charge->district_id }}, {{ $charge->fingerprint_charge }})" class="text-xs text-slate-600 hover:text-slate-800 mr-3">Edit</button>
                                     <form method="POST" action="{{ route('fingerprint-charges.destroy', $charge->id) }}" onsubmit="return confirm('Are you sure you want to delete this fingerprint charge?')" class="inline">
@@ -149,10 +163,11 @@
                                         <button type="submit" class="text-xs text-red-500 hover:text-red-700">Delete</button>
                                     </form>
                                 </td>
+                                @endif
                             </tr>
                         @empty
                             <tr>
-                                <td colspan="5" class="px-3 py-8 text-center text-slate-500">
+                                <td colspan="{{ $isSettingsAdmin ? 5 : 4 }}" class="px-3 py-8 text-center text-slate-500">
                                     No fingerprint charges configured yet.
                                 </td>
                             </tr>
@@ -175,6 +190,7 @@
         </div>
     </div>
 
+    @if($isSettingsAdmin)
     <!-- Modal -->
     <div id="fingerprintChargeModal" class="fixed inset-0 z-50 hidden flex items-center justify-center">
         <div class="bg-white rounded-xl shadow-xl w-full max-w-md mx-4 p-6">
@@ -217,6 +233,7 @@
             </form>
         </div>
     </div>
+    @endif
 
     <script>
     const districts = @json($districts ?? []);
@@ -252,6 +269,7 @@
         }
     }
 
+    @if($isSettingsAdmin)
     function showFingerprintChargeModal() {
         const selectedDivision = document.getElementById('filterDivisionSelect').value;
         const modalDistrictSelect = document.getElementById('modalDistrictSelect');
@@ -308,8 +326,10 @@
             Alpine.$data(formEl).bdtValue = charge * (rate || 1);
         }
     }
+    @endif
     </script>
 
+    @if($isSettingsAdmin)
     <div x-show="activeTab === 'package-configuration'" x-cloak>
         @if(session('success'))
             <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-4">
@@ -808,5 +828,6 @@
         }
         </script>
     </div>
+    @endif
 </div>
 @endsection

@@ -106,7 +106,11 @@
                 <tbody>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Invoice Date :</td>
-                        <td class="px-2 py-1">{{ $invoiceDate ?? ($booking->created_at ? $booking->created_at->format('d M Y') : '-') }}</td>
+                        <td class="px-2 py-1">{{ $invoiceDate ?? '-' }}</td>
+                    </tr>
+                    <tr>
+                        <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Booking Date :</td>
+                        <td class="px-2 py-1">{{ $booking->created_at ? $booking->created_at->format('d M Y') : '-' }}</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 w-2/5">Booking Branch :</td>
