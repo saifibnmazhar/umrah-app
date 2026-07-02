@@ -1084,6 +1084,12 @@ if ($route) {
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent Name</label>
                         <input type="text" :value="passengersVisaData[editingVisaIndex]?.visa?.agent || '-'" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Agent Cost (BDT)</label>
+                            <input type="text" :value="((passengersVisaData[editingVisaIndex]?.visa?.net_visa_cost || 0) * ($store.currency.rate || 0)).toFixed(2)" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent Cost (SAR)</label>
                         <input type="text" :value="(passengersVisaData[editingVisaIndex]?.visa?.net_visa_cost || 0).toFixed(2)" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
