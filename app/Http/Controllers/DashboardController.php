@@ -2,6 +2,8 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\TicketStatus;
+use App\Models\IssuedTicket;
 use App\Models\Package;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -19,6 +21,17 @@ class DashboardController extends Controller
             ->orderBy('id', 'desc')
             ->get();
 
-        return view('dashboard.index', compact('packages'));
+        $inboundTicket = IssuedTicket::whereIn('status', [TicketStatus::ISSUED, TicketStatus::RE_ISSUED])
+            ->whereNotNull('inbound_date')
+            ->count();
+
+        $outboundTicket = IssuedTicket::whereIn('status', [TicketStatus::ISSUED, TicketStatus::RE_ISSUED])
+            ->whereNotNull('outbound_date')
+            ->count();
+
+        $pendingTicket = IssuedTicket::where('status', TicketStatus::PENDING)
+            ->count();
+
+        return view('dashboard.index', compact('packages', 'inboundTicket', 'outboundTicket', 'pendingTicket'));
     }
 }
