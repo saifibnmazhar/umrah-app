@@ -270,6 +270,8 @@
                             <th class="px-3 py-2 text-left font-medium">Voucher No</th>
                             <th class="px-3 py-2 text-left font-medium">Method</th>
                             <th class="px-3 py-2 text-left font-medium">Trx ID</th>
+                            <th class="px-3 py-2 text-left font-medium">Receive By</th>
+                            <th class="px-3 py-2 text-left font-medium">Receive At</th>
                             <th class="px-3 py-2 text-right font-medium">Amount</th>
                         </tr>
                     </thead>
@@ -280,11 +282,13 @@
                             <td class="px-3 py-2 text-slate-600">{{ $payment->vouchers->first()?->voucher_id ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->payment_method?->value ?? 'Cash' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->transaction_id ?? '-' }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->user?->name ?? '-' }}</td>
+                            <td class="px-3 py-2 text-slate-600">{{ $payment->user?->branch?->name ?? 'Central' }}</td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($payment->amount, 2, $rateVal)</td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="5" class="px-3 py-4 text-center text-slate-500">No payments recorded</td>
+                            <td colspan="7" class="px-3 py-4 text-center text-slate-500">No payments recorded</td>
                         </tr>
                         @endforelse
                     </tbody>
