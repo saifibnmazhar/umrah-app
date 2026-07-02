@@ -643,15 +643,13 @@ class BookingController extends Controller
                     ]);
                 }
 
-                if ($passenger->ticket_fare_id) {
-                    IssuedTicket::create([
-                        'booking_id' => $booking->id,
-                        'passenger_id' => $passenger->id,
-                        'ticket_fare_id' => $passenger->ticket_fare_id,
-                        'user_id' => auth()->id(),
-                        'status' => 'pending',
-                    ]);
-                }
+                IssuedTicket::create([
+                    'booking_id' => $booking->id,
+                    'passenger_id' => $passenger->id,
+                    'ticket_fare_id' => $passenger->ticket_fare_id,
+                    'user_id' => auth()->id(),
+                    'status' => 'pending',
+                ]);
             }
 
             $passengerDocs = $request->file('passenger_docs', []);
@@ -1211,15 +1209,13 @@ class BookingController extends Controller
                 ]);
             }
 
-            if ($passenger->ticket_fare_id) {
-                IssuedTicket::create([
-                    'booking_id' => $booking->id,
-                    'passenger_id' => $passenger->id,
-                    'ticket_fare_id' => $passenger->ticket_fare_id,
-                    'user_id' => auth()->id(),
-                    'status' => 'pending',
-                ]);
-            }
+            IssuedTicket::create([
+                'booking_id' => $booking->id,
+                'passenger_id' => $passenger->id,
+                'ticket_fare_id' => $passenger->ticket_fare_id,
+                'user_id' => auth()->id(),
+                'status' => 'pending',
+            ]);
 
             $fingerprint = Fingerprint::firstOrCreate(
                 ['booking_id' => $booking->id],
