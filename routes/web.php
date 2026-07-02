@@ -220,6 +220,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/pending-outbound', fn() => view('reports.pending-outbound'))->name('report.pending-ticket')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/payment-receiving', fn() => view('reports.payment-receiving'))->name('report.payment-receiving')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/branch-wise', fn() => view('reports.branch-wise'))->name('report.branch-wise')->middleware('role:Super Admin,Co Admin,Auditor');
 
     // Detail Pages with parameters
     Route::resource('payments', PaymentController::class)->only(['index', 'create', 'store', 'show'])->middleware('role:Super Admin,Co Admin');

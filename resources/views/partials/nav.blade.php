@@ -40,6 +40,7 @@
                         @if($canAccessAdminReports)<a href="{{ route('report.payment-receiving') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payment Receiving Report</a>@endif
                         @if($canAccessAdminReports)<a href="{{ route('report.due') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>@endif
                         @if($canAccessAdminReports)<a href="{{ route('report.profit-loss') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>@endif
+                        @if($canAccessAdminReports)<a href="{{ route('report.branch-wise') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Branch Wise Report</a>@endif
                         @if($canAccessAdminReports)<a href="{{ route('report.user-sales') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">User-wise Sales Report</a>@endif
                     </div>
                 </div>
@@ -144,6 +145,7 @@
                 @if($canAccessAdminReports)<a href="{{ route('report.payment-receiving') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payment Receiving Report</a>@endif
                 @if($canAccessAdminReports)<a href="{{ route('report.due') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</a>@endif
                 @if($canAccessAdminReports)<a href="{{ route('report.profit-loss') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</a>@endif
+                @if($canAccessAdminReports)<a href="{{ route('report.branch-wise') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Branch Wise Report</a>@endif
                 @if($canAccessAdminReports)<a href="{{ route('report.user-sales') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">User-wise Sales Report</a>@endif
             </div>
             @endif
