@@ -8,29 +8,18 @@ use App\Enums\VisaStatus;
 use App\Models\FingerprintDetail;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
-use App\Models\Package;
 use App\Models\Passenger;
 use App\Models\Voucher;
-use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
-class DashboardController extends Controller
+class BranchWiseReportController extends Controller
 {
-    public function index(): View|RedirectResponse
+    public function index(): View
     {
-        if (!auth()->user()) {
-            return redirect()->route('login');
-        }
-
         $branchId = auth()->user()->branch_id;
         $branchScope = fn($query) => $query
             ->where('booking_branch_id', $branchId)
             ->orWhere('fingerprint_branch_id', $branchId);
-
-        $packages = Package::where('is_active', true)
-            ->with(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.airline', 'ticketFare.airlineClass'])
-            ->orderBy('id', 'desc')
-            ->get();
 
         $visaSubmitted = Passenger::where('created_at', '>=', now()->subDays(30))
             ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))
@@ -86,6 +75,6 @@ class DashboardController extends Controller
         $totalPassengers = Passenger::where('created_at', '>=', now()->subDays(30))
             ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))->count();
 
-        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'invoiceCount', 'invoiceTotalAmount', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueCollection', 'totalPassengers'));
+        return view('reports.branch-wise', compact('visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'invoiceCount', 'invoiceTotalAmount', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueCollection', 'totalPassengers'));
     }
 }
