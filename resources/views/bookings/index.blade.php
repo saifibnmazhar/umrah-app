@@ -620,8 +620,11 @@ if ($route) {
             <template x-if="(passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' || passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                 <button @click="openVisaEditModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
             </template>
+            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted'">
+                <button @click="openVisaCancelModal({{ $loop->index }})" class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Cancel</button>
+            </template>
             <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                <a href="{{ route('passengers.show', $passenger->id) }}" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</a>
+                <button @click="openVisaResubmitModal({{ $loop->index }})" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
             </template>
             <template x-if="passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
                 <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
@@ -991,6 +994,133 @@ if ($route) {
                 <div class="flex gap-3 mt-6">
                     <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
                     <button type="button" @click="closeVisaEditModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Visa Re-Submit Modal --}}
+    <div x-show="visaResubmitModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeVisaResubmitModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeVisaResubmitModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Visa Re-Submit</h3>
+            <form @submit.prevent="handleVisaResubmit()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Agent *</label>
+                        <select x-model="visaResubmitForm.visa_agent_id" required @change="updateResubmitCommissionAgents(visaResubmitForm.visa_agent_id)" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Agent</option>
+                            <template x-for="agent in visaAgents" :key="agent.id">
+                                <option :value="agent.id" x-text="agent.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Commission Agent</label>
+                        <select x-model="visaResubmitForm.commission_agent_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Commission Agent</option>
+                            <template x-for="ca in getCommissionAgents(visaResubmitForm.visa_agent_id)" :key="ca.id">
+                                <option :value="ca.id" x-text="ca.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Visa Selling Price (BDT)</label>
+                            <input type="text" :value="((passengersVisaData[editingVisaIndex]?.visa?.selling_price || 0) * ($store.currency.rate || 0)).toFixed(2)" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                    </template>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Visa Selling Price (SAR)</label>
+                        <input type="number" :value="passengersVisaData[editingVisaIndex]?.visa?.selling_price || 0" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (BDT)</label>
+                            <input type="number" x-model="visaResubmitForm.agent_commission_bdt" min="0" step="0.000001" @input="convertResubmitAgentCommissionToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
+                        <input type="number" x-model="visaResubmitForm.agent_commission" min="0" step="0.000001"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateResubmitFinal()" placeholder="0">
+                    </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (BDT)</label>
+                            <input type="number" x-model="visaResubmitForm.net_visa_cost_bdt" min="0" step="0.000001" @input="convertResubmitNetVisaCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
+                        <input type="number" x-model="visaResubmitForm.net_visa_cost" step="0.000001"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateResubmitFinal()" placeholder="0">
+                    </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Final Visa Cost (BDT)</label>
+                            <input type="number" x-model="visaResubmitForm.final_cost_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                        </div>
+                    </template>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Final Visa Cost (SAR)</label>
+                        <input type="number" x-model="visaResubmitForm.final_cost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                    <button type="button" @click="closeVisaResubmitModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    {{-- Visa Cancel Modal --}}
+    <div x-show="visaCancelModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeVisaCancelModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeVisaCancelModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Cancel Visa</h3>
+            <form @submit.prevent="handleVisaCancel()">
+                <div class="space-y-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Name</label>
+                        <input type="text" :value="passengersVisaData[editingVisaIndex]?.visa?.agent || '-'" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Agent Cost (BDT)</label>
+                            <input type="text" :value="((passengersVisaData[editingVisaIndex]?.visa?.net_visa_cost || 0) * ($store.currency.rate || 0)).toFixed(2)" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                    </template>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Cost (SAR)</label>
+                        <input type="text" :value="(passengersVisaData[editingVisaIndex]?.visa?.net_visa_cost || 0).toFixed(2)" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Cancellation Fee (BDT) *</label>
+                            <input type="number" x-model="visaCancelForm.cancellation_fee_bdt" required min="0" step="0.000001" @input="convertCancelFeeToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter cancellation fee">
+                        </div>
+                    </template>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Cancellation Fee (SAR) *</label>
+                        <input type="number" x-model="visaCancelForm.cancellation_fee" required min="0" step="0.000001"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               placeholder="Enter cancellation fee">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                        <textarea x-model="visaCancelForm.remarks" rows="2" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Optional remarks"></textarea>
+                    </div>
+                </div>
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" class="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">Submit Cancellation</button>
+                    <button type="button" @click="closeVisaCancelModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Close</button>
                 </div>
             </form>
         </div>
@@ -1695,6 +1825,7 @@ function bookingIndexApp() {
         visaSubmitModalVisible: false,
         visaIssueModalVisible: false,
         visaEditModalVisible: false,
+        visaResubmitModalVisible: false,
         editingVisaIndex: null,
 
         visaSubmitForm: {
@@ -1740,6 +1871,24 @@ function bookingIndexApp() {
             netVisaCostBDT: 0,
             additionalCostBDT: 0,
             finalCostBDT: 0,
+        },
+
+        visaResubmitForm: {
+            visa_agent_id: '',
+            commission_agent_id: '',
+            agent_commission: 0,
+            net_visa_cost: 0,
+            final_cost: 0,
+            agent_commission_bdt: 0,
+            net_visa_cost_bdt: 0,
+            final_cost_bdt: 0,
+        },
+
+        visaCancelModalVisible: false,
+        visaCancelForm: {
+            cancellation_fee: 0,
+            cancellation_fee_bdt: 0,
+            remarks: '',
         },
 
         getComputedStatusId(index) {
@@ -1876,6 +2025,34 @@ function bookingIndexApp() {
             this.visaSubmitForm.finalCost = commission + net;
             const rate = this.getCurrentRate();
             this.visaSubmitForm.finalCostBDT = rate > 0 ? this.visaSubmitForm.finalCost * rate : 0;
+        },
+
+        convertResubmitAgentCommissionToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaResubmitForm.agent_commission_bdt) || 0;
+            this.visaResubmitForm.agent_commission = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
+            this.calculateResubmitFinal();
+        },
+
+        convertResubmitNetVisaCostToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaResubmitForm.net_visa_cost_bdt) || 0;
+            this.visaResubmitForm.net_visa_cost = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
+            this.calculateResubmitFinal();
+        },
+
+        calculateResubmitFinal() {
+            const commission = parseFloat(this.visaResubmitForm.agent_commission) || 0;
+            const net = parseFloat(this.visaResubmitForm.net_visa_cost) || 0;
+            this.visaResubmitForm.final_cost = commission + net;
+            const rate = this.getCurrentRate();
+            this.visaResubmitForm.final_cost_bdt = rate > 0 ? this.visaResubmitForm.final_cost * rate : 0;
+        },
+
+        convertCancelFeeToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaCancelForm.cancellation_fee_bdt) || 0;
+            this.visaCancelForm.cancellation_fee = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
         },
 
         handleVisaSubmit() {
@@ -2063,6 +2240,133 @@ function bookingIndexApp() {
         closeVisaEditModal() {
             this.editingVisaIndex = null;
             this.visaEditModalVisible = false;
+        },
+
+        openVisaResubmitModal(index) {
+            this.editingVisaIndex = index;
+            this.visaResubmitForm.visa_agent_id = '';
+            this.visaResubmitForm.commission_agent_id = '';
+            this.visaResubmitForm.agent_commission = 0;
+            this.visaResubmitForm.net_visa_cost = 0;
+            this.visaResubmitForm.agent_commission_bdt = 0;
+            this.visaResubmitForm.net_visa_cost_bdt = 0;
+            this.calculateResubmitFinal();
+            this.visaResubmitModalVisible = true;
+        },
+
+        closeVisaResubmitModal() {
+            this.editingVisaIndex = null;
+            this.visaResubmitModalVisible = false;
+        },
+
+        updateResubmitCommissionAgents(agentId) {
+            this.visaResubmitForm.commission_agent_id = '';
+            const agent = this.visaAgents.find(a => a.id == agentId);
+            if (agent) {
+                this.visaResubmitForm.net_visa_cost = agent.cost || 0;
+                const rate = this.getCurrentRate();
+                this.visaResubmitForm.net_visa_cost_bdt = rate > 0 ? this.visaResubmitForm.net_visa_cost * rate : 0;
+            }
+            this.calculateResubmitFinal();
+        },
+
+        handleVisaResubmit() {
+            if (this.editingVisaIndex === null) return;
+            const data = this.passengersVisaData[this.editingVisaIndex];
+            if (!data) return;
+
+            const payload = {
+                visa_agent_id: this.visaResubmitForm.visa_agent_id || null,
+                commission_agent_id: this.visaResubmitForm.commission_agent_id || null,
+                agent_commission: this.visaResubmitForm.agent_commission,
+                net_visa_cost: this.visaResubmitForm.net_visa_cost,
+            };
+
+            fetch('/bookings/' + data.booking_id + '/passengers/' + data.id + '/visa-resubmit', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    const sub = res.visa_submission;
+                    this.$nextTick(() => {
+                        if (data.visa) {
+                            data.visa.agent_id = sub.visa_agent_id;
+                            data.visa.agent = sub.visa_agent?.name || '';
+                            data.visa.commission_agent_id = sub.commission_agent_id;
+                            data.visa.commission_agent = sub.commission_agent?.name || '';
+                            data.visa.agent_commission = sub.agent_commission;
+                            data.visa.net_visa_cost = sub.net_visa_cost;
+                            data.visa.final_cost = sub.final_cost;
+                            data.visa.status = 'submitted';
+                        }
+                    });
+                    this.closeVisaResubmitModal();
+                    this.showToast('Visa re-submitted successfully');
+                } else {
+                    alert(res.message || 'Re-submit failed');
+                }
+            })
+            .catch(err => {
+                console.error('Visa re-submit error:', err);
+                alert('Failed to re-submit visa');
+            });
+        },
+
+        openVisaCancelModal(index) {
+            this.editingVisaIndex = index;
+            this.visaCancelForm.cancellation_fee = 0;
+            this.visaCancelForm.cancellation_fee_bdt = 0;
+            this.visaCancelForm.remarks = '';
+            this.visaCancelModalVisible = true;
+        },
+
+        closeVisaCancelModal() {
+            this.editingVisaIndex = null;
+            this.visaCancelModalVisible = false;
+        },
+
+        handleVisaCancel() {
+            if (this.editingVisaIndex === null) return;
+            const data = this.passengersVisaData[this.editingVisaIndex];
+            if (!data) return;
+
+            fetch('/bookings/' + data.booking_id + '/passengers/' + data.id + '/visa-cancel', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({
+                    cancellation_fee: this.visaCancelForm.cancellation_fee,
+                    remarks: this.visaCancelForm.remarks,
+                })
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    this.$nextTick(() => {
+                        if (data.visa) {
+                            data.visa.status = 'cancelled';
+                            data.visa.agent = '';
+                            data.visa.agent_id = null;
+                        }
+                    });
+                    this.closeVisaCancelModal();
+                    this.showToast('Visa cancelled successfully');
+                } else {
+                    alert(res.message || 'Cancellation failed');
+                }
+            })
+            .catch(err => {
+                console.error('Visa cancel error:', err);
+                alert('Failed to cancel visa');
+            });
         },
 
         updateEditCommissionAgents(agentId) {
