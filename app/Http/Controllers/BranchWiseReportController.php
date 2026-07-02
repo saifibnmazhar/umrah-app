@@ -27,8 +27,7 @@ class BranchWiseReportController extends Controller
         $branches = Branch::orderBy('name')->get(['id', 'name']);
 
         $branchScope = fn($query) => $query
-            ->where('booking_branch_id', $branchId)
-            ->orWhere('fingerprint_branch_id', $branchId);
+            ->where('booking_branch_id', $branchId);
 
         $visaSubmitted = Passenger::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
