@@ -1028,17 +1028,41 @@ if ($route) {
                         <label class="block text-sm font-medium text-slate-700 mb-1">Visa Selling Price (SAR)</label>
                         <input type="number" :value="passengersVisaData[editingVisaIndex]?.visa?.selling_price || 0" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
-                        <input type="number" x-model="visaResubmitForm.net_visa_cost" step="0.000001" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
-                    </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (BDT)</label>
+                            <input type="number" x-model="visaResubmitForm.agent_commission_bdt" min="0" step="0.000001" @input="convertResubmitAgentCommissionToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent Commission (SAR)</label>
-                        <input type="number" x-model="visaResubmitForm.agent_commission" min="0" step="0.01" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" value="0">
+                        <input type="number" x-model="visaResubmitForm.agent_commission" min="0" step="0.000001"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateResubmitFinal()" placeholder="0">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (BDT)</label>
+                            <input type="number" x-model="visaResubmitForm.net_visa_cost_bdt" min="0" step="0.000001" @input="convertResubmitNetVisaCostToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                    </template>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Net Visa Cost (SAR)</label>
+                        <input type="number" x-model="visaResubmitForm.net_visa_cost" step="0.000001"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               @input="calculateResubmitFinal()" placeholder="0">
+                    </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Final Visa Cost (BDT)</label>
+                            <input type="number" x-model="visaResubmitForm.final_cost_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Final Visa Cost (SAR)</label>
-                        <input type="number" :value="(parseFloat(visaResubmitForm.net_visa_cost) || 0) + (parseFloat(visaResubmitForm.agent_commission) || 0)" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
+                        <input type="number" x-model="visaResubmitForm.final_cost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-100 text-slate-800 font-semibold">
                     </div>
                 </div>
                 <div class="flex gap-3 mt-6">
@@ -1064,9 +1088,18 @@ if ($route) {
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent Cost (SAR)</label>
                         <input type="text" :value="(passengersVisaData[editingVisaIndex]?.visa?.net_visa_cost || 0).toFixed(2)" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                     </div>
+                    <template x-if="$store.currency.mode === 'BDT'">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Cancellation Fee (BDT) *</label>
+                            <input type="number" x-model="visaCancelForm.cancellation_fee_bdt" required min="0" step="0.000001" @input="convertCancelFeeToSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter cancellation fee">
+                        </div>
+                    </template>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Cancellation Fee (SAR) *</label>
-                        <input type="number" x-model="visaCancelForm.cancellation_fee" required min="0" step="0.01" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter cancellation fee">
+                        <input type="number" x-model="visaCancelForm.cancellation_fee" required min="0" step="0.000001"
+                               :readonly="$store.currency.mode === 'BDT'"
+                               :class="$store.currency.mode === 'BDT' ? 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600' : 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none'"
+                               placeholder="Enter cancellation fee">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
@@ -1833,11 +1866,16 @@ function bookingIndexApp() {
             commission_agent_id: '',
             agent_commission: 0,
             net_visa_cost: 0,
+            final_cost: 0,
+            agent_commission_bdt: 0,
+            net_visa_cost_bdt: 0,
+            final_cost_bdt: 0,
         },
 
         visaCancelModalVisible: false,
         visaCancelForm: {
             cancellation_fee: 0,
+            cancellation_fee_bdt: 0,
             remarks: '',
         },
 
@@ -1965,6 +2003,34 @@ function bookingIndexApp() {
             this.visaSubmitForm.finalCost = commission + net;
             const rate = this.getCurrentRate();
             this.visaSubmitForm.finalCostBDT = rate > 0 ? this.visaSubmitForm.finalCost * rate : 0;
+        },
+
+        convertResubmitAgentCommissionToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaResubmitForm.agent_commission_bdt) || 0;
+            this.visaResubmitForm.agent_commission = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
+            this.calculateResubmitFinal();
+        },
+
+        convertResubmitNetVisaCostToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaResubmitForm.net_visa_cost_bdt) || 0;
+            this.visaResubmitForm.net_visa_cost = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
+            this.calculateResubmitFinal();
+        },
+
+        calculateResubmitFinal() {
+            const commission = parseFloat(this.visaResubmitForm.agent_commission) || 0;
+            const net = parseFloat(this.visaResubmitForm.net_visa_cost) || 0;
+            this.visaResubmitForm.final_cost = commission + net;
+            const rate = this.getCurrentRate();
+            this.visaResubmitForm.final_cost_bdt = rate > 0 ? this.visaResubmitForm.final_cost * rate : 0;
+        },
+
+        convertCancelFeeToSar() {
+            const rate = this.getCurrentRate();
+            const bdt = parseFloat(this.visaCancelForm.cancellation_fee_bdt) || 0;
+            this.visaCancelForm.cancellation_fee = rate > 0 ? parseFloat((bdt / rate).toFixed(6)) : 0;
         },
 
         handleVisaSubmit() {
@@ -2160,6 +2226,9 @@ function bookingIndexApp() {
             this.visaResubmitForm.commission_agent_id = '';
             this.visaResubmitForm.agent_commission = 0;
             this.visaResubmitForm.net_visa_cost = 0;
+            this.visaResubmitForm.agent_commission_bdt = 0;
+            this.visaResubmitForm.net_visa_cost_bdt = 0;
+            this.calculateResubmitFinal();
             this.visaResubmitModalVisible = true;
         },
 
@@ -2173,7 +2242,10 @@ function bookingIndexApp() {
             const agent = this.visaAgents.find(a => a.id == agentId);
             if (agent) {
                 this.visaResubmitForm.net_visa_cost = agent.cost || 0;
+                const rate = this.getCurrentRate();
+                this.visaResubmitForm.net_visa_cost_bdt = rate > 0 ? this.visaResubmitForm.net_visa_cost * rate : 0;
             }
+            this.calculateResubmitFinal();
         },
 
         handleVisaResubmit() {
@@ -2227,6 +2299,7 @@ function bookingIndexApp() {
         openVisaCancelModal(index) {
             this.editingVisaIndex = index;
             this.visaCancelForm.cancellation_fee = 0;
+            this.visaCancelForm.cancellation_fee_bdt = 0;
             this.visaCancelForm.remarks = '';
             this.visaCancelModalVisible = true;
         },
