@@ -6,6 +6,36 @@
 <div class="max-w-3xl mx-auto pt-6">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Branch Wise Report</h1>
 
+    <form method="GET" action="{{ route('report.branch-wise') }}" class="flex flex-wrap items-end gap-4 mb-6 bg-white rounded-lg border border-slate-200 shadow-sm p-4">
+        <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">Date From</label>
+            <input type="date" name="date_from" value="{{ $dateFrom->format('Y-m-d') }}"
+                class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
+        </div>
+        <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">Date To</label>
+            <input type="date" name="date_to" value="{{ $dateTo->format('Y-m-d') }}"
+                class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
+        </div>
+        @if(!$userBranchId)
+        <div>
+            <label class="block text-xs font-medium text-slate-500 mb-1">Branch</label>
+            <select name="branch_id" class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
+                <option value="">All Branches</option>
+                @foreach($branches as $branch)
+                <option value="{{ $branch->id }}" {{ ($selectedBranch ?? '') == $branch->id ? 'selected' : '' }}>
+                    {{ $branch->name }}
+                </option>
+                @endforeach
+            </select>
+        </div>
+        @endif
+        <button type="submit" class="px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition">Filter</button>
+        <a href="{{ route('report.branch-wise') }}" class="px-4 py-2 bg-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-300 transition">Reset</a>
+    </form>
+
+    @php $dateLabel = $dateFrom->format('d M Y') . ' - ' . $dateTo->format('d M Y'); @endphp
+
     <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
             <div class="flex justify-between items-center mb-2">
@@ -26,7 +56,7 @@
                     <div class="text-xs font-medium text-emerald-600">Total Amount</div>
                 </div>
             </div>
-            <div class="text-xs text-slate-500 mt-1">Sales (This Month)</div>
+            <div class="text-xs text-slate-500 mt-1">Sales ({{ $dateLabel }})</div>
         </div>
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -39,7 +69,7 @@
                 </div>
             </div>
             <div class="text-3xl font-bold text-orange-600 mb-1">{{ number_format($totalDue, 2) }} SAR</div>
-            <div class="text-xs text-slate-500 mt-1">Receivable (This Month)</div>
+            <div class="text-xs text-slate-500 mt-1">Receivable ({{ $dateLabel }})</div>
         </div>
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -52,7 +82,7 @@
                 </div>
             </div>
             <div class="text-3xl font-bold text-slate-800 mb-1">{{ number_format($totalDueCollection, 2) }} SAR</div>
-            <div class="text-xs text-slate-500 mt-1">Collection (This Month)</div>
+            <div class="text-xs text-slate-500 mt-1">Collection ({{ $dateLabel }})</div>
         </div>
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -78,7 +108,7 @@
                 <div class="text-xl font-bold text-slate-800">{{ $fingerprintProcessing }}</div>
                 <div class="text-xs font-medium text-amber-600">Processing</div>
             </div>
-            <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
+            <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">{{ $dateLabel }}</div>
         </div>
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -104,7 +134,7 @@
                 <div class="text-xl font-bold text-slate-800">{{ $visaPending }}</div>
                 <div class="text-xs font-medium text-amber-600">Pending</div>
             </div>
-            <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
+            <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">{{ $dateLabel }}</div>
         </div>
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -130,7 +160,7 @@
                 <div class="text-xl font-bold text-slate-800">{{ $pendingTicket ?? 0 }}</div>
                 <div class="text-xs font-medium text-amber-600">Pending Ticket</div>
             </div>
-            <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
+            <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">{{ $dateLabel }}</div>
         </div>
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -143,7 +173,7 @@
             </div>
             <div class="text-3xl font-bold text-slate-800 mb-1">{{ $totalPassengers ?? 'N/A' }}</div>
             <div class="text-sm font-semibold text-slate-700">Total Passengers</div>
-            <div class="text-xs text-slate-500 mt-1">This Month</div>
+            <div class="text-xs text-slate-500 mt-1">{{ $dateLabel }}</div>
         </div>
     </div>
 </div>
