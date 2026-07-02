@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\FingerprintStatus;
 use App\Enums\VisaStatus;
 use App\Models\FingerprintDetail;
+use App\Models\Invoice;
 use App\Models\Package;
 use App\Models\Passenger;
 use Illuminate\Http\RedirectResponse;
@@ -31,6 +32,9 @@ class DashboardController extends Controller
         $fingerprintDone = FingerprintDetail::where('status', FingerprintStatus::DONE)->count();
         $fingerprintProcessing = FingerprintDetail::whereNotIn('status', [FingerprintStatus::APPROVED, FingerprintStatus::DONE])->count();
 
-        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing'));
+        $invoiceCount = Invoice::count();
+        $invoiceTotalAmount = Invoice::sum('total_amount');
+
+        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'invoiceCount', 'invoiceTotalAmount'));
     }
 }

@@ -14,7 +14,6 @@ $stats = [
     'inboundTicket' => 1200,
     'outboundTicket' => 656,
     'pendingTicket' => 45,
-    'totalInvoice' => 312,
     'totalDue' => '124,500 SAR',
     'totalProfit' => '89,750 SAR',
     'totalPassengers' => 892,
@@ -133,16 +132,24 @@ $refundRequests = [];
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
-                <div class="flex items-start justify-between mb-3">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-sm font-semibold text-slate-600">Bookings</h3>
                     <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
                         <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-slate-800 mb-1">{{ $totalInvoice ?? 312 }}</div>
-                <div class="text-sm font-semibold text-slate-700">Total Invoice</div>
-                <div class="text-xs text-slate-500 mt-1">This Month</div>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-left">
+                        <div class="text-2xl font-bold text-slate-800">{{ $invoiceCount }}</div>
+                        <div class="text-xs font-medium text-purple-600">Total Invoice</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-slate-800">@currency($invoiceTotalAmount, 2)</div>
+                        <div class="text-xs font-medium text-emerald-600">Total Amount</div>
+                    </div>
+                </div>
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
