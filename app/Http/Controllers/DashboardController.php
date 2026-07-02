@@ -24,8 +24,7 @@ class DashboardController extends Controller
 
         $branchId = auth()->user()->branch_id;
         $branchScope = fn($query) => $query
-            ->where('booking_branch_id', $branchId)
-            ->orWhere('fingerprint_branch_id', $branchId);
+            ->where('booking_branch_id', $branchId);
 
         $packages = Package::where('is_active', true)
             ->with(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.airline', 'ticketFare.airlineClass'])
