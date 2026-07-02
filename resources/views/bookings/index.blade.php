@@ -131,6 +131,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'mobile_no' => $p->mobile_no ?? '',
     'guardian' => '',
 
+    'is_ticket_held' => (bool)($p->is_ticket_held ?? false),
     'ticket_status' => $p->ticket_status?->value ?? null,
     'due' => $p->booking?->invoice?->balance ?? 0,
     'required_flight_date' => $p->flight_date_from?->format('Y-m-d') ?? '',
@@ -657,8 +658,9 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 flex-wrap">
             <span class="font-medium text-sm">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
-            <button x-show="(!passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'pending') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
+            <button x-show="(!passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'pending') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
             <button x-show="(passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'issued' || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 're-issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
+            <button @click="toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'bg-yellow-100 hover:bg-yellow-200 text-yellow-600' : 'bg-orange-100 hover:bg-orange-200 text-orange-600'" class="text-xs px-2 py-1 rounded font-medium transition" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
             <template x-if="passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
                 <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
             </template>
@@ -1680,6 +1682,7 @@ function bookingIndexApp() {
 
         passengersVisaData: @json($passengersVisaData),
         passengersTicketData: @json($passengersTicketData),
+        isTogglingTicketHold: [],
         passengerStatusMap: @json($passengerStatuses->pluck('id', 'name')),
 
         ticketAgents: @json($ticketAgents),
@@ -2219,6 +2222,30 @@ function bookingIndexApp() {
             outbound_adult: '',
             outbound_child: '',
             outbound_infant: '',
+        },
+
+        toggleTicketHold(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return;
+
+            this.isTogglingTicketHold[index] = true;
+
+            fetch(`/passengers/${row.id}/toggle-ticket-hold`, {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                    'Accept': 'application/json',
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.passengersTicketData[index].is_ticket_held = data.is_ticket_held;
+                }
+            })
+            .finally(() => {
+                this.isTogglingTicketHold[index] = false;
+            });
         },
 
         openTicketFareModal(rowIndex) {
