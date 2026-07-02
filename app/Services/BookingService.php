@@ -213,8 +213,8 @@ class BookingService
         $prefix = strtoupper($branch?->branch_code ?? '(###)');
 
         do {
-            $random = strtoupper(substr(str_shuffle('0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'), 0, 4));
-            $invoiceId = $prefix . $random . $year;
+            $random = substr(str_shuffle('0123456789'), 0, 4);
+            $invoiceId = $prefix . '-' . $random . $year;
         } while (Booking::where('invoice_id', $invoiceId)->exists());
 
         return $invoiceId;

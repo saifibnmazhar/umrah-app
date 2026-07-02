@@ -36,6 +36,9 @@ class Passenger extends Model
         'address',
         'ticket_fare_id',
         'package_value',
+        'is_ticket_held',
+        'ticket_held_by',
+        'ticket_held_at',
     ];
 
     protected $casts = [
@@ -50,6 +53,8 @@ class Passenger extends Model
         'service_required' => ServiceRequired::class,
         'ticket_status' => TicketStatus::class,
         'package_value' => 'decimal:6',
+        'is_ticket_held' => 'boolean',
+        'ticket_held_at' => 'datetime',
     ];
 
     public function booking(): BelongsTo
