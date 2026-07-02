@@ -8,16 +8,14 @@ $showSummaryCards = auth()->user()->roles->pluck('name')->intersect(['Super Admi
 $showPackages = true;
 $showRequests = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
 $stats = [
-    'visaSubmitted' => 120,
-    'visaIssued' => 80,
-    'visaPending' => 68,
+    'visaSubmitted' => $visaSubmitted,
+    'visaIssued' => $visaIssued,
+    'visaPending' => $visaPending,
     'inboundTicket' => 1200,
     'outboundTicket' => 656,
     'pendingTicket' => 45,
-    'totalInvoice' => 312,
     'totalDue' => '124,500 SAR',
     'totalProfit' => '89,750 SAR',
-    'totalFingerprint' => 156,
     'totalPassengers' => 892,
     'totalReceived' => 86,
     'totalDueCollection' => '67,250 SAR',
@@ -134,16 +132,24 @@ $refundRequests = [];
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
-                <div class="flex items-start justify-between mb-3">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-sm font-semibold text-slate-600">Bookings</h3>
                     <div class="w-10 h-10 rounded-full bg-purple-100 flex items-center justify-center">
                         <svg class="w-5 h-5 text-purple-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-slate-800 mb-1">{{ $totalInvoice ?? 312 }}</div>
-                <div class="text-sm font-semibold text-slate-700">Total Invoice</div>
-                <div class="text-xs text-slate-500 mt-1">This Month</div>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-left">
+                        <div class="text-2xl font-bold text-slate-800">{{ $invoiceCount }}</div>
+                        <div class="text-xs font-medium text-purple-600">Total Invoice</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-slate-800">@currency($invoiceTotalAmount, 2)</div>
+                        <div class="text-xs font-medium text-emerald-600">Total Amount</div>
+                    </div>
+                </div>
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -173,16 +179,29 @@ $refundRequests = [];
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
-                <div class="flex items-start justify-between mb-3">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-sm font-semibold text-slate-600">Fingerprint</h3>
                     <div class="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
                         <svg class="w-5 h-5 text-teal-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 11c0 3.517-1.009 6.799-2.753 9.571m-3.44-2.04l.054-.09A13.916 13.916 0 008 11a4 4 0 118 0c0 1.017-.07 2.019-.203 3m-2.118 6.844A21.88 21.88 0 0015.171 17m3.839 1.132c.645-2.266.99-4.659.99-7.132A8 8 0 008 4.07M3 15.364c.64-1.319 1-2.8 1-4.364 0-1.457.39-2.823 1.07-4"/>
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-slate-800 mb-1">{{ $totalFingerprint ?? 156 }}</div>
-                <div class="text-sm font-semibold text-slate-700">Total Fingerprint</div>
-                <div class="text-xs text-slate-500 mt-1">This Month</div>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-left">
+                        <div class="text-2xl font-bold text-slate-800">{{ $fingerprintApproved }}</div>
+                        <div class="text-xs font-medium text-blue-600">Approved</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-slate-800">{{ $fingerprintDone }}</div>
+                        <div class="text-xs font-medium text-emerald-600">Done</div>
+                    </div>
+                </div>
+                <div class="text-center pt-2 border-t border-slate-100">
+                    <div class="text-xl font-bold text-slate-800">{{ $fingerprintProcessing }}</div>
+                    <div class="text-xs font-medium text-amber-600">Processing</div>
+                </div>
+                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
