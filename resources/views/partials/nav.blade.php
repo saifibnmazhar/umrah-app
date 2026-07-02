@@ -24,7 +24,6 @@
                 @if($canAccessVisa)<a href="{{ route('visa.admin') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="visaAdmin">Visa Admin</a>@endif
                 @if($canAccessTicket)<a href="{{ route('fare.admin') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="ticketAdmin">Ticket Admin</a>@endif
                 
-                @if($canAccessAdminReports || $canAccessFingerprintReport || $canAccessVisa || $canAccessTicket)
                 <div class="relative">
                     <button @click="reportMenuOpen = !reportMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap" data-tab="reports">
                         Reports ▾
@@ -40,11 +39,10 @@
                         @if($canAccessAdminReports)<a href="{{ route('report.payment-receiving') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payment Receiving Report</a>@endif
                         @if($canAccessAdminReports)<a href="{{ route('report.due') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>@endif
                         @if($canAccessAdminReports)<a href="{{ route('report.profit-loss') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>@endif
-                        @if($canAccessAdminReports)<a href="{{ route('report.branch-wise') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Branch Wise Report</a>@endif
+                        <a href="{{ route('report.branch-wise') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Branch Wise Report</a>
                         @if($canAccessAdminReports)<a href="{{ route('report.user-sales') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">User-wise Sales Report</a>@endif
                     </div>
                 </div>
-                @endif
                 
                 @if($canAccessAdmin)<a href="{{ route('settings') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="settings">Settings</a>@endif
                 
@@ -132,7 +130,6 @@
             @if($canAccessVisa)<a href="{{ route('visa.admin') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Admin</a>@endif
             @if($canAccessTicket)<a href="{{ route('fare.admin') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Admin</a>@endif
             
-            @if($canAccessAdminReports || $canAccessFingerprintReport || $canAccessVisa || $canAccessTicket)
             <div class="border-t border-slate-600 pt-2 mt-2">
                 <span class="block px-3 py-1 text-xs text-slate-400 font-medium">REPORTS</span>
                 @if($canAccessAdminReports || $canAccessFingerprintReport)<a href="{{ route('report.fingerprint') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Report</a>@endif
@@ -145,10 +142,9 @@
                 @if($canAccessAdminReports)<a href="{{ route('report.payment-receiving') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payment Receiving Report</a>@endif
                 @if($canAccessAdminReports)<a href="{{ route('report.due') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</a>@endif
                 @if($canAccessAdminReports)<a href="{{ route('report.profit-loss') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</a>@endif
-                @if($canAccessAdminReports)<a href="{{ route('report.branch-wise') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Branch Wise Report</a>@endif
+                <a href="{{ route('report.branch-wise') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Branch Wise Report</a>
                 @if($canAccessAdminReports)<a href="{{ route('report.user-sales') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">User-wise Sales Report</a>@endif
             </div>
-            @endif
             
             @if($canAccessAdmin)<a href="{{ route('settings') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600 border-t border-slate-600 mt-2 pt-3">Settings</a>@endif
             
