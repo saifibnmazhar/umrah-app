@@ -137,7 +137,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'actual_flight_date' => $p->actual_flight_date?->format('Y-m-d') ?? '',
     'fingerprint_location' => $p->booking?->fingerprint_location?->value ?? 'None',
     'fingerprint_status' => $p->fingerprintDetail?->status?->value ?? null,
-    'status' => $p->passengerStatus?->name ?? 'None',
+    'status' => $p->status?->name ?? 'None',
     'documents' => [],
     'passenger_data' => null,
 
@@ -585,7 +585,7 @@ if ($route) {
             @endforeach
         </select>
         @else
-        <span class="text-slate-700" x-text="getComputedStatusName({{ $loop->index }})">{{ $passenger->computed_status ?? 'None' }}</span>
+        <span class="text-slate-700" x-text="getComputedStatusName({{ $loop->index }})">{{ $passenger->status?->name ?? $passenger->computed_status ?? 'None' }}</span>
         @endif
     </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
@@ -1745,6 +1745,11 @@ function bookingIndexApp() {
         getComputedStatusId(index) {
             const row = this.passengersTicketData[index];
             if (!row) return '';
+
+            if (row.status && row.status !== 'None') {
+                return this.passengerStatusMap[row.status] ?? '';
+            }
+
             const visa = this.passengersVisaData[index]?.visa;
 
             const fpStatus = row.fingerprint_status;
@@ -1773,6 +1778,11 @@ function bookingIndexApp() {
         getComputedStatusName(index) {
             const row = this.passengersTicketData[index];
             if (!row) return 'None';
+
+            if (row.status && row.status !== 'None') {
+                return row.status;
+            }
+
             const visa = this.passengersVisaData[index]?.visa;
 
             const fpStatus = row.fingerprint_status;
