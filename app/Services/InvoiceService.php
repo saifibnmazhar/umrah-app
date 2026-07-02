@@ -47,7 +47,7 @@ class InvoiceService
 
     public function canAcceptPayment(Invoice $invoice, float $amount): bool
     {
-        return ($invoice->balance - $amount) >= 0;
+        return ($amount <= $invoice->balance + 50);
     }
 
     public function calculateBalance(Invoice $invoice): float
