@@ -615,6 +615,33 @@ class PassengerController extends Controller
         return response()->json($passengers);
     }
 
+    public function toggleTicketHold(Passenger $passenger)
+    {
+        $this->ensureBranchAccess($passenger);
+
+        if ($passenger->is_ticket_held) {
+            $passenger->update([
+                'is_ticket_held' => false,
+                'ticket_held_by' => null,
+                'ticket_held_at' => null,
+            ]);
+            $message = 'Ticket hold released';
+        } else {
+            $passenger->update([
+                'is_ticket_held' => true,
+                'ticket_held_by' => auth()->id(),
+                'ticket_held_at' => now(),
+            ]);
+            $message = 'Ticket hold applied';
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'is_ticket_held' => $passenger->fresh()->is_ticket_held,
+        ]);
+    }
+
     public function updateStatus(Request $request, Passenger $passenger)
     {
         
