@@ -2065,7 +2065,7 @@ Alpine.data('createBookingApp', () => ({
         if (totalEl) totalEl.textContent = Alpine.store('currency').format(grand);
         if (paidEl) paidEl.textContent = Alpine.store('currency').format(0);
         if (dueEl) dueEl.textContent = Alpine.store('currency').format(due);
-        this.paymentMaxAmount = due;
+        this.paymentMaxAmount = due + 50;
         this.paymentData = {
             currency: this.userBranchLocation === 'BD' ? 'BDT' : 'SAR',
             method: 'cash',
@@ -4451,7 +4451,7 @@ Alpine.data('showBookingApp', () => ({
         const totalText = totalFinEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
         const paidText = paidFinEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
         const dueText = dueFinEl?.textContent?.replace(/[^0-9.]/g, '') || '0';
-        this.paymentMaxAmount = parseFloat(dueText) || 0;
+        this.paymentMaxAmount = (parseFloat(dueText) || 0) + 50;
 
         const totalEl = document.getElementById('paymentTotalPackageValue');
         const paidEl = document.getElementById('paymentPaid');
