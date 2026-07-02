@@ -3,8 +3,10 @@
 namespace App\Http\Controllers;
 
 use App\Enums\TicketStatus;
+use App\Models\Invoice;
 use App\Models\IssuedTicket;
 use App\Models\Package;
+use App\Models\Voucher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -32,6 +34,12 @@ class DashboardController extends Controller
         $pendingTicket = IssuedTicket::where('status', TicketStatus::PENDING)
             ->count();
 
-        return view('dashboard.index', compact('packages', 'inboundTicket', 'outboundTicket', 'pendingTicket'));
+        $totalDue = Invoice::sum('balance');
+
+        $totalDueCollection = Voucher::whereHas('transactionType', function ($query) {
+            $query->where('name', 'Due Collection');
+        })->sum('amount');
+
+        return view('dashboard.index', compact('packages', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueCollection'));
     }
 }
