@@ -214,7 +214,7 @@ class BookingService
 
         do {
             $random = substr(str_shuffle('0123456789'), 0, 4);
-            $invoiceId = $prefix . $random . $year;
+            $invoiceId = $prefix . '-' . $random . $year;
         } while (Booking::where('invoice_id', $invoiceId)->exists());
 
         return $invoiceId;
