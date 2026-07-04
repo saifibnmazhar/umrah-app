@@ -178,6 +178,26 @@ class FingerprintController extends Controller
             });
         }
 
+        if ($request->filled('fingerprint_status')) {
+            $query->whereHas('fingerprintDetails', fn ($q) =>
+                $q->where('status', $request->fingerprint_status)
+            );
+        }
+
+        if ($request->filled('deadline_from')) {
+            $query->whereDate('deadline', '>=', $request->deadline_from);
+        }
+
+        if ($request->filled('deadline_to')) {
+            $query->whereDate('deadline', '<=', $request->deadline_to);
+        }
+
+        if ($request->filled('flight_date_from')) {
+            $query->whereHas('booking.passengers', fn ($q) =>
+                $q->whereDate('flight_date_from', '>=', $request->flight_date_from)
+            );
+        }
+
         $twentyFourHoursAgo = now()->subHours(24);
         $isSuperOrCoAdmin = $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
         $isFingerprintStaffRole = $user->hasRole('Fingerprint Staff');

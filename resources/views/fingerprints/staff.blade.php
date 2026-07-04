@@ -5,11 +5,40 @@
 @section('content')
 <div class="w-full mx-auto pt-6" x-data="fingerprintStaff({ isFingerprintStaff: @json($isFingerprintStaff) })">
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
-        <div>
+        <div class="mb-4">
             <label class="block text-sm font-medium text-slate-700 mb-1">Search</label>
             <input type="text" x-model="filters.search" @input.debounce.400ms="currentPage = 1; loadData()"
                    placeholder="Search by Invoice ID, Customer Name, or Passenger Name..."
                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition">
+        </div>
+        <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Fingerprint Status</label>
+                <select x-model="filters.fingerprint_status" @change="currentPage = 1; loadData()"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                    <option value="">All</option>
+                    <option value="none">None</option>
+                    <option value="processing">Processing</option>
+                    <option value="approved">Approved</option>
+                    <option value="cancelled">Cancelled</option>
+                    <option value="done">Done</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Deadline From</label>
+                <input type="date" x-model="filters.deadline_from" @change="currentPage = 1; loadData()"
+                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Deadline To</label>
+                <input type="date" x-model="filters.deadline_to" @change="currentPage = 1; loadData()"
+                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Required Flight Date</label>
+                <input type="date" x-model="filters.flight_date_from" @change="currentPage = 1; loadData()"
+                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+            </div>
         </div>
     </div>
 
@@ -190,6 +219,10 @@ function fingerprintStaff(options = {}) {
         totalRecords: 0,
         filters: {
             search: '',
+            fingerprint_status: '',
+            deadline_from: '',
+            deadline_to: '',
+            flight_date_from: '',
         },
         canEditStatus: options.isFingerprintStaff ?? false,
         currencyToggleCounter: 0,
