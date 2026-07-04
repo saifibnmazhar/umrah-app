@@ -61,8 +61,8 @@
                     </div>
                 </div>
                 <div class="text-3xl font-bold text-emerald-600 mb-1">@currency($invoiceTotalAmount, 2)</div>
-                <div class="text-xs text-slate-500 mt-1">Sales ({{ $dateLabel }})</div>
-            </div>
+<div class="text-xs text-slate-500 mt-1">{{ $dateLabel }}</div>
+        </div>
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
             <div class="flex items-center justify-between mb-3">
