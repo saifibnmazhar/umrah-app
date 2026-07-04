@@ -10,17 +10,19 @@
         <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">Date From</label>
             <input type="date" name="date_from" value="{{ $dateFrom->format('Y-m-d') }}"
-                class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
+                class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none"
+                onchange="this.form.submit()">
         </div>
         <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">Date To</label>
             <input type="date" name="date_to" value="{{ $dateTo->format('Y-m-d') }}"
-                class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
+                class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none"
+                onchange="this.form.submit()">
         </div>
         @if(!$userBranchId)
         <div>
             <label class="block text-xs font-medium text-slate-500 mb-1">Branch</label>
-            <select name="branch_id" class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
+            <select name="branch_id" class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" onchange="this.form.submit()">
                 <option value="">All Branches</option>
                 @foreach($branches as $branch)
                 <option value="{{ $branch->id }}" {{ ($selectedBranch ?? '') == $branch->id ? 'selected' : '' }}>
@@ -30,7 +32,6 @@
             </select>
         </div>
         @endif
-        <button type="submit" class="px-4 py-2 bg-slate-800 text-white text-sm font-medium rounded-lg hover:bg-slate-700 transition">Filter</button>
         <a href="{{ route('report.branch-wise') }}" class="px-4 py-2 bg-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-300 transition">Reset</a>
     </form>
 
