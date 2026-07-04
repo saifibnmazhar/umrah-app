@@ -46,7 +46,7 @@
                         <th class="px-3 py-2 text-left font-medium">Division</th>
                         <th class="px-3 py-2 text-left font-medium">District</th>
                         <!--<th class="px-3 py-2 text-left font-medium">Created By</th>-->
-                        <th class="px-3 py-2 text-right font-medium">Charge (SAR)</th>
+                        <th class="px-3 py-2 text-right font-medium">Charge (<span x-text="$store.currency.mode">SAR</span>)</th>
                         @if(auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty())
                         <th class="px-3 py-2 text-center font-medium">Action</th>
                         @endif
