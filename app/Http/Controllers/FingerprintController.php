@@ -179,23 +179,29 @@ class FingerprintController extends Controller
         }
 
         if ($request->filled('fingerprint_status')) {
-            $query->whereHas('fingerprintDetails', fn ($q) =>
-                $q->where('status', $request->fingerprint_status)
-            );
+            $query->whereHas('fingerprintDetails', function ($q) use ($request) {
+                $q->where('status', $request->input('fingerprint_status'));
+            });
         }
 
         if ($request->filled('deadline_from')) {
-            $query->whereDate('deadline', '>=', $request->deadline_from);
+            $query->whereDate('deadline', '>=', $request->input('deadline_from'));
         }
 
         if ($request->filled('deadline_to')) {
-            $query->whereDate('deadline', '<=', $request->deadline_to);
+            $query->whereDate('deadline', '<=', $request->input('deadline_to'));
         }
 
         if ($request->filled('flight_date_from')) {
-            $query->whereHas('booking.passengers', fn ($q) =>
-                $q->whereDate('flight_date_from', '>=', $request->flight_date_from)
-            );
+            $query->whereHas('booking.passengers', function ($q) use ($request) {
+                $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'));
+            });
+        }
+
+        if ($request->filled('flight_date_to')) {
+            $query->whereHas('booking.passengers', function ($q) use ($request) {
+                $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'));
+            });
         }
 
         $twentyFourHoursAgo = now()->subHours(24);

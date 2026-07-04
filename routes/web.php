@@ -170,7 +170,35 @@ Route::middleware('auth')->group(function () {
     })->name('fingerprint.admin')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::get('/fingerprints/staff', function () {
         $isFingerprintStaff = auth()->user()->hasRole('Fingerprint Staff');
-        return view('fingerprints.staff', compact('isFingerprintStaff'));
+
+        $fingerprintStatuses = \App\Enums\FingerprintStatus::cases();
+
+        $flightDateRanges = [];
+        $today = (int) now()->format('d');
+        $currentThird = $today <= 10 ? 1 : ($today <= 20 ? 2 : 3);
+        $months = [
+            ['offset' => 0, 'startPart' => $currentThird],
+            ['offset' => 1, 'startPart' => 1],
+            ['offset' => 2, 'startPart' => 1],
+            ['offset' => 3, 'startPart' => 1],
+        ];
+        foreach ($months as $m) {
+            if (count($flightDateRanges) >= 9) break;
+            $month = now()->copy()->addMonths($m['offset'])->startOfMonth();
+            $lastDay = (int) $month->copy()->endOfMonth()->format('d');
+            $label = $month->format('M');
+            $parts = [
+                1 => ['start' => $month->format('Y-m-01'), 'end' => $month->format('Y-m-10'), 'label' => "{$label} 1–10"],
+                2 => ['start' => $month->format('Y-m-11'), 'end' => $month->format('Y-m-20'), 'label' => "{$label} 11–20"],
+                3 => ['start' => $month->format('Y-m-21'), 'end' => $month->copy()->endOfMonth()->format('Y-m-d'), 'label' => "{$label} 21–{$lastDay}"],
+            ];
+            for ($p = $m['startPart']; $p <= 3; $p++) {
+                if (count($flightDateRanges) >= 9) break;
+                $flightDateRanges[] = array_merge(['id' => count($flightDateRanges) + 1], $parts[$p]);
+            }
+        }
+
+        return view('fingerprints.staff', compact('isFingerprintStaff', 'fingerprintStatuses', 'flightDateRanges'));
     })->name('fingerprint.staff')->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
 
     Route::get('/api/fingerprints/admin', [FingerprintController::class, 'adminIndex'])
