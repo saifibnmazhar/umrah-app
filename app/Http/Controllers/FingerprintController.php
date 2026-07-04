@@ -63,6 +63,32 @@ class FingerprintController extends Controller
             });
         }
 
+        if ($request->filled('fingerprint_status')) {
+            $query->whereHas('fingerprintDetails', function ($q) use ($request) {
+                $q->where('status', $request->input('fingerprint_status'));
+            });
+        }
+
+        if ($request->filled('deadline_from')) {
+            $query->whereDate('deadline', '>=', $request->input('deadline_from'));
+        }
+
+        if ($request->filled('deadline_to')) {
+            $query->whereDate('deadline', '<=', $request->input('deadline_to'));
+        }
+
+        if ($request->filled('flight_date_from')) {
+            $query->whereHas('booking.passengers', function ($q) use ($request) {
+                $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'));
+            });
+        }
+
+        if ($request->filled('flight_date_to')) {
+            $query->whereHas('booking.passengers', function ($q) use ($request) {
+                $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'));
+            });
+        }
+
         $user = auth()->user();
         if ($user->branch?->fingerprint_operation && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
             $query->whereHas('booking', function ($q) use ($user) {
@@ -175,6 +201,32 @@ class FingerprintController extends Controller
                         ->orWhere('last_name', 'LIKE', "%{$search}%")
                         ->orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ["%{$search}%"]);
                 });
+            });
+        }
+
+        if ($request->filled('fingerprint_status')) {
+            $query->whereHas('fingerprintDetails', function ($q) use ($request) {
+                $q->where('status', $request->input('fingerprint_status'));
+            });
+        }
+
+        if ($request->filled('deadline_from')) {
+            $query->whereDate('deadline', '>=', $request->input('deadline_from'));
+        }
+
+        if ($request->filled('deadline_to')) {
+            $query->whereDate('deadline', '<=', $request->input('deadline_to'));
+        }
+
+        if ($request->filled('flight_date_from')) {
+            $query->whereHas('booking.passengers', function ($q) use ($request) {
+                $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'));
+            });
+        }
+
+        if ($request->filled('flight_date_to')) {
+            $query->whereHas('booking.passengers', function ($q) use ($request) {
+                $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'));
             });
         }
 
