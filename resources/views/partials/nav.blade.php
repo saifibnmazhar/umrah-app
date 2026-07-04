@@ -56,11 +56,11 @@
                         @if($canAccessAdmin)<a href="{{ route('banks.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Banks</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('booking-conditions.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Booking Conditions</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('branches.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Branches</a>@endif
-                        @if($canAccessAdmin)<a href="{{ route('city-codes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">City Codes</a>@endif
-                        @if($canAccessAdmin)<a href="{{ route('airlines.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airlines</a>@endif
-                        @if($canAccessAdmin)<a href="{{ route('classes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Travel Classes</a>@endif
-                        @if($canAccessAdmin)<a href="{{ route('airline-classes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airline Classes</a>@endif
-                        @if($canAccessAdmin)<a href="{{ route('airline-cities.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airline Cities</a>@endif
+                        @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('city-codes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">City Codes</a>@endif
+                        @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('airlines.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airlines</a>@endif
+                        @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('classes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Travel Classes</a>@endif
+                        @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('airline-classes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airline Classes</a>@endif
+                        @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('airline-cities.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Airline Cities</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('customers.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Customers</a>@endif
                         @if($canAccessVisa)<a href="{{ route('visa-agents.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agents</a>@endif
                         @if($canAccessTicket)<a href="{{ route('ticket-agents.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agents</a>@endif
@@ -69,7 +69,7 @@
                         @if($canAccessVisa)<a href="{{ route('visa-selling-prices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Selling Prices</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('currency-rates.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Currency Rates</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('transaction-types.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Transaction Types</a>@endif
-                        @if($canAccessAdmin)<a href="{{ route('routes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Routes</a>@endif
+                        @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('routes.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Routes</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('payments.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payments</a>@endif
                         {{-- Temporarily disabled
                         <a href="{{ route('invoices.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Invoices</a>
@@ -155,11 +155,11 @@
                 @if($canAccessAdmin)<a href="{{ route('banks.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Banks</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('booking-conditions.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking Conditions</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('branches.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Branches</a>@endif
-                @if($canAccessAdmin)<a href="{{ route('city-codes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">City Codes</a>@endif
-                @if($canAccessAdmin)<a href="{{ route('airlines.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airlines</a>@endif
-                @if($canAccessAdmin)<a href="{{ route('classes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Travel Classes</a>@endif
-                @if($canAccessAdmin)<a href="{{ route('airline-classes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airline Classes</a>@endif
-                @if($canAccessAdmin)<a href="{{ route('airline-cities.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airline Cities</a>@endif
+                @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('city-codes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">City Codes</a>@endif
+                @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('airlines.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airlines</a>@endif
+                @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('classes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Travel Classes</a>@endif
+                @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('airline-classes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airline Classes</a>@endif
+                @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('airline-cities.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Airline Cities</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('customers.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Customers</a>@endif
                 @if($canAccessVisa)<a href="{{ route('visa-agents.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Agents</a>@endif
                 @if($canAccessTicket)<a href="{{ route('ticket-agents.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agents</a>@endif
@@ -168,7 +168,7 @@
                 @if($canAccessVisa)<a href="{{ route('visa-selling-prices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Visa Selling Prices</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('currency-rates.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Currency Rates</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('transaction-types.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Transaction Types</a>@endif
-                @if($canAccessAdmin)<a href="{{ route('routes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Routes</a>@endif
+                @if($canAccessAdmin || $canAccessTicket)<a href="{{ route('routes.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Routes</a>@endif
                 @if($canAccessAdmin)<a href="{{ route('payments.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payments</a>@endif
                 {{-- Temporarily disabled
                 <a href="{{ route('invoices.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Invoices</a>
