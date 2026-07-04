@@ -78,7 +78,7 @@
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Date</th>
-                            <th class="px-3 py-2 text-left font-medium">Price (SAR)</th>
+                            <th class="px-3 py-2 text-left font-medium">Price (<span x-text="$store.currency.mode">SAR</span>)</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
@@ -138,7 +138,7 @@
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Agent Name</th>
-                            <th class="px-3 py-2 text-left font-medium">Agent Visa Price (SAR)</th>
+                            <th class="px-3 py-2 text-left font-medium">Agent Visa Price (<span x-text="$store.currency.mode">SAR</span>)</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
                         </tr>
                     </thead>
