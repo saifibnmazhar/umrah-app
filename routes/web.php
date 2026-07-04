@@ -60,11 +60,11 @@ Route::middleware('auth')->group(function () {
     Route::resource('booking-conditions', BookingConditionController::class)->middleware('role:Super Admin,Co Admin');
     Route::patch('/booking-conditions/{bookingCondition}/toggle-active', [BookingConditionController::class, 'toggleActive'])->name('booking-conditions.toggle-active')->middleware('role:Super Admin,Co Admin');
     Route::resource('branches', BranchController::class)->middleware('role:Super Admin,Co Admin');
-    Route::resource('city-codes', CityCodeController::class)->middleware('role:Super Admin,Co Admin');
+    Route::resource('city-codes', CityCodeController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin');
     Route::resource('airlines', AirlineController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::resource('classes', TravelClassController::class)->middleware('role:Super Admin,Co Admin');
+    Route::resource('classes', TravelClassController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin');
     Route::resource('airline-classes', AirlineClassController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::resource('airline-cities', AirlineCityController::class)->middleware('role:Super Admin,Co Admin');
+    Route::resource('airline-cities', AirlineCityController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin');
     Route::get('/customers', [CustomerController::class, 'index'])->name('customers.index')->middleware('role:Super Admin,Co Admin,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff');
     Route::get('/customers/create', [CustomerController::class, 'create'])->name('customers.create')->middleware('role:Super Admin,Co Admin');
     Route::post('/customers', [CustomerController::class, 'store'])->name('customers.store')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Fingerprint Admin,Fingerprint Staff,Delivery Staff');
@@ -80,7 +80,7 @@ Route::middleware('auth')->group(function () {
     Route::match(['PUT', 'PATCH'], '/fingerprint-charges/{fingerprint_charge}', [FingerprintChargeController::class, 'update'])->name('fingerprint-charges.update')->middleware('role:Super Admin,Co Admin');
     Route::delete('/fingerprint-charges/{fingerprint_charge}', [FingerprintChargeController::class, 'destroy'])->name('fingerprint-charges.destroy')->middleware('role:Super Admin,Co Admin');
     Route::resource('flight-date-gaps', FlightDateGapController::class)->middleware('role:Super Admin,Co Admin');
-    Route::resource('routes', RouteController::class)->middleware('role:Super Admin,Co Admin');
+    Route::resource('routes', RouteController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin');
     Route::get('/api/ticket-fares/baggage', [\App\Http\Controllers\TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
     Route::get('/api/ticket-fares/flight-date-gap', [\App\Http\Controllers\TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
     Route::patch('/ticket-fares/{ticketFare}/toggle-active', [\App\Http\Controllers\TicketFareController::class, 'toggleActive'])->name('ticket-fares.toggle-active')->middleware('role:Super Admin,Co Admin,Ticket Admin');
