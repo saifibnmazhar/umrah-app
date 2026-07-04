@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Fingerprint Charges')
 @section('content')
-<div class="max-w-4xl mx-auto">
+<div class="max-w-4xl mx-auto" x-data="{}">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Fingerprint Charges</h1>
     </div>
