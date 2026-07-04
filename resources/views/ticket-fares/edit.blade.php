@@ -28,9 +28,9 @@
 
     <form method="POST" action="{{ route('ticket-fares.update', $ticketFare->id) }}" x-data="{
         fares: {
-            net_fare: { sar: {{ old('net_fare', $ticketFare->net_fare) }}, bdt: 0 },
-            selling_fare: { sar: {{ old('selling_fare', $ticketFare->selling_fare) }}, bdt: 0 },
-            offer_price: { sar: {{ old('offer_price', $ticketFare->offer_price) }}, bdt: 0 },
+            net_fare: { sar: {{ old('net_fare', $ticketFare->net_fare) ?? 0 }}, bdt: 0 },
+            selling_fare: { sar: {{ old('selling_fare', $ticketFare->selling_fare) ?? 0 }}, bdt: 0 },
+            offer_price: { sar: {{ old('offer_price', $ticketFare->offer_price) ?? 0 }}, bdt: 0 },
         },
         _converting: false,
         init() {

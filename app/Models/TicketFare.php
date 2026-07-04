@@ -97,4 +97,12 @@ class TicketFare extends Model
     {
         return $this->packages()->exists() || $this->passengers()->exists();
     }
+
+    protected static function booted()
+    {
+        static::deleting(function (TicketFare $ticketFare) {
+            $ticketFare->baggageAllowances()->delete();
+            $ticketFare->groupTicket()?->delete();
+        });
+    }
 }
