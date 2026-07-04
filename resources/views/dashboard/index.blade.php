@@ -103,6 +103,28 @@ $refundRequests = [];
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex justify-between items-center mb-2">
+                    <h3 class="text-sm font-semibold text-slate-600">New Card</h3>
+                    <div class="w-10 h-10 rounded-full bg-slate-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-slate-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 6v6m0 0v6m0-6h6m-6 0H6"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="flex justify-between items-center mb-2">
+                    <div class="text-left">
+                        <div class="text-2xl font-bold text-slate-400">&mdash;</div>
+                        <div class="text-xs font-medium text-slate-500">Metric One</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-slate-400">&mdash;</div>
+                        <div class="text-xs font-medium text-slate-500">Metric Two</div>
+                    </div>
+                </div>
+                <div class="text-xs text-slate-400 mt-1">Data Pending</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-slate-600">Total Due</h3>
                     <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
