@@ -792,7 +792,7 @@ class BookingController extends Controller
             'package',
             'fingerprintBranch',
             'invoice',
-            'payments.vouchers',
+            'payments.vouchers', 'payments.bank',
         ]);
 
         $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
@@ -1504,6 +1504,77 @@ class BookingController extends Controller
                 'message' => $e instanceof \Illuminate\Database\QueryException
                     ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
                     : 'Failed to save payment.'
+            ], 500);
+        }
+    }
+
+    public function updatePayment(Request $request, Booking $booking, Payment $payment)
+    {
+        $validated = $request->validate([
+            'amount' => 'nullable|numeric|min:0',
+            'amount_bdt' => 'nullable|numeric|min:0',
+            'currency' => 'nullable|in:SAR,BDT',
+            'payment_method' => 'nullable|in:cash,bank',
+            'bank_method' => 'nullable|string|max:255',
+            'transaction_id' => 'nullable|string|max:255',
+        ]);
+
+        $amount = $validated['amount'] ?? 0;
+        $bdtAmount = $validated['amount_bdt'] ?? 0;
+
+        if ($amount == 0 && $bdtAmount == 0) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Please enter payment amount'
+            ], 422);
+        }
+
+        try {
+            $bankId = null;
+            if (($validated['payment_method'] ?? '') === 'bank' && !empty($validated['bank_method'])) {
+                $bank = Bank::where('name', $validated['bank_method'])->first();
+                $bankId = $bank?->id;
+            }
+
+            DB::transaction(function () use ($payment, $validated, $amount, $bdtAmount, $bankId, $booking) {
+                $payment->update([
+                    'payment_method' => $validated['payment_method'] ?? 'cash',
+                    'amount' => $amount,
+                    'bdt_amount' => $bdtAmount,
+                    'bank_id' => $bankId,
+                    'transaction_id' => $validated['transaction_id'] ?? null,
+                ]);
+
+                $voucher = $payment->vouchers()->first();
+                if ($voucher) {
+                    $voucher->update([
+                        'amount' => $amount,
+                        'bdt_amount' => $bdtAmount,
+                        'payment_method' => $validated['payment_method'] ?? 'cash',
+                        'transaction_id' => $validated['transaction_id'] ?? null,
+                    ]);
+                }
+
+                $invoice = $booking->invoice;
+                if ($invoice) {
+                    $totalPaid = $booking->payments()->sum('amount');
+                    $invoice->update([
+                        'paid_amount' => $totalPaid,
+                        'balance' => max(0, $invoice->total_amount - $totalPaid),
+                    ]);
+                }
+            });
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Payment updated successfully',
+            ]);
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e instanceof \Illuminate\Database\QueryException
+                    ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                    : 'Failed to update payment.'
             ], 500);
         }
     }

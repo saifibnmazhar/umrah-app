@@ -123,6 +123,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/bookings/{booking}/passengers/{passenger}/recalculate', [BookingController::class, 'recalculatePassengerValue'])->name('bookings.passengers.recalculate')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff');
     Route::patch('/bookings/{booking}/fingerprint-location', [BookingController::class, 'updateFingerprintLocation'])->name('bookings.fingerprint-location.update')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::post('/bookings/{booking}/payment', [BookingController::class, 'storePayment'])->name('bookings.payment.store');
+    Route::put('/bookings/{booking}/payment/{payment}', [BookingController::class, 'updatePayment'])->name('bookings.payment.update')->middleware('role:Super Admin');
 
     // Visa submission routes
     Route::post('/bookings/{booking}/passengers/{passenger}/visa-submit', [VisaSubmissionController::class, 'submit'])
@@ -282,6 +283,8 @@ Route::middleware('auth')->group(function () {
 
     // Detail Pages with parameters
     Route::resource('payments', PaymentController::class)->only(['index', 'create', 'store', 'show'])->middleware('role:Super Admin,Co Admin');
+    Route::get('/payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit')->middleware('role:Super Admin');
+    Route::put('/payments/{payment}', [PaymentController::class, 'update'])->name('payments.update')->middleware('role:Super Admin');
 
     /* Temporarily disabled
     Route::resource('invoices', InvoiceController::class)->middleware('role:Super Admin,Co Admin');

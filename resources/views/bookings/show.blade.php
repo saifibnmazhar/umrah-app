@@ -273,6 +273,7 @@
                             <th class="px-3 py-2 text-left font-medium">Receive By</th>
                             <th class="px-3 py-2 text-left font-medium">Receive At</th>
                             <th class="px-3 py-2 text-right font-medium">Amount</th>
+                            <th class="px-3 py-2 text-center font-medium">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
@@ -285,10 +286,23 @@
                             <td class="px-3 py-2 text-slate-600">{{ $payment->user?->name ?? '-' }}</td>
                             <td class="px-3 py-2 text-slate-600">{{ $payment->user?->branch?->name ?? 'Central' }}</td>
                             <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency($payment->amount, 2, $rateVal)</td>
+                            <td class="px-3 py-2 text-center">
+                                @if(auth()->user()->hasRole('Super Admin'))
+                                <button @click="openEditPaymentModal({
+                                    id: {{ $payment->id }},
+                                    amount: '{{ $payment->amount }}',
+                                    bdt_amount: '{{ $payment->bdt_amount }}',
+                                    payment_method: '{{ $payment->payment_method?->value }}',
+                                    transaction_id: '{{ $payment->transaction_id }}',
+                                    bank_name: '{{ $payment->bank?->name ?? '' }}',
+                                    currency: '{{ $payment->currency ?? 'SAR' }}'
+                                })" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-600 px-2 py-1 rounded">Edit</button>
+                                @endif
+                            </td>
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="7" class="px-3 py-4 text-center text-slate-500">No payments recorded</td>
+                            <td colspan="8" class="px-3 py-4 text-center text-slate-500">No payments recorded</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -407,10 +421,10 @@
     <div x-show="paymentModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
         <div class="fixed inset-0 bg-black/50" @click="closePaymentModal()"></div>
         <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
-            <h3 class="text-xl font-semibold text-slate-800">Payment Interface</h3>
-            <p class="text-sm text-slate-500 mb-4">Booking Summary</p>
+            <h3 class="text-xl font-semibold text-slate-800" x-text="editingPaymentId ? 'Edit Payment' : 'Payment Interface'"></h3>
+            <p class="text-sm text-slate-500 mb-4" x-text="editingPaymentId ? 'Update payment details' : 'Booking Summary'"></p>
 
-            <div class="mb-4">
+            <div x-show="!editingPaymentId" class="mb-4">
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div class="flex justify-between">
                         <span class="text-slate-500">Total Package Value:</span>
@@ -481,7 +495,7 @@
             </div>
 
             <div class="flex gap-3">
-                <button type="button" @click="savePayment()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" @click="savePayment()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" x-text="editingPaymentId ? 'Update' : 'Save'"></button>
                 <button type="button" @click="closePaymentModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </div>

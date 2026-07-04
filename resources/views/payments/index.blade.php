@@ -115,6 +115,9 @@
                             <td class="px-3 py-2">
                                 <div class="flex gap-2">
                                     <a href="{{ route('payments.show', $payment->id) }}" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded">View</a>
+                                    @if(auth()->user()->hasRole('Super Admin'))
+                                    <a href="{{ route('payments.edit', $payment->id) }}" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-600 px-2 py-1 rounded">Edit</a>
+                                    @endif
                                 </div>
                             </td>
                         </tr>

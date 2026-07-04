@@ -3641,6 +3641,7 @@ Alpine.data('showBookingApp', () => ({
     editingPassengerIndex: null,
     customDurationModalVisible: false,
     paymentModalVisible: false,
+    editingPaymentId: null,
     paymentData: {
         currency: 'SAR',
         method: 'cash',
@@ -4473,6 +4474,20 @@ Alpine.data('showBookingApp', () => ({
 
     closePaymentModal() {
         this.paymentModalVisible = false;
+        this.editingPaymentId = null;
+    },
+
+    openEditPaymentModal(payment) {
+        this.editingPaymentId = payment.id;
+        this.paymentData = {
+            currency: payment.currency || 'SAR',
+            method: payment.payment_method || 'cash',
+            bank_method: payment.bank_name || '',
+            trx_id: payment.transaction_id || '',
+            amount_sar: payment.amount || '',
+            amount_bdt: payment.bdt_amount || '',
+        };
+        this.paymentModalVisible = true;
     },
 
     handlePaymentCurrencyChange() {
@@ -4533,7 +4548,7 @@ Alpine.data('showBookingApp', () => ({
             return;
         }
 
-        if (amountSAR > this.paymentMaxAmount) {
+        if (!this.editingPaymentId && amountSAR > this.paymentMaxAmount) {
             const msg = 'Payment amount cannot exceed the due amount of ' + Alpine.store('currency').format(this.paymentMaxAmount);
             if (typeof showToast === 'function') {
                 showToast(msg, 'error');
@@ -4559,8 +4574,14 @@ Alpine.data('showBookingApp', () => ({
             return;
         }
 
-        fetch('/bookings/' + bookingId + '/payment', {
-            method: 'POST',
+        const url = this.editingPaymentId
+            ? '/bookings/' + bookingId + '/payment/' + this.editingPaymentId
+            : '/bookings/' + bookingId + '/payment';
+
+        const method = this.editingPaymentId ? 'PUT' : 'POST';
+
+        fetch(url, {
+            method: method,
             headers: {
                 'Content-Type': 'application/json',
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
@@ -4584,7 +4605,7 @@ Alpine.data('showBookingApp', () => ({
         })
         .then(data => {
             if (typeof showToast === 'function') {
-                showToast('Payment saved successfully');
+                showToast(this.editingPaymentId ? 'Payment updated successfully' : 'Payment saved successfully');
             }
             this.closePaymentModal();
             setTimeout(() => location.reload(), 500);
