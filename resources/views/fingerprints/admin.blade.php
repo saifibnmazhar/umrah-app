@@ -3,7 +3,7 @@
 @section('title', 'Fingerprint Admin')
 
 @section('content')
-<div class="w-full mx-auto pt-6" x-data="fingerprintAdmin({ canAssignStaff: @json($canAssignStaff) })">
+<div class="w-full mx-auto pt-6" x-data='fingerprintAdmin({ canAssignStaff: @json($canAssignStaff), flightDateRanges: @json($flightDateRanges) })'>
     <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
         <div class="mb-4">
             <label class="block text-sm font-medium text-slate-700 mb-1">Search</label>
@@ -36,6 +36,38 @@
                     <option value="">All</option>
                     <option value="home">Home</option>
                     <option value="office">Office</option>
+                </select>
+            </div>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mt-4">
+            <div class="flex flex-col">
+                <label class="text-xs font-semibold text-slate-400 mb-1">Fingerprint Status</label>
+                <select x-model="filters.fingerprint_status" @change="currentPage = 1; loadData()"
+                        class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <option value="">Select Status</option>
+                    @foreach($fingerprintStatuses as $status)
+                    <option value="{{ $status->value }}">{{ ucfirst($status->value) }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="flex flex-col">
+                <label class="text-xs font-semibold text-slate-400 mb-1">Deadline From</label>
+                <input type="date" x-model="filters.deadline_from" @change="currentPage = 1; loadData()"
+                       class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+            </div>
+            <div class="flex flex-col">
+                <label class="text-xs font-semibold text-slate-400 mb-1">Deadline To</label>
+                <input type="date" x-model="filters.deadline_to" @change="currentPage = 1; loadData()"
+                       class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+            </div>
+            <div class="flex flex-col">
+                <label class="text-xs font-semibold text-slate-400 mb-1">Required Flight</label>
+                <select x-model="filters.flight_date_range" @change="onFlightDateRangeChange"
+                        class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <option value="">All</option>
+                    @foreach($flightDateRanges as $range)
+                    <option value="{{ $range['id'] }}">{{ $range['label'] }}</option>
+                    @endforeach
                 </select>
             </div>
         </div>
@@ -226,6 +258,7 @@ function fingerprintAdmin(options = {}) {
             remarks: '',
             other_reason: '',
         },
+        flightDateRanges: options.flightDateRanges || [],
         displayStatuses: ['None', 'Processing', 'Fingerprint Done', 'Approved', 'Partially Approved', 'Cancel', 'Hold & Ask for next Finger date?'],
         districtsList: @json($districts->map(fn($d) => ['id' => $d->id, 'name' => $d->name, 'division' => $d->division])),
         filters: {
@@ -233,6 +266,12 @@ function fingerprintAdmin(options = {}) {
             division: '',
             district: '',
             fingerprint_location: '',
+            fingerprint_status: '',
+            deadline_from: '',
+            deadline_to: '',
+            flight_date_range: '',
+            flight_date_from: '',
+            flight_date_to: '',
         },
         // showHoldModal: false,
         // currentHoldDetailId: null,
@@ -301,6 +340,21 @@ function fingerprintAdmin(options = {}) {
         changePage(page) {
             if (page < 1 || page > this.lastPage || page === this.currentPage) return;
             this.currentPage = page;
+            this.loadData();
+        },
+
+        onFlightDateRangeChange() {
+            if (this.filters.flight_date_range) {
+                const range = this.flightDateRanges.find(r => r.id == this.filters.flight_date_range);
+                if (range) {
+                    this.filters.flight_date_from = range.start;
+                    this.filters.flight_date_to = range.end;
+                }
+            } else {
+                this.filters.flight_date_from = '';
+                this.filters.flight_date_to = '';
+            }
+            this.currentPage = 1;
             this.loadData();
         },
 
