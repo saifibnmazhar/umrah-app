@@ -18,7 +18,7 @@
             amount_bdt: {{ old('bdt_amount', $payment->bdt_amount) }},
             exchangeRate: {{ $currentCurrencyRate?->rate ?? 0 }},
             transactionType: '{{ old('transaction_type_id', $payment->voucher?->transaction_type_id) }}',
-            referralBranch: '{{ old('branch_id', $payment->branch_id) }}',
+            referralBranch: '{{ old('branch_id', $payment->branch_id ?? ($payment->payment_referral ? 'other' : '')) }}',
             senderBank: '{{ old('sender_bank_id', $payment->sender_bank_id ?? ($payment->other_sender_bank ? 'other' : '')) }}',
 
             handleCurrencyChange() {
