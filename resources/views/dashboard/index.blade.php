@@ -111,7 +111,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-orange-600 mb-1">{{ number_format($totalDue, 2) }} SAR</div>
+                <div class="text-3xl font-bold text-orange-600 mb-1">@currency($totalDue, 2)</div>
                 <div class="text-xs text-slate-500 mt-1">Receivable (This Month)</div>
             </div>
 
@@ -124,7 +124,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-slate-800 mb-1">{{ number_format($totalDueCollection, 2) }} SAR</div>
+                <div class="text-3xl font-bold text-slate-800 mb-1">@currency($totalDueCollection, 2) <span x-text="$store.currency.mode"></span></div>
                 <div class="text-xs text-slate-500 mt-1">Collection (This Month)</div>
             </div>
 
