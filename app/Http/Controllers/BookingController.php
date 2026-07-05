@@ -295,6 +295,7 @@ class BookingController extends Controller
             ->with([
                 'booking',
                 'booking.customer',
+                'booking.customer.documents',
                 'booking.documents',
                 'booking.package.ticketFare.route',
                 'booking.invoice',
@@ -777,9 +778,9 @@ class BookingController extends Controller
 
     public function show(Booking $booking)
     {
-        $isCrossBranchViewer = auth()->user()->branch_id
-            && auth()->user()->branch_id !== $booking->booking_branch_id
-            && auth()->user()->branch_id !== $booking->fingerprint_branch_id;
+        $isCrossBranchViewer = auth()->user()?->branch_id
+            && auth()->user()?->branch_id !== $booking->booking_branch_id
+            && auth()->user()?->branch_id !== $booking->fingerprint_branch_id;
 
         $booking->load([
             'customer',
@@ -874,7 +875,7 @@ class BookingController extends Controller
         $originalTotalBdt = $rate > 0 ? $originalTotal * $rate : 0;
         $discountedTotalBdt = $totalAmountBdt;
 
-        $userBranchLocation = auth()->user()->branch?->location?->value;
+        $userBranchLocation = auth()->user()?->branch?->location?->value;
         $banks = \App\Models\Bank::orderBy('name')->get(['id', 'name', 'currency', 'location']);
 
         return view('bookings.show', compact(
