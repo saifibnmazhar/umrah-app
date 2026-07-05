@@ -116,17 +116,10 @@ select {
 .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
 </style>
 
-<div class="max-w-[1600px] mx-auto p-4" x-data="pendingOutboundReport({
+<div class="max-w-[1600px] mx-auto p-4" x-data='pendingOutboundReport({
     ticketAgents: @json($ticketAgents),
-    filters: {
-        search: '{{ request('search') }}',
-        booking_date_from: '{{ request('booking_date_from') }}',
-        booking_date_to: '{{ request('booking_date_to') }}',
-        flight_date_from: '{{ request('flight_date_from') }}',
-        flight_date_to: '{{ request('flight_date_to') }}',
-        status: '{{ request('status') }}',
-    }
-})">
+    filters: @json($filters)
+})'>
     <div class="mb-3">
         <span class="text-sm text-gray-500 font-medium">Report</span>
         <span class="text-sm text-gray-400 mx-1">></span>

@@ -13,7 +13,15 @@ class PendingOutboundReportController extends Controller
     public function index(): View
     {
         $ticketAgents = TicketAgent::orderBy('name')->get(['id', 'name']);
-        return view('reports.pending-outbound', compact('ticketAgents'));
+        $filters = [
+            'search' => request('search', ''),
+            'booking_date_from' => request('booking_date_from', ''),
+            'booking_date_to' => request('booking_date_to', ''),
+            'flight_date_from' => request('flight_date_from', ''),
+            'flight_date_to' => request('flight_date_to', ''),
+            'status' => request('status', ''),
+        ];
+        return view('reports.pending-outbound', compact('ticketAgents', 'filters'));
     }
 
     public function data(Request $request): JsonResponse
