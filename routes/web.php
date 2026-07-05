@@ -36,6 +36,7 @@ use App\Http\Controllers\PackageController;
 use App\Http\Controllers\FareAdminController;
 use App\Http\Controllers\TicketFareController;
 use App\Http\Controllers\TicketIssueController;
+use App\Http\Controllers\PendingOutboundReportController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FingerprintController;
 use App\Http\Controllers\FingerprintReportController;
@@ -276,7 +277,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/due', fn() => view('reports.due'))->name('report.due')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/reissue-refund', fn() => view('reports.reissue-refund'))->name('report.reissue-refund')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/user-wise-sales', fn() => view('reports.user-wise-sales'))->name('report.user-sales')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/reports/pending-outbound', fn() => view('reports.pending-outbound'))->name('report.pending-ticket')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/reports/pending-outbound', [\App\Http\Controllers\PendingOutboundReportController::class, 'index'])->name('report.pending-ticket')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/api/reports/pending-outbound', [\App\Http\Controllers\PendingOutboundReportController::class, 'data'])->name('api.reports.pending-outbound')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/payment-receiving', fn() => view('reports.payment-receiving'))->name('report.payment-receiving')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-wise', [BranchWiseReportController::class, 'index'])->name('report.branch-wise');

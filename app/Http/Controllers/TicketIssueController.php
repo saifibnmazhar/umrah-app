@@ -52,11 +52,23 @@ class TicketIssueController extends Controller
 
             $issuedTicket->update(array_merge($validated, [
                 'status' => 'issued',
-                'issue_type' => 'regular',
                 'user_id' => auth()->id(),
             ]));
 
             $passenger->update(['ticket_status' => 'issued']);
+
+            if ($validated['outbound_pending'] ?? false) {
+                IssuedTicket::create([
+                    'passenger_id' => $issuedTicket->passenger_id,
+                    'booking_id' => $issuedTicket->booking_id,
+                    'user_id' => auth()->id(),
+                    'issue_type' => 'pending_outbound',
+                    'status' => 'pending',
+                    'is_refundable' => false,
+                    'is_exchangeable' => false,
+                    'outbound_pending' => false,
+                ]);
+            }
 
             $issuedTicket->logAction('issued', $oldData, $issuedTicket->toArray());
 
