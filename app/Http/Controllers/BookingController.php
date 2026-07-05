@@ -988,6 +988,7 @@ class BookingController extends Controller
             'fingerprint_charge_id' => 'nullable|exists:fingerprint_charges,id',
             'booking_branch_id' => 'nullable|exists:branches,id',
             'fingerprint_location' => 'nullable|in:office,home',
+            'package_id' => 'nullable|exists:packages,id',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:1000',
@@ -1019,6 +1020,18 @@ class BookingController extends Controller
                 unset($validated['booking_branch_id']);
             }
             $booking->update($validated);
+
+            if ($request->has('package_id') && $booking->wasChanged('package_id')) {
+                $package = Package::with('ticketFare')->find($request->input('package_id'));
+                if ($package && $package->ticket_fare_id) {
+                    $booking->passengers()
+                        ->where(function ($q) {
+                            $q->where('service_required', '!=', 'visa_only')
+                              ->orWhereNull('service_required');
+                        })
+                        ->update(['ticket_fare_id' => $package->ticket_fare_id]);
+                }
+            }
 
             if (($validated['fingerprint_location'] ?? null) === 'office' && $booking->fingerprint) {
                 $booking->fingerprint->update(['assigned_staff_id' => null]);

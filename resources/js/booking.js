@@ -2990,9 +2990,31 @@ Alpine.data('editBookingApp', () => ({
 
     onPackageChange() {
         this.recalculateAllPassengerValues();
+        const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+        if (pkg && pkg.ticket_fare_id) {
+            const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
+            if (ticket) {
+                const routeTypeMap = {
+                    'oneway_inbound': 'One Way-Inbound',
+                    'oneway_outbound': 'One Way-Outbound',
+                    'round': 'Round',
+                    'multi_city': 'Multi City',
+                };
+                const flightTypeMap = {
+                    'transit': 'Transit',
+                    'direct': 'Direct',
+                };
+                this.passengers.forEach(p => {
+                    p.route_type = routeTypeMap[ticket.route_type] || '';
+                    p.flight_type = flightTypeMap[ticket.flight_type] || '';
+                    p.route = ticket.route;
+                    p.airline = ticket.airline || '';
+                    p.class = ticket.airline_class || '';
+                    p.ticket_fare_id = String(pkg.ticket_fare_id);
+                });
+            }
+        }
     },
-
-
 
     calculateFlightDateRange() {
         const route = this.passengerData.route;

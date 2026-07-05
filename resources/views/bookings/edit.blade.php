@@ -122,10 +122,12 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Package</label>
-                    <p class="w-full px-4 py-3 border border-slate-200 rounded-lg bg-slate-50 text-slate-700 font-medium">
-                        {{ $booking->package?->package_name ?? 'N/A' }}
-                    </p>
-                    <input type="hidden" x-model="bookingData.package_id" name="package_id">
+                    <select x-model="bookingData.package_id" @change="onPackageChange(); $el.blur()" name="package_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
+                        <option value="">Select Package</option>
+                        <template x-for="pkg in allPackages" :key="pkg.id">
+                            <option :value="String(pkg.id)" x-text="pkg.package_name"></option>
+                        </template>
+                    </select>
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">PAX QTY</label>
