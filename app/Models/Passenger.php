@@ -94,7 +94,12 @@ class Passenger extends Model
 
     public function latestIssuedTicket(): HasOne
     {
-        return $this->hasOne(IssuedTicket::class)->latestOfMany();
+        return $this->hasOne(IssuedTicket::class)
+            ->where(function ($q) {
+                $q->whereNull('issue_type')
+                  ->orWhere('issue_type', '!=', 'pending_outbound');
+            })
+            ->latestOfMany();
     }
 
     public function getRouteDisplayAttribute(): string

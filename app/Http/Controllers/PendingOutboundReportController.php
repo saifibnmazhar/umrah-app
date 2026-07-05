@@ -18,25 +18,37 @@ class PendingOutboundReportController extends Controller
 
     public function data(Request $request): JsonResponse
     {
-        $query = $this->buildQuery($request);
-        $perPage = 25;
-        $tickets = $query->paginate($perPage);
-        $items = $this->mapItems($tickets->items());
+        try {
+            $query = $this->buildQuery($request);
+            $perPage = 25;
+            $tickets = $query->paginate($perPage);
+            $items = $this->mapItems($tickets->items());
 
-        $allQuery = $this->buildQuery($request);
-        $allItems = $this->mapItems($allQuery->get()->all());
-        $summary = $this->computeSummary($allItems);
+            $allQuery = $this->buildQuery($request);
+            $allItems = $this->mapItems($allQuery->get()->all());
+            $summary = $this->computeSummary($allItems);
 
-        return response()->json([
-            'data' => $items,
-            'summary' => $summary,
-            'pagination' => [
-                'current_page' => $tickets->currentPage(),
-                'last_page' => $tickets->lastPage(),
-                'per_page' => $tickets->perPage(),
-                'total' => $tickets->total(),
-            ],
-        ]);
+            return response()->json([
+                'data' => $items,
+                'summary' => $summary,
+                'pagination' => [
+                    'current_page' => $tickets->currentPage(),
+                    'last_page' => $tickets->lastPage(),
+                    'per_page' => $tickets->perPage(),
+                    'total' => $tickets->total(),
+                ],
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Pending outbound report error: ' . $e->getMessage(), [
+                'trace' => $e->getTraceAsString(),
+            ]);
+            return response()->json([
+                'data' => [],
+                'summary' => ['total_records' => 0, 'total_invoices' => 0, 'pending' => 0, 'issued' => 0],
+                'pagination' => ['current_page' => 1, 'last_page' => 1, 'per_page' => 25, 'total' => 0],
+                'error' => 'An error occurred while loading the report.',
+            ], 500);
+        }
     }
 
     protected function buildQuery(Request $request)
