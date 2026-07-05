@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\IssuedTicket;
+use App\Models\TicketAgent;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -11,7 +12,8 @@ class PendingOutboundReportController extends Controller
 {
     public function index(): View
     {
-        return view('reports.pending-outbound');
+        $ticketAgents = TicketAgent::orderBy('name')->get(['id', 'name']);
+        return view('reports.pending-outbound', compact('ticketAgents'));
     }
 
     public function data(Request $request): JsonResponse
@@ -41,7 +43,14 @@ class PendingOutboundReportController extends Controller
     {
         $query = IssuedTicket::with([
                 'passenger.booking.customer',
-                'passenger.ticketFare.route',
+                'passenger.ticketFare.route.fromCity',
+                'passenger.ticketFare.route.toCity',
+                'passenger.ticketFare.airline',
+                'passenger.ticketFare.airlineClass.class',
+                'passenger.issuedTickets' => function ($q) {
+                    $q->where('issue_type', 'regular')
+                      ->whereIn('status', ['issued', 're-issued']);
+                },
             ])
             ->where('issue_type', 'pending_outbound');
 
@@ -89,17 +98,71 @@ class PendingOutboundReportController extends Controller
             $passenger = $ticket->passenger;
             $booking = $passenger?->booking;
             $customer = $booking?->customer;
+
+            $regularTicket = $passenger?->issuedTickets->first();
+
+            $inboundDate = $regularTicket?->inbound_date;
+            $visaExpiryDate = $inboundDate ? $inboundDate->copy()->addDays(90)->format('d-M-Y') : null;
+            $expectedFlightDate = $inboundDate?->format('d-M-Y') ?? $passenger?->flight_date_display ?? '-';
+
+            $fare = $regularTicket?->ticketFare;
+            $routeDisplay = '-';
+            if ($fare?->route) {
+                $r = $fare->route;
+                $from = $r->fromCity?->code ?? '?';
+                $to = $r->toCity?->code ?? '?';
+                if ($r->route_type?->value === 'round' && $r->returnCity) {
+                    $routeDisplay = "{$from}-{$to}-{$r->returnCity->code}";
+                } else {
+                    $routeDisplay = "{$from}-{$to}";
+                }
+            }
+
             return [
                 'id' => $ticket->id,
+                'booking_id' => $booking?->id,
+                'passenger_id' => $passenger?->id,
                 'booking_date' => $booking?->created_at?->format('d-M-Y') ?? '-',
                 'invoice' => $booking?->invoice_id ?? '-',
                 'customer_name' => $customer?->name ?? '-',
+                'customer_mobile' => $customer?->mobile_no ?? '-',
                 'mobile' => $passenger?->mobile_no ?? '-',
                 'passenger_name' => $passenger ? trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')) : '-',
                 'passport' => $passenger?->passport_no ?? '-',
                 'status' => $ticket->status ?? 'pending',
-                'flight_date' => $passenger?->flight_date_display ?? '-',
-                'actual_flight_date' => $passenger?->actual_flight_date?->format('d-M-Y') ?? '-',
+                'visa_expiry_date' => $visaExpiryDate ?? '-',
+                'expected_flight_date' => $expectedFlightDate,
+                'actual_flight_date' => $ticket->outbound_date?->format('d-M-Y') ?? '-',
+                'passenger_type' => $passenger?->passenger_type?->value ?? 'adult',
+                'current_ticket' => [
+                    'ticket_number' => $ticket->ticket_number,
+                    'pnr' => $ticket->pnr,
+                    'outbound_date' => $ticket->outbound_date?->format('Y-m-d'),
+                    'issued_date' => $ticket->issued_date?->format('Y-m-d'),
+                    'ticket_agent_id' => $ticket->ticket_agent_id,
+                    'selling_fare' => (float) $ticket->selling_fare,
+                    'net_fare' => (float) $ticket->net_fare,
+                    'is_refundable' => $ticket->is_refundable,
+                    'is_exchangeable' => $ticket->is_exchangeable,
+                    'baggage_outbound' => $ticket->baggage_outbound ?? '',
+                ],
+                'regular_ticket' => $regularTicket ? [
+                    'ticket_agent_id' => $regularTicket->ticket_agent_id,
+                    'ticket_fare_id' => $regularTicket->ticket_fare_id,
+                    'inbound_date' => $inboundDate?->format('Y-m-d'),
+                    'outbound_date' => $regularTicket->outbound_date?->format('Y-m-d'),
+                    'selling_fare' => (float) $regularTicket->selling_fare,
+                    'net_fare' => (float) $regularTicket->net_fare,
+                    'offer_price' => (float) ($regularTicket->offer_price ?? 0),
+                    'is_refundable' => $regularTicket->is_refundable,
+                    'is_exchangeable' => $regularTicket->is_exchangeable,
+                    'baggage_inbound' => $regularTicket->baggage_inbound ?? '',
+                    'baggage_outbound' => $regularTicket->baggage_outbound ?? '',
+                    'route_display' => $routeDisplay,
+                    'airline' => $fare?->airline?->name ?? '',
+                    'travel_class' => $fare?->airlineClass?->class?->name ?? '',
+                    'flight_type' => $fare?->route?->flight_type?->value ?? '',
+                ] : null,
             ];
         })->toArray();
     }
@@ -107,11 +170,12 @@ class PendingOutboundReportController extends Controller
     protected function computeSummary(array $items): array
     {
         $uniqueInvoices = collect($items)->pluck('invoice')->unique();
+        $statusCounts = collect($items)->groupBy('status')->map->count();
         return [
             'total_records' => count($items),
             'total_invoices' => $uniqueInvoices->count(),
-            'pending' => collect($items)->where('status', 'pending')->count(),
-            'issued' => collect($items)->whereIn('status', ['issued', 're-issued'])->count(),
+            'pending' => $statusCounts->get('pending', 0),
+            'issued' => ($statusCounts->get('issued', 0) + $statusCounts->get('re-issued', 0)),
         ];
     }
 }
