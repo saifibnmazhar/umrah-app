@@ -136,6 +136,26 @@ class TicketIssueController extends Controller
 
             $issuedTicket->logAction('edited', $oldData, $issuedTicket->toArray());
 
+            if ($validated['outbound_pending'] ?? false) {
+                $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
+                    ->where('issue_type', 'pending_outbound')
+                    ->where('status', 'pending')
+                    ->exists();
+
+                if (!$existingPendingOutbound) {
+                    IssuedTicket::create([
+                        'passenger_id' => $issuedTicket->passenger_id,
+                        'booking_id' => $issuedTicket->booking_id,
+                        'user_id' => auth()->id(),
+                        'issue_type' => 'pending_outbound',
+                        'status' => 'pending',
+                        'is_refundable' => false,
+                        'is_exchangeable' => false,
+                        'outbound_pending' => false,
+                    ]);
+                }
+            }
+
             DB::commit();
 
             $issuedTicket->load([
