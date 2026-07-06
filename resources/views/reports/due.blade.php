@@ -248,18 +248,23 @@ select {
                     </tr>
                 </thead>
                 <tbody>
+                    <template x-if="loading">
+                        <tr>
+                            <td colspan="3" class="px-4 py-8 text-center text-sm text-slate-500">Loading...</td>
+                        </tr>
+                    </template>
+                    <template x-if="!loading && branches.length === 0">
+                        <tr>
+                            <td colspan="3" class="px-4 py-8 text-center text-sm text-gray-500">No due data found</td>
+                        </tr>
+                    </template>
                     <template x-for="(branch, index) in branches" :key="branch.id">
                         <tr class="table-row-due">
                             <td class="px-4 py-3 text-sm border-r border-gray-200 font-medium text-gray-800" x-text="branch.name"></td>
-                            <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-semibold amount-due" x-text="formatCurrency(branch.totalDue)"></td>
+                            <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-semibold amount-due" x-text="$currency(branch.totalDue, 2)"></td>
                             <td class="px-4 py-3 text-sm text-center">
                                 <button @click="openBranchModal(branch.id)" class="btn-view inline-block">View</button>
                             </td>
-                        </tr>
-                    </template>
-                    <template x-if="branches.length === 0">
-                        <tr>
-                            <td colspan="3" class="px-4 py-8 text-center text-sm text-gray-500">No due data found</td>
                         </tr>
                     </template>
                 </tbody>
@@ -315,9 +320,9 @@ select {
                                         <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center" x-text="customer.mobile"></td>
                                         <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center font-medium" x-text="customer.invoiceId"></td>
                                         <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center" x-text="customer.ticketDate"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium" x-text="formatCurrency(customer.totalPackage)"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="formatCurrency(customer.paid)"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-due" x-text="formatCurrency(customer.due)"></td>
+                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium" x-text="$currency(customer.totalPackage)"></td>
+                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(customer.paid)"></td>
+                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-due" x-text="$currency(customer.due)"></td>
                                         <td class="px-3 py-2.5 text-xs text-center">
                                             <button @click="openDetailModal(customer.id)" class="btn-view">View</button>
                                         </td>
@@ -350,11 +355,11 @@ select {
                                 <template x-for="(row, index) in (selectedBranch?.dateWiseData || [])" :key="index">
                                     <tr class="table-row-due">
                                         <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center" x-text="row.date"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-due" x-text="formatCurrency(row.due)"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="formatCurrency(row.cash)"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="formatCurrency(row.bank)"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-positive" x-text="formatCurrency(row.totalCollected)"></td>
-                                        <td class="px-3 py-2.5 text-xs text-right font-semibold amount-warning" x-text="formatCurrency(row.newDue)"></td>
+                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-due" x-text="$currency(row.due)"></td>
+                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(row.cash)"></td>
+                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(row.bank)"></td>
+                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-positive" x-text="$currency(row.totalCollected)"></td>
+                                        <td class="px-3 py-2.5 text-xs text-right font-semibold amount-warning" x-text="$currency(row.newDue)"></td>
                                     </tr>
                                 </template>
                                 <template x-if="(selectedBranch?.dateWiseData || []).length === 0">
@@ -427,13 +432,13 @@ select {
                             <template x-for="(trx, index) in filteredTransactions" :key="index">
                                 <tr class="table-row-due">
                                     <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center" x-text="trx.date"></td>
-                                    <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-due" x-text="formatCurrency(trx.due)"></td>
-                                    <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="formatCurrency(trx.paid)"></td>
+                                    <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-due" x-text="$currency(trx.due)"></td>
+                                    <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(trx.paid)"></td>
                                     <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center">
                                         <span :class="trx.method === 'Cash' ? 'badge-cash' : 'badge-bank'" x-text="trx.method"></span>
                                     </td>
                                     <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center font-mono" x-text="trx.trxId"></td>
-                                    <td class="px-3 py-2.5 text-xs text-right font-semibold" :class="trx.newDue > 0 ? 'amount-warning' : 'amount-positive'" x-text="formatCurrency(trx.newDue)"></td>
+                                    <td class="px-3 py-2.5 text-xs text-right font-semibold" :class="trx.newDue > 0 ? 'amount-warning' : 'amount-positive'" x-text="$currency(trx.newDue)"></td>
                                 </tr>
                             </template>
                             <template x-if="filteredTransactions.length === 0">
@@ -463,272 +468,61 @@ function dueReportApp() {
         date_from: '',
         date_to: '',
         agent: '',
-
-        branches: [
-            {
-                id: 1,
-                name: "Riyadh Branch",
-                totalDue: 124500.00,
-                customers: [
-                    {
-                        id: 1,
-                        name: "Al-Rajhi Trading Co.",
-                        mobile: "+966 55 123 4567",
-                        invoiceId: "INV-BM-2026-001",
-                        ticketDate: "15-Mar-2026",
-                        totalPackage: 45000.00,
-                        paid: 35000.00,
-                        due: 10000.00,
-                        transactions: [
-                            { date: "01-Mar-2026", due: 45000.00, paid: 20000.00, method: "Bank", trxId: "TRX-789456123", newDue: 25000.00 },
-                            { date: "05-Mar-2026", due: 25000.00, paid: 10000.00, method: "Cash", trxId: "CSH-456789", newDue: 15000.00 },
-                            { date: "10-Mar-2026", due: 15000.00, paid: 5000.00, method: "Bank", trxId: "TRX-123456789", newDue: 10000.00 }
-                        ]
-                    },
-                    {
-                        id: 2,
-                        name: "Al-Faisal Group",
-                        mobile: "+966 50 234 5678",
-                        invoiceId: "INV-BM-2026-002",
-                        ticketDate: "20-Mar-2026",
-                        totalPackage: 78500.00,
-                        paid: 58500.00,
-                        due: 20000.00,
-                        transactions: [
-                            { date: "03-Mar-2026", due: 78500.00, paid: 30000.00, method: "Bank", trxId: "TRX-456123789", newDue: 48500.00 },
-                            { date: "08-Mar-2026", due: 48500.00, paid: 15000.00, method: "Cash", trxId: "CSH-789123", newDue: 33500.00 },
-                            { date: "15-Mar-2026", due: 33500.00, paid: 13500.00, method: "Bank", trxId: "TRX-951753486", newDue: 20000.00 }
-                        ]
-                    },
-                    {
-                        id: 3,
-                        name: "Al-Nour Enterprises",
-                        mobile: "+966 55 345 6789",
-                        invoiceId: "INV-BM-2026-003",
-                        ticketDate: "25-Mar-2026",
-                        totalPackage: 52000.00,
-                        paid: 27000.00,
-                        due: 25000.00,
-                        transactions: [
-                            { date: "05-Mar-2026", due: 52000.00, paid: 20000.00, method: "Bank", trxId: "TRX-357951486", newDue: 32000.00 },
-                            { date: "12-Mar-2026", due: 32000.00, paid: 7000.00, method: "Cash", trxId: "CSH-159753", newDue: 25000.00 }
-                        ]
-                    }
-                ],
-                dateWiseData: [
-                    { date: "01-Mar-2026", due: 85000.00, cash: 20000.00, bank: 30000.00, totalCollected: 50000.00, newDue: 35000.00 },
-                    { date: "05-Mar-2026", due: 68000.00, cash: 10000.00, bank: 15000.00, totalCollected: 25000.00, newDue: 43000.00 },
-                    { date: "08-Mar-2026", due: 73000.00, cash: 8000.00, bank: 22000.00, totalCollected: 30000.00, newDue: 43000.00 },
-                    { date: "10-Mar-2026", due: 68000.00, cash: 5000.00, bank: 35000.00, totalCollected: 40000.00, newDue: 28000.00 },
-                    { date: "12-Mar-2026", due: 53000.00, cash: 7000.00, bank: 0.00, totalCollected: 7000.00, newDue: 46000.00 },
-                    { date: "15-Mar-2026", due: 66000.00, cash: 13500.00, bank: 0.00, totalCollected: 13500.00, newDue: 52500.00 }
-                ]
-            },
-            {
-                id: 2,
-                name: "Jeddah Branch",
-                totalDue: 98500.00,
-                customers: [
-                    {
-                        id: 4,
-                        name: "Al-Huda Services",
-                        mobile: "+966 55 567 8901",
-                        invoiceId: "INV-BM-2026-004",
-                        ticketDate: "18-Mar-2026",
-                        totalPackage: 38000.00,
-                        paid: 28000.00,
-                        due: 10000.00,
-                        transactions: [
-                            { date: "02-Mar-2026", due: 38000.00, paid: 15000.00, method: "Bank", trxId: "TRX-852963741", newDue: 23000.00 },
-                            { date: "10-Mar-2026", due: 23000.00, paid: 8000.00, method: "Cash", trxId: "CSH-357951", newDue: 15000.00 },
-                            { date: "15-Mar-2026", due: 15000.00, paid: 5000.00, method: "Bank", trxId: "TRX-741852963", newDue: 10000.00 }
-                        ]
-                    },
-                    {
-                        id: 5,
-                        name: "Al-Madinah Corp.",
-                        mobile: "+966 50 678 9012",
-                        invoiceId: "INV-BM-2026-005",
-                        ticketDate: "22-Mar-2026",
-                        totalPackage: 65000.00,
-                        paid: 42500.00,
-                        due: 22500.00,
-                        transactions: [
-                            { date: "04-Mar-2026", due: 65000.00, paid: 25000.00, method: "Bank", trxId: "TRX-159357486", newDue: 40000.00 },
-                            { date: "12-Mar-2026", due: 40000.00, paid: 10000.00, method: "Cash", trxId: "CSH-486159", newDue: 30000.00 },
-                            { date: "18-Mar-2026", due: 30000.00, paid: 7500.00, method: "Bank", trxId: "TRX-753159842", newDue: 22500.00 }
-                        ]
-                    },
-                    {
-                        id: 6,
-                        name: "Makkah Travel Agency",
-                        mobile: "+966 58 789 0123",
-                        invoiceId: "INV-BM-2026-006",
-                        ticketDate: "28-Mar-2026",
-                        totalPackage: 44000.00,
-                        paid: 28000.00,
-                        due: 16000.00,
-                        transactions: [
-                            { date: "06-Mar-2026", due: 44000.00, paid: 18000.00, method: "Bank", trxId: "TRX-951456783", newDue: 26000.00 },
-                            { date: "14-Mar-2026", due: 26000.00, paid: 10000.00, method: "Cash", trxId: "CSH-284965", newDue: 16000.00 }
-                        ]
-                    }
-                ],
-                dateWiseData: [
-                    { date: "02-Mar-2026", due: 45000.00, cash: 0.00, bank: 15000.00, totalCollected: 15000.00, newDue: 30000.00 },
-                    { date: "04-Mar-2026", due: 60000.00, cash: 0.00, bank: 25000.00, totalCollected: 25000.00, newDue: 35000.00 },
-                    { date: "06-Mar-2026", due: 61000.00, cash: 0.00, bank: 18000.00, totalCollected: 18000.00, newDue: 43000.00 },
-                    { date: "10-Mar-2026", due: 58000.00, cash: 8000.00, bank: 0.00, totalCollected: 8000.00, newDue: 50000.00 },
-                    { date: "12-Mar-2026", due: 65000.00, cash: 10000.00, bank: 0.00, totalCollected: 10000.00, newDue: 55000.00 },
-                    { date: "14-Mar-2026", due: 57000.00, cash: 10000.00, bank: 0.00, totalCollected: 10000.00, newDue: 47000.00 },
-                    { date: "15-Mar-2026", due: 52000.00, cash: 0.00, bank: 5000.00, totalCollected: 5000.00, newDue: 47000.00 },
-                    { date: "18-Mar-2026", due: 62000.00, cash: 0.00, bank: 7500.00, totalCollected: 7500.00, newDue: 54500.00 }
-                ]
-            },
-            {
-                id: 3,
-                name: "Dammam Branch",
-                totalDue: 67800.00,
-                customers: [
-                    {
-                        id: 7,
-                        name: "Eastern Province Traders",
-                        mobile: "+966 53 890 1234",
-                        invoiceId: "INV-BM-2026-007",
-                        ticketDate: "12-Mar-2026",
-                        totalPackage: 32000.00,
-                        paid: 19200.00,
-                        due: 12800.00,
-                        transactions: [
-                            { date: "01-Mar-2026", due: 32000.00, paid: 12000.00, method: "Bank", trxId: "TRX-753951456", newDue: 20000.00 },
-                            { date: "08-Mar-2026", due: 20000.00, paid: 7200.00, method: "Cash", trxId: "CSH-951753", newDue: 12800.00 }
-                        ]
-                    },
-                    {
-                        id: 8,
-                        name: "Al-Qatif Group",
-                        mobile: "+966 50 901 2345",
-                        invoiceId: "INV-BM-2026-008",
-                        ticketDate: "16-Mar-2026",
-                        totalPackage: 55000.00,
-                        paid: 40000.00,
-                        due: 15000.00,
-                        transactions: [
-                            { date: "03-Mar-2026", due: 55000.00, paid: 30000.00, method: "Bank", trxId: "TRX-159486753", newDue: 25000.00 },
-                            { date: "10-Mar-2026", due: 25000.00, paid: 10000.00, method: "Cash", trxId: "CSH-486159", newDue: 15000.00 }
-                        ]
-                    }
-                ],
-                dateWiseData: [
-                    { date: "01-Mar-2026", due: 42000.00, cash: 0.00, bank: 12000.00, totalCollected: 12000.00, newDue: 30000.00 },
-                    { date: "03-Mar-2026", due: 65000.00, cash: 0.00, bank: 30000.00, totalCollected: 30000.00, newDue: 35000.00 },
-                    { date: "08-Mar-2026", due: 53000.00, cash: 7200.00, bank: 0.00, totalCollected: 7200.00, newDue: 45800.00 },
-                    { date: "10-Mar-2026", due: 60800.00, cash: 10000.00, bank: 0.00, totalCollected: 10000.00, newDue: 50800.00 }
-                ]
-            },
-            {
-                id: 4,
-                name: "Madinah Branch",
-                totalDue: 45600.00,
-                customers: [
-                    {
-                        id: 9,
-                        name: "Madinah Tour Services",
-                        mobile: "+966 56 012 3456",
-                        invoiceId: "INV-BM-2026-009",
-                        ticketDate: "08-Mar-2026",
-                        totalPackage: 28000.00,
-                        paid: 22400.00,
-                        due: 5600.00,
-                        transactions: [
-                            { date: "02-Mar-2026", due: 28000.00, paid: 15000.00, method: "Bank", trxId: "TRX-357486159", newDue: 13000.00 },
-                            { date: "05-Mar-2026", due: 13000.00, paid: 7400.00, method: "Cash", trxId: "CSH-753159", newDue: 5600.00 }
-                        ]
-                    },
-                    {
-                        id: 10,
-                        name: "Al-Aqsa Group",
-                        mobile: "+966 54 123 4567",
-                        invoiceId: "INV-BM-2026-010",
-                        ticketDate: "14-Mar-2026",
-                        totalPackage: 40000.00,
-                        paid: 0.00,
-                        due: 40000.00,
-                        transactions: [
-                            { date: "06-Mar-2026", due: 40000.00, paid: 0.00, method: "Cash", trxId: "-", newDue: 40000.00 }
-                        ]
-                    }
-                ],
-                dateWiseData: [
-                    { date: "02-Mar-2026", due: 48000.00, cash: 0.00, bank: 15000.00, totalCollected: 15000.00, newDue: 33000.00 },
-                    { date: "05-Mar-2026", due: 53000.00, cash: 7400.00, bank: 0.00, totalCollected: 7400.00, newDue: 45600.00 },
-                    { date: "06-Mar-2026", due: 85600.00, cash: 0.00, bank: 0.00, totalCollected: 0.00, newDue: 85600.00 }
-                ]
-            },
-            {
-                id: 5,
-                name: "Al-Qaif Branch",
-                totalDue: 32100.00,
-                customers: [
-                    {
-                        id: 11,
-                        name: "Al-Qaif Trading Est.",
-                        mobile: "+966 57 234 5678",
-                        invoiceId: "INV-BM-2026-011",
-                        ticketDate: "10-Mar-2026",
-                        totalPackage: 25000.00,
-                        paid: 12500.00,
-                        due: 12500.00,
-                        transactions: [
-                            { date: "04-Mar-2026", due: 25000.00, paid: 12500.00, method: "Bank", trxId: "TRX-951753486", newDue: 12500.00 }
-                        ]
-                    },
-                    {
-                        id: 12,
-                        name: "Northern Border Co.",
-                        mobile: "+966 51 345 6789",
-                        invoiceId: "INV-BM-2026-012",
-                        ticketDate: "18-Mar-2026",
-                        totalPackage: 19600.00,
-                        paid: 0.00,
-                        due: 19600.00,
-                        transactions: [
-                            { date: "10-Mar-2026", due: 19600.00, paid: 0.00, method: "Cash", trxId: "-", newDue: 19600.00 }
-                        ]
-                    }
-                ],
-                dateWiseData: [
-                    { date: "04-Mar-2026", due: 35000.00, cash: 0.00, bank: 12500.00, totalCollected: 12500.00, newDue: 22500.00 },
-                    { date: "10-Mar-2026", due: 42100.00, cash: 0.00, bank: 0.00, totalCollected: 0.00, newDue: 42100.00 }
-                ]
-            }
-        ],
-
+        loading: false,
+        branches: [],
         branchModalOpen: false,
         detailModalOpen: false,
         activeTab: 'customerDue',
         selectedBranch: null,
         selectedCustomer: null,
+        detailInvoiceId: null,
         filterDateFrom: '',
         filterDateTo: '',
         filteredTransactions: [],
 
-        formatCurrency(amount) {
-            if (amount === undefined || amount === null) amount = 0;
-            return Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' SAR';
+        init() {
+            this.loadData();
         },
 
-        loadData() {
-            const params = new URLSearchParams();
-            if (this.date_from) params.set('date_from', this.date_from);
-            if (this.date_to) params.set('date_to', this.date_to);
-            if (this.agent) params.set('agent', this.agent);
+        async loadData() {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams();
+                if (this.date_from) params.set('date_from', this.date_from);
+                if (this.date_to) params.set('date_to', this.date_to);
+                if (this.agent) params.set('agent', this.agent);
+                const res = await fetch(`/api/reports/due?${params}`);
+                const json = await res.json();
+                this.branches = json.branches || [];
+            } catch (e) {
+                console.error('Failed to load due report data', e);
+                this.branches = [];
+            } finally {
+                this.loading = false;
+            }
         },
 
-        openBranchModal(branchId) {
-            this.selectedBranch = this.branches.find(b => b.id === branchId);
+        async openBranchModal(branchId) {
+            this.loading = true;
             this.activeTab = 'customerDue';
-            this.branchModalOpen = true;
+            try {
+                const params = new URLSearchParams();
+                if (this.date_from) params.set('date_from', this.date_from);
+                if (this.date_to) params.set('date_to', this.date_to);
+                const res = await fetch(`/api/reports/due/branch/${branchId}/details?${params}`);
+                const json = await res.json();
+                this.selectedBranch = {
+                    id: branchId,
+                    name: (this.branches.find(b => b.id === branchId) || {}).name || '',
+                    customers: json.customers || [],
+                    dateWiseData: json.dateWiseData || [],
+                };
+                this.branchModalOpen = true;
+            } catch (e) {
+                console.error('Failed to load branch details', e);
+            } finally {
+                this.loading = false;
+            }
         },
 
         closeBranchModal() {
@@ -736,18 +530,30 @@ function dueReportApp() {
             this.selectedBranch = null;
         },
 
-        openDetailModal(customerId) {
+        async openDetailModal(invoiceId) {
             if (!this.selectedBranch) return;
-            this.selectedCustomer = this.selectedBranch.customers.find(c => c.id === customerId);
-            this.filterDateFrom = '';
-            this.filterDateTo = '';
-            this.filteredTransactions = this.selectedCustomer ? [...this.selectedCustomer.transactions] : [];
-            this.detailModalOpen = true;
+            this.loading = true;
+            try {
+                this.detailInvoiceId = invoiceId;
+                const params = new URLSearchParams();
+                const res = await fetch(`/api/reports/due/customer/${invoiceId}/transactions?${params}`);
+                const json = await res.json();
+                this.selectedCustomer = json.customer || null;
+                this.filterDateFrom = '';
+                this.filterDateTo = '';
+                this.filteredTransactions = json.transactions || [];
+                this.detailModalOpen = true;
+            } catch (e) {
+                console.error('Failed to load customer transactions', e);
+            } finally {
+                this.loading = false;
+            }
         },
 
         closeDetailModal() {
             this.detailModalOpen = false;
             this.selectedCustomer = null;
+            this.detailInvoiceId = null;
             this.filteredTransactions = [];
         },
 
@@ -755,34 +561,25 @@ function dueReportApp() {
             this.detailModalOpen = false;
             this.branchModalOpen = true;
             this.selectedCustomer = null;
+            this.detailInvoiceId = null;
             this.filteredTransactions = [];
         },
 
-        applyTransactionFilter() {
-            if (!this.selectedBranch || !this.selectedCustomer) return;
-            let transactions = [...this.selectedCustomer.transactions];
-
-            if (this.filterDateFrom) {
-                const fromDate = new Date(this.filterDateFrom);
-                transactions = transactions.filter(t => {
-                    const tParts = t.date.split('-');
-                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    const tDate = new Date(parseInt(tParts[2]), months.indexOf(tParts[1]), parseInt(tParts[0]));
-                    return tDate >= fromDate;
-                });
+        async applyTransactionFilter() {
+            if (!this.detailInvoiceId) return;
+            this.loading = true;
+            try {
+                const params = new URLSearchParams();
+                if (this.filterDateFrom) params.set('date_from', this.filterDateFrom);
+                if (this.filterDateTo) params.set('date_to', this.filterDateTo);
+                const res = await fetch(`/api/reports/due/customer/${this.detailInvoiceId}/transactions?${params}`);
+                const json = await res.json();
+                this.filteredTransactions = json.transactions || [];
+            } catch (e) {
+                console.error('Failed to filter transactions', e);
+            } finally {
+                this.loading = false;
             }
-            if (this.filterDateTo) {
-                const toDate = new Date(this.filterDateTo);
-                toDate.setHours(23, 59, 59, 999);
-                transactions = transactions.filter(t => {
-                    const tParts = t.date.split('-');
-                    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
-                    const tDate = new Date(parseInt(tParts[2]), months.indexOf(tParts[1]), parseInt(tParts[0]));
-                    return tDate <= toDate;
-                });
-            }
-
-            this.filteredTransactions = transactions;
         }
     };
 }
