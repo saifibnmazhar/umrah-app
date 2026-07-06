@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\FingerprintStatus;
+use App\Enums\PaymentMethod;
 use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
 use App\Models\FingerprintDetail;
@@ -10,6 +11,7 @@ use App\Models\Invoice;
 use App\Models\IssuedTicket;
 use App\Models\Package;
 use App\Models\Passenger;
+use App\Models\Payment;
 use App\Models\Voucher;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
@@ -85,6 +87,18 @@ class DashboardController extends Controller
         $totalPassengers = Passenger::where('created_at', '>=', now()->subDays(30))
             ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))->count();
 
-        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'invoiceCount', 'invoiceTotalAmount', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueCollection', 'totalPassengers'));
+        $totalCashPayment = Payment::where('created_at', '>=', now()->subDays(30))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->where('payment_method', PaymentMethod::CASH)
+            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->sum('amount');
+
+        $totalBankPayment = Payment::where('created_at', '>=', now()->subDays(30))
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->where('payment_method', PaymentMethod::BANK)
+            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->sum('amount');
+
+        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'invoiceCount', 'invoiceTotalAmount', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueCollection', 'totalPassengers', 'totalCashPayment', 'totalBankPayment'));
     }
 }

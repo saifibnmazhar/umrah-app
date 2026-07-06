@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\FingerprintStatus;
+use App\Enums\PaymentMethod;
 use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
 use App\Models\Branch;
@@ -10,6 +11,7 @@ use App\Models\FingerprintDetail;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
+use App\Models\Payment;
 use App\Models\Voucher;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -97,12 +99,27 @@ class BranchWiseReportController extends Controller
             ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))->count();
 
+        $totalCashPayment = Payment::whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->where('payment_method', PaymentMethod::CASH)
+            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->sum('amount');
+
+        $totalBankPayment = Payment::whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->where('payment_method', PaymentMethod::BANK)
+            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->sum('amount');
+
         return view('reports.branch-wise', compact(
             'visaSubmitted', 'visaIssued', 'visaPending',
             'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing',
             'invoiceCount', 'invoiceTotalAmount',
             'inboundTicket', 'outboundTicket', 'pendingTicket',
             'totalDue', 'totalDueCollection', 'totalPassengers',
+            'totalCashPayment', 'totalBankPayment',
             'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId'
         ));
     }
