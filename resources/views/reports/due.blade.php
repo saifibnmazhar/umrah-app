@@ -191,30 +191,22 @@ select {
     </div>
 
     <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mb-4">
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Date From</label>
-                <input type="date" x-model="date_from" class="date-input w-full px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="date" x-model="date_from" @change="loadData()" class="date-input w-full px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Date To</label>
-                <input type="date" x-model="date_to" class="date-input w-full px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="date" x-model="date_to" @change="loadData()" class="date-input w-full px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Agent</label>
-                <select x-model="agent" class="search-input w-full px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select x-model="agent" @change="loadData()" class="search-input w-full px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="">All Agents</option>
                     <option value="agent1">Agent 1</option>
                     <option value="agent2">Agent 2</option>
                 </select>
-            </div>
-            <div class="flex items-end">
-                <button @click="loadData()" class="filter-btn w-full px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center justify-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/>
-                    </svg>
-                    Search
-                </button>
             </div>
         </div>
     </div>
