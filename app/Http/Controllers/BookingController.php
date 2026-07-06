@@ -1019,6 +1019,7 @@ class BookingController extends Controller
             $validated['discount_type'] = ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage';
             if (! $this->isAdminRole()) {
                 unset($validated['booking_branch_id']);
+                unset($validated['package_id']);
             }
             $booking->update($validated);
 
