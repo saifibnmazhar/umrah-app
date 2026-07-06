@@ -2989,7 +2989,6 @@ Alpine.data('editBookingApp', () => ({
     },
 
     onPackageChange() {
-        this.recalculateAllPassengerValues();
         const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
         if (pkg && pkg.ticket_fare_id) {
             const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
@@ -3005,6 +3004,7 @@ Alpine.data('editBookingApp', () => ({
                     'direct': 'Direct',
                 };
                 this.passengers.forEach(p => {
+                    p.ticket_fare = null;
                     p.route_type = routeTypeMap[ticket.route_type] || '';
                     p.flight_type = flightTypeMap[ticket.flight_type] || '';
                     p.route = ticket.route;
@@ -3014,6 +3014,7 @@ Alpine.data('editBookingApp', () => ({
                 });
             }
         }
+        this.recalculateAllPassengerValues();
     },
 
     calculateFlightDateRange() {
