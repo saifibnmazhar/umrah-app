@@ -182,7 +182,8 @@ select {
 [x-cloak] { display: none !important; }
 </style>
 
-<div class="max-w-[1600px] mx-auto p-4" x-data="dueReportApp()">
+<div x-data="dueReportApp()">
+<div class="max-w-[1600px] mx-auto p-4">
     <div class="mb-3">
         <span class="text-sm text-gray-500 font-medium">Reports</span>
         <span class="text-sm text-gray-400 mx-1">></span>
@@ -458,6 +459,7 @@ select {
             </div>
         </div>
     </div>
+</div>
 </div>
 @endsection
 
