@@ -69,7 +69,12 @@
                     </tr>
                 </thead>
                 <tbody>
-                    <template x-if="filteredAgents.length === 0">
+                    <template x-if="loading">
+                        <tr>
+                            <td colspan="9" class="px-4 py-8 text-sm text-center text-slate-500">Loading...</td>
+                        </tr>
+                    </template>
+                    <template x-if="!loading && filteredAgents.length === 0">
                         <tr>
                             <td colspan="9" class="px-4 py-8 text-sm text-center text-gray-500">No agents found matching your criteria.</td>
                         </tr>
@@ -77,17 +82,17 @@
                     <template x-for="agent in filteredAgents" :key="agent.id">
                         <tr class="table-row-agent">
                             <td class="px-4 py-3 text-sm text-left border-r border-gray-200 font-medium text-gray-800" x-text="agent.name"></td>
-                            <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-medium" x-text="formatCurrency(agent.payable)"></td>
+                            <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-medium" x-text="$currency(agent.payable, 2)"></td>
                             <td class="px-4 py-3 text-sm text-right border-r border-gray-200"
                                 :class="agent.paid > 0 ? 'text-green-700' : 'text-gray-600'"
-                                x-text="formatCurrency(agent.paid)"></td>
+                                x-text="$currency(agent.paid, 2)"></td>
                             <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-semibold"
                                 :class="agent.due > 0 ? 'text-red-600' : 'text-gray-600'"
-                                x-text="formatCurrency(agent.due)"></td>
+                                x-text="$currency(agent.due, 2)"></td>
                             <td class="px-4 py-3 text-sm text-center border-r border-gray-200 font-medium" x-text="agent.refundedTickets"></td>
                             <td class="px-4 py-3 text-sm text-center border-r border-gray-200 font-medium" x-text="agent.reissueTickets"></td>
-                            <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-medium text-amber-700" x-text="formatCurrency(agent.totalRefundAmount)"></td>
-                            <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-medium text-blue-700" x-text="formatCurrency(agent.totalReissueCost)"></td>
+                            <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-medium text-amber-700" x-text="$currency(agent.totalRefundAmount, 2)"></td>
+                            <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-medium text-blue-700" x-text="$currency(agent.totalReissueCost, 2)"></td>
                             <td class="px-4 py-3 text-center">
                                 <button @click="openModal(agent)" class="view-btn text-white px-4 py-1.5 rounded text-xs font-medium transition-all">
                                     View
@@ -128,15 +133,15 @@
                     <div class="flex flex-col gap-2">
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Payable:</span>
-                            <span class="text-xs font-bold text-gray-800" x-text="formatCurrency(summary.totalPayable)"></span>
+                            <span class="text-xs font-bold text-gray-800" x-text="$currency(summary.totalPayable, 2)"></span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Paid:</span>
-                            <span class="text-xs font-bold text-green-700" x-text="formatCurrency(summary.totalPaid)"></span>
+                            <span class="text-xs font-bold text-green-700" x-text="$currency(summary.totalPaid, 2)"></span>
                         </div>
                         <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
                             <span class="text-xs font-bold text-gray-700">Total Due:</span>
-                            <span class="text-xs font-bold text-red-700" x-text="formatCurrency(summary.totalDue)"></span>
+                            <span class="text-xs font-bold text-red-700" x-text="$currency(summary.totalDue, 2)"></span>
                         </div>
                     </div>
                 </div>
@@ -158,11 +163,11 @@
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Refund Amount:</span>
-                            <span class="text-xs font-bold text-amber-700" x-text="formatCurrency(summary.totalRefundAmount)"></span>
+                            <span class="text-xs font-bold text-amber-700" x-text="$currency(summary.totalRefundAmount, 2)"></span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Re-issue Cost:</span>
-                            <span class="text-xs font-bold text-blue-700" x-text="formatCurrency(summary.totalReissueCost)"></span>
+                            <span class="text-xs font-bold text-blue-700" x-text="$currency(summary.totalReissueCost, 2)"></span>
                         </div>
                     </div>
                 </div>
@@ -214,17 +219,17 @@
                                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                                     <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Payable</p>
-                                        <p class="text-xl font-bold text-gray-800 mt-1" x-text="formatCurrency(selectedAgent.payable)"></p>
+                                        <p class="text-xl font-bold text-gray-800 mt-1" x-text="$currency(selectedAgent.payable, 2)"></p>
                                     </div>
                                     <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Paid</p>
-                                        <p class="text-xl font-bold text-green-700 mt-1" x-text="formatCurrency(selectedAgent.paid)"></p>
+                                        <p class="text-xl font-bold text-green-700 mt-1" x-text="$currency(selectedAgent.paid, 2)"></p>
                                     </div>
                                     <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                         <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Due</p>
                                         <p class="text-xl font-bold mt-1"
                                            :class="selectedAgent.due > 0 ? 'text-red-600' : 'text-gray-600'"
-                                           x-text="formatCurrency(selectedAgent.due)"></p>
+                                           x-text="$currency(selectedAgent.due, 2)"></p>
                                     </div>
                                 </div>
                             </div>
@@ -258,13 +263,13 @@
                                             <template x-for="tx in selectedAgent.transactions" :key="tx.date">
                                                 <tr class="modal-row border-b border-gray-100">
                                                     <td class="px-4 py-3 text-sm text-left" x-text="tx.date"></td>
-                                                    <td class="px-4 py-3 text-sm text-right font-medium" x-text="formatCurrency(tx.payable)"></td>
+                                                    <td class="px-4 py-3 text-sm text-right font-medium" x-text="$currency(tx.payable, 2)"></td>
                                                     <td class="px-4 py-3 text-sm text-right"
                                                        :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'"
-                                                       x-text="formatCurrency(tx.paid)"></td>
+                                                       x-text="$currency(tx.paid, 2)"></td>
                                                     <td class="px-4 py-3 text-sm text-right font-semibold"
                                                        :class="(tx.payable - tx.paid) > 0 ? 'text-red-600' : 'text-gray-600'"
-                                                       x-text="formatCurrency(tx.payable - tx.paid)"></td>
+                                                       x-text="$currency(tx.payable - tx.paid, 2)"></td>
                                                 </tr>
                                             </template>
                                         </tbody>
@@ -292,7 +297,7 @@
                                                 <tr class="modal-row border-b border-gray-100">
                                                     <td class="px-4 py-3 text-sm text-left" x-text="tx.date"></td>
                                                     <td class="px-4 py-3 text-sm text-center font-medium" x-text="tx.reissuedTicket"></td>
-                                                    <td class="px-4 py-3 text-sm text-right font-medium text-blue-700" x-text="formatCurrency(tx.totalReissueCost)"></td>
+                                                    <td class="px-4 py-3 text-sm text-right font-medium text-blue-700" x-text="$currency(tx.totalReissueCost, 2)"></td>
                                                 </tr>
                                             </template>
                                         </tbody>
@@ -320,7 +325,7 @@
                                                 <tr class="modal-row border-b border-gray-100">
                                                     <td class="px-4 py-3 text-sm text-left" x-text="tx.date"></td>
                                                     <td class="px-4 py-3 text-sm text-center font-medium" x-text="tx.refundedTicket"></td>
-                                                    <td class="px-4 py-3 text-sm text-right font-medium text-amber-700" x-text="formatCurrency(tx.totalRefundAmount)"></td>
+                                                    <td class="px-4 py-3 text-sm text-right font-medium text-amber-700" x-text="$currency(tx.totalRefundAmount, 2)"></td>
                                                 </tr>
                                             </template>
                                         </tbody>
@@ -356,155 +361,9 @@ function ticketAgentReport() {
         activeTab: 'payment',
         selectedAgent: null,
         lastUpdated: '',
-
-        agents: [
-            {
-                id: 1,
-                name: 'Al Rajhi Travel',
-                payable: 85000,
-                paid: 85000,
-                due: 0,
-                refundedTickets: 2,
-                reissueTickets: 1,
-                totalRefundAmount: 4500,
-                totalReissueCost: 1200,
-                transactions: [
-                    { date: '01-Mar-2026', payable: 15000, paid: 15000 },
-                    { date: '05-Mar-2026', payable: 22000, paid: 22000 },
-                    { date: '12-Mar-2026', payable: 18000, paid: 18000 },
-                    { date: '18-Mar-2026', payable: 15000, paid: 15000 },
-                    { date: '25-Mar-2026', payable: 15000, paid: 15000 }
-                ],
-                reissueTransactions: [
-                    { date: '15-Mar-2026', reissuedTicket: 1, totalReissueCost: 1200 }
-                ],
-                refundTransactions: [
-                    { date: '08-Mar-2026', refundedTicket: 1, totalRefundAmount: 2500 },
-                    { date: '22-Mar-2026', refundedTicket: 1, totalRefundAmount: 2000 }
-                ]
-            },
-            {
-                id: 2,
-                name: 'FlyBurj Agent',
-                payable: 62500,
-                paid: 52000,
-                due: 10500,
-                refundedTickets: 3,
-                reissueTickets: 2,
-                totalRefundAmount: 8200,
-                totalReissueCost: 3500,
-                transactions: [
-                    { date: '02-Mar-2026', payable: 12500, paid: 12500 },
-                    { date: '08-Mar-2026', payable: 15000, paid: 15000 },
-                    { date: '15-Mar-2026', payable: 17500, paid: 12500 },
-                    { date: '22-Mar-2026', payable: 17500, paid: 12000 }
-                ],
-                reissueTransactions: [
-                    { date: '10-Mar-2026', reissuedTicket: 1, totalReissueCost: 1800 },
-                    { date: '25-Mar-2026', reissuedTicket: 1, totalReissueCost: 1700 }
-                ],
-                refundTransactions: [
-                    { date: '05-Mar-2026', refundedTicket: 1, totalRefundAmount: 3200 },
-                    { date: '18-Mar-2026', refundedTicket: 2, totalRefundAmount: 5000 }
-                ]
-            },
-            {
-                id: 3,
-                name: 'Shahadat Visa Services',
-                payable: 48000,
-                paid: 48000,
-                due: 0,
-                refundedTickets: 1,
-                reissueTickets: 0,
-                totalRefundAmount: 2500,
-                totalReissueCost: 0,
-                transactions: [
-                    { date: '03-Mar-2026', payable: 12000, paid: 12000 },
-                    { date: '10-Mar-2026', payable: 14500, paid: 14500 },
-                    { date: '17-Mar-2026', payable: 11500, paid: 11500 },
-                    { date: '24-Mar-2026', payable: 10000, paid: 10000 }
-                ],
-                reissueTransactions: [],
-                refundTransactions: [
-                    { date: '12-Mar-2026', refundedTicket: 1, totalRefundAmount: 2500 }
-                ]
-            },
-            {
-                id: 4,
-                name: 'Gulf Visa',
-                payable: 97500,
-                paid: 78000,
-                due: 19500,
-                refundedTickets: 4,
-                reissueTickets: 3,
-                totalRefundAmount: 12000,
-                totalReissueCost: 6500,
-                transactions: [
-                    { date: '01-Mar-2026', payable: 25000, paid: 25000 },
-                    { date: '06-Mar-2026', payable: 22000, paid: 22000 },
-                    { date: '12-Mar-2026', payable: 21500, paid: 15000 },
-                    { date: '20-Mar-2026', payable: 19000, paid: 11000 },
-                    { date: '28-Mar-2026', payable: 10000, paid: 5000 }
-                ],
-                reissueTransactions: [
-                    { date: '08-Mar-2026', reissuedTicket: 1, totalReissueCost: 2200 },
-                    { date: '16-Mar-2026', reissuedTicket: 1, totalReissueCost: 2100 },
-                    { date: '24-Mar-2026', reissuedTicket: 1, totalReissueCost: 2200 }
-                ],
-                refundTransactions: [
-                    { date: '04-Mar-2026', refundedTicket: 1, totalRefundAmount: 3000 },
-                    { date: '14-Mar-2026', refundedTicket: 2, totalRefundAmount: 6000 },
-                    { date: '26-Mar-2026', refundedTicket: 1, totalRefundAmount: 3000 }
-                ]
-            },
-            {
-                id: 5,
-                name: 'Dreamland Tours',
-                payable: 36000,
-                paid: 36000,
-                due: 0,
-                refundedTickets: 0,
-                reissueTickets: 1,
-                totalRefundAmount: 0,
-                totalReissueCost: 1500,
-                transactions: [
-                    { date: '04-Mar-2026', payable: 12000, paid: 12000 },
-                    { date: '11-Mar-2026', payable: 11000, paid: 11000 },
-                    { date: '21-Mar-2026', payable: 13000, paid: 13000 }
-                ],
-                reissueTransactions: [
-                    { date: '18-Mar-2026', reissuedTicket: 1, totalReissueCost: 1500 }
-                ],
-                refundTransactions: []
-            },
-            {
-                id: 6,
-                name: 'Saudi Umrah Express',
-                payable: 71200,
-                paid: 58000,
-                due: 13200,
-                refundedTickets: 2,
-                reissueTickets: 2,
-                totalRefundAmount: 5800,
-                totalReissueCost: 4200,
-                transactions: [
-                    { date: '02-Mar-2026', payable: 17800, paid: 17800 },
-                    { date: '09-Mar-2026', payable: 19200, paid: 15000 },
-                    { date: '16-Mar-2026', payable: 17200, paid: 13000 },
-                    { date: '25-Mar-2026', payable: 17000, paid: 12200 }
-                ],
-                reissueTransactions: [
-                    { date: '06-Mar-2026', reissuedTicket: 1, totalReissueCost: 2200 },
-                    { date: '20-Mar-2026', reissuedTicket: 1, totalReissueCost: 2000 }
-                ],
-                refundTransactions: [
-                    { date: '12-Mar-2026', refundedTicket: 1, totalRefundAmount: 2800 },
-                    { date: '28-Mar-2026', refundedTicket: 1, totalRefundAmount: 3000 }
-                ]
-            }
-        ],
-
+        agents: [],
         filteredAgents: [],
+        loading: false,
 
         get summary() {
             const a = this.filteredAgents;
@@ -522,44 +381,36 @@ function ticketAgentReport() {
         },
 
         init() {
-            this.filteredAgents = [...this.agents];
+            this.loadData();
             const now = new Date();
             const pad = n => String(n).padStart(2, '0');
             const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
             this.lastUpdated = `${pad(now.getDate())}-${months[now.getMonth()]}-${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())} ${now.getHours() >= 12 ? 'PM' : 'AM'}`;
         },
 
-        formatCurrency(amount) {
-            return Number(amount).toLocaleString('en-US') + ' SAR';
-        },
+        async loadData() {
+            this.loading = true;
+            const params = new URLSearchParams();
+            if (this.search) params.set('search', this.search);
+            if (this.date_from) params.set('date_from', this.date_from);
+            if (this.date_to) params.set('date_to', this.date_to);
 
-        parseDate(dateStr) {
-            const parts = dateStr.match(/(\d{2})-(\w{3})-(\d{4})/);
-            if (!parts) return null;
-            const months = { Jan: 0, Feb: 1, Mar: 2, Apr: 3, May: 4, Jun: 5, Jul: 6, Aug: 7, Sep: 8, Oct: 9, Nov: 10, Dec: 11 };
-            return new Date(parts[3], months[parts[2]], parseInt(parts[1]));
+            try {
+                const response = await fetch(`/api/reports/ticket-agent?${params}`);
+                const result = await response.json();
+                this.agents = result.data || [];
+                this.filteredAgents = result.data || [];
+            } catch (error) {
+                console.error('Failed to load ticket agent report:', error);
+                this.agents = [];
+                this.filteredAgents = [];
+            } finally {
+                this.loading = false;
+            }
         },
 
         filterAgents() {
-            const searchTerm = this.search.toLowerCase().trim();
-            const dateFrom = this.date_from ? new Date(this.date_from) : null;
-            const dateTo = this.date_to ? new Date(this.date_to) : null;
-
-            this.filteredAgents = this.agents.filter(agent => {
-                if (searchTerm && !agent.name.toLowerCase().includes(searchTerm)) {
-                    return false;
-                }
-                if (dateFrom || dateTo) {
-                    return agent.transactions.some(tx => {
-                        const txDate = this.parseDate(tx.date);
-                        if (!txDate) return true;
-                        if (dateFrom && txDate < dateFrom) return false;
-                        if (dateTo && txDate > new Date(dateTo.getTime() + 86400000)) return false;
-                        return true;
-                    });
-                }
-                return true;
-            });
+            this.loadData();
         },
 
         openModal(agent) {
