@@ -300,7 +300,7 @@
                     if (sd === 14 || sd === 85) {
                         this.passengerData.stay_duration = String(sd);
                         this.passengerData.stay_duration_int = sd;
-                    } else if (sd >= 1 && sd <= 80) {
+                    } else if (sd >= 1 && sd <= 85) {
                         this.passengerData.stay_duration_display = `Customized (${sd} Days)`;
                         this.passengerData.stay_duration_int = sd;
                         this.$nextTick(() => {
