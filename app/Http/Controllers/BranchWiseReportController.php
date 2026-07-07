@@ -10,6 +10,7 @@ use App\Models\Branch;
 use App\Models\FingerprintDetail;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
+use App\Models\IssuedTicketLog;
 use App\Models\Passenger;
 use App\Models\Payment;
 use App\Models\VisaSubmission;
@@ -69,18 +70,18 @@ class BranchWiseReportController extends Controller
             ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))->sum('total_amount');
 
-        $inboundTicket = IssuedTicket::whereDate('created_at', '>=', $dateFrom)
+        $inboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))
-            ->whereIn('status', [TicketStatus::ISSUED, TicketStatus::RE_ISSUED])
-            ->whereNotNull('inbound_date')
+            ->whereHas('issuedTicket', fn($q) => $q->whereNotNull('inbound_date'))
+            ->when($branchId, fn($q) => $q->whereHas('issuedTicket.booking', $branchScope))
             ->count();
 
-        $outboundTicket = IssuedTicket::whereDate('created_at', '>=', $dateFrom)
+        $outboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))
-            ->whereIn('status', [TicketStatus::ISSUED, TicketStatus::RE_ISSUED])
-            ->whereNotNull('outbound_date')
+            ->whereHas('issuedTicket', fn($q) => $q->whereNotNull('outbound_date'))
+            ->when($branchId, fn($q) => $q->whereHas('issuedTicket.booking', $branchScope))
             ->count();
 
         $pendingTicket = IssuedTicket::whereDate('created_at', '>=', $dateFrom)
