@@ -465,7 +465,7 @@ class PassengerController extends Controller
             'mobile_no' => 'nullable|string|max:20',
             'passport_expiry' => 'nullable|date',
             'service_required' => 'nullable|in:all,visa_only,ticket_only',
-            'stay_duration' => 'nullable|integer|min:1|max:80',
+            'stay_duration' => 'nullable|integer|min:' . ($limits = \App\Models\StayDurationLimit::getOrCreate())->min_days . '|max:' . $limits->max_days,
             'flight_date_from' => 'nullable|date',
             'flight_date_to' => 'nullable|date',
             'address' => 'nullable|string|max:500',

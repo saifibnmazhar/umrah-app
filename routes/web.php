@@ -261,6 +261,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->name('settings.package.update')->middleware('role:Super Admin,Co Admin');
     Route::post('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->middleware('role:Super Admin,Co Admin');
     Route::delete('/settings/package/{package}', [SettingsController::class, 'destroyPackage'])->name('settings.package.destroy')->middleware('role:Super Admin,Co Admin');
+    Route::put('/settings/stay-duration-limit', [SettingsController::class, 'updateStayDurationLimit'])->name('settings.stay-duration-limit.update')->middleware('role:Super Admin,Co Admin');
 
     // Reports
     Route::get('/reports/statement', fn() => view('reports.statement'))->name('report.statement');

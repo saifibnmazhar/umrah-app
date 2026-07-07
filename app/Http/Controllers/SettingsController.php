@@ -7,6 +7,7 @@ use App\Enums\TicketType;
 use App\Models\FingerprintCharge;
 use App\Models\FlightDateGap;
 use App\Models\Package;
+use App\Models\StayDurationLimit;
 use App\Models\TicketFare;
 use App\Models\VisaSellingPrice;
 use Illuminate\Http\Request;
@@ -85,6 +86,8 @@ class SettingsController extends Controller
 
         $latestVisa = VisaSellingPrice::latest()->first();
 
+        $stayDurationLimit = StayDurationLimit::getOrCreate();
+
         return view('settings.index', compact(
             'fingerprintCharges', 
             'districts', 
@@ -93,7 +96,8 @@ class SettingsController extends Controller
             'packages',
             'ticketFares',
             'latestVisa',
-            'usedFareIds'
+            'usedFareIds',
+            'stayDurationLimit'
         ));
     }
 
@@ -195,6 +199,20 @@ class SettingsController extends Controller
         $package->load(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity', 'ticketFare.route.transits.transitCity', 'ticketFare.airline', 'ticketFare.airlineClass', 'ticketFare.groupTicket']);
         
         return view('package-configurations.show', compact('package'));
+    }
+
+    public function updateStayDurationLimit(Request $request)
+    {
+        $validated = $request->validate([
+            'min_days' => 'required|integer|min:1',
+            'max_days' => 'required|integer|min:2|gte:min_days',
+        ]);
+
+        $stayDurationLimit = StayDurationLimit::getOrCreate();
+        $stayDurationLimit->update($validated);
+
+        $tab = $request->input('tab', 'stay-duration-limit');
+        return redirect()->route('settings', ['tab' => $tab])->with('success', 'Stay duration limit updated successfully');
     }
 
     public function destroyPackage(Request $request, Package $package)
