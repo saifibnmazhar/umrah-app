@@ -9,6 +9,7 @@ class CancelledSubmission extends Model
 {
     protected $fillable = [
         'visa_submission_id',
+        'visa_agent_id',
         'cancellation_fee',
     ];
 
@@ -19,5 +20,10 @@ class CancelledSubmission extends Model
     public function visaSubmission(): BelongsTo
     {
         return $this->belongsTo(VisaSubmission::class);
+    }
+
+    public function visaAgent(): BelongsTo
+    {
+        return $this->belongsTo(VisaAgent::class);
     }
 }

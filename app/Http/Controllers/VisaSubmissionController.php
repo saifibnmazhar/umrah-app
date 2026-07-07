@@ -160,6 +160,7 @@ class VisaSubmissionController extends Controller
 
         CancelledSubmission::create([
             'visa_submission_id' => $visaSubmission->id,
+            'visa_agent_id' => $visaSubmission->visa_agent_id,
             'cancellation_fee' => $cancellationFee ?: null,
         ]);
 

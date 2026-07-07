@@ -12,7 +12,11 @@ select {
 }
 </style>
 
-<div class="max-w-[1600px] mx-auto p-4" x-data="visaAgentReport()">
+<div class="max-w-[1600px] mx-auto p-4" x-data="visaAgentReport({
+    search: '{{ request('search') }}',
+    date_from: '{{ request('date_from') }}',
+    date_to: '{{ request('date_to') }}',
+})">
     <div class="mb-3">
         <span class="text-sm text-gray-500 font-medium">Report</span>
         <span class="text-sm text-gray-400 mx-1">></span>
@@ -23,7 +27,7 @@ select {
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700">SEARCH BOX</label>
-                <input type="text" x-model="search" @keydown.enter="filterAgents()" placeholder="Search by Agent Name"
+                <input type="text" x-model="search" @keydown.enter="currentPage = 1; loadData()" placeholder="Search by Agent Name"
                        class="search-input w-80 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
 
@@ -36,7 +40,7 @@ select {
             </div>
 
             <div class="flex items-center gap-2">
-                <button @click="filterAgents()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
+                <button @click="currentPage = 1; loadData()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
                     </svg>
@@ -69,22 +73,25 @@ select {
                 <thead>
                     <tr class="table-header">
                         <th class="w-56 px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Agent Name</th>
-                        <th class="w-20 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Submitted</th>
-                        <th class="w-20 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Issued</th>
-                        <th class="w-20 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Pending</th>
+                        <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Submitted</th>
+                        <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Issued</th>
                         <th class="w-28 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Price<br>(Max/Min/Avg)</th>
-                        <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Receivable</th>
-                        <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
-                        <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
-                        <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
-                        <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Cancellation<br>Fee</th>
-                        <th class="w-20 px-4 py-3 text-xs font-bold text-gray-700 text-center">Action</th>
+                        <th class="w-28 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
+                        <th class="w-28 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
+                        <th class="w-28 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
+                        <th class="w-28 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Cancellation<br>Fee</th>
+                        <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-center">Action</th>
                     </tr>
                 </thead>
                 <tbody>
-                    <template x-if="filteredData.length === 0">
+                    <template x-if="loading">
                         <tr>
-                            <td colspan="11" class="px-4 py-4 text-center text-gray-500">No data found</td>
+                            <td colspan="9" class="px-4 py-8 text-center text-gray-500">Loading...</td>
+                        </tr>
+                    </template>
+                    <template x-if="!loading && filteredData.length === 0">
+                        <tr>
+                            <td colspan="9" class="px-4 py-8 text-center text-gray-500">No data found</td>
                         </tr>
                     </template>
                     <template x-for="agent in filteredData" :key="agent.id">
@@ -92,22 +99,27 @@ select {
                             <td class="px-2 py-3 text-sm text-left border-r border-gray-200 font-medium text-gray-800" x-text="agent.name"></td>
                             <td class="px-2 py-3 text-sm text-center border-r border-gray-200 font-medium" x-text="agent.totalSubmitted"></td>
                             <td class="px-2 py-3 text-sm text-center border-r border-gray-200 font-medium" x-text="agent.totalIssued"></td>
-                            <td class="px-2 py-3 text-sm text-center border-r border-gray-200 font-medium" x-text="agent.totalPending"></td>
                             <td class="px-2 py-3 text-xs text-center border-r border-gray-200 whitespace-nowrap">
-                                <span class="text-red-600" x-text="agent.price.max.toLocaleString()"></span>
-                                <span class="text-gray-400"> / </span>
-                                <span class="text-green-600" x-text="agent.price.min.toLocaleString()"></span>
-                                <span class="text-gray-400"> / </span>
-                                <span class="text-blue-600" x-text="agent.price.avg.toLocaleString()"></span>
+                                <template x-if="agent.price.max > 0">
+                                    <span>
+                                        <span class="text-red-600" x-text="agent.price.max.toLocaleString()"></span>
+                                        <span class="text-gray-400"> / </span>
+                                        <span class="text-green-600" x-text="agent.price.min.toLocaleString()"></span>
+                                        <span class="text-gray-400"> / </span>
+                                        <span class="text-blue-600" x-text="agent.price.avg.toLocaleString()"></span>
+                                    </span>
+                                </template>
+                                <template x-if="!agent.price.max">
+                                    <span class="text-gray-400">-</span>
+                                </template>
                             </td>
-                            <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-medium" x-text="formatCurrency(agent.receivable)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-medium" x-text="formatCurrency(agent.payable)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200"
                                 :class="agent.paid > 0 ? 'text-green-700' : 'text-gray-600'"
                                 x-text="formatCurrency(agent.paid)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-semibold"
-                                :class="getBalanceColor(agent)"
-                                x-text="formatCurrency(Math.abs(agent.payable - agent.receivable))"></td>
+                                :class="agent.balance > 0 ? 'text-red-600' : (agent.balance < 0 ? 'text-green-700' : 'text-gray-600')"
+                                x-text="formatCurrency(Math.abs(agent.balance))"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200"
                                 :class="agent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'"
                                 x-text="agent.cancellationFee > 0 ? formatCurrency(agent.cancellationFee) : '-'"></td>
@@ -152,7 +164,7 @@ select {
                         </div>
                         <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
                             <span class="text-xs font-bold text-gray-700">Total Balance:</span>
-                            <span class="text-xs font-bold text-red-700" x-text="summary.totalBalanceLabel"></span>
+                            <span class="text-xs font-bold" :class="summary.totalBalance > 0 ? 'text-red-700' : 'text-green-700'" x-text="summary.totalBalanceLabel"></span>
                         </div>
                     </div>
                 </div>
@@ -177,7 +189,6 @@ select {
         </div>
 
         <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
-            <span class="text-xs text-gray-400">Last Updated: <span x-text="lastUpdated"></span></span>
             <span class="text-xs text-gray-400">Generated by BM Umrah System</span>
         </div>
     </div>
@@ -209,14 +220,6 @@ select {
                                 <p class="text-xl font-bold text-green-700 mt-1" x-text="modalAgent.totalIssued || 0"></p>
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
-                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Pending</p>
-                                <p class="text-xl font-bold text-orange-700 mt-1" x-text="modalAgent.totalPending || 0"></p>
-                            </div>
-                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
-                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Receivable</p>
-                                <p class="text-xl font-bold text-purple-700 mt-1" x-text="formatCurrency(modalAgent.receivable || 0)"></p>
-                            </div>
-                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Payable</p>
                                 <p class="text-xl font-bold text-gray-800 mt-1" x-text="formatCurrency(modalAgent.payable || 0)"></p>
                             </div>
@@ -226,8 +229,8 @@ select {
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Balance</p>
-                                <p class="text-xl font-bold mt-1" x-text="formatCurrency(modalBalance)"
-                                   :class="modalBalanceColor"></p>
+                                <p class="text-xl font-bold mt-1" x-text="formatCurrency(Math.abs(modalAgent.balance || 0))"
+                                   :class="(modalAgent.balance || 0) > 0 ? 'text-red-600' : ((modalAgent.balance || 0) < 0 ? 'text-green-700' : 'text-gray-600')"></p>
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Cancellation Fee</p>
@@ -241,10 +244,6 @@ select {
                             <thead>
                                 <tr class="table-header">
                                     <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Date</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Submitted</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Issued</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Pending</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Total<br>Receivable</th>
                                     <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
                                     <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
                                     <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
@@ -255,19 +254,17 @@ select {
                                 <template x-for="(tx, idx) in modalAgent.transactions" :key="idx">
                                     <tr class="modal-row border-b border-gray-100">
                                         <td class="px-4 py-3 text-sm text-left" x-text="tx.date"></td>
-                                        <td class="px-4 py-3 text-sm text-center font-medium" x-text="modalAgent.totalSubmitted"></td>
-                                        <td class="px-4 py-3 text-sm text-center font-medium" x-text="modalAgent.totalIssued"></td>
-                                        <td class="px-4 py-3 text-sm text-center font-medium" x-text="modalAgent.totalPending"></td>
-                                        <td class="px-4 py-3 text-sm text-right font-medium" x-text="formatCurrency(modalAgent.receivable)"></td>
                                         <td class="px-4 py-3 text-sm text-right font-medium" x-text="formatCurrency(tx.payable)"></td>
                                         <td class="px-4 py-3 text-sm text-right" :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="formatCurrency(tx.paid)"></td>
-                                        <td class="px-4 py-3 text-sm text-right font-semibold" :class="getBalanceColor(modalAgent)" x-text="formatCurrency(Math.abs(modalBalance))"></td>
+                                        <td class="px-4 py-3 text-sm text-right font-semibold"
+                                            :class="(modalAgent.balance || 0) > 0 ? 'text-red-600' : ((modalAgent.balance || 0) < 0 ? 'text-green-700' : 'text-gray-600')"
+                                            x-text="formatCurrency(Math.abs(modalAgent.balance || 0))"></td>
                                         <td class="px-4 py-3 text-sm text-right" :class="modalAgent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="modalAgent.cancellationFee > 0 ? formatCurrency(modalAgent.cancellationFee) : '-'"></td>
                                     </tr>
                                 </template>
                                 <template x-if="!modalAgent.transactions || modalAgent.transactions.length === 0">
                                     <tr>
-                                        <td colspan="9" class="px-4 py-4 text-center text-gray-500">No transactions found</td>
+                                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">No transactions found</td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -336,21 +333,21 @@ select {
 
 @push('scripts')
 <script>
-function visaAgentReport() {
+function visaAgentReport(options = {}) {
     return {
-        search: '',
-        date_from: '',
-        date_to: '',
-        agentData: [],
+        search: options.search || '',
+        date_from: options.date_from || '',
+        date_to: options.date_to || '',
         filteredData: [],
+        loading: true,
         summary: {
             totalAgents: 0,
             agentsWithDue: 0,
             totalPayable: 0,
             totalPaid: 0,
+            totalBalance: 0,
             totalBalanceLabel: '0 SAR',
         },
-        lastUpdated: '',
         detailModalOpen: false,
         paymentModalOpen: false,
         modalAgent: {},
@@ -360,197 +357,41 @@ function visaAgentReport() {
         paymentAmount: '',
         editingAgentId: null,
 
-        get modalBalance() {
-            return Math.abs((this.modalAgent.payable || 0) - (this.modalAgent.receivable || 0));
-        },
-
-        get modalBalanceColor() {
-            const payable = this.modalAgent.payable || 0;
-            const receivable = this.modalAgent.receivable || 0;
-            if (payable > receivable) return 'text-red-600';
-            if (receivable > payable) return 'text-green-700';
-            return 'text-gray-600';
-        },
-
         init() {
-            this.agentData = [
-                {
-                    id: 1,
-                    name: "Al Rajhi Travel",
-                    totalSubmitted: 50,
-                    totalIssued: 45,
-                    totalPending: 5,
-                    price: { max: 2500, min: 500, avg: 1200 },
-                    receivable: 40000,
-                    paid: 45000,
-                    cancellationFee: 500,
-                    payable: 45000,
-                    transactions: [
-                        { date: "01-Mar-2026", payable: 8500, paid: 8500 },
-                        { date: "05-Mar-2026", payable: 12000, paid: 12000 },
-                        { date: "12-Mar-2026", payable: 9500, paid: 9500 },
-                        { date: "18-Mar-2026", payable: 8500, paid: 8500 },
-                        { date: "25-Mar-2026", payable: 6500, paid: 6500 }
-                    ]
-                },
-                {
-                    id: 2,
-                    name: "FlyBurj Agent",
-                    totalSubmitted: 40,
-                    totalIssued: 32,
-                    totalPending: 8,
-                    price: { max: 3000, min: 600, avg: 1500 },
-                    receivable: 35000,
-                    paid: 28000,
-                    cancellationFee: 0,
-                    payable: 30000,
-                    transactions: [
-                        { date: "02-Mar-2026", payable: 7500, paid: 7500 },
-                        { date: "08-Mar-2026", payable: 9000, paid: 9000 },
-                        { date: "15-Mar-2026", payable: 8000, paid: 6500 },
-                        { date: "22-Mar-2026", payable: 8000, paid: 5000 }
-                    ]
-                },
-                {
-                    id: 3,
-                    name: "Shahadat Visa Services",
-                    totalSubmitted: 35,
-                    totalIssued: 35,
-                    totalPending: 0,
-                    price: { max: 2000, min: 400, avg: 1000 },
-                    receivable: 28000,
-                    paid: 28000,
-                    cancellationFee: 0,
-                    payable: 28000,
-                    transactions: [
-                        { date: "03-Mar-2026", payable: 7000, paid: 7000 },
-                        { date: "10-Mar-2026", payable: 8500, paid: 8500 },
-                        { date: "17-Mar-2026", payable: 7500, paid: 7500 },
-                        { date: "24-Mar-2026", payable: 5000, paid: 5000 }
-                    ]
-                },
-                {
-                    id: 4,
-                    name: "Gulf Visa",
-                    totalSubmitted: 60,
-                    totalIssued: 48,
-                    totalPending: 12,
-                    price: { max: 3500, min: 700, avg: 1800 },
-                    receivable: 60000,
-                    paid: 55000,
-                    cancellationFee: 2500,
-                    payable: 67500,
-                    transactions: [
-                        { date: "01-Mar-2026", payable: 15000, paid: 15000 },
-                        { date: "06-Mar-2026", payable: 12000, paid: 12000 },
-                        { date: "12-Mar-2026", payable: 14500, paid: 10000 },
-                        { date: "20-Mar-2026", payable: 13000, paid: 8000 },
-                        { date: "28-Mar-2026", payable: 13000, paid: 10000 }
-                    ]
-                },
-                {
-                    id: 5,
-                    name: "Dreamland Tours",
-                    totalSubmitted: 25,
-                    totalIssued: 25,
-                    totalPending: 0,
-                    price: { max: 1800, min: 350, avg: 900 },
-                    receivable: 20000,
-                    paid: 18000,
-                    cancellationFee: 0,
-                    payable: 18000,
-                    transactions: [
-                        { date: "04-Mar-2026", payable: 6000, paid: 6000 },
-                        { date: "11-Mar-2026", payable: 5500, paid: 5500 },
-                        { date: "21-Mar-2026", payable: 6500, paid: 6500 }
-                    ]
-                },
-                {
-                    id: 6,
-                    name: "Saudi Umrah Express",
-                    totalSubmitted: 45,
-                    totalIssued: 38,
-                    totalPending: 7,
-                    price: { max: 2800, min: 550, avg: 1350 },
-                    receivable: 38000,
-                    paid: 35000,
-                    cancellationFee: 1200,
-                    payable: 41200,
-                    transactions: [
-                        { date: "02-Mar-2026", payable: 9800, paid: 9800 },
-                        { date: "09-Mar-2026", payable: 11200, paid: 9000 },
-                        { date: "16-Mar-2026", payable: 10200, paid: 8200 },
-                        { date: "25-Mar-2026", payable: 10000, paid: 8000 }
-                    ]
-                }
-            ];
-            this.applyFilter();
-            const now = new Date();
-            this.lastUpdated = now.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }) + ' ' + now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+            this.loadData();
         },
 
         formatCurrency(amount) {
-            return Number(amount).toLocaleString('en-US') + ' SAR';
+            return Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' SAR';
         },
 
-        getBalanceColor(agent) {
-            const balance = (agent.payable || 0) - (agent.receivable || 0);
-            if (balance > 0) return 'text-red-600';
-            if (balance < 0) return 'text-green-700';
-            return 'text-gray-600';
+        async loadData() {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams();
+                if (this.search) params.set('search', this.search);
+                if (this.date_from) params.set('date_from', this.date_from);
+                if (this.date_to) params.set('date_to', this.date_to);
+                const response = await fetch(`/api/reports/visa-agent?${params}`);
+                const result = await response.json();
+                this.filteredData = result.data || [];
+                if (result.summary) {
+                    this.summary = result.summary;
+                }
+            } catch (error) {
+                console.error('Failed to load visa agent report:', error);
+                this.filteredData = [];
+            } finally {
+                this.loading = false;
+            }
         },
 
         filterAgents() {
-            this.applyFilter();
-        },
-
-        applyFilter() {
-            const searchTerm = this.search.toLowerCase().trim();
-            const from = this.date_from ? new Date(this.date_from) : null;
-            const to = this.date_to ? new Date(this.date_to) : null;
-
-            function parseDate(dateStr) {
-                const parts = dateStr.match(/(\d{2})-(\w{3})-(\d{4})/);
-                if (!parts) return null;
-                const months = { 'Jan': 0, 'Feb': 1, 'Mar': 2, 'Apr': 3, 'May': 4, 'Jun': 5, 'Jul': 6, 'Aug': 7, 'Sep': 8, 'Oct': 9, 'Nov': 10, 'Dec': 11 };
-                return new Date(parts[3], months[parts[2]], parseInt(parts[1]));
-            }
-
-            this.filteredData = this.agentData.filter(agent => {
-                const matchesSearch = agent.name.toLowerCase().includes(searchTerm);
-                let matchesDate = true;
-                if (from || to) {
-                    matchesDate = agent.transactions.some(tx => {
-                        const txDate = parseDate(tx.date);
-                        if (!txDate) return false;
-                        if (from && txDate < from) return false;
-                        if (to && txDate > to) return false;
-                        return true;
-                    });
-                }
-                return matchesSearch && matchesDate;
-            });
-            this.updateSummary();
-        },
-
-        updateSummary() {
-            const data = this.filteredData;
-            const totalAgents = data.length;
-            const agentsWithDue = data.filter(a => (a.payable || 0) > (a.receivable || 0)).length;
-            const totalPayable = data.reduce((sum, a) => sum + (a.payable || 0), 0);
-            const totalPaid = data.reduce((sum, a) => sum + (a.paid || 0), 0);
-            const totalBalance = totalPayable - data.reduce((sum, a) => sum + (a.receivable || 0), 0);
-            this.summary = {
-                totalAgents: totalAgents,
-                agentsWithDue: agentsWithDue,
-                totalPayable: totalPayable,
-                totalPaid: totalPaid,
-                totalBalanceLabel: this.formatCurrency(Math.abs(totalBalance)),
-            };
+            this.loadData();
         },
 
         openModal(agentId) {
-            const agent = this.agentData.find(a => a.id === agentId);
+            const agent = this.filteredData.find(a => a.id === agentId);
             if (!agent) return;
             this.modalAgent = agent;
             this.detailModalOpen = true;
@@ -563,7 +404,7 @@ function visaAgentReport() {
         },
 
         openPaymentModal(agentId) {
-            const agent = this.agentData.find(a => a.id === agentId);
+            const agent = this.filteredData.find(a => a.id === agentId);
             if (!agent) return;
             this.editingAgentId = agent.id;
             this.paymentAgentName = agent.name;
@@ -579,11 +420,7 @@ function visaAgentReport() {
         },
 
         handlePaymentSubmit() {
-            const agent = this.agentData.find(a => a.id === this.editingAgentId);
-            if (!agent) return;
             const amount = parseFloat(this.paymentAmount) || 0;
-            agent.paid += amount;
-            this.applyFilter();
             this.closePaymentModal();
             if (window.showToast) {
                 window.showToast('Payment saved successfully', 'success');
