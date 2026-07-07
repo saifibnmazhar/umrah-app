@@ -10,27 +10,30 @@
 
     <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
         <div class="flex flex-wrap items-center gap-3">
+            {{-- Search box commented out per requirement
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700">SEARCH BOX</label>
                 <input type="text" x-model="search" @keypress.enter="filterAgents()" placeholder="Search by Agent Name"
                        class="search-input w-80 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
+            --}}
 
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700">Date</label>
                 <label class="text-xs text-gray-500">From</label>
-                <input type="date" x-model="date_from" class="search-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="date" x-model="date_from" @change="loadData()" class="search-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                 <label class="text-xs text-gray-500">To</label>
-                <input type="date" x-model="date_to" class="search-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="date" x-model="date_to" @change="loadData()" class="search-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
 
             <div class="flex items-center gap-2">
-                <button @click="filterAgents()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                    </svg>
-                    Filter
-                </button>
+                <label class="text-sm font-semibold text-gray-700">Ticket Agent</label>
+                <select x-model="agent_id" @change="loadData()" class="w-56 px-3 py-2 text-sm rounded-md border border-gray-300 bg-white focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <option value="">All Agents</option>
+                    @foreach($agents as $agent)
+                    <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                    @endforeach
+                </select>
             </div>
 
             <div class="flex items-center gap-2 ml-auto">
@@ -354,9 +357,9 @@
 <script>
 function ticketAgentReport() {
     return {
-        search: '',
         date_from: '',
         date_to: '',
+        agent_id: '',
         showModal: false,
         activeTab: 'payment',
         selectedAgent: null,
@@ -391,9 +394,9 @@ function ticketAgentReport() {
         async loadData() {
             this.loading = true;
             const params = new URLSearchParams();
-            if (this.search) params.set('search', this.search);
             if (this.date_from) params.set('date_from', this.date_from);
             if (this.date_to) params.set('date_to', this.date_to);
+            if (this.agent_id) params.set('agent_id', this.agent_id);
 
             try {
                 const response = await fetch(`/api/reports/ticket-agent?${params}`);
@@ -407,10 +410,6 @@ function ticketAgentReport() {
             } finally {
                 this.loading = false;
             }
-        },
-
-        filterAgents() {
-            this.loadData();
         },
 
         openModal(agent) {

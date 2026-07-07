@@ -11,17 +11,18 @@ class TicketAgentReportController extends Controller
 {
     public function index()
     {
-        return view('reports.ticket-agent');
+        $agents = TicketAgent::orderBy('name')->get();
+        return view('reports.ticket-agent', compact('agents'));
     }
 
     public function data(Request $request)
     {
         $dateFrom = $request->date('date_from', now()->startOfMonth());
         $dateTo = $request->date('date_to', now()->endOfMonth());
-        $search = $request->search;
+        $agentId = $request->agent_id;
 
         $agentsQuery = TicketAgent::query()
-            ->when($search, fn($q) => $q->where('name', 'like', "%{$search}%"));
+            ->when($agentId, fn($q) => $q->where('id', $agentId));
 
         $agents = $agentsQuery->get();
         $agentIds = $agents->pluck('id');
@@ -117,7 +118,7 @@ class TicketAgentReportController extends Controller
         });
 
         $summaryQuery = TicketAgent::query()
-            ->when($search, fn($q) => $q->where('name', 'like', "%{$search}%"));
+            ->when($agentId, fn($q) => $q->where('id', $agentId));
 
         $summaryAgentIds = $summaryQuery->pluck('id');
 
