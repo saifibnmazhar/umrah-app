@@ -126,7 +126,7 @@
                         <select x-model="bookingData.package_id" @change="onPackageChange(); $el.blur()" name="package_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                             <option value="">Select Package</option>
                             @foreach($packages as $pkg)
-                            <option value="{{ $pkg['id'] }}">{{ $pkg['package_name'] }}</option>
+                            <option value="{{ $pkg['id'] }}" @if(!($pkg['is_active'] ?? true)) disabled @endif>{{ $pkg['package_name'] }}</option>
                             @endforeach
                         </select>
                     @else
