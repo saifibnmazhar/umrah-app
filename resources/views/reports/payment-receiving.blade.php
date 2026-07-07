@@ -56,27 +56,19 @@
                     </tr>
                 </thead>
                 <tbody>
+                    @forelse($dailyPayments as $day)
                     <tr class="even:bg-[#fafafa] hover:bg-[#e8f4fc]">
-                        <td class="px-4 py-3 text-sm text-center border-r border-gray-200 font-medium text-gray-700">{{ $date ?? '01-Mar-2026' }}</td>
-                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 text-green-800 font-semibold">{{ $cash ?? '15,250 SAR' }}</td>
-                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 text-green-800 font-semibold">{{ $bank ?? '28,400 SAR' }}</td>
-                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 text-green-800 font-semibold">{{ $bdOffice ?? '8,500 SAR' }}</td>
-                        <td class="px-4 py-3 text-sm text-right text-green-800 font-semibold">{{ $ksaOffice ?? '12,300 SAR' }}</td>
+                        <td class="px-4 py-3 text-sm text-center border-r border-gray-200 font-medium text-gray-700">{{ date('d-M-Y', strtotime($day['date'])) }}</td>
+                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 {{ $day['cash'] > 0 ? 'text-green-800 font-semibold' : 'text-gray-400' }}">@currency($day['cash'], 2)</td>
+                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 {{ $day['bank'] > 0 ? 'text-green-800 font-semibold' : 'text-gray-400' }}">@currency($day['bank'], 2)</td>
+                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 {{ $day['bd_office'] > 0 ? 'text-green-800 font-semibold' : 'text-gray-400' }}">@currency($day['bd_office'], 2)</td>
+                        <td class="px-4 py-3 text-sm text-right {{ $day['ksa_office'] > 0 ? 'text-green-800 font-semibold' : 'text-gray-400' }}">@currency($day['ksa_office'], 2)</td>
                     </tr>
-                    <tr class="even:bg-[#fafafa] hover:bg-[#e8f4fc]">
-                        <td class="px-4 py-3 text-sm text-center border-r border-gray-200 font-medium text-gray-700">02-Mar-2026</td>
-                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 text-gray-400">0 SAR</td>
-                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 text-green-800 font-semibold">15,600 SAR</td>
-                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 text-green-800 font-semibold">4,200 SAR</td>
-                        <td class="px-4 py-3 text-sm text-right text-gray-400">0 SAR</td>
+                    @empty
+                    <tr>
+                        <td colspan="5" class="px-4 py-8 text-center text-gray-500">No records found</td>
                     </tr>
-                    <tr class="even:bg-[#fafafa] hover:bg-[#e8f4fc]">
-                        <td class="px-4 py-3 text-sm text-center border-r border-gray-200 font-medium text-gray-700">03-Mar-2026</td>
-                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 text-green-800 font-semibold">8,500 SAR</td>
-                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 text-gray-400">0 SAR</td>
-                        <td class="px-4 py-3 text-sm text-right border-r border-gray-200 text-green-800 font-semibold">2,100 SAR</td>
-                        <td class="px-4 py-3 text-sm text-right text-green-800 font-semibold">6,500 SAR</td>
-                    </tr>
+                    @endforelse
                 </tbody>
             </table>
         </div>
@@ -88,7 +80,7 @@
                 <h3 class="text-white text-sm font-bold">Total Cash Received</h3>
             </div>
             <div class="px-4 py-4">
-                <p class="text-2xl font-bold text-green-700">23,750 SAR</p>
+                <p class="text-2xl font-bold text-green-700">@currency($totalCashPayment, 2)</p>
             </div>
         </div>
         <div class="rounded-lg overflow-hidden border border-green-500 bg-gradient-to-b from-green-50 to-green-100">
@@ -96,7 +88,7 @@
                 <h3 class="text-white text-sm font-bold">Total Bank Received</h3>
             </div>
             <div class="px-4 py-4">
-                <p class="text-2xl font-bold text-green-700">44,000 SAR</p>
+                <p class="text-2xl font-bold text-green-700">@currency($totalBankPayment, 2)</p>
             </div>
         </div>
         <div class="rounded-lg overflow-hidden border border-green-500 bg-gradient-to-b from-green-50 to-green-100">
@@ -104,7 +96,7 @@
                 <h3 class="text-white text-sm font-bold">Total BD Office Collection</h3>
             </div>
             <div class="px-4 py-4">
-                <p class="text-2xl font-bold text-green-700">14,800 SAR</p>
+                <p class="text-2xl font-bold text-green-700">@currency($totalBdOfficeCollection, 2)</p>
             </div>
         </div>
         <div class="rounded-lg overflow-hidden border border-green-500 bg-gradient-to-b from-green-50 to-green-100">
@@ -112,7 +104,7 @@
                 <h3 class="text-white text-sm font-bold">Total KSA Office Collection</h3>
             </div>
             <div class="px-4 py-4">
-                <p class="text-2xl font-bold text-green-700">18,800 SAR</p>
+                <p class="text-2xl font-bold text-green-700">@currency($totalKsaOfficeCollection, 2)</p>
             </div>
         </div>
     </div>
