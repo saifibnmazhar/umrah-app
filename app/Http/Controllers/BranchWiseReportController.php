@@ -8,6 +8,7 @@ use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
 use App\Models\Branch;
 use App\Models\FingerprintDetail;
+use App\Models\FingerprintDetailLog;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
 use App\Models\IssuedTicketLog;
@@ -50,18 +51,21 @@ class BranchWiseReportController extends Controller
             ->when($branchId, fn($q) => $q->whereHas('passenger.booking', $branchScope))
             ->count();
 
-        $fingerprintApproved = FingerprintDetail::whereDate('created_at', '>=', $dateFrom)
+        $fingerprintApproved = FingerprintDetailLog::where('new_values->status', FingerprintStatus::APPROVED->value)
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('passenger.booking', $branchScope))
-            ->where('status', FingerprintStatus::APPROVED)->count();
-        $fingerprintDone = FingerprintDetail::whereDate('created_at', '>=', $dateFrom)
+            ->when($branchId, fn($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
+            ->count();
+        $fingerprintDone = FingerprintDetailLog::where('new_values->status', FingerprintStatus::DONE->value)
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('passenger.booking', $branchScope))
-            ->where('status', FingerprintStatus::DONE)->count();
-        $fingerprintProcessing = FingerprintDetail::whereDate('created_at', '>=', $dateFrom)
+            ->when($branchId, fn($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
+            ->count();
+        $fingerprintProcessing = FingerprintDetailLog::where('new_values->status', FingerprintStatus::PROCESSING->value)
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('passenger.booking', $branchScope))
-            ->whereNotIn('status', [FingerprintStatus::APPROVED, FingerprintStatus::DONE])->count();
+            ->when($branchId, fn($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
+            ->count();
 
         $invoiceCount = Invoice::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
