@@ -127,9 +127,9 @@ select {
                                 <button @click="openModal(agent.id)" class="view-btn text-white px-3 py-1 rounded text-xs font-medium transition-all">
                                     View
                                 </button>
-                                <button @click="openPaymentModal(agent.id)" class="ml-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium transition-all">
+                                {{-- <button @click="openPaymentModal(agent.id)" class="ml-1 bg-green-600 hover:bg-green-700 text-white px-3 py-1 rounded text-xs font-medium transition-all">
                                     Pay
-                                </button>
+                                </button> --}}
                             </td>
                         </tr>
                     </template>
@@ -278,12 +278,12 @@ select {
                 </div>
 
                 <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between">
-                    <button @click="openPaymentModal(modalAgent.id)" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md text-sm font-medium flex items-center gap-2">
+                    {{-- <button @click="openPaymentModal(modalAgent.id)" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md text-sm font-medium flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
                         </svg>
                         Pay
-                    </button>
+                    </button> --}}
                     <button @click="closeModal()" class="filter-btn px-6 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
