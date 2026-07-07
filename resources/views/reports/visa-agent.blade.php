@@ -194,7 +194,7 @@ select {
     </div>
 
     <div id="detailModal" x-show="detailModalOpen" x-cloak class="fixed inset-0 z-50">
-        <div class="modal-overlay fixed inset-0 bg-black bg-opacity-50" @click="closeModal()"></div>
+        <div class="modal-overlay fixed inset-0 bg-transparent" @click="closeModal()"></div>
         <div class="flex items-center justify-center min-h-screen px-4">
             <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
                 <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
