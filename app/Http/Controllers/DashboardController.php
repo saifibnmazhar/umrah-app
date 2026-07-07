@@ -9,6 +9,7 @@ use App\Enums\VisaStatus;
 use App\Models\FingerprintDetail;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
+use App\Models\IssuedTicketLog;
 use App\Models\Package;
 use App\Models\Passenger;
 use App\Models\Payment;
@@ -58,16 +59,16 @@ class DashboardController extends Controller
         $invoiceTotalAmount = Invoice::where('created_at', '>=', now()->subDays(30))
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))->sum('total_amount');
 
-        $inboundTicket = IssuedTicket::where('created_at', '>=', now()->subDays(30))
-            ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))
-            ->whereIn('status', [TicketStatus::ISSUED, TicketStatus::RE_ISSUED])
-            ->whereNotNull('inbound_date')
+        $inboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+            ->where('created_at', '>=', now()->subDays(30))
+            ->whereHas('issuedTicket', fn($q) => $q->whereNotNull('inbound_date'))
+            ->when($branchId, fn($q) => $q->whereHas('issuedTicket.booking', $branchScope))
             ->count();
 
-        $outboundTicket = IssuedTicket::where('created_at', '>=', now()->subDays(30))
-            ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))
-            ->whereIn('status', [TicketStatus::ISSUED, TicketStatus::RE_ISSUED])
-            ->whereNotNull('outbound_date')
+        $outboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+            ->where('created_at', '>=', now()->subDays(30))
+            ->whereHas('issuedTicket', fn($q) => $q->whereNotNull('outbound_date'))
+            ->when($branchId, fn($q) => $q->whereHas('issuedTicket.booking', $branchScope))
             ->count();
 
         $pendingTicket = IssuedTicket::where('created_at', '>=', now()->subDays(30))
