@@ -262,9 +262,14 @@ select {
                                         <td class="px-4 py-3 text-sm text-right" :class="modalAgent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="modalAgent.cancellationFee > 0 ? formatCurrency(modalAgent.cancellationFee) : '-'"></td>
                                     </tr>
                                 </template>
-                                <template x-if="!modalAgent.transactions || modalAgent.transactions.length === 0">
+                                <template x-if="modalAgent.logsLoading">
                                     <tr>
-                                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">No transactions found</td>
+                                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">Loading...</td>
+                                    </tr>
+                                </template>
+                                <template x-if="!modalAgent.logsLoading && (!modalAgent.transactions || modalAgent.transactions.length === 0)">
+                                    <tr>
+                                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">No logs found</td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -390,12 +395,38 @@ function visaAgentReport(options = {}) {
             this.loadData();
         },
 
-        openModal(agentId) {
+        async openModal(agentId) {
             const agent = this.filteredData.find(a => a.id === agentId);
             if (!agent) return;
-            this.modalAgent = agent;
+            this.modalAgent = {
+                ...agent,
+                transactions: [],
+                logsLoading: true,
+            };
             this.detailModalOpen = true;
             document.body.style.overflow = 'hidden';
+
+            try {
+                const response = await fetch(`/api/reports/visa-agent/${agentId}/logs`);
+                const result = await response.json();
+                if (result.agent) {
+                    this.modalAgent = {
+                        ...this.modalAgent,
+                        ...result.agent,
+                        totalSubmitted: agent.totalSubmitted,
+                        totalIssued: agent.totalIssued,
+                        payable: agent.payable,
+                        paid: agent.paid,
+                        balance: agent.balance,
+                        cancellationFee: agent.cancellationFee,
+                        logsLoading: false,
+                        transactions: result.data || [],
+                    };
+                }
+            } catch (error) {
+                console.error('Failed to load agent logs:', error);
+                this.modalAgent.logsLoading = false;
+            }
         },
 
         closeModal() {

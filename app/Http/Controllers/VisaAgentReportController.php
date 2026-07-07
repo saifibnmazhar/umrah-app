@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Models\CancelledSubmission;
+use App\Models\VisaUpdateLog;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -68,6 +69,52 @@ class VisaAgentReportController extends Controller
                 'totalBalance' => $totalBalance,
                 'totalBalanceLabel' => number_format(abs($totalBalance), 2) . ' SAR',
                 'totalCancellationFee' => $summaryTotals['totalCancellationFee'],
+            ],
+        ]);
+    }
+
+    public function logs(VisaAgent $visaAgent): JsonResponse
+    {
+        $submissionIds = VisaSubmission::where('visa_agent_id', $visaAgent->id)->pluck('id');
+
+        $logs = VisaUpdateLog::whereIn('visa_submission_id', $submissionIds)
+            ->orderBy('created_at', 'desc')
+            ->get()
+            ->map(function ($log) {
+                $newValues = $log->new_values ?? [];
+                $status = $newValues['status'] ?? null;
+                $netVisaCost = (float) ($newValues['net_visa_cost'] ?? 0);
+
+                $cancellationFee = 0;
+                if ($status === 'cancelled') {
+                    $cs = CancelledSubmission::where('visa_submission_id', $log->visa_submission_id)->first();
+                    $cancellationFee = (float) ($cs->cancellation_fee ?? 0);
+                }
+
+                return [
+                    'date' => $log->created_at->format('d-M-Y'),
+                    'status' => $status,
+                    'payable' => $netVisaCost,
+                    'paid' => 0,
+                    'balance' => 0,
+                    'cancellationFee' => $cancellationFee,
+                ];
+            });
+
+        $runningPayable = 0;
+        $runningPaid = 0;
+        $logs = $logs->reverse()->values()->map(function ($item) use (&$runningPayable, &$runningPaid) {
+            $runningPayable += $item['payable'];
+            $runningPaid += $item['paid'];
+            $item['balance'] = $runningPayable - $runningPaid;
+            return $item;
+        })->reverse()->values();
+
+        return response()->json([
+            'data' => $logs,
+            'agent' => [
+                'id' => $visaAgent->id,
+                'name' => $visaAgent->name,
             ],
         ]);
     }
