@@ -6,11 +6,9 @@ use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Models\CancelledSubmission;
 use App\Models\Payment;
-use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
-use Illuminate\Support\Facades\DB;
 
 class VisaAgentReportController extends Controller
 {
@@ -88,39 +86,30 @@ class VisaAgentReportController extends Controller
         $totalSubmitted = $submittedQuery->count();
 
         // --- Total Issued + Payable: submissions with a log where new_values.status = "issued" in date range ---
-        $issuedLogQuery = DB::table('visa_update_logs')
-            ->select('visa_submission_id')
-            ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'")
-            ->when($dateFrom, fn($q) => $q->whereDate('created_at', '>=', $dateFrom))
-            ->when($dateTo, fn($q) => $q->whereDate('created_at', '<=', $dateTo));
-
-        $issuedSubIds = DB::table('visa_submissions')
-            ->where('visa_agent_id', $agentId)
+        $issuedQuery = VisaSubmission::where('visa_agent_id', $agentId)
             ->where('status', 'issued')
-            ->whereIn('id', $issuedLogQuery)
-            ->pluck('id');
+            ->whereHas('logs', function ($q) use ($dateFrom, $dateTo) {
+                $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'");
+                if ($dateFrom) $q->whereDate('created_at', '>=', $dateFrom);
+                if ($dateTo) $q->whereDate('created_at', '<=', $dateTo);
+            });
 
-        $totalIssued = $issuedSubIds->count();
-
-        $payable = $issuedSubIds->isNotEmpty()
-            ? (float) VisaSubmission::whereIn('id', $issuedSubIds)->sum('net_visa_cost')
-            : 0;
+        $totalIssued = $issuedQuery->count();
+        $payable = (float) $issuedQuery->sum('net_visa_cost');
 
         // --- Price (Max/Min/Avg): from issued submissions in date range ---
         $price = (object) ['max' => 0, 'min' => 0, 'avg' => 0];
-        if ($issuedSubIds->isNotEmpty()) {
-            $priceStats = VisaSubmission::whereIn('id', $issuedSubIds)
-                ->whereNotNull('visa_selling_price_id')
-                ->join('visa_selling_prices', 'visa_submissions.visa_selling_price_id', '=', 'visa_selling_prices.id')
-                ->selectRaw('MAX(visa_selling_prices.selling_price) as max_price')
-                ->selectRaw('MIN(visa_selling_prices.selling_price) as min_price')
-                ->selectRaw('AVG(visa_selling_prices.selling_price) as avg_price')
-                ->first();
-            if ($priceStats) {
-                $price->max = (float) ($priceStats->max_price ?? 0);
-                $price->min = (float) ($priceStats->min_price ?? 0);
-                $price->avg = (float) ($priceStats->avg_price ?? 0);
-            }
+        $priceStats = (clone $issuedQuery)
+            ->whereNotNull('visa_selling_price_id')
+            ->join('visa_selling_prices', 'visa_submissions.visa_selling_price_id', '=', 'visa_selling_prices.id')
+            ->selectRaw('MAX(visa_selling_prices.selling_price) as max_price')
+            ->selectRaw('MIN(visa_selling_prices.selling_price) as min_price')
+            ->selectRaw('AVG(visa_selling_prices.selling_price) as avg_price')
+            ->first();
+        if ($priceStats && $priceStats->max_price) {
+            $price->max = (float) $priceStats->max_price;
+            $price->min = (float) ($priceStats->min_price ?? 0);
+            $price->avg = (float) ($priceStats->avg_price ?? 0);
         }
 
         // --- Cancellation Fee ---
