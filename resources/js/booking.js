@@ -446,7 +446,7 @@ Alpine.data('bookingApp', () => ({
                 baggage_weight: this.passengers[index].baggage_weight || ''
             };
 
-            if (this.passengerData.stay_duration_int && this.passengerData.stay_duration_int >= 1 && this.passengerData.stay_duration_int <= (window.__stayDurationLimits?.maxDays ?? 85)) {
+            if (this.passengerData.stay_duration_int && this.passengerData.stay_duration_int >= 1) {
                 this.passengerData.stay_duration = `Customized (${this.passengerData.stay_duration_int} Days)`;
                 this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration_int} Days)`;
                 this.$nextTick(() => {
@@ -1311,7 +1311,7 @@ Alpine.data('createBookingApp', () => ({
             const durInt = parseInt(first.stay_duration_int ?? first.stay_duration, 10);
             if (!isNaN(durInt) && durInt > 0) {
                 this.passengerData.stay_duration_int = durInt;
-                if (durInt >= 1 && durInt <= (window.__stayDurationLimits?.maxDays ?? 85)) {
+                if (durInt >= 1) {
                     const customText = `Customized (${durInt} Days)`;
                     this.passengerData.stay_duration = customText;
                     this.passengerData.stay_duration_display = customText;
@@ -1352,7 +1352,7 @@ Alpine.data('createBookingApp', () => ({
         this.passengerData = { ...passenger };
         this.passengerData.ticket_fare_id = this.passengerData.ticket_fare_id ? String(this.passengerData.ticket_fare_id) : '';
 
-        if (typeof this.passengerData.stay_duration === 'number' && this.passengerData.stay_duration >= 1 && this.passengerData.stay_duration <= (window.__stayDurationLimits?.maxDays ?? 85)) {
+        if (typeof this.passengerData.stay_duration === 'number' && this.passengerData.stay_duration >= 1) {
             this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration} Days)`;
             this.$nextTick(() => {
                 const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
@@ -3567,7 +3567,7 @@ Alpine.data('showBookingApp', () => ({
             const durInt = parseInt(first.stay_duration, 10);
             if (!isNaN(durInt) && durInt > 0) {
                 this.passengerData.stay_duration_int = durInt;
-                if (durInt >= 1 && durInt <= (window.__stayDurationLimits?.maxDays ?? 85)) {
+                if (durInt >= 1) {
                     const customText = `Customized (${durInt} Days)`;
                     this.passengerData.stay_duration = customText;
                     this.passengerData.stay_duration_display = customText;
