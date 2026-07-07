@@ -59,6 +59,8 @@ class BookingEditPackagePreloadTest extends TestCase
             'ticketFares' => collect([]),
             'customers' => collect([]),
             'currentCurrencyRate' => null,
+            'bookingBranches' => collect([]),
+            'fingerprintBranches' => collect([]),
         ]);
 
         $html = $view->render();
@@ -78,6 +80,8 @@ class BookingEditPackagePreloadTest extends TestCase
             'ticketFares' => collect([]),
             'customers' => collect([]),
             'currentCurrencyRate' => null,
+            'bookingBranches' => collect([]),
+            'fingerprintBranches' => collect([]),
         ]);
 
         $html = $view->render();
@@ -101,6 +105,8 @@ class BookingEditPackagePreloadTest extends TestCase
             'ticketFares' => collect([]),
             'customers' => collect([]),
             'currentCurrencyRate' => null,
+            'bookingBranches' => collect([]),
+            'fingerprintBranches' => collect([]),
         ]);
 
         $html = $view->render();

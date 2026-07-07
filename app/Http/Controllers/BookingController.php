@@ -909,8 +909,25 @@ class BookingController extends Controller
                 'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
                 'service_charge' => $pkg->service_charge ?? 0,
                 'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
+                'is_active' => true,
             ];
         });
+
+        if ($booking->package_id) {
+            $currentPackage = Package::with(['ticketFare', 'visaSellingPrice'])->find($booking->package_id);
+            if ($currentPackage && !$currentPackage->is_active) {
+                $packages->push([
+                    'id' => $currentPackage->id,
+                    'package_name' => $currentPackage->package_name,
+                    'ticket_fare_id' => $currentPackage->ticket_fare_id,
+                    'visa_selling_price' => $currentPackage->visaSellingPrice?->selling_price ?? 0,
+                    'service_charge' => $currentPackage->service_charge ?? 0,
+                    'package_value' => ($currentPackage->ticketFare?->selling_fare ?? 0) + ($currentPackage->visaSellingPrice?->selling_price ?? 0) + ($currentPackage->service_charge ?? 0),
+                    'is_active' => false,
+                ]);
+            }
+        }
+
         $ticketFares = TicketFare::where('is_active', true)->with([
             'route.fromCity',
             'route.toCity',
