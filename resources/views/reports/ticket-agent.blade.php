@@ -150,6 +150,7 @@
                 </div>
             </div>
 
+            {{--
             <div class="footer-box rounded-lg overflow-hidden min-w-[260px]">
                 <div class="footer-box-header px-4 py-2">
                     <span class="text-sm font-bold text-gray-700">Ticket Summary</span>
@@ -175,6 +176,7 @@
                     </div>
                 </div>
             </div>
+            --}}
 
             <div class="flex flex-col gap-4">
                 <div class="footer-box rounded-lg overflow-hidden">
@@ -200,9 +202,15 @@
         </div>
     </div>
 
-    <div x-show="showModal" x-cloak class="fixed inset-0 z-50">
-        <div class="modal-overlay fixed inset-0 bg-black bg-opacity-50" @click="closeModal()"></div>
-        <div class="flex items-center justify-center min-h-screen px-4">
+    <div x-show="showModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto"
+         x-transition:enter="transition ease-out duration-200"
+         x-transition:enter-start="opacity-0"
+         x-transition:enter-end="opacity-100"
+         x-transition:leave="transition ease-in duration-150"
+         x-transition:leave-start="opacity-100"
+         x-transition:leave-end="opacity-0">
+        <div class="absolute inset-0" style="background-color: rgba(0,0,0,0.5);" @click="closeModal()"></div>
+        <div class="relative z-10 min-h-screen flex items-center justify-center p-4">
             <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden">
                 <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
                     <h2 class="text-xl font-bold text-white">Agent Details</h2>
@@ -242,12 +250,12 @@
                                     <button @click="switchTab('payment')"
                                             :class="activeTab === 'payment' ? 'text-white bg-slate-700 border-slate-700' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50 border-transparent'"
                                             class="px-6 py-3 text-sm font-medium border-b-2 transition-colors">Payment</button>
-                                    <button @click="switchTab('reissue')"
+                                    {{-- <button @click="switchTab('reissue')"
                                             :class="activeTab === 'reissue' ? 'text-white bg-slate-700 border-slate-700' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50 border-transparent'"
                                             class="px-6 py-3 text-sm font-medium border-b-2 transition-colors">Re-issue</button>
                                     <button @click="switchTab('refund')"
                                             :class="activeTab === 'refund' ? 'text-white bg-slate-700 border-slate-700' : 'text-slate-600 hover:text-slate-800 hover:bg-slate-50 border-transparent'"
-                                            class="px-6 py-3 text-sm font-medium border-b-2 transition-colors">Refund</button>
+                                            class="px-6 py-3 text-sm font-medium border-b-2 transition-colors">Refund</button> --}}
                                 </div>
                             </div>
 
