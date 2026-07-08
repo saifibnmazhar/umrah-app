@@ -716,7 +716,6 @@ function pendingOutboundReport(options = {}) {
                 baggage_inbound: '',
                 baggage_outbound: f.baggage_outbound || '',
                 outbound_pending: false,
-                issue_type: 'regular',
             };
 
             const url = this.isEdit
