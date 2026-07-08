@@ -337,7 +337,7 @@ select {
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
-                                <input type="date" x-model="form.outbound_date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
+                                <input type="text" x-model="form.outbound_date" placeholder="DD-MMM-YY" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">PNR</label>
@@ -348,8 +348,8 @@ select {
                                 <input type="text" x-model="form.ticket_number" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" placeholder="Enter Ticket Number">
                             </div>
                             <div>
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Date *</label>
-                                <input type="date" x-model="form.issued_date" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
+                                <input type="text" x-model="form.issued_date" placeholder="DD-MMM-YY" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
@@ -530,6 +530,30 @@ function pendingOutboundReport(options = {}) {
             return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
         },
 
+        formatToDDMMMYY(dateStr) {
+            if (!dateStr) return '';
+            const parts = dateStr.split('-');
+            if (parts.length !== 3) return dateStr;
+            const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+            const d = parseInt(parts[2]), m = parseInt(parts[1]), y = parts[0];
+            if (isNaN(d) || isNaN(m) || m < 1 || m > 12) return dateStr;
+            return d + '-' + months[m - 1] + '-' + y.slice(-2);
+        },
+
+        parseDDMMMYY(input) {
+            if (!input) return '';
+            if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+            const parts = input.split('-');
+            if (parts.length !== 3) return null;
+            const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+            const d = parseInt(parts[0]), mmm = parts[1].toLowerCase().slice(0, 3), yy = parts[2];
+            const mi = months.indexOf(mmm);
+            if (isNaN(d) || mi === -1 || !/^\d{2}$/.test(yy)) return null;
+            const year = 2000 + parseInt(yy), month = mi + 1;
+            if (d < 1 || d > new Date(year, month, 0).getDate()) return null;
+            return year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+        },
+
         handleTicketTypeChange() {
             this.form.ticket_option = '';
             this.form.ticket_fare_id = null;
@@ -629,7 +653,7 @@ function pendingOutboundReport(options = {}) {
                 outbound_date: '',
                 pnr: '',
                 ticket_number: '',
-                issued_date: this.getToday(),
+                issued_date: this.formatToDDMMMYY(this.getToday()),
                 ticket_agent_id: '',
                 ticket_fare_id: null,
                 route_type: 'One Way-Outbound',
@@ -661,10 +685,10 @@ function pendingOutboundReport(options = {}) {
                 ticket_type: '',
                 ticket_option: '',
                 flight_type: regular.flight_type || '',
-                outbound_date: cur.outbound_date || '',
+                outbound_date: cur.outbound_date ? this.formatToDDMMMYY(cur.outbound_date) : '',
                 pnr: cur.pnr || '',
                 ticket_number: cur.ticket_number || '',
-                issued_date: cur.issued_date || this.getToday(),
+                issued_date: cur.issued_date ? this.formatToDDMMMYY(cur.issued_date) : this.formatToDDMMMYY(this.getToday()),
                 ticket_agent_id: cur.ticket_agent_id || regular.ticket_agent_id || '',
                 ticket_fare_id: cur.ticket_fare_id || null,
                 route_type: 'One Way-Outbound',
@@ -705,9 +729,9 @@ function pendingOutboundReport(options = {}) {
                 ticket_agent_id: f.ticket_agent_id,
                 ticket_fare_id: f.ticket_fare_id || null,
                 group_ticket_id: null,
-                issued_date: f.issued_date || '',
+                issued_date: this.parseDDMMMYY(f.issued_date) || '',
                 inbound_date: null,
-                outbound_date: f.outbound_date || null,
+                outbound_date: this.parseDDMMMYY(f.outbound_date) || null,
                 selling_fare: parseFloat(f.selling_fare) || 0,
                 net_fare: parseFloat(f.net_fare) || 0,
                 offer_price: 0,
