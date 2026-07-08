@@ -71,7 +71,7 @@ class TicketAgentReportController extends Controller
         $data = $agents->map(function ($agent) use ($payablePerAgent, $paidPerAgent, $refundCounts, $reissueCounts, $dateFrom, $dateTo) {
             $payable = (float) ($payablePerAgent[$agent->id] ?? 0);
             $paid = (float) ($paidPerAgent[$agent->id] ?? 0);
-            $due = max(0, $payable - $paid);
+            $balance = $paid - $payable;
 
             $dailyTickets = IssuedTicket::where('ticket_agent_id', $agent->id)
                 ->whereBetween('issued_date', [$dateFrom, $dateTo])
@@ -106,7 +106,7 @@ class TicketAgentReportController extends Controller
                 'name' => $agent->name,
                 'payable' => $payable,
                 'paid' => $paid,
-                'due' => $due,
+                'due' => $balance,
                 'refundedTickets' => (int) ($refundCounts[$agent->id] ?? 0),
                 'reissueTickets' => (int) ($reissueCounts[$agent->id] ?? 0),
                 'totalRefundAmount' => 0,
@@ -141,7 +141,7 @@ class TicketAgentReportController extends Controller
             ->where('status', 're-issued')
             ->count();
 
-        $agentsWithDue = $data->filter(fn($a) => $a['due'] > 0)->count();
+        $agentsWithDue = $data->filter(fn($a) => $a['due'] < 0)->count();
 
         return response()->json([
             'data' => $data,
@@ -150,7 +150,7 @@ class TicketAgentReportController extends Controller
                 'agentsWithDue' => $agentsWithDue,
                 'totalPayable' => $totalPayableAll,
                 'totalPaid' => $totalPaidAll,
-                'totalDue' => max(0, $totalPayableAll - $totalPaidAll),
+                'totalDue' => $totalPaidAll - $totalPayableAll,
                 'totalRefundedTickets' => $totalRefundedTicketsAll,
                 'totalReissueTickets' => $totalReissueTicketsAll,
                 'totalRefundAmount' => 0,

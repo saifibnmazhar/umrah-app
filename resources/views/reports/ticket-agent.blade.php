@@ -63,23 +63,23 @@
                         <th class="w-56 px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Agent Name</th>
                         <th class="w-32 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
                         <th class="w-32 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
-                        <th class="w-32 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Due</th>
-                        <th class="w-28 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Refunded Tickets</th>
+                        <th class="w-32 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
+                        {{-- <th class="w-28 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Refunded Tickets</th>
                         <th class="w-28 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Re-issue Tickets</th>
                         <th class="w-36 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Total Refund Amount</th>
-                        <th class="w-36 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Total Re-issue Cost</th>
+                        <th class="w-36 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Total Re-issue Cost</th> --}}
                         <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-center">Action</th>
                     </tr>
                 </thead>
                 <tbody>
                     <template x-if="loading">
                         <tr>
-                            <td colspan="9" class="px-4 py-8 text-sm text-center text-slate-500">Loading...</td>
+                            <td colspan="5" class="px-4 py-8 text-sm text-center text-slate-500">Loading...</td>
                         </tr>
                     </template>
                     <template x-if="!loading && filteredAgents.length === 0">
                         <tr>
-                            <td colspan="9" class="px-4 py-8 text-sm text-center text-gray-500">No agents found matching your criteria.</td>
+                            <td colspan="5" class="px-4 py-8 text-sm text-center text-gray-500">No agents found matching your criteria.</td>
                         </tr>
                     </template>
                     <template x-for="agent in filteredAgents" :key="agent.id">
@@ -90,12 +90,12 @@
                                 :class="agent.paid > 0 ? 'text-green-700' : 'text-gray-600'"
                                 x-text="$currency(agent.paid, 2)"></td>
                             <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-semibold"
-                                :class="agent.due > 0 ? 'text-red-600' : 'text-gray-600'"
-                                x-text="$currency(agent.due, 2)"></td>
-                            <td class="px-4 py-3 text-sm text-center border-r border-gray-200 font-medium" x-text="agent.refundedTickets"></td>
+                                :class="agent.due > 0 ? 'text-green-700' : (agent.due < 0 ? 'text-red-600' : 'text-gray-600')"
+                                x-text="(agent.due > 0 ? '+' : '') + $currency(agent.due, 2)"></td>
+                            {{-- <td class="px-4 py-3 text-sm text-center border-r border-gray-200 font-medium" x-text="agent.refundedTickets"></td>
                             <td class="px-4 py-3 text-sm text-center border-r border-gray-200 font-medium" x-text="agent.reissueTickets"></td>
                             <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-medium text-amber-700" x-text="$currency(agent.totalRefundAmount, 2)"></td>
-                            <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-medium text-blue-700" x-text="$currency(agent.totalReissueCost, 2)"></td>
+                            <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-medium text-blue-700" x-text="$currency(agent.totalReissueCost, 2)"></td> --}}
                             <td class="px-4 py-3 text-center">
                                 <button @click="openModal(agent)" class="view-btn text-white px-4 py-1.5 rounded text-xs font-medium transition-all">
                                     View
@@ -143,8 +143,8 @@
                             <span class="text-xs font-bold text-green-700" x-text="$currency(summary.totalPaid, 2)"></span>
                         </div>
                         <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
-                            <span class="text-xs font-bold text-gray-700">Total Due:</span>
-                            <span class="text-xs font-bold text-red-700" x-text="$currency(summary.totalDue, 2)"></span>
+                            <span class="text-xs font-bold text-gray-700">Total Balance:</span>
+                            <span class="text-xs font-bold" :class="summary.totalDue > 0 ? 'text-green-700' : (summary.totalDue < 0 ? 'text-red-700' : 'text-gray-700')" x-text="(summary.totalDue > 0 ? '+' : '') + $currency(summary.totalDue, 2)"></span>
                         </div>
                     </div>
                 </div>
@@ -229,10 +229,10 @@
                                         <p class="text-xl font-bold text-green-700 mt-1" x-text="$currency(selectedAgent.paid, 2)"></p>
                                     </div>
                                     <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
-                                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Due</p>
+                                        <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Balance</p>
                                         <p class="text-xl font-bold mt-1"
-                                           :class="selectedAgent.due > 0 ? 'text-red-600' : 'text-gray-600'"
-                                           x-text="$currency(selectedAgent.due, 2)"></p>
+                                           :class="selectedAgent.due > 0 ? 'text-green-700' : (selectedAgent.due < 0 ? 'text-red-600' : 'text-gray-600')"
+                                           x-text="(selectedAgent.due > 0 ? '+' : '') + $currency(selectedAgent.due, 2)"></p>
                                     </div>
                                 </div>
                             </div>
@@ -259,7 +259,7 @@
                                                 <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Date</th>
                                                 <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
                                                 <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
-                                                <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right">Due</th>
+                                                <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right">Balance</th>
                                             </tr>
                                         </thead>
                                         <tbody>
@@ -271,8 +271,8 @@
                                                        :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'"
                                                        x-text="$currency(tx.paid, 2)"></td>
                                                     <td class="px-4 py-3 text-sm text-right font-semibold"
-                                                       :class="(tx.payable - tx.paid) > 0 ? 'text-red-600' : 'text-gray-600'"
-                                                       x-text="$currency(tx.payable - tx.paid, 2)"></td>
+                                                       :class="(tx.paid - tx.payable) > 0 ? 'text-green-700' : (tx.paid - tx.payable) < 0 ? 'text-red-600' : 'text-gray-600'"
+                                                       x-text="((tx.paid - tx.payable) > 0 ? '+' : '') + $currency(tx.paid - tx.payable, 2)"></td>
                                                 </tr>
                                             </template>
                                         </tbody>
@@ -372,7 +372,7 @@ function ticketAgentReport() {
             const a = this.filteredAgents;
             return {
                 totalAgents: a.length,
-                agentsWithDue: a.filter(x => x.due > 0).length,
+                agentsWithDue: a.filter(x => x.due < 0).length,
                 totalPayable: a.reduce((s, x) => s + x.payable, 0),
                 totalPaid: a.reduce((s, x) => s + x.paid, 0),
                 totalDue: a.reduce((s, x) => s + x.due, 0),
