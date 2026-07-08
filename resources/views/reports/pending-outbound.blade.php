@@ -591,7 +591,10 @@ function pendingOutboundReport(options = {}) {
                 this.form.airline_id = fare.airline_id;
                 this.form.selling_fare = fare.selling_fare || 0;
                 this.form.net_fare = fare.net_fare || 0;
-                this.form.baggage_outbound = fare.baggage_outbound || '';
+                const pType = this.form.passenger_type || 'adult';
+                const allowances = fare.baggage_allowances || [];
+                const outbound = allowances.find(b => b.passenger_type === pType && b.travel_direction === 'outbound');
+                this.form.baggage_outbound = outbound ? outbound.allowance : '';
             }
         },
 

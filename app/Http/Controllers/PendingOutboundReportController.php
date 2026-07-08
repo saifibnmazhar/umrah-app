@@ -44,10 +44,11 @@ class PendingOutboundReportController extends Controller
             'offer_price' => $fare->ticket_type?->value === 'offer' ? (float)($fare->offer_price ?? 0) : null,
             'child_fare_percentage' => (float)($fare->child_fare_percentage ?? 70),
             'infant_fare_percentage' => (float)($fare->infant_fare_percentage ?? 30),
-            'baggage_outbound' => $fare->baggageAllowances
-                ->filter(fn($ba) => $ba->travel_direction?->value === 'outbound' && $ba->passenger_type?->value === 'adult')
-                ->first()
-                ?->allowance ?? '',
+            'baggage_allowances' => $fare->baggageAllowances->map(fn($ba) => [
+                'passenger_type' => $ba->passenger_type?->value,
+                'travel_direction' => $ba->travel_direction?->value,
+                'allowance' => $ba->allowance,
+            ])->values(),
         ])->values();
         $filters = [
             'search' => request('search', ''),
