@@ -284,6 +284,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/reports/due', [\App\Http\Controllers\DueReportController::class, 'data'])->name('api.reports.due')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/due/branch/{branchId}/details', [\App\Http\Controllers\DueReportController::class, 'branchDetails'])->name('api.reports.due.branch-details')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/due/customer/{invoiceId}/transactions', [\App\Http\Controllers\DueReportController::class, 'customerTransactions'])->name('api.reports.due.customer-transactions')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/due/branch/{branchId}/print-customers', [\App\Http\Controllers\DueReportController::class, 'printCustomers'])->name('report.due.print-customers')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/due/branch/{branchId}/print-datewise', [\App\Http\Controllers\DueReportController::class, 'printDateWise'])->name('report.due.print-datewise')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/reissue-refund', fn() => view('reports.reissue-refund'))->name('report.reissue-refund')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/user-wise-sales', fn() => view('reports.user-wise-sales'))->name('report.user-sales')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/pending-outbound', [\App\Http\Controllers\PendingOutboundReportController::class, 'index'])->name('report.pending-ticket')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');

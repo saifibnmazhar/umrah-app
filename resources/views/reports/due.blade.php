@@ -170,15 +170,6 @@ select {
     backdrop-filter: blur(2px);
 }
 
-.animate-fade {
-    animation: fadeIn 0.2s ease-in-out;
-}
-
-@keyframes fadeIn {
-    from { opacity: 0; }
-    to { opacity: 1; }
-}
-
 [x-cloak] { display: none !important; }
 </style>
 
@@ -203,24 +194,7 @@ select {
         </div>
     </div>
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mb-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
-                <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    PDF
-                </button>
-                <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Excel
-                </button>
-            </div>
-        </div>
-    </div>
+
 
     <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
         <div class="overflow-x-auto">
@@ -258,12 +232,18 @@ select {
     </div>
 </div>
 
-<div x-show="branchModalOpen" x-cloak class="fixed inset-0 z-50">
-    <div class="modal-backdrop absolute inset-0" @click="closeBranchModal()"></div>
+<div x-show="branchModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+    <div class="absolute inset-0 modal-backdrop" @click="closeBranchModal()"></div>
     <div class="relative z-10 min-h-screen flex items-start justify-center p-4 pt-16">
-        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-6xl max-h-[85vh] overflow-hidden animate-fade">
-            <div class="bg-slate-700 text-white px-6 py-4 flex justify-between items-center">
-                <h2 class="text-lg font-bold" x-text="'Due Details - ' + (selectedBranch?.name || '')"></h2>
+        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-7xl max-h-[92vh] overflow-hidden">
+            <div class="bg-slate-700 text-white px-6 py-5 flex justify-between items-center">
+                <h2 class="text-xl font-bold" x-text="'Due Details - ' + (selectedBranch?.name || '')"></h2>
                 <button @click="closeBranchModal()" class="text-white hover:text-gray-200 p-1">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -272,50 +252,66 @@ select {
             </div>
 
             <div class="border-b border-gray-300 bg-gray-50 px-4 pt-3">
-                <div class="flex gap-2">
-                    <button @click="activeTab = 'customerDue'" :class="activeTab === 'customerDue' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-2.5 rounded-t-md text-sm font-medium text-gray-600">
-                        Customer Due Report
-                    </button>
-                    <button @click="activeTab = 'dateWise'" :class="activeTab === 'dateWise' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-2.5 rounded-t-md text-sm font-medium text-gray-600">
-                        Date Wise Due
-                    </button>
+                <div class="flex items-center justify-between">
+                    <div class="flex gap-2">
+                        <button @click="activeTab = 'customerDue'" :class="activeTab === 'customerDue' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-2.5 rounded-t-md text-sm font-medium text-gray-600">
+                            Customer Due Report
+                        </button>
+                        <button @click="activeTab = 'dateWise'" :class="activeTab === 'dateWise' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-2.5 rounded-t-md text-sm font-medium text-gray-600">
+                            Date Wise Due
+                        </button>
+                    </div>
+                    <div class="flex gap-2 pr-2">
+                        <a :href="printCustomerUrl" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors" title="Print Customer Due Report">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                            </svg>
+                            Customers PDF
+                        </a>
+                        <a :href="printDateWiseUrl" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 transition-colors" title="Print Date Wise Due Report">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                            </svg>
+                            Date Wise PDF
+                        </a>
+                    </div>
                 </div>
             </div>
 
-            <div class="p-4 max-h-[65vh] overflow-y-auto scrollbar-thin">
+            <div class="p-6 max-h-[78vh] overflow-y-auto scrollbar-thin">
                 <div x-show="activeTab === 'customerDue'">
                     <div class="overflow-x-auto">
                         <table class="w-full min-w-[1200px] table-fixed">
                             <thead>
                                 <tr class="table-header">
-                                    <th class="w-40 px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
-                                    <th class="w-28 px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
-                                    <th class="w-32 px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Invoice ID</th>
-                                    <th class="w-28 px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Ticket Date</th>
-                                    <th class="w-36 px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Total Package Amount</th>
-                                    <th class="w-32 px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid Amount</th>
-                                    <th class="w-28 px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Due</th>
-                                    <th class="w-24 px-3 py-3 text-xs font-bold text-gray-700 text-center">Action</th>
+                                    <th class="w-40 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
+                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Invoice ID</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Ticket Date</th>
+                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Package Amount</th>
+                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Paid Amount</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Due</th>
+                                    <th class="w-24 px-4 py-3 text-sm font-bold text-gray-700 text-center">Action</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <template x-for="customer in (selectedBranch?.customers || [])" :key="customer.id">
                                     <tr class="table-row-due">
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-left" x-text="customer.name"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center" x-text="customer.mobile"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center font-medium" x-text="customer.invoiceId"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center" x-text="customer.ticketDate"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium" x-text="$currency(customer.totalPackage)"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(customer.paid)"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-due" x-text="$currency(customer.due)"></td>
-                                        <td class="px-3 py-2.5 text-xs text-center">
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-left" x-text="customer.name"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-center" x-text="customer.mobile"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-center font-medium" x-text="customer.invoiceId"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-center" x-text="customer.ticketDate"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium" x-text="$currency(customer.totalPackage)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(customer.paid)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-semibold amount-due" x-text="$currency(customer.due)"></td>
+                                        <td class="px-4 py-3 text-sm text-center">
                                             <button @click="openDetailModal(customer.id)" class="btn-view">View</button>
                                         </td>
                                     </tr>
                                 </template>
                                 <template x-if="(selectedBranch?.customers || []).length === 0">
                                     <tr>
-                                        <td colspan="8" class="px-3 py-8 text-center text-xs text-gray-500">No customers found</td>
+                                        <td colspan="8" class="px-3 py-8 text-center text-sm text-gray-500">No customers found</td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -328,28 +324,28 @@ select {
                         <table class="w-full min-w-[1000px] table-fixed">
                             <thead>
                                 <tr class="table-header">
-                                    <th class="w-32 px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Date</th>
-                                    <th class="w-28 px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Due</th>
-                                    <th class="w-36 px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Collected Amount Cash</th>
-                                    <th class="w-36 px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Collected Amount Bank</th>
-                                    <th class="w-36 px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Total Collected Amount</th>
-                                    <th class="w-28 px-3 py-3 text-xs font-bold text-gray-700 text-right">New Due</th>
+                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Date</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Due</th>
+                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Collected Amount Cash</th>
+                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Collected Amount Bank</th>
+                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Collected Amount</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-right">New Due</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <template x-for="(row, index) in (selectedBranch?.dateWiseData || [])" :key="index">
                                     <tr class="table-row-due">
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center" x-text="row.date"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-due" x-text="$currency(row.due)"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(row.cash)"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(row.bank)"></td>
-                                        <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-positive" x-text="$currency(row.totalCollected)"></td>
-                                        <td class="px-3 py-2.5 text-xs text-right font-semibold amount-warning" x-text="$currency(row.newDue)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-center" x-text="row.date"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-semibold amount-due" x-text="$currency(row.due)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(row.cash)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(row.bank)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-semibold amount-positive" x-text="$currency(row.totalCollected)"></td>
+                                        <td class="px-4 py-3 text-sm text-right font-semibold amount-warning" x-text="$currency(row.newDue)"></td>
                                     </tr>
                                 </template>
                                 <template x-if="(selectedBranch?.dateWiseData || []).length === 0">
                                     <tr>
-                                        <td colspan="6" class="px-3 py-8 text-center text-xs text-gray-500">No date wise data found</td>
+                                        <td colspan="6" class="px-3 py-8 text-center text-sm text-gray-500">No date wise data found</td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -361,18 +357,24 @@ select {
     </div>
 </div>
 
-<div x-show="detailModalOpen" x-cloak class="fixed inset-0 z-[60]">
-    <div class="modal-backdrop absolute inset-0" @click="closeDetailModal()"></div>
+<div x-show="detailModalOpen" x-cloak class="fixed inset-0 z-[60] overflow-y-auto"
+     x-transition:enter="transition ease-out duration-200"
+     x-transition:enter-start="opacity-0"
+     x-transition:enter-end="opacity-100"
+     x-transition:leave="transition ease-in duration-150"
+     x-transition:leave-start="opacity-100"
+     x-transition:leave-end="opacity-0">
+    <div class="absolute inset-0 modal-backdrop" @click="closeDetailModal()"></div>
     <div class="relative z-10 min-h-screen flex items-start justify-center p-4 pt-12">
-        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[85vh] overflow-hidden animate-fade">
-            <div class="bg-slate-700 text-white px-6 py-4 flex justify-between items-center">
+        <div class="modal-content bg-white rounded-lg shadow-2xl w-full max-w-7xl max-h-[92vh] overflow-hidden">
+            <div class="bg-slate-700 text-white px-6 py-5 flex justify-between items-center">
                 <div class="flex items-center gap-3">
                     <button @click="backToCustomerList()" class="text-white hover:text-gray-200 p-1">
                         <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/>
                         </svg>
                     </button>
-                    <h2 class="text-lg font-bold" x-text="'Transaction Details - ' + (selectedCustomer?.name || '')"></h2>
+                    <h2 class="text-xl font-bold" x-text="'Transaction Details - ' + (selectedCustomer?.name || '')"></h2>
                 </div>
                 <button @click="closeDetailModal()" class="text-white hover:text-gray-200 p-1">
                     <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -400,35 +402,35 @@ select {
                 </div>
             </div>
 
-            <div class="p-4 max-h-[55vh] overflow-y-auto scrollbar-thin">
+            <div class="p-6 max-h-[72vh] overflow-y-auto scrollbar-thin">
                 <div class="overflow-x-auto">
                     <table class="w-full min-w-[900px] table-fixed">
                         <thead>
                             <tr class="table-header">
-                                <th class="w-28 px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Date</th>
-                                <th class="w-24 px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Due</th>
-                                <th class="w-24 px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
-                                <th class="w-28 px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Payment Method</th>
-                                <th class="w-32 px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Trx ID</th>
-                                <th class="w-24 px-3 py-3 text-xs font-bold text-gray-700 text-right">New Due</th>
+                                <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Date</th>
+                                <th class="w-24 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Due</th>
+                                <th class="w-24 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
+                                <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Payment Method</th>
+                                <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Trx ID</th>
+                                <th class="w-24 px-4 py-3 text-sm font-bold text-gray-700 text-right">New Due</th>
                             </tr>
                         </thead>
                         <tbody>
                             <template x-for="(trx, index) in filteredTransactions" :key="index">
                                 <tr class="table-row-due">
-                                    <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center" x-text="trx.date"></td>
-                                    <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-semibold amount-due" x-text="$currency(trx.due)"></td>
-                                    <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(trx.paid)"></td>
-                                    <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center">
+                                    <td class="px-4 py-3 text-sm border-r border-gray-200 text-center" x-text="trx.date"></td>
+                                    <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-semibold amount-due" x-text="$currency(trx.due)"></td>
+                                    <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium amount-positive" x-text="$currency(trx.paid)"></td>
+                                    <td class="px-4 py-3 text-sm border-r border-gray-200 text-center">
                                         <span :class="trx.method === 'Cash' ? 'badge-cash' : 'badge-bank'" x-text="trx.method"></span>
                                     </td>
-                                    <td class="px-3 py-2.5 text-xs border-r border-gray-200 text-center font-mono" x-text="trx.trxId"></td>
-                                    <td class="px-3 py-2.5 text-xs text-right font-semibold" :class="trx.newDue > 0 ? 'amount-warning' : 'amount-positive'" x-text="$currency(trx.newDue)"></td>
+                                    <td class="px-4 py-3 text-sm border-r border-gray-200 text-center font-mono" x-text="trx.trxId"></td>
+                                    <td class="px-4 py-3 text-sm text-right font-semibold" :class="trx.newDue > 0 ? 'amount-warning' : 'amount-positive'" x-text="$currency(trx.newDue)"></td>
                                 </tr>
                             </template>
                             <template x-if="filteredTransactions.length === 0">
                                 <tr>
-                                    <td colspan="6" class="px-3 py-8 text-center text-xs text-gray-500">No transactions found</td>
+                                    <td colspan="6" class="px-3 py-8 text-center text-sm text-gray-500">No transactions found</td>
                                 </tr>
                             </template>
                         </tbody>
@@ -513,6 +515,22 @@ function dueReportApp() {
         closeBranchModal() {
             this.branchModalOpen = false;
             this.selectedBranch = null;
+        },
+
+        get printCustomerUrl() {
+            if (!this.selectedBranch) return '#';
+            const params = new URLSearchParams();
+            if (this.date_from) params.set('date_from', this.date_from);
+            if (this.date_to) params.set('date_to', this.date_to);
+            return `/reports/due/branch/${this.selectedBranch.id}/print-customers?${params}`;
+        },
+
+        get printDateWiseUrl() {
+            if (!this.selectedBranch) return '#';
+            const params = new URLSearchParams();
+            if (this.date_from) params.set('date_from', this.date_from);
+            if (this.date_to) params.set('date_to', this.date_to);
+            return `/reports/due/branch/${this.selectedBranch.id}/print-datewise?${params}`;
         },
 
         async openDetailModal(invoiceId) {
