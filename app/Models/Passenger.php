@@ -99,6 +99,7 @@ class Passenger extends Model
                 $q->whereNull('issue_type')
                   ->orWhere('issue_type', '!=', 'pending_outbound');
             })
+            ->whereIn('status', ['issued', 're-issued'])
             ->latestOfMany();
     }
 
