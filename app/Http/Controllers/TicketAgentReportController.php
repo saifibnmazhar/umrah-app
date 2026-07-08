@@ -17,8 +17,8 @@ class TicketAgentReportController extends Controller
 
     public function data(Request $request)
     {
-        $dateFrom = $request->date('date_from', now()->startOfMonth());
-        $dateTo = $request->date('date_to', now()->endOfMonth());
+        $dateFrom = $request->date('date_from') ?? now()->startOfMonth();
+        $dateTo = $request->date('date_to') ?? now()->endOfMonth();
         $agentId = $request->agent_id;
 
         $agentsQuery = TicketAgent::query()
