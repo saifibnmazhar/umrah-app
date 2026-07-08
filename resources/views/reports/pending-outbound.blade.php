@@ -591,6 +591,7 @@ function pendingOutboundReport(options = {}) {
                 this.form.airline_id = fare.airline_id;
                 this.form.selling_fare = fare.selling_fare || 0;
                 this.form.net_fare = fare.net_fare || 0;
+                this.form.baggage_outbound = fare.baggage_outbound || '';
             }
         },
 
