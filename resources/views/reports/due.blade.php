@@ -203,24 +203,7 @@ select {
         </div>
     </div>
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mb-4">
-        <div class="flex flex-wrap items-center justify-between gap-3">
-            <div class="flex items-center gap-2">
-                <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    PDF
-                </button>
-                <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 17v-2m3 2v-4m3 4v-6m2 10H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                    </svg>
-                    Excel
-                </button>
-            </div>
-        </div>
-    </div>
+
 
     <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
         <div class="overflow-x-auto">
@@ -272,13 +255,29 @@ select {
             </div>
 
             <div class="border-b border-gray-300 bg-gray-50 px-4 pt-3">
-                <div class="flex gap-2">
-                    <button @click="activeTab = 'customerDue'" :class="activeTab === 'customerDue' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-2.5 rounded-t-md text-sm font-medium text-gray-600">
-                        Customer Due Report
-                    </button>
-                    <button @click="activeTab = 'dateWise'" :class="activeTab === 'dateWise' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-2.5 rounded-t-md text-sm font-medium text-gray-600">
-                        Date Wise Due
-                    </button>
+                <div class="flex items-center justify-between">
+                    <div class="flex gap-2">
+                        <button @click="activeTab = 'customerDue'" :class="activeTab === 'customerDue' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-2.5 rounded-t-md text-sm font-medium text-gray-600">
+                            Customer Due Report
+                        </button>
+                        <button @click="activeTab = 'dateWise'" :class="activeTab === 'dateWise' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-2.5 rounded-t-md text-sm font-medium text-gray-600">
+                            Date Wise Due
+                        </button>
+                    </div>
+                    <div class="flex gap-2 pr-2">
+                        <a :href="printCustomerUrl" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 transition-colors" title="Print Customer Due Report">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                            </svg>
+                            Customers PDF
+                        </a>
+                        <a :href="printDateWiseUrl" target="_blank" class="flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium text-white bg-amber-500 hover:bg-amber-600 transition-colors" title="Print Date Wise Due Report">
+                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                            </svg>
+                            Date Wise PDF
+                        </a>
+                    </div>
                 </div>
             </div>
 
@@ -513,6 +512,22 @@ function dueReportApp() {
         closeBranchModal() {
             this.branchModalOpen = false;
             this.selectedBranch = null;
+        },
+
+        get printCustomerUrl() {
+            if (!this.selectedBranch) return '#';
+            const params = new URLSearchParams();
+            if (this.date_from) params.set('date_from', this.date_from);
+            if (this.date_to) params.set('date_to', this.date_to);
+            return `/reports/due/branch/${this.selectedBranch.id}/print-customers?${params}`;
+        },
+
+        get printDateWiseUrl() {
+            if (!this.selectedBranch) return '#';
+            const params = new URLSearchParams();
+            if (this.date_from) params.set('date_from', this.date_from);
+            if (this.date_to) params.set('date_to', this.date_to);
+            return `/reports/due/branch/${this.selectedBranch.id}/print-datewise?${params}`;
         },
 
         async openDetailModal(invoiceId) {
