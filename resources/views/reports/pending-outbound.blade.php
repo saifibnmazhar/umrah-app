@@ -329,11 +329,11 @@ select {
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                                <select x-model="form.flight_type" @change="handleTicketTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none bg-white">
-                                    <option value="">Select</option>
-                                    <option value="Direct">Direct</option>
-                                    <option value="Transit">Transit</option>
-                                </select>
+<select x-model="form.flight_type" @change="handleTicketTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none bg-white">
+    <option value="">Select</option>
+    <option value="direct">Direct</option>
+    <option value="transit">Transit</option>
+</select>
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
@@ -624,15 +624,15 @@ function pendingOutboundReport(options = {}) {
                 booking_id: row.booking_id,
                 passenger_id: row.passenger_id,
                 issued_ticket_id: row.id,
-                ticket_type: '',
+                ticket_type: regular.ticket_type || '',
                 ticket_option: '',
                 flight_type: regular.flight_type || '',
-                outbound_date: '',
-                pnr: '',
-                ticket_number: '',
+                outbound_date: regular.outbound_date || '',
+                pnr: regular.pnr || '',
+                ticket_number: regular.ticket_number || '',
                 issued_date: this.getToday(),
                 ticket_agent_id: regular.ticket_agent_id || '',
-                ticket_fare_id: null,
+                ticket_fare_id: regular.ticket_fare_id || null,
                 route_type: 'One Way-Outbound',
                 route_id: '',
                 airline_id: '',
@@ -646,6 +646,14 @@ function pendingOutboundReport(options = {}) {
                 non_refundable: !regular.is_refundable,
                 non_exchangeable: !regular.is_exchangeable,
             };
+            const fareId = regular.ticket_fare_id;
+            if (fareId && this.form.ticket_type) {
+                const opt = this.filteredTicketOptions.find(o => o.value == fareId);
+                if (opt) {
+                    this.form.ticket_option = opt.value;
+                    this.handleTicketOptionChange();
+                }
+            }
             this.modalOpen = true;
         },
 
