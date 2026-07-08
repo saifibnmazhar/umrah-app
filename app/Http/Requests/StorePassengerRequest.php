@@ -22,7 +22,7 @@ class StorePassengerRequest extends FormRequest
             'mobile_no' => 'nullable|string|max:20',
             'passport_expiry' => 'nullable|date',
             'service_required' => 'nullable|in:All,Visa Only,Ticket Only',
-            'stay_duration' => 'nullable|integer|min:1|max:80',
+            'stay_duration' => 'nullable|integer|min:1|max:85',
             'flight_date_from' => 'nullable|date',
             'flight_date_to' => 'nullable|date',
             'address' => 'nullable|string|max:500',

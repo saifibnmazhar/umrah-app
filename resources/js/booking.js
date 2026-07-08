@@ -187,8 +187,8 @@ Alpine.data('bookingApp', () => ({
     saveCustomDuration() {
         const days = parseInt(this.passengerData.customDurationDays);
 
-        if (isNaN(days) || days < 1 || days > 80) {
-            alert('Please enter a valid duration between 1 and 80 days');
+        if (isNaN(days) || days < 1 || days > 85) {
+            alert('Please enter a valid duration between 1 and 85 days');
             return;
         }
 
@@ -505,7 +505,7 @@ Alpine.data('bookingApp', () => ({
                 baggage_weight: this.passengers[index].baggage_weight || ''
             };
 
-            if (this.passengerData.stay_duration_int && this.passengerData.stay_duration_int >= 1 && this.passengerData.stay_duration_int <= 80) {
+            if (this.passengerData.stay_duration_int && this.passengerData.stay_duration_int >= 1 && this.passengerData.stay_duration_int <= 85) {
                 this.passengerData.stay_duration = `Customized (${this.passengerData.stay_duration_int} Days)`;
                 this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration_int} Days)`;
                 this.$nextTick(() => {
@@ -1209,8 +1209,8 @@ Alpine.data('createBookingApp', () => ({
 
     saveCustomDuration() {
         const days = parseInt(this.passengerData.customDurationDays);
-        if (isNaN(days) || days < 1 || days > 80) {
-            alert('Please enter a valid duration between 1 and 80 days');
+        if (isNaN(days) || days < 1 || days > 85) {
+            alert('Please enter a valid duration between 1 and 85 days');
             return;
         }
 
@@ -1475,7 +1475,7 @@ Alpine.data('createBookingApp', () => ({
             const durInt = parseInt(first.stay_duration_int ?? first.stay_duration, 10);
             if (!isNaN(durInt) && durInt > 0) {
                 this.passengerData.stay_duration_int = durInt;
-                if (durInt >= 1 && durInt <= 80) {
+                if (durInt >= 1 && durInt <= 85) {
                     const customText = `Customized (${durInt} Days)`;
                     this.passengerData.stay_duration = customText;
                     this.passengerData.stay_duration_display = customText;
@@ -1516,7 +1516,7 @@ Alpine.data('createBookingApp', () => ({
         this.passengerData = { ...passenger };
         this.passengerData.ticket_fare_id = this.passengerData.ticket_fare_id ? String(this.passengerData.ticket_fare_id) : '';
 
-        if (typeof this.passengerData.stay_duration === 'number' && this.passengerData.stay_duration >= 1 && this.passengerData.stay_duration <= 80) {
+        if (typeof this.passengerData.stay_duration === 'number' && this.passengerData.stay_duration >= 1 && this.passengerData.stay_duration <= 85) {
             this.passengerData.stay_duration_display = `Customized (${this.passengerData.stay_duration} Days)`;
             this.$nextTick(() => {
                 const select = document.querySelector('select[x-model="passengerData.stay_duration"]');
@@ -2810,8 +2810,8 @@ Alpine.data('editBookingApp', () => ({
 
     saveCustomDuration() {
         const days = parseInt(this.passengerData.customDurationDays);
-        if (isNaN(days) || days < 1 || days > 80) {
-            alert('Please enter a valid duration between 1 and 80 days');
+        if (isNaN(days) || days < 1 || days > 85) {
+            alert('Please enter a valid duration between 1 and 85 days');
             return;
         }
 
@@ -2989,10 +2989,33 @@ Alpine.data('editBookingApp', () => ({
     },
 
     onPackageChange() {
+        const pkg = this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id));
+        if (pkg && pkg.ticket_fare_id) {
+            const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
+            if (ticket) {
+                const routeTypeMap = {
+                    'oneway_inbound': 'One Way-Inbound',
+                    'oneway_outbound': 'One Way-Outbound',
+                    'round': 'Round',
+                    'multi_city': 'Multi City',
+                };
+                const flightTypeMap = {
+                    'transit': 'Transit',
+                    'direct': 'Direct',
+                };
+                this.passengers.forEach(p => {
+                    p.ticket_fare = null;
+                    p.route_type = routeTypeMap[ticket.route_type] || '';
+                    p.flight_type = flightTypeMap[ticket.flight_type] || '';
+                    p.route = ticket.route;
+                    p.airline = ticket.airline || '';
+                    p.class = ticket.airline_class || '';
+                    p.ticket_fare_id = String(pkg.ticket_fare_id);
+                });
+            }
+        }
         this.recalculateAllPassengerValues();
     },
-
-
 
     calculateFlightDateRange() {
         const route = this.passengerData.route;
@@ -3811,7 +3834,7 @@ Alpine.data('showBookingApp', () => ({
             const durInt = parseInt(first.stay_duration, 10);
             if (!isNaN(durInt) && durInt > 0) {
                 this.passengerData.stay_duration_int = durInt;
-                if (durInt >= 1 && durInt <= 80) {
+                if (durInt >= 1 && durInt <= 85) {
                     const customText = `Customized (${durInt} Days)`;
                     this.passengerData.stay_duration = customText;
                     this.passengerData.stay_duration_display = customText;
@@ -4080,8 +4103,8 @@ Alpine.data('showBookingApp', () => ({
 
     saveCustomDuration() {
         const days = parseInt(this.passengerData.customDurationDays);
-        if (isNaN(days) || days < 1 || days > 80) {
-            alert('Please enter a valid duration between 1 and 80 days');
+        if (isNaN(days) || days < 1 || days > 85) {
+            alert('Please enter a valid duration between 1 and 85 days');
             return;
         }
         this.passengerData.stay_duration = `Customized (${days} Days)`;

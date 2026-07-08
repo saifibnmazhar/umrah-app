@@ -209,8 +209,8 @@
         <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
             <h3 class="text-xl font-semibold text-slate-800 mb-4">Customize Stay Duration</h3>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Number of Days (1-80)</label>
-                <input type="number" id="customDurationDays" x-model="passengerData.customDurationDays" min="1" max="80" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter days">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Number of Days (1-85)</label>
+                <input type="number" id="customDurationDays" x-model="passengerData.customDurationDays" min="1" max="85" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter days">
             </div>
             <div class="flex gap-3">
                 <button type="button" @click="saveCustomDuration()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
@@ -300,7 +300,7 @@
                     if (sd === 14 || sd === 85) {
                         this.passengerData.stay_duration = String(sd);
                         this.passengerData.stay_duration_int = sd;
-                    } else if (sd >= 1 && sd <= 80) {
+                    } else if (sd >= 1 && sd <= 85) {
                         this.passengerData.stay_duration_display = `Customized (${sd} Days)`;
                         this.passengerData.stay_duration_int = sd;
                         this.$nextTick(() => {
@@ -787,8 +787,8 @@
 
         saveCustomDuration() {
             const days = parseInt(this.passengerData.customDurationDays);
-            if (isNaN(days) || days < 1 || days > 80) {
-                alert('Please enter a valid duration between 1 and 80 days');
+            if (isNaN(days) || days < 1 || days > 85) {
+                alert('Please enter a valid duration between 1 and 85 days');
                 return;
             }
 

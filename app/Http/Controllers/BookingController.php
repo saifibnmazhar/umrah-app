@@ -480,7 +480,7 @@ class BookingController extends Controller
             'passengers.*.mobile_no' => 'nullable|string|max:20',
             'passengers.*.passport_expiry' => 'nullable|date',
             'passengers.*.service_required' => 'nullable|in:all,visa_only,ticket_only',
-            'passengers.*.stay_duration' => 'nullable|integer|min:1|max:80',
+            'passengers.*.stay_duration' => 'nullable|integer|min:1|max:85',
             'passengers.*.flight_date_from' => 'nullable|date',
             'passengers.*.flight_date_to' => 'nullable|date|after:passengers.*.flight_date_from',
             'passengers.*.address' => 'nullable|string|max:500',
@@ -909,8 +909,25 @@ class BookingController extends Controller
                 'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
                 'service_charge' => $pkg->service_charge ?? 0,
                 'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
+                'is_active' => true,
             ];
         });
+
+        if ($booking->package_id) {
+            $currentPackage = Package::with(['ticketFare', 'visaSellingPrice'])->find($booking->package_id);
+            if ($currentPackage && !$currentPackage->is_active) {
+                $packages->push([
+                    'id' => $currentPackage->id,
+                    'package_name' => $currentPackage->package_name,
+                    'ticket_fare_id' => $currentPackage->ticket_fare_id,
+                    'visa_selling_price' => $currentPackage->visaSellingPrice?->selling_price ?? 0,
+                    'service_charge' => $currentPackage->service_charge ?? 0,
+                    'package_value' => ($currentPackage->ticketFare?->selling_fare ?? 0) + ($currentPackage->visaSellingPrice?->selling_price ?? 0) + ($currentPackage->service_charge ?? 0),
+                    'is_active' => false,
+                ]);
+            }
+        }
+
         $ticketFares = TicketFare::where('is_active', true)->with([
             'route.fromCity',
             'route.toCity',
@@ -989,6 +1006,7 @@ class BookingController extends Controller
             'fingerprint_charge_id' => 'nullable|exists:fingerprint_charges,id',
             'booking_branch_id' => 'nullable|exists:branches,id',
             'fingerprint_location' => 'nullable|in:office,home',
+            'package_id' => 'nullable|exists:packages,id',
             'discount_type' => 'nullable|in:fixed,percentage',
             'discount_value' => 'nullable|numeric|min:0',
             'remarks' => 'nullable|string|max:1000',
@@ -1018,8 +1036,21 @@ class BookingController extends Controller
             $validated['discount_type'] = ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage';
             if (! $this->isAdminRole()) {
                 unset($validated['booking_branch_id']);
+                unset($validated['package_id']);
             }
             $booking->update($validated);
+
+            if ($request->has('package_id') && $booking->wasChanged('package_id')) {
+                $package = Package::with('ticketFare')->find($request->input('package_id'));
+                if ($package && $package->ticket_fare_id) {
+                    $booking->passengers()
+                        ->where(function ($q) {
+                            $q->where('service_required', '!=', 'visa_only')
+                              ->orWhereNull('service_required');
+                        })
+                        ->update(['ticket_fare_id' => $package->ticket_fare_id]);
+                }
+            }
 
             if (($validated['fingerprint_location'] ?? null) === 'office' && $booking->fingerprint) {
                 $booking->fingerprint->update(['assigned_staff_id' => null]);
@@ -1178,7 +1209,7 @@ class BookingController extends Controller
             'mobile_no' => 'nullable|string|max:20',
             'passport_expiry' => 'nullable|date',
             'service_required' => 'nullable|in:all,visa_only,ticket_only',
-            'stay_duration' => 'nullable|integer|min:1|max:80',
+            'stay_duration' => 'nullable|integer|min:1|max:85',
             'flight_date_from' => 'nullable|date',
             'flight_date_to' => 'nullable|date',
             'address' => 'nullable|string|max:500',
