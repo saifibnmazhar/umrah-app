@@ -44,6 +44,7 @@ use App\Http\Controllers\VisaReportController;
 use App\Enums\Location;
 use App\Enums\PaymentMethod;
 use App\Models\Payment;
+use Carbon\Carbon;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -282,32 +283,39 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/pending-outbound', fn() => view('reports.pending-outbound'))->name('report.pending-ticket')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/payment-receiving', function () {
         $branchId = auth()->user()->branch_id;
+        $dateFrom = request('date_from') ? Carbon::parse(request('date_from')) : now()->subDays(30);
+        $dateTo = request('date_to') ? Carbon::parse(request('date_to')) : now();
 
-        $totalCashPayment = Payment::where('created_at', '>=', now()->subDays(30))
+        $totalCashPayment = Payment::whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->where('payment_method', PaymentMethod::CASH)
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->sum('amount');
 
-        $totalBankPayment = Payment::where('created_at', '>=', now()->subDays(30))
+        $totalBankPayment = Payment::whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->where('payment_method', PaymentMethod::BANK)
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->sum('amount');
 
-        $totalBdOfficeCollection = Payment::where('created_at', '>=', now()->subDays(30))
+        $totalBdOfficeCollection = Payment::whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->whereHas('branch', fn($q) => $q->where('location', Location::BD))
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->sum('amount');
 
-        $totalKsaOfficeCollection = Payment::where('created_at', '>=', now()->subDays(30))
+        $totalKsaOfficeCollection = Payment::whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->whereHas('branch', fn($q) => $q->where('location', Location::KSA))
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->sum('amount');
 
-        $payments = Payment::where('created_at', '>=', now()->subDays(30))
+        $payments = Payment::whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->with('branch')

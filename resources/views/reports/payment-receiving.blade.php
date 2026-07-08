@@ -1,30 +1,25 @@
 @extends('layouts.app')
 @section('title', 'Payment Receiving Report')
 @section('content')
-<div class="max-w-[1600px] mx-auto" x-data="{ date_from: '', date_to: '', agent: '' }">
+<div class="max-w-[1600px] mx-auto">
     <div class="mb-3">
         <span class="text-sm text-gray-500 font-medium">Reports</span>
         <span class="text-sm text-gray-400 mx-1">›</span>
         <span class="text-sm text-gray-700 font-semibold">Payment Receiving Report</span>
     </div>
 
+    <form method="GET" action="{{ route('report.payment-receiving') }}">
     <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 mb-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-semibold text-gray-700">From:</label>
-                    <input type="date" x-model="date_from" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <input type="date" name="date_from" value="{{ request('date_from', now()->subDays(30)->format('Y-m-d')) }}" onchange="if(this.value) this.form.submit()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-semibold text-gray-700">To:</label>
-                    <input type="date" x-model="date_to" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                    <input type="date" name="date_to" value="{{ request('date_to', now()->format('Y-m-d')) }}" onchange="if(this.value) this.form.submit()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                 </div>
-                <button type="button" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                    </svg>
-                    Apply
-                </button>
             </div>
             <div class="flex items-center gap-2">
                 <button type="button" class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
@@ -42,6 +37,7 @@
             </div>
         </div>
     </div>
+    </form>
 
     <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden mb-4">
         <div class="overflow-x-auto">
