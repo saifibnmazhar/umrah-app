@@ -118,6 +118,7 @@ select {
 
 <div class="max-w-[1600px] mx-auto p-4" x-data='pendingOutboundReport({
     ticketAgents: @json($ticketAgents),
+    ticketFaresList: @json($ticketFaresList),
     filters: @json($filters)
 })'>
     <div class="mb-3">
@@ -300,6 +301,24 @@ select {
                 <p class="text-sm text-slate-600 mb-4">Invoice: <span class="font-semibold text-slate-800" x-text="form.invoice || ''"></span></p>
                 <form @submit.prevent="handleSubmit">
                     <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                        <select x-model="form.ticket_type" @change="handleTicketTypeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="regular">Regular</option>
+                            <option value="offer">Offer</option>
+                            <option value="group">Group</option>
+                        </select>
+                    </div>
+                    <div class="mb-4">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket</label>
+                        <select x-model="form.ticket_option" @change="handleTicketOptionChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Ticket</option>
+                            <template x-for="opt in filteredTicketOptions" :key="opt.value">
+                                <option :value="opt.value" x-text="opt.display"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <div class="mb-4">
                         <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Information</h4>
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
@@ -310,7 +329,7 @@ select {
                             </div>
                             <div>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                                <select x-model="form.flight_type" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none bg-white">
+                                <select x-model="form.flight_type" @change="handleTicketTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none bg-white">
                                     <option value="">Select</option>
                                     <option value="Direct">Direct</option>
                                     <option value="Transit">Transit</option>
@@ -426,6 +445,7 @@ function pendingOutboundReport(options = {}) {
         totalRecords: 0,
         perPage: 25,
         ticketAgents: options.ticketAgents || [],
+        ticketFaresList: options.ticketFaresList || [],
         filters: options.filters || {
             search: '',
             booking_date_from: '',
@@ -448,6 +468,8 @@ function pendingOutboundReport(options = {}) {
             booking_id: null,
             passenger_id: null,
             issued_ticket_id: null,
+            ticket_type: '',
+            ticket_option: '',
             flight_type: '',
             outbound_date: '',
             pnr: '',
@@ -455,6 +477,9 @@ function pendingOutboundReport(options = {}) {
             issued_date: '',
             ticket_agent_id: '',
             ticket_fare_id: null,
+            route_type: '',
+            route_id: '',
+            airline_id: '',
             route_display: '',
             airline: '',
             travel_class: '',
@@ -474,6 +499,28 @@ function pendingOutboundReport(options = {}) {
             return pages;
         },
 
+        get filteredTicketOptions() {
+            const tt = this.form.ticket_type;
+            const rt = 'One Way-Outbound';
+            const ft = this.form.flight_type;
+            const rtMap = {'One Way-Inbound':'oneway_inbound','One Way-Outbound':'oneway_outbound','Round':'round','Multi City':'multi_city'};
+            const ftMap = {'Transit':'transit','Direct':'direct'};
+            let fares = this.ticketFaresList;
+            if (tt) {
+                fares = fares.filter(f => f.ticket_type === tt);
+            }
+            if (rt && ft) {
+                fares = fares.filter(f => f.route_type === (rtMap[rt]||rt) && f.flight_type === (ftMap[ft]||ft));
+            }
+            return fares.map(f => {
+                let display = f.route + ' | ' + f.airline + ' | ' + f.airline_class + ' | ' + f.ticket_type;
+                if (f.ticket_type === 'group' && f.pnr && f.ticket_qty) {
+                    display += ' | ' + f.pnr + ' | ' + f.ticket_qty;
+                }
+                return { display, value: f.id };
+            });
+        },
+
         init() {
             this.loadData();
         },
@@ -481,6 +528,46 @@ function pendingOutboundReport(options = {}) {
         getToday() {
             const d = new Date();
             return d.getFullYear() + '-' + String(d.getMonth() + 1).padStart(2, '0') + '-' + String(d.getDate()).padStart(2, '0');
+        },
+
+        handleTicketTypeChange() {
+            this.form.ticket_option = '';
+            this.form.ticket_fare_id = null;
+            this.form.route_display = '';
+            this.form.airline = '';
+            this.form.travel_class = '';
+            this.form.route_id = '';
+            this.form.airline_id = '';
+            this.form.selling_fare = 0;
+            this.form.net_fare = 0;
+            this.form.baggage_outbound = '';
+        },
+
+        handleTicketOptionChange() {
+            const val = this.form.ticket_option;
+            if (!val) {
+                this.form.ticket_fare_id = null;
+                this.form.route_display = '';
+                this.form.airline = '';
+                this.form.travel_class = '';
+                this.form.route_id = '';
+                this.form.airline_id = '';
+                this.form.selling_fare = 0;
+                this.form.net_fare = 0;
+                this.form.baggage_outbound = '';
+                return;
+            }
+            const fare = this.ticketFaresList.find(f => f.id == val);
+            if (fare) {
+                this.form.ticket_fare_id = fare.id;
+                this.form.route_display = fare.route || '';
+                this.form.airline = fare.airline || '';
+                this.form.travel_class = fare.airline_class || '';
+                this.form.route_id = fare.route_id;
+                this.form.airline_id = fare.airline_id;
+                this.form.selling_fare = fare.selling_fare || 0;
+                this.form.net_fare = fare.net_fare || 0;
+            }
         },
 
         async loadData() {
@@ -537,13 +624,18 @@ function pendingOutboundReport(options = {}) {
                 booking_id: row.booking_id,
                 passenger_id: row.passenger_id,
                 issued_ticket_id: row.id,
+                ticket_type: '',
+                ticket_option: '',
                 flight_type: regular.flight_type || '',
                 outbound_date: '',
                 pnr: '',
                 ticket_number: '',
                 issued_date: this.getToday(),
                 ticket_agent_id: regular.ticket_agent_id || '',
-                ticket_fare_id: regular.ticket_fare_id || null,
+                ticket_fare_id: null,
+                route_type: 'One Way-Outbound',
+                route_id: '',
+                airline_id: '',
                 route_display: regular.route_display || '',
                 airline: regular.airline || '',
                 travel_class: regular.travel_class || '',
@@ -567,13 +659,18 @@ function pendingOutboundReport(options = {}) {
                 booking_id: row.booking_id,
                 passenger_id: row.passenger_id,
                 issued_ticket_id: row.id,
+                ticket_type: '',
+                ticket_option: '',
                 flight_type: regular.flight_type || '',
                 outbound_date: cur.outbound_date || '',
                 pnr: cur.pnr || '',
                 ticket_number: cur.ticket_number || '',
                 issued_date: cur.issued_date || this.getToday(),
                 ticket_agent_id: cur.ticket_agent_id || regular.ticket_agent_id || '',
-                ticket_fare_id: regular.ticket_fare_id || null,
+                ticket_fare_id: cur.ticket_fare_id || null,
+                route_type: 'One Way-Outbound',
+                route_id: '',
+                airline_id: '',
                 route_display: regular.route_display || '',
                 airline: regular.airline || '',
                 travel_class: regular.travel_class || '',

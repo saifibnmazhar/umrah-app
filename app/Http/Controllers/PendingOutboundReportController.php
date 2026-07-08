@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\IssuedTicket;
 use App\Models\TicketAgent;
+use App\Models\TicketFare;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
 use Illuminate\View\View;
@@ -13,6 +14,36 @@ class PendingOutboundReportController extends Controller
     public function index(): View
     {
         $ticketAgents = TicketAgent::orderBy('name')->get(['id', 'name']);
+        $ticketFaresList = TicketFare::where('is_active', true)->with([
+            'route.fromCity', 'route.toCity', 'route.returnCity',
+            'route.multiSegments.fromCity', 'route.multiSegments.toCity',
+            'airline', 'airlineClass.class', 'groupTicket',
+        ])->get()->map(fn($fare) => [
+            'id' => $fare->id,
+            'route' => match($fare->route->route_type?->value) {
+                'multi_city' => $fare->route->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', '),
+                'round' => ($fare->route->fromCity?->code ?? '?') . '-' . ($fare->route->toCity?->code ?? '?') . '-' . ($fare->route->returnCity?->code ?? '?'),
+                default => ($fare->route->fromCity?->code ?? '?') . '-' . ($fare->route->toCity?->code ?? '?'),
+            },
+            'airline' => $fare->airline->name,
+            'airline_class' => $fare->airlineClass->class?->name ?? '',
+            'ticket_type' => $fare->ticket_type?->value ?? 'regular',
+            'route_id' => $fare->route_id,
+            'airline_id' => $fare->airline_id,
+            'airline_classes_id' => $fare->airline_classes_id,
+            'route_type' => $fare->route->route_type?->value,
+            'flight_type' => $fare->route->flight_type?->value,
+            'group_ticket_id' => $fare->groupTicket?->id ?? null,
+            'pnr' => $fare->groupTicket?->pnr ?? '',
+            'ticket_qty' => $fare->groupTicket?->ticket_qty ?? null,
+            'is_refundable' => $fare->groupTicket?->is_refundable ?? null,
+            'is_exchangable' => $fare->groupTicket?->is_exchangable ?? null,
+            'selling_fare' => (float)($fare->selling_fare ?? 0),
+            'net_fare' => (float)($fare->net_fare ?? 0),
+            'offer_price' => $fare->ticket_type?->value === 'offer' ? (float)($fare->offer_price ?? 0) : null,
+            'child_fare_percentage' => (float)($fare->child_fare_percentage ?? 70),
+            'infant_fare_percentage' => (float)($fare->infant_fare_percentage ?? 30),
+        ])->values();
         $filters = [
             'search' => request('search', ''),
             'booking_date_from' => request('booking_date_from', ''),
@@ -21,7 +52,7 @@ class PendingOutboundReportController extends Controller
             'flight_date_to' => request('flight_date_to', ''),
             'status' => request('status', ''),
         ];
-        return view('reports.pending-outbound', compact('ticketAgents', 'filters'));
+        return view('reports.pending-outbound', compact('ticketAgents', 'ticketFaresList', 'filters'));
     }
 
     public function data(Request $request): JsonResponse
