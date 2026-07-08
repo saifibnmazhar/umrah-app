@@ -664,8 +664,8 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 flex-wrap">
             <span class="font-medium text-sm">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
-            <button x-show="(!passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'pending') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
-            <button x-show="(passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 'issued' || passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.status === 're-issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
+            <button x-show="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || passengersTicketData[{{ $loop->index }}]?.ticket_status === 'pending') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
+            <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
             <button @click="toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'bg-yellow-100 hover:bg-yellow-200 text-yellow-600' : 'bg-orange-100 hover:bg-orange-200 text-orange-600'" class="text-xs px-2 py-1 rounded font-medium transition" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
             <template x-if="passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
                 <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
@@ -673,7 +673,7 @@ if ($route) {
         </div>
     </td>
     @endif
-    @if($canViewTicketAgentColumn)<td class="px-3 py-2 text-slate-700">{{ $passenger->latestIssuedTicket?->ticketAgent?->name ?? '—' }}</td>@endif
+    @if($canViewTicketAgentColumn)<td class="px-3 py-2 text-slate-700"><span x-text="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.ticket_agent_name || '—'">—</span></td>@endif
     <td class="px-3 py-2">
         <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status">
             <span>
