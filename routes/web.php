@@ -41,6 +41,7 @@ use App\Http\Controllers\FingerprintController;
 use App\Http\Controllers\FingerprintReportController;
 use App\Http\Controllers\VisaSubmissionController;
 use App\Http\Controllers\VisaReportController;
+use App\Http\Controllers\VisaAgentReportController;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -272,7 +273,9 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/reports/fingerprint/details/{fingerprintDetail}', [FingerprintReportController::class, 'details'])->name('api.reports.fingerprint.details')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
     Route::get('/reports/visa', [VisaReportController::class, 'index'])->name('report.visa')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/api/reports/visa', [VisaReportController::class, 'data'])->name('api.reports.visa')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
-    Route::get('/reports/visa-agent', fn() => view('reports.visa-agent'))->name('report.visa-agent')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    Route::get('/reports/visa-agent', [VisaAgentReportController::class, 'index'])->name('report.visa-agent')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    Route::get('/api/reports/visa-agent', [VisaAgentReportController::class, 'data'])->name('api.reports.visa-agent')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+    Route::get('/api/reports/visa-agent/{visaAgent}/logs', [VisaAgentReportController::class, 'logs'])->name('api.reports.visa-agent.logs')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/reports/ticket-agent', fn() => view('reports.ticket-agent'))->name('report.ticket-agent')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/due', [\App\Http\Controllers\DueReportController::class, 'index'])->name('report.due')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/due', [\App\Http\Controllers\DueReportController::class, 'data'])->name('api.reports.due')->middleware('role:Super Admin,Co Admin,Auditor');

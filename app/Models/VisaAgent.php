@@ -14,6 +14,16 @@ class VisaAgent extends Model
         'contacts',
     ];
 
+    public function visaSubmissions(): HasMany
+    {
+        return $this->hasMany(VisaSubmission::class);
+    }
+
+    public function cancelledSubmissions(): HasMany
+    {
+        return $this->hasMany(CancelledSubmission::class);
+    }
+
     public function commissionAgents(): HasMany
     {
         return $this->hasMany(CommissionAgent::class);
