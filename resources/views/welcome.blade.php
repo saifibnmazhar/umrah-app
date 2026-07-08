@@ -5,6 +5,7 @@
 @php
     $canAccessVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
     $canAccessTicket = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
+    $canAccessTicketReport = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty();
     $canAccessAdmin = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
     $canAccessAdminReports = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
 @endphp
@@ -33,7 +34,7 @@
                 @if($canAccessAdminReports)<li><a href="{{ route('report.profit-loss') }}" class="text-blue-600 hover:underline">Profit/Loss Report</a></li>@endif
                 @if($canAccessVisa)<li><a href="{{ route('report.visa') }}" class="text-blue-600 hover:underline">Visa Report</a></li>@endif
                 @if($canAccessVisa)<li><a href="{{ route('report.visa-agent') }}" class="text-blue-600 hover:underline">Visa Agent Report</a></li>@endif
-                @if($canAccessTicket)<li><a href="{{ route('report.ticket-agent') }}" class="text-blue-600 hover:underline">Ticket Agent Report</a></li>@endif
+                @if($canAccessTicketReport)<li><a href="{{ route('report.ticket-agent') }}" class="text-blue-600 hover:underline">Ticket Agent Report</a></li>@endif
                 @if($canAccessAdminReports)<li><a href="{{ route('report.due') }}" class="text-blue-600 hover:underline">Due Report</a></li>@endif
                 <li><a href="{{ route('report.reissue-refund') }}" class="text-blue-600 hover:underline">Re-Issue & Refund Report</a></li>
                 @if($canAccessAdminReports)<li><a href="{{ route('report.user-sales') }}" class="text-blue-600 hover:underline">User-wise Sales Report</a></li>@endif
