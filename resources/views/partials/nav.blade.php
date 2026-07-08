@@ -4,6 +4,7 @@
         $canAccessFingerprintStaff = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Fingerprint Staff'])->isNotEmpty();
         $canAccessVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
         $canAccessTicket = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
+        $canAccessTicketReport = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty();
         $canAccessAdmin = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
         $canAccessAdminReports = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
         $canAccessFingerprintReport = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty() || (auth()->user()->hasRole('Fingerprint Admin') && auth()->user()->branch?->fingerprint_operation);
@@ -35,7 +36,7 @@
                         @if($canAccessTicket)<a href="{{ route('report.statement') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Statement</a>@endif
                         @if($canAccessTicket)<a href="{{ route('report.pending-ticket') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Pending Outbound Ticket Report</a>@endif
                         @if($canAccessTicket)<a href="{{ route('report.reissue-refund') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Re-Issue & Refund Report</a>@endif
-                        @if($canAccessTicket)<a href="{{ route('report.ticket-agent') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agent Report</a>@endif
+                        @if($canAccessTicketReport)<a href="{{ route('report.ticket-agent') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Ticket Agent Report</a>@endif
                         @if($canAccessAdminReports)<a href="{{ route('report.payment-receiving') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Payment Receiving Report</a>@endif
                         @if($canAccessAdminReports)<a href="{{ route('report.due') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Due Report</a>@endif
                         @if($canAccessAdminReports)<a href="{{ route('report.profit-loss') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>@endif
@@ -138,7 +139,7 @@
                 @if($canAccessTicket)<a href="{{ route('report.statement') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Statement</a>@endif
                 @if($canAccessTicket)<a href="{{ route('report.pending-ticket') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Pending Outbound Ticket Report</a>@endif
                 @if($canAccessTicket)<a href="{{ route('report.reissue-refund') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Re-Issue & Refund Report</a>@endif
-                @if($canAccessTicket)<a href="{{ route('report.ticket-agent') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agent Report</a>@endif
+                @if($canAccessTicketReport)<a href="{{ route('report.ticket-agent') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Ticket Agent Report</a>@endif
                 @if($canAccessAdminReports)<a href="{{ route('report.payment-receiving') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Payment Receiving Report</a>@endif
                 @if($canAccessAdminReports)<a href="{{ route('report.due') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Due Report</a>@endif
                 @if($canAccessAdminReports)<a href="{{ route('report.profit-loss') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</a>@endif
