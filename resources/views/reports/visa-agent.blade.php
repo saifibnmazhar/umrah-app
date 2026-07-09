@@ -132,16 +132,16 @@ select {
                                     <span class="text-gray-400">-</span>
                                 </template>
                             </td>
-                            <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-medium" x-text="formatCurrency(agent.payable)"></td>
+                            <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-medium" x-text="$currency(agent.payable, 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200"
                                 :class="agent.paid > 0 ? 'text-green-700' : 'text-gray-600'"
-                                x-text="formatCurrency(agent.paid)"></td>
+                                x-text="$currency(agent.paid, 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-semibold"
                                 :class="agent.balance > 0 ? 'text-red-600' : (agent.balance < 0 ? 'text-green-700' : 'text-gray-600')"
-                                x-text="formatCurrency(Math.abs(agent.balance))"></td>
+                                x-text="$currency(Math.abs(agent.balance), 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200"
                                 :class="agent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'"
-                                x-text="agent.cancellationFee > 0 ? formatCurrency(agent.cancellationFee) : '-'"></td>
+                                x-text="agent.cancellationFee > 0 ? $currency(agent.cancellationFee, 2) : '-'"></td>
                             <td class="px-2 py-3 text-center whitespace-nowrap">
                                 <button @click="openModal(agent.id)" class="view-btn text-white px-3 py-1 rounded text-xs font-medium transition-all">
                                     View
@@ -175,15 +175,15 @@ select {
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Payable:</span>
-                            <span class="text-xs font-bold text-gray-800" x-text="formatCurrency(summary.totalPayable)"></span>
+                            <span class="text-xs font-bold text-gray-800" x-text="$currency(summary.totalPayable, 2)"></span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Paid:</span>
-                            <span class="text-xs font-bold text-green-700" x-text="formatCurrency(summary.totalPaid)"></span>
+                            <span class="text-xs font-bold text-green-700" x-text="$currency(summary.totalPaid, 2)"></span>
                         </div>
                         <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
                             <span class="text-xs font-bold text-gray-700">Total Balance:</span>
-                            <span class="text-xs font-bold" :class="summary.totalBalance > 0 ? 'text-red-700' : 'text-green-700'" x-text="summary.totalBalanceLabel"></span>
+                            <span class="text-xs font-bold" :class="summary.totalBalance > 0 ? 'text-red-700' : 'text-green-700'" x-text="$currency(Math.abs(summary.totalBalance), 2)"></span>
                         </div>
                     </div>
                 </div>
@@ -226,20 +226,20 @@ select {
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Payable</p>
-                                <p class="text-xl font-bold text-gray-800 mt-1" x-text="formatCurrency(modalAgent.payable || 0)"></p>
+                                <p class="text-xl font-bold text-gray-800 mt-1" x-text="$currency(modalAgent.payable || 0, 2)"></p>
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Paid</p>
-                                <p class="text-xl font-bold text-green-700 mt-1" x-text="formatCurrency(modalAgent.paid || 0)"></p>
+                                <p class="text-xl font-bold text-green-700 mt-1" x-text="$currency(modalAgent.paid || 0, 2)"></p>
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Balance</p>
-                                <p class="text-xl font-bold mt-1" x-text="formatCurrency(Math.abs(modalAgent.balance || 0))"
+                                <p class="text-xl font-bold mt-1" x-text="$currency(Math.abs(modalAgent.balance || 0), 2)"
                                    :class="(modalAgent.balance || 0) > 0 ? 'text-red-600' : ((modalAgent.balance || 0) < 0 ? 'text-green-700' : 'text-gray-600')"></p>
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Cancellation Fee</p>
-                                <p class="text-xl font-bold text-red-700 mt-1" x-text="modalAgent.cancellationFee > 0 ? formatCurrency(modalAgent.cancellationFee) : '-'"></p>
+                                <p class="text-xl font-bold text-red-700 mt-1" x-text="modalAgent.cancellationFee > 0 ? $currency(modalAgent.cancellationFee, 2) : '-'"></p>
                             </div>
                         </div>
                     </div>
@@ -259,12 +259,12 @@ select {
                                 <template x-for="(tx, idx) in modalAgent.transactions" :key="idx">
                                     <tr class="modal-row border-b border-gray-100">
                                         <td class="px-4 py-3 text-sm text-left" x-text="tx.date"></td>
-                                        <td class="px-4 py-3 text-sm text-right font-medium" x-text="formatCurrency(tx.payable)"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="formatCurrency(tx.paid)"></td>
+                                        <td class="px-4 py-3 text-sm text-right font-medium" x-text="$currency(tx.payable, 2)"></td>
+                                        <td class="px-4 py-3 text-sm text-right" :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="$currency(tx.paid, 2)"></td>
                                         <td class="px-4 py-3 text-sm text-right font-semibold"
                                             :class="(modalAgent.balance || 0) > 0 ? 'text-red-600' : ((modalAgent.balance || 0) < 0 ? 'text-green-700' : 'text-gray-600')"
-                                            x-text="formatCurrency(Math.abs(modalAgent.balance || 0))"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="modalAgent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="modalAgent.cancellationFee > 0 ? formatCurrency(modalAgent.cancellationFee) : '-'"></td>
+                                            x-text="$currency(Math.abs(modalAgent.balance || 0), 2)"></td>
+                                        <td class="px-4 py-3 text-sm text-right" :class="modalAgent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="modalAgent.cancellationFee > 0 ? $currency(modalAgent.cancellationFee, 2) : '-'"></td>
                                     </tr>
                                 </template>
                                 <template x-if="modalAgent.logsLoading">
@@ -373,10 +373,6 @@ function visaAgentReport(options = {}) {
                 document.title = 'Visa Agent Report';
                 document.body.classList.remove('printing-modal');
             });
-        },
-
-        formatCurrency(amount) {
-            return Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         },
 
         async loadData() {
