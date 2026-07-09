@@ -87,7 +87,7 @@ class DueReportController extends Controller
                     'id' => (int) $invoice->id,
                     'name' => $customer->name ?? 'Unknown',
                     'mobile' => $customer->mobile_no ?? '',
-                    'invoiceId' => 'INV-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT),
+                    'invoiceId' => $invoice->booking->invoice_id ?? 'N/A',
                     'ticketDate' => $invoice->created_at ? date('d-M-Y', strtotime($invoice->created_at)) : '',
                     'totalPackage' => (float) $invoice->total_amount,
                     'paid' => (float) $invoice->paid_amount,
@@ -177,7 +177,7 @@ class DueReportController extends Controller
                 return [
                     'name' => $customer->name ?? 'Unknown',
                     'mobile' => $customer->mobile_no ?? '',
-                    'invoiceId' => 'INV-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT),
+                    'invoiceId' => $invoice->booking->invoice_id ?? 'N/A',
                     'ticketDate' => $invoice->created_at ? date('d-M-Y', strtotime($invoice->created_at)) : '',
                     'totalPackage' => (float) $invoice->total_amount,
                     'paid' => (float) $invoice->paid_amount,
@@ -277,7 +277,7 @@ class DueReportController extends Controller
             'customer' => [
                 'name' => $customer->name ?? 'Unknown',
                 'mobile' => $customer->mobile_no ?? '',
-                'invoiceId' => 'INV-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT),
+                'invoiceId' => $invoice->booking->invoice_id ?? 'N/A',
                 'totalPackage' => (float) $invoice->total_amount,
                 'paid' => (float) $invoice->paid_amount,
                 'due' => (float) $invoice->balance,
