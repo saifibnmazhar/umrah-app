@@ -51,7 +51,7 @@
                 <th>Customer Name</th>
                 <th>Mobile</th>
                 <th>Invoice ID</th>
-                <th>Ticket Date</th>
+                <th>Actual Flight Date</th>
                 <th>Total Package</th>
                 <th>Paid</th>
                 <th>Due</th>
