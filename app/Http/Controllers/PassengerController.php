@@ -383,7 +383,10 @@ class PassengerController extends Controller
 
     public function destroyDocument(Passenger $passenger, Document $document)
     {
-        
+        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Co Admin')) {
+            $this->ensureBranchAccess($passenger);
+        }
+
         if ($document->owner_id !== $passenger->id || $document->owner_type !== Passenger::class) {
             return response()->json([
                 'success' => false,

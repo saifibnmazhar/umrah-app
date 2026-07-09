@@ -8,7 +8,10 @@
 
     $canViewFinancialSection = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
     $canViewVisaSection = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Visa Staff'])->isNotEmpty();
-    $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
+    $canDeleteDocument = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty()
+        || (auth()->user()->hasRole('Fingerprint Admin') && auth()->user()->branch_id
+            && (auth()->user()->branch_id === ($passenger->booking?->fingerprint_branch_id)
+                || auth()->user()->branch_id === ($passenger->booking?->booking_branch_id)));
 @endphp
 <div class="max-w-5xl mx-auto pt-6">
     <div id="passengerDetailsContent" class="space-y-6">
