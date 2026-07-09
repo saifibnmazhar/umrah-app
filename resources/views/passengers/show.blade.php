@@ -494,7 +494,7 @@ function deleteDocument(documentId) {
     .then(data => {
         if (data.success) {
             const list = document.getElementById('documents_list');
-            const docItem = list.querySelector(`button[onclick*="${documentId}"]`)?.closest('.flex.items-center');
+            const docItem = list.querySelector(`button[onclick*="${documentId}"]`)?.closest('.flex.items-center.justify-between');
             if (docItem) docItem.remove();
             if (list.children.length === 0) {
                 list.innerHTML = '<p class="text-sm text-slate-400">No documents uploaded</p>';
