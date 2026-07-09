@@ -11,15 +11,32 @@ select {
     padding-right: 32px;
 }
 @media print {
+    @page { size: landscape; }
     body * { visibility: hidden; }
     body { background: white !important; }
     .print-area, .print-area * { visibility: visible; }
     .print-area { position: absolute; left: 0; top: 0; width: 100%; }
     .no-print { display: none !important; }
-    table { font-size: 10px; }
-    th, td { padding: 4px 8px !important; }
+    .print-heading { display: block !important; text-align: center; margin-bottom: 20px; }
+    .print-heading h1 { font-size: 28px; font-weight: 900; color: #1e293b; margin: 0 0 4px; letter-spacing: -0.5px; }
+    .print-heading .sub { font-size: 13px; color: #64748b; margin: 0 0 12px; }
+    .print-heading hr { border: none; border-top: 2px solid #e2e8f0; margin: 0; }
+    table { width: 100% !important; min-width: auto !important; table-layout: auto !important; font-size: 9px; }
+    th, td { padding: 3px 5px !important; white-space: nowrap; }
+    th:last-child, td:last-child { display: none; }
+    th:nth-child(4), td:nth-child(4) { white-space: normal; }
+    body.printing-modal .print-area { display: none !important; }
+    body.printing-modal #detailModal { position: static !important; }
+    body.printing-modal #detailModal .modal-overlay { display: none !important; }
+    body.printing-modal #detailModal .modal-content { position: static !important; visibility: visible !important; max-height: none !important; box-shadow: none !important; border-radius: 0 !important; }
+    body.printing-modal #detailModal .modal-content * { visibility: visible !important; }
+    body.printing-modal #detailModal .modal-content .bg-slate-700 { background: #334155 !important; color: white !important; padding: 12px 16px !important; }
+    body.printing-modal #detailModal .modal-content .p-6 { max-height: none !important; }
+    body.printing-modal #detailModal .modal-content table { width: 100% !important; min-width: auto !important; table-layout: auto !important; font-size: 10px !important; }
+    body.printing-modal #detailModal .modal-content th, body.printing-modal #detailModal .modal-content td { padding: 4px 8px !important; border: 1px solid #ccc !important; visibility: visible !important; }
+    body.printing-modal #detailModal .modal-content .bg-gray-50.border-2 { break-inside: avoid; }
 }
-.no-print { display: inline; }
+.print-heading { display: none; }
 </style>
 
 <div class="max-w-[1600px] mx-auto p-4" x-data="visaAgentReport({
@@ -27,12 +44,6 @@ select {
     date_from: '{{ request('date_from') }}',
     date_to: '{{ request('date_to') }}',
 })">
-    <div class="mb-3 no-print">
-        <span class="text-sm text-gray-500 font-medium">Report</span>
-        <span class="text-sm text-gray-400 mx-1">></span>
-        <span class="text-sm text-gray-700 font-semibold">Visa Agent Report</span>
-    </div>
-
     <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm no-print">
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
@@ -59,7 +70,7 @@ select {
             </div>
 
             <div class="flex items-center gap-2 ml-auto no-print">
-                <button @click="window.print()" class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
+                <button @click="printReportViaPrint()" class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
                     <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                         <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                     </svg>
@@ -70,6 +81,11 @@ select {
     </div>
 
     <div class="print-area">
+    <div class="print-heading">
+        <h1>Visa Agent Report</h1>
+        <p class="sub"><span x-text="date_from || '...'"></span> – <span x-text="date_to || '...'"></span></p>
+        <hr>
+    </div>
     <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
         <div class="overflow-x-auto">
             <table class="w-full min-w-[1400px] table-fixed">
@@ -267,7 +283,7 @@ select {
                 </div>
 
                 <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between no-print">
-                    <button @click="printModal()" class="filter-btn px-6 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <button @click="printModalViaPrint()" class="filter-btn px-6 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                         </svg>
@@ -353,6 +369,10 @@ function visaAgentReport(options = {}) {
 
         init() {
             this.loadData();
+            window.addEventListener('afterprint', () => {
+                document.title = 'Visa Agent Report';
+                document.body.classList.remove('printing-modal');
+            });
         },
 
         formatCurrency(amount) {
@@ -418,29 +438,15 @@ function visaAgentReport(options = {}) {
             }
         },
 
-        printModal() {
-            const el = document.getElementById('detailModal');
-            const body = el.querySelector('.p-6');
-            const name = el.querySelector('h3')?.textContent || 'Agent Details';
-            const win = window.open('', '', 'width=900,height=700');
-            win.document.write(`
-                <html><head><title>${name}</title>
-                <style>
-                    body { font-family: Arial, sans-serif; padding: 20px; }
-                    .grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 12px; margin-bottom: 20px; }
-                    .card { border: 1px solid #ddd; border-radius: 6px; padding: 12px; }
-                    .card-label { font-size: 11px; color: #666; text-transform: uppercase; letter-spacing: 0.5px; }
-                    .card-value { font-size: 16px; font-weight: bold; margin-top: 4px; }
-                    table { width: 100%; border-collapse: collapse; margin-top: 16px; }
-                    th, td { border: 1px solid #ddd; padding: 6px 10px; text-align: left; font-size: 12px; }
-                    th { background: #f5f5f5; font-weight: bold; }
-                    h2 { margin-bottom: 16px; }
-                </style></head><body>
-                ${body.innerHTML}
-                <script>window.onload = function() { window.print(); window.close(); }<\\/script>
-                </body></html>
-            `);
-            win.document.close();
+        printReportViaPrint() {
+            document.title = '';
+            window.print();
+        },
+
+        printModalViaPrint() {
+            document.title = this.modalAgent.name || 'Agent Details';
+            document.body.classList.add('printing-modal');
+            window.print();
         },
 
         closeModal() {
