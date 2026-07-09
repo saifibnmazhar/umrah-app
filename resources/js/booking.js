@@ -1071,6 +1071,41 @@ Alpine.data('createBookingApp', () => ({
         this.customerSearch = '';
     },
 
+    calculatePassengerType() {
+        const dob = this.passengerData.date_of_birth;
+
+        if (!dob) {
+            this.passengerData.passenger_type = '';
+            return;
+        }
+
+        const dobDate = new Date(dob);
+        if (isNaN(dobDate.getTime())) {
+            this.passengerData.passenger_type = '';
+            return;
+        }
+
+        const today = new Date();
+        let ageInMonths = (today.getFullYear() - dobDate.getFullYear()) * 12 + (today.getMonth() - dobDate.getMonth());
+        const dobDay = dobDate.getDate();
+        const todayDay = today.getDate();
+        if (todayDay < dobDay) {
+            ageInMonths -= 1;
+        }
+
+        let calculatedType = 'Adult';
+        if (ageInMonths < 19) {
+            calculatedType = 'Infant';
+        } else if (ageInMonths < 139) {
+            calculatedType = 'Child';
+        }
+
+        this.passengerData.passenger_type = calculatedType;
+        this.updateBaggageWeight();
+        if (this.editingPassengerIndex !== null && this.editingPassengerIndex !== undefined) {
+            this.recalculateCurrentPassenger(this.editingPassengerIndex);
+        }
+    },
 
     updateBaggageWeight() {
         const ticketFareId = this.passengerData.ticket_fare_id;
@@ -2569,6 +2604,41 @@ Alpine.data('editBookingApp', () => ({
         this.customerSearch = '';
     },
 
+    calculatePassengerType() {
+        const dob = this.passengerData.date_of_birth;
+
+        if (!dob) {
+            this.passengerData.passenger_type = '';
+            return;
+        }
+
+        const dobDate = new Date(dob);
+        if (isNaN(dobDate.getTime())) {
+            this.passengerData.passenger_type = '';
+            return;
+        }
+
+        const today = new Date();
+        let ageInMonths = (today.getFullYear() - dobDate.getFullYear()) * 12 + (today.getMonth() - dobDate.getMonth());
+        const dobDay = dobDate.getDate();
+        const todayDay = today.getDate();
+        if (todayDay < dobDay) {
+            ageInMonths -= 1;
+        }
+
+        let calculatedType = 'Adult';
+        if (ageInMonths < 19) {
+            calculatedType = 'Infant';
+        } else if (ageInMonths < 139) {
+            calculatedType = 'Child';
+        }
+
+        this.passengerData.passenger_type = calculatedType;
+        this.updateBaggageWeight();
+        if (this.editingPassengerIndex !== null && this.editingPassengerIndex !== undefined) {
+            this.recalculateCurrentPassenger(this.editingPassengerIndex);
+        }
+    },
 
     updateBaggageWeight() {
         const ticketFareId = this.passengerData.ticket_fare_id;
@@ -3767,15 +3837,18 @@ Alpine.data('showBookingApp', () => ({
 
     calculatePassengerType() {
         const dob = this.passengerData.date_of_birth;
+
         if (!dob) {
             this.passengerData.passenger_type = '';
             return;
         }
+
         const dobDate = new Date(dob);
         if (isNaN(dobDate.getTime())) {
             this.passengerData.passenger_type = '';
             return;
         }
+
         const today = new Date();
         let ageInMonths = (today.getFullYear() - dobDate.getFullYear()) * 12 + (today.getMonth() - dobDate.getMonth());
         const dobDay = dobDate.getDate();
@@ -3783,26 +3856,18 @@ Alpine.data('showBookingApp', () => ({
         if (todayDay < dobDay) {
             ageInMonths -= 1;
         }
-        // // Stay duration adjustment (no longer applied)
-        // const stayDays = this.parseStayDurationDays(this.passengerData.stay_duration);
-        // if (stayDays !== null) {
-        //     const adjustmentDays = stayDays < 30 ? 30 : 90;
-        //     const effectiveDate = new Date(dobDate);
-        //     effectiveDate.setDate(effectiveDate.getDate() - adjustmentDays);
-        //     const ageInMonthsWithDuration = (today.getFullYear() - effectiveDate.getFullYear()) * 12 + (today.getMonth() - effectiveDate.getMonth());
-        //     const dayDiff = today.getDate() - effectiveDate.getDate();
-        //     const finalAgeInMonths = dayDiff < 0 ? ageInMonthsWithDuration - 1 : ageInMonthsWithDuration;
-        //     ageInMonths = Math.max(ageInMonths, finalAgeInMonths);
-        // }
+
         let calculatedType = 'Adult';
         if (ageInMonths < 19) {
             calculatedType = 'Infant';
         } else if (ageInMonths < 139) {
             calculatedType = 'Child';
         }
+
         this.passengerData.passenger_type = calculatedType;
         this.updateBaggageWeight();
     },
+
     updateBaggageWeight() {
         const ticketFareId = this.passengerData.ticket_fare_id;
         const passengerType = this.passengerData.passenger_type;

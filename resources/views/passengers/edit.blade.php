@@ -61,7 +61,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Date of Birth *</label>
-                        <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" @input="calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         <div x-show="passengerData.passenger_type === 'Adult'" class="mt-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Gender *</label>
                             <select x-model="passengerData.gender" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
