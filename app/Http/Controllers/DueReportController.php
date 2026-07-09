@@ -61,7 +61,7 @@ class DueReportController extends Controller
         $dateFrom = $request->date_from;
         $dateTo = $request->date_to;
 
-        $customers = Invoice::with(['booking.customer'])
+        $customers = Invoice::with(['booking.customer', 'booking.passengers'])
             ->select(
                 'invoices.id',
                 'invoices.booking_id',
@@ -83,12 +83,14 @@ class DueReportController extends Controller
             ->get()
             ->map(function ($invoice) {
                 $customer = $invoice->booking?->customer;
+                $passengers = $invoice->booking->passengers ?? collect();
+                $earliest = $passengers->pluck('actual_flight_date')->filter()->min();
                 return [
                     'id' => (int) $invoice->id,
                     'name' => $customer->name ?? 'Unknown',
                     'mobile' => $customer->mobile_no ?? '',
-                    'invoiceId' => 'INV-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT),
-                    'ticketDate' => $invoice->created_at ? date('d-M-Y', strtotime($invoice->created_at)) : '',
+                    'invoiceId' => $invoice->booking->invoice_id ?? 'N/A',
+                    'ticketDate' => $earliest ? date('d-M-Y', strtotime($earliest)) : 'N/A',
                     'totalPackage' => (float) $invoice->total_amount,
                     'paid' => (float) $invoice->paid_amount,
                     'due' => (float) $invoice->balance,
@@ -152,7 +154,7 @@ class DueReportController extends Controller
         $dateFrom = $request->date_from;
         $dateTo = $request->date_to;
 
-        $customers = Invoice::with(['booking.customer'])
+        $customers = Invoice::with(['booking.customer', 'booking.passengers'])
             ->select(
                 'invoices.id',
                 'invoices.booking_id',
@@ -174,11 +176,13 @@ class DueReportController extends Controller
             ->get()
             ->map(function ($invoice) {
                 $customer = $invoice->booking?->customer;
+                $passengers = $invoice->booking->passengers ?? collect();
+                $earliest = $passengers->pluck('actual_flight_date')->filter()->min();
                 return [
                     'name' => $customer->name ?? 'Unknown',
                     'mobile' => $customer->mobile_no ?? '',
-                    'invoiceId' => 'INV-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT),
-                    'ticketDate' => $invoice->created_at ? date('d-M-Y', strtotime($invoice->created_at)) : '',
+                    'invoiceId' => $invoice->booking->invoice_id ?? 'N/A',
+                    'ticketDate' => $earliest ? date('d-M-Y', strtotime($earliest)) : 'N/A',
                     'totalPackage' => (float) $invoice->total_amount,
                     'paid' => (float) $invoice->paid_amount,
                     'due' => (float) $invoice->balance,
@@ -244,7 +248,7 @@ class DueReportController extends Controller
 
     public function customerTransactions(Request $request, $invoiceId)
     {
-        $invoice = Invoice::with(['booking.customer'])->findOrFail($invoiceId);
+        $invoice = Invoice::with(['booking.customer', 'booking.passengers'])->findOrFail($invoiceId);
 
         $dateFrom = $request->date_from;
         $dateTo = $request->date_to;
@@ -272,12 +276,16 @@ class DueReportController extends Controller
 
         $customer = $invoice->booking?->customer;
 
+        $passengers = $invoice->booking->passengers ?? collect();
+        $earliest = $passengers->pluck('actual_flight_date')->filter()->min();
+
         return response()->json([
             'transactions' => $transactions,
             'customer' => [
                 'name' => $customer->name ?? 'Unknown',
                 'mobile' => $customer->mobile_no ?? '',
-                'invoiceId' => 'INV-' . str_pad($invoice->id, 6, '0', STR_PAD_LEFT),
+                'invoiceId' => $invoice->booking->invoice_id ?? 'N/A',
+                'ticketDate' => $earliest ? date('d-M-Y', strtotime($earliest)) : 'N/A',
                 'totalPackage' => (float) $invoice->total_amount,
                 'paid' => (float) $invoice->paid_amount,
                 'due' => (float) $invoice->balance,
