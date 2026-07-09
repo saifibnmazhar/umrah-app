@@ -376,7 +376,7 @@ function visaAgentReport(options = {}) {
         },
 
         formatCurrency(amount) {
-            return Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' SAR';
+            return Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
         },
 
         async loadData() {
