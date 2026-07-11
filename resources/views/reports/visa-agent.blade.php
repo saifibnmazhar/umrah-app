@@ -35,6 +35,10 @@ select {
     body.printing-modal #detailModal .modal-content table { width: 100% !important; min-width: auto !important; table-layout: auto !important; font-size: 10px !important; }
     body.printing-modal #detailModal .modal-content th, body.printing-modal #detailModal .modal-content td { padding: 4px 8px !important; border: 1px solid #ccc !important; visibility: visible !important; }
     body.printing-modal #detailModal .modal-content .bg-gray-50.border-2 { break-inside: avoid; }
+    body.printing-modal #detailModal .modal-content th:last-child,
+    body.printing-modal #detailModal .modal-content td:last-child {
+        display: table-cell !important;
+    }
 }
 .print-heading { display: none; }
 </style>
