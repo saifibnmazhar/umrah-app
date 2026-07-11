@@ -331,7 +331,12 @@ Route::middleware('auth')->group(function () {
             ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
-            ->with('branch')
+            ->with([
+                'branch',
+                'vouchers.transactionType',
+                'vouchers.user.branch',
+                'vouchers.invoice.booking',
+            ])
             ->get();
 
         $dailyPayments = $payments->groupBy(fn($p) => $p->created_at->format('Y-m-d'))
@@ -346,7 +351,25 @@ Route::middleware('auth')->group(function () {
             })
             ->sortKeys();
 
-        return view('reports.payment-receiving', compact('totalCashPayment', 'totalBankPayment', 'totalBdOfficeCollection', 'totalKsaOfficeCollection', 'dailyPayments'));
+        $vouchersByDate = [];
+        foreach ($payments as $payment) {
+            $dateKey = $payment->created_at->format('Y-m-d');
+            foreach ($payment->vouchers as $v) {
+                $vouchersByDate[$dateKey][] = [
+                    'invoice_id' => $v->invoice?->booking?->invoice_id ?? 'N/A',
+                    'voucher_no' => $v->voucher_id ?? $v->id,
+                    'method' => ucfirst($v->payment_method?->value ?? ''),
+                    'transaction_type' => $v->transactionType?->name ?? '',
+                    'trx_id' => $v->transaction_id ?? '-',
+                    'receive_by' => $v->user?->name ?? '',
+                    'receive_at' => $v->user?->branch?->name ?? 'Central',
+                    'amount' => (float) $v->amount,
+                ];
+            }
+        }
+        $vouchersByDateJson = json_encode($vouchersByDate);
+
+        return view('reports.payment-receiving', compact('totalCashPayment', 'totalBankPayment', 'totalBdOfficeCollection', 'totalKsaOfficeCollection', 'dailyPayments', 'vouchersByDateJson'));
     })->name('report.payment-receiving')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-wise', [BranchWiseReportController::class, 'index'])->name('report.branch-wise');
