@@ -121,11 +121,11 @@ select {
                             <td class="px-2 py-3 text-xs text-center border-r border-gray-200 whitespace-nowrap">
                                 <template x-if="agent.price.max > 0">
                                     <span>
-                                        <span class="text-red-600" x-text="agent.price.max.toLocaleString()"></span>
+                                        <span class="text-red-600" x-text="$currency(agent.price.max, 2)"></span>
                                         <span class="text-gray-400"> / </span>
-                                        <span class="text-green-600" x-text="agent.price.min.toLocaleString()"></span>
+                                        <span class="text-green-600" x-text="$currency(agent.price.min, 2)"></span>
                                         <span class="text-gray-400"> / </span>
-                                        <span class="text-blue-600" x-text="agent.price.avg.toLocaleString()"></span>
+                                        <span class="text-blue-600" x-text="$currency(agent.price.avg, 2)"></span>
                                     </span>
                                 </template>
                                 <template x-if="!agent.price.max">
