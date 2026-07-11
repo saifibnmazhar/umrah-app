@@ -61,7 +61,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-3 gap-4 mt-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Date of Birth *</label>
-                        <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" @input="calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <input type="date" x-model="passengerData.date_of_birth" @change="calculatePassengerType()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         <div x-show="passengerData.passenger_type === 'Adult'" class="mt-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Gender *</label>
                             <select x-model="passengerData.gender" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
@@ -209,8 +209,8 @@
         <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
             <h3 class="text-xl font-semibold text-slate-800 mb-4">Customize Stay Duration</h3>
             <div class="mb-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Number of Days (1-85)</label>
-                <input type="number" id="customDurationDays" x-model="passengerData.customDurationDays" min="1" max="85" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter days">
+                <label class="block text-sm font-medium text-slate-700 mb-1" x-text="`Number of Days (${window.__stayDurationLimits?.minDays ?? 1}-${window.__stayDurationLimits?.maxDays ?? 85})`">Number of Days</label>
+                <input type="number" id="customDurationDays" x-model="passengerData.customDurationDays" :min="window.__stayDurationLimits?.minDays ?? 1" :max="window.__stayDurationLimits?.maxDays ?? 85" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" :placeholder="`Enter days (${window.__stayDurationLimits?.minDays ?? 1}-${window.__stayDurationLimits?.maxDays ?? 85})`">
             </div>
             <div class="flex gap-3">
                 <button type="button" @click="saveCustomDuration()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
@@ -300,7 +300,7 @@
                     if (sd === 14 || sd === 85) {
                         this.passengerData.stay_duration = String(sd);
                         this.passengerData.stay_duration_int = sd;
-                    } else if (sd >= 1 && sd <= 85) {
+                    } else if (sd >= 1) {
                         this.passengerData.stay_duration_display = `Customized (${sd} Days)`;
                         this.passengerData.stay_duration_int = sd;
                         this.$nextTick(() => {
@@ -787,8 +787,10 @@
 
         saveCustomDuration() {
             const days = parseInt(this.passengerData.customDurationDays);
-            if (isNaN(days) || days < 1 || days > 85) {
-                alert('Please enter a valid duration between 1 and 85 days');
+            const minDays = window.__stayDurationLimits?.minDays ?? 1;
+            const maxDays = window.__stayDurationLimits?.maxDays ?? 85;
+            if (isNaN(days) || days < minDays || days > maxDays) {
+                alert(`Please enter a valid duration between ${minDays} and ${maxDays} days`);
                 return;
             }
 

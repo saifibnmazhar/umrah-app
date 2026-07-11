@@ -36,6 +36,7 @@ use App\Http\Controllers\PackageController;
 use App\Http\Controllers\FareAdminController;
 use App\Http\Controllers\TicketFareController;
 use App\Http\Controllers\TicketIssueController;
+use App\Http\Controllers\PendingOutboundReportController;
 use App\Http\Controllers\DocumentController;
 use App\Http\Controllers\FingerprintController;
 use App\Http\Controllers\FingerprintReportController;
@@ -45,6 +46,8 @@ use App\Enums\Location;
 use App\Enums\PaymentMethod;
 use App\Models\Payment;
 use Carbon\Carbon;
+use App\Http\Controllers\VisaAgentReportController;
+use App\Http\Controllers\TicketAgentReportController;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -116,7 +119,7 @@ Route::middleware('auth')->group(function () {
     Route::patch('/passengers/{passenger}/status', [PassengerController::class, 'updateStatus'])->name('passengers.update-status')->middleware('role:Super Admin,Co Admin,Branch Manager,Branch Staff,Auditor,Visa Admin,Visa Staff,Ticket Admin,Ticket Staff,Delivery Staff');
     Route::post('/passengers/{passenger}/documents', [PassengerController::class, 'uploadDocument'])->name('passengers.documents.store');
     Route::get('/passengers/{passenger}/documents/{document}/download', [PassengerController::class, 'downloadDocument'])->name('passengers.documents.download');
-    Route::delete('/passengers/{passenger}/documents/{document}', [PassengerController::class, 'destroyDocument'])->name('passengers.documents.destroy')->middleware('role:Super Admin,Co Admin');
+    Route::delete('/passengers/{passenger}/documents/{document}', [PassengerController::class, 'destroyDocument'])->name('passengers.documents.destroy')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::get('/passengers/{passenger}/download-all-docs', [PassengerController::class, 'downloadAllDocuments'])->name('passengers.download-all-docs');
     Route::patch('/passengers/{passenger}/toggle-ticket-hold', [PassengerController::class, 'toggleTicketHold'])->name('passengers.toggle-ticket-hold')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
 
@@ -265,6 +268,7 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->name('settings.package.update')->middleware('role:Super Admin,Co Admin');
     Route::post('/settings/package/{package}', [SettingsController::class, 'updatePackage'])->middleware('role:Super Admin,Co Admin');
     Route::delete('/settings/package/{package}', [SettingsController::class, 'destroyPackage'])->name('settings.package.destroy')->middleware('role:Super Admin,Co Admin');
+    Route::put('/settings/stay-duration-limit', [SettingsController::class, 'updateStayDurationLimit'])->name('settings.stay-duration-limit.update')->middleware('role:Super Admin,Co Admin');
 
     // Reports
     Route::get('/reports/statement', fn() => view('reports.statement'))->name('report.statement');
@@ -275,12 +279,21 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/reports/fingerprint/details/{fingerprintDetail}', [FingerprintReportController::class, 'details'])->name('api.reports.fingerprint.details')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
     Route::get('/reports/visa', [VisaReportController::class, 'index'])->name('report.visa')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/api/reports/visa', [VisaReportController::class, 'data'])->name('api.reports.visa')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
-    Route::get('/reports/visa-agent', fn() => view('reports.visa-agent'))->name('report.visa-agent')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
-    Route::get('/reports/ticket-agent', fn() => view('reports.ticket-agent'))->name('report.ticket-agent')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::get('/reports/due', fn() => view('reports.due'))->name('report.due')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/visa-agent', [VisaAgentReportController::class, 'index'])->name('report.visa-agent')->middleware('role:Super Admin,Co Admin,Visa Admin');
+    Route::get('/api/reports/visa-agent', [VisaAgentReportController::class, 'data'])->name('api.reports.visa-agent')->middleware('role:Super Admin,Co Admin,Visa Admin');
+    Route::get('/api/reports/visa-agent/{visaAgent}/logs', [VisaAgentReportController::class, 'logs'])->name('api.reports.visa-agent.logs')->middleware('role:Super Admin,Co Admin,Visa Admin');
+    Route::get('/reports/ticket-agent', [TicketAgentReportController::class, 'index'])->name('report.ticket-agent')->middleware('role:Super Admin,Co Admin,Ticket Admin');
+    Route::get('/api/reports/ticket-agent', [TicketAgentReportController::class, 'data'])->name('api.reports.ticket-agent')->middleware('role:Super Admin,Co Admin,Ticket Admin');
+    Route::get('/reports/due', [\App\Http\Controllers\DueReportController::class, 'index'])->name('report.due')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/api/reports/due', [\App\Http\Controllers\DueReportController::class, 'data'])->name('api.reports.due')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/api/reports/due/branch/{branchId}/details', [\App\Http\Controllers\DueReportController::class, 'branchDetails'])->name('api.reports.due.branch-details')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/api/reports/due/customer/{invoiceId}/transactions', [\App\Http\Controllers\DueReportController::class, 'customerTransactions'])->name('api.reports.due.customer-transactions')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/due/branch/{branchId}/print-customers', [\App\Http\Controllers\DueReportController::class, 'printCustomers'])->name('report.due.print-customers')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/due/branch/{branchId}/print-datewise', [\App\Http\Controllers\DueReportController::class, 'printDateWise'])->name('report.due.print-datewise')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/reissue-refund', fn() => view('reports.reissue-refund'))->name('report.reissue-refund')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/user-wise-sales', fn() => view('reports.user-wise-sales'))->name('report.user-sales')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/reports/pending-outbound', fn() => view('reports.pending-outbound'))->name('report.pending-ticket')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/reports/pending-outbound', [\App\Http\Controllers\PendingOutboundReportController::class, 'index'])->name('report.pending-ticket')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/api/reports/pending-outbound', [\App\Http\Controllers\PendingOutboundReportController::class, 'data'])->name('api.reports.pending-outbound')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/payment-receiving', function () {
         $branchId = auth()->user()->branch_id;
         $dateFrom = request('date_from') ? Carbon::parse(request('date_from')) : now()->subDays(30);

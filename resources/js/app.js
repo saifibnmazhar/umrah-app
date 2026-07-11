@@ -34,7 +34,7 @@ Alpine.store('currency', {
     convertAll() {
         document.querySelectorAll('[data-sar]').forEach(el => {
             const sar = parseFloat(el.dataset.sar)
-            const dec = parseInt(el.dataset.dec) || 2
+            const dec = !isNaN(parseInt(el.dataset.dec)) ? parseInt(el.dataset.dec) : 2
             const rate = el.dataset.rate ? parseFloat(el.dataset.rate) : null
             const bdt = el.dataset.bdt !== undefined ? parseFloat(el.dataset.bdt) : null
             if (!isNaN(sar)) {

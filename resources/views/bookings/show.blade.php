@@ -407,8 +407,8 @@
             <h3 class="text-xl font-semibold text-slate-800 mb-4">Set Custom Duration</h3>
             <div class="mb-4">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Duration (days)</label>
-                <input type="number" id="customDurationDays" x-model="passengerData.customDurationDays" min="1" max="85" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" placeholder="Enter days (1-85)">
-                <p class="text-xs text-slate-500 mt-1">Enter a value between 1 and 85 days</p>
+                <input type="number" id="customDurationDays" x-model="passengerData.customDurationDays" :min="window.__stayDurationLimits?.minDays ?? 1" :max="window.__stayDurationLimits?.maxDays ?? 85" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" :placeholder="`Enter days (${window.__stayDurationLimits?.minDays ?? 1}-${window.__stayDurationLimits?.maxDays ?? 85})`">
+                <p class="text-xs text-slate-500 mt-1" x-text="`Enter a value between ${window.__stayDurationLimits?.minDays ?? 1} and ${window.__stayDurationLimits?.maxDays ?? 85} days`"></p>
             </div>
             <div class="flex gap-3">
                 <button type="button" @click="saveCustomDuration()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
@@ -801,11 +801,11 @@ function showToast(message, type = 'success') {
 }
 
 function getCurrencyMode() {
-    return Alpine.store('currency')?.mode || 'SAR';
+    return typeof Alpine !== 'undefined' ? Alpine.store('currency')?.mode || 'SAR' : 'SAR';
 }
 
 function getCurrencyRate() {
-    return Alpine.store('currency')?.rate || window.__bookingServerData?.currentCurrencyRate || 0;
+    return typeof Alpine !== 'undefined' ? Alpine.store('currency')?.rate || window.__bookingServerData?.currentCurrencyRate || 0 : window.__bookingServerData?.currentCurrencyRate || 0;
 }
 
 function updateDiscountFieldsVisibility() {
@@ -1468,6 +1468,7 @@ function renderRefundHistory() {
     }
 
     if (emptyEl) emptyEl.classList.add('hidden');
+    const fmt = (val) => typeof Alpine !== 'undefined' ? Alpine.store('currency').format(val, 2, window.__bookingServerData?.currentCurrencyRate || 0) : (val || 0).toFixed(2);
     tbody.innerHTML = '';
 
     bookingRequests.forEach((item, index) => {
@@ -1487,9 +1488,9 @@ function renderRefundHistory() {
             <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
             <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
             <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.agentRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.agentRefund || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.customerRefund || 0)}</td>
+            <td class="px-3 py-2 text-green-600 text-right font-medium">${fmt(item.profit || 0)}</td>
             <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
             <td class="px-3 py-2">${statusBadge}</td>
             <td class="px-3 py-2">
@@ -1513,6 +1514,7 @@ function openRefundDetails(id) {
 }
 
 function generateRefundDetailsHTML(item) {
+    const fmt = (val) => typeof Alpine !== 'undefined' ? Alpine.store('currency').format(val, 2, window.__bookingServerData?.currentCurrencyRate || 0) : (val || 0).toFixed(2);
     return `
         <div class="space-y-4">
             <div class="bg-slate-50 rounded-lg p-4">
@@ -1522,9 +1524,9 @@ function generateRefundDetailsHTML(item) {
                     <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
                     <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
                     <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.agentRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerRefund || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${fmt(item.agentRefund || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${fmt(item.customerRefund || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${fmt(item.profit || 0)}</p></div>
                     <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
                 </div>
             </div>
@@ -1588,6 +1590,7 @@ function renderAdditionalTicketHistory() {
     }
 
     if (emptyEl) emptyEl.classList.add('hidden');
+    const fmt = (val) => typeof Alpine !== 'undefined' ? Alpine.store('currency').format(val, 2, window.__bookingServerData?.currentCurrencyRate || 0) : (val || 0).toFixed(2);
     tbody.innerHTML = '';
 
     bookingRequests.forEach((item, index) => {
@@ -1607,9 +1610,9 @@ function renderAdditionalTicketHistory() {
             <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
             <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
             <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${Alpine.store('currency').format(item.customerPayment || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.additionalTicketCost || 0)}</td>
+            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.customerPayment || 0)}</td>
+            <td class="px-3 py-2 text-green-600 text-right font-medium">${fmt(item.profit || 0)}</td>
             <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
             <td class="px-3 py-2">${statusBadge}</td>
             <td class="px-3 py-2">
@@ -1633,6 +1636,7 @@ function openAddTicketDetails(id) {
 }
 
 function generateAddTicketDetailsHTML(item) {
+    const fmt = (val) => typeof Alpine !== 'undefined' ? Alpine.store('currency').format(val, 2, window.__bookingServerData?.currentCurrencyRate || 0) : (val || 0).toFixed(2);
     return `
         <div class="space-y-4">
             <div class="bg-slate-50 rounded-lg p-4">
@@ -1642,9 +1646,9 @@ function generateAddTicketDetailsHTML(item) {
                     <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
                     <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
                     <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Additional Ticket Cost</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.additionalTicketCost || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Customer Payment</span><p class="text-slate-800 font-medium">${Alpine.store('currency').format(item.customerPayment || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${Alpine.store('currency').format(item.profit || 0, 2, window.__bookingServerData?.currentCurrencyRate || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Additional Ticket Cost</span><p class="text-slate-800 font-medium">${fmt(item.additionalTicketCost || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Customer Payment</span><p class="text-slate-800 font-medium">${fmt(item.customerPayment || 0)}</p></div>
+                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${fmt(item.profit || 0)}</p></div>
                     <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
                 </div>
             </div>

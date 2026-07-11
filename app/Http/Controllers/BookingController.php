@@ -25,6 +25,7 @@ use App\Models\Bank;
 use App\Models\Voucher;
 use App\Models\TransactionType;
 use App\Models\CurrencyRate;
+use App\Models\StayDurationLimit;
 use App\Services\CurrencyRateService;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
@@ -480,7 +481,7 @@ class BookingController extends Controller
             'passengers.*.mobile_no' => 'nullable|string|max:20',
             'passengers.*.passport_expiry' => 'nullable|date',
             'passengers.*.service_required' => 'nullable|in:all,visa_only,ticket_only',
-            'passengers.*.stay_duration' => 'nullable|integer|min:1|max:85',
+            'passengers.*.stay_duration' => 'nullable|integer|min:' . ($limits = StayDurationLimit::getOrCreate())->min_days . '|max:' . $limits->max_days,
             'passengers.*.flight_date_from' => 'nullable|date',
             'passengers.*.flight_date_to' => 'nullable|date|after:passengers.*.flight_date_from',
             'passengers.*.address' => 'nullable|string|max:500',
@@ -1209,7 +1210,7 @@ class BookingController extends Controller
             'mobile_no' => 'nullable|string|max:20',
             'passport_expiry' => 'nullable|date',
             'service_required' => 'nullable|in:all,visa_only,ticket_only',
-            'stay_duration' => 'nullable|integer|min:1|max:85',
+            'stay_duration' => 'nullable|integer|min:' . ($limits = StayDurationLimit::getOrCreate())->min_days . '|max:' . $limits->max_days,
             'flight_date_from' => 'nullable|date',
             'flight_date_to' => 'nullable|date',
             'address' => 'nullable|string|max:500',

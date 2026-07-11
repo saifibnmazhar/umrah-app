@@ -304,7 +304,7 @@ function filterRoutes() {
     const options = routeSelect.querySelectorAll('option');
 
     options.forEach(function(option) {
-        if (option.value === '') return;
+        if (option.value === '' || option.value === '__add_new__') return;
 
         const optionRouteType = option.getAttribute('data-route-type');
         const optionFlightType = option.getAttribute('data-flight-type');
@@ -493,13 +493,16 @@ function ticketFareForm() {
         },
 
         openRouteModal() {
+            const routeTypeEl = document.getElementById('routeType');
+            const flightTypeEl = document.getElementById('flightType');
+
             this.editRouteMode = false;
             this.routeErrors = {};
             this.route = {
                 id: null,
                 airline_id: '',
-                route_type: '',
-                flight_type: '',
+                route_type: routeTypeEl ? routeTypeEl.value : '',
+                flight_type: flightTypeEl ? flightTypeEl.value : '',
                 from_city_id: '',
                 to_city_id: '',
                 return_city_id: '',
