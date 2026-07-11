@@ -167,7 +167,18 @@
                         </div>
                     </template>
                 </div>
-                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-end">
+                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
+                    <div class="flex gap-6 text-sm">
+                        <span class="font-medium text-green-700">
+                            Cash: <span x-text="formatAmount(totalCash)"></span>
+                        </span>
+                        <span class="font-medium text-blue-700">
+                            Bank: <span x-text="formatAmount(totalBank)"></span>
+                        </span>
+                        <span class="font-medium text-gray-800">
+                            Total: <span x-text="formatAmount(totalAmount)"></span>
+                        </span>
+                    </div>
                     <button @click="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100">
                         Close
                     </button>
@@ -201,6 +212,16 @@
 
             closeModal() {
                 this.modalOpen = false;
+            },
+
+            get totalCash() {
+                return this.selectedVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + v.amount, 0);
+            },
+            get totalBank() {
+                return this.selectedVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + v.amount, 0);
+            },
+            get totalAmount() {
+                return this.selectedVouchers.reduce((s, v) => s + v.amount, 0);
             },
 
             formatAmount(amount) {
