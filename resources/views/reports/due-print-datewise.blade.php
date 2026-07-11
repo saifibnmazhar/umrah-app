@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Date Wise Due Report - {{ $branch->name }}</title>
+    <title>Date Wise Due Report ({{ $currency }}) - {{ $branch->name }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Courier New', monospace; font-size: 13px; padding: 10px; color: #000; }
@@ -29,8 +29,22 @@
     </style>
 </head>
 <body>
+    @php
+        $__currency = $currency ?? 'SAR';
+        $__rate = $rate ?? 0;
+        $fmtNum = function($amount, $d = 2) use ($__currency, $__rate) {
+            if ($amount === null || $amount === '') return '';
+            $val = $__currency === 'BDT' ? $amount * $__rate : $amount;
+            return number_format($val, $d);
+        };
+        $fmtCurrency = function($amount, $d = 2) use ($__currency, $__rate) {
+            if ($amount === null || $amount === '') return '';
+            $val = $__currency === 'BDT' ? $amount * $__rate : $amount;
+            return ($__currency === 'BDT' ? 'BDT ' : 'SAR ') . number_format($val, $d);
+        };
+    @endphp
     <div class="header">
-        <h1>Date Wise Due Report</h1>
+        <h1>Date Wise Due Report ({{ $__currency }})</h1>
         <p>{{ $branch->name }} | BM Umrah Booking System</p>
     </div>
 
@@ -60,11 +74,11 @@
             @forelse($dateWiseData as $row)
             <tr>
                 <td class="text-center">{{ $row['date'] }}</td>
-                <td class="text-right">{{ number_format($row['due'], 2) }}</td>
-                <td class="text-right">{{ number_format($row['cash'], 2) }}</td>
-                <td class="text-right">{{ number_format($row['bank'], 2) }}</td>
-                <td class="text-right">{{ number_format($row['totalCollected'], 2) }}</td>
-                <td class="text-right">{{ number_format($row['newDue'], 2) }}</td>
+                <td class="text-right">{{ $fmtCurrency($row['due']) }}</td>
+                <td class="text-right">{{ $fmtCurrency($row['cash']) }}</td>
+                <td class="text-right">{{ $fmtCurrency($row['bank']) }}</td>
+                <td class="text-right">{{ $fmtCurrency($row['totalCollected']) }}</td>
+                <td class="text-right">{{ $fmtCurrency($row['newDue']) }}</td>
             </tr>
             @empty
             <tr>
@@ -90,23 +104,23 @@
         </div>
         <div class="summary-row">
             <span class="label">Total Due:</span>
-            <span class="value">{{ number_format($totalDue, 2) }}</span>
+            <span class="value">{{ $fmtCurrency($totalDue) }}</span>
         </div>
         <div class="summary-row">
             <span class="label">Total Collected Cash:</span>
-            <span class="value">{{ number_format($totalCash, 2) }}</span>
+            <span class="value">{{ $fmtCurrency($totalCash) }}</span>
         </div>
         <div class="summary-row">
             <span class="label">Total Collected Bank:</span>
-            <span class="value">{{ number_format($totalBank, 2) }}</span>
+            <span class="value">{{ $fmtCurrency($totalBank) }}</span>
         </div>
         <div class="summary-row">
             <span class="label">Total Collected Amount:</span>
-            <span class="value">{{ number_format($totalCollected, 2) }}</span>
+            <span class="value">{{ $fmtCurrency($totalCollected) }}</span>
         </div>
         <div class="summary-row">
             <span class="label">Final New Due:</span>
-            <span class="value">{{ number_format($finalNewDue, 2) }}</span>
+            <span class="value">{{ $fmtCurrency($finalNewDue) }}</span>
         </div>
     </div>
     @endif

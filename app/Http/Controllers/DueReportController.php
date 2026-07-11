@@ -6,6 +6,7 @@ use App\Models\Invoice;
 use App\Models\Branch;
 use App\Models\Payment;
 use App\Enums\InvoiceStatus;
+use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -153,6 +154,8 @@ class DueReportController extends Controller
         $branch = Branch::findOrFail($branchId);
         $dateFrom = $request->date_from;
         $dateTo = $request->date_to;
+        $currency = $request->get('currency', 'SAR');
+        $rate = app(CurrencyRateService::class)->getCurrentRateValue();
 
         $customers = Invoice::with(['booking.customer', 'booking.passengers'])
             ->select(
@@ -189,7 +192,7 @@ class DueReportController extends Controller
                 ];
             })->values()->toArray();
 
-        return view('reports.due-print-customers', compact('customers', 'branch', 'dateFrom', 'dateTo'));
+        return view('reports.due-print-customers', compact('customers', 'branch', 'dateFrom', 'dateTo', 'currency', 'rate'));
     }
 
     public function printDateWise(Request $request, $branchId)
@@ -197,6 +200,8 @@ class DueReportController extends Controller
         $branch = Branch::findOrFail($branchId);
         $dateFrom = $request->date_from;
         $dateTo = $request->date_to;
+        $currency = $request->get('currency', 'SAR');
+        $rate = app(CurrencyRateService::class)->getCurrentRateValue();
 
         $totalBranchBalance = Invoice::where('branch_id', $branchId)
             ->where('balance', '>', 0)
@@ -243,7 +248,7 @@ class DueReportController extends Controller
             ];
         })->toArray();
 
-        return view('reports.due-print-datewise', compact('dateWiseData', 'branch', 'dateFrom', 'dateTo'));
+        return view('reports.due-print-datewise', compact('dateWiseData', 'branch', 'dateFrom', 'dateTo', 'currency', 'rate'));
     }
 
     public function customerTransactions(Request $request, $invoiceId)

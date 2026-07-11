@@ -522,6 +522,7 @@ function dueReportApp() {
             const params = new URLSearchParams();
             if (this.date_from) params.set('date_from', this.date_from);
             if (this.date_to) params.set('date_to', this.date_to);
+            params.set('currency', this.$store.currency.mode);
             return `/reports/due/branch/${this.selectedBranch.id}/print-customers?${params}`;
         },
 
@@ -530,6 +531,7 @@ function dueReportApp() {
             const params = new URLSearchParams();
             if (this.date_from) params.set('date_from', this.date_from);
             if (this.date_to) params.set('date_to', this.date_to);
+            params.set('currency', this.$store.currency.mode);
             return `/reports/due/branch/${this.selectedBranch.id}/print-datewise?${params}`;
         },
 
