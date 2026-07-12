@@ -4,6 +4,16 @@
 
 @section('content')
 @php
+function cascadeRound($value): int {
+    $parts = explode('.', number_format((float) $value, 6, '.', ''));
+    if (count($parts) !== 2) return (int) round($value);
+    $carry = false;
+    for ($i = strlen($parts[1]) - 1; $i >= 0; $i--) {
+        $carry = ((int) $parts[1][$i] + ($carry ? 1 : 0)) >= 5;
+    }
+    return (int) $parts[0] + ($carry ? 1 : 0);
+}
+
 $showSummaryCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor', 'Ticket Admin', 'Visa Admin', 'Branch Manager', 'Fingerprint Admin'])->isNotEmpty();
 $showPackages = true;
 $showRequests = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
@@ -102,7 +112,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency($invoiceTotalAmount, 2)</div>
+                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($invoiceTotalAmount), 0)</div>
                 <div class="text-xs text-slate-500 mt-1">This Month</div>
             </div>
 
@@ -115,7 +125,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency($totalCashPayment, 2)</div>
+                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($totalCashPayment), 0)</div>
                 <div class="text-xs text-slate-500 mt-1">Cash Payment (This Month)</div>
             </div>
 
@@ -128,7 +138,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-blue-600 mb-1">@currency($totalBankPayment, 2)</div>
+                <div class="text-3xl font-bold text-blue-600 mb-1">@currency(cascadeRound($totalBankPayment), 0)</div>
                 <div class="text-xs text-slate-500 mt-1">Bank Payment (This Month)</div>
             </div>
 
@@ -141,7 +151,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-orange-600 mb-1">@currency($totalDue, 2)</div>
+                <div class="text-3xl font-bold text-orange-600 mb-1">@currency(cascadeRound($totalDue), 0)</div>
                 <div class="text-xs text-slate-500 mt-1">Receivable (This Month)</div>
             </div>
 
@@ -154,7 +164,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-slate-800 mb-1">@currency($totalDueCollection, 2) <span x-text="$store.currency.mode"></span></div>
+                <div class="text-3xl font-bold text-slate-800 mb-1">@currency(cascadeRound($totalDueCollection), 0) <span x-text="$store.currency.mode"></span></div>
                 <div class="text-xs text-slate-500 mt-1">Collection (This Month)</div>
             </div>
 

@@ -318,7 +318,11 @@ class PassengerController extends Controller
             $invoiceId = $passenger->booking->invoice_id ?? 'INV';
             $passengerName = $passenger->first_name . ' ' . $passenger->last_name;
             $passportId = $passenger->passport_no ?? 'NOPASS';
-            $existingCount = $passenger->documents()->count();
+            $maxNumber = 0;
+            foreach ($passenger->documents as $doc) {
+                $parts = explode(' ', $doc->display_name);
+                $maxNumber = max($maxNumber, (int) end($parts));
+            }
 
             $documents = [];
 
@@ -330,7 +334,7 @@ class PassengerController extends Controller
                     'owner_type' => Passenger::class,
                     'owner_id' => $passenger->id,
                     'file_path' => $path,
-                    'display_name' => "{$invoiceId} {$passengerName} {$passportId} " . ($existingCount + $index + 1),
+                    'display_name' => "{$invoiceId} {$passengerName} {$passportId} " . ($maxNumber + $index + 1),
                 ]);
             }
 
@@ -383,7 +387,10 @@ class PassengerController extends Controller
 
     public function destroyDocument(Passenger $passenger, Document $document)
     {
-        
+        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Co Admin')) {
+            $this->ensureBranchAccess($passenger);
+        }
+
         if ($document->owner_id !== $passenger->id || $document->owner_type !== Passenger::class) {
             return response()->json([
                 'success' => false,

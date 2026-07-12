@@ -43,7 +43,7 @@ class AppServiceProvider extends ServiceProvider
                 \$__rate = {$rate};
                 \$__bdt = {$bdtAmount};
                 \$__dataBdt = \$__bdt !== null ? ' data-bdt=\"' . number_format((float) \$__bdt, 6, '.', '') . '\"' : '';
-                echo '<span class=\"currency-display\" data-sar=\"' . number_format((float) \$__val, 6, '.', '') . '\" data-dec=\"' . \$__dec . '\" data-rate=\"' . (\$__rate !== null ? (float) \$__rate : '') . '\"' . \$__dataBdt . '>' . rtrim(rtrim(number_format((float) \$__val, \$__dec, '.', ','), '0'), '.') . '</span>';
+                echo '<span class=\"currency-display\" data-sar=\"' . number_format((float) \$__val, 6, '.', '') . '\" data-dec=\"' . \$__dec . '\" data-rate=\"' . (\$__rate !== null ? (float) \$__rate : '') . '\"' . \$__dataBdt . '>' . number_format((float) \$__val, \$__dec, '.', '') . '</span>';
             ?>";
         });
 

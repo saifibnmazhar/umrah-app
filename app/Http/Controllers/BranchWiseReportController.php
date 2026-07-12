@@ -8,10 +8,14 @@ use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
 use App\Models\Branch;
 use App\Models\FingerprintDetail;
+use App\Models\FingerprintDetailLog;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
+use App\Models\IssuedTicketLog;
 use App\Models\Passenger;
 use App\Models\Payment;
+use App\Models\VisaSubmission;
+use App\Models\VisaUpdateLog;
 use App\Models\Voucher;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -31,31 +35,37 @@ class BranchWiseReportController extends Controller
         $branchScope = fn($query) => $query
             ->where('booking_branch_id', $branchId);
 
-        $visaSubmitted = Passenger::whereDate('created_at', '>=', $dateFrom)
+        $visaSubmitted = VisaUpdateLog::where('new_values->status', 'submitted')
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))
-            ->whereHas('visaSubmission', fn($q) => $q->where('status', VisaStatus::SUBMITTED))->count();
-        $visaIssued = Passenger::whereDate('created_at', '>=', $dateFrom)
+            ->when($branchId, fn($q) => $q->whereHas('visaSubmission.passenger.booking', $branchScope))
+            ->count();
+        $visaIssued = VisaUpdateLog::where('new_values->status', 'issued')
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))
-            ->whereHas('visaSubmission', fn($q) => $q->where('status', VisaStatus::ISSUED))->count();
-        $visaPending = Passenger::whereDate('created_at', '>=', $dateFrom)
+            ->when($branchId, fn($q) => $q->whereHas('visaSubmission.passenger.booking', $branchScope))
+            ->count();
+        $visaPending = VisaSubmission::where('status', VisaStatus::PENDING)
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))
-            ->whereDoesntHave('visaSubmission', fn($q) => $q->whereIn('status', [VisaStatus::SUBMITTED, VisaStatus::ISSUED]))->count();
+            ->when($branchId, fn($q) => $q->whereHas('passenger.booking', $branchScope))
+            ->count();
 
-        $fingerprintApproved = FingerprintDetail::whereDate('created_at', '>=', $dateFrom)
+        $fingerprintApproved = FingerprintDetailLog::where('new_values->status', FingerprintStatus::APPROVED->value)
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('passenger.booking', $branchScope))
-            ->where('status', FingerprintStatus::APPROVED)->count();
-        $fingerprintDone = FingerprintDetail::whereDate('created_at', '>=', $dateFrom)
+            ->when($branchId, fn($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
+            ->count();
+        $fingerprintDone = FingerprintDetailLog::where('new_values->status', FingerprintStatus::DONE->value)
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('passenger.booking', $branchScope))
-            ->where('status', FingerprintStatus::DONE)->count();
-        $fingerprintProcessing = FingerprintDetail::whereDate('created_at', '>=', $dateFrom)
+            ->when($branchId, fn($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
+            ->count();
+        $fingerprintProcessing = FingerprintDetailLog::where('new_values->status', FingerprintStatus::PROCESSING->value)
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('passenger.booking', $branchScope))
-            ->whereNotIn('status', [FingerprintStatus::APPROVED, FingerprintStatus::DONE])->count();
+            ->when($branchId, fn($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
+            ->count();
 
         $invoiceCount = Invoice::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
@@ -64,18 +74,18 @@ class BranchWiseReportController extends Controller
             ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))->sum('total_amount');
 
-        $inboundTicket = IssuedTicket::whereDate('created_at', '>=', $dateFrom)
+        $inboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))
-            ->whereIn('status', [TicketStatus::ISSUED, TicketStatus::RE_ISSUED])
-            ->whereNotNull('inbound_date')
+            ->whereHas('issuedTicket', fn($q) => $q->whereNotNull('inbound_date'))
+            ->when($branchId, fn($q) => $q->whereHas('issuedTicket.booking', $branchScope))
             ->count();
 
-        $outboundTicket = IssuedTicket::whereDate('created_at', '>=', $dateFrom)
+        $outboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+            ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))
-            ->whereIn('status', [TicketStatus::ISSUED, TicketStatus::RE_ISSUED])
-            ->whereNotNull('outbound_date')
+            ->whereHas('issuedTicket', fn($q) => $q->whereNotNull('outbound_date'))
+            ->when($branchId, fn($q) => $q->whereHas('issuedTicket.booking', $branchScope))
             ->count();
 
         $pendingTicket = IssuedTicket::whereDate('created_at', '>=', $dateFrom)
