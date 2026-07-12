@@ -205,7 +205,7 @@ select {
     <div id="detailModal" x-show="detailModalOpen" x-cloak class="fixed inset-0 z-50">
         <div class="modal-overlay fixed inset-0 bg-transparent" @click="closeModal()"></div>
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-4xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
                 <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
                     <h2 class="text-xl font-bold text-white">Agent Details</h2>
                     <button @click="closeModal()" class="text-white hover:text-gray-300 transition-colors">
@@ -248,41 +248,63 @@ select {
                         </div>
                     </div>
 
-                    <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
-                        <table class="w-full">
-                            <thead>
-                                <tr class="table-header">
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Date</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right">Cancellation<br>Fee</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template x-for="(tx, idx) in modalAgent.transactions" :key="idx">
-                                    <tr class="modal-row border-b border-gray-100">
-                                        <td class="px-4 py-3 text-sm text-left" x-text="tx.date"></td>
-                                        <td class="px-4 py-3 text-sm text-right font-medium" x-text="$currency(tx.payable, 2)"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="$currency(tx.paid, 2)"></td>
-                                        <td class="px-4 py-3 text-sm text-right font-semibold"
-                                            :class="(modalAgent.balance || 0) > 0 ? 'text-red-600' : ((modalAgent.balance || 0) < 0 ? 'text-green-700' : 'text-gray-600')"
-                                            x-text="$currency(Math.abs(modalAgent.balance || 0), 2)"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="modalAgent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="modalAgent.cancellationFee > 0 ? $currency(modalAgent.cancellationFee, 2) : '-'"></td>
+                    <div class="border-b border-gray-200 mt-2">
+                        <nav class="flex gap-1 -mb-px">
+                            <button @click="activeModalTab = 'financial'" :class="activeModalTab === 'financial' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'" class="px-4 py-2.5 font-medium text-sm border-b-2 transition">Financial Report</button>
+                            <button @click="activeModalTab = 'submission'" :class="activeModalTab === 'submission' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'" class="px-4 py-2.5 font-medium text-sm border-b-2 transition">Submission Report</button>
+                            <button @click="activeModalTab = 'issue'" :class="activeModalTab === 'issue' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'" class="px-4 py-2.5 font-medium text-sm border-b-2 transition">Issue Report</button>
+                        </nav>
+                    </div>
+
+                    <div x-show="activeModalTab === 'financial'" x-cloak class="mt-4">
+                        <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="table-header">
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Date</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right">Cancellation<br>Fee</th>
                                     </tr>
-                                </template>
-                                <template x-if="modalAgent.logsLoading">
-                                    <tr>
-                                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">Loading...</td>
-                                    </tr>
-                                </template>
-                                <template x-if="!modalAgent.logsLoading && (!modalAgent.transactions || modalAgent.transactions.length === 0)">
-                                    <tr>
-                                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">No logs found</td>
-                                    </tr>
-                                </template>
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(tx, idx) in modalAgent.transactions" :key="idx">
+                                        <tr class="modal-row border-b border-gray-100">
+                                            <td class="px-4 py-3 text-sm text-left" x-text="tx.date"></td>
+                                            <td class="px-4 py-3 text-sm text-right font-medium" x-text="$currency(tx.payable, 2)"></td>
+                                            <td class="px-4 py-3 text-sm text-right" :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="$currency(tx.paid, 2)"></td>
+                                            <td class="px-4 py-3 text-sm text-right font-semibold"
+                                                :class="(modalAgent.balance || 0) > 0 ? 'text-red-600' : ((modalAgent.balance || 0) < 0 ? 'text-green-700' : 'text-gray-600')"
+                                                x-text="$currency(Math.abs(modalAgent.balance || 0), 2)"></td>
+                                            <td class="px-4 py-3 text-sm text-right" :class="modalAgent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="modalAgent.cancellationFee > 0 ? $currency(modalAgent.cancellationFee, 2) : '-'"></td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="modalAgent.logsLoading">
+                                        <tr>
+                                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">Loading...</td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="!modalAgent.logsLoading && (!modalAgent.transactions || modalAgent.transactions.length === 0)">
+                                        <tr>
+                                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">No logs found</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div x-show="activeModalTab === 'submission'" x-cloak class="mt-4">
+                        <div class="border-2 border-gray-200 rounded-lg p-8 text-center">
+                            <p class="text-sm text-gray-500">Submission report coming soon</p>
+                        </div>
+                    </div>
+
+                    <div x-show="activeModalTab === 'issue'" x-cloak class="mt-4">
+                        <div class="border-2 border-gray-200 rounded-lg p-8 text-center">
+                            <p class="text-sm text-gray-500">Issue report coming soon</p>
+                        </div>
                     </div>
                 </div>
 
@@ -363,6 +385,7 @@ function visaAgentReport(options = {}) {
             totalBalanceLabel: '0 SAR',
         },
         detailModalOpen: false,
+        activeModalTab: 'financial',
         paymentModalOpen: false,
         modalAgent: {},
         paymentAgentName: '',
@@ -407,6 +430,7 @@ function visaAgentReport(options = {}) {
         async openModal(agentId) {
             const agent = this.filteredData.find(a => a.id === agentId);
             if (!agent) return;
+            this.activeModalTab = 'financial';
             this.modalAgent = {
                 ...agent,
                 transactions: [],
