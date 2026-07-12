@@ -178,89 +178,18 @@ class TicketFareController extends Controller
             abort(403);
         }
 
-        $rules = [
-            'airline_id' => 'required|exists:airlines,id',
-            'airline_classes_id' => 'required|exists:airline_classes,id',
-            'route_id' => 'required|exists:routes,id',
-            'route_type' => 'required|in:oneway_inbound,oneway_outbound,round,multi_city',
-            'ticket_type' => 'required|in:regular,offer,group',
-            'effective_from' => 'required|date',
-            'effective_to' => 'required|date|after_or_equal:effective_from',
-            'net_fare' => 'required|numeric|min:0',
-            'selling_fare' => 'required|numeric|min:0',
-            'child_fare_percentage' => 'required|numeric|min:0|max:100',
-            'infant_fare_percentage' => 'required|numeric|min:0|max:100',
-            'with_meal' => 'nullable|boolean',
-        ];
-
-        if ($request->ticket_type === 'offer') {
-            $rules['offer_price'] = 'required|numeric|min:0';
-        }
-
-        if ($request->ticket_type === 'group') {
-            $routeType = $request->route_type;
-
-            if ($routeType === 'oneway_inbound') {
-                $rules['inbound_date'] = 'required|date';
-            } elseif ($routeType === 'oneway_outbound') {
-                $rules['outbound_date'] = 'required|date';
-            } else {
-                $rules['inbound_date'] = 'required|date';
-                $rules['outbound_date'] = 'required|date';
-            }
-
-            $rules['pnr'] = 'required|string|max:255';
-            $rules['ticket_qty'] = 'required|integer|min:1';
-            $rules['is_non_refundable'] = 'nullable|boolean';
-            $rules['is_non_exchangable'] = 'nullable|boolean';
-        }
-
-        $validated = $request->validate($rules);
-
         try {
-            $ticketFare->update([
-                'airline_id' => $validated['airline_id'],
-                'airline_classes_id' => $validated['airline_classes_id'],
-                'route_id' => $validated['route_id'],
-                'ticket_type' => $validated['ticket_type'],
-                'effective_from' => $validated['effective_from'],
-                'effective_to' => $validated['effective_to'],
-                'net_fare' => $validated['net_fare'],
-                'selling_fare' => $validated['selling_fare'],
-                'offer_price' => $validated['offer_price'] ?? null,
-                'child_fare_percentage' => $validated['child_fare_percentage'],
-                'infant_fare_percentage' => $validated['infant_fare_percentage'],
-                'with_meal' => $request->has('with_meal') ? 1 : 0,
+            $validated = $request->validate([
+                'effective_to' => 'required|date|after_or_equal:effective_from',
             ]);
 
-            if ($request->ticket_type === 'group') {
-                $inboundDate = in_array($validated['route_type'], ['oneway_inbound', 'round', 'multi_city']) 
-                    ? ($validated['inbound_date'] ?? null) : null;
-                $outboundDate = in_array($validated['route_type'], ['oneway_outbound', 'round', 'multi_city']) 
-                    ? ($validated['outbound_date'] ?? null) : null;
+            $ticketFare->update(['effective_to' => $validated['effective_to']]);
 
-                $ticketFare->groupTicket()->updateOrCreate(
-                    ['ticket_fare_id' => $ticketFare->id],
-                    [
-                        'inbound_date' => $inboundDate,
-                        'outbound_date' => $outboundDate,
-                        'pnr' => $validated['pnr'],
-                        'ticket_qty' => $validated['ticket_qty'],
-                        'is_refundable' => !$request->has('is_non_refundable'),
-                        'is_exchangable' => !$request->has('is_non_exchangable'),
-                    ]
-                );
-            } else {
-                $ticketFare->groupTicket()->delete();
-            }
-
-            $this->updateBaggageAllowances($ticketFare, $request);
-
-            return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare updated successfully.');
+            return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Effective to date updated successfully.');
         } catch (\Exception $e) {
             $message = $e instanceof \Illuminate\Database\QueryException
                 ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
-                : 'Failed to update ticket fare.';
+                : 'Failed to update effective to date.';
             return redirect()->back()->with('error', $message)->withInput();
         }
     }
