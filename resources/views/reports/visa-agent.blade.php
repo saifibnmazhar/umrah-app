@@ -331,8 +331,37 @@ select {
                     </div>
 
                     <div x-show="activeModalTab === 'issue'" x-cloak class="mt-4">
-                        <div class="border-2 border-gray-200 rounded-lg p-8 text-center">
-                            <p class="text-sm text-gray-500">Issue report coming soon</p>
+                        <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="table-header">
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passport No</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left">Issue Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(row, idx) in modalAgent.issued" :key="idx">
+                                        <tr class="border-b border-gray-100">
+                                            <td class="px-4 py-3 text-sm text-left font-medium" x-text="row.invoice_id"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passenger_name"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passport_no"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.issue_date"></td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="modalAgent.issuedLoading">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">Loading...</td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="!modalAgent.issuedLoading && (!modalAgent.issued || modalAgent.issued.length === 0)">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">No issued visas found</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
                 </div>
@@ -466,14 +495,17 @@ function visaAgentReport(options = {}) {
                 logsLoading: true,
                 submissions: [],
                 submissionsLoading: true,
+                issued: [],
+                issuedLoading: true,
             };
             this.detailModalOpen = true;
             document.body.style.overflow = 'hidden';
 
             try {
-                const [logsRes, submissionsRes] = await Promise.all([
+                const [logsRes, submissionsRes, issuedRes] = await Promise.all([
                     fetch(`/api/reports/visa-agent/${agentId}/logs`),
                     fetch(`/api/reports/visa-agent/${agentId}/submissions`),
+                    fetch(`/api/reports/visa-agent/${agentId}/issued`),
                 ]);
                 const logsResult = await logsRes.json();
                 if (logsResult.agent) {
@@ -496,10 +528,17 @@ function visaAgentReport(options = {}) {
                     submissionsLoading: false,
                     submissions: submissionsResult.data || [],
                 };
+                const issuedResult = await issuedRes.json();
+                this.modalAgent = {
+                    ...this.modalAgent,
+                    issuedLoading: false,
+                    issued: issuedResult.data || [],
+                };
             } catch (error) {
                 console.error('Failed to load agent details:', error);
                 this.modalAgent.logsLoading = false;
                 this.modalAgent.submissionsLoading = false;
+                this.modalAgent.issuedLoading = false;
             }
         },
 
