@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Models\CancelledSubmission;
-use App\Models\VisaUpdateLog;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
@@ -75,43 +74,57 @@ class VisaAgentReportController extends Controller
 
     public function logs(VisaAgent $visaAgent): JsonResponse
     {
-        $submissionIds = VisaSubmission::where('visa_agent_id', $visaAgent->id)->pluck('id');
+        $agentId = $visaAgent->id;
 
-        $logs = VisaUpdateLog::whereIn('visa_submission_id', $submissionIds)
-            ->orderBy('created_at', 'desc')
-            ->get()
-            ->map(function ($log) {
-                $newValues = $log->new_values ?? [];
-                $status = $newValues['status'] ?? null;
-                $netVisaCost = (float) ($newValues['net_visa_cost'] ?? 0);
+        $issuedSubmissions = VisaSubmission::where('visa_agent_id', $agentId)
+            ->where('status', 'issued')
+            ->with(['logs' => fn($q) => $q
+                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'")
+                ->latest('created_at')
+                ->limit(1),
+            ])
+            ->get();
 
-                $cancellationFee = 0;
-                if ($status === 'cancelled') {
-                    $cs = CancelledSubmission::where('visa_submission_id', $log->visa_submission_id)->first();
-                    $cancellationFee = (float) ($cs->cancellation_fee ?? 0);
-                }
+        $transactions = collect();
 
-                return [
-                    'date' => $log->created_at->format('d-M-Y'),
-                    'status' => $status,
-                    'payable' => $netVisaCost,
-                    'paid' => 0,
-                    'balance' => 0,
-                    'cancellationFee' => $cancellationFee,
-                ];
-            });
+        foreach ($issuedSubmissions as $submission) {
+            $issueLog = $submission->logs->first();
+            $transactions->push([
+                'date' => $issueLog ? $issueLog->created_at->format('d-M-Y') : '-',
+                'status' => 'issued',
+                'payable' => (float) ($submission->final_cost ?? 0),
+                'paid' => 0,
+                'balance' => 0,
+                'cancellationFee' => 0,
+            ]);
+        }
+
+        $cancelledSubmissions = CancelledSubmission::where('visa_agent_id', $agentId)->get();
+
+        foreach ($cancelledSubmissions as $cs) {
+            $transactions->push([
+                'date' => $cs->created_at->format('d-M-Y'),
+                'status' => 'cancelled',
+                'payable' => 0,
+                'paid' => 0,
+                'balance' => 0,
+                'cancellationFee' => (float) ($cs->cancellation_fee ?? 0),
+            ]);
+        }
+
+        $transactions = $transactions->sortBy('date')->values();
 
         $runningPayable = 0;
-        $runningPaid = 0;
-        $logs = $logs->reverse()->values()->map(function ($item) use (&$runningPayable, &$runningPaid) {
+        $runningFee = 0;
+        $transactions = $transactions->map(function ($item) use (&$runningPayable, &$runningFee) {
             $runningPayable += $item['payable'];
-            $runningPaid += $item['paid'];
-            $item['balance'] = $runningPayable - $runningPaid;
+            $runningFee += $item['cancellationFee'];
+            $item['balance'] = $runningPayable - $runningFee;
             return $item;
-        })->reverse()->values();
+        });
 
         return response()->json([
-            'data' => $logs,
+            'data' => $transactions,
             'agent' => [
                 'id' => $visaAgent->id,
                 'name' => $visaAgent->name,

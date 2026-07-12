@@ -275,9 +275,9 @@ select {
                                             <td class="px-4 py-3 text-sm text-right font-medium" x-text="$currency(tx.payable, 2)"></td>
                                             <td class="px-4 py-3 text-sm text-right" :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="$currency(tx.paid, 2)"></td>
                                             <td class="px-4 py-3 text-sm text-right font-semibold"
-                                                :class="(modalAgent.balance || 0) > 0 ? 'text-red-600' : ((modalAgent.balance || 0) < 0 ? 'text-green-700' : 'text-gray-600')"
-                                                x-text="$currency(Math.abs(modalAgent.balance || 0), 2)"></td>
-                                            <td class="px-4 py-3 text-sm text-right" :class="modalAgent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="modalAgent.cancellationFee > 0 ? $currency(modalAgent.cancellationFee, 2) : '-'"></td>
+                                                :class="tx.balance > 0 ? 'text-red-600' : (tx.balance < 0 ? 'text-green-700' : 'text-gray-600')"
+                                                x-text="$currency(Math.abs(tx.balance), 2)"></td>
+                                            <td class="px-4 py-3 text-sm text-right" :class="tx.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="tx.cancellationFee > 0 ? $currency(tx.cancellationFee, 2) : '-'"></td>
                                         </tr>
                                     </template>
                                     <template x-if="modalAgent.logsLoading">
