@@ -292,6 +292,14 @@ class BookingController extends Controller
 
         $totalPassengerCount = (clone $passengers)->count();
 
+        $bookingIds = (clone $passengers)->pluck('booking_id')->unique();
+        $totalPackageValue = DB::table('invoices')
+            ->whereIn('booking_id', $bookingIds)
+            ->sum('total_amount');
+        $totalDue = DB::table('invoices')
+            ->whereIn('booking_id', $bookingIds)
+            ->sum('balance');
+
         $passengers = (clone $passengers)
             ->with([
                 'booking',
@@ -362,7 +370,7 @@ class BookingController extends Controller
             'selectedActualFlightFrom', 'selectedActualFlightTo',
             'selectedReturnDateFrom', 'selectedReturnDateTo',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
-            'totalPassengerCount'
+            'totalPassengerCount', 'totalPackageValue', 'totalDue'
         ));
     }
 

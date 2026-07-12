@@ -497,7 +497,11 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         <button @click="clearPassengerFilters" class="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 transition text-sm">Clear</button>
                     </div>
                 </div>
-                <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm flex-shrink-0" x-text="'Total Passenger - ' + totalPassengerCount">Total Passenger - {{ $totalPassengerCount }}</span>
+                <div class="flex flex-col gap-1 flex-shrink-0">
+                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm" x-text="'Total Passenger - ' + totalPassengerCount">Total Passenger - {{ $totalPassengerCount }}</span>
+                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Package - @currency($totalPackageValue, 2)</span>
+                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Due - @currency($totalDue, 2)</span>
+                </div>
             </div>
             <div class="overflow-auto flex-1 min-h-0">
                 <table class="w-full min-w-[1800px] text-sm">
