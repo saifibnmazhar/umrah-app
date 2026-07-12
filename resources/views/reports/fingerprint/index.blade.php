@@ -128,7 +128,7 @@
             <table class="w-full min-w-[1800px] table-fixed">
                 <thead class="sticky top-0 z-10">
                     <tr class="bg-gray-100">
-                        <th colspan="6" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Basic Information</th>
+                        <th colspan="7" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Basic Information</th>
                         <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Fingerprint Charge Calculation</th>
                         <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Fingerprint Status</th>
                         <th colspan="2" class="px-2 py-2 text-xs font-bold text-gray-600 text-center border border-gray-300 bg-gray-50">Flight Status</th>
@@ -144,6 +144,7 @@
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-b border-gray-300">Passenger Name</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-center border-r border-b border-gray-300">Passport No</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-b border-gray-300">Mobile</th>
+                        <th class="px-2 py-2 text-xs font-bold text-gray-700 text-left border-r border-b border-gray-300">District</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-b border-gray-300">Fingerprint Charge</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-right border-r border-b border-gray-300">Fingerprint Cost</th>
                         <th class="px-2 py-2 text-xs font-bold text-gray-700 text-center border-r border-b border-gray-300">Fingerprint Deadline</th>
@@ -161,12 +162,12 @@
                 <tbody id="reportTableBody">
                     <template x-if="loading">
                         <tr>
-                            <td :colspan="canViewFinancials ? 16 : 14" class="px-3 py-8 text-center text-slate-500">Loading...</td>
+                            <td :colspan="canViewFinancials ? 17 : 15" class="px-3 py-8 text-center text-slate-500">Loading...</td>
                         </tr>
                     </template>
                     <template x-if="!loading && data.length === 0">
                         <tr>
-                            <td :colspan="canViewFinancials ? 16 : 14" class="px-3 py-8 text-center text-slate-500">No fingerprint records found</td>
+                            <td :colspan="canViewFinancials ? 17 : 15" class="px-3 py-8 text-center text-slate-500">No fingerprint records found</td>
                         </tr>
                     </template>
                     <template x-for="(row, rowIndex) in data" :key="row.fingerprint_detail_id || rowIndex">
@@ -191,6 +192,7 @@
                                     <span x-text="row.passenger_mobile || '-'"></span>
                                 </template>
                             </td>
+                            <td class="px-2 py-2 text-xs text-left border-r border-gray-200" x-text="row._isFirstPassenger ? row.district : ''"></td>
                             <td class="px-2 py-2 text-xs text-right border-r border-gray-200 font-medium text-green-700">
                                 <span x-show="row._isFirstPassenger && canViewFinancials" x-text="$currency(row.fingerprint_charge, 2, row.rate)"></span>
                             </td>

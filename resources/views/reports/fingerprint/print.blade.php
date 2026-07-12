@@ -97,6 +97,7 @@
                 <th>Passenger Name</th>
                 <th>Passport No</th>
                 <th>Mobile</th>
+                <th>District</th>
                 @if($canViewFinancials)
                 <th style="width: 60px">Fingerprint Charge</th>
                 @endif
@@ -122,6 +123,7 @@
                 <td class="text-left">{{ $row['passenger_name'] }}</td>
                 <td class="text-center">{{ $row['passport_no'] }}</td>
                 <td class="text-left" style="white-space: pre-line;">{{ $row['_isFirstPassenger'] ? $row['customer_mobile'] . "\n" . $row['passenger_mobile'] : $row['passenger_mobile'] }}</td>
+                <td class="text-left">{{ $row['_isFirstPassenger'] ? $row['district'] : '' }}</td>
                 @if($canViewFinancials)
                 <td class="text-right">{{ $row['_isFirstPassenger'] ? $fmtNum($row['fingerprint_charge']) : '' }}</td>
                 @endif
