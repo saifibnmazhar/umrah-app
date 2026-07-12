@@ -86,11 +86,24 @@ $classesList = \App\Models\TravelClass::all()->map(fn($c) => [
     'name' => $c->name,
 ])->values();
 
-$ticketFaresList = \App\Models\TicketFare::where('is_active', true)->with([
+$activeFares = \App\Models\TicketFare::where('is_active', true)->with([
     'route.fromCity', 'route.toCity', 'route.returnCity',
     'route.multiSegments.fromCity', 'route.multiSegments.toCity',
     'airline', 'airlineClass.class', 'groupTicket',
-])->get()->map(fn($fare) => [
+])->get();
+
+$inactiveFareIds = \App\Models\Passenger::whereNotNull('ticket_fare_id')
+    ->whereHas('ticketFare', fn($q) => $q->where('is_active', false))
+    ->pluck('ticket_fare_id')
+    ->unique();
+
+$inactiveFares = \App\Models\TicketFare::whereIn('id', $inactiveFareIds)->with([
+    'route.fromCity', 'route.toCity', 'route.returnCity',
+    'route.multiSegments.fromCity', 'route.multiSegments.toCity',
+    'airline', 'airlineClass.class', 'groupTicket',
+])->get();
+
+$ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
     'id' => $fare->id,
     'route' => match($fare->route->route_type?->value) {
         'multi_city' => $fare->route->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', '),
@@ -115,6 +128,7 @@ $ticketFaresList = \App\Models\TicketFare::where('is_active', true)->with([
     'offer_price' => $fare->ticket_type?->value === 'offer' ? (float)($fare->offer_price ?? 0) : null,
     'child_fare_percentage' => (float)($fare->child_fare_percentage ?? 70),
     'infant_fare_percentage' => (float)($fare->infant_fare_percentage ?? 30),
+    'is_active' => $fare->is_active,
 ])->values();
 
 $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
@@ -1177,7 +1191,7 @@ if ($route) {
                             <select x-model="ticketFareForm.ticket_option" @change="handleTicketOptionChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Ticket</option>
                                 <template x-for="opt in filteredTicketOptions" :key="opt.value">
-                                    <option :value="opt.value" x-text="opt.display"></option>
+                                    <option :value="opt.value" :disabled="opt.is_active === false" x-text="opt.display"></option>
                                 </template>
                             </select>
                         </div>
@@ -3002,7 +3016,7 @@ function bookingIndexApp() {
                 if (f.ticket_type === 'group' && f.pnr && f.ticket_qty) {
                     display += ' | ' + f.pnr + ' | ' + f.ticket_qty;
                 }
-                return { display, value: f.id };
+                return { display, value: f.id, is_active: f.is_active };
             });
         },
 
