@@ -10,6 +10,37 @@ select {
     background-size: 16px 16px;
     padding-right: 32px;
 }
+@media print {
+    @page { size: landscape; }
+    body * { visibility: hidden; }
+    body { background: white !important; }
+    .print-area, .print-area * { visibility: visible; }
+    .print-area { position: absolute; left: 0; top: 0; width: 100%; }
+    .no-print { display: none !important; }
+    .print-heading { display: block !important; text-align: center; margin-bottom: 20px; }
+    .print-heading h1 { font-size: 28px; font-weight: 900; color: #1e293b; margin: 0 0 4px; letter-spacing: -0.5px; }
+    .print-heading .sub { font-size: 13px; color: #64748b; margin: 0 0 12px; }
+    .print-heading hr { border: none; border-top: 2px solid #e2e8f0; margin: 0; }
+    table { width: 100% !important; min-width: auto !important; table-layout: auto !important; font-size: 9px; }
+    th, td { padding: 3px 5px !important; white-space: nowrap; }
+    th:last-child, td:last-child { display: none; }
+    th:nth-child(4), td:nth-child(4) { white-space: normal; }
+    body.printing-modal .print-area { display: none !important; }
+    body.printing-modal #detailModal { position: static !important; }
+    body.printing-modal #detailModal .modal-overlay { display: none !important; }
+    body.printing-modal #detailModal .modal-content { position: static !important; visibility: visible !important; max-height: none !important; box-shadow: none !important; border-radius: 0 !important; }
+    body.printing-modal #detailModal .modal-content * { visibility: visible !important; }
+    body.printing-modal #detailModal .modal-content .bg-slate-700 { background: #334155 !important; color: white !important; padding: 12px 16px !important; }
+    body.printing-modal #detailModal .modal-content .p-6 { max-height: none !important; }
+    body.printing-modal #detailModal .modal-content table { width: 100% !important; min-width: auto !important; table-layout: auto !important; font-size: 10px !important; }
+    body.printing-modal #detailModal .modal-content th, body.printing-modal #detailModal .modal-content td { padding: 4px 8px !important; border: 1px solid #ccc !important; visibility: visible !important; }
+    body.printing-modal #detailModal .modal-content .bg-gray-50.border-2 { break-inside: avoid; }
+    body.printing-modal #detailModal .modal-content th:last-child,
+    body.printing-modal #detailModal .modal-content td:last-child {
+        display: table-cell !important;
+    }
+}
+.print-heading { display: none; }
 </style>
 
 <div class="max-w-[1600px] mx-auto p-4" x-data="visaAgentReport({
@@ -17,13 +48,7 @@ select {
     date_from: '{{ request('date_from') }}',
     date_to: '{{ request('date_to') }}',
 })">
-    <div class="mb-3">
-        <span class="text-sm text-gray-500 font-medium">Report</span>
-        <span class="text-sm text-gray-400 mx-1">></span>
-        <span class="text-sm text-gray-700 font-semibold">Visa Agent Report</span>
-    </div>
-
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
+    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm no-print">
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700">SEARCH BOX</label>
@@ -48,25 +73,23 @@ select {
                 </button>
             </div>
 
-            <div class="flex items-center gap-2 ml-auto">
-                <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
-                    <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
-                        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
+            <div class="flex items-center gap-2 ml-auto no-print">
+                <button @click="printReportViaPrint()" class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
+                    <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                     </svg>
-                    PDF
-                </button>
-                <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
-                    <svg class="w-4 h-4 text-green-700" fill="currentColor" viewBox="0 0 24 24">
-                        <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
-                        <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
-                    </svg>
-                    Excel
+                    Print
                 </button>
             </div>
         </div>
     </div>
 
+    <div class="print-area">
+    <div class="print-heading">
+        <h1>Visa Agent Report</h1>
+        <p class="sub"><span x-text="date_from || '...'"></span> – <span x-text="date_to || '...'"></span></p>
+        <hr>
+    </div>
     <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
         <div class="overflow-x-auto">
             <table class="w-full min-w-[1400px] table-fixed">
@@ -102,27 +125,27 @@ select {
                             <td class="px-2 py-3 text-xs text-center border-r border-gray-200 whitespace-nowrap">
                                 <template x-if="agent.price.max > 0">
                                     <span>
-                                        <span class="text-red-600" x-text="agent.price.max.toLocaleString()"></span>
+                                        <span class="text-red-600" x-text="$currency(agent.price.max, 2)"></span>
                                         <span class="text-gray-400"> / </span>
-                                        <span class="text-green-600" x-text="agent.price.min.toLocaleString()"></span>
+                                        <span class="text-green-600" x-text="$currency(agent.price.min, 2)"></span>
                                         <span class="text-gray-400"> / </span>
-                                        <span class="text-blue-600" x-text="agent.price.avg.toLocaleString()"></span>
+                                        <span class="text-blue-600" x-text="$currency(agent.price.avg, 2)"></span>
                                     </span>
                                 </template>
                                 <template x-if="!agent.price.max">
                                     <span class="text-gray-400">-</span>
                                 </template>
                             </td>
-                            <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-medium" x-text="formatCurrency(agent.payable)"></td>
+                            <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-medium" x-text="$currency(agent.payable, 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200"
                                 :class="agent.paid > 0 ? 'text-green-700' : 'text-gray-600'"
-                                x-text="formatCurrency(agent.paid)"></td>
+                                x-text="$currency(agent.paid, 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-semibold"
-                                :class="agent.balance > 0 ? 'text-red-600' : (agent.balance < 0 ? 'text-green-700' : 'text-gray-600')"
-                                x-text="formatCurrency(Math.abs(agent.balance))"></td>
+                                                :class="agent.balance > 0 ? 'text-green-700' : (agent.balance < 0 ? 'text-red-600' : 'text-gray-600')"
+                                x-text="$currency(Math.abs(agent.balance), 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200"
                                 :class="agent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'"
-                                x-text="agent.cancellationFee > 0 ? formatCurrency(agent.cancellationFee) : '-'"></td>
+                                x-text="agent.cancellationFee > 0 ? $currency(agent.cancellationFee, 2) : '-'"></td>
                             <td class="px-2 py-3 text-center whitespace-nowrap">
                                 <button @click="openModal(agent.id)" class="view-btn text-white px-3 py-1 rounded text-xs font-medium transition-all">
                                     View
@@ -156,47 +179,33 @@ select {
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Payable:</span>
-                            <span class="text-xs font-bold text-gray-800" x-text="formatCurrency(summary.totalPayable)"></span>
+                            <span class="text-xs font-bold text-gray-800" x-text="$currency(summary.totalPayable, 2)"></span>
                         </div>
                         <div class="flex justify-between">
                             <span class="text-xs text-gray-600">Total Paid:</span>
-                            <span class="text-xs font-bold text-green-700" x-text="formatCurrency(summary.totalPaid)"></span>
+                            <span class="text-xs font-bold text-green-700" x-text="$currency(summary.totalPaid, 2)"></span>
                         </div>
                         <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
                             <span class="text-xs font-bold text-gray-700">Total Balance:</span>
-                            <span class="text-xs font-bold" :class="summary.totalBalance > 0 ? 'text-red-700' : 'text-green-700'" x-text="summary.totalBalanceLabel"></span>
+                            <span class="text-xs font-bold" :class="summary.totalBalance > 0 ? 'text-green-700' : 'text-red-700'" x-text="$currency(Math.abs(summary.totalBalance), 2)"></span>
                         </div>
                     </div>
                 </div>
             </div>
 
-            <div class="flex flex-col gap-4">
-                <div class="footer-box rounded-lg overflow-hidden">
-                    <div class="footer-box-header px-4 py-2">
-                        <span class="text-sm font-bold text-gray-700">Export Options</span>
-                    </div>
-                    <div class="p-4 flex gap-3">
-                        <button class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2 transition-all">
-                            <svg class="w-4 h-4 text-red-600" fill="currentColor" viewBox="0 0 24 24">
-                                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8l-6-6z"/>
-                                <path d="M14 2v6h6M16 13H8M16 17H8M10 9H8"/>
-                            </svg>
-                            PDF
-                        </button>
-                    </div>
-                </div>
-            </div>
+
         </div>
 
-        <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center">
+        <div class="mt-4 pt-3 border-t border-gray-200 flex justify-between items-center no-print">
             <span class="text-xs text-gray-400">Generated by BM Umrah System</span>
         </div>
+    </div>
     </div>
 
     <div id="detailModal" x-show="detailModalOpen" x-cloak class="fixed inset-0 z-50">
         <div class="modal-overlay fixed inset-0 bg-transparent" @click="closeModal()"></div>
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-4xl max-h-[90vh] overflow-hidden">
+            <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-4xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
                 <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
                     <h2 class="text-xl font-bold text-white">Agent Details</h2>
                     <button @click="closeModal()" class="text-white hover:text-gray-300 transition-colors">
@@ -221,69 +230,149 @@ select {
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Payable</p>
-                                <p class="text-xl font-bold text-gray-800 mt-1" x-text="formatCurrency(modalAgent.payable || 0)"></p>
+                                <p class="text-xl font-bold text-gray-800 mt-1" x-text="$currency(modalAgent.payable || 0, 2)"></p>
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Paid</p>
-                                <p class="text-xl font-bold text-green-700 mt-1" x-text="formatCurrency(modalAgent.paid || 0)"></p>
+                                <p class="text-xl font-bold text-green-700 mt-1" x-text="$currency(modalAgent.paid || 0, 2)"></p>
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Balance</p>
-                                <p class="text-xl font-bold mt-1" x-text="formatCurrency(Math.abs(modalAgent.balance || 0))"
-                                   :class="(modalAgent.balance || 0) > 0 ? 'text-red-600' : ((modalAgent.balance || 0) < 0 ? 'text-green-700' : 'text-gray-600')"></p>
+                                <p class="text-xl font-bold mt-1" x-text="$currency(Math.abs(modalAgent.balance || 0), 2)"
+                                   :class="(modalAgent.balance || 0) > 0 ? 'text-green-700' : ((modalAgent.balance || 0) < 0 ? 'text-red-600' : 'text-gray-600')"></p>
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Cancellation Fee</p>
-                                <p class="text-xl font-bold text-red-700 mt-1" x-text="modalAgent.cancellationFee > 0 ? formatCurrency(modalAgent.cancellationFee) : '-'"></p>
+                                <p class="text-xl font-bold text-red-700 mt-1" x-text="modalAgent.cancellationFee > 0 ? $currency(modalAgent.cancellationFee, 2) : '-'"></p>
                             </div>
                         </div>
                     </div>
 
-                    <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
-                        <table class="w-full">
-                            <thead>
-                                <tr class="table-header">
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Date</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
-                                    <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right">Cancellation<br>Fee</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                <template x-for="(tx, idx) in modalAgent.transactions" :key="idx">
-                                    <tr class="modal-row border-b border-gray-100">
-                                        <td class="px-4 py-3 text-sm text-left" x-text="tx.date"></td>
-                                        <td class="px-4 py-3 text-sm text-right font-medium" x-text="formatCurrency(tx.payable)"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="formatCurrency(tx.paid)"></td>
-                                        <td class="px-4 py-3 text-sm text-right font-semibold"
-                                            :class="(modalAgent.balance || 0) > 0 ? 'text-red-600' : ((modalAgent.balance || 0) < 0 ? 'text-green-700' : 'text-gray-600')"
-                                            x-text="formatCurrency(Math.abs(modalAgent.balance || 0))"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="modalAgent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="modalAgent.cancellationFee > 0 ? formatCurrency(modalAgent.cancellationFee) : '-'"></td>
+                    <div class="border-b border-gray-200 mt-2">
+                        <nav class="flex gap-1 -mb-px">
+                            <button @click="activeModalTab = 'financial'" :class="activeModalTab === 'financial' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'" class="px-4 py-2.5 font-medium text-sm border-b-2 transition">Financial Report</button>
+                            <button @click="activeModalTab = 'submission'" :class="activeModalTab === 'submission' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'" class="px-4 py-2.5 font-medium text-sm border-b-2 transition">Submission Report</button>
+                            <button @click="activeModalTab = 'issue'" :class="activeModalTab === 'issue' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'" class="px-4 py-2.5 font-medium text-sm border-b-2 transition">Issue Report</button>
+                        </nav>
+                    </div>
+
+                    <div x-show="activeModalTab === 'financial'" x-cloak class="mt-4">
+                        <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="table-header">
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Date</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right">Cancellation<br>Fee</th>
                                     </tr>
-                                </template>
-                                <template x-if="modalAgent.logsLoading">
-                                    <tr>
-                                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">Loading...</td>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(tx, idx) in modalAgent.transactions" :key="idx">
+                                        <tr class="modal-row border-b border-gray-100">
+                                            <td class="px-4 py-3 text-sm text-left" x-text="tx.date"></td>
+                                            <td class="px-4 py-3 text-sm text-right font-medium" x-text="$currency(tx.payable, 2)"></td>
+                                            <td class="px-4 py-3 text-sm text-right" :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="$currency(tx.paid, 2)"></td>
+                                            <td class="px-4 py-3 text-sm text-right font-semibold"
+                                                :class="tx.balance > 0 ? 'text-green-700' : (tx.balance < 0 ? 'text-red-600' : 'text-gray-600')"
+                                                x-text="$currency(Math.abs(tx.balance), 2)"></td>
+                                            <td class="px-4 py-3 text-sm text-right" :class="tx.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="tx.cancellationFee > 0 ? $currency(tx.cancellationFee, 2) : '-'"></td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="modalAgent.logsLoading">
+                                        <tr>
+                                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">Loading...</td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="!modalAgent.logsLoading && (!modalAgent.transactions || modalAgent.transactions.length === 0)">
+                                        <tr>
+                                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">No logs found</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div x-show="activeModalTab === 'submission'" x-cloak class="mt-4">
+                        <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="table-header">
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passport No</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left">Submission Date</th>
                                     </tr>
-                                </template>
-                                <template x-if="!modalAgent.logsLoading && (!modalAgent.transactions || modalAgent.transactions.length === 0)">
-                                    <tr>
-                                        <td colspan="5" class="px-4 py-4 text-center text-gray-500">No logs found</td>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(row, idx) in modalAgent.submissions" :key="idx">
+                                        <tr class="border-b border-gray-100">
+                                            <td class="px-4 py-3 text-sm text-left font-medium" x-text="row.invoice_id"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passenger_name"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passport_no"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.submission_date"></td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="modalAgent.submissionsLoading">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">Loading...</td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="!modalAgent.submissionsLoading && (!modalAgent.submissions || modalAgent.submissions.length === 0)">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">No submissions found</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div x-show="activeModalTab === 'issue'" x-cloak class="mt-4">
+                        <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="table-header">
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passport No</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left">Issue Date</th>
                                     </tr>
-                                </template>
-                            </tbody>
-                        </table>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(row, idx) in modalAgent.issued" :key="idx">
+                                        <tr class="border-b border-gray-100">
+                                            <td class="px-4 py-3 text-sm text-left font-medium" x-text="row.invoice_id"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passenger_name"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passport_no"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.issue_date"></td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="modalAgent.issuedLoading">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">Loading...</td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="!modalAgent.issuedLoading && (!modalAgent.issued || modalAgent.issued.length === 0)">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">No issued visas found</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
                     </div>
                 </div>
 
-                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between">
-                    {{-- <button @click="openPaymentModal(modalAgent.id)" class="bg-green-600 hover:bg-green-700 text-white px-6 py-2 rounded-md text-sm font-medium flex items-center gap-2">
-                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between no-print">
+                    <button @click="printModalViaPrint()" class="filter-btn px-6 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
+                        <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                         </svg>
-                        Pay
-                    </button> --}}
+                        Print
+                    </button>
                     <button @click="closeModal()" class="filter-btn px-6 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -354,6 +443,7 @@ function visaAgentReport(options = {}) {
             totalBalanceLabel: '0 SAR',
         },
         detailModalOpen: false,
+        activeModalTab: 'financial',
         paymentModalOpen: false,
         modalAgent: {},
         paymentAgentName: '',
@@ -364,10 +454,10 @@ function visaAgentReport(options = {}) {
 
         init() {
             this.loadData();
-        },
-
-        formatCurrency(amount) {
-            return Number(amount).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }) + ' SAR';
+            window.addEventListener('afterprint', () => {
+                document.title = 'Visa Agent Report';
+                document.body.classList.remove('printing-modal');
+            });
         },
 
         async loadData() {
@@ -398,21 +488,30 @@ function visaAgentReport(options = {}) {
         async openModal(agentId) {
             const agent = this.filteredData.find(a => a.id === agentId);
             if (!agent) return;
+            this.activeModalTab = 'financial';
             this.modalAgent = {
                 ...agent,
                 transactions: [],
                 logsLoading: true,
+                submissions: [],
+                submissionsLoading: true,
+                issued: [],
+                issuedLoading: true,
             };
             this.detailModalOpen = true;
             document.body.style.overflow = 'hidden';
 
             try {
-                const response = await fetch(`/api/reports/visa-agent/${agentId}/logs`);
-                const result = await response.json();
-                if (result.agent) {
+                const [logsRes, submissionsRes, issuedRes] = await Promise.all([
+                    fetch(`/api/reports/visa-agent/${agentId}/logs`),
+                    fetch(`/api/reports/visa-agent/${agentId}/submissions`),
+                    fetch(`/api/reports/visa-agent/${agentId}/issued`),
+                ]);
+                const logsResult = await logsRes.json();
+                if (logsResult.agent) {
                     this.modalAgent = {
                         ...this.modalAgent,
-                        ...result.agent,
+                        ...logsResult.agent,
                         totalSubmitted: agent.totalSubmitted,
                         totalIssued: agent.totalIssued,
                         payable: agent.payable,
@@ -420,13 +519,38 @@ function visaAgentReport(options = {}) {
                         balance: agent.balance,
                         cancellationFee: agent.cancellationFee,
                         logsLoading: false,
-                        transactions: result.data || [],
+                        transactions: logsResult.data || [],
                     };
                 }
+                const submissionsResult = await submissionsRes.json();
+                this.modalAgent = {
+                    ...this.modalAgent,
+                    submissionsLoading: false,
+                    submissions: submissionsResult.data || [],
+                };
+                const issuedResult = await issuedRes.json();
+                this.modalAgent = {
+                    ...this.modalAgent,
+                    issuedLoading: false,
+                    issued: issuedResult.data || [],
+                };
             } catch (error) {
-                console.error('Failed to load agent logs:', error);
+                console.error('Failed to load agent details:', error);
                 this.modalAgent.logsLoading = false;
+                this.modalAgent.submissionsLoading = false;
+                this.modalAgent.issuedLoading = false;
             }
+        },
+
+        printReportViaPrint() {
+            document.title = '';
+            window.print();
+        },
+
+        printModalViaPrint() {
+            document.title = this.modalAgent.name || 'Agent Details';
+            document.body.classList.add('printing-modal');
+            window.print();
         },
 
         closeModal() {
