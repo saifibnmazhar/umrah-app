@@ -209,6 +209,7 @@ class FingerprintReportController extends Controller
                         'passenger_name' => trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')),
                         'passport_no' => $passenger->passport_no ?? '-',
                         'passenger_mobile' => $passenger->mobile_no ?? '-',
+                        'district' => $booking->district?->name ?? '-',
                         'fingerprint_charge' => $canViewFinancials ? (float)$fingerprintCharge : null,
                         'fingerprint_cost' => (float)$cost,
                         'fingerprint_deadline' => $fingerprint->deadline?->format('Y-m-d'),
