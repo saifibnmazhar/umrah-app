@@ -141,7 +141,7 @@ select {
                                 :class="agent.paid > 0 ? 'text-green-700' : 'text-gray-600'"
                                 x-text="$currency(agent.paid, 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-semibold"
-                                :class="agent.balance > 0 ? 'text-red-600' : (agent.balance < 0 ? 'text-green-700' : 'text-gray-600')"
+                                                :class="agent.balance > 0 ? 'text-green-700' : (agent.balance < 0 ? 'text-red-600' : 'text-gray-600')"
                                 x-text="$currency(Math.abs(agent.balance), 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200"
                                 :class="agent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'"
@@ -187,7 +187,7 @@ select {
                         </div>
                         <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
                             <span class="text-xs font-bold text-gray-700">Total Balance:</span>
-                            <span class="text-xs font-bold" :class="summary.totalBalance > 0 ? 'text-red-700' : 'text-green-700'" x-text="$currency(Math.abs(summary.totalBalance), 2)"></span>
+                            <span class="text-xs font-bold" :class="summary.totalBalance > 0 ? 'text-green-700' : 'text-red-700'" x-text="$currency(Math.abs(summary.totalBalance), 2)"></span>
                         </div>
                     </div>
                 </div>
@@ -239,7 +239,7 @@ select {
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Balance</p>
                                 <p class="text-xl font-bold mt-1" x-text="$currency(Math.abs(modalAgent.balance || 0), 2)"
-                                   :class="(modalAgent.balance || 0) > 0 ? 'text-red-600' : ((modalAgent.balance || 0) < 0 ? 'text-green-700' : 'text-gray-600')"></p>
+                                   :class="(modalAgent.balance || 0) > 0 ? 'text-green-700' : ((modalAgent.balance || 0) < 0 ? 'text-red-600' : 'text-gray-600')"></p>
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Cancellation Fee</p>
@@ -275,7 +275,7 @@ select {
                                             <td class="px-4 py-3 text-sm text-right font-medium" x-text="$currency(tx.payable, 2)"></td>
                                             <td class="px-4 py-3 text-sm text-right" :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="$currency(tx.paid, 2)"></td>
                                             <td class="px-4 py-3 text-sm text-right font-semibold"
-                                                :class="tx.balance > 0 ? 'text-red-600' : (tx.balance < 0 ? 'text-green-700' : 'text-gray-600')"
+                                                :class="tx.balance > 0 ? 'text-green-700' : (tx.balance < 0 ? 'text-red-600' : 'text-gray-600')"
                                                 x-text="$currency(Math.abs(tx.balance), 2)"></td>
                                             <td class="px-4 py-3 text-sm text-right" :class="tx.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="tx.cancellationFee > 0 ? $currency(tx.cancellationFee, 2) : '-'"></td>
                                         </tr>

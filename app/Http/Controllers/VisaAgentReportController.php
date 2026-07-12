@@ -8,6 +8,7 @@ use App\Models\CancelledSubmission;
 use App\Models\Payment;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class VisaAgentReportController extends Controller
@@ -51,12 +52,12 @@ class VisaAgentReportController extends Controller
             $summaryTotals['totalPayable'] += $row['payable'];
             $summaryTotals['totalPaid'] += $row['paid'];
             $summaryTotals['totalCancellationFee'] += $row['cancellationFee'];
-            if ($row['balance'] > 0) {
+            if ($row['balance'] < 0) {
                 $summaryTotals['agentsWithDue']++;
             }
         }
 
-        $totalBalance = $summaryTotals['totalPayable'] - $summaryTotals['totalPaid'];
+        $totalBalance = $summaryTotals['totalPaid'] - $summaryTotals['totalPayable'] - $summaryTotals['totalCancellationFee'];
 
         return response()->json([
             'data' => $reportData,
@@ -90,9 +91,9 @@ class VisaAgentReportController extends Controller
         foreach ($issuedSubmissions as $submission) {
             $issueLog = $submission->logs->first();
             $transactions->push([
-                'date' => $issueLog ? $issueLog->created_at->format('d-M-Y') : '-',
+                'date' => $issueLog ? $issueLog->created_at->format('d-M-Y') : $submission->updated_at->format('d-M-Y'),
                 'status' => 'issued',
-                'payable' => (float) ($submission->final_cost ?? 0),
+                'payable' => (float) ($submission->net_visa_cost ?? 0) + (float) ($submission->additional_cost ?? 0),
                 'paid' => 0,
                 'balance' => 0,
                 'cancellationFee' => 0,
@@ -112,14 +113,35 @@ class VisaAgentReportController extends Controller
             ]);
         }
 
+        $payments = Payment::where('visa_agent_id', $agentId)
+            ->whereHas('voucher.transactionType', fn($q) => $q->where('name', 'Visa Agent Payment'))
+            ->get();
+
+        foreach ($payments as $payment) {
+            $transactions->push([
+                'date' => $payment->payment_date->format('d-M-Y'),
+                'status' => 'payment',
+                'payable' => 0,
+                'paid' => (float) ($payment->amount ?? 0),
+                'balance' => 0,
+                'cancellationFee' => 0,
+            ]);
+        }
+
         $transactions = $transactions->sortBy('date')->values();
 
+        $transactions = $transactions->reject(fn($item) =>
+            $item['payable'] == 0 && $item['paid'] == 0 && $item['cancellationFee'] == 0
+        )->values();
+
         $runningPayable = 0;
+        $runningPaid = 0;
         $runningFee = 0;
-        $transactions = $transactions->map(function ($item) use (&$runningPayable, &$runningFee) {
+        $transactions = $transactions->map(function ($item) use (&$runningPayable, &$runningPaid, &$runningFee) {
             $runningPayable += $item['payable'];
+            $runningPaid += $item['paid'];
             $runningFee += $item['cancellationFee'];
-            $item['balance'] = $runningPayable - $runningFee;
+            $item['balance'] = $runningPaid - $runningPayable - $runningFee;
             return $item;
         });
 
@@ -191,17 +213,26 @@ class VisaAgentReportController extends Controller
             });
         $totalSubmitted = $submittedQuery->count();
 
-        // --- Total Issued + Payable: submissions with a log where new_values.status = "issued" in date range ---
+        // --- Total Issued + Payable: issued submissions in date range ---
         $issuedQuery = VisaSubmission::where('visa_agent_id', $agentId)
-            ->where('status', 'issued')
-            ->whereHas('logs', function ($q) use ($dateFrom, $dateTo) {
-                $q->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'");
-                if ($dateFrom) $q->whereDate('created_at', '>=', $dateFrom);
-                if ($dateTo) $q->whereDate('created_at', '<=', $dateTo);
+            ->where('status', 'issued');
+
+        if ($dateFrom || $dateTo) {
+            $issuedQuery->where(function ($q) use ($dateFrom, $dateTo) {
+                $q->whereHas('logs', function ($logQ) use ($dateFrom, $dateTo) {
+                    $logQ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'");
+                    if ($dateFrom) $logQ->whereDate('created_at', '>=', $dateFrom);
+                    if ($dateTo) $logQ->whereDate('created_at', '<=', $dateTo);
+                })->orWhere(function ($subQ) use ($dateFrom, $dateTo) {
+                    $subQ->whereDoesntHave('logs', fn($lh) => $lh->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'"));
+                    if ($dateFrom) $subQ->whereDate('updated_at', '>=', $dateFrom);
+                    if ($dateTo) $subQ->whereDate('updated_at', '<=', $dateTo);
+                });
             });
+        }
 
         $totalIssued = $issuedQuery->count();
-        $payable = (float) $issuedQuery->sum('net_visa_cost');
+        $payable = (float) $issuedQuery->sum(DB::raw('COALESCE(net_visa_cost, 0) + COALESCE(additional_cost, 0)'));
 
         // --- Price (Max/Min/Avg): from issued submissions in date range ---
         $price = (object) ['max' => 0, 'min' => 0, 'avg' => 0];
@@ -231,7 +262,7 @@ class VisaAgentReportController extends Controller
             ->when($dateTo, fn($q) => $q->whereDate('payment_date', '<=', $dateTo));
         $paid = (float) $paidQuery->sum('amount');
 
-        $balance = $payable - $paid;
+        $balance = $paid - $payable - $cancellationFee;
 
         return [
             'id' => $agent->id,
