@@ -391,16 +391,17 @@
                                     <td class="px-4 py-3 text-right">
                                         <div class="flex items-center justify-end gap-3">
                                             <a href="{{ route('ticket-fares.show', $fare->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">View</a>
-                                            @if($fare->is_locked)
-                                                <span class="text-slate-400 cursor-not-allowed" title="In use by packages or passengers">Edit</span>
-                                                <span class="text-red-400 cursor-not-allowed" title="In use by packages or passengers">Delete</span>
-                                            @else
-                                                <a href="{{ route('ticket-fares.edit', $fare->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
-                                                <form method="POST" action="{{ route('fare.admin.fare.destroy', $fare->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket fare?')" class="inline">
-                                                    @csrf
-                                                    @method('DELETE')
-                                                    <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
-                                                </form>
+                                            @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Ticket Admin'))
+                                                <a href="{{ route('ticket-fares.edit', $fare->id) }}?page={{ request('page', 1) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
+                                                @if($fare->is_locked)
+                                                    <span class="text-red-400 cursor-not-allowed" title="In use by packages or passengers">Delete</span>
+                                                @else
+                                                    <form method="POST" action="{{ route('fare.admin.fare.destroy', $fare->id) }}" onsubmit="return confirm('Are you sure you want to delete this ticket fare?')" class="inline">
+                                                        @csrf
+                                                        @method('DELETE')
+                                                        <button type="submit" class="text-red-600 hover:text-red-800 font-medium">Delete</button>
+                                                    </form>
+                                                @endif
                                             @endif
                                         </div>
                                     </td>
