@@ -166,8 +166,8 @@ class FareAdminController extends Controller
 
     public function updateFare(Request $request, TicketFare $ticketFare)
     {
-        if ($ticketFare->isLocked()) {
-            return redirect()->back()->with('error', 'This ticket fare cannot be edited because it is in use by packages or passengers.');
+        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Ticket Admin')) {
+            abort(403);
         }
 
         $rules = [
@@ -206,6 +206,10 @@ class FareAdminController extends Controller
 
     public function destroyFare(TicketFare $ticketFare)
     {
+        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Ticket Admin')) {
+            abort(403);
+        }
+
         if ($ticketFare->isLocked()) {
             return redirect()->back()->with('error', 'This ticket fare cannot be deleted because it is in use by packages or passengers.');
         }

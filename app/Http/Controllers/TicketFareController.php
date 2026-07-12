@@ -158,8 +158,8 @@ class TicketFareController extends Controller
 
     public function edit(TicketFare $ticketFare)
     {
-        if ($ticketFare->isLocked()) {
-            return redirect()->route('ticket-fares.index')->with('error', 'This ticket fare cannot be edited because it is in use by packages or passengers.');
+        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Ticket Admin')) {
+            abort(403);
         }
 
         $ticketFare->load(['airline', 'airlineClass', 'route', 'groupTicket', 'baggageAllowances']);
@@ -174,8 +174,8 @@ class TicketFareController extends Controller
 
     public function update(Request $request, TicketFare $ticketFare)
     {
-        if ($ticketFare->isLocked()) {
-            return redirect()->back()->with('error', 'This ticket fare cannot be edited because it is in use by packages or passengers.');
+        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Ticket Admin')) {
+            abort(403);
         }
 
         $rules = [
@@ -278,6 +278,10 @@ class TicketFareController extends Controller
 
     public function destroy(TicketFare $ticketFare)
     {
+        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Ticket Admin')) {
+            abort(403);
+        }
+
         if ($ticketFare->isLocked()) {
             return redirect()->back()->with('error', 'This ticket fare cannot be deleted because it is in use by packages or passengers.');
         }
