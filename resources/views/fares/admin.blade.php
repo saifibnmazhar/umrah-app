@@ -392,7 +392,7 @@
                                         <div class="flex items-center justify-end gap-3">
                                             <a href="{{ route('ticket-fares.show', $fare->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">View</a>
                                             @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Ticket Admin'))
-                                                <a href="{{ route('ticket-fares.edit', $fare->id) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
+                                                <a href="{{ route('ticket-fares.edit', $fare->id) }}?page={{ request('page', 1) }}" class="text-slate-600 hover:text-slate-800 font-medium">Edit</a>
                                                 @if($fare->is_locked)
                                                     <span class="text-red-400 cursor-not-allowed" title="In use by packages or passengers">Delete</span>
                                                 @else

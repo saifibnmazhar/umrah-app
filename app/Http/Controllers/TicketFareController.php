@@ -185,12 +185,12 @@ class TicketFareController extends Controller
 
             $ticketFare->update(['effective_to' => $validated['effective_to']]);
 
-            return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Effective to date updated successfully.');
+            return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('success', 'Effective to date updated successfully.');
         } catch (\Exception $e) {
             $message = $e instanceof \Illuminate\Database\QueryException
                 ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
                 : 'Failed to update effective to date.';
-            return redirect()->back()->with('error', $message)->withInput();
+            return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('error', $message);
         }
     }
 
