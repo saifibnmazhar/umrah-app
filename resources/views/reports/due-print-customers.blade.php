@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Customer Due Report - {{ $branch->name }}</title>
+    <title>Customer Due Report ({{ $currency }}) - {{ $branch->name }}</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Courier New', monospace; font-size: 13px; padding: 10px; color: #000; }
@@ -29,8 +29,22 @@
     </style>
 </head>
 <body>
+    @php
+        $__currency = $currency ?? 'SAR';
+        $__rate = $rate ?? 0;
+        $fmtNum = function($amount, $d = 2) use ($__currency, $__rate) {
+            if ($amount === null || $amount === '') return '';
+            $val = $__currency === 'BDT' ? $amount * $__rate : $amount;
+            return number_format($val, $d);
+        };
+        $fmtCurrency = function($amount, $d = 2) use ($__currency, $__rate) {
+            if ($amount === null || $amount === '') return '';
+            $val = $__currency === 'BDT' ? $amount * $__rate : $amount;
+            return ($__currency === 'BDT' ? 'BDT ' : 'SAR ') . number_format($val, $d);
+        };
+    @endphp
     <div class="header">
-        <h1>Customer Due Report</h1>
+        <h1>Customer Due Report ({{ $__currency }})</h1>
         <p>{{ $branch->name }} | BM Umrah Booking System</p>
     </div>
 
@@ -64,9 +78,9 @@
                 <td class="text-center">{{ $row['mobile'] }}</td>
                 <td class="text-center">{{ $row['invoiceId'] }}</td>
                 <td class="text-center">{{ $row['ticketDate'] }}</td>
-                <td class="text-right">{{ number_format($row['totalPackage'], 2) }}</td>
-                <td class="text-right">{{ number_format($row['paid'], 2) }}</td>
-                <td class="text-right">{{ number_format($row['due'], 2) }}</td>
+                <td class="text-right">{{ $fmtCurrency($row['totalPackage']) }}</td>
+                <td class="text-right">{{ $fmtCurrency($row['paid']) }}</td>
+                <td class="text-right">{{ $fmtCurrency($row['due']) }}</td>
             </tr>
             @empty
             <tr>
@@ -89,15 +103,15 @@
         </div>
         <div class="summary-row">
             <span class="label">Total Package Amount:</span>
-            <span class="value">{{ number_format($totalPackage, 2) }}</span>
+            <span class="value">{{ $fmtCurrency($totalPackage) }}</span>
         </div>
         <div class="summary-row">
             <span class="label">Total Paid:</span>
-            <span class="value">{{ number_format($totalPaid, 2) }}</span>
+            <span class="value">{{ $fmtCurrency($totalPaid) }}</span>
         </div>
         <div class="summary-row">
             <span class="label">Total Due:</span>
-            <span class="value">{{ number_format($totalDue, 2) }}</span>
+            <span class="value">{{ $fmtCurrency($totalDue) }}</span>
         </div>
     </div>
     @endif
