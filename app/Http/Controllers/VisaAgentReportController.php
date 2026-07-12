@@ -119,6 +119,29 @@ class VisaAgentReportController extends Controller
         ]);
     }
 
+    public function submissions(VisaAgent $visaAgent): JsonResponse
+    {
+        $submissions = VisaSubmission::where('visa_agent_id', $visaAgent->id)
+            ->where('status', 'submitted')
+            ->with('passenger.booking')
+            ->get()
+            ->map(function ($submission) {
+                $submissionLog = $submission->logs()
+                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'submitted'")
+                    ->latest()
+                    ->first();
+
+                return [
+                    'invoice_id'      => $submission->passenger->booking->invoice_id ?? '-',
+                    'passenger_name'  => trim(($submission->passenger->first_name ?? '') . ' ' . ($submission->passenger->last_name ?? '')),
+                    'passport_no'     => $submission->passenger->passport_no ?? '-',
+                    'submission_date' => $submissionLog ? $submissionLog->created_at->format('d-M-Y') : '-',
+                ];
+            });
+
+        return response()->json(['data' => $submissions]);
+    }
+
     protected function buildAgentRow(VisaAgent $agent, ?string $dateFrom, ?string $dateTo): array
     {
         $agentId = $agent->id;

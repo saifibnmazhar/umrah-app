@@ -296,8 +296,37 @@ select {
                     </div>
 
                     <div x-show="activeModalTab === 'submission'" x-cloak class="mt-4">
-                        <div class="border-2 border-gray-200 rounded-lg p-8 text-center">
-                            <p class="text-sm text-gray-500">Submission report coming soon</p>
+                        <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
+                            <table class="w-full">
+                                <thead>
+                                    <tr class="table-header">
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passport No</th>
+                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left">Submission Date</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(row, idx) in modalAgent.submissions" :key="idx">
+                                        <tr class="border-b border-gray-100">
+                                            <td class="px-4 py-3 text-sm text-left font-medium" x-text="row.invoice_id"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passenger_name"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passport_no"></td>
+                                            <td class="px-4 py-3 text-sm text-left" x-text="row.submission_date"></td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="modalAgent.submissionsLoading">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">Loading...</td>
+                                        </tr>
+                                    </template>
+                                    <template x-if="!modalAgent.submissionsLoading && (!modalAgent.submissions || modalAgent.submissions.length === 0)">
+                                        <tr>
+                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">No submissions found</td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
                         </div>
                     </div>
 
@@ -435,17 +464,22 @@ function visaAgentReport(options = {}) {
                 ...agent,
                 transactions: [],
                 logsLoading: true,
+                submissions: [],
+                submissionsLoading: true,
             };
             this.detailModalOpen = true;
             document.body.style.overflow = 'hidden';
 
             try {
-                const response = await fetch(`/api/reports/visa-agent/${agentId}/logs`);
-                const result = await response.json();
-                if (result.agent) {
+                const [logsRes, submissionsRes] = await Promise.all([
+                    fetch(`/api/reports/visa-agent/${agentId}/logs`),
+                    fetch(`/api/reports/visa-agent/${agentId}/submissions`),
+                ]);
+                const logsResult = await logsRes.json();
+                if (logsResult.agent) {
                     this.modalAgent = {
                         ...this.modalAgent,
-                        ...result.agent,
+                        ...logsResult.agent,
                         totalSubmitted: agent.totalSubmitted,
                         totalIssued: agent.totalIssued,
                         payable: agent.payable,
@@ -453,12 +487,19 @@ function visaAgentReport(options = {}) {
                         balance: agent.balance,
                         cancellationFee: agent.cancellationFee,
                         logsLoading: false,
-                        transactions: result.data || [],
+                        transactions: logsResult.data || [],
                     };
                 }
+                const submissionsResult = await submissionsRes.json();
+                this.modalAgent = {
+                    ...this.modalAgent,
+                    submissionsLoading: false,
+                    submissions: submissionsResult.data || [],
+                };
             } catch (error) {
-                console.error('Failed to load agent logs:', error);
+                console.error('Failed to load agent details:', error);
                 this.modalAgent.logsLoading = false;
+                this.modalAgent.submissionsLoading = false;
             }
         },
 
