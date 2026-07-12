@@ -25,7 +25,7 @@ Alpine.store('currency', {
         let clean = Math.round(value * 100) / 100
         if (Math.abs(value - clean) < 0.001) value = clean
         let fixed = value.toFixed(decimals)
-        fixed = fixed.replace(/\.?0+$/, '')
+        fixed = fixed.replace(/(\.[0-9]*?)0+$/, '$1').replace(/\.$/, '')
         let parts = fixed.split('.')
         parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',')
         return parts.join('.')
@@ -34,7 +34,7 @@ Alpine.store('currency', {
     convertAll() {
         document.querySelectorAll('[data-sar]').forEach(el => {
             const sar = parseFloat(el.dataset.sar)
-            const dec = parseInt(el.dataset.dec) || 2
+            const dec = !isNaN(parseInt(el.dataset.dec)) ? parseInt(el.dataset.dec) : 2
             const rate = el.dataset.rate ? parseFloat(el.dataset.rate) : null
             const bdt = el.dataset.bdt !== undefined ? parseFloat(el.dataset.bdt) : null
             if (!isNaN(sar)) {
