@@ -598,7 +598,7 @@ function pendingOutboundReport(options = {}) {
                 const pType = this.form.passenger_type || 'adult';
                 this.form.selling_fare = this.calculateFareForPassengerType(fare.selling_fare || 0, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                 this.form.net_fare = this.calculateFareForPassengerType(fare.net_fare || 0, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
-                this.form.baggage_outbound = fare.baggage_outbound || '';
+                this.form.baggage_outbound = fare['baggage_outbound' + (pType !== 'adult' ? '_' + pType : '')] || '';
                 this.form.flight_type = fare.flight_type || '';
             }
         },

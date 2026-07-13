@@ -53,6 +53,14 @@ class PendingOutboundReportController extends Controller
                 ->filter(fn($ba) => $ba->travel_direction?->value === 'outbound' && $ba->passenger_type?->value === 'adult')
                 ->first()
                 ?->allowance ?? '',
+            'baggage_outbound_child' => $fare->baggageAllowances
+                ->filter(fn($ba) => $ba->travel_direction?->value === 'outbound' && $ba->passenger_type?->value === 'child')
+                ->first()
+                ?->allowance ?? '',
+            'baggage_outbound_infant' => $fare->baggageAllowances
+                ->filter(fn($ba) => $ba->travel_direction?->value === 'outbound' && $ba->passenger_type?->value === 'infant')
+                ->first()
+                ?->allowance ?? '',
         ])->values();
         $filters = [
             'search' => request('search', ''),
