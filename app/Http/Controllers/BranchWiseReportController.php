@@ -123,6 +123,35 @@ class BranchWiseReportController extends Controller
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->sum('amount');
 
+        $payments = Payment::whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->with(['branch', 'vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking'])
+            ->get();
+
+        $vouchersByDate = [];
+        foreach ($payments as $payment) {
+            $dateKey = $payment->created_at->format('Y-m-d');
+            foreach ($payment->vouchers as $v) {
+                if (!in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
+                    continue;
+                }
+                $vouchersByDate[$dateKey][] = [
+                    'invoice_id' => $v->booking?->invoice_id ?? 'N/A',
+                    'voucher_no' => $v->voucher_id ?? $v->id,
+                    'method' => ucfirst($v->payment_method?->value ?? ''),
+                    'transaction_type' => $v->transactionType?->name ?? '',
+                    'trx_id' => $v->transaction_id ?? '-',
+                    'receive_by' => $v->user?->name ?? '',
+                    'receive_at' => $v->user?->branch?->name ?? 'Central',
+                    'amount' => (float) $v->amount,
+                    'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
+                ];
+            }
+        }
+        $vouchersByDateJson = json_encode($vouchersByDate);
+
         return view('reports.branch-wise', compact(
             'visaSubmitted', 'visaIssued', 'visaPending',
             'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing',
@@ -130,7 +159,55 @@ class BranchWiseReportController extends Controller
             'inboundTicket', 'outboundTicket', 'pendingTicket',
             'totalDue', 'totalDueCollection', 'totalPassengers',
             'totalCashPayment', 'totalBankPayment',
-            'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId'
+            'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId',
+            'vouchersByDateJson', 'vouchersByDate'
+        ));
+    }
+
+    public function paymentHistoryPrint(Request $request): View
+    {
+        $dateFrom = $request->date_from ? Carbon::parse($request->date_from) : now()->subDays(30);
+        $dateTo = $request->date_to ? Carbon::parse($request->date_to) : now();
+        $branchId = $request->branch_id;
+        $currency = $request->get('currency', 'SAR');
+        $branch = $branchId ? Branch::find($branchId) : null;
+
+        $payments = Payment::whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->with(['vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking'])
+            ->get();
+
+        $vouchers = collect();
+        foreach ($payments as $payment) {
+            foreach ($payment->vouchers as $v) {
+                if (!in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
+                    continue;
+                }
+                $vouchers->push([
+                    'invoice_id' => $v->booking?->invoice_id ?? 'N/A',
+                    'voucher_no' => $v->voucher_id ?? $v->id,
+                    'method' => ucfirst($v->payment_method?->value ?? ''),
+                    'transaction_type' => $v->transactionType?->name ?? '',
+                    'trx_id' => $v->transaction_id ?? '-',
+                    'receive_by' => $v->user?->name ?? '',
+                    'receive_at' => $v->user?->branch?->name ?? 'Central',
+                    'amount' => (float) $v->amount,
+                    'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
+                ]);
+            }
+        }
+
+        $totalCash = $vouchers->where('method', 'Cash')->sum('amount');
+        $totalBank = $vouchers->where('method', 'Bank')->sum('amount');
+        $totalAmount = $vouchers->sum('amount');
+
+        $dateLabel = $dateFrom->format('d-M-Y') . ' to ' . $dateTo->format('d-M-Y');
+
+        return view('reports.branch-wise.payment-history-print', compact(
+            'vouchers', 'totalCash', 'totalBank', 'totalAmount',
+            'currency', 'branch', 'dateLabel', 'dateFrom', 'dateTo'
         ));
     }
 }
