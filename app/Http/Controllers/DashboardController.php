@@ -65,8 +65,21 @@ class DashboardController extends Controller
 
         $invoiceCount = Invoice::where('created_at', '>=', now()->subDays(30))
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))->count();
-        $invoiceTotalAmount = Invoice::where('created_at', '>=', now()->subDays(30))
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))->sum('total_amount');
+        $invoiceRow = Invoice::where('invoices.created_at', '>=', now()->subDays(30))
+            ->when($branchId, fn($q) => $q->where('invoices.branch_id', $branchId))
+            ->leftJoin('bookings', 'invoices.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw('
+                SUM(invoices.total_amount) as sar_total,
+                SUM(invoices.total_amount * currency_rates.rate) as bdt_total,
+                SUM(invoices.balance) as due_sar,
+                SUM(invoices.balance * currency_rates.rate) as due_bdt
+            ')
+            ->first();
+        $invoiceTotalAmount = $invoiceRow->sar_total ?? 0;
+        $invoiceTotalAmountBdt = $invoiceRow->bdt_total ?? 0;
+        $totalDue = $invoiceRow->due_sar ?? 0;
+        $totalDueBdt = $invoiceRow->due_bdt ?? 0;
 
         $inboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
             ->where('created_at', '>=', now()->subDays(30))
@@ -85,30 +98,39 @@ class DashboardController extends Controller
             ->where('status', TicketStatus::PENDING)
             ->count();
 
-        $totalDue = Invoice::where('created_at', '>=', now()->subDays(30))
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))->sum('balance');
-
-        $totalDueCollection = Voucher::where('created_at', '>=', now()->subDays(30))
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->whereHas('transactionType', function ($query) {
-                $query->where('name', 'Due Collection');
-            })->sum('amount');
+        $dueCollectionRow = Voucher::where('vouchers.created_at', '>=', now()->subDays(30))
+            ->when($branchId, fn($q) => $q->where('vouchers.branch_id', $branchId))
+            ->whereHas('transactionType', fn($q) => $q->where('name', 'Due Collection'))
+            ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw('
+                SUM(vouchers.amount) as sar_total,
+                SUM(vouchers.amount * currency_rates.rate) as bdt_total
+            ')
+            ->first();
+        $totalDueCollection = $dueCollectionRow->sar_total ?? 0;
+        $totalDueCollectionBdt = $dueCollectionRow->bdt_total ?? 0;
 
         $totalPassengers = Passenger::where('created_at', '>=', now()->subDays(30))
             ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))->count();
 
-        $totalCashPayment = Payment::where('created_at', '>=', now()->subDays(30))
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->where('payment_method', PaymentMethod::CASH)
+        $paymentRow = Payment::where('payments.created_at', '>=', now()->subDays(30))
+            ->when($branchId, fn($q) => $q->where('payments.branch_id', $branchId))
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
-            ->sum('amount');
+            ->leftJoin('bookings', 'payments.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw('
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount ELSE 0 END) as cash_sar,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * currency_rates.rate ELSE 0 END) as cash_bdt,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount ELSE 0 END) as bank_sar,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * currency_rates.rate ELSE 0 END) as bank_bdt
+            ', [PaymentMethod::CASH->value, PaymentMethod::CASH->value, PaymentMethod::BANK->value, PaymentMethod::BANK->value])
+            ->first();
+        $totalCashPayment = $paymentRow->cash_sar ?? 0;
+        $totalCashPaymentBdt = $paymentRow->cash_bdt ?? 0;
+        $totalBankPayment = $paymentRow->bank_sar ?? 0;
+        $totalBankPaymentBdt = $paymentRow->bank_bdt ?? 0;
 
-        $totalBankPayment = Payment::where('created_at', '>=', now()->subDays(30))
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->where('payment_method', PaymentMethod::BANK)
-            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
-            ->sum('amount');
-
-        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'invoiceCount', 'invoiceTotalAmount', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueCollection', 'totalPassengers', 'totalCashPayment', 'totalBankPayment'));
+        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'totalPassengers', 'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt'));
     }
 }
