@@ -273,7 +273,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <template x-for="(v, idx) in selectedVouchers" :key="idx">
+                                    <template x-for="(v, idx) in paginatedVouchers" :key="idx">
                                         <tr class="border-b border-gray-100 even:bg-[#fafafa]">
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.invoice_id"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.voucher_no"></td>
@@ -294,6 +294,18 @@
                             </table>
                         </div>
                     </template>
+                </div>
+                <div x-show="totalPages > 1" class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50">
+                    <span class="text-sm text-gray-500">
+                        Showing <span x-text="((currentPage - 1) * perPage) + 1"></span>-<span x-text="Math.min(currentPage * perPage, selectedVouchers.length)"></span> of <span x-text="selectedVouchers.length"></span>
+                    </span>
+                    <span class="inline-flex items-center gap-2">
+                        <span x-show="currentPage === 1" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Previous</span>
+                        <button x-show="currentPage > 1" @click="goToPage(currentPage - 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Previous</button>
+                        <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5" x-text="currentPage"></span>
+                        <button x-show="currentPage < totalPages" @click="goToPage(currentPage + 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Next</button>
+                        <span x-show="currentPage === totalPages" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Next</span>
+                    </span>
                 </div>
                 <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
                     <div class="flex gap-6 text-sm">
@@ -324,9 +336,27 @@
             vouchersByDate: options.vouchersByDate || {},
             modalOpen: false,
             selectedVouchers: [],
+            currentPage: 1,
+            perPage: 50,
+
+            get paginatedVouchers() {
+                const start = (this.currentPage - 1) * this.perPage;
+                return this.selectedVouchers.slice(start, start + this.perPage);
+            },
+
+            get totalPages() {
+                return Math.ceil(this.selectedVouchers.length / this.perPage);
+            },
+
+            goToPage(page) {
+                if (page >= 1 && page <= this.totalPages) {
+                    this.currentPage = page;
+                }
+            },
 
             openModal() {
                 this.selectedVouchers = Object.values(this.vouchersByDate).flat();
+                this.currentPage = 1;
                 this.modalOpen = true;
             },
 
