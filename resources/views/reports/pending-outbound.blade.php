@@ -331,8 +331,8 @@ select {
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
                                 <select x-model="form.flight_type" @change="handleTicketTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none bg-white">
                                     <option value="">Select</option>
-                                    <option value="Direct">Direct</option>
-                                    <option value="Transit">Transit</option>
+                                    <option value="direct">Direct</option>
+                                    <option value="transit">Transit</option>
                                 </select>
                             </div>
                             <div>
@@ -554,6 +554,12 @@ function pendingOutboundReport(options = {}) {
             return year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
         },
 
+        calculateFareForPassengerType(baseFare, passengerType, childPct, infantPct) {
+            if (passengerType === 'child') return Math.round((baseFare * (childPct || 70)) / 100);
+            if (passengerType === 'infant') return Math.round((baseFare * (infantPct || 30)) / 100);
+            return baseFare;
+        },
+
         handleTicketTypeChange() {
             this.form.ticket_option = '';
             this.form.ticket_fare_id = null;
@@ -589,12 +595,11 @@ function pendingOutboundReport(options = {}) {
                 this.form.travel_class = fare.airline_class || '';
                 this.form.route_id = fare.route_id;
                 this.form.airline_id = fare.airline_id;
-                this.form.selling_fare = fare.selling_fare || 0;
-                this.form.net_fare = fare.net_fare || 0;
                 const pType = this.form.passenger_type || 'adult';
-                const allowances = fare.baggage_allowances || [];
-                const outbound = allowances.find(b => b.passenger_type === pType && b.travel_direction === 'outbound');
-                this.form.baggage_outbound = outbound ? outbound.allowance : '';
+                this.form.selling_fare = this.calculateFareForPassengerType(fare.selling_fare || 0, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                this.form.net_fare = this.calculateFareForPassengerType(fare.net_fare || 0, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                this.form.baggage_outbound = fare['baggage_outbound' + (pType !== 'adult' ? '_' + pType : '')] || '';
+                this.form.flight_type = fare.flight_type || '';
             }
         },
 
