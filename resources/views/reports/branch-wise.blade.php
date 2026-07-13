@@ -72,7 +72,7 @@
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($invoiceTotalAmount), 0)</div>
+                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($invoiceTotalAmount), 0, null, cascadeRound($invoiceTotalAmountBdt))</div>
 <div class="text-xs text-slate-500 mt-1">{{ $dateLabel }}</div>
         </div>
 
@@ -85,7 +85,7 @@
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($totalCashPayment), 0) <span x-text="$store.currency.mode"></span></div>
+                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($totalCashPayment), 0, null, cascadeRound($totalCashPaymentBdt)) <span x-text="$store.currency.mode"></span></div>
                 <div class="text-xs text-slate-500 mt-1">Cash Payment ({{ $dateLabel }})</div>
             </div>
 
@@ -98,7 +98,7 @@
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-blue-600 mb-1">@currency(cascadeRound($totalBankPayment), 0) <span x-text="$store.currency.mode"></span></div>
+                <div class="text-3xl font-bold text-blue-600 mb-1">@currency(cascadeRound($totalBankPayment), 0, null, cascadeRound($totalBankPaymentBdt)) <span x-text="$store.currency.mode"></span></div>
                 <div class="text-xs text-slate-500 mt-1">Bank Payment ({{ $dateLabel }})</div>
             </div>
 
@@ -111,7 +111,7 @@
                     </svg>
                 </div>
             </div>
-            <div class="text-3xl font-bold text-orange-600 mb-1">@currency(cascadeRound($totalDue), 0) <span x-text="$store.currency.mode"></span></div>
+            <div class="text-3xl font-bold text-orange-600 mb-1">@currency(cascadeRound($totalDue), 0, null, cascadeRound($totalDueBdt)) <span x-text="$store.currency.mode"></span></div>
             <div class="text-xs text-slate-500 mt-1">Receivable ({{ $dateLabel }})</div>
         </div>
 
@@ -124,7 +124,7 @@
                     </svg>
                 </div>
             </div>
-            <div class="text-3xl font-bold text-slate-800 mb-1">@currency(cascadeRound($totalDueCollection), 0) <span x-text="$store.currency.mode"></span></div>
+            <div class="text-3xl font-bold text-slate-800 mb-1">@currency(cascadeRound($totalDueCollection), 0, null, cascadeRound($totalDueCollectionBdt)) <span x-text="$store.currency.mode"></span></div>
             <div class="text-xs text-slate-500 mt-1">Collection ({{ $dateLabel }})</div>
         </div>
 
