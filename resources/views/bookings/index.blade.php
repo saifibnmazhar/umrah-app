@@ -310,7 +310,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     </thead>
                     <tbody class="divide-y divide-slate-200">
                         @forelse($bookings as $booking)
-                        @php $bookingCurrencyRate = $booking->currencyRate?->rate ?? ($currencyRateService?->getRateForDate($booking->created_at)?->rate ?? 0); @endphp
+                        @php $bookingCurrencyRate = $booking->currencyRate?->rate ?? ($currencyRateService?->getRateForDate($booking->created_at)?->rate ?? ($currencyRateService?->getFirstRate()?->rate ?? 0)); @endphp
                         <tr>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->invoice_id ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->created_at->format('Y-m-d') }}</td>
@@ -569,7 +569,7 @@ if ($route) {
     }
 }
 @endphp
-@php $passBookingRate = $passenger->booking?->currencyRate?->rate ?? ($currencyRateService?->getRateForDate($passenger->booking?->created_at)?->rate ?? 0); @endphp
+@php $passBookingRate = $passenger->booking?->currencyRate?->rate ?? ($currencyRateService?->getRateForDate($passenger->booking?->created_at)?->rate ?? ($currencyRateService?->getFirstRate()?->rate ?? 0)); @endphp
 <tr>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->created_at?->format('d M Y') ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->invoice_id ?? '—' }}</td>

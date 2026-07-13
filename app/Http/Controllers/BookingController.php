@@ -339,7 +339,7 @@ class BookingController extends Controller
 
             $rate = $booking->currencyRate?->rate
                 ?? ($currencyRateService?->getRateForDate($booking->created_at)?->rate
-                ?? 0);
+                ?? ($currencyRateService?->getFirstRate()?->rate ?? 0));
 
             if ($rate > 0) {
                 $totalPackageBdt += $invoice->total_amount * $rate;
