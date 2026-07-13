@@ -155,13 +155,35 @@ class BookingController extends Controller
         $selectedBookingDateTo = $request->get('booking_date_to');
         $selectedFingerprintLocation = $request->get('fingerprint_location');
         $selectedPassengerStatus = $request->get('passenger_status');
-        $selectedRouteId = $request->get('route_id');
         $selectedPackageId = $request->get('package_id');
         $selectedTicketAgentId = $request->get('ticket_agent_id');
         $selectedActualFlightFrom = $request->get('actual_flight_from');
         $selectedActualFlightTo = $request->get('actual_flight_to');
         $selectedReturnDateFrom = $request->get('return_date_from');
         $selectedReturnDateTo = $request->get('return_date_to');
+
+        $allRouteMaps = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->id,
+                'display' => match($r->route_type?->value) {
+                    'multi_city' => $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', '),
+                    'round' => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?') . '-' . ($r->returnCity?->code ?? '?'),
+                    default => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?'),
+                },
+                'route_type' => $r->route_type?->value,
+                'flight_type' => $r->flight_type?->value,
+                'airline_id' => $r->airline_id,
+            ]);
+
+        $routesList = $allRouteMaps->unique('display')->values();
+        $routeDisplayMap = $allRouteMaps->groupBy('display')->map(fn($g) => $g->pluck('id')->toArray());
+
+        $selectedRouteDisplay = $request->input('route_display');
+        if (!$selectedRouteDisplay && $request->filled('route_id')) {
+            $oldRoute = $allRouteMaps->firstWhere('id', (int) $request->input('route_id'));
+            $selectedRouteDisplay = $oldRoute['display'] ?? null;
+        }
 
         $branchCounts = !$userBranchId
             ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
@@ -264,9 +286,12 @@ class BookingController extends Controller
             ->when($request->filled('passenger_status'), fn ($q) =>
                 $q->where('passenger_status_id', $request->input('passenger_status'))
             )
-            ->when($request->filled('route_id'), fn ($q) =>
-                $q->whereHas('ticketFare', fn ($q) => $q->where('route_id', $request->input('route_id')))
-            )
+            ->when($selectedRouteDisplay, function ($q) use ($routeDisplayMap, $selectedRouteDisplay) {
+                $routeIds = $routeDisplayMap[$selectedRouteDisplay] ?? [];
+                if (!empty($routeIds)) {
+                    $q->whereHas('ticketFare', fn ($q) => $q->whereIn('route_id', $routeIds));
+                }
+            })
             ->when($request->filled('package_id'), fn ($q) =>
                 $q->whereHas('booking', fn ($q) => $q->where('package_id', $request->input('package_id')))
             )
@@ -386,7 +411,7 @@ class BookingController extends Controller
             'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
             'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
-            'selectedPassengerStatus', 'selectedRouteId', 'selectedPackageId', 'selectedTicketAgentId',
+            'selectedPassengerStatus', 'selectedRouteDisplay', 'routesList', 'selectedPackageId', 'selectedTicketAgentId',
             'selectedActualFlightFrom', 'selectedActualFlightTo',
             'selectedReturnDateFrom', 'selectedReturnDateTo',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',

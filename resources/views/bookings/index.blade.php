@@ -28,18 +28,6 @@ $passengersVisaData = ($passengers ?? collect())->map(function($p) {
     ];
 })->values();
 
-$routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])->get()->map(fn($r) => [
-    'id' => $r->id,
-    'display' => match($r->route_type?->value) {
-        'multi_city' => $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', '),
-        'round' => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?') . '-' . ($r->returnCity?->code ?? '?'),
-        default => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?'),
-    },
-    'route_type' => $r->route_type?->value,
-    'flight_type' => $r->flight_type?->value,
-    'airline_id' => $r->airline_id,
-])->unique('display')->values();
-
 $packagesList = \App\Models\Package::where('is_active', true)
     ->select('id', 'package_name')
     ->get()
@@ -479,10 +467,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     </div>
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Route</label>
-                        <select x-model="selectedRouteId" @change="onRouteChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                        <select x-model="selectedRouteDisplay" @change="onRouteChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($routesList as $route)
-                            <option value="{{ $route['id'] }}" {{ (string) $selectedRouteId === (string) $route['id'] ? 'selected' : '' }}>{{ $route['display'] }}</option>
+                            <option value="{{ $route['display'] }}" {{ (string) $selectedRouteDisplay === $route['display'] ? 'selected' : '' }}>{{ $route['display'] }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -1503,7 +1491,7 @@ function bookingIndexApp() {
         selectedBookingDateTo: '{{ $selectedBookingDateTo ?? '' }}',
         selectedFingerprintLocation: '{{ $selectedFingerprintLocation ?? '' }}',
         selectedPassengerStatus: '{{ $selectedPassengerStatus ?? '' }}',
-        selectedRouteId: '{{ $selectedRouteId ?? '' }}',
+        selectedRouteDisplay: '{{ $selectedRouteDisplay ?? '' }}',
         selectedPackageId: '{{ $selectedPackageId ?? '' }}',
         selectedTicketAgentId: '{{ $selectedTicketAgentId ?? '' }}',
         selectedActualFlightFrom: '{{ $selectedActualFlightFrom ?? '' }}',
@@ -1726,11 +1714,12 @@ function bookingIndexApp() {
 
         onRouteChange() {
             const url = new URL(window.location.href);
-            if (this.selectedRouteId) {
-                url.searchParams.set('route_id', this.selectedRouteId);
+            if (this.selectedRouteDisplay) {
+                url.searchParams.set('route_display', this.selectedRouteDisplay);
             } else {
-                url.searchParams.delete('route_id');
+                url.searchParams.delete('route_display');
             }
+            url.searchParams.delete('route_id');
             url.searchParams.delete('page');
             window.location.href = url.toString();
         },
@@ -1820,7 +1809,7 @@ function bookingIndexApp() {
         clearPassengerFilters() {
             const url = new URL(window.location);
             ['fingerprint_status', 'visa_status', 'ticket_status',
-             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_id', 'package_id',
+             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_display', 'package_id',
              'booking_branch_id', 'booking_date_from', 'booking_date_to',
              'actual_flight_from', 'actual_flight_to',
              'return_date_from', 'return_date_to',
