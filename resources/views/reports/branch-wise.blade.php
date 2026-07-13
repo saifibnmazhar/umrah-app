@@ -3,7 +3,8 @@
 @section('title', 'Branch Wise Report')
 
 @section('content')
-<div class="max-w-3xl mx-auto pt-6">
+<style>[x-cloak] { display: none !important; }</style>
+<div class="max-w-3xl mx-auto pt-6" x-data="branchWiseReport({ vouchersByDate: {{ $vouchersByDateJson }} })">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Branch Wise Report</h1>
 
     <form method="GET" action="{{ route('report.branch-wise') }}" class="flex flex-wrap items-end gap-4 mb-6 bg-white rounded-lg border border-slate-200 shadow-sm p-4">
@@ -219,5 +220,137 @@
             <div class="text-xs text-slate-500 mt-1">{{ $dateLabel }}</div>
         </div>
     </div>
+
+    <div class="mt-6 mb-4">
+        <button @click="openModal()" class="w-full flex items-center justify-between bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5 cursor-pointer">
+            <div class="flex items-center gap-4">
+                <div class="w-12 h-12 rounded-full bg-emerald-100 flex items-center justify-center">
+                    <svg class="w-6 h-6 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                    </svg>
+                </div>
+                <div>
+                    <h3 class="text-lg font-bold text-slate-800">Payment History</h3>
+                    <p class="text-sm text-slate-500">{{ collect($vouchersByDate)->sum(fn($vouchers) => count($vouchers)) }} payments ({{ $dateLabel }})</p>
+                </div>
+            </div>
+            <svg class="w-5 h-5 text-slate-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/>
+            </svg>
+        </button>
+    </div>
+
+    <div x-show="modalOpen" x-cloak class="fixed inset-0 z-50">
+        <div class="fixed inset-0 bg-transparent" @click="closeModal()"></div>
+        <div class="flex items-center justify-center min-h-screen px-4">
+            <div class="relative bg-white rounded-lg shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden">
+                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
+                    <h2 class="text-xl font-bold text-white">Payment History</h2>
+                    <button @click="closeModal()" class="text-white hover:text-gray-300">
+                        <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                        </svg>
+                    </button>
+                </div>
+                <div class="p-6 overflow-y-auto max-h-[calc(95vh-130px)]">
+                    <template x-if="selectedVouchers.length === 0">
+                        <p class="text-center text-gray-500 py-8">No records found.</p>
+                    </template>
+                    <template x-if="selectedVouchers.length > 0">
+                        <div class="overflow-x-auto">
+                            <table class="w-full min-w-[1100px]">
+                                <thead>
+                                    <tr class="table-header">
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Voucher No</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Method</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Transaction Type</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Trx ID</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Receive By</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Receive At</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Payment Date</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-right">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    <template x-for="(v, idx) in selectedVouchers" :key="idx">
+                                        <tr class="border-b border-gray-100 even:bg-[#fafafa]">
+                                            <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.invoice_id"></td>
+                                            <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.voucher_no"></td>
+                                            <td class="px-3 py-2 text-sm text-center border-r border-gray-200">
+                                                <span class="px-2 py-0.5 rounded text-xs font-medium"
+                                                      :class="v.method === 'Bank' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'"
+                                                      x-text="v.method"></span>
+                                            </td>
+                                            <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.transaction_type"></td>
+                                            <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.trx_id"></td>
+                                            <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.receive_by"></td>
+                                            <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.receive_at"></td>
+                                            <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.payment_date"></td>
+                                            <td class="px-3 py-2 text-sm text-right font-semibold" x-text="formatAmount(v.amount)"></td>
+                                        </tr>
+                                    </template>
+                                </tbody>
+                            </table>
+                        </div>
+                    </template>
+                </div>
+                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
+                    <div class="flex gap-6 text-sm">
+                        <span class="font-medium text-green-700">
+                            Cash: <span x-text="formatAmount(totalCash)"></span>
+                        </span>
+                        <span class="font-medium text-blue-700">
+                            Bank: <span x-text="formatAmount(totalBank)"></span>
+                        </span>
+                        <span class="font-medium text-gray-800">
+                            Total: <span x-text="formatAmount(totalAmount)"></span>
+                        </span>
+                    </div>
+                    <button @click="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100">
+                        Close
+                    </button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+    function branchWiseReport(options = {}) {
+        return {
+            vouchersByDate: options.vouchersByDate || {},
+            modalOpen: false,
+            selectedVouchers: [],
+
+            openModal() {
+                this.selectedVouchers = Object.values(this.vouchersByDate).flat();
+                this.modalOpen = true;
+            },
+
+            closeModal() {
+                this.modalOpen = false;
+            },
+
+            get totalCash() {
+                return this.selectedVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + v.amount, 0);
+            },
+            get totalBank() {
+                return this.selectedVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + v.amount, 0);
+            },
+            get totalAmount() {
+                return this.selectedVouchers.reduce((s, v) => s + v.amount, 0);
+            },
+
+            formatAmount(amount) {
+                if (window.Alpine) {
+                    return Alpine.store('currency').format(amount, 2);
+                }
+                return Number(amount).toFixed(2);
+            },
+        };
+    }
+</script>
+@endpush

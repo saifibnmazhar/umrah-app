@@ -123,6 +123,35 @@ class BranchWiseReportController extends Controller
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->sum('amount');
 
+        $payments = Payment::whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->with(['branch', 'vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking'])
+            ->get();
+
+        $vouchersByDate = [];
+        foreach ($payments as $payment) {
+            $dateKey = $payment->created_at->format('Y-m-d');
+            foreach ($payment->vouchers as $v) {
+                if (!in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
+                    continue;
+                }
+                $vouchersByDate[$dateKey][] = [
+                    'invoice_id' => $v->booking?->invoice_id ?? 'N/A',
+                    'voucher_no' => $v->voucher_id ?? $v->id,
+                    'method' => ucfirst($v->payment_method?->value ?? ''),
+                    'transaction_type' => $v->transactionType?->name ?? '',
+                    'trx_id' => $v->transaction_id ?? '-',
+                    'receive_by' => $v->user?->name ?? '',
+                    'receive_at' => $v->user?->branch?->name ?? 'Central',
+                    'amount' => (float) $v->amount,
+                    'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
+                ];
+            }
+        }
+        $vouchersByDateJson = json_encode($vouchersByDate);
+
         return view('reports.branch-wise', compact(
             'visaSubmitted', 'visaIssued', 'visaPending',
             'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing',
@@ -130,7 +159,8 @@ class BranchWiseReportController extends Controller
             'inboundTicket', 'outboundTicket', 'pendingTicket',
             'totalDue', 'totalDueCollection', 'totalPassengers',
             'totalCashPayment', 'totalBankPayment',
-            'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId'
+            'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId',
+            'vouchersByDateJson', 'vouchersByDate'
         ));
     }
 }
