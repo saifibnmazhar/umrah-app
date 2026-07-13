@@ -554,6 +554,12 @@ function pendingOutboundReport(options = {}) {
             return year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
         },
 
+        calculateFareForPassengerType(baseFare, passengerType, childPct, infantPct) {
+            if (passengerType === 'child') return Math.round((baseFare * (childPct || 70)) / 100);
+            if (passengerType === 'infant') return Math.round((baseFare * (infantPct || 30)) / 100);
+            return baseFare;
+        },
+
         handleTicketTypeChange() {
             this.form.ticket_option = '';
             this.form.ticket_fare_id = null;
@@ -589,8 +595,9 @@ function pendingOutboundReport(options = {}) {
                 this.form.travel_class = fare.airline_class || '';
                 this.form.route_id = fare.route_id;
                 this.form.airline_id = fare.airline_id;
-                this.form.selling_fare = fare.selling_fare || 0;
-                this.form.net_fare = fare.net_fare || 0;
+                const pType = this.form.passenger_type || 'adult';
+                this.form.selling_fare = this.calculateFareForPassengerType(fare.selling_fare || 0, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                this.form.net_fare = this.calculateFareForPassengerType(fare.net_fare || 0, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                 this.form.baggage_outbound = fare.baggage_outbound || '';
                 this.form.flight_type = fare.flight_type || '';
             }
