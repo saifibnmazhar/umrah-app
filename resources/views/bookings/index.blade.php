@@ -40,8 +40,7 @@ $routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'mult
     'airline_id' => $r->airline_id,
 ])->unique('display')->values();
 
-$packagesList = \App\Models\Package::where('is_active', true)
-    ->select('id', 'package_name')
+$packagesList = \App\Models\Package::select('id', 'package_name')
     ->get()
     ->unique('package_name')
     ->values();
