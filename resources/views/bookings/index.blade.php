@@ -513,8 +513,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                 </div>
                 <div class="flex flex-col gap-1 flex-shrink-0">
                     <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm" x-text="'Total Passenger - ' + totalPassengerCount">Total Passenger - {{ $totalPassengerCount }}</span>
-                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Package - @currency($totalPackageValue, 2)</span>
-                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Due - @currency($totalDue, 2)</span>
+                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Package - @currency($totalPackageValue, 2, null, $totalPackageBdt)</span>
+                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Due - @currency($totalDue, 2, null, $totalDueBdt)</span>
                 </div>
             </div>
             <div class="overflow-auto flex-1 min-h-0">

@@ -292,13 +292,35 @@ class BookingController extends Controller
 
         $totalPassengerCount = (clone $passengers)->count();
 
+        $currencyRateService = app(CurrencyRateService::class);
+
         $bookingIds = (clone $passengers)->pluck('booking_id')->unique();
-        $totalPackageValue = DB::table('invoices')
-            ->whereIn('booking_id', $bookingIds)
-            ->sum('total_amount');
-        $totalDue = DB::table('invoices')
-            ->whereIn('booking_id', $bookingIds)
-            ->sum('balance');
+
+        $invoiceBookings = Booking::with('invoice', 'currencyRate')
+            ->whereIn('id', $bookingIds)
+            ->get();
+
+        $totalPackageValue = 0;
+        $totalDue = 0;
+        $totalPackageBdt = 0;
+        $totalDueBdt = 0;
+
+        foreach ($invoiceBookings as $booking) {
+            $invoice = $booking->invoice;
+            if (!$invoice) continue;
+
+            $totalPackageValue += $invoice->total_amount;
+            $totalDue += $invoice->balance;
+
+            $rate = $booking->currencyRate?->rate
+                ?? ($currencyRateService?->getRateForDate($booking->created_at)?->rate
+                ?? 0);
+
+            if ($rate > 0) {
+                $totalPackageBdt += $invoice->total_amount * $rate;
+                $totalDueBdt += $invoice->balance * $rate;
+            }
+        }
 
         $passengers = (clone $passengers)
             ->with([
@@ -352,8 +374,6 @@ class BookingController extends Controller
 
         $canEditVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
 
-        $currencyRateService = app(CurrencyRateService::class);
-
         $fingerprintStatuses = FingerprintStatus::cases();
         $visaStatuses = VisaStatus::cases();
         $ticketStatuses = TicketStatus::cases();
@@ -370,7 +390,7 @@ class BookingController extends Controller
             'selectedActualFlightFrom', 'selectedActualFlightTo',
             'selectedReturnDateFrom', 'selectedReturnDateTo',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
-            'totalPassengerCount', 'totalPackageValue', 'totalDue'
+            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt'
         ));
     }
 
