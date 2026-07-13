@@ -375,6 +375,7 @@ Route::middleware('auth')->group(function () {
     })->name('report.payment-receiving')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-wise', [BranchWiseReportController::class, 'index'])->name('report.branch-wise');
+    Route::get('/reports/branch-wise/payment-history/print', [BranchWiseReportController::class, 'paymentHistoryPrint'])->name('report.branch-wise.payment-history-print')->middleware('role:Super Admin,Co Admin,Auditor');
 
     // Detail Pages with parameters
     Route::resource('payments', PaymentController::class)->only(['index', 'create', 'store', 'show'])->middleware('role:Super Admin,Co Admin');

@@ -4,7 +4,7 @@
 
 @section('content')
 <style>[x-cloak] { display: none !important; }</style>
-<div class="max-w-3xl mx-auto pt-6" x-data="branchWiseReport({ vouchersByDate: {{ $vouchersByDateJson }} })">
+<div class="max-w-3xl mx-auto pt-6" x-data="branchWiseReport({ vouchersByDate: {{ $vouchersByDateJson }}, dateFrom: '{{ $dateFrom->format('Y-m-d') }}', dateTo: '{{ $dateTo->format('Y-m-d') }}', branchId: '{{ $selectedBranch }}' })">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Branch Wise Report</h1>
 
     <form method="GET" action="{{ route('report.branch-wise') }}" class="flex flex-wrap items-end gap-4 mb-6 bg-white rounded-lg border border-slate-200 shadow-sm p-4">
@@ -319,7 +319,13 @@
                             Total: <span x-text="formatAmount(totalAmount)"></span>
                         </span>
                     </div>
-                    <button @click="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100">
+                    <a :href="printUrl" target="_blank" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                        </svg>
+                        Print
+                    </a>
+                    <button @click="closeModal()" class="no-print px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100">
                         Close
                     </button>
                 </div>
@@ -334,6 +340,9 @@
     function branchWiseReport(options = {}) {
         return {
             vouchersByDate: options.vouchersByDate || {},
+            dateFrom: options.dateFrom || '',
+            dateTo: options.dateTo || '',
+            branchId: options.branchId || '',
             modalOpen: false,
             selectedVouchers: [],
             currentPage: 1,
@@ -362,6 +371,15 @@
 
             closeModal() {
                 this.modalOpen = false;
+            },
+
+            get printUrl() {
+                const params = new URLSearchParams();
+                if (this.dateFrom) params.set('date_from', this.dateFrom);
+                if (this.dateTo) params.set('date_to', this.dateTo);
+                if (this.branchId) params.set('branch_id', this.branchId);
+                params.set('currency', Alpine.store('currency').mode);
+                return `/reports/branch-wise/payment-history/print?${params.toString()}`;
             },
 
             get totalCash() {
