@@ -331,8 +331,8 @@ select {
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
                                 <select x-model="form.flight_type" @change="handleTicketTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none bg-white">
                                     <option value="">Select</option>
-                                    <option value="Direct">Direct</option>
-                                    <option value="Transit">Transit</option>
+                                    <option value="direct">Direct</option>
+                                    <option value="transit">Transit</option>
                                 </select>
                             </div>
                             <div>
@@ -595,6 +595,7 @@ function pendingOutboundReport(options = {}) {
                 const allowances = fare.baggage_allowances || [];
                 const outbound = allowances.find(b => b.passenger_type === pType && b.travel_direction === 'outbound');
                 this.form.baggage_outbound = outbound ? outbound.allowance : '';
+                this.form.flight_type = fare.flight_type || '';
             }
         },
 
