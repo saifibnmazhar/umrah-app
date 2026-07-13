@@ -112,7 +112,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($invoiceTotalAmount), 0)</div>
+                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($invoiceTotalAmount), 0, null, cascadeRound($invoiceTotalAmountBdt))</div>
                 <div class="text-xs text-slate-500 mt-1">This Month</div>
             </div>
 
@@ -125,7 +125,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($totalCashPayment), 0)</div>
+                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($totalCashPayment), 0, null, cascadeRound($totalCashPaymentBdt))</div>
                 <div class="text-xs text-slate-500 mt-1">Cash Payment (This Month)</div>
             </div>
 
@@ -138,7 +138,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-blue-600 mb-1">@currency(cascadeRound($totalBankPayment), 0)</div>
+                <div class="text-3xl font-bold text-blue-600 mb-1">@currency(cascadeRound($totalBankPayment), 0, null, cascadeRound($totalBankPaymentBdt))</div>
                 <div class="text-xs text-slate-500 mt-1">Bank Payment (This Month)</div>
             </div>
 
@@ -151,7 +151,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-orange-600 mb-1">@currency(cascadeRound($totalDue), 0)</div>
+                <div class="text-3xl font-bold text-orange-600 mb-1">@currency(cascadeRound($totalDue), 0, null, cascadeRound($totalDueBdt))</div>
                 <div class="text-xs text-slate-500 mt-1">Receivable (This Month)</div>
             </div>
 
@@ -164,7 +164,7 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-slate-800 mb-1">@currency(cascadeRound($totalDueCollection), 0) <span x-text="$store.currency.mode"></span></div>
+                <div class="text-3xl font-bold text-slate-800 mb-1">@currency(cascadeRound($totalDueCollection), 0, null, cascadeRound($totalDueCollectionBdt)) <span x-text="$store.currency.mode"></span></div>
                 <div class="text-xs text-slate-500 mt-1">Collection (This Month)</div>
             </div>
 
