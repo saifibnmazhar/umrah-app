@@ -49,6 +49,10 @@ class PendingOutboundReportController extends Controller
                 'travel_direction' => $ba->travel_direction?->value,
                 'allowance' => $ba->allowance,
             ])->values(),
+            'baggage_outbound' => $fare->baggageAllowances
+                ->filter(fn($ba) => $ba->travel_direction?->value === 'outbound' && $ba->passenger_type?->value === 'adult')
+                ->first()
+                ?->allowance ?? '',
         ])->values();
         $filters = [
             'search' => request('search', ''),
