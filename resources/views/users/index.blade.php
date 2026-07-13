@@ -23,7 +23,13 @@
         </div>
     @endif
 
-    <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+    <form method="GET" action="{{ route('users.index') }}" id="filter-form" class="mb-6 flex items-center gap-4">
+        <input type="text" name="search" value="{{ request('search') }}" placeholder="Search by name, email, or branch..."
+            class="w-full max-w-md border border-slate-300 rounded-md px-3 py-2 text-sm focus:ring-2 focus:ring-slate-400 outline-none">
+    </form>
+
+    <div id="user-table-container">
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
         <div class="overflow-x-auto">
             <table class="w-full text-sm">
                 <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
@@ -98,10 +104,54 @@
                 </tbody>
             </table>
         </div>
-    </div>
+        </div>
 
-    <div class="mt-4 flex justify-center">
-        {{ $users->appends(request()->query())->links() }}
+        <div class="mt-4 flex justify-center">
+            {{ $users->appends(request()->query())->links() }}
+        </div>
     </div>
 </div>
 @endsection
+
+@push('scripts')
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var form = document.getElementById('filter-form');
+    var container = document.getElementById('user-table-container');
+    if (!form || !container) return;
+    var debounceTimer;
+
+    function fetchFilteredResults() {
+        var params = new URLSearchParams(new FormData(form));
+        for (var key of params.keys()) {
+            if (!params.get(key)) params.delete(key);
+        }
+        var url = form.action + '?' + params.toString();
+
+        fetch(url, {
+            headers: { 'X-Requested-With': 'XMLHttpRequest' }
+        }).then(function (response) {
+            return response.text();
+        }).then(function (html) {
+            var parser = new DOMParser();
+            var doc = parser.parseFromString(html, 'text/html');
+            var newContent = doc.getElementById('user-table-container');
+            if (newContent) {
+                container.innerHTML = newContent.innerHTML;
+                history.replaceState(null, '', url);
+            }
+        }).catch(function (e) {
+            console.error('Search failed:', e);
+        });
+    }
+
+    var searchInput = form.querySelector('input[name="search"]');
+    if (searchInput) {
+        searchInput.addEventListener('input', function () {
+            clearTimeout(debounceTimer);
+            debounceTimer = setTimeout(fetchFilteredResults, 400);
+        });
+    }
+});
+</script>
+@endpush
