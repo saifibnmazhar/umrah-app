@@ -403,3 +403,5 @@ Route::middleware('auth')->group(function () {
     Route::post('/api/ticket-fares/quick-create', [TicketFareController::class, 'quickStore'])
         ->middleware('auth');
 });
+
+require __DIR__.'/booking-cancellation.php';
