@@ -30,6 +30,7 @@ class Booking extends Model
         'total_value',
         'remarks',
         'currency_rate_id',
+        'is_cancelled',
     ];
 
     protected $casts = [
@@ -109,5 +110,10 @@ class Booking extends Model
     public function currencyRate(): BelongsTo
     {
         return $this->belongsTo(CurrencyRate::class);
+    }
+
+    public function cancelledBooking(): HasOne
+    {
+        return $this->hasOne(CancelledBooking::class)->latestOfMany();
     }
 }

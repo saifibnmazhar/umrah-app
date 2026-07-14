@@ -34,6 +34,10 @@ class TransactionTypeSeeder extends Seeder
                 'name' => 'Commission Agent Payment',
                 'type' => 'debit',
             ],
+            [
+                'name' => 'Service Charge Deduction',
+                'type' => 'credit',
+            ],
         ];
 
         foreach ($transactionTypes as $type) {
