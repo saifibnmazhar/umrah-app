@@ -221,6 +221,11 @@ class Passenger extends Model
         return null;
     }
 
+    public function updateLogs(): HasMany
+    {
+        return $this->hasMany(PassengerUpdateLog::class);
+    }
+
     public function syncComputedStatus(): void
     {
         $statusName = $this->computed_status;

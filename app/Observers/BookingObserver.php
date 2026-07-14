@@ -17,8 +17,12 @@ class BookingObserver
         if (empty($dirty)) return;
 
         $original = $booking->getOriginal();
-        $oldValues = collect($original)->except(['created_at', 'updated_at'])->toArray();
-        $newValues = collect($booking->attributesToArray())->except(['created_at', 'updated_at'])->toArray();
+        $oldValues = [];
+        $newValues = [];
+        foreach ($dirty as $key => $newValue) {
+            $oldValues[$key] = $original[$key] ?? null;
+            $newValues[$key] = $newValue;
+        }
 
         BookingUpdateLog::create([
             'booking_id' => $booking->id,

@@ -17,8 +17,12 @@ class PassengerObserver
         if (empty($dirty)) return;
 
         $original = $passenger->getOriginal();
-        $oldValues = collect($original)->except(['created_at', 'updated_at'])->toArray();
-        $newValues = collect($passenger->attributesToArray())->except(['created_at', 'updated_at'])->toArray();
+        $oldValues = [];
+        $newValues = [];
+        foreach ($dirty as $key => $newValue) {
+            $oldValues[$key] = $original[$key] ?? null;
+            $newValues[$key] = $newValue;
+        }
 
         PassengerUpdateLog::create([
             'passenger_id' => $passenger->id,
