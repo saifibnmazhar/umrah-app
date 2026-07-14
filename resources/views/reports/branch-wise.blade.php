@@ -287,7 +287,7 @@
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.receive_by"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.receive_at"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.payment_date"></td>
-                                            <td class="px-3 py-2 text-sm text-right font-semibold" x-text="formatAmount(v.amount)"></td>
+                                             <td class="px-3 py-2 text-sm text-right font-semibold" x-text="formatAmount(v.amount, v.bdt_amount, v.currency_rate)"></td>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -310,13 +310,13 @@
                 <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
                     <div class="flex gap-6 text-sm">
                         <span class="font-medium text-green-700">
-                            Cash: <span x-text="formatAmount(totalCash)"></span>
+                            Cash: <span x-text="formatAmount(totalCash, totalCashBdt, null)"></span>
                         </span>
                         <span class="font-medium text-blue-700">
-                            Bank: <span x-text="formatAmount(totalBank)"></span>
+                            Bank: <span x-text="formatAmount(totalBank, totalBankBdt, null)"></span>
                         </span>
                         <span class="font-medium text-gray-800">
-                            Total: <span x-text="formatAmount(totalAmount)"></span>
+                            Total: <span x-text="formatAmount(totalAmount, totalAmountBdt, null)"></span>
                         </span>
                     </div>
                     <a :href="printUrl" target="_blank" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 flex items-center gap-1">
@@ -385,15 +385,30 @@
             get totalCash() {
                 return this.selectedVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + v.amount, 0);
             },
+            get totalCashBdt() {
+                return this.selectedVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
+            },
             get totalBank() {
                 return this.selectedVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + v.amount, 0);
+            },
+            get totalBankBdt() {
+                return this.selectedVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
             },
             get totalAmount() {
                 return this.selectedVouchers.reduce((s, v) => s + v.amount, 0);
             },
+            get totalAmountBdt() {
+                return this.selectedVouchers.reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
+            },
 
-            formatAmount(amount) {
+            formatAmount(amount, bdtAmount, currencyRate) {
                 if (window.Alpine) {
+                    if (bdtAmount && bdtAmount > 0) {
+                        return Alpine.store('currency').format(amount, 2, null, bdtAmount);
+                    }
+                    if (currencyRate && currencyRate > 0) {
+                        return Alpine.store('currency').format(amount, 2, null, amount * currencyRate);
+                    }
                     return Alpine.store('currency').format(amount, 2);
                 }
                 return Number(amount).toFixed(2);
