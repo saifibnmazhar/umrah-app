@@ -40,6 +40,7 @@ class Booking extends Model
         'discount_amount' => 'decimal:6',
         'total_value' => 'decimal:6',
         'pax_qty' => 'integer',
+        'is_cancelled' => 'boolean',
     ];
 
     public function user(): BelongsTo
