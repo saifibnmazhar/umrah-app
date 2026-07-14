@@ -50,9 +50,10 @@ class BookingCancellationViewController extends Controller
         ]);
 
         $costSummary = $this->getCostBreakdown($cancelledBooking->booking);
+        $bookingCurrencyRate = $cancelledBooking->booking->currencyRate?->rate ?? 0;
         $branches = Branch::select('id', 'name', 'location')->orderBy('name')->get();
 
-        return view('cancelled-bookings.confirm', compact('cancelledBooking', 'costSummary', 'branches'));
+        return view('cancelled-bookings.confirm', compact('cancelledBooking', 'costSummary', 'bookingCurrencyRate', 'branches'));
     }
 
     public function pendingRefunds(Request $request)
