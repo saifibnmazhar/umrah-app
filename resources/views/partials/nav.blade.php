@@ -9,6 +9,7 @@
         $canAccessAdminReports = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
         $canAccessFingerprintReport = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty() || (auth()->user()->hasRole('Fingerprint Admin') && auth()->user()->branch?->fingerprint_operation);
         $canAccessBooking = true;
+        $canAccessPendingRefunds = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager'])->isNotEmpty();
     @endphp
     <div class="w-full mx-auto px-4">
         <div class="flex justify-center items-center h-16 space-x-5">
@@ -19,6 +20,7 @@
             <div class="hidden md:flex md:justify-center md:items-center space-x-1" id="desktopNav">
                 <a href="{{ route('dashboard') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="dashboard">Dashboard</a>
                 @if($canAccessBooking)<a href="{{ route('bookings.index') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="booking">Booking</a>@endif
+                @if($canAccessPendingRefunds)<a href="{{ route('pending-refunds.index') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="pendingRefunds">Pending Refunds</a>@endif
                 @if($canAccessFingerprintAdmin)<a href="{{ route('fingerprint.admin') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="fingerprintAdmin">Fingerprint Admin</a>@endif
                 @if($canAccessFingerprintStaff)<a href="{{ route('fingerprint.staff') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="fingerprintStaff">Fingerprint Staff</a>@endif
                 @if(!$canAccessAdmin)<a href="{{ route('fingerprint-charges.index') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="fingerprintCharge">Fingerprint Charge</a>@endif
@@ -42,6 +44,7 @@
                         @if($canAccessAdminReports)<a href="{{ route('report.profit-loss') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Profit/Loss Report</a>@endif
                         <a href="{{ route('report.branch-wise') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Branch Wise Report</a>
                         @if($canAccessAdminReports)<a href="{{ route('report.user-sales') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">User-wise Sales Report</a>@endif
+                        @if($canAccessAdminReports)<a href="{{ route('report.booking-cancellation') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Booking Cancellation</a>@endif
                     </div>
                 </div>
                 
@@ -125,6 +128,7 @@
         <div class="px-2 pt-2 pb-3 space-y-1">
             <a href="{{ route('dashboard') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Dashboard</a>
             @if($canAccessBooking)<a href="{{ route('bookings.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</a>@endif
+            @if($canAccessPendingRefunds)<a href="{{ route('pending-refunds.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Pending Refunds</a>@endif
             @if($canAccessFingerprintAdmin)<a href="{{ route('fingerprint.admin') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Admin</a>@endif
             @if($canAccessFingerprintStaff)<a href="{{ route('fingerprint.staff') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</a>@endif
             <a href="{{ route('fingerprint-charges.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Charge</a>
@@ -145,6 +149,7 @@
                 @if($canAccessAdminReports)<a href="{{ route('report.profit-loss') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Profit/Loss Report</a>@endif
                 <a href="{{ route('report.branch-wise') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Branch Wise Report</a>
                 @if($canAccessAdminReports)<a href="{{ route('report.user-sales') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">User-wise Sales Report</a>@endif
+                @if($canAccessAdminReports)<a href="{{ route('report.booking-cancellation') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking Cancellation</a>@endif
             </div>
             
             @if($canAccessAdmin)<a href="{{ route('settings') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600 border-t border-slate-600 mt-2 pt-3">Settings</a>@endif
