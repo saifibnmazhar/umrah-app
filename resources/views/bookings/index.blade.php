@@ -153,6 +153,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'fingerprint_location' => $p->booking?->fingerprint_location?->value ?? 'None',
     'fingerprint_status' => $p->fingerprintDetail?->status?->value ?? null,
     'status' => $p->status?->name ?? 'None',
+    'is_cancelled' => $p->booking?->is_cancelled ?? false,
     'documents' => [],
     'passenger_data' => null,
 
@@ -317,6 +318,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Total</th>
                             <th class="px-3 py-2 text-left font-medium">Paid</th>
                             <th class="px-3 py-2 text-left font-medium">Due</th>
+                            <th class="px-3 py-2 text-left font-medium">Status</th>
                             @if($canViewActionColumn)<th class="px-3 py-2 text-left font-medium">Actions</th>@endif
                         </tr>
                     </thead>
@@ -350,9 +352,32 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->total_amount ?? 0, 2, $bookingCurrencyRate)</td>
                             <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->paid_amount ?? 0, 2, $bookingCurrencyRate)</td>
                             <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->balance ?? 0, 2, $bookingCurrencyRate)</td>
+                            <td class="px-3 py-2">
+                                @if($booking->is_cancelled)
+                                    @php $cb = $booking->cancelledBooking; @endphp
+                                    @if($cb && $cb->status->value === 'cancellation processing')
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                            Cancellation Processing
+                                        </span>
+                                    @else
+                                        <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-red-100 text-red-800">
+                                            Cancelled
+                                        </span>
+                                    @endif
+                                @else
+                                    <span class="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-green-100 text-green-800">
+                                        Active
+                                    </span>
+                                @endif
+                            </td>
                             @if($canViewActionColumn)
                             <td class="px-3 py-2">
                                 <a href="{{ route('bookings.show', $booking->id) }}" class="text-slate-600 hover:text-slate-800">View</a>
+                                @if(!$booking->is_cancelled && (auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin')))
+                                <button @click="openCancelModal({{ $booking->id }})" class="text-orange-600 hover:text-orange-800 font-medium ml-3">
+                                    Cancel
+                                </button>
+                                @endif
                                 @if($canDeleteBooking)
                                 <form method="POST" action="{{ route('bookings.destroy', $booking->id) }}" onsubmit="return confirm('Are you sure you want to delete this booking?')" class="inline ml-3">
                                     @csrf
@@ -365,7 +390,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </tr>
                         @empty
                         <tr>
-                            <td colspan="{{ 13 + ($canViewActionColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
+                            <td colspan="{{ 14 + ($canViewActionColumn ? 1 : 0) }}" class="px-3 py-4 text-center text-slate-500">No bookings found</td>
                         </tr>
                         @endforelse
                     </tbody>
@@ -633,23 +658,28 @@ if ($route) {
                 <span class="text-slate-500 text-xs">N/A</span>
             </template>
 
-            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                <button @click="openVisaSubmitModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Submit</button>
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
+                    <button @click="openVisaSubmitModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Submit</button>
+                </template>
+                <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
+                    <button @click="openVisaIssueModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
+                </template>
+                <template x-if="(passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' || passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
+                    <button @click="openVisaEditModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
+                </template>
+                <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted'">
+                    <button @click="openVisaCancelModal({{ $loop->index }})" class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Cancel</button>
+                </template>
+                <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
+                    <button @click="openVisaResubmitModal({{ $loop->index }})" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
+                </template>
+                <template x-if="passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
+                    <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
+                </template>
             </template>
-            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                <button @click="openVisaIssueModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
-            </template>
-            <template x-if="(passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' || passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                <button @click="openVisaEditModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
-            </template>
-            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted'">
-                <button @click="openVisaCancelModal({{ $loop->index }})" class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Cancel</button>
-            </template>
-            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                <button @click="openVisaResubmitModal({{ $loop->index }})" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
-            </template>
-            <template x-if="passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
-                <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
+            <template x-if="passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <span class="text-xs text-slate-400 italic">Booking Cancelled</span>
             </template>
         </div>
     </td>
@@ -682,10 +712,19 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 flex-wrap">
             <span class="font-medium text-sm">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
-            <button x-show="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || passengersTicketData[{{ $loop->index }}]?.ticket_status === 'pending') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
-            <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
-            <button @click="toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'bg-yellow-100 hover:bg-yellow-200 text-yellow-600' : 'bg-orange-100 hover:bg-orange-200 text-orange-600'" class="text-xs px-2 py-1 rounded font-medium transition" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
-            <template x-if="passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <button x-show="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || passengersTicketData[{{ $loop->index }}]?.ticket_status === 'pending') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
+            </template>
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
+            </template>
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <button @click="toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'bg-yellow-100 hover:bg-yellow-200 text-yellow-600' : 'bg-orange-100 hover:bg-orange-200 text-orange-600'" class="text-xs px-2 py-1 rounded font-medium transition" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
+            </template>
+            <template x-if="passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <span class="text-xs text-slate-400 italic">Booking Cancelled</span>
+            </template>
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
                 <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
             </template>
         </div>
@@ -1477,6 +1516,94 @@ if ($route) {
     @include('partials.route-form-modal')
     @include('partials.airline-form-modal')
     @include('partials.class-form-modal')
+
+    {{-- Cancellation Initiation Modal --}}
+    <div x-show="cancelModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeCancelModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeCancelModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Cancel Booking</h3>
+
+            <div class="text-sm text-slate-500 mb-4">
+                <span x-text="'Invoice ID: #' + cancelBookingId"></span>
+            </div>
+
+            {{-- Financial Summary --}}
+            <div class="grid grid-cols-3 gap-3 mb-4 p-3 bg-slate-50 rounded-lg text-sm">
+                <div>
+                    <span class="text-slate-500">Total Paid</span>
+                    <p class="font-bold text-green-600" x-text="$currency(cancelTotalPaid, 2)"></p>
+                </div>
+                <div>
+                    <span class="text-slate-500">Total Cost</span>
+                    <p class="font-bold text-slate-800" x-text="$currency(cancelCosts.total_cost, 2)"></p>
+                </div>
+                <div>
+                    <span class="text-slate-500">Balance</span>
+                    <p class="font-bold" x-text="$currency(cancelTotalPaid - cancelCosts.total_cost, 2)"></p>
+                </div>
+            </div>
+
+            {{-- Cost Breakdown --}}
+            <div class="mb-4">
+                <h4 class="text-sm font-medium text-slate-600 mb-2">Costs Incurred</h4>
+                <div class="space-y-1 text-sm">
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Fingerprint:</span>
+                        <span class="font-medium" x-text="$currency(cancelCosts.fingerprint_cost, 2)"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Visa:</span>
+                        <span class="font-medium" x-text="$currency(cancelCosts.visa_cost, 2)"></span>
+                    </div>
+                    <div class="flex justify-between">
+                        <span class="text-slate-500">Ticket:</span>
+                        <span class="font-medium" x-text="$currency(cancelCosts.ticket_cost, 2)"></span>
+                    </div>
+                    <div class="flex justify-between pt-1 border-t border-slate-200 font-semibold">
+                        <span class="text-slate-700">Total Cost:</span>
+                        <span x-text="$currency(cancelCosts.total_cost, 2)"></span>
+                    </div>
+                </div>
+            </div>
+
+            {{-- Branch & Service Charge --}}
+            <div class="grid grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Cancellation Branch *</label>
+                    <select x-model="cancelBranchId" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none bg-white">
+                        <option value="">Select Branch</option>
+                        <template x-for="branch in cancelBranches" :key="branch.id">
+                            <option :value="branch.id" x-text="branch.name"></option>
+                        </template>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (optional)</label>
+                    <input type="number" x-model="cancelServiceCharge" step="0.000001" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" placeholder="Enter amount">
+                </div>
+            </div>
+
+            {{-- Refund Amount --}}
+            <div class="mb-6 p-3 bg-blue-50 rounded-lg">
+                <div class="flex justify-between items-center">
+                    <span class="text-sm font-medium text-slate-700">Refund Amount:</span>
+                    <span class="text-lg font-bold text-blue-700" x-text="$currency(computedRefundAmount, 2)"></span>
+                </div>
+                <p class="text-xs text-slate-500 mt-1">Refund = Total Paid &minus; Total Cost &minus; Service Charge</p>
+            </div>
+
+            {{-- Actions --}}
+            <div class="flex gap-3">
+                <button type="button" @click="handleCancelSubmit()" :disabled="cancelLoading || !cancelBranchId"
+                        class="flex-1 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium disabled:bg-slate-300 disabled:cursor-not-allowed">
+                    <span x-text="cancelLoading ? 'Processing...' : 'Submit Cancellation'"></span>
+                </button>
+                <button type="button" @click="closeCancelModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
+                    Cancel
+                </button>
+            </div>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -3378,6 +3505,69 @@ function bookingIndexApp() {
                 }
             })
             .catch(() => { this.routeSaving = false; this.showToast('Failed to create route.', 'error'); });
+        },
+
+        // ── Cancellation State ──
+        cancelModalVisible: false,
+        cancelBookingId: null,
+        cancelBranches: @json($bookingBranches),
+        cancelBranchId: '',
+        cancelServiceCharge: null,
+        cancelTotalPaid: 0,
+        cancelCosts: { fingerprint_cost: 0, visa_cost: 0, ticket_cost: 0, total_cost: 0 },
+        cancelLoading: false,
+
+        async openCancelModal(bookingId) {
+            this.cancelBookingId = bookingId;
+            this.cancelModalVisible = true;
+            this.cancelServiceCharge = null;
+            try {
+                const res = await fetch(`/bookings/${bookingId}/cancellation/initiate`);
+                const data = await res.json();
+                this.cancelTotalPaid = data.total_paid;
+                this.cancelCosts = data.costs;
+                if (data.booking_branch_id) this.cancelBranchId = data.booking_branch_id;
+            } catch (e) {
+                alert('Failed to load cancellation data');
+                this.closeCancelModal();
+            }
+        },
+
+        closeCancelModal() {
+            this.cancelModalVisible = false;
+            this.cancelBookingId = null;
+        },
+
+        get computedRefundAmount() {
+            const paid = this.cancelTotalPaid;
+            const cost = this.cancelCosts.total_cost;
+            const charge = parseFloat(this.cancelServiceCharge) || 0;
+            return (paid - cost - charge).toFixed(2);
+        },
+
+        async handleCancelSubmit() {
+            this.cancelLoading = true;
+            try {
+                const res = await fetch(`/bookings/${this.cancelBookingId}/cancellation/initiate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                        'Accept': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        cancellation_branch_id: this.cancelBranchId,
+                        service_charge_deduction: this.cancelServiceCharge === '' ? null : this.cancelServiceCharge,
+                    }),
+                });
+                const data = await res.json();
+                if (data.success) window.location.reload();
+                else alert(data.message || 'Failed to initiate cancellation');
+            } catch (e) {
+                alert('Failed to initiate cancellation');
+            } finally {
+                this.cancelLoading = false;
+            }
         },
 
         showToast(message) {
