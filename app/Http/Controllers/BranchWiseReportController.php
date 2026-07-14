@@ -129,6 +129,28 @@ class BranchWiseReportController extends Controller
         $dueCollectionBank = $dueCollectionRow->bank_sar ?? 0;
         $dueCollectionBankBdt = $dueCollectionRow->bank_bdt ?? 0;
 
+        $initialPaymentRow = Payment::whereDate('payments.created_at', '>=', $dateFrom)
+            ->whereDate('payments.created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('payments.branch_id', $branchId))
+            ->whereHas('vouchers.transactionType', fn($q) => $q->where('name', 'Initial Payment'))
+            ->leftJoin('bookings', 'payments.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw('
+                SUM(payments.amount) as sar_total,
+                SUM(payments.amount * currency_rates.rate) as bdt_total,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount ELSE 0 END) as cash_sar,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * currency_rates.rate ELSE 0 END) as cash_bdt,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount ELSE 0 END) as bank_sar,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * currency_rates.rate ELSE 0 END) as bank_bdt
+            ', [PaymentMethod::CASH->value, PaymentMethod::CASH->value, PaymentMethod::BANK->value, PaymentMethod::BANK->value])
+            ->first();
+        $totalInitialPayment = $initialPaymentRow->sar_total ?? 0;
+        $totalInitialPaymentBdt = $initialPaymentRow->bdt_total ?? 0;
+        $initialPaymentCash = $initialPaymentRow->cash_sar ?? 0;
+        $initialPaymentCashBdt = $initialPaymentRow->cash_bdt ?? 0;
+        $initialPaymentBank = $initialPaymentRow->bank_sar ?? 0;
+        $initialPaymentBankBdt = $initialPaymentRow->bank_bdt ?? 0;
+
         $totalPassengers = Passenger::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))->count();
@@ -185,7 +207,7 @@ class BranchWiseReportController extends Controller
             'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing',
             'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt',
             'inboundTicket', 'outboundTicket', 'pendingTicket',
-            'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalPassengers',
+            'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalPassengers',
             'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt',
             'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId',
             'vouchersByDateJson', 'vouchersByDate'
