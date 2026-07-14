@@ -125,7 +125,20 @@
                     </svg>
                 </div>
             </div>
-            <div class="text-3xl font-bold text-slate-800 mb-1">@currency(cascadeRound($totalDueCollection), 0, null, cascadeRound($totalDueCollectionBdt)) <span x-text="$store.currency.mode"></span></div>
+            <div class="flex items-center gap-4 mb-1">
+                <div class="flex-1 text-left">
+                    <div class="text-2xl font-bold text-emerald-600">@currency(cascadeRound($dueCollectionCash), 0, null, cascadeRound($dueCollectionCashBdt)) <span x-text="$store.currency.mode"></span></div>
+                    <div class="text-xs font-medium text-slate-500">Cash</div>
+                </div>
+                <div class="flex-1 text-center">
+                    <div class="text-2xl font-bold text-rose-600">@currency(cascadeRound($totalDueCollection), 0, null, cascadeRound($totalDueCollectionBdt)) <span x-text="$store.currency.mode"></span></div>
+                    <div class="text-xs font-medium text-slate-500">Total</div>
+                </div>
+                <div class="flex-1 text-right">
+                    <div class="text-2xl font-bold text-blue-600">@currency(cascadeRound($dueCollectionBank), 0, null, cascadeRound($dueCollectionBankBdt)) <span x-text="$store.currency.mode"></span></div>
+                    <div class="text-xs font-medium text-slate-500">Bank</div>
+                </div>
+            </div>
             <div class="text-xs text-slate-500 mt-1">Collection ({{ $dateLabel }})</div>
         </div>
 
