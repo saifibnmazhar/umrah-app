@@ -107,14 +107,12 @@ class DashboardController extends Controller
             ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
             ->selectRaw('
                 SUM(vouchers.amount) as sar_total,
-                SUM(vouchers.amount * currency_rates.rate) as bdt_total,
+                SUM(vouchers.amount * COALESCE(currency_rates.rate, ?)) as bdt_total,
                 SUM(CASE WHEN vouchers.payment_method = ? THEN vouchers.amount ELSE 0 END) as cash_sar,
-                SUM(CASE WHEN vouchers.payment_method = ? THEN vouchers.amount * currency_rates.rate ELSE 0 END) as cash_bdt,
+                SUM(CASE WHEN vouchers.payment_method = ? THEN vouchers.amount * COALESCE(currency_rates.rate, ?) ELSE 0 END) as cash_bdt,
                 SUM(CASE WHEN vouchers.payment_method = ? THEN vouchers.amount ELSE 0 END) as bank_sar,
-                SUM(CASE WHEN vouchers.payment_method = ? THEN vouchers.amount * currency_rates.rate ELSE 0 END) as bank_bdt
-            ', [PaymentMethod::CASH->value, PaymentMethod::CASH->value, PaymentMethod::BANK->value, PaymentMethod::BANK->value])
-                SUM(vouchers.amount * COALESCE(currency_rates.rate, ?)) as bdt_total
-            ', [$firstRate])
+                SUM(CASE WHEN vouchers.payment_method = ? THEN vouchers.amount * COALESCE(currency_rates.rate, ?) ELSE 0 END) as bank_bdt
+            ', [$firstRate, PaymentMethod::CASH->value, PaymentMethod::CASH->value, $firstRate, PaymentMethod::BANK->value, PaymentMethod::BANK->value, $firstRate])
             ->first();
         $totalDueCollection = $dueCollectionRow->sar_total ?? 0;
         $totalDueCollectionBdt = $dueCollectionRow->bdt_total ?? 0;
@@ -133,12 +131,12 @@ class DashboardController extends Controller
             ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
             ->selectRaw('
                 SUM(payments.amount) as sar_total,
-                SUM(payments.amount * currency_rates.rate) as bdt_total,
+                SUM(payments.amount * COALESCE(currency_rates.rate, ?)) as bdt_total,
                 SUM(CASE WHEN payments.payment_method = ? THEN payments.amount ELSE 0 END) as cash_sar,
-                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * currency_rates.rate ELSE 0 END) as cash_bdt,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * COALESCE(currency_rates.rate, ?) ELSE 0 END) as cash_bdt,
                 SUM(CASE WHEN payments.payment_method = ? THEN payments.amount ELSE 0 END) as bank_sar,
-                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * currency_rates.rate ELSE 0 END) as bank_bdt
-            ', [PaymentMethod::CASH->value, PaymentMethod::CASH->value, PaymentMethod::BANK->value, PaymentMethod::BANK->value])
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * COALESCE(currency_rates.rate, ?) ELSE 0 END) as bank_bdt
+            ', [$firstRate, PaymentMethod::CASH->value, PaymentMethod::CASH->value, $firstRate, PaymentMethod::BANK->value, PaymentMethod::BANK->value, $firstRate])
             ->first();
         $totalInitialPayment = $initialPaymentRow->sar_total ?? 0;
         $totalInitialPaymentBdt = $initialPaymentRow->bdt_total ?? 0;
