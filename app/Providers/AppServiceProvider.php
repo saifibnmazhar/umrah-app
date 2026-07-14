@@ -5,10 +5,12 @@ namespace App\Providers;
 use App\Models\Booking;
 use App\Models\FingerprintDetail;
 use App\Models\IssuedTicket;
+use App\Models\Passenger;
 use App\Models\VisaSubmission;
 use App\Observers\BookingObserver;
 use App\Observers\FingerprintDetailObserver;
 use App\Observers\IssuedTicketObserver;
+use App\Observers\PassengerObserver;
 use App\Observers\VisaSubmissionObserver;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\ServiceProvider;
@@ -29,6 +31,7 @@ class AppServiceProvider extends ServiceProvider
     public function boot(): void
     {
         Booking::observe(BookingObserver::class);
+        Passenger::observe(PassengerObserver::class);
         FingerprintDetail::observe(FingerprintDetailObserver::class);
         VisaSubmission::observe(VisaSubmissionObserver::class);
         IssuedTicket::observe(IssuedTicketObserver::class);
