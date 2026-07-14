@@ -402,16 +402,14 @@
             },
 
             formatAmount(amount, bdtAmount, currencyRate) {
-                if (window.Alpine) {
-                    if (bdtAmount && bdtAmount > 0) {
-                        return Alpine.store('currency').format(amount, 2, null, bdtAmount);
-                    }
-                    if (currencyRate && currencyRate > 0) {
-                        return Alpine.store('currency').format(amount, 2, null, amount * currencyRate);
-                    }
-                    return Alpine.store('currency').format(amount, 2);
-                }
-                return Number(amount).toFixed(2);
+                const mode = Alpine.store('currency').mode;
+                let value = (mode === 'BDT' && bdtAmount && bdtAmount > 0) ? bdtAmount
+                          : (mode === 'BDT' && currencyRate && currencyRate > 0 ? amount * currencyRate : amount);
+                let truncated = Math.trunc(value * 100) / 100;
+                let fixed = truncated.toFixed(2);
+                let parts = fixed.split('.');
+                parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+                return parts.join('.');
             },
         };
     }

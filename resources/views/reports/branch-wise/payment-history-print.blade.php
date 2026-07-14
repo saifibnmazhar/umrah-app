@@ -51,11 +51,13 @@
         $fmtNum = function($amount, $bdtAmount = 0) use ($__currency) {
             if ($amount === null || $amount === '') return '';
             $val = ($__currency === 'BDT' && $bdtAmount > 0) ? $bdtAmount : $amount;
+            $val = floor($val * 100) / 100;
             return number_format($val, 2);
         };
         $fmtCurrency = function($amount, $bdtAmount = 0) use ($__currency) {
             if ($amount === null || $amount === '') return '';
             $val = ($__currency === 'BDT' && $bdtAmount > 0) ? $bdtAmount : $amount;
+            $val = floor($val * 100) / 100;
             return ($__currency === 'BDT' ? 'BDT ' : 'SAR ') . number_format($val, 2);
         };
     @endphp
