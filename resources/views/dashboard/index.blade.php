@@ -38,7 +38,7 @@ $reissueRequests = [
 $addTicketRequests = [];
 $refundRequests = [];
 @endphp
-<div class="max-w-3xl mx-auto pt-6">
+<div class="max-w-7xl mx-auto pt-6">
     <section class="mb-8">
         <div class="flex items-center justify-between mb-6">
             <h2 class="text-2xl font-bold text-slate-800">Dashboard</h2>
@@ -132,11 +132,11 @@ $refundRequests = [];
                 <div class="border-t border-slate-200 mt-1 mb-2"></div>
                 <div class="flex justify-between items-center">
                     <div class="text-left">
-                        <div class="text-lg font-bold text-emerald-600">@currency(cascadeRound($initialPaymentCash), 0, null, cascadeRound($initialPaymentCashBdt)) <span x-text="$store.currency.mode"></span></div>
+                        <div class="text-2xl font-bold text-emerald-600">@currency(cascadeRound($initialPaymentCash), 0, null, cascadeRound($initialPaymentCashBdt)) <span x-text="$store.currency.mode"></span></div>
                         <div class="text-xs font-medium text-slate-500">Cash</div>
                     </div>
                     <div class="text-right">
-                        <div class="text-lg font-bold text-blue-600">@currency(cascadeRound($initialPaymentBank), 0, null, cascadeRound($initialPaymentBankBdt)) <span x-text="$store.currency.mode"></span></div>
+                        <div class="text-2xl font-bold text-blue-600">@currency(cascadeRound($initialPaymentBank), 0, null, cascadeRound($initialPaymentBankBdt)) <span x-text="$store.currency.mode"></span></div>
                         <div class="text-xs font-medium text-slate-500">Bank</div>
                     </div>
                 </div>
@@ -172,11 +172,11 @@ $refundRequests = [];
                 <div class="border-t border-slate-200 mt-1 mb-2"></div>
                 <div class="flex justify-between items-center">
                     <div class="text-left">
-                        <div class="text-lg font-bold text-emerald-600">@currency(cascadeRound($dueCollectionCash), 0, null, cascadeRound($dueCollectionCashBdt)) <span x-text="$store.currency.mode"></span></div>
+                        <div class="text-2xl font-bold text-emerald-600">@currency(cascadeRound($dueCollectionCash), 0, null, cascadeRound($dueCollectionCashBdt)) <span x-text="$store.currency.mode"></span></div>
                         <div class="text-xs font-medium text-slate-500">Cash</div>
                     </div>
                     <div class="text-right">
-                        <div class="text-lg font-bold text-blue-600">@currency(cascadeRound($dueCollectionBank), 0, null, cascadeRound($dueCollectionBankBdt)) <span x-text="$store.currency.mode"></span></div>
+                        <div class="text-2xl font-bold text-blue-600">@currency(cascadeRound($dueCollectionBank), 0, null, cascadeRound($dueCollectionBankBdt)) <span x-text="$store.currency.mode"></span></div>
                         <div class="text-xs font-medium text-slate-500">Bank</div>
                     </div>
                 </div>

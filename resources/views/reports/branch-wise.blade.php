@@ -4,7 +4,7 @@
 
 @section('content')
 <style>[x-cloak] { display: none !important; }</style>
-<div class="max-w-3xl mx-auto pt-6" x-data="branchWiseReport({ vouchersByDate: {{ $vouchersByDateJson }}, dateFrom: '{{ $dateFrom->format('Y-m-d') }}', dateTo: '{{ $dateTo->format('Y-m-d') }}', branchId: '{{ $selectedBranch }}' })">
+<div class="max-w-7xl mx-auto pt-6" x-data="branchWiseReport({ vouchersByDate: {{ $vouchersByDateJson }}, dateFrom: '{{ $dateFrom->format('Y-m-d') }}', dateTo: '{{ $dateTo->format('Y-m-d') }}', branchId: '{{ $selectedBranch }}' })">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Branch Wise Report</h1>
 
     <form method="GET" action="{{ route('report.branch-wise') }}" class="flex flex-wrap items-end gap-4 mb-6 bg-white rounded-lg border border-slate-200 shadow-sm p-4">
@@ -73,9 +73,9 @@
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($invoiceTotalAmount), 0, null, cascadeRound($invoiceTotalAmountBdt))</div>
-<div class="text-xs text-slate-500 mt-1">{{ $dateLabel }}</div>
-        </div>
+                <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($invoiceTotalAmount), 0, null, cascadeRound($invoiceTotalAmountBdt)) <span x-text="$store.currency.mode"></span></div>
+                <div class="text-xs text-slate-500 mt-1">{{ $dateLabel }}</div>
+            </div>
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
                 <div class="flex items-center justify-between mb-3">
@@ -93,11 +93,11 @@
                 <div class="border-t border-slate-200 mt-1 mb-2"></div>
                 <div class="flex justify-between items-center">
                     <div class="text-left">
-                        <div class="text-lg font-bold text-emerald-600">@currency(cascadeRound($initialPaymentCash), 0, null, cascadeRound($initialPaymentCashBdt)) <span x-text="$store.currency.mode"></span></div>
+                        <div class="text-2xl font-bold text-emerald-600">@currency(cascadeRound($initialPaymentCash), 0, null, cascadeRound($initialPaymentCashBdt)) <span x-text="$store.currency.mode"></span></div>
                         <div class="text-xs font-medium text-slate-500">Cash</div>
                     </div>
                     <div class="text-right">
-                        <div class="text-lg font-bold text-blue-600">@currency(cascadeRound($initialPaymentBank), 0, null, cascadeRound($initialPaymentBankBdt)) <span x-text="$store.currency.mode"></span></div>
+                        <div class="text-2xl font-bold text-blue-600">@currency(cascadeRound($initialPaymentBank), 0, null, cascadeRound($initialPaymentBankBdt)) <span x-text="$store.currency.mode"></span></div>
                         <div class="text-xs font-medium text-slate-500">Bank</div>
                     </div>
                 </div>
@@ -133,11 +133,11 @@
             <div class="border-t border-slate-200 mt-1 mb-2"></div>
             <div class="flex justify-between items-center">
                 <div class="text-left">
-                    <div class="text-lg font-bold text-emerald-600">@currency(cascadeRound($dueCollectionCash), 0, null, cascadeRound($dueCollectionCashBdt)) <span x-text="$store.currency.mode"></span></div>
+                    <div class="text-2xl font-bold text-emerald-600">@currency(cascadeRound($dueCollectionCash), 0, null, cascadeRound($dueCollectionCashBdt)) <span x-text="$store.currency.mode"></span></div>
                     <div class="text-xs font-medium text-slate-500">Cash</div>
                 </div>
                 <div class="text-right">
-                    <div class="text-lg font-bold text-blue-600">@currency(cascadeRound($dueCollectionBank), 0, null, cascadeRound($dueCollectionBankBdt)) <span x-text="$store.currency.mode"></span></div>
+                    <div class="text-2xl font-bold text-blue-600">@currency(cascadeRound($dueCollectionBank), 0, null, cascadeRound($dueCollectionBankBdt)) <span x-text="$store.currency.mode"></span></div>
                     <div class="text-xs font-medium text-slate-500">Bank</div>
                 </div>
             </div>
