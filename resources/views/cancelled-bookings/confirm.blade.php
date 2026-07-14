@@ -158,7 +158,7 @@
             <form method="POST" action="{{ route('cancelled-bookings.confirm.submit', $cancelledBooking->id) }}" onsubmit="return validateRefundForm()">
                 @csrf
                 <input type="hidden" name="refund_amount" :value="refundAmount">
-                <input type="hidden" name="method" :value="paymentMethod">
+                <input type="hidden" name="payment_method" :value="paymentMethod">
                 <input type="hidden" name="remarks" :value="remarks">
                 <input type="hidden" name="service_charge_deduction" value="{{ $cancelledBooking->service_charge_deduction }}">
 
@@ -173,7 +173,7 @@
 @push('scripts')
 <script>
 function validateRefundForm() {
-    const method = document.querySelector('[name="method"]').value;
+    const method = document.querySelector('[name="payment_method"]').value;
     const remarks = document.querySelector('[name="remarks"]').value;
     if (method === 'bank' && !remarks.trim()) {
         alert('Remarks are required when payment method is Bank.');
