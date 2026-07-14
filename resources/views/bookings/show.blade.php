@@ -218,7 +218,7 @@
 
         {{-- Action Buttons Row --}}
         <div class="flex justify-end gap-3 mt-8">
-            @if($canViewRequestButtons)
+            @if($canViewRequestButtons && !$booking->is_cancelled)
             <button onclick="openReIssueModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
                 Request Re-Issue
             </button>
@@ -234,7 +234,15 @@
                 Download All Docs
             </button>
             @endif
-            <button @click="openPaymentModal()" class="px-6 py-3 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">
+            @php
+                $isPaymentFrozen = $booking->is_cancelled;
+                $cancelledStatus = $booking->cancelledBooking?->status?->value;
+                $isPermanentlyDisabled = $isPaymentFrozen && $cancelledStatus === 'cancelled';
+            @endphp
+            <button @click="!isPaymentFrozen && openPaymentModal()"
+                    :disabled="{{ $isPaymentFrozen ? 'true' : 'false' }}"
+                    class="px-6 py-3 rounded-lg font-medium transition {{ $isPaymentFrozen ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700' }}"
+                    title="{{ $isPermanentlyDisabled ? 'Booking Cancelled' : ($isPaymentFrozen ? 'Cancellation Processing' : '') }}">
                 Payment
             </button>
         </div>
