@@ -374,68 +374,94 @@ return [
 
 ---
 
-## 9. Controller
+## 9. Controllers (Split for Parallelism)
 
-**File:** `app/Http/Controllers/BookingCancellationController.php`
+Two controllers, no shared file, no merge conflict.
+
+### 9.1 Action Controller — Track A
+
+**File:** `app/Http/Controllers/BookingCancellationActionController.php`
+
+| Method | Route | Purpose |
+|---|---|---|
+| `store()` | `POST /bookings/{booking}/cancellation/initiate` | Create CancelledBooking |
+| `revert()` | `POST /cancelled-bookings/{cancelledBooking}/revert` | Revert cancellation |
+| `confirmSubmit()` | `POST /cancelled-bookings/{cancelledBooking}/confirm` | Process refund |
+| `reportData()` | `GET /api/reports/booking-cancellation` | Return report JSON |
+
+### 9.2 View Controller — Track B
+
+**File:** `app/Http/Controllers/BookingCancellationViewController.php`
 
 | Method | Route | Purpose |
 |---|---|---|
 | `initiate()` | `GET /bookings/{booking}/cancellation/initiate` | Return JSON cost breakdown |
-| `store()` | `POST /bookings/{booking}/cancellation/initiate` | Create CancelledBooking |
-| `revert()` | `POST /cancelled-bookings/{cancelledBooking}/revert` | Revert cancellation |
 | `confirm()` | `GET /cancelled-bookings/{cancelledBooking}/confirm` | Show refund confirmation view |
-| `confirmSubmit()` | `POST /cancelled-bookings/{cancelledBooking}/confirm` | Process refund |
 | `pendingRefunds()` | `GET /pending-refunds` | Show pending refunds list |
 | `report()` | `GET /reports/booking-cancellation` | Show report view |
-| `reportData()` | `GET /api/reports/booking-cancellation` | Return report JSON |
 
----
+### Stub Strategy (Track A Day 1 — Unblocks Track B)
 
-## 10. Routes
-
-**File:** `routes/web.php`
+Before implementing real service logic, Track A creates stub action methods returning placeholder responses so Track B has live routes to develop against from hour 1:
 
 ```php
-use App\Http\Controllers\BookingCancellationController;
-
-// Initiate — Super Admin, Co Admin only
-Route::get('/bookings/{booking}/cancellation/initiate', [BookingCancellationController::class, 'initiate'])
-    ->name('bookings.cancellation.initiate')
-    ->middleware('role:Super Admin,Co Admin');
-Route::post('/bookings/{booking}/cancellation/initiate', [BookingCancellationController::class, 'store'])
-    ->name('bookings.cancellation.store')
-    ->middleware('role:Super Admin,Co Admin');
-
-// Revert — Super Admin, Co Admin, Branch Manager
-Route::post('/cancelled-bookings/{cancelledBooking}/revert', [BookingCancellationController::class, 'revert'])
-    ->name('cancelled-bookings.revert')
-    ->middleware('role:Super Admin,Co Admin,Branch Manager');
-
-// Confirm — Super Admin, Co Admin, Branch Manager
-Route::get('/cancelled-bookings/{cancelledBooking}/confirm', [BookingCancellationController::class, 'confirm'])
-    ->name('cancelled-bookings.confirm')
-    ->middleware('role:Super Admin,Co Admin,Branch Manager');
-Route::post('/cancelled-bookings/{cancelledBooking}/confirm', [BookingCancellationController::class, 'confirmSubmit'])
-    ->name('cancelled-bookings.confirm.submit')
-    ->middleware('role:Super Admin,Co Admin,Branch Manager');
-
-// Pending Refunds — Super Admin, Co Admin, Branch Manager
-Route::get('/pending-refunds', [BookingCancellationController::class, 'pendingRefunds'])
-    ->name('pending-refunds.index')
-    ->middleware('role:Super Admin,Co Admin,Branch Manager');
-
-// Report — Super Admin, Co Admin, Auditor
-Route::get('/reports/booking-cancellation', [BookingCancellationController::class, 'report'])
-    ->name('report.booking-cancellation')
-    ->middleware('role:Super Admin,Co Admin,Auditor');
-Route::get('/api/reports/booking-cancellation', [BookingCancellationController::class, 'reportData'])
-    ->name('report.booking-cancellation.data')
-    ->middleware('role:Super Admin,Co Admin,Auditor');
+// Stub — BookingCancellationActionController@store
+public function store(Request $request, Booking $booking)
+{
+    return response()->json([
+        'success' => true,
+        'message' => 'Cancellation initiated',
+        'data' => ['id' => 1, 'status' => 'cancellation processing', 'refund_amount' => 20500.00],
+    ]);
+}
 ```
 
 ---
 
-## 11. Booking Index View — Changes
+## 10. Routes (Dedicated File)
+
+**File:** `routes/booking-cancellation.php` (new)
+
+No merge conflicts on `web.php` between tracks.
+
+```php
+<?php
+
+use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\BookingCancellationViewController;
+use App\Http\Controllers\BookingCancellationActionController;
+
+// ─── View Routes (Track B) ───
+Route::get('/bookings/{booking}/cancellation/initiate', [BookingCancellationViewController::class, 'initiate'])
+    ->name('bookings.cancellation.initiate')->middleware('role:Super Admin,Co Admin');
+Route::get('/cancelled-bookings/{cancelledBooking}/confirm', [BookingCancellationViewController::class, 'confirm'])
+    ->name('cancelled-bookings.confirm')->middleware('role:Super Admin,Co Admin,Branch Manager');
+Route::get('/pending-refunds', [BookingCancellationViewController::class, 'pendingRefunds'])
+    ->name('pending-refunds.index')->middleware('role:Super Admin,Co Admin,Branch Manager');
+Route::get('/reports/booking-cancellation', [BookingCancellationViewController::class, 'report'])
+    ->name('report.booking-cancellation')->middleware('role:Super Admin,Co Admin,Auditor');
+
+// ─── Action Routes (Track A) ───
+Route::post('/bookings/{booking}/cancellation/initiate', [BookingCancellationActionController::class, 'store'])
+    ->name('bookings.cancellation.store')->middleware('role:Super Admin,Co Admin');
+Route::post('/cancelled-bookings/{cancelledBooking}/revert', [BookingCancellationActionController::class, 'revert'])
+    ->name('cancelled-bookings.revert')->middleware('role:Super Admin,Co Admin,Branch Manager');
+Route::post('/cancelled-bookings/{cancelledBooking}/confirm', [BookingCancellationActionController::class, 'confirmSubmit'])
+    ->name('cancelled-bookings.confirm.submit')->middleware('role:Super Admin,Co Admin,Branch Manager');
+Route::get('/api/reports/booking-cancellation', [BookingCancellationActionController::class, 'reportData'])
+    ->name('report.booking-cancellation.data')->middleware('role:Super Admin,Co Admin,Auditor');
+```
+
+**Registration in `app/Providers/RouteServiceProvider.php`:**
+
+```php
+Route::middleware('web')
+    ->group(base_path('routes/booking-cancellation.php'));
+```
+
+---
+
+## 11. Booking Index View — Changes (Track B)
 
 **File:** `resources/views/bookings/index.blade.php`
 
@@ -466,8 +492,6 @@ Update `colspan` in empty row to account for new column.
 
 ### 11.2 Cancel Button (in Actions column)
 
-Only for non-cancelled bookings and user has Super Admin/Co Admin role:
-
 ```html
 @if(!$booking->is_cancelled && (auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin')))
     <button @click="openCancelModal({{ $booking->id }})" class="text-orange-600 hover:text-orange-800 font-medium ml-3">
@@ -478,7 +502,7 @@ Only for non-cancelled bookings and user has Super Admin/Co Admin role:
 
 ### 11.3 Cancellation Initiation Modal
 
-**Alpine state variables:**
+**Alpine state:**
 ```js
 cancelModalVisible: false,
 cancelBookingId: null,
@@ -502,9 +526,7 @@ async openCancelModal(bookingId) {
     this.cancelCosts = data.costs;
     if (data.booking_branch_id) this.cancelBranchId = data.booking_branch_id;
 },
-closeCancelModal() {
-    this.cancelModalVisible = false;
-},
+closeCancelModal() { this.cancelModalVisible = false; },
 get computedRefundAmount() {
     const paid = this.cancelTotalPaid;
     const cost = this.cancelCosts.total_cost;
@@ -516,53 +538,38 @@ async handleCancelSubmit() {
     try {
         const res = await fetch(`/bookings/${this.cancelBookingId}/cancellation/initiate`, {
             method: 'POST',
-            headers: {
-                'Content-Type': 'application/json',
-                'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
-                'Accept': 'application/json',
-            },
-            body: JSON.stringify({
-                cancellation_branch_id: this.cancelBranchId,
-                service_charge_deduction: this.cancelServiceCharge === '' ? null : this.cancelServiceCharge,
-            }),
+            headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content, 'Accept': 'application/json' },
+            body: JSON.stringify({ cancellation_branch_id: this.cancelBranchId, service_charge_deduction: this.cancelServiceCharge === '' ? null : this.cancelServiceCharge }),
         });
         const data = await res.json();
         if (data.success) window.location.reload();
-    } catch (e) {
-        alert('Failed to initiate cancellation');
-    } finally {
-        this.cancelLoading = false;
-    }
+    } catch (e) { alert('Failed to initiate cancellation');
+    } finally { this.cancelLoading = false; }
 },
 ```
 
-**Modal HTML layout:**
+**Modal layout:**
 ```
 Title: "Cancel Booking"
-Shows: Invoice ID, Customer Name
-Shows: Total Amount, Total Paid, Balance
+Invoice: #123   Customer: John Doe
+Total Amount: 100,000.00 | Total Paid: 85,000.00 | Balance: 15,000.00
   ── Costs Incurred ──
-  Fingerprint Cost:    {costs.fingerprint_cost}
-  Visa Cost:           {costs.visa_cost}
-  Ticket Cost:         {costs.ticket_cost}
-  ─────────────────────
-  Total Cost Incurred: {costs.total_cost}
-Branch: [dropdown pre-filled]
-Service Charge Deduction: [number input, nullable]
-Refund Amount: {computedRefundAmount} (auto-calculated)
-
+  Fingerprint: 2,500.00 | Visa: 12,000.00 | Ticket: 45,000.00
+  Total Cost:  59,500.00
+Branch: [dropdown] | Service Charge: [input, nullable]
+Refund Amount: 20,500.00 (auto)
 [Submit Cancellation] [Cancel]
 ```
 
-### 11.4 Freeze Per-Passenger Actions for Cancelled Bookings
+### 11.4 Freeze Per-Passenger Actions
 
-All per-passenger action buttons (Visa Submit/Issue/Edit/Cancel/Resubmit, Ticket Issue/Edit, Fingerprint actions) need to check `booking.is_cancelled`. Pass `is_cancelled` into the passenger data rows. When true, action buttons are replaced with a muted indicator or hidden.
+Visa Submit/Issue/Edit/Cancel/Resubmit and Ticket Issue/Edit buttons check `booking.is_cancelled`. When true, replaced with muted indicator or hidden.
 
 ---
 
-## 12. Booking Show View — Payment Button Freeze
+## 12. Booking Show View — Payment Freeze (Track B)
 
-**File:** `resources/views/bookings/show.blade.php` (around line 237)
+**File:** `resources/views/bookings/show.blade.php` (line ~237)
 
 ```html
 @php
@@ -570,136 +577,207 @@ All per-passenger action buttons (Visa Submit/Issue/Edit/Cancel/Resubmit, Ticket
     $cancelledStatus = $booking->cancelledBooking?->status?->value;
     $isPermanentlyDisabled = $isPaymentFrozen && $cancelledStatus === 'cancelled';
 @endphp
-
 <button @click="!isPaymentFrozen && openPaymentModal()"
         :disabled="{{ $isPaymentFrozen ? 'true' : 'false' }}"
-        class="px-6 py-3 rounded-lg font-medium transition
-            {{ $isPaymentFrozen ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700' }}"
+        class="px-6 py-3 rounded-lg font-medium transition {{ $isPaymentFrozen ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700' }}"
         title="{{ $isPermanentlyDisabled ? 'Booking Cancelled' : ($isPaymentFrozen ? 'Cancellation Processing' : '') }}">
     Payment
 </button>
 ```
 
-### Visa/Ticket/Fingerprint Buttons on Booking Show
-
-Any action buttons on the booking show page (Request Re-Issue, Request Add. Tkt, Request Ticket Refund, etc.) should also check `$booking->is_cancelled` and disable/hide them accordingly.
+Also freeze Request Re-Issue, Request Add. Tkt, Request Ticket Refund buttons when `$booking->is_cancelled`.
 
 ---
 
-## 13. Pending Refunds Index (new view)
+## 13. Pending Refunds Index — New View (Track B)
 
 **File:** `resources/views/pending-refunds/index.blade.php`
 
-- `@extends('layouts.app')`
-- Alpine.js component for interactivity
 - Lists `cancelled_bookings` with `status = 'cancellation processing'`
-- Table columns: Invoice ID, Customer, Mobile, Branch, Total Paid, Service Charge, Refund Amount, Cancel Date
-- Filter: Branch dropdown for branch-scoped users
-- Actions:
-  - **Revert button**: POSTs to `/cancelled-bookings/{id}/revert` with confirm dialog
-  - **Confirm button**: Links to `/cancelled-bookings/{id}/confirm`
+- Columns: Invoice ID, Customer, Mobile, Branch, Total Paid, Service Charge, Refund Amount, Cancel Date
+- Branch filter
+- Actions: **Revert** (POST), **Confirm** (link)
 
 ---
 
-## 14. Refund Confirmation Page (new view)
+## 14. Refund Confirmation Page — New View (Track B)
 
 **File:** `resources/views/cancelled-bookings/confirm.blade.php`
 
-- `@extends('layouts.app')`
-- Top section: Booking details (read-only): Invoice ID, Customer, Total Paid
-- Cost breakdown display (read-only): Fingerprint, Visa, Ticket costs
-- Form fields:
-  - **Total Payment Till Date** — read-only
-  - **Service Charge Deduction** — read-only (nullable display)
-  - **Refund Amount** — editable number input (default = `total_paid - total_cost - service_charge_deduction`)
-  - **Deduction** — read-only display (auto-adjusts based on refund amount)
-  - **Method** — dropdown: Cash / Bank (PaymentMethod enum)
-  - **Remarks** — textarea, required if Method = Bank
-  - **Currency** — dropdown: SAR / BDT. Auto-selected based on cancellation branch location (KSA→SAR, BD→BDT)
-- Submit button: "Confirm Refund"
-- On submit: POSTs to `/cancelled-bookings/{id}/confirm`, redirects to pending refunds index with success message
+- Booking details (read-only): Invoice ID, Customer, Total Paid
+- Cost breakdown display: Fingerprint, Visa, Ticket costs
+- Editable **Refund Amount** (default = `total_paid - total_cost - service_charge_deduction`)
+- **Service Charge Deduction** (read-only, nullable display)
+- **Deduction** (read-only, auto-adjusts)
+- **Method**: Cash / Bank
+- **Remarks**: textarea (required if Bank)
+- **Currency**: auto-selected by branch location (KSA→SAR, BD→BDT)
+- Submit POSTs to `/cancelled-bookings/{id}/confirm`
 
 ---
 
-## 15. Cancellation Report (new view)
+## 15. Cancellation Report — New View (Track B)
 
 **File:** `resources/views/reports/booking-cancellation.blade.php`
 
-- `@extends('layouts.app')`
-- Alpine.js component with `loadData()` fetching from `/api/reports/booking-cancellation`
-- Filter bar: Date range, Branch, Status
-- Data table columns: Invoice ID, Customer, Mobile, Booking Branch, Cancellation Branch, Paid, Deduction, Refund, Method, Remarks, Cancel Date, Refund Date, Refunded By, Status
-- Controller `reportData()` joins `cancelled_bookings` with related tables, applies filters, returns:
-
-```json
-{
-    "data": [...],
-    "summary": { "total_paid": ..., "total_deduction": ..., "total_refund": ... },
-    "pagination": { "current_page": ..., "last_page": ..., "per_page": ..., "total": ... }
-}
-```
+- Alpine + API pattern
+- Filters: Date range, Branch, Status
+- Columns: Invoice ID, Customer, Mobile, Booking Branch, Cancellation Branch, Paid, Deduction, Refund, Method, Remarks, Cancel Date, Refund Date, Refunded By, Status
+- API returns `{ data, summary: { total_paid, total_deduction, total_refund }, pagination }`
 
 ---
 
-## 16. Navigation Updates
+## 16. Navigation Updates (Track B)
 
 **File:** `resources/views/partials/nav.php`
 
-- **Pending Refunds** link → visible for Super Admin, Co Admin, Branch Manager
-- **Booking Cancellation** link (in Reports section) → visible for Super Admin, Co Admin, Auditor
+- **Pending Refunds** link → Super Admin, Co Admin, Branch Manager
+- **Booking Cancellation** link (Reports) → Super Admin, Co Admin, Auditor
 
 ---
 
-## 17. Complete File List
+## 17. Setup Sprint — Person 1 (Prerequisites, ~4 hours)
 
-| # | File | Action | Type |
-|---|---|---|---|
-| 1 | `database/migrations/*_add_is_cancelled_to_bookings_table.php` | CREATE | Migration |
-| 2 | `database/migrations/*_create_cancelled_bookings_table.php` | CREATE | Migration |
-| 3 | `database/migrations/*_add_cancelled_booking_id_to_payments_and_vouchers.php` | CREATE | Migration |
-| 4 | `app/Enums/CancelledBookingStatus.php` | CREATE | Enum |
-| 5 | `database/seeders/TransactionTypeSeeder.php` | EDIT | Seeder |
-| 6 | `app/Models/Booking.php` | EDIT | Model |
-| 7 | `app/Models/CancelledBooking.php` | CREATE | Model |
-| 8 | `app/Models/Payment.php` | EDIT | Model |
-| 9 | `app/Models/Voucher.php` | EDIT | Model |
-| 10 | `app/Services/CostTrackingService.php` | CREATE | Service |
-| 11 | `app/Services/CancellationService.php` | CREATE | Service |
-| 12 | `app/Http/Controllers/BookingCancellationController.php` | CREATE | Controller |
-| 13 | `routes/web.php` | EDIT | Routes |
-| 14 | `resources/views/bookings/index.blade.php` | EDIT | View |
-| 15 | `resources/views/bookings/show.blade.php` | EDIT | View |
-| 16 | `resources/views/pending-refunds/index.blade.php` | CREATE | View |
-| 17 | `resources/views/cancelled-bookings/confirm.blade.php` | CREATE | View |
-| 18 | `resources/views/reports/booking-cancellation.blade.php` | CREATE | View |
-| 19 | `resources/views/partials/nav.php` | EDIT | View |
+Deliverables both tracks depend on.
 
-**Total: 19 files** (9 new, 10 edited)
+### Step 1 — Migrations
 
----
+Files: 1, 2, 3 (see file list). Run `php artisan migrate`.
 
-## 18. Implementation Order
+### Step 2 — Enum
 
-| Step | Files | Description |
-|---|---|---|
-| 1 | 1-3 | Run migrations |
-| 2 | 4 | Create `CancelledBookingStatus` enum |
-| 3 | 5 | Update `TransactionTypeSeeder` |
-| 4 | 6-9 | Update `Booking`; create `CancelledBooking`; update `Payment` and `Voucher` |
-| 5 | 10 | Create `CostTrackingService` |
-| 6 | 11 | Create `CancellationService` |
-| 7 | 12 | Create `BookingCancellationController` |
-| 8 | 13 | Register routes |
-| 9 | 14 | Update booking index — Status column, Cancel button, cost modal, freeze passenger actions |
-| 10 | 15 | Update booking show — freeze payment button + other actions |
-| 11 | 16 | Create pending refunds view |
-| 12 | 17 | Create refund confirmation view |
-| 13 | 18 | Create cancellation report view |
-| 14 | 19 | Update navigation |
+File: 4. Create `CancelledBookingStatus` enum.
+
+### Step 3 — Seeder
+
+File: 5. Add "Service Charge Deduction" to `TransactionTypeSeeder`. Run `php artisan db:seed --class=TransactionTypeSeeder`.
+
+### Step 4 — Models
+
+Files: 6, 7, 8, 9. Update Booking fillable/relationship, create CancelledBooking model, update Payment and Voucher.
+
+### Step 5 — Route File + Registration
+
+File: 13 (new `routes/booking-cancellation.php`) + 14 (edit `RouteServiceProvider.php`).
+
+Created once. After this, both Track A and Track B have working route targets.
 
 ---
 
-## 19. Key Deviations from Original Plan
+## 18. Track A — Person 1 Continues (Backend Services + Actions)
+
+### Step A1 — Stub Action Controller (1 hour)
+
+Create `BookingCancellationActionController` with stub methods returning realistic placeholder JSON. This unblocks Track B immediately.
+
+### Step A2 — CostTrackingService
+
+File: 10. Implement per-passenger and booking-level cost summary. Live queries, no storage.
+
+### Step A3 — CancellationService
+
+File: 11. Implement initiate/revert/confirm business logic with DB transactions.
+
+### Step A4 — Real Action Controller
+
+File: 12. Replace stubs in `BookingCancellationActionController` with real implementations calling `CancellationService` and `CostTrackingService`.
+
+**Deliverable:** All 4 action endpoints working with real data.
+**Files:** 3 new (service, service, controller), 1 stubbed then replaced.
+
+---
+
+## 19. Track B — Person 2 Starts Day 1 (Frontend)
+
+Develops against stubs from Step A1. Wires to real endpoints as Track A delivers them.
+
+### Step B1 — View Controller
+
+File: 15. Create `BookingCancellationViewController` with 4 methods returning Blade views.
+
+### Step B2 — Booking Index View
+
+File: 16. Add Status column, Cancel button, initiation modal with cost breakdown, freeze per-passenger actions.
+
+### Step B3 — Booking Show View
+
+File: 17. Freeze payment button and visa/ticket/fingerprint action buttons.
+
+### Step B4 — Pending Refunds Page
+
+File: 18. New view listing PROCESSING cancellations with Revert/Confirm actions.
+
+### Step B5 — Refund Confirmation Page
+
+File: 19. New view with editable refund amount, method/currency selection.
+
+### Step B6 — Cancellation Report Page
+
+File: 20. New view with Alpine DataTable and filter bar.
+
+### Step B7 — Navigation
+
+File: 21. Add nav links for Pending Refunds and Booking Cancellation Report.
+
+**Deliverable:** All 7 views rendering. Works end-to-end once Track A delivers real endpoints.
+**Files:** 4 new, 3 edited.
+
+---
+
+## 20. Dependency Graph
+
+```
+Day 1 ─── Setup Sprint (Person 1, ~4 hrs)
+              │
+              ├── migrations + enum + seeder + models + route file
+              │
+              ├──▶ Track A continues (Person 1)
+              │      A1. Stub action controller ──┐ (1 hr)
+              │      A2. CostTrackingService       │
+              │      A3. CancellationService       │
+              │      A4. Real action controller    │
+              │                                    │
+              └──▶ Track B starts (Person 2)       │
+                     B1. View controller           │
+                     B2-B6. All 5 views           ◄┘ (uses stubs, later real endpoints)
+                     B7. Navigation updates
+```
+
+Both tracks start day 1. Track B never waits — stubs bridge until Track A finishes.
+
+---
+
+## 21. Complete File List
+
+| # | File | Action | Type | Step |
+|---|---|---|---|---|
+| 1 | `database/migrations/*_add_is_cancelled_to_bookings_table.php` | CREATE | Migration | **S1** |
+| 2 | `database/migrations/*_create_cancelled_bookings_table.php` | CREATE | Migration | **S1** |
+| 3 | `database/migrations/*_add_cancelled_booking_id_to_payments_and_vouchers.php` | CREATE | Migration | **S1** |
+| 4 | `app/Enums/CancelledBookingStatus.php` | CREATE | Enum | **S2** |
+| 5 | `database/seeders/TransactionTypeSeeder.php` | EDIT | Seeder | **S3** |
+| 6 | `app/Models/Booking.php` | EDIT | Model | **S4** |
+| 7 | `app/Models/CancelledBooking.php` | CREATE | Model | **S4** |
+| 8 | `app/Models/Payment.php` | EDIT | Model | **S4** |
+| 9 | `app/Models/Voucher.php` | EDIT | Model | **S4** |
+| 10 | `app/Services/CostTrackingService.php` | CREATE | Service | **A2** |
+| 11 | `app/Services/CancellationService.php` | CREATE | Service | **A3** |
+| 12 | `app/Http/Controllers/BookingCancellationActionController.php` | CREATE | Controller | **A1/A4** |
+| 13 | `routes/booking-cancellation.php` | CREATE | Routes | **S5** |
+| 14 | `app/Providers/RouteServiceProvider.php` | EDIT | Registration | **S5** |
+| 15 | `app/Http/Controllers/BookingCancellationViewController.php` | CREATE | Controller | **B1** |
+| 16 | `resources/views/bookings/index.blade.php` | EDIT | View | **B2** |
+| 17 | `resources/views/bookings/show.blade.php` | EDIT | View | **B3** |
+| 18 | `resources/views/pending-refunds/index.blade.php` | CREATE | View | **B4** |
+| 19 | `resources/views/cancelled-bookings/confirm.blade.php` | CREATE | View | **B5** |
+| 20 | `resources/views/reports/booking-cancellation.blade.php` | CREATE | View | **B6** |
+| 21 | `resources/views/partials/nav.php` | EDIT | View | **B7** |
+
+**Total: 21 files** — 10 new (S1-S5: 6, A2-A3: 2, B4-B6: 2), 11 edited (S4: 3, S5: 1, A1/A4: 1, B2-B3: 3, B7: 1)
+
+---
+
+## 22. Key Deviations from Original Plan
 
 | Aspect | Original Plan | Final Plan |
 |---|---|---|
@@ -712,4 +790,6 @@ Any action buttons on the booking show page (Request Re-Issue, Request Add. Tkt,
 | Cost Breakdown | Total Paid only | **Fingerprint + Visa + Ticket costs** per passenger, plus booking summary |
 | Payment Button | Not mentioned | **Frozen during PROCESSING, permanently disabled on CANCELLED** |
 | Visa/Ticket/Fingerprint | Not mentioned | **Frozen for all cancelled bookings** (both states) |
-| New/Edited Files | 17 | **19** |
+| Controllers | 1 | **2** (split for parallelism) |
+| Routes file | `web.php` (edit) | **`booking-cancellation.php`** (new, dedicated) |
+| New/Edited Files | 17 | **21** (with route service provider) |
