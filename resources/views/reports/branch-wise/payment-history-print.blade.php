@@ -48,16 +48,17 @@
 
     @php
         $__currency = $currency ?? 'SAR';
-        $__rate = app(\App\Services\CurrencyRateService::class)->getCurrentRateValue();
-        $fmtNum = function($amount, $d = 2) use ($__currency, $__rate) {
+        $fmtNum = function($amount, $bdtAmount = 0) use ($__currency) {
             if ($amount === null || $amount === '') return '';
-            $val = $__currency === 'BDT' ? $amount * $__rate : $amount;
-            return number_format($val, $d);
+            $val = ($__currency === 'BDT' && $bdtAmount > 0) ? $bdtAmount : $amount;
+            $val = floor($val * 100) / 100;
+            return number_format($val, 2);
         };
-        $fmtCurrency = function($amount, $d = 2) use ($__currency, $__rate) {
+        $fmtCurrency = function($amount, $bdtAmount = 0) use ($__currency) {
             if ($amount === null || $amount === '') return '';
-            $val = $__currency === 'BDT' ? $amount * $__rate : $amount;
-            return ($__currency === 'BDT' ? 'BDT ' : 'SAR ') . number_format($val, $d);
+            $val = ($__currency === 'BDT' && $bdtAmount > 0) ? $bdtAmount : $amount;
+            $val = floor($val * 100) / 100;
+            return ($__currency === 'BDT' ? 'BDT ' : 'SAR ') . number_format($val, 2);
         };
     @endphp
 
@@ -101,7 +102,7 @@
                     <td class="text-left">{{ $v['receive_by'] }}</td>
                     <td class="text-left">{{ $v['receive_at'] }}</td>
                     <td class="text-center">{{ $v['payment_date'] }}</td>
-                    <td class="text-right" style="font-weight: bold">{{ $fmtNum($v['amount']) }}</td>
+                     <td class="text-right" style="font-weight: bold">{{ $fmtNum($v['amount'], $v['bdt_amount'] ?? 0) }}</td>
                 </tr>
                 @endforeach
             @empty
@@ -116,15 +117,15 @@
         <div class="summary-grid">
             <div class="summary-row">
                 <span class="label">Cash Total:</span>
-                <span class="value" style="color: #15803d">{{ $fmtCurrency($totalCash) }}</span>
+                <span class="value" style="color: #15803d">{{ $fmtCurrency($totalCash, $totalCashBdt ?? 0) }}</span>
             </div>
             <div class="summary-row">
                 <span class="label">Bank Total:</span>
-                <span class="value" style="color: #2563eb">{{ $fmtCurrency($totalBank) }}</span>
+                <span class="value" style="color: #2563eb">{{ $fmtCurrency($totalBank, $totalBankBdt ?? 0) }}</span>
             </div>
             <div class="summary-row">
                 <span class="label">Grand Total:</span>
-                <span class="value">{{ $fmtCurrency($totalAmount) }}</span>
+                <span class="value">{{ $fmtCurrency($totalAmount, $totalAmountBdt ?? 0) }}</span>
             </div>
         </div>
     </div>
