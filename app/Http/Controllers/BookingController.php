@@ -161,6 +161,9 @@ class BookingController extends Controller
         $selectedActualFlightTo = $request->get('actual_flight_to');
         $selectedReturnDateFrom = $request->get('return_date_from');
         $selectedReturnDateTo = $request->get('return_date_to');
+        $selectedStatusChangeAction = $request->get('status_change_action');
+        $selectedStatusChangeFrom = $request->get('status_change_from');
+        $selectedStatusChangeTo = $request->get('status_change_to');
 
         $allRouteMaps = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])
             ->get()
@@ -286,6 +289,33 @@ class BookingController extends Controller
             ->when($request->filled('passenger_status'), fn ($q) =>
                 $q->where('passenger_status_id', $request->input('passenger_status'))
             )
+            ->when($request->filled('status_change_action'), function ($q) use ($request) {
+                $action = $request->input('status_change_action');
+                $dateFrom = $request->input('status_change_from');
+                $dateTo = $request->input('status_change_to');
+
+                $q->where('passenger_status_id', $action);
+
+                if ($dateFrom || $dateTo) {
+                    $q->where(function ($query) use ($action, $dateFrom, $dateTo) {
+                        $query->where(function ($q) use ($action, $dateFrom, $dateTo) {
+                            $q->whereHas('updateLogs', function ($logQ) use ($action, $dateFrom, $dateTo) {
+                                $logQ->where('action', 'updated')
+                                     ->where('new_values->passenger_status_id', $action);
+                                if ($dateFrom) $logQ->whereDate('created_at', '>=', $dateFrom);
+                                if ($dateTo)   $logQ->whereDate('created_at', '<=', $dateTo);
+                            });
+                        })->orWhere(function ($q) use ($action, $dateFrom, $dateTo) {
+                            $q->whereDoesntHave('updateLogs', function ($logQ) use ($action) {
+                                $logQ->where('action', 'updated')
+                                     ->where('new_values->passenger_status_id', $action);
+                            });
+                            if ($dateFrom) $q->whereDate('updated_at', '>=', $dateFrom);
+                            if ($dateTo)   $q->whereDate('updated_at', '<=', $dateTo);
+                        });
+                    });
+                }
+            })
             ->when($selectedRouteDisplay, function ($q) use ($routeDisplayMap, $selectedRouteDisplay) {
                 $routeIds = $routeDisplayMap[$selectedRouteDisplay] ?? [];
                 if (!empty($routeIds)) {
@@ -375,6 +405,9 @@ class BookingController extends Controller
             ->withQueryString();
 
         $passengerStatuses = PassengerStatus::all();
+        $statusChangeOptions = $passengerStatuses->filter(fn ($s) =>
+            in_array($s->name, ['Cancel', 'Delivered', 'Hold'])
+        )->values();
 
         $visaAgents = collect();
         if ($canFilterByVisaAgent) {
@@ -414,6 +447,8 @@ class BookingController extends Controller
             'selectedPassengerStatus', 'selectedRouteDisplay', 'routesList', 'selectedPackageId', 'selectedTicketAgentId',
             'selectedActualFlightFrom', 'selectedActualFlightTo',
             'selectedReturnDateFrom', 'selectedReturnDateTo',
+            'selectedStatusChangeAction', 'selectedStatusChangeFrom', 'selectedStatusChangeTo',
+            'statusChangeOptions',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
             'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt'
         ));

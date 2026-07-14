@@ -465,6 +465,23 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </select>
                     </div>
                     <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Status Change</label>
+                        <select x-model="selectedStatusChangeAction" @change="onStatusChangeActionChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($statusChangeOptions as $status)
+                            <option value="{{ $status->id }}" {{ (string) $selectedStatusChangeAction === (string) $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col" x-show="selectedStatusChangeAction">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">From</label>
+                        <input type="date" x-model="selectedStatusChangeFrom" @change="onStatusChangeDateChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col" x-show="selectedStatusChangeAction">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">To</label>
+                        <input type="date" x-model="selectedStatusChangeTo" @change="onStatusChangeDateChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Route</label>
                         <select x-model="selectedRouteDisplay" @change="onRouteChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
@@ -1536,6 +1553,9 @@ function bookingIndexApp() {
         selectedActualFlightTo: '{{ $selectedActualFlightTo ?? '' }}',
         selectedReturnDateFrom: '{{ $selectedReturnDateFrom ?? '' }}',
         selectedReturnDateTo: '{{ $selectedReturnDateTo ?? '' }}',
+        selectedStatusChangeAction: '{{ $selectedStatusChangeAction ?? '' }}',
+        selectedStatusChangeFrom: '{{ $selectedStatusChangeFrom ?? '' }}',
+        selectedStatusChangeTo: '{{ $selectedStatusChangeTo ?? '' }}',
         selectedFlightDateRange: '',
         flightDateRanges: @json($flightDateRanges),
         totalPassengerCount: {{ $totalPassengerCount }},
@@ -1844,6 +1864,35 @@ function bookingIndexApp() {
             window.location.href = url.toString();
         },
 
+        onStatusChangeActionChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedStatusChangeAction) {
+                url.searchParams.set('status_change_action', this.selectedStatusChangeAction);
+            } else {
+                url.searchParams.delete('status_change_action');
+                url.searchParams.delete('status_change_from');
+                url.searchParams.delete('status_change_to');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onStatusChangeDateChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedStatusChangeFrom) {
+                url.searchParams.set('status_change_from', this.selectedStatusChangeFrom);
+            } else {
+                url.searchParams.delete('status_change_from');
+            }
+            if (this.selectedStatusChangeTo) {
+                url.searchParams.set('status_change_to', this.selectedStatusChangeTo);
+            } else {
+                url.searchParams.delete('status_change_to');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
         clearPassengerFilters() {
             const url = new URL(window.location);
             ['fingerprint_status', 'visa_status', 'ticket_status',
@@ -1852,6 +1901,7 @@ function bookingIndexApp() {
              'actual_flight_from', 'actual_flight_to',
              'return_date_from', 'return_date_to',
              'flight_date_from', 'flight_date_to',
+             'status_change_action', 'status_change_from', 'status_change_to',
              'search', 'page'
             ].forEach(p => url.searchParams.delete(p));
             url.searchParams.set('tab', 'passenger');
