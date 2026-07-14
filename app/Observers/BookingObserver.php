@@ -1,0 +1,47 @@
+<?php
+
+namespace App\Observers;
+
+use App\Models\Booking;
+use App\Models\BookingUpdateLog;
+use Illuminate\Support\Facades\Auth;
+
+class BookingObserver
+{
+    public function updated(Booking $booking): void
+    {
+        $user = Auth::user();
+        if (!$user) return;
+
+        $dirty = $booking->getDirty();
+        if (empty($dirty)) return;
+
+        $original = $booking->getOriginal();
+        $oldValues = collect($original)->except(['created_at', 'updated_at'])->toArray();
+        $newValues = collect($booking->attributesToArray())->except(['created_at', 'updated_at'])->toArray();
+
+        BookingUpdateLog::create([
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'action' => 'updated',
+            'old_values' => $oldValues,
+            'new_values' => $newValues,
+        ]);
+    }
+
+    public function deleting(Booking $booking): void
+    {
+        $user = Auth::user();
+        if (!$user) return;
+
+        $oldValues = collect($booking->attributesToArray())->except(['created_at', 'updated_at'])->toArray();
+
+        BookingUpdateLog::create([
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'action' => 'deleted',
+            'old_values' => $oldValues,
+            'new_values' => null,
+        ]);
+    }
+}
