@@ -238,7 +238,7 @@
                 $cancelledStatus = $booking->cancelledBooking?->status?->value;
                 $isPaymentFrozen = $booking->is_cancelled && $cancelledStatus === 'cancelled';
             @endphp
-            <button @click="!isPaymentFrozen && openPaymentModal()"
+            <button @click="openPaymentModal()"
                     :disabled="{{ $isPaymentFrozen ? 'true' : 'false' }}"
                     class="px-6 py-3 rounded-lg font-medium transition {{ $isPaymentFrozen ? 'bg-gray-400 cursor-not-allowed' : 'bg-blue-600 text-white hover:bg-blue-700' }}"
                     title="{{ $isPaymentFrozen ? 'Booking Cancelled' : '' }}">
