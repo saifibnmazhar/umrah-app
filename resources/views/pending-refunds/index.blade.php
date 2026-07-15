@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Pending Refunds')
 @section('content')
+@php $canSeeCancelledBy = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty(); @endphp
 <div class="w-full mx-auto">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Pending Refunds</h1>
@@ -43,8 +44,9 @@
                         <th class="px-3 py-2 text-right font-medium">Service Charge</th>
                         <th class="px-3 py-2 text-right font-medium">Refund Amount</th>
                         <th class="px-3 py-2 text-left font-medium">Cancel Date</th>
-                        <th class="px-3 py-2 text-left font-medium">Cancelled By</th>
-                        <th class="px-3 py-2 text-center font-medium">Actions</th>
+                        @if($canSeeCancelledBy)<th class="px-3 py-2 text-left font-medium">Status</th>@endif
+                        @if($canSeeCancelledBy)<th class="px-3 py-2 text-left font-medium">Cancelled By</th>@endif
+                        @unless($canSeeCancelledBy)<th class="px-3 py-2 text-center font-medium">Actions</th>@endunless
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
@@ -64,7 +66,19 @@
                         </td>
                         <td class="px-3 py-2 text-slate-800 font-medium text-right">@currency($cb->refund_amount, 2)</td>
                         <td class="px-3 py-2 text-slate-600">{{ $cb->created_at->format('Y-m-d') }}</td>
-                        <td class="px-3 py-2 text-slate-600">{{ $cb->user?->name ?? '—' }}</td>
+                        @if($canSeeCancelledBy)
+                        <td class="px-3 py-2">
+                            @if($cb->status === \App\Enums\CancelledBookingStatus::PROCESSING)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Cancellation Processing</span>
+                            @elseif($cb->status === \App\Enums\CancelledBookingStatus::CANCELLED)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Cancelled</span>
+                            @else
+                                <span class="text-slate-600">{{ $cb->status->value ?? '—' }}</span>
+                            @endif
+                        </td>
+                        @endif
+                        @if($canSeeCancelledBy)<td class="px-3 py-2 text-slate-600">{{ $cb->user?->name ?? '—' }}</td>@endif
+                        @unless($canSeeCancelledBy)
                         <td class="px-3 py-2 text-center whitespace-nowrap">
                             <form method="POST" action="{{ route('cancelled-bookings.revert', $cb->id) }}"
                                   onsubmit="return confirm('Revert this cancellation? The booking will be restored to active.')" class="inline">
@@ -78,10 +92,11 @@
                                 Confirm
                             </a>
                         </td>
+                        @endunless
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="px-3 py-4 text-center text-slate-500">No pending refunds found</td>
+                        <td colspan="{{ $canSeeCancelledBy ? 10 : 9 }}" class="px-3 py-4 text-center text-slate-500">No pending refunds found</td>
                     </tr>
                     @endforelse
                 </tbody>

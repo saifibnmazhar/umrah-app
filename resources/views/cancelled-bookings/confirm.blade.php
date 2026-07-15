@@ -83,7 +83,8 @@
                 </div>
             </div>
 
-            {{-- Cost Breakdown --}}
+            {{--
+            Cost Breakdown
             <div class="bg-white rounded-xl shadow-lg p-6">
                 <h3 class="text-lg font-semibold text-slate-700 mb-4">Cost Breakdown</h3>
                 <div class="space-y-3">
@@ -105,8 +106,10 @@
                     </div>
                 </div>
             </div>
+            --}}
 
-            {{-- Cancellation Info --}}
+            {{--
+            Cancellation Info
             <div class="bg-white rounded-xl shadow-lg p-6">
                 <h3 class="text-lg font-semibold text-slate-700 mb-4">Cancellation Info</h3>
                 <div class="space-y-3 text-sm">
@@ -128,6 +131,7 @@
                     </div>
                 </div>
             </div>
+            --}}
         </div>
 
         {{-- Right Column: Editable Form --}}

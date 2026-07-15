@@ -9,7 +9,7 @@
         $canAccessAdminReports = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
         $canAccessFingerprintReport = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty() || (auth()->user()->hasRole('Fingerprint Admin') && auth()->user()->branch?->fingerprint_operation);
         $canAccessBooking = true;
-        $canAccessPendingRefunds = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager'])->isNotEmpty();
+        $canAccessPendingRefunds = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Fingerprint Admin'])->isNotEmpty();
     @endphp
     <div class="w-full mx-auto px-4">
         <div class="flex justify-center items-center h-16 space-x-5">

@@ -1477,6 +1477,13 @@ class BookingController extends Controller
 
     public function storePayment(Request $request, Booking $booking)
     {
+        if ($booking->is_cancelled && $booking->cancelledBooking?->status?->value === 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot process payment for a cancelled booking.'
+            ], 422);
+        }
+
         $validated = $request->validate([
             'amount' => 'nullable|numeric|min:0',
             'amount_bdt' => 'nullable|numeric|min:0',
@@ -1551,6 +1558,13 @@ class BookingController extends Controller
 
     public function updatePayment(Request $request, Booking $booking, Payment $payment)
     {
+        if ($booking->is_cancelled && $booking->cancelledBooking?->status?->value === 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot update payment for a cancelled booking.'
+            ], 422);
+        }
+
         $validated = $request->validate([
             'amount' => 'nullable|numeric|min:0',
             'amount_bdt' => 'nullable|numeric|min:0',
