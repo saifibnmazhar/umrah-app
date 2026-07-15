@@ -26,6 +26,7 @@ class VisaAgentReportController extends Controller
             'search' => 'nullable|string|max:255',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
+            'visa_agent_id' => 'nullable|integer|exists:visa_agents,id',
         ]);
 
         $search = $request->search;
@@ -34,6 +35,7 @@ class VisaAgentReportController extends Controller
 
         $agents = VisaAgent::query()
             ->when($search, fn($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($request->visa_agent_id, fn($q) => $q->where('id', $request->visa_agent_id))
             ->orderBy('name')
             ->get();
 
