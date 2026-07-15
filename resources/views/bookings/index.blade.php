@@ -1578,8 +1578,22 @@ if ($route) {
                     </select>
                 </div>
                 <div>
-                    <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (optional)</label>
-                    <input type="number" x-model="cancelServiceCharge" step="0.000001" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" placeholder="Enter amount">
+                    <div x-show="$store.currency.mode === 'BDT'" class="mb-3">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                        <input type="number" x-model="cancelServiceChargeBdt" min="0" step="0.01"
+                            @input="cancelServiceCharge = parseFloat(((parseFloat(cancelServiceChargeBdt) || 0) / ($store.currency.rate || 1)).toFixed(6))"
+                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none"
+                            placeholder="Enter amount in BDT">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
+                        <input type="number" x-model="cancelServiceCharge" step="0.000001" min="0"
+                            :readonly="$store.currency.mode === 'BDT'"
+                            :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}"
+                            @input="if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { cancelServiceChargeBdt = Math.round((parseFloat($event.target.value) || 0) * $store.currency.rate * 100) / 100; }"
+                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none"
+                            placeholder="Enter amount in SAR">
+                    </div>
                 </div>
             </div>
 
@@ -1681,6 +1695,11 @@ function bookingIndexApp() {
                     f.net_fare_bdt = Math.round(parseFloat(f.net_fare || 0) * r);
                     f.offer_price_bdt = Math.round(parseFloat(f.offer_price || 0) * r);
                     this._converting = false;
+                }
+                if (this.cancelModalVisible && r > 0) {
+                    this.cancelServiceChargeBdt = this.cancelServiceCharge
+                        ? Math.round(parseFloat(this.cancelServiceCharge) * r * 100) / 100
+                        : '';
                 }
             });
 
@@ -3513,6 +3532,7 @@ function bookingIndexApp() {
         cancelBranches: @json($bookingBranches),
         cancelBranchId: '',
         cancelServiceCharge: null,
+        cancelServiceChargeBdt: '',
         cancelTotalPaid: 0,
         cancelCosts: { fingerprint_cost: 0, visa_cost: 0, ticket_cost: 0, total_cost: 0 },
         cancelLoading: false,
@@ -3521,6 +3541,7 @@ function bookingIndexApp() {
             this.cancelBookingId = bookingId;
             this.cancelModalVisible = true;
             this.cancelServiceCharge = null;
+            this.cancelServiceChargeBdt = '';
             try {
                 const res = await fetch(`/bookings/${bookingId}/cancellation/initiate`);
                 const data = await res.json();
