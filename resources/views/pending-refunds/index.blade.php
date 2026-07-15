@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Pending Refunds')
 @section('content')
+@php $canSeeCancelledBy = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty(); @endphp
 <div class="w-full mx-auto">
     <div class="flex justify-between items-center mb-6">
         <h1 class="text-2xl font-bold text-slate-800">Pending Refunds</h1>
@@ -43,7 +44,7 @@
                         <th class="px-3 py-2 text-right font-medium">Service Charge</th>
                         <th class="px-3 py-2 text-right font-medium">Refund Amount</th>
                         <th class="px-3 py-2 text-left font-medium">Cancel Date</th>
-                        <th class="px-3 py-2 text-left font-medium">Cancelled By</th>
+                        @if($canSeeCancelledBy)<th class="px-3 py-2 text-left font-medium">Cancelled By</th>@endif
                         <th class="px-3 py-2 text-center font-medium">Actions</th>
                     </tr>
                 </thead>
@@ -64,7 +65,7 @@
                         </td>
                         <td class="px-3 py-2 text-slate-800 font-medium text-right">@currency($cb->refund_amount, 2)</td>
                         <td class="px-3 py-2 text-slate-600">{{ $cb->created_at->format('Y-m-d') }}</td>
-                        <td class="px-3 py-2 text-slate-600">{{ $cb->user?->name ?? '—' }}</td>
+                        @if($canSeeCancelledBy)<td class="px-3 py-2 text-slate-600">{{ $cb->user?->name ?? '—' }}</td>@endif
                         <td class="px-3 py-2 text-center whitespace-nowrap">
                             <form method="POST" action="{{ route('cancelled-bookings.revert', $cb->id) }}"
                                   onsubmit="return confirm('Revert this cancellation? The booking will be restored to active.')" class="inline">
@@ -81,7 +82,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="10" class="px-3 py-4 text-center text-slate-500">No pending refunds found</td>
+                        <td colspan="{{ $canSeeCancelledBy ? 10 : 9 }}" class="px-3 py-4 text-center text-slate-500">No pending refunds found</td>
                     </tr>
                     @endforelse
                 </tbody>
