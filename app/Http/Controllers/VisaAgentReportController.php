@@ -26,6 +26,7 @@ class VisaAgentReportController extends Controller
             'search' => 'nullable|string|max:255',
             'date_from' => 'nullable|date',
             'date_to' => 'nullable|date',
+            'visa_agent_id' => 'nullable|integer|exists:visa_agents,id',
         ]);
 
         $search = $request->search;
@@ -34,6 +35,7 @@ class VisaAgentReportController extends Controller
 
         $agents = VisaAgent::query()
             ->when($search, fn($q) => $q->where('name', 'like', "%{$search}%"))
+            ->when($request->visa_agent_id, fn($q) => $q->where('id', $request->visa_agent_id))
             ->orderBy('name')
             ->get();
 
@@ -225,8 +227,8 @@ class VisaAgentReportController extends Controller
                     if ($dateTo) $logQ->whereDate('created_at', '<=', $dateTo);
                 })->orWhere(function ($subQ) use ($dateFrom, $dateTo) {
                     $subQ->whereDoesntHave('logs', fn($lh) => $lh->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'"));
-                    if ($dateFrom) $subQ->whereDate('updated_at', '>=', $dateFrom);
-                    if ($dateTo) $subQ->whereDate('updated_at', '<=', $dateTo);
+                    if ($dateFrom) $subQ->whereDate('visa_submissions.updated_at', '>=', $dateFrom);
+                    if ($dateTo) $subQ->whereDate('visa_submissions.updated_at', '<=', $dateTo);
                 });
             });
         }

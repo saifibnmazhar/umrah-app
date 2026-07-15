@@ -7,6 +7,7 @@ use App\Enums\PaymentMethod;
 use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
 use App\Models\Branch;
+use App\Models\CurrencyRate;
 use App\Models\FingerprintDetail;
 use App\Models\FingerprintDetailLog;
 use App\Models\Invoice;
@@ -31,6 +32,7 @@ class BranchWiseReportController extends Controller
         $branchId = $userBranchId ?: $request->branch_id;
         $selectedBranch = $branchId;
         $branches = Branch::orderBy('name')->get(['id', 'name']);
+        $firstRate = (float) (CurrencyRate::orderBy('created_at')->first()?->rate ?? 0);
 
         $branchScope = fn($query) => $query
             ->where('booking_branch_id', $branchId);
@@ -70,9 +72,22 @@ class BranchWiseReportController extends Controller
         $invoiceCount = Invoice::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))->count();
-        $invoiceTotalAmount = Invoice::whereDate('created_at', '>=', $dateFrom)
-            ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))->sum('total_amount');
+        $invoiceRow = Invoice::whereDate('invoices.created_at', '>=', $dateFrom)
+            ->whereDate('invoices.created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('invoices.branch_id', $branchId))
+            ->leftJoin('bookings', 'invoices.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw('
+                SUM(invoices.total_amount) as sar_total,
+                SUM(invoices.total_amount * COALESCE(currency_rates.rate, ?)) as bdt_total,
+                SUM(invoices.balance) as due_sar,
+                SUM(invoices.balance * COALESCE(currency_rates.rate, ?)) as due_bdt
+            ', [$firstRate, $firstRate])
+            ->first();
+        $invoiceTotalAmount = $invoiceRow->sar_total ?? 0;
+        $invoiceTotalAmountBdt = $invoiceRow->bdt_total ?? 0;
+        $totalDue = $invoiceRow->due_sar ?? 0;
+        $totalDueBdt = $invoiceRow->due_bdt ?? 0;
 
         $inboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
             ->whereDate('created_at', '>=', $dateFrom)
@@ -94,43 +109,166 @@ class BranchWiseReportController extends Controller
             ->where('status', TicketStatus::PENDING)
             ->count();
 
-        $totalDue = Invoice::whereDate('created_at', '>=', $dateFrom)
-            ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))->sum('balance');
+        $dueCollectionRow = Voucher::whereDate('vouchers.created_at', '>=', $dateFrom)
+            ->whereDate('vouchers.created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('vouchers.branch_id', $branchId))
+            ->whereHas('transactionType', fn($q) => $q->where('name', 'Due Collection'))
+            ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw('
+                SUM(vouchers.amount) as sar_total,
+                SUM(vouchers.amount * COALESCE(currency_rates.rate, ?)) as bdt_total,
+                SUM(CASE WHEN vouchers.payment_method = ? THEN vouchers.amount ELSE 0 END) as cash_sar,
+                SUM(CASE WHEN vouchers.payment_method = ? THEN vouchers.amount * COALESCE(currency_rates.rate, ?) ELSE 0 END) as cash_bdt,
+                SUM(CASE WHEN vouchers.payment_method = ? THEN vouchers.amount ELSE 0 END) as bank_sar,
+                SUM(CASE WHEN vouchers.payment_method = ? THEN vouchers.amount * COALESCE(currency_rates.rate, ?) ELSE 0 END) as bank_bdt
+            ', [$firstRate, PaymentMethod::CASH->value, PaymentMethod::CASH->value, $firstRate, PaymentMethod::BANK->value, PaymentMethod::BANK->value, $firstRate])
+            ->first();
+        $totalDueCollection = $dueCollectionRow->sar_total ?? 0;
+        $totalDueCollectionBdt = $dueCollectionRow->bdt_total ?? 0;
+        $dueCollectionCash = $dueCollectionRow->cash_sar ?? 0;
+        $dueCollectionCashBdt = $dueCollectionRow->cash_bdt ?? 0;
+        $dueCollectionBank = $dueCollectionRow->bank_sar ?? 0;
+        $dueCollectionBankBdt = $dueCollectionRow->bank_bdt ?? 0;
 
-        $totalDueCollection = Voucher::whereDate('created_at', '>=', $dateFrom)
-            ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->whereHas('transactionType', function ($query) {
-                $query->where('name', 'Due Collection');
-            })->sum('amount');
+        $initialPaymentRow = Payment::whereDate('payments.created_at', '>=', $dateFrom)
+            ->whereDate('payments.created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('payments.branch_id', $branchId))
+            ->whereHas('vouchers.transactionType', fn($q) => $q->where('name', 'Initial Payment'))
+            ->leftJoin('bookings', 'payments.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw('
+                SUM(payments.amount) as sar_total,
+                SUM(payments.amount * COALESCE(currency_rates.rate, ?)) as bdt_total,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount ELSE 0 END) as cash_sar,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * COALESCE(currency_rates.rate, ?) ELSE 0 END) as cash_bdt,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount ELSE 0 END) as bank_sar,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * COALESCE(currency_rates.rate, ?) ELSE 0 END) as bank_bdt
+            ', [$firstRate, PaymentMethod::CASH->value, PaymentMethod::CASH->value, $firstRate, PaymentMethod::BANK->value, PaymentMethod::BANK->value, $firstRate])
+            ->first();
+        $totalInitialPayment = $initialPaymentRow->sar_total ?? 0;
+        $totalInitialPaymentBdt = $initialPaymentRow->bdt_total ?? 0;
+        $initialPaymentCash = $initialPaymentRow->cash_sar ?? 0;
+        $initialPaymentCashBdt = $initialPaymentRow->cash_bdt ?? 0;
+        $initialPaymentBank = $initialPaymentRow->bank_sar ?? 0;
+        $initialPaymentBankBdt = $initialPaymentRow->bank_bdt ?? 0;
 
         $totalPassengers = Passenger::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))->count();
 
-        $totalCashPayment = Payment::whereDate('created_at', '>=', $dateFrom)
-            ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->where('payment_method', PaymentMethod::CASH)
+        $paymentRow = Payment::whereDate('payments.created_at', '>=', $dateFrom)
+            ->whereDate('payments.created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('payments.branch_id', $branchId))
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
-            ->sum('amount');
+            ->leftJoin('bookings', 'payments.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw('
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount ELSE 0 END) as cash_sar,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * COALESCE(currency_rates.rate, ?) ELSE 0 END) as cash_bdt,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount ELSE 0 END) as bank_sar,
+                SUM(CASE WHEN payments.payment_method = ? THEN payments.amount * COALESCE(currency_rates.rate, ?) ELSE 0 END) as bank_bdt
+            ', [PaymentMethod::CASH->value, PaymentMethod::CASH->value, $firstRate, PaymentMethod::BANK->value, PaymentMethod::BANK->value, $firstRate])
+            ->first();
+        $totalCashPayment = $paymentRow->cash_sar ?? 0;
+        $totalCashPaymentBdt = $paymentRow->cash_bdt ?? 0;
+        $totalBankPayment = $paymentRow->bank_sar ?? 0;
+        $totalBankPaymentBdt = $paymentRow->bank_bdt ?? 0;
 
-        $totalBankPayment = Payment::whereDate('created_at', '>=', $dateFrom)
+        $payments = Payment::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->where('payment_method', PaymentMethod::BANK)
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
-            ->sum('amount');
+            ->with(['branch', 'vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking', 'vouchers.currencyRate'])
+            ->get();
+
+        $vouchersByDate = [];
+        foreach ($payments as $payment) {
+            $dateKey = $payment->created_at->format('Y-m-d');
+            foreach ($payment->vouchers as $v) {
+                if (!in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
+                    continue;
+                }
+                $vouchersByDate[$dateKey][] = [
+                    'invoice_id' => $v->booking?->invoice_id ?? 'N/A',
+                    'voucher_no' => $v->voucher_id ?? $v->id,
+                    'method' => ucfirst($v->payment_method?->value ?? ''),
+                    'transaction_type' => $v->transactionType?->name ?? '',
+                    'trx_id' => $v->transaction_id ?? '-',
+                    'receive_by' => $v->user?->name ?? '',
+                    'receive_at' => $v->user?->branch?->name ?? 'Central',
+                    'amount' => (float) $v->amount,
+                    'bdt_amount' => (float) ($v->bdt_amount ?: 0),
+                    'currency_rate' => (float) ($v->currencyRate?->rate ?? $firstRate),
+                    'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
+                ];
+            }
+        }
+        $vouchersByDateJson = json_encode($vouchersByDate);
 
         return view('reports.branch-wise', compact(
             'visaSubmitted', 'visaIssued', 'visaPending',
             'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing',
-            'invoiceCount', 'invoiceTotalAmount',
+            'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt',
             'inboundTicket', 'outboundTicket', 'pendingTicket',
-            'totalDue', 'totalDueCollection', 'totalPassengers',
-            'totalCashPayment', 'totalBankPayment',
-            'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId'
+            'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalPassengers',
+            'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt',
+            'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId',
+            'vouchersByDateJson', 'vouchersByDate'
+        ));
+    }
+
+    public function paymentHistoryPrint(Request $request): View
+    {
+        $dateFrom = $request->date_from ? Carbon::parse($request->date_from) : now()->subDays(30);
+        $dateTo = $request->date_to ? Carbon::parse($request->date_to) : now();
+        $branchId = $request->branch_id;
+        $currency = $request->get('currency', 'SAR');
+        $branch = $branchId ? Branch::find($branchId) : null;
+        $firstRate = (float) (CurrencyRate::orderBy('created_at')->first()?->rate ?? 0);
+
+        $payments = Payment::whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->with(['vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking', 'vouchers.currencyRate'])
+            ->get();
+
+        $vouchers = collect();
+        foreach ($payments as $payment) {
+            foreach ($payment->vouchers as $v) {
+                if (!in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
+                    continue;
+                }
+                $bdtAmount = (float) ($v->bdt_amount ?: 0);
+                $vouchers->push([
+                    'invoice_id' => $v->booking?->invoice_id ?? 'N/A',
+                    'voucher_no' => $v->voucher_id ?? $v->id,
+                    'method' => ucfirst($v->payment_method?->value ?? ''),
+                    'transaction_type' => $v->transactionType?->name ?? '',
+                    'trx_id' => $v->transaction_id ?? '-',
+                    'receive_by' => $v->user?->name ?? '',
+                    'receive_at' => $v->user?->branch?->name ?? 'Central',
+                    'amount' => (float) $v->amount,
+                    'bdt_amount' => $bdtAmount > 0 ? $bdtAmount : (float) $v->amount * $firstRate,
+                    'currency_rate' => (float) ($v->currencyRate?->rate ?? $firstRate),
+                    'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
+                ]);
+            }
+        }
+
+        $totalCash = $vouchers->where('method', 'Cash')->sum('amount');
+        $totalCashBdt = $vouchers->where('method', 'Cash')->sum('bdt_amount');
+        $totalBank = $vouchers->where('method', 'Bank')->sum('amount');
+        $totalBankBdt = $vouchers->where('method', 'Bank')->sum('bdt_amount');
+        $totalAmount = $vouchers->sum('amount');
+        $totalAmountBdt = $vouchers->sum('bdt_amount');
+
+        $dateLabel = $dateFrom->format('d-M-Y') . ' to ' . $dateTo->format('d-M-Y');
+
+        return view('reports.branch-wise.payment-history-print', compact(
+            'vouchers', 'totalCash', 'totalCashBdt', 'totalBank', 'totalBankBdt',
+            'totalAmount', 'totalAmountBdt', 'currency', 'branch', 'dateLabel', 'dateFrom', 'dateTo'
         ));
     }
 }

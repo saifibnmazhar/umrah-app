@@ -47,6 +47,7 @@ select {
     search: '{{ request('search') }}',
     date_from: '{{ request('date_from') }}',
     date_to: '{{ request('date_to') }}',
+    visa_agent_id: '{{ request('visa_agent_id') }}',
 })">
     <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm no-print">
         <div class="flex flex-wrap items-center gap-3">
@@ -57,20 +58,21 @@ select {
             </div>
 
             <div class="flex items-center gap-2">
-                <label class="text-sm font-semibold text-gray-700">Date</label>
-                <label class="text-xs text-gray-500">From</label>
-                <input type="date" x-model="date_from" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
-                <label class="text-xs text-gray-500">To</label>
-                <input type="date" x-model="date_to" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <label class="text-sm font-semibold text-gray-700">Visa Agent</label>
+                <select x-model="visa_agent_id" @change="currentPage = 1; loadData()" class="w-56 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500 border border-gray-300 bg-white">
+                    <option value="">All Agents</option>
+                    @foreach($visaAgents as $agent)
+                        <option value="{{ $agent->id }}">{{ $agent->name }}</option>
+                    @endforeach
+                </select>
             </div>
 
             <div class="flex items-center gap-2">
-                <button @click="currentPage = 1; loadData()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/>
-                    </svg>
-                    Filter
-                </button>
+                <label class="text-sm font-semibold text-gray-700">Date</label>
+                <label class="text-xs text-gray-500">From</label>
+                <input type="date" x-model="date_from" @change="currentPage = 1; loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <label class="text-xs text-gray-500">To</label>
+                <input type="date" x-model="date_to" @change="currentPage = 1; loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
 
             <div class="flex items-center gap-2 ml-auto no-print">
@@ -432,6 +434,7 @@ function visaAgentReport(options = {}) {
         search: options.search || '',
         date_from: options.date_from || '',
         date_to: options.date_to || '',
+        visa_agent_id: options.visa_agent_id || '',
         filteredData: [],
         loading: true,
         summary: {
@@ -467,6 +470,7 @@ function visaAgentReport(options = {}) {
                 if (this.search) params.set('search', this.search);
                 if (this.date_from) params.set('date_from', this.date_from);
                 if (this.date_to) params.set('date_to', this.date_to);
+                if (this.visa_agent_id) params.set('visa_agent_id', this.visa_agent_id);
                 const response = await fetch(`/api/reports/visa-agent?${params}`);
                 const result = await response.json();
                 this.filteredData = result.data || [];

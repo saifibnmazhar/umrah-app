@@ -155,13 +155,38 @@ class BookingController extends Controller
         $selectedBookingDateTo = $request->get('booking_date_to');
         $selectedFingerprintLocation = $request->get('fingerprint_location');
         $selectedPassengerStatus = $request->get('passenger_status');
-        $selectedRouteId = $request->get('route_id');
         $selectedPackageId = $request->get('package_id');
         $selectedTicketAgentId = $request->get('ticket_agent_id');
         $selectedActualFlightFrom = $request->get('actual_flight_from');
         $selectedActualFlightTo = $request->get('actual_flight_to');
         $selectedReturnDateFrom = $request->get('return_date_from');
         $selectedReturnDateTo = $request->get('return_date_to');
+        $selectedStatusChangeAction = $request->get('status_change_action');
+        $selectedStatusChangeFrom = $request->get('status_change_from');
+        $selectedStatusChangeTo = $request->get('status_change_to');
+
+        $allRouteMaps = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->id,
+                'display' => match($r->route_type?->value) {
+                    'multi_city' => $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', '),
+                    'round' => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?') . '-' . ($r->returnCity?->code ?? '?'),
+                    default => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?'),
+                },
+                'route_type' => $r->route_type?->value,
+                'flight_type' => $r->flight_type?->value,
+                'airline_id' => $r->airline_id,
+            ]);
+
+        $routesList = $allRouteMaps->unique('display')->values();
+        $routeDisplayMap = $allRouteMaps->groupBy('display')->map(fn($g) => $g->pluck('id')->toArray());
+
+        $selectedRouteDisplay = $request->input('route_display');
+        if (!$selectedRouteDisplay && $request->filled('route_id')) {
+            $oldRoute = $allRouteMaps->firstWhere('id', (int) $request->input('route_id'));
+            $selectedRouteDisplay = $oldRoute['display'] ?? null;
+        }
 
         $branchCounts = !$userBranchId
             ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
@@ -250,23 +275,53 @@ class BookingController extends Controller
                 $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'))
             )
             ->when($request->filled('actual_flight_from'), fn ($q) =>
-                $q->whereHas('latestIssuedTicket', fn ($q) => $q->whereDate('inbound_date', '>=', $request->input('actual_flight_from')))
+                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '>=', $request->input('actual_flight_from')))
             )
             ->when($request->filled('actual_flight_to'), fn ($q) =>
-                $q->whereHas('latestIssuedTicket', fn ($q) => $q->whereDate('inbound_date', '<=', $request->input('actual_flight_to')))
+                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '<=', $request->input('actual_flight_to')))
             )
             ->when($request->filled('return_date_from'), fn ($q) =>
-                $q->whereHas('latestIssuedTicket', fn ($q) => $q->whereDate('outbound_date', '>=', $request->input('return_date_from')))
+                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '>=', $request->input('return_date_from')))
             )
             ->when($request->filled('return_date_to'), fn ($q) =>
-                $q->whereHas('latestIssuedTicket', fn ($q) => $q->whereDate('outbound_date', '<=', $request->input('return_date_to')))
+                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '<=', $request->input('return_date_to')))
             )
             ->when($request->filled('passenger_status'), fn ($q) =>
                 $q->where('passenger_status_id', $request->input('passenger_status'))
             )
-            ->when($request->filled('route_id'), fn ($q) =>
-                $q->whereHas('ticketFare', fn ($q) => $q->where('route_id', $request->input('route_id')))
-            )
+            ->when($request->filled('status_change_action'), function ($q) use ($request) {
+                $action = $request->input('status_change_action');
+                $dateFrom = $request->input('status_change_from');
+                $dateTo = $request->input('status_change_to');
+
+                $q->where('passenger_status_id', $action);
+
+                if ($dateFrom || $dateTo) {
+                    $q->where(function ($query) use ($action, $dateFrom, $dateTo) {
+                        $query->where(function ($q) use ($action, $dateFrom, $dateTo) {
+                            $q->whereHas('updateLogs', function ($logQ) use ($action, $dateFrom, $dateTo) {
+                                $logQ->where('action', 'updated')
+                                     ->where('new_values->passenger_status_id', $action);
+                                if ($dateFrom) $logQ->whereDate('created_at', '>=', $dateFrom);
+                                if ($dateTo)   $logQ->whereDate('created_at', '<=', $dateTo);
+                            });
+                        })->orWhere(function ($q) use ($action, $dateFrom, $dateTo) {
+                            $q->whereDoesntHave('updateLogs', function ($logQ) use ($action) {
+                                $logQ->where('action', 'updated')
+                                     ->where('new_values->passenger_status_id', $action);
+                            });
+                            if ($dateFrom) $q->whereDate('updated_at', '>=', $dateFrom);
+                            if ($dateTo)   $q->whereDate('updated_at', '<=', $dateTo);
+                        });
+                    });
+                }
+            })
+            ->when($selectedRouteDisplay, function ($q) use ($routeDisplayMap, $selectedRouteDisplay) {
+                $routeIds = $routeDisplayMap[$selectedRouteDisplay] ?? [];
+                if (!empty($routeIds)) {
+                    $q->whereHas('ticketFare', fn ($q) => $q->whereIn('route_id', $routeIds));
+                }
+            })
             ->when($request->filled('package_id'), fn ($q) =>
                 $q->whereHas('booking', fn ($q) => $q->where('package_id', $request->input('package_id')))
             )
@@ -292,13 +347,35 @@ class BookingController extends Controller
 
         $totalPassengerCount = (clone $passengers)->count();
 
+        $currencyRateService = app(CurrencyRateService::class);
+
         $bookingIds = (clone $passengers)->pluck('booking_id')->unique();
-        $totalPackageValue = DB::table('invoices')
-            ->whereIn('booking_id', $bookingIds)
-            ->sum('total_amount');
-        $totalDue = DB::table('invoices')
-            ->whereIn('booking_id', $bookingIds)
-            ->sum('balance');
+
+        $invoiceBookings = Booking::with('invoice', 'currencyRate')
+            ->whereIn('id', $bookingIds)
+            ->get();
+
+        $totalPackageValue = 0;
+        $totalDue = 0;
+        $totalPackageBdt = 0;
+        $totalDueBdt = 0;
+
+        foreach ($invoiceBookings as $booking) {
+            $invoice = $booking->invoice;
+            if (!$invoice) continue;
+
+            $totalPackageValue += $invoice->total_amount;
+            $totalDue += $invoice->balance;
+
+            $rate = $booking->currencyRate?->rate
+                ?? ($currencyRateService?->getRateForDate($booking->created_at)?->rate
+                ?? ($currencyRateService?->getFirstRate()?->rate ?? 0));
+
+            if ($rate > 0) {
+                $totalPackageBdt += $invoice->total_amount * $rate;
+                $totalDueBdt += $invoice->balance * $rate;
+            }
+        }
 
         $passengers = (clone $passengers)
             ->with([
@@ -316,6 +393,7 @@ class BookingController extends Controller
                 'fingerprintDetail.fingerprint.fingerprintDetails',
                 'fingerprintDetail.approvedLog',
                 'ticketFare.baggageAllowances',
+                'allIssuedTickets',
                 'latestIssuedTicket.ticketAgent',
                 'latestIssuedTicket.ticketFare.airline',
                 'latestIssuedTicket.ticketFare.airlineClass.class',
@@ -328,6 +406,9 @@ class BookingController extends Controller
             ->withQueryString();
 
         $passengerStatuses = PassengerStatus::all();
+        $statusChangeOptions = $passengerStatuses->filter(fn ($s) =>
+            in_array($s->name, ['Cancel', 'Delivered', 'Hold'])
+        )->values();
 
         $visaAgents = collect();
         if ($canFilterByVisaAgent) {
@@ -352,8 +433,6 @@ class BookingController extends Controller
 
         $canEditVisa = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
 
-        $currencyRateService = app(CurrencyRateService::class);
-
         $fingerprintStatuses = FingerprintStatus::cases();
         $visaStatuses = VisaStatus::cases();
         $ticketStatuses = TicketStatus::cases();
@@ -366,11 +445,13 @@ class BookingController extends Controller
             'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
             'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
-            'selectedPassengerStatus', 'selectedRouteId', 'selectedPackageId', 'selectedTicketAgentId',
+            'selectedPassengerStatus', 'selectedRouteDisplay', 'routesList', 'selectedPackageId', 'selectedTicketAgentId',
             'selectedActualFlightFrom', 'selectedActualFlightTo',
             'selectedReturnDateFrom', 'selectedReturnDateTo',
+            'selectedStatusChangeAction', 'selectedStatusChangeFrom', 'selectedStatusChangeTo',
+            'statusChangeOptions',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
-            'totalPassengerCount', 'totalPackageValue', 'totalDue'
+            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt'
         ));
     }
 

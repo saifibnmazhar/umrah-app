@@ -28,20 +28,7 @@ $passengersVisaData = ($passengers ?? collect())->map(function($p) {
     ];
 })->values();
 
-$routesList = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])->get()->map(fn($r) => [
-    'id' => $r->id,
-    'display' => match($r->route_type?->value) {
-        'multi_city' => $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', '),
-        'round' => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?') . '-' . ($r->returnCity?->code ?? '?'),
-        default => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?'),
-    },
-    'route_type' => $r->route_type?->value,
-    'flight_type' => $r->flight_type?->value,
-    'airline_id' => $r->airline_id,
-])->unique('display')->values();
-
-$packagesList = \App\Models\Package::where('is_active', true)
-    ->select('id', 'package_name')
+$packagesList = \App\Models\Package::select('id', 'package_name')
     ->get()
     ->unique('package_name')
     ->values();
@@ -324,7 +311,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     </thead>
                     <tbody class="divide-y divide-slate-200">
                         @forelse($bookings as $booking)
-                        @php $bookingCurrencyRate = $booking->currencyRate?->rate ?? ($currencyRateService?->getRateForDate($booking->created_at)?->rate ?? 0); @endphp
+                        @php $bookingCurrencyRate = $booking->currencyRate?->rate ?? ($currencyRateService?->getRateForDate($booking->created_at)?->rate ?? ($currencyRateService?->getFirstRate()?->rate ?? 0)); @endphp
                         <tr>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->invoice_id ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->created_at->format('Y-m-d') }}</td>
@@ -503,11 +490,28 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         </select>
                     </div>
                     <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Status Change</label>
+                        <select x-model="selectedStatusChangeAction" @change="onStatusChangeActionChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            @foreach($statusChangeOptions as $status)
+                            <option value="{{ $status->id }}" {{ (string) $selectedStatusChangeAction === (string) $status->id ? 'selected' : '' }}>{{ $status->name }}</option>
+                            @endforeach
+                        </select>
+                    </div>
+                    <div class="flex flex-col" x-show="selectedStatusChangeAction">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">From</label>
+                        <input type="date" x-model="selectedStatusChangeFrom" @change="onStatusChangeDateChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col" x-show="selectedStatusChangeAction">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">To</label>
+                        <input type="date" x-model="selectedStatusChangeTo" @change="onStatusChangeDateChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    </div>
+                    <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Route</label>
-                        <select x-model="selectedRouteId" @change="onRouteChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                        <select x-model="selectedRouteDisplay" @change="onRouteChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($routesList as $route)
-                            <option value="{{ $route['id'] }}" {{ (string) $selectedRouteId === (string) $route['id'] ? 'selected' : '' }}>{{ $route['display'] }}</option>
+                            <option value="{{ $route['display'] }}" {{ (string) $selectedRouteDisplay === $route['display'] ? 'selected' : '' }}>{{ $route['display'] }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -538,8 +542,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                 </div>
                 <div class="flex flex-col gap-1 flex-shrink-0">
                     <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm" x-text="'Total Passenger - ' + totalPassengerCount">Total Passenger - {{ $totalPassengerCount }}</span>
-                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Package - @currency($totalPackageValue, 2)</span>
-                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Due - @currency($totalDue, 2)</span>
+                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Package - @currency($totalPackageValue, 2, null, $totalPackageBdt)</span>
+                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Due - @currency($totalDue, 2, null, $totalDueBdt)</span>
                 </div>
             </div>
             <div class="overflow-auto flex-1 min-h-0">
@@ -606,7 +610,7 @@ if ($route) {
     }
 }
 @endphp
-@php $passBookingRate = $passenger->booking?->currencyRate?->rate ?? ($currencyRateService?->getRateForDate($passenger->booking?->created_at)?->rate ?? 0); @endphp
+@php $passBookingRate = $passenger->booking?->currencyRate?->rate ?? ($currencyRateService?->getRateForDate($passenger->booking?->created_at)?->rate ?? ($currencyRateService?->getFirstRate()?->rate ?? 0)); @endphp
 <tr>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->created_at?->format('d M Y') ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->invoice_id ?? '—' }}</td>
@@ -637,8 +641,8 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-600">{{ $routeDisplay }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
-    <td class="px-3 py-2 text-slate-700">{{ $passenger->latestIssuedTicket?->inbound_date?->format('d M Y') ?? 'N/A' }}</td>
-    <td class="px-3 py-2 text-slate-700">{{ $passenger->latestIssuedTicket?->outbound_date?->format('d M Y') ?? 'N/A' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->allIssuedTickets->sortByDesc('created_at')->first(fn($t) => $t->inbound_date)?->inbound_date?->format('d M Y') ?? 'N/A' }}</td>
+    <td class="px-3 py-2 text-slate-700">{{ $passenger->allIssuedTickets->sortByDesc('created_at')->first(fn($t) => $t->outbound_date)?->outbound_date?->format('d M Y') ?? 'N/A' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
@@ -1244,41 +1248,56 @@ if ($route) {
                         </div>
                          <div x-show="ticketFareForm.showInboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
-                            <input type="text" x-model="ticketFareForm.inbound_date" placeholder="DD-MMM-YY" required
+                            <input type="text" x-model="ticketFareForm.inbound_date" placeholder="DD-MMM-YY"
+                                   @input="ticketFareForm.errors.inbound_date = ''"
                                    :class="ticketFareForm.errors.inbound_date ? 'border-red-500' : ''"
                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <p x-show="ticketFareForm.errors.inbound_date" x-text="ticketFareForm.errors.inbound_date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div x-show="ticketFareForm.showOutboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
-                            <input type="text" x-model="ticketFareForm.outbound_date" placeholder="DD-MMM-YY" required
+                            <input type="text" x-model="ticketFareForm.outbound_date" placeholder="DD-MMM-YY"
+                                   @input="ticketFareForm.errors.outbound_date = ''"
                                    :class="ticketFareForm.errors.outbound_date ? 'border-red-500' : ''"
                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <p x-show="ticketFareForm.errors.outbound_date" x-text="ticketFareForm.errors.outbound_date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">PNR</label>
-                            <input type="text" x-model="ticketFareForm.pnr" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter PNR">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">PNR *</label>
+                            <input type="text" x-model="ticketFareForm.pnr"
+                                   @input="ticketFareForm.errors.pnr = ''"
+                                   :class="ticketFareForm.errors.pnr ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter PNR">
+                            <p x-show="ticketFareForm.errors.pnr" x-text="ticketFareForm.errors.pnr" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Number *</label>
-                            <input type="text" x-model="ticketFareForm.ticket_number" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter Ticket Number">
+                            <input type="text" x-model="ticketFareForm.ticket_number"
+                                   @input="ticketFareForm.errors.ticket_number = ''"
+                                   :class="ticketFareForm.errors.ticket_number ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter Ticket Number">
+                            <p x-show="ticketFareForm.errors.ticket_number" x-text="ticketFareForm.errors.ticket_number" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
-                            <input type="text" x-model="ticketFareForm.date" placeholder="DD-MMM-YY" required
+                            <input type="text" x-model="ticketFareForm.date" placeholder="DD-MMM-YY"
+                                   @input="ticketFareForm.errors.date = ''"
                                    :class="ticketFareForm.errors.date ? 'border-red-500' : ''"
                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <p x-show="ticketFareForm.errors.date" x-text="ticketFareForm.errors.date" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
-                            <select x-model="ticketFareForm.ticket_agent" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="ticketFareForm.ticket_agent"
+                                    @change="ticketFareForm.errors.ticket_agent = ''"
+                                    :class="ticketFareForm.errors.ticket_agent ? 'border-red-500' : ''"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Agent</option>
                                 <template x-for="agent in ticketAgents" :key="agent.id">
                                     <option :value="agent.name" x-text="agent.name"></option>
                                 </template>
                             </select>
+                            <p x-show="ticketFareForm.errors.ticket_agent" x-text="ticketFareForm.errors.ticket_agent" class="text-xs text-red-500 mt-1"></p>
                         </div>
                     </div>
                 </div>
@@ -1438,35 +1457,59 @@ if ($route) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
-                                <input type="number" x-model="ticketFareForm.selling_fare" min="0" step="0.000001" @input="handleTicketFareSarInput('selling_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
+                                <input type="number" x-model="ticketFareForm.selling_fare" min="0" step="0.000001"
+                                       @input="handleTicketFareSarInput('selling_fare'); ticketFareForm.errors.selling_fare = ''"
+                                       :class="ticketFareForm.errors.selling_fare ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="ticketFareForm.errors.selling_fare" x-text="ticketFareForm.errors.selling_fare" class="text-xs text-red-500 mt-1"></p>
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
-                                <input type="number" x-model="ticketFareForm.selling_fare_bdt" min="0" step="0.000001" @input="handleTicketFareBdtInput('selling_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) *</label>
+                                <input type="number" x-model="ticketFareForm.selling_fare_bdt" min="0" step="0.000001"
+                                       @input="handleTicketFareBdtInput('selling_fare'); ticketFareForm.errors.selling_fare = ''"
+                                       :class="ticketFareForm.errors.selling_fare ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <input type="number" x-model="ticketFareForm.selling_fare" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="ticketFareForm.errors.selling_fare" x-text="ticketFareForm.errors.selling_fare" class="text-xs text-red-500 mt-1"></p>
                             </div>
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
-                                <input type="number" x-model="ticketFareForm.net_fare" min="0" step="0.000001" @input="handleTicketFareSarInput('net_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR) *</label>
+                                <input type="number" x-model="ticketFareForm.net_fare" min="0" step="0.000001"
+                                       @input="handleTicketFareSarInput('net_fare'); ticketFareForm.errors.net_fare = ''"
+                                       :class="ticketFareForm.errors.net_fare ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="ticketFareForm.errors.net_fare" x-text="ticketFareForm.errors.net_fare" class="text-xs text-red-500 mt-1"></p>
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
-                                <input type="number" x-model="ticketFareForm.net_fare_bdt" min="0" step="0.000001" @input="handleTicketFareBdtInput('net_fare')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT) *</label>
+                                <input type="number" x-model="ticketFareForm.net_fare_bdt" min="0" step="0.000001"
+                                       @input="handleTicketFareBdtInput('net_fare'); ticketFareForm.errors.net_fare = ''"
+                                       :class="ticketFareForm.errors.net_fare ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <input type="number" x-model="ticketFareForm.net_fare" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="ticketFareForm.errors.net_fare" x-text="ticketFareForm.errors.net_fare" class="text-xs text-red-500 mt-1"></p>
                             </div>
                         </div>
                         <div x-show="ticketFareForm.ticket_type === 'offer'">
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
-                                <input type="number" x-model="ticketFareForm.offer_price" min="0" step="0.000001" @input="handleTicketFareSarInput('offer_price')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
+                                <input type="number" x-model="ticketFareForm.offer_price" min="0" step="0.000001"
+                                       @input="handleTicketFareSarInput('offer_price'); ticketFareForm.errors.offer_price = ''"
+                                       :class="ticketFareForm.errors.offer_price ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="ticketFareForm.errors.offer_price" x-text="ticketFareForm.errors.offer_price" class="text-xs text-red-500 mt-1"></p>
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
-                                <input type="number" x-model="ticketFareForm.offer_price_bdt" min="0" step="0.000001" @input="handleTicketFareBdtInput('offer_price')" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) *</label>
+                                <input type="number" x-model="ticketFareForm.offer_price_bdt" min="0" step="0.000001"
+                                       @input="handleTicketFareBdtInput('offer_price'); ticketFareForm.errors.offer_price = ''"
+                                       :class="ticketFareForm.errors.offer_price ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <input type="number" x-model="ticketFareForm.offer_price" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="ticketFareForm.errors.offer_price" x-text="ticketFareForm.errors.offer_price" class="text-xs text-red-500 mt-1"></p>
                             </div>
                         </div>
                     </div>
@@ -1652,13 +1695,16 @@ function bookingIndexApp() {
         selectedBookingDateTo: '{{ $selectedBookingDateTo ?? '' }}',
         selectedFingerprintLocation: '{{ $selectedFingerprintLocation ?? '' }}',
         selectedPassengerStatus: '{{ $selectedPassengerStatus ?? '' }}',
-        selectedRouteId: '{{ $selectedRouteId ?? '' }}',
+        selectedRouteDisplay: '{{ $selectedRouteDisplay ?? '' }}',
         selectedPackageId: '{{ $selectedPackageId ?? '' }}',
         selectedTicketAgentId: '{{ $selectedTicketAgentId ?? '' }}',
         selectedActualFlightFrom: '{{ $selectedActualFlightFrom ?? '' }}',
         selectedActualFlightTo: '{{ $selectedActualFlightTo ?? '' }}',
         selectedReturnDateFrom: '{{ $selectedReturnDateFrom ?? '' }}',
         selectedReturnDateTo: '{{ $selectedReturnDateTo ?? '' }}',
+        selectedStatusChangeAction: '{{ $selectedStatusChangeAction ?? '' }}',
+        selectedStatusChangeFrom: '{{ $selectedStatusChangeFrom ?? '' }}',
+        selectedStatusChangeTo: '{{ $selectedStatusChangeTo ?? '' }}',
         selectedFlightDateRange: '',
         flightDateRanges: @json($flightDateRanges),
         totalPassengerCount: {{ $totalPassengerCount }},
@@ -1880,11 +1926,12 @@ function bookingIndexApp() {
 
         onRouteChange() {
             const url = new URL(window.location.href);
-            if (this.selectedRouteId) {
-                url.searchParams.set('route_id', this.selectedRouteId);
+            if (this.selectedRouteDisplay) {
+                url.searchParams.set('route_display', this.selectedRouteDisplay);
             } else {
-                url.searchParams.delete('route_id');
+                url.searchParams.delete('route_display');
             }
+            url.searchParams.delete('route_id');
             url.searchParams.delete('page');
             window.location.href = url.toString();
         },
@@ -1971,14 +2018,44 @@ function bookingIndexApp() {
             window.location.href = url.toString();
         },
 
+        onStatusChangeActionChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedStatusChangeAction) {
+                url.searchParams.set('status_change_action', this.selectedStatusChangeAction);
+            } else {
+                url.searchParams.delete('status_change_action');
+                url.searchParams.delete('status_change_from');
+                url.searchParams.delete('status_change_to');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
+        onStatusChangeDateChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedStatusChangeFrom) {
+                url.searchParams.set('status_change_from', this.selectedStatusChangeFrom);
+            } else {
+                url.searchParams.delete('status_change_from');
+            }
+            if (this.selectedStatusChangeTo) {
+                url.searchParams.set('status_change_to', this.selectedStatusChangeTo);
+            } else {
+                url.searchParams.delete('status_change_to');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
         clearPassengerFilters() {
             const url = new URL(window.location);
             ['fingerprint_status', 'visa_status', 'ticket_status',
-             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_id', 'package_id',
+             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_display', 'package_id',
              'booking_branch_id', 'booking_date_from', 'booking_date_to',
              'actual_flight_from', 'actual_flight_to',
              'return_date_from', 'return_date_to',
              'flight_date_from', 'flight_date_to',
+             'status_change_action', 'status_change_from', 'status_change_to',
              'search', 'page'
             ].forEach(p => url.searchParams.delete(p));
             url.searchParams.set('tab', 'passenger');
@@ -2673,9 +2750,15 @@ function bookingIndexApp() {
             showOutboundDate: false,
             showBaggage: false,
             errors: {
+                pnr: '',
+                ticket_number: '',
+                date: '',
+                ticket_agent: '',
+                selling_fare: '',
+                net_fare: '',
+                offer_price: '',
                 inbound_date: '',
                 outbound_date: '',
-                date: '',
             },
         },
 
@@ -3023,9 +3106,28 @@ function bookingIndexApp() {
         handleTicketFareSubmit() {
             if (this.editingPassengerIndex === null) return;
 
-            if (!this.validateTicketFareDates()) {
-                const firstError = Object.values(this.ticketFareForm.errors).find(e => e);
+            const f = this.ticketFareForm;
+            f.errors = { pnr: '', ticket_number: '', date: '', ticket_agent: '', selling_fare: '', net_fare: '', offer_price: '', inbound_date: '', outbound_date: '' };
+
+            if (!f.pnr || !f.pnr.trim()) f.errors.pnr = 'PNR is required';
+            if (!f.ticket_number || !f.ticket_number.trim()) f.errors.ticket_number = 'Ticket number is required';
+            if (!f.date || !f.date.trim()) f.errors.date = 'Issue date is required';
+            if (!f.ticket_agent) f.errors.ticket_agent = 'Please select a ticket agent';
+            if (!f.selling_fare || parseFloat(f.selling_fare) <= 0) f.errors.selling_fare = 'Selling fare must be greater than 0';
+            if (!f.net_fare || parseFloat(f.net_fare) <= 0) f.errors.net_fare = 'Net fare must be greater than 0';
+            if (f.ticket_type === 'offer' && (!f.offer_price || parseFloat(f.offer_price) <= 0)) f.errors.offer_price = 'Offer price must be greater than 0';
+            if (f.showInboundDate && (!f.inbound_date || !f.inbound_date.trim())) f.errors.inbound_date = 'Inbound date is required';
+            if (f.showOutboundDate && (!f.outbound_date || !f.outbound_date.trim())) f.errors.outbound_date = 'Outbound date is required';
+
+            const firstError = Object.values(f.errors).find(e => e);
+            if (firstError) {
                 this.showToast(firstError, 'error');
+                return;
+            }
+
+            if (!this.validateTicketFareDates()) {
+                const firstError2 = Object.values(f.errors).find(e => e);
+                this.showToast(firstError2, 'error');
                 return;
             }
 
