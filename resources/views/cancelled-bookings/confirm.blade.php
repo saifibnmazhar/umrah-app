@@ -11,6 +11,7 @@
     paymentMethod: 'cash',
     remarks: '',
     branchLocation: '{{ $booking->bookingBranch?->location ?? '' }}',
+    currency: '{{ $booking->bookingBranch?->location === 'BD' ? 'BDT' : 'SAR' }}',
 }">
     <div class="mb-6">
         <a href="{{ route('pending-refunds.index') }}" class="text-slate-400 hover:text-slate-600 inline-flex items-center gap-1">
@@ -128,8 +129,11 @@
                     {{-- Currency --}}
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Currency</label>
-                        <input type="text" :value="branchLocation === 'BD' ? 'BDT' : 'SAR'" readonly
-                               class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        <select x-model="currency"
+                                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="SAR">SAR</option>
+                            <option value="BDT">BDT</option>
+                        </select>
                     </div>
 
                     {{-- Payment Method --}}
