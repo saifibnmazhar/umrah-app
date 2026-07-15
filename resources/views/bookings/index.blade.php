@@ -646,7 +646,7 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice)<div class="font-medium">Total: @currency($passenger->booking->invoice->total_amount, 2, $passBookingRate)</div><div class="font-medium">Due: @currency($passenger->booking->invoice->balance, 2, $passBookingRate)</div>@else—@endif @endif</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->stay_duration ?? '—' }}</td>
     @if($canViewVisaColumns)
-    <td class="px-3 py-2">
+    <td class="px-3 py-2" x-init="$nextTick(() => console.log('P'+{{ $loop->index }}+': visa='+((passengersVisaData[{{ $loop->index }}]?.visa?.status)||'null')+' fp='+((passengersTicketData[{{ $loop->index }}]?.fingerprint_status)||'null')+' canc='+passengersTicketData[{{ $loop->index }}]?.is_cancelled))">
         <div class="flex items-center gap-1 flex-wrap">
             <template x-if="passengersVisaData[{{ $loop->index }}]?.visa">
                 <span x-show="['submitted','issued'].includes(passengersVisaData[{{ $loop->index }}]?.visa?.status)" class="text-slate-800 font-medium text-xs mr-1" x-text="$currency(passengersVisaData[{{ $loop->index }}]?.visa?.net_visa_cost, 2, passengersVisaData[{{ $loop->index }}]?.rate)"></span>
@@ -659,24 +659,32 @@ if ($route) {
             </template>
 
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
-                <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                    <button @click="openVisaSubmitModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Submit</button>
-                </template>
-                <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                    <button @click="openVisaIssueModal({{ $loop->index }})" class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
-                </template>
-                <template x-if="(passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' || passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                    <button @click="openVisaEditModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
-                </template>
-                <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted'">
-                    <button @click="openVisaCancelModal({{ $loop->index }})" class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Cancel</button>
-                </template>
-                <template x-if="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                    <button @click="openVisaResubmitModal({{ $loop->index }})" class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
-                </template>
-                <template x-if="passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
-                    <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
-                </template>
+                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
+                        @click="openVisaSubmitModal({{ $loop->index }})"
+                        class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Submit</button>
+            </template>
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
+                        @click="openVisaIssueModal({{ $loop->index }})"
+                        class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
+            </template>
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <button x-show="(passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' || passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
+                        @click="openVisaEditModal({{ $loop->index }})"
+                        class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
+            </template>
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted'"
+                        @click="openVisaCancelModal({{ $loop->index }})"
+                        class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Cancel</button>
+            </template>
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
+                        @click="openVisaResubmitModal({{ $loop->index }})"
+                        class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
+            </template>
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
+                <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
             </template>
             <template x-if="passengersTicketData[{{ $loop->index }}]?.is_cancelled">
                 <span class="text-xs text-slate-400 italic">Booking Cancelled</span>
