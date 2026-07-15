@@ -61,6 +61,8 @@ class BookingCancellationViewController extends Controller
 
     public function pendingRefunds(Request $request)
     {
+        $this->ensureFingerprintAdminHasBranch();
+
         $query = CancelledBooking::with([
             'booking.customer',
             'booking.bookingBranch',
@@ -90,8 +92,18 @@ class BookingCancellationViewController extends Controller
 
     private function ensureBranchAccess(CancelledBooking $cancelledBooking): void
     {
+        $this->ensureFingerprintAdminHasBranch();
+
         if (auth()->user()->branch_id
             && auth()->user()->branch_id !== $cancelledBooking->cancellation_branch_id) {
+            abort(403);
+        }
+    }
+
+    private function ensureFingerprintAdminHasBranch(): void
+    {
+        if (auth()->user()->roles->pluck('name')->intersect(['Fingerprint Admin'])->isNotEmpty()
+            && !auth()->user()->branch_id) {
             abort(403);
         }
     }

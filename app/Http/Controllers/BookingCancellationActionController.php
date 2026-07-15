@@ -144,6 +144,11 @@ class BookingCancellationActionController extends Controller
 
     private function ensureBranchAccess(CancelledBooking $cancelledBooking): void
     {
+        if (auth()->user()->roles->pluck('name')->intersect(['Fingerprint Admin'])->isNotEmpty()
+            && !auth()->user()->branch_id) {
+            abort(403);
+        }
+
         if (auth()->user()->branch_id
             && auth()->user()->branch_id !== $cancelledBooking->cancellation_branch_id) {
             abort(403);
