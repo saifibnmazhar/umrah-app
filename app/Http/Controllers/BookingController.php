@@ -1540,6 +1540,14 @@ class BookingController extends Controller
 
             [$payment, $voucher] = app(PaymentService::class)->createCustomerPaymentAndUpdateInvoice($invoice, $paymentData);
 
+            $invoice->refresh();
+            if ($booking->is_cancelled
+                && $booking->cancelledBooking?->status?->value === 'cancellation processing') {
+                $booking->cancelledBooking->update([
+                    'total_paid' => $invoice->paid_amount,
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Payment saved successfully',
