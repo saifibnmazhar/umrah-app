@@ -45,7 +45,7 @@
                         <th class="px-3 py-2 text-right font-medium">Refund Amount</th>
                         <th class="px-3 py-2 text-left font-medium">Cancel Date</th>
                         @if($canSeeCancelledBy)<th class="px-3 py-2 text-left font-medium">Cancelled By</th>@endif
-                        <th class="px-3 py-2 text-center font-medium">Actions</th>
+                        @unless($canSeeCancelledBy)<th class="px-3 py-2 text-center font-medium">Actions</th>@endunless
                     </tr>
                 </thead>
                 <tbody class="divide-y divide-slate-200">
@@ -66,6 +66,7 @@
                         <td class="px-3 py-2 text-slate-800 font-medium text-right">@currency($cb->refund_amount, 2)</td>
                         <td class="px-3 py-2 text-slate-600">{{ $cb->created_at->format('Y-m-d') }}</td>
                         @if($canSeeCancelledBy)<td class="px-3 py-2 text-slate-600">{{ $cb->user?->name ?? '—' }}</td>@endif
+                        @unless($canSeeCancelledBy)
                         <td class="px-3 py-2 text-center whitespace-nowrap">
                             <form method="POST" action="{{ route('cancelled-bookings.revert', $cb->id) }}"
                                   onsubmit="return confirm('Revert this cancellation? The booking will be restored to active.')" class="inline">
@@ -79,10 +80,11 @@
                                 Confirm
                             </a>
                         </td>
+                        @endunless
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="{{ $canSeeCancelledBy ? 10 : 9 }}" class="px-3 py-4 text-center text-slate-500">No pending refunds found</td>
+                        <td colspan="9" class="px-3 py-4 text-center text-slate-500">No pending refunds found</td>
                     </tr>
                     @endforelse
                 </tbody>
