@@ -21,5 +21,7 @@ Route::post('/cancelled-bookings/{cancelledBooking}/revert', [BookingCancellatio
     ->name('cancelled-bookings.revert')->middleware('role:Branch Manager,Fingerprint Admin');
 Route::post('/cancelled-bookings/{cancelledBooking}/confirm', [BookingCancellationActionController::class, 'confirmSubmit'])
     ->name('cancelled-bookings.confirm.submit')->middleware('role:Branch Manager,Fingerprint Admin');
+Route::put('/api/cancelled-bookings/{cancelledBooking}/refund-amount', [BookingCancellationActionController::class, 'updateRefundAmount'])
+    ->name('cancelled-bookings.refund-amount.update')->middleware('role:Branch Manager,Fingerprint Admin');
 Route::get('/api/reports/booking-cancellation', [BookingCancellationActionController::class, 'reportData'])
     ->name('report.booking-cancellation.data')->middleware('role:Super Admin,Co Admin,Auditor');

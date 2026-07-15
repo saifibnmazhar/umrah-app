@@ -8,14 +8,25 @@
 <div class="max-w-4xl mx-auto" x-data="{
     refundAmount: '{{ $cancelledBooking->refund_amount }}',
     refundAmountBdt: '',
+    originalRefundAmount: '{{ $cancelledBooking->refund_amount }}',
+    cancelledBookingId: '{{ $cancelledBooking->id }}',
+    totalPaid: '{{ $invoice?->paid_amount ?? 0 }}',
+    totalCost: '{{ $costSummary['total_cost'] ?? 0 }}',
     paymentMethod: 'cash',
     remarks: '',
     branchLocation: '{{ $booking->bookingBranch?->location ?? '' }}',
     currency: $store.currency.mode,
+    toastMessage: '',
+    toastType: 'info',
+    toastVisible: false,
     init() {
         if ($store.currency.mode === 'BDT' && $store.currency.rate > 0 && this.refundAmount) {
             this.refundAmountBdt = Math.round(parseFloat(this.refundAmount) * $store.currency.rate * 100) / 100;
         }
+        this.$watch('refundAmount', () => {
+            if (this._refundTimer) clearTimeout(this._refundTimer);
+            this._refundTimer = setTimeout(() => this.saveRefundAmount(), 800);
+        });
         this.$watch('currency', (mode) => {
             $store.currency.mode = mode;
             localStorage.setItem('currency_mode', mode);
@@ -31,6 +42,34 @@
                 this.refundAmountBdt = '';
             }
         });
+    },
+    get effectiveServiceCharge() {
+        const paid = parseFloat(this.totalPaid) || 0;
+        const cost = parseFloat(this.totalCost) || 0;
+        const refund = parseFloat(this.refundAmount) || 0;
+        const result = paid - cost - refund;
+        return result > 0 ? result.toFixed(6) : '0.000000';
+    },
+    showToast(message, type = 'info') {
+        this.toastMessage = message;
+        this.toastType = type;
+        this.toastVisible = true;
+        if (this._toastTimer) clearTimeout(this._toastTimer);
+        this._toastTimer = setTimeout(() => this.toastVisible = false, 3000);
+    },
+    async saveRefundAmount() {
+        try {
+            await fetch(`/api/cancelled-bookings/${this.cancelledBookingId}/refund-amount`, {
+                method: 'PUT',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                },
+                body: JSON.stringify({ refund_amount: this.refundAmount }),
+            });
+        } catch (e) {
+            console.error('Failed to save refund amount', e);
+        }
     },
 }">
     <div class="mb-6">
@@ -68,17 +107,11 @@
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500">Service Charge Deduction</span>
-                        <span class="font-medium text-slate-800">
-                            @if($cancelledBooking->service_charge_deduction !== null)
-                                @currency($cancelledBooking->service_charge_deduction)
-                            @else
-                                —
-                            @endif
-                        </span>
+                        <span class="font-medium text-slate-800" x-text="$currency(effectiveServiceCharge, 2)"></span>
                     </div>
                     <div class="flex justify-between text-sm pt-2 border-t border-slate-200">
                         <span class="text-slate-700 font-medium">Refund Amount</span>
-                        <span class="font-bold text-blue-700">@currency($cancelledBooking->refund_amount)</span>
+                        <span class="font-bold text-blue-700" x-text="$currency(refundAmount, 2)"></span>
                     </div>
                 </div>
             </div>
@@ -145,16 +178,30 @@
                         <div x-show="$store.currency.mode === 'BDT'" class="mb-3">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Refund Amount (BDT)</label>
                             <input type="number" x-model="refundAmountBdt" min="0" step="0.01"
-                                @input="refundAmount = parseFloat(((parseFloat(refundAmountBdt) || 0) / ($store.currency.rate || 1)).toFixed(6))"
+                                @input="
+                                    const bdt = parseFloat(refundAmountBdt) || 0;
+                                    const origSar = parseFloat(originalRefundAmount);
+                                    const origBdt = Math.round(origSar * ($store.currency.rate || 1) * 100) / 100;
+                                    if (bdt > origBdt) { refundAmountBdt = origBdt; showToast('Refund amount cannot exceed the original amount', 'warning'); return; }
+                                    refundAmount = parseFloat(((parseFloat(refundAmountBdt) || 0) / ($store.currency.rate || 1)).toFixed(6));
+                                "
                                 class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none font-medium"
                                 placeholder="Enter amount in BDT">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Refund Amount (SAR)</label>
                             <input type="number" x-model="refundAmount" step="0.000001" min="0"
+                                :max="originalRefundAmount"
                                 :readonly="$store.currency.mode === 'BDT'"
                                 :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}"
-                                @input="if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { refundAmountBdt = Math.round((parseFloat($event.target.value) || 0) * $store.currency.rate * 100) / 100; }"
+                                @input="
+                                    const val = parseFloat($event.target.value) || 0;
+                                    const orig = parseFloat(originalRefundAmount);
+                                    if (val > orig) { refundAmount = orig; showToast('Refund amount cannot exceed the original amount', 'warning'); }
+                                    if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) {
+                                        refundAmountBdt = Math.round((refundAmount || 0) * $store.currency.rate * 100) / 100;
+                                    }
+                                "
                                 class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none font-medium"
                                 placeholder="Enter amount in SAR">
                         </div>
@@ -206,6 +253,24 @@
                 </button>
             </form>
         </div>
+    </div>
+
+    {{-- Toast Notification --}}
+    <div x-show="toastVisible"
+         x-transition:enter="transition ease-out duration-300"
+         x-transition:enter-start="translate-x-full opacity-0"
+         x-transition:enter-end="translate-x-0 opacity-100"
+         x-transition:leave="transition ease-in duration-300"
+         x-transition:leave-start="translate-x-0 opacity-100"
+         x-transition:leave-end="translate-x-full opacity-0"
+         class="fixed top-4 right-4 z-50 px-4 py-3 rounded-lg shadow-lg text-white font-medium"
+         :class="{
+             'bg-slate-700': toastType === 'info',
+             'bg-emerald-600': toastType === 'success',
+             'bg-red-500': toastType === 'error',
+             'bg-amber-500': toastType === 'warning'
+         }">
+        <span x-text="toastMessage"></span>
     </div>
 </div>
 
