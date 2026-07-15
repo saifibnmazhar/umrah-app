@@ -111,7 +111,13 @@
                         <tr class="hover:bg-slate-50 border-b border-slate-200"
                             :class="['border-l-[3px] border-l-solid', row._isOddInvoice ? 'border-l-blue-500' : 'border-l-orange-500']"
                             :style="row._isLastPassenger ? 'border-bottom: 2px solid #94a3b8; border-bottom-style: solid;' : ''">
-                            <td class="px-3 py-2 text-slate-800 font-medium" x-text="row._isFirstPassenger ? row.invoice_id : ''"></td>
+                            <td class="px-3 py-2 text-slate-800 font-medium">
+                                <span x-text="row._isFirstPassenger ? row.invoice_id : ''"></span>
+                                <span x-show="row._isFirstPassenger && row.cancellation_status"
+                                      class="ml-2 px-1.5 py-0.5 text-xs font-semibold rounded"
+                                      :class="row.cancellation_status === 'cancellation processing' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'"
+                                      x-text="row.cancellation_status === 'cancellation processing' ? 'Cancellation Processing' : 'Cancelled'"></span>
+                            </td>
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.booking_date : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.customer_name : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.pax_qty : ''"></td>
@@ -127,10 +133,10 @@
                             <td class="px-3 py-2 text-slate-600" x-text="row._isFirstPassenger ? row.district : ''"></td>
                             <td class="px-3 py-2">
                                 <span x-show="row._isFirstPassenger">
-                                    <select @change="canAssignStaff && row.fingerprint_location !== 'office' && assignStaff(row.fingerprint_id, $event.target.value)"
-                                            :disabled="!canAssignStaff || row.fingerprint_location === 'office'"
+                                    <select @change="canAssignStaff && row.fingerprint_location !== 'office' && !row.is_cancelled && assignStaff(row.fingerprint_id, $event.target.value)"
+                                            :disabled="!canAssignStaff || row.fingerprint_location === 'office' || row.is_cancelled"
                                             class="text-xs border border-slate-300 rounded px-2 py-1 bg-white"
-                                            :class="!canAssignStaff || row.fingerprint_location === 'office' ? 'opacity-60 cursor-not-allowed' : ''">
+                                            :class="!canAssignStaff || row.fingerprint_location === 'office' || row.is_cancelled ? 'opacity-60 cursor-not-allowed' : ''">
                                         <option value="">Select Staff</option>
                                         <template x-for="staff in getStaffOptionsForRow(row)" :key="staff.id">
                                             <option :value="staff.id" :selected="staff.id == row.assigned_staff_id" x-text="staff.name"></option>
@@ -140,7 +146,7 @@
                             </td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.passenger_name"></td>
                             <td class="px-3 py-2">
-                                <template x-if="canAssignStaff && row.fingerprint_location === 'office'">
+                                <template x-if="canAssignStaff && row.fingerprint_location === 'office' && !row.is_cancelled">
                                     <select @change="handleStatusChange(row.fingerprint_detail_id, $event.target.value)"
                                             class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
                                         <template x-for="opt in displayStatuses" :key="opt">
@@ -150,7 +156,7 @@
                                         </template>
                                     </select>
                                 </template>
-                                <template x-if="!canAssignStaff || row.fingerprint_location !== 'office'">
+                                <template x-if="!canAssignStaff || row.fingerprint_location !== 'office' || row.is_cancelled">
                                     <span class="px-2 py-1 rounded-full text-xs font-medium"
                                           :class="getStatusClass(row.fingerprint_status_display)"
                                           x-text="row.fingerprint_status_display"></span>
