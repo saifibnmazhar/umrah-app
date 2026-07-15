@@ -38,6 +38,8 @@ class BookingCancellationViewController extends Controller
 
     public function confirm(CancelledBooking $cancelledBooking)
     {
+        $this->ensureBranchAccess($cancelledBooking);
+
         $cancelledBooking->load([
             'booking.customer',
             'booking.invoice',
@@ -66,6 +68,10 @@ class BookingCancellationViewController extends Controller
             'cancellationBranch',
         ])->where('status', CancelledBookingStatus::PROCESSING);
 
+        $query->when(auth()->user()->branch_id, fn ($q) =>
+            $q->where('cancellation_branch_id', auth()->user()->branch_id)
+        );
+
         if ($request->filled('branch_id')) {
             $query->where('cancellation_branch_id', $request->branch_id);
         }
@@ -80,5 +86,13 @@ class BookingCancellationViewController extends Controller
     {
         $branches = Branch::select('id', 'name')->orderBy('name')->get();
         return view('reports.booking-cancellation', compact('branches'));
+    }
+
+    private function ensureBranchAccess(CancelledBooking $cancelledBooking): void
+    {
+        if (auth()->user()->branch_id
+            && auth()->user()->branch_id !== $cancelledBooking->cancellation_branch_id) {
+            abort(403);
+        }
     }
 }

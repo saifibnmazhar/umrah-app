@@ -40,6 +40,8 @@ class BookingCancellationActionController extends Controller
 
     public function revert(CancelledBooking $cancelledBooking)
     {
+        $this->ensureBranchAccess($cancelledBooking);
+
         try {
             $service = app(CancellationService::class);
             $service->revertCancellation($cancelledBooking);
@@ -58,6 +60,8 @@ class BookingCancellationActionController extends Controller
 
     public function confirmSubmit(Request $request, CancelledBooking $cancelledBooking)
     {
+        $this->ensureBranchAccess($cancelledBooking);
+
         $validated = $request->validate([
             'payment_method' => 'required|in:' . implode(',', array_column(PaymentMethod::cases(), 'value')),
             'refund_amount' => 'required|numeric|min:0',
@@ -149,5 +153,13 @@ class BookingCancellationActionController extends Controller
                 'total' => $paginated->total(),
             ],
         ]);
+    }
+
+    private function ensureBranchAccess(CancelledBooking $cancelledBooking): void
+    {
+        if (auth()->user()->branch_id
+            && auth()->user()->branch_id !== $cancelledBooking->cancellation_branch_id) {
+            abort(403);
+        }
     }
 }
