@@ -103,11 +103,12 @@ class CancellationService
                     'payment_date'         => now(),
                     'payment_method'       => $paymentMethod,
                     'amount'               => $serviceCharge,
+                    'bdt_amount'           => 0,
                     'cancelled_booking_id' => $cancelledBooking->id,
                     'remarks'              => $remarks,
                 ]);
 
-                $deductionVoucher = Voucher::create([
+                $deductionVoucher = app(\App\Services\VoucherService::class)->createVoucher([
                     'invoice_id'           => $invoice->id,
                     'booking_id'           => $booking->id,
                     'payment_id'           => $deductionPayment->id,
@@ -118,6 +119,7 @@ class CancellationService
                     'payment_date'         => now(),
                     'payment_method'       => $paymentMethod,
                     'amount'               => $serviceCharge,
+                    'bdt_amount'           => 0,
                     'cancelled_booking_id' => $cancelledBooking->id,
                     'notes'                => $remarks,
                 ]);
@@ -138,11 +140,12 @@ class CancellationService
                 'payment_date'         => now(),
                 'payment_method'       => $paymentMethod,
                 'amount'               => $refundAmount,
+                'bdt_amount'           => 0,
                 'cancelled_booking_id' => $cancelledBooking->id,
                 'remarks'              => $remarks,
             ]);
 
-            $refundVoucher = Voucher::create([
+            $refundVoucher = app(\App\Services\VoucherService::class)->createVoucher([
                 'invoice_id'           => $invoice->id,
                 'booking_id'           => $booking->id,
                 'payment_id'           => $refundPayment->id,
@@ -153,6 +156,7 @@ class CancellationService
                 'payment_date'         => now(),
                 'payment_method'       => $paymentMethod,
                 'amount'               => $refundAmount,
+                'bdt_amount'           => 0,
                 'cancelled_booking_id' => $cancelledBooking->id,
                 'notes'                => $remarks,
             ]);

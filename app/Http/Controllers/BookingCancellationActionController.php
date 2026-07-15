@@ -46,15 +46,11 @@ class BookingCancellationActionController extends Controller
             $service = app(CancellationService::class);
             $service->revertCancellation($cancelledBooking);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Cancellation reverted',
-            ]);
+            return redirect()->route('pending-refunds.index')
+                ->with('success', 'Cancellation reverted successfully.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 422);
+            return redirect()->route('pending-refunds.index')
+                ->with('error', $e->getMessage());
         }
     }
 
@@ -70,22 +66,13 @@ class BookingCancellationActionController extends Controller
 
         try {
             $service = app(CancellationService::class);
-            $result = $service->confirmCancellation($cancelledBooking, $validated);
+            $service->confirmCancellation($cancelledBooking, $validated);
 
-            return response()->json([
-                'success' => true,
-                'message' => 'Refund processed',
-                'data' => [
-                    'id' => $result->id,
-                    'status' => $result->status->value,
-                    'refund_amount' => $result->refund_amount,
-                ],
-            ]);
+            return redirect()->route('pending-refunds.index')
+                ->with('success', 'Refund processed successfully.');
         } catch (\Exception $e) {
-            return response()->json([
-                'success' => false,
-                'message' => $e->getMessage(),
-            ], 422);
+            return redirect()->route('pending-refunds.index')
+                ->with('error', $e->getMessage());
         }
     }
 
