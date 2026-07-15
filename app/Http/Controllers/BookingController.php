@@ -1543,8 +1543,13 @@ class BookingController extends Controller
             $invoice->refresh();
             if ($booking->is_cancelled
                 && $booking->cancelledBooking?->status?->value === 'cancellation processing') {
+                $costSummary = app(\App\Services\CostTrackingService::class)->getBookingCostSummary($booking);
+                $totalCost = $costSummary['total_cost'];
+                $serviceCharge = $booking->cancelledBooking->service_charge_deduction ?? 0;
+                $refundAmount = $invoice->paid_amount - $totalCost - $serviceCharge;
                 $booking->cancelledBooking->update([
                     'total_paid' => $invoice->paid_amount,
+                    'refund_amount' => $refundAmount,
                 ]);
             }
 
