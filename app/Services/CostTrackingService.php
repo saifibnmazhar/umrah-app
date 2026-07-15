@@ -3,30 +3,21 @@
 namespace App\Services;
 
 use App\Models\Booking;
-use App\Enums\FingerprintStatus;
 use Illuminate\Support\Collection;
 
 class CostTrackingService
 {
     public function getPassengerCosts(Booking $booking): Collection
     {
-        $eligibleFingerprintCount = $booking->passengers->filter(fn($p) =>
-            in_array($p->fingerprintDetail?->status?->value, [
-                FingerprintStatus::PROCESSING->value,
-                FingerprintStatus::DONE->value,
-                FingerprintStatus::APPROVED->value,
-            ])
-        )->count();
-
         $fingerprintCost = $booking->fingerprint?->cost ?? 0;
-        $perPassengerFpCost = $eligibleFingerprintCount > 0
-            ? $fingerprintCost / $eligibleFingerprintCount
+        $perPassengerFpCost = $booking->passengers->count() > 0
+            ? $fingerprintCost / $booking->passengers->count()
             : 0;
 
         return $booking->passengers->map(fn($p) => [
             'passenger_id'     => $p->id,
             'passenger_name'   => $p->first_name . ' ' . $p->last_name,
-            'fingerprint_cost' => $this->isFingerprintEligible($p) ? $perPassengerFpCost : 0,
+            'fingerprint_cost' => $fingerprintCost > 0 ? $perPassengerFpCost : 0,
             'visa_cost'        => $this->getPassengerVisaCost($p),
             'ticket_cost'      => $this->getPassengerTicketCost($p),
             'total_cost'       => 0,
@@ -45,15 +36,6 @@ class CostTrackingService
             'total_cost'       => $passengerCosts->sum('total_cost'),
             'passengers'       => $passengerCosts,
         ];
-    }
-
-    private function isFingerprintEligible($passenger): bool
-    {
-        return in_array($passenger->fingerprintDetail?->status?->value, [
-            FingerprintStatus::PROCESSING->value,
-            FingerprintStatus::DONE->value,
-            FingerprintStatus::APPROVED->value,
-        ]);
     }
 
     private function getPassengerVisaCost($passenger): float
