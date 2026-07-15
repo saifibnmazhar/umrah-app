@@ -77,7 +77,13 @@
                     </template>
                     <template x-for="(row, index) in data" :key="row.fingerprint_detail_id || index">
                         <tr :class="getRowClass(row)">
-                            <td class="px-3 py-2 text-slate-800 font-medium" x-text="row.isFirstInGroup ? (row.invoice_id || '-') : ''"></td>
+                            <td class="px-3 py-2 text-slate-800 font-medium">
+                                <span x-text="row.isFirstInGroup ? (row.invoice_id || '-') : ''"></span>
+                                <span x-show="row.isFirstInGroup && row.cancellation_status"
+                                      class="ml-2 px-1.5 py-0.5 text-xs font-semibold rounded"
+                                      :class="row.cancellation_status === 'cancellation processing' ? 'bg-amber-100 text-amber-700' : 'bg-red-100 text-red-700'"
+                                      x-text="row.cancellation_status === 'cancellation processing' ? 'Cancellation Processing' : 'Cancelled'"></span>
+                            </td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? (row.customer_name || '-') : ''"></td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.isFirstInGroup ? row.pax_qty : ''"></td>
                             <td class="px-3 py-2 text-slate-600 whitespace-pre-line" x-text="getMobileDisplay(row)"></td>
@@ -88,17 +94,17 @@
                             <td class="px-3 py-2 text-slate-600" x-text="row.passenger_address || '-'"></td>
                             <td class="px-3 py-2 text-right">
                                 <input type="number"
-                                       x-show="row.isFirstInGroup && row.can_edit_cost"
+                                       x-show="row.isFirstInGroup && row.can_edit_cost && !row.is_cancelled"
                                         :value="inputValue(row.cost, row.rate, currencyToggleCounter)"
                                         @change="updateCost(row.fingerprint_id, $event.target.value, row.rate)"
                                        class="w-20 text-right text-sm border border-slate-300 rounded px-2 py-1"
                                        min="0">
-<span x-show="row.isFirstInGroup && !row.can_edit_cost"
+<span x-show="row.isFirstInGroup && (!row.can_edit_cost || row.is_cancelled)"
       class="text-sm text-slate-700 font-medium"
       x-text="formatCost(row.cost, row.rate, currencyToggleCounter)"></span>
                             </td>
                             <td class="px-3 py-2">
-                                <select x-show="canEditStatus"
+                                <select x-show="canEditStatus && !row.is_cancelled"
                                         @change="handleStatusChange(row.fingerprint_detail_id, $event, row.cost, row.fingerprint_location)"
                                         class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
                                     <template x-for="opt in displayStatuses" :key="opt">
@@ -107,7 +113,7 @@
                                                 x-text="opt"></option>
                                     </template>
                                 </select>
-                                <span x-show="!canEditStatus"
+                                <span x-show="!canEditStatus || row.is_cancelled"
                                       class="px-2 py-1 rounded-full text-xs font-medium"
                                       :class="getStatusClass(row.fingerprint_status_display)"
                                       x-text="row.fingerprint_status_display"></span>

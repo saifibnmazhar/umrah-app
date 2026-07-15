@@ -30,6 +30,7 @@ class Payment extends Model
         'notes',
         'remarks',
         'payment_referral',
+        'cancelled_booking_id',
     ];
 
     protected $casts = [
@@ -97,5 +98,10 @@ class Payment extends Model
     public function voucher(): HasOne
     {
         return $this->hasOne(Voucher::class)->latestOfMany();
+    }
+
+    public function cancelledBooking(): BelongsTo
+    {
+        return $this->belongsTo(CancelledBooking::class);
     }
 }

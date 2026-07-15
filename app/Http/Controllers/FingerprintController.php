@@ -24,6 +24,7 @@ class FingerprintController extends Controller
             'booking.customer',
             'booking.district',
             'booking.passengers',
+            'booking.cancelledBooking',
             'fingerprintDetails.passenger',
             'fingerprintDetails.rescheduledFingerprints',
             'assignedStaff'
@@ -143,6 +144,8 @@ class FingerprintController extends Controller
                         'fingerprint_status' => $detail?->status?->value ?? 'none',
                         'fingerprint_status_display' => $statusDisplay,
                         'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
+                        'is_cancelled' => $booking->is_cancelled,
+                        'cancellation_status' => $booking->cancelledBooking?->status?->value,
                         'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
                         'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
                         'required_flight_date' => $passenger->flight_date_from && $passenger->flight_date_to
@@ -176,6 +179,7 @@ class FingerprintController extends Controller
             'booking.district',
             'booking.fingerprintBranch',
             'booking.passengers',
+            'booking.cancelledBooking',
             'fingerprintDetails.passenger'
         ])->orderBy('created_at', 'desc');
 
@@ -288,6 +292,8 @@ class FingerprintController extends Controller
                         'fingerprint_status' => $detail?->status?->value ?? 'none',
                         'fingerprint_status_display' => $statusDisplay,
                         'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
+                        'is_cancelled' => $booking->is_cancelled,
+                        'cancellation_status' => $booking->cancelledBooking?->status?->value,
                         'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
                         'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
                     ];
@@ -334,6 +340,13 @@ class FingerprintController extends Controller
      */
     public function assignStaff(Request $request, Fingerprint $fingerprint): JsonResponse
     {
+        if ($fingerprint->booking->is_cancelled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot assign staff for a cancelled booking'
+            ], 422);
+        }
+
         $validated = $request->validate([
             'assigned_staff_id' => 'required|exists:users,id',
         ]);
@@ -352,6 +365,13 @@ class FingerprintController extends Controller
      */
     public function updateCost(Request $request, Fingerprint $fingerprint): JsonResponse
     {
+        if ($fingerprint->booking->is_cancelled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot update cost for a cancelled booking'
+            ], 422);
+        }
+
         $user = auth()->user();
         if (!$user->hasRole('Super Admin') && !$user->hasRole('Co Admin') && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
@@ -387,6 +407,13 @@ class FingerprintController extends Controller
         $fingerprint = $fingerprintDetail->fingerprint;
         if (!$user->hasRole('Super Admin') && !$user->hasRole('Co Admin') && !$user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
+        }
+
+        if ($fingerprint->booking->is_cancelled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot update status for a cancelled booking'
+            ], 422);
         }
 
         $validated = $request->validate([
@@ -449,6 +476,13 @@ class FingerprintController extends Controller
         $fingerprint = $fingerprintDetail->fingerprint;
         if (!$user->hasRole('Super Admin') && !$user->hasRole('Co Admin') && !$user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
+        }
+
+        if ($fingerprint->booking->is_cancelled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot hold fingerprint for a cancelled booking'
+            ], 422);
         }
 
         $validated = $request->validate([

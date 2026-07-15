@@ -1558,6 +1558,13 @@ class BookingController extends Controller
 
     public function storePayment(Request $request, Booking $booking)
     {
+        if ($booking->is_cancelled && $booking->cancelledBooking?->status?->value === 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot process payment for a cancelled booking.'
+            ], 422);
+        }
+
         $validated = $request->validate([
             'amount' => 'nullable|numeric|min:0',
             'amount_bdt' => 'nullable|numeric|min:0',
@@ -1614,6 +1621,19 @@ class BookingController extends Controller
 
             [$payment, $voucher] = app(PaymentService::class)->createCustomerPaymentAndUpdateInvoice($invoice, $paymentData);
 
+            $invoice->refresh();
+            if ($booking->is_cancelled
+                && $booking->cancelledBooking?->status?->value === 'cancellation processing') {
+                $costSummary = app(\App\Services\CostTrackingService::class)->getBookingCostSummary($booking);
+                $totalCost = $costSummary['total_cost'];
+                $serviceCharge = $booking->cancelledBooking->service_charge_deduction ?? 0;
+                $refundAmount = $invoice->paid_amount - $totalCost - $serviceCharge;
+                $booking->cancelledBooking->update([
+                    'total_paid' => $invoice->paid_amount,
+                    'refund_amount' => $refundAmount,
+                ]);
+            }
+
             return response()->json([
                 'success' => true,
                 'message' => 'Payment saved successfully',
@@ -1632,6 +1652,13 @@ class BookingController extends Controller
 
     public function updatePayment(Request $request, Booking $booking, Payment $payment)
     {
+        if ($booking->is_cancelled && $booking->cancelledBooking?->status?->value === 'cancelled') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot update payment for a cancelled booking.'
+            ], 422);
+        }
+
         $validated = $request->validate([
             'amount' => 'nullable|numeric|min:0',
             'amount_bdt' => 'nullable|numeric|min:0',

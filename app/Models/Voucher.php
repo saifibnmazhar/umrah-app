@@ -26,6 +26,7 @@ class Voucher extends Model
         'amount',
         'bdt_amount',
         'notes',
+        'cancelled_booking_id',
     ];
 
     protected $casts = [
@@ -88,5 +89,10 @@ class Voucher extends Model
     public function transactionType(): BelongsTo
     {
         return $this->belongsTo(TransactionType::class);
+    }
+
+    public function cancelledBooking(): BelongsTo
+    {
+        return $this->belongsTo(CancelledBooking::class);
     }
 }
