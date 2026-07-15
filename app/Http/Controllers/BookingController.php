@@ -275,16 +275,16 @@ class BookingController extends Controller
                 $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'))
             )
             ->when($request->filled('actual_flight_from'), fn ($q) =>
-                $q->whereHas('latestIssuedTicket', fn ($q) => $q->whereDate('inbound_date', '>=', $request->input('actual_flight_from')))
+                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '>=', $request->input('actual_flight_from')))
             )
             ->when($request->filled('actual_flight_to'), fn ($q) =>
-                $q->whereHas('latestIssuedTicket', fn ($q) => $q->whereDate('inbound_date', '<=', $request->input('actual_flight_to')))
+                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '<=', $request->input('actual_flight_to')))
             )
             ->when($request->filled('return_date_from'), fn ($q) =>
-                $q->whereHas('latestIssuedTicket', fn ($q) => $q->whereDate('outbound_date', '>=', $request->input('return_date_from')))
+                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '>=', $request->input('return_date_from')))
             )
             ->when($request->filled('return_date_to'), fn ($q) =>
-                $q->whereHas('latestIssuedTicket', fn ($q) => $q->whereDate('outbound_date', '<=', $request->input('return_date_to')))
+                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '<=', $request->input('return_date_to')))
             )
             ->when($request->filled('passenger_status'), fn ($q) =>
                 $q->where('passenger_status_id', $request->input('passenger_status'))
@@ -393,6 +393,7 @@ class BookingController extends Controller
                 'fingerprintDetail.fingerprint.fingerprintDetails',
                 'fingerprintDetail.approvedLog',
                 'ticketFare.baggageAllowances',
+                'allIssuedTickets',
                 'latestIssuedTicket.ticketAgent',
                 'latestIssuedTicket.ticketFare.airline',
                 'latestIssuedTicket.ticketFare.airlineClass.class',
