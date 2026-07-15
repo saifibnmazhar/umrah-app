@@ -227,8 +227,8 @@ class VisaAgentReportController extends Controller
                     if ($dateTo) $logQ->whereDate('created_at', '<=', $dateTo);
                 })->orWhere(function ($subQ) use ($dateFrom, $dateTo) {
                     $subQ->whereDoesntHave('logs', fn($lh) => $lh->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'"));
-                    if ($dateFrom) $subQ->whereDate('updated_at', '>=', $dateFrom);
-                    if ($dateTo) $subQ->whereDate('updated_at', '<=', $dateTo);
+                    if ($dateFrom) $subQ->whereDate('visa_submissions.updated_at', '>=', $dateFrom);
+                    if ($dateTo) $subQ->whereDate('visa_submissions.updated_at', '<=', $dateTo);
                 });
             });
         }
