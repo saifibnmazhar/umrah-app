@@ -4,14 +4,34 @@
 @php
     $booking = $cancelledBooking->booking;
     $invoice = $booking->invoice;
-    $rateVal = $bookingCurrencyRate;
 @endphp
 <div class="max-w-4xl mx-auto" x-data="{
     refundAmount: '{{ $cancelledBooking->refund_amount }}',
+    refundAmountBdt: '',
     paymentMethod: 'cash',
     remarks: '',
     branchLocation: '{{ $booking->bookingBranch?->location ?? '' }}',
-    currency: '{{ $booking->bookingBranch?->location === 'BD' ? 'BDT' : 'SAR' }}',
+    currency: $store.currency.mode,
+    init() {
+        if ($store.currency.mode === 'BDT' && $store.currency.rate > 0 && this.refundAmount) {
+            this.refundAmountBdt = Math.round(parseFloat(this.refundAmount) * $store.currency.rate * 100) / 100;
+        }
+        this.$watch('currency', (mode) => {
+            $store.currency.mode = mode;
+            localStorage.setItem('currency_mode', mode);
+            $store.currency.convertAll();
+            window.dispatchEvent(new CustomEvent('currency-toggled'));
+        });
+        window.addEventListener('currency-toggled', () => {
+            this.currency = $store.currency.mode;
+            const r = $store.currency.rate;
+            if ($store.currency.mode === 'BDT' && r > 0 && this.refundAmount) {
+                this.refundAmountBdt = Math.round(parseFloat(this.refundAmount) * r * 100) / 100;
+            } else {
+                this.refundAmountBdt = '';
+            }
+        });
+    },
 }">
     <div class="mb-6">
         <a href="{{ route('pending-refunds.index') }}" class="text-slate-400 hover:text-slate-600 inline-flex items-center gap-1">
@@ -40,17 +60,17 @@
                 <div class="space-y-3">
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500">Total Amount</span>
-                        <span class="font-medium text-slate-800">@currency($invoice?->total_amount ?? 0, 2, $rateVal)</span>
+                        <span class="font-medium text-slate-800">@currency($invoice?->total_amount ?? 0)</span>
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500">Total Paid</span>
-                        <span class="font-medium text-green-600">@currency($invoice?->paid_amount ?? 0, 2, $rateVal)</span>
+                        <span class="font-medium text-green-600">@currency($invoice?->paid_amount ?? 0)</span>
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500">Service Charge Deduction</span>
                         <span class="font-medium text-slate-800">
                             @if($cancelledBooking->service_charge_deduction !== null)
-                                @currency($cancelledBooking->service_charge_deduction, 2, $rateVal)
+                                @currency($cancelledBooking->service_charge_deduction)
                             @else
                                 —
                             @endif
@@ -58,7 +78,7 @@
                     </div>
                     <div class="flex justify-between text-sm pt-2 border-t border-slate-200">
                         <span class="text-slate-700 font-medium">Refund Amount</span>
-                        <span class="font-bold text-blue-700">@currency($cancelledBooking->refund_amount, 2, $rateVal)</span>
+                        <span class="font-bold text-blue-700">@currency($cancelledBooking->refund_amount)</span>
                     </div>
                 </div>
             </div>
@@ -69,19 +89,19 @@
                 <div class="space-y-3">
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500">Fingerprint Cost</span>
-                        <span class="font-medium">@currency($costSummary['fingerprint_cost'], 2, $rateVal)</span>
+                        <span class="font-medium">@currency($costSummary['fingerprint_cost'])</span>
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500">Visa Cost</span>
-                        <span class="font-medium">@currency($costSummary['visa_cost'], 2, $rateVal)</span>
+                        <span class="font-medium">@currency($costSummary['visa_cost'])</span>
                     </div>
                     <div class="flex justify-between text-sm">
                         <span class="text-slate-500">Ticket Cost</span>
-                        <span class="font-medium">@currency($costSummary['ticket_cost'], 2, $rateVal)</span>
+                        <span class="font-medium">@currency($costSummary['ticket_cost'])</span>
                     </div>
                     <div class="flex justify-between text-sm pt-2 border-t border-slate-200 font-semibold">
                         <span class="text-slate-700">Total Cost</span>
-                        <span>@currency($costSummary['total_cost'], 2, $rateVal)</span>
+                        <span>@currency($costSummary['total_cost'])</span>
                     </div>
                 </div>
             </div>
@@ -118,12 +138,23 @@
                 <div class="space-y-4">
                     {{-- Refund Amount --}}
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Refund Amount *</label>
-                        <div class="relative">
-                            <input type="number" x-model="refundAmount" step="0.000001"
-                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none font-medium">
+                        <div x-show="$store.currency.mode === 'BDT'" class="mb-3">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refund Amount (BDT)</label>
+                            <input type="number" x-model="refundAmountBdt" min="0" step="0.01"
+                                @input="refundAmount = parseFloat(((parseFloat(refundAmountBdt) || 0) / ($store.currency.rate || 1)).toFixed(6))"
+                                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none font-medium"
+                                placeholder="Enter amount in BDT">
                         </div>
-                        <p class="text-xs text-slate-400 mt-1">Default: {{ $cancelledBooking->refund_amount }} (Total Paid &minus; Total Cost &minus; Service Charge)</p>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refund Amount (SAR)</label>
+                            <input type="number" x-model="refundAmount" step="0.000001" min="0"
+                                :readonly="$store.currency.mode === 'BDT'"
+                                :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}"
+                                @input="if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { refundAmountBdt = Math.round((parseFloat($event.target.value) || 0) * $store.currency.rate * 100) / 100; }"
+                                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none font-medium"
+                                placeholder="Enter amount in SAR">
+                        </div>
+                        <p class="text-xs text-slate-400 mt-1">Default: {{ $cancelledBooking->refund_amount }} SAR (Total Paid &minus; Total Cost &minus; Service Charge)</p>
                     </div>
 
                     {{-- Currency --}}
