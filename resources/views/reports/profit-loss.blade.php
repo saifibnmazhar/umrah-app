@@ -145,6 +145,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <label class="text-sm font-semibold text-gray-700">To:</label>
                         <input type="date" x-model="date_to" @change="loadData()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
+                    <div class="flex items-center gap-2">
+                        <input type="text" x-model="search" placeholder="Search by Invoice ID, Customer Name, Passenger Name, Passport, Iqama"
+                               class="search-input w-72 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
                     <div class="flex items-center gap-2 ml-2">
                         <button @click="exportPDF()" class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
                             <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -190,12 +194,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
                                     </tr>
                                 </template>
-                                <template x-if="!loading && customers.length === 0">
+                                <template x-if="!loading && filteredCustomers.length === 0">
                                     <tr>
                                         <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
                                     </tr>
                                 </template>
-                                <template x-for="(row, index) in customers" :key="index">
+                                <template x-for="(row, index) in filteredCustomers" :key="index">
                                     <tr class="table-row">
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 font-medium text-gray-800" x-text="row.invoice_id"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-gray-800" x-text="row.customer_name"></td>
@@ -206,7 +210,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td class="px-4 py-3 text-sm text-right" :class="row.profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(row.profit)"></td>
                                     </tr>
                                 </template>
-                                <template x-if="!loading && customers.length > 0">
+                                <template x-if="!loading && filteredCustomers.length > 0">
                                     <tr class="table-header font-bold">
                                         <td class="px-4 py-3 text-sm border-r border-gray-300 text-gray-800" colspan="4">Grand Total</td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalCustomer.package_value)"></td>
@@ -239,12 +243,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
                                     </tr>
                                 </template>
-                                <template x-if="!loading && passengers.length === 0">
+                                <template x-if="!loading && filteredPassengers.length === 0">
                                     <tr>
                                         <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
                                     </tr>
                                 </template>
-                                <template x-for="(row, index) in passengers" :key="index">
+                                <template x-for="(row, index) in filteredPassengers" :key="index">
                                     <tr class="table-row">
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 font-medium text-gray-800" x-text="row.invoice_id"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-gray-800" x-text="row.customer_name"></td>
@@ -255,7 +259,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td class="px-4 py-3 text-sm text-right" :class="row.profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(row.profit)"></td>
                                     </tr>
                                 </template>
-                                <template x-if="!loading && passengers.length > 0">
+                                <template x-if="!loading && filteredPassengers.length > 0">
                                     <tr class="table-header font-bold">
                                         <td class="px-4 py-3 text-sm border-r border-gray-300 text-gray-800" colspan="4">Grand Total</td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalPassenger.package_value)"></td>
@@ -279,6 +283,7 @@ function profitLossReport() {
     return {
         date_from: '',
         date_to: '',
+        search: '',
         activeTab: 'customer',
         loading: false,
         customers: [],
@@ -315,8 +320,32 @@ function profitLossReport() {
             }
         },
 
+        get filteredCustomers() {
+            if (!this.search) return this.customers;
+            const q = this.search.toLowerCase();
+            return this.customers.filter(r =>
+                (r.invoice_id && r.invoice_id.toLowerCase().includes(q)) ||
+                (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
+                (r.customer_passport && r.customer_passport.toLowerCase().includes(q)) ||
+                (r.customer_iqama && r.customer_iqama.toLowerCase().includes(q))
+            );
+        },
+
+        get filteredPassengers() {
+            if (!this.search) return this.passengers;
+            const q = this.search.toLowerCase();
+            return this.passengers.filter(r =>
+                (r.invoice_id && r.invoice_id.toLowerCase().includes(q)) ||
+                (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
+                (r.passenger_name && r.passenger_name.toLowerCase().includes(q)) ||
+                (r.passenger_passport && r.passenger_passport.toLowerCase().includes(q)) ||
+                (r.customer_passport && r.customer_passport.toLowerCase().includes(q)) ||
+                (r.customer_iqama && r.customer_iqama.toLowerCase().includes(q))
+            );
+        },
+
         get grandTotalCustomer() {
-            return this.customers.reduce((acc, r) => {
+            return this.filteredCustomers.reduce((acc, r) => {
                 acc.package_value += r.package_value;
                 acc.total_cost += r.total_cost;
                 acc.profit += r.profit;
@@ -325,7 +354,7 @@ function profitLossReport() {
         },
 
         get grandTotalPassenger() {
-            return this.passengers.reduce((acc, r) => {
+            return this.filteredPassengers.reduce((acc, r) => {
                 acc.package_value += r.package_value;
                 acc.total_cost += r.total_cost;
                 acc.profit += r.profit;
