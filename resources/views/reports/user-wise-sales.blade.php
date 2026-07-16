@@ -330,7 +330,8 @@ function userSalesReport() {
 
         formatCurrency(amount) {
             const num = Number(amount) || 0;
-            return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' SAR';
+            const formatted = Alpine.store('currency').format(num, 0);
+            return formatted + (Alpine.store('currency').mode === 'BDT' ? ' BDT' : ' SAR');
         },
 
         exportPDF() {
