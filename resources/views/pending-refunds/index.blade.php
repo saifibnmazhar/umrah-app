@@ -38,6 +38,7 @@
                     <tr>
                         <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
                         <th class="px-3 py-2 text-left font-medium">Customer</th>
+                        <th class="px-3 py-2 text-left font-medium">PAX QTY</th>
                         <th class="px-3 py-2 text-left font-medium">Mobile</th>
                         <th class="px-3 py-2 text-left font-medium">Cancellation Branch</th>
                         <th class="px-3 py-2 text-right font-medium">Total Paid</th>
@@ -54,6 +55,7 @@
                     <tr>
                         <td class="px-3 py-2 text-slate-700">{{ $cb->booking?->invoice_id ?? '—' }}</td>
                         <td class="px-3 py-2 text-slate-700">{{ $cb->booking?->customer?->name ?? 'N/A' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ $cb->booking?->pax_qty ?? '—' }}</td>
                         <td class="px-3 py-2 text-slate-700">{{ $cb->booking?->customer?->mobile_no ?? 'N/A' }}</td>
                         <td class="px-3 py-2 text-slate-700">{{ $cb->cancellationBranch?->name ?? '—' }}</td>
                         <td class="px-3 py-2 text-slate-700 text-right">@currency($cb->total_paid, 2)</td>
@@ -96,7 +98,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="{{ $canSeeCancelledBy ? 10 : 9 }}" class="px-3 py-4 text-center text-slate-500">No pending refunds found</td>
+                        <td colspan="{{ $canSeeCancelledBy ? 11 : 10 }}" class="px-3 py-4 text-center text-slate-500">No pending refunds found</td>
                     </tr>
                     @endforelse
                 </tbody>

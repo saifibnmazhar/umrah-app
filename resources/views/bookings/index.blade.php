@@ -272,6 +272,12 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     <option value="{{ $location->value }}" {{ $selectedFingerprintLocation === $location->value ? 'selected' : '' }}>{{ ucfirst($location->value) }}</option>
                     @endforeach
                 </select>
+                <select x-model="selectedBookingStatus" @change="onBookingStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <option value="">Booking Status</option>
+                    <option value="active" {{ $selectedBookingStatus === 'active' ? 'selected' : '' }}>Active</option>
+                    <option value="cancellation_processing" {{ $selectedBookingStatus === 'cancellation_processing' ? 'selected' : '' }}>Cancellation Processing</option>
+                    <option value="cancelled" {{ $selectedBookingStatus === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                </select>
                 @unless(auth()->user()->branch_id)
                 <select
                     x-model="selectedBranchId"
@@ -1694,6 +1700,7 @@ function bookingIndexApp() {
         selectedBookingDateFrom: '{{ $selectedBookingDateFrom ?? '' }}',
         selectedBookingDateTo: '{{ $selectedBookingDateTo ?? '' }}',
         selectedFingerprintLocation: '{{ $selectedFingerprintLocation ?? '' }}',
+        selectedBookingStatus: '{{ $selectedBookingStatus ?? '' }}',
         selectedPassengerStatus: '{{ $selectedPassengerStatus ?? '' }}',
         selectedRouteDisplay: '{{ $selectedRouteDisplay ?? '' }}',
         selectedPackageId: '{{ $selectedPackageId ?? '' }}',
@@ -1905,10 +1912,21 @@ function bookingIndexApp() {
             window.location.href = url.toString();
         },
 
+        onBookingStatusChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedBookingStatus) {
+                url.searchParams.set('booking_status', this.selectedBookingStatus);
+            } else {
+                url.searchParams.delete('booking_status');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
         clearBookingFilters() {
             const url = new URL(window.location);
             ['search', 'booking_date_from', 'booking_date_to',
-             'fingerprint_location', 'booking_branch_id', 'page'
+             'fingerprint_location', 'booking_status', 'booking_branch_id', 'page'
             ].forEach(p => url.searchParams.delete(p));
             window.location.href = url.toString();
         },
