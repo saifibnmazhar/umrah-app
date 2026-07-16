@@ -289,7 +289,8 @@ function profitLossReport() {
 
         setDefaultDates() {
             const today = new Date();
-            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            const firstDay = new Date(today);
+            firstDay.setDate(today.getDate() - 30);
             this.date_from = firstDay.toISOString().split('T')[0];
             this.date_to = today.toISOString().split('T')[0];
         },
