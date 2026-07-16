@@ -236,7 +236,7 @@ select {
                     </div>
                 </div>
 
-                <div class="flex flex-col gap-4">
+                {{--<div class="flex flex-col gap-4">
                     <div class="footer-box rounded-lg overflow-hidden">
                         <div class="footer-box-header px-4 py-2">
                             <span class="text-sm font-bold text-gray-700">Export Options</span>
@@ -251,7 +251,7 @@ select {
                             </button>
                         </div>
                     </div>
-                </div>
+                </div>--}}
             </div>
         </div>
 
