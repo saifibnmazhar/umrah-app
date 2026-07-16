@@ -251,115 +251,60 @@ select {
                     </div>
 
                     <div class="border-b border-gray-200 mt-2">
-                        <nav class="flex gap-1 -mb-px">
-                            <button @click="activeModalTab = 'financial'" :class="activeModalTab === 'financial' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'" class="px-4 py-2.5 font-medium text-sm border-b-2 transition">Financial Report</button>
-                            <button @click="activeModalTab = 'submission'" :class="activeModalTab === 'submission' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'" class="px-4 py-2.5 font-medium text-sm border-b-2 transition">Submission Report</button>
-                            <button @click="activeModalTab = 'issue'" :class="activeModalTab === 'issue' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700'" class="px-4 py-2.5 font-medium text-sm border-b-2 transition">Issue Report</button>
-                        </nav>
+                        <h3 class="px-4 py-2.5 font-bold text-sm text-gray-700 uppercase tracking-wide">Combined Report</h3>
                     </div>
 
-                    <div x-show="activeModalTab === 'financial'" x-cloak class="mt-4">
+                    <div class="mt-4">
                         <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
                             <table class="w-full">
                                 <thead>
                                     <tr class="table-header">
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Date</th>
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-right">Cancellation<br>Fee</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Date</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passport No</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Status</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Estimated Cost</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Paid</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Balance</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-right">Cancellation Fee</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <template x-for="(tx, idx) in modalAgent.transactions" :key="idx">
-                                        <tr class="modal-row border-b border-gray-100">
-                                            <td class="px-4 py-3 text-sm text-left" x-text="tx.date"></td>
-                                            <td class="px-4 py-3 text-sm text-right font-medium" x-text="$currency(tx.payable, 2)"></td>
-                                            <td class="px-4 py-3 text-sm text-right" :class="tx.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="$currency(tx.paid, 2)"></td>
-                                            <td class="px-4 py-3 text-sm text-right font-semibold"
-                                                :class="tx.balance > 0 ? 'text-green-700' : (tx.balance < 0 ? 'text-red-600' : 'text-gray-600')"
-                                                x-text="$currency(Math.abs(tx.balance), 2)"></td>
-                                            <td class="px-4 py-3 text-sm text-right" :class="tx.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="tx.cancellationFee > 0 ? $currency(tx.cancellationFee, 2) : '-'"></td>
-                                        </tr>
-                                    </template>
-                                    <template x-if="modalAgent.logsLoading">
-                                        <tr>
-                                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">Loading...</td>
-                                        </tr>
-                                    </template>
-                                    <template x-if="!modalAgent.logsLoading && (!modalAgent.transactions || modalAgent.transactions.length === 0)">
-                                        <tr>
-                                            <td colspan="5" class="px-4 py-4 text-center text-gray-500">No logs found</td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div x-show="activeModalTab === 'submission'" x-cloak class="mt-4">
-                        <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="table-header">
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passport No</th>
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left">Submission Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="(row, idx) in modalAgent.submissions" :key="idx">
+                                    <template x-for="(row, idx) in modalAgent.combined" :key="idx">
                                         <tr class="border-b border-gray-100">
-                                            <td class="px-4 py-3 text-sm text-left font-medium" x-text="row.invoice_id"></td>
-                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passenger_name"></td>
-                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passport_no"></td>
-                                            <td class="px-4 py-3 text-sm text-left" x-text="row.submission_date"></td>
+                                            <td class="px-3 py-3 text-sm text-left" x-text="row.date"></td>
+                                            <td class="px-3 py-3 text-sm text-left font-medium" x-text="row.invoice_id || '-'"></td>
+                                            <td class="px-3 py-3 text-sm text-left" x-text="row.passenger_name || '-'"></td>
+                                            <td class="px-3 py-3 text-sm text-left" x-text="row.passport_no || '-'"></td>
+                                            <td class="px-3 py-3 text-sm text-center">
+                                                <span class="inline-block px-2 py-0.5 rounded text-xs font-semibold"
+                                                    :class="{
+                                                        'bg-blue-100 text-blue-800': row.status === 'Submitted',
+                                                        'bg-green-100 text-green-800': row.status === 'Issued',
+                                                        'bg-red-100 text-red-800': row.status === 'Cancelled',
+                                                        'bg-gray-100 text-gray-600': row.status === 'Payment'
+                                                    }"
+                                                    x-text="row.status"></span>
+                                            </td>
+                                            <td class="px-3 py-3 text-sm text-right font-medium" x-text="row.estimated_cost > 0 ? $currency(row.estimated_cost, 2) : '-'"></td>
+                                            <td class="px-3 py-3 text-sm text-right font-medium" x-text="row.payable > 0 ? $currency(row.payable, 2) : '-'"></td>
+                                            <td class="px-3 py-3 text-sm text-right" :class="row.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="row.paid > 0 ? $currency(row.paid, 2) : '-'"></td>
+                                            <td class="px-3 py-3 text-sm text-right font-semibold"
+                                                :class="row.balance > 0 ? 'text-green-700' : (row.balance < 0 ? 'text-red-600' : 'text-gray-600')"
+                                                x-text="$currency(Math.abs(row.balance), 2)"></td>
+                                            <td class="px-3 py-3 text-sm text-right" :class="row.cancellation_fee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="row.cancellation_fee > 0 ? $currency(row.cancellation_fee, 2) : '-'"></td>
                                         </tr>
                                     </template>
-                                    <template x-if="modalAgent.submissionsLoading">
+                                    <template x-if="modalAgent.loading">
                                         <tr>
-                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">Loading...</td>
+                                            <td colspan="10" class="px-4 py-4 text-center text-gray-500">Loading...</td>
                                         </tr>
                                     </template>
-                                    <template x-if="!modalAgent.submissionsLoading && (!modalAgent.submissions || modalAgent.submissions.length === 0)">
+                                    <template x-if="!modalAgent.loading && (!modalAgent.combined || modalAgent.combined.length === 0)">
                                         <tr>
-                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">No submissions found</td>
-                                        </tr>
-                                    </template>
-                                </tbody>
-                            </table>
-                        </div>
-                    </div>
-
-                    <div x-show="activeModalTab === 'issue'" x-cloak class="mt-4">
-                        <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
-                            <table class="w-full">
-                                <thead>
-                                    <tr class="table-header">
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Passport No</th>
-                                        <th class="px-4 py-3 text-xs font-bold text-gray-700 text-left">Issue Date</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <template x-for="(row, idx) in modalAgent.issued" :key="idx">
-                                        <tr class="border-b border-gray-100">
-                                            <td class="px-4 py-3 text-sm text-left font-medium" x-text="row.invoice_id"></td>
-                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passenger_name"></td>
-                                            <td class="px-4 py-3 text-sm text-left" x-text="row.passport_no"></td>
-                                            <td class="px-4 py-3 text-sm text-left" x-text="row.issue_date"></td>
-                                        </tr>
-                                    </template>
-                                    <template x-if="modalAgent.issuedLoading">
-                                        <tr>
-                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">Loading...</td>
-                                        </tr>
-                                    </template>
-                                    <template x-if="!modalAgent.issuedLoading && (!modalAgent.issued || modalAgent.issued.length === 0)">
-                                        <tr>
-                                            <td colspan="4" class="px-4 py-4 text-center text-gray-500">No issued visas found</td>
+                                            <td colspan="10" class="px-4 py-4 text-center text-gray-500">No data found</td>
                                         </tr>
                                     </template>
                                 </tbody>
@@ -369,7 +314,7 @@ select {
                 </div>
 
                 <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between no-print">
-                    <button @click="printModalViaPrint()" class="filter-btn px-6 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
+                    <button @click="window.open(`/reports/visa-agent/${encodeURIComponent(modalAgent.id)}/print`, '_blank')" class="filter-btn px-6 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
                         </svg>
@@ -446,7 +391,6 @@ function visaAgentReport(options = {}) {
             totalBalanceLabel: '0 SAR',
         },
         detailModalOpen: false,
-        activeModalTab: 'financial',
         paymentModalOpen: false,
         modalAgent: {},
         paymentAgentName: '',
@@ -492,57 +436,34 @@ function visaAgentReport(options = {}) {
         async openModal(agentId) {
             const agent = this.filteredData.find(a => a.id === agentId);
             if (!agent) return;
-            this.activeModalTab = 'financial';
             this.modalAgent = {
                 ...agent,
-                transactions: [],
-                logsLoading: true,
-                submissions: [],
-                submissionsLoading: true,
-                issued: [],
-                issuedLoading: true,
+                combined: [],
+                loading: true,
             };
             this.detailModalOpen = true;
             document.body.style.overflow = 'hidden';
 
             try {
-                const [logsRes, submissionsRes, issuedRes] = await Promise.all([
-                    fetch(`/api/reports/visa-agent/${agentId}/logs`),
-                    fetch(`/api/reports/visa-agent/${agentId}/submissions`),
-                    fetch(`/api/reports/visa-agent/${agentId}/issued`),
-                ]);
-                const logsResult = await logsRes.json();
-                if (logsResult.agent) {
+                const res = await fetch(`/api/reports/visa-agent/${agentId}/combined`);
+                const result = await res.json();
+                if (result.agent) {
                     this.modalAgent = {
                         ...this.modalAgent,
-                        ...logsResult.agent,
+                        ...result.agent,
                         totalSubmitted: agent.totalSubmitted,
                         totalIssued: agent.totalIssued,
                         payable: agent.payable,
                         paid: agent.paid,
                         balance: agent.balance,
                         cancellationFee: agent.cancellationFee,
-                        logsLoading: false,
-                        transactions: logsResult.data || [],
+                        loading: false,
+                        combined: result.data || [],
                     };
                 }
-                const submissionsResult = await submissionsRes.json();
-                this.modalAgent = {
-                    ...this.modalAgent,
-                    submissionsLoading: false,
-                    submissions: submissionsResult.data || [],
-                };
-                const issuedResult = await issuedRes.json();
-                this.modalAgent = {
-                    ...this.modalAgent,
-                    issuedLoading: false,
-                    issued: issuedResult.data || [],
-                };
             } catch (error) {
                 console.error('Failed to load agent details:', error);
-                this.modalAgent.logsLoading = false;
-                this.modalAgent.submissionsLoading = false;
-                this.modalAgent.issuedLoading = false;
+                this.modalAgent.loading = false;
             }
         },
 

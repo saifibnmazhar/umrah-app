@@ -284,6 +284,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/reports/visa-agent/{visaAgent}/logs', [VisaAgentReportController::class, 'logs'])->name('api.reports.visa-agent.logs')->middleware('role:Super Admin,Co Admin,Visa Admin');
     Route::get('/api/reports/visa-agent/{visaAgent}/submissions', [VisaAgentReportController::class, 'submissions'])->name('api.reports.visa-agent.submissions')->middleware('role:Super Admin,Co Admin,Visa Admin');
     Route::get('/api/reports/visa-agent/{visaAgent}/issued', [VisaAgentReportController::class, 'issued'])->name('api.reports.visa-agent.issued')->middleware('role:Super Admin,Co Admin,Visa Admin');
+    Route::get('/api/reports/visa-agent/{visaAgent}/combined', [VisaAgentReportController::class, 'combined'])->name('api.reports.visa-agent.combined')->middleware('role:Super Admin,Co Admin,Visa Admin');
+    Route::get('/reports/visa-agent/{visaAgent}/print', [VisaAgentReportController::class, 'printReport'])->name('report.visa-agent.print')->middleware('role:Super Admin,Co Admin,Visa Admin');
     Route::get('/reports/ticket-agent', [TicketAgentReportController::class, 'index'])->name('report.ticket-agent')->middleware('role:Super Admin,Co Admin,Ticket Admin');
     Route::get('/api/reports/ticket-agent', [TicketAgentReportController::class, 'data'])->name('api.reports.ticket-agent')->middleware('role:Super Admin,Co Admin,Ticket Admin');
     Route::get('/reports/due', [\App\Http\Controllers\DueReportController::class, 'index'])->name('report.due')->middleware('role:Super Admin,Co Admin,Auditor');
