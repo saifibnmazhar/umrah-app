@@ -149,14 +149,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <input type="text" x-model="search" placeholder="Search by Invoice ID, Customer Name, Passenger Name, Passport, Iqama"
                                class="search-input w-72 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
-                    <div class="flex items-center gap-2 ml-2">
-                        <button @click="exportPDF()" class="export-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
-                            <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 10v6m0 0l-3-3m3 3l3-3m2 8H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
-                            </svg>
-                            PDF
-                        </button>
-                    </div>
+
                 </div>
             </div>
         </div>
