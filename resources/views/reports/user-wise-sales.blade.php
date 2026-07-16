@@ -284,8 +284,9 @@ function userSalesReport() {
 
         setDefaultDates() {
             const today = new Date();
-            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
-            this.date_from = firstDay.toISOString().split('T')[0];
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            this.date_from = thirtyDaysAgo.toISOString().split('T')[0];
             this.date_to = today.toISOString().split('T')[0];
         },
 
