@@ -6,8 +6,10 @@ use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Models\CancelledSubmission;
 use App\Models\Payment;
+use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
@@ -73,6 +75,150 @@ class VisaAgentReportController extends Controller
                 'totalCancellationFee' => $summaryTotals['totalCancellationFee'],
             ],
         ]);
+    }
+
+    public function combined(VisaAgent $visaAgent): JsonResponse
+    {
+        $rows = $this->buildCombinedRows($visaAgent);
+
+        return response()->json([
+            'data' => $rows,
+            'agent' => [
+                'id' => $visaAgent->id,
+                'name' => $visaAgent->name,
+            ],
+        ]);
+    }
+
+    public function printReport(Request $request, VisaAgent $visaAgent): View
+    {
+        $rows = $this->buildCombinedRows($visaAgent);
+        $currencyRate = (float) (app(CurrencyRateService::class)->getRateForDate(now())?->rate ?? 0);
+
+        return view('reports.visa-agent-print', compact('visaAgent', 'rows', 'currencyRate'));
+    }
+
+    protected function buildCombinedRows(VisaAgent $visaAgent): Collection
+    {
+        $agentId = $visaAgent->id;
+        $rows = collect();
+
+        $submittedSubmissions = VisaSubmission::where('visa_agent_id', $agentId)
+            ->where('status', 'submitted')
+            ->with('passenger.booking')
+            ->get();
+
+        foreach ($submittedSubmissions as $submission) {
+            $submissionLog = $submission->logs()
+                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'submitted'")
+                ->latest()
+                ->first();
+
+            $newValues = $submissionLog ? $submissionLog->new_values : [];
+            $estimatedCost = (float) ($newValues['net_visa_cost'] ?? $submission->net_visa_cost ?? 0);
+
+            $rows->push([
+                'date' => $submissionLog ? $submissionLog->created_at->format('d-M-Y') : $submission->created_at->format('d-M-Y'),
+                'invoice_id' => $submission->passenger->booking->invoice_id ?? '-',
+                'passenger_name' => trim(($submission->passenger->first_name ?? '') . ' ' . ($submission->passenger->last_name ?? '')),
+                'passport_no' => $submission->passenger->passport_no ?? '-',
+                'status' => 'Submitted',
+                'estimated_cost' => $estimatedCost,
+                'payable' => 0,
+                'paid' => 0,
+                'balance' => 0,
+                'cancellation_fee' => 0,
+            ]);
+        }
+
+        $issuedSubmissions = VisaSubmission::where('visa_agent_id', $agentId)
+            ->where('status', 'issued')
+            ->with('passenger.booking')
+            ->get();
+
+        foreach ($issuedSubmissions as $submission) {
+            $issueLog = $submission->logs()
+                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'")
+                ->latest()
+                ->first();
+
+            $rows->push([
+                'date' => $issueLog ? $issueLog->created_at->format('d-M-Y') : $submission->updated_at->format('d-M-Y'),
+                'invoice_id' => $submission->passenger->booking->invoice_id ?? '-',
+                'passenger_name' => trim(($submission->passenger->first_name ?? '') . ' ' . ($submission->passenger->last_name ?? '')),
+                'passport_no' => $submission->passenger->passport_no ?? '-',
+                'status' => 'Issued',
+                'estimated_cost' => 0,
+                'payable' => (float) ($submission->net_visa_cost ?? 0) + (float) ($submission->additional_cost ?? 0),
+                'paid' => 0,
+                'balance' => 0,
+                'cancellation_fee' => 0,
+            ]);
+        }
+
+        $cancelledSubmissions = CancelledSubmission::where('visa_agent_id', $agentId)
+            ->with('visaSubmission.passenger.booking')
+            ->get();
+
+        foreach ($cancelledSubmissions as $cs) {
+            $invoiceId = '-';
+            $passengerName = '-';
+            $passportNo = '-';
+
+            if ($cs->visaSubmission && $cs->visaSubmission->passenger) {
+                $passenger = $cs->visaSubmission->passenger;
+                $invoiceId = $passenger->booking->invoice_id ?? '-';
+                $passengerName = trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? ''));
+                $passportNo = $passenger->passport_no ?? '-';
+            }
+
+            $rows->push([
+                'date' => $cs->created_at->format('d-M-Y'),
+                'invoice_id' => $invoiceId,
+                'passenger_name' => $passengerName,
+                'passport_no' => $passportNo,
+                'status' => 'Cancelled',
+                'estimated_cost' => 0,
+                'payable' => 0,
+                'paid' => 0,
+                'balance' => 0,
+                'cancellation_fee' => (float) ($cs->cancellation_fee ?? 0),
+            ]);
+        }
+
+        $payments = Payment::where('visa_agent_id', $agentId)
+            ->whereHas('voucher.transactionType', fn($q) => $q->where('name', 'Visa Agent Payment'))
+            ->get();
+
+        foreach ($payments as $payment) {
+            $rows->push([
+                'date' => $payment->payment_date->format('d-M-Y'),
+                'invoice_id' => null,
+                'passenger_name' => null,
+                'passport_no' => null,
+                'status' => 'Payment',
+                'estimated_cost' => 0,
+                'payable' => 0,
+                'paid' => (float) ($payment->amount ?? 0),
+                'balance' => 0,
+                'cancellation_fee' => 0,
+            ]);
+        }
+
+        $rows = $rows->sortBy('date')->values();
+
+        $runningPayable = 0;
+        $runningPaid = 0;
+        $runningFee = 0;
+        $rows = $rows->map(function ($item) use (&$runningPayable, &$runningPaid, &$runningFee) {
+            $runningPayable += $item['payable'];
+            $runningPaid += $item['paid'];
+            $runningFee += $item['cancellation_fee'];
+            $item['balance'] = $runningPaid - $runningPayable - $runningFee;
+            return $item;
+        });
+
+        return $rows;
     }
 
     public function logs(VisaAgent $visaAgent): JsonResponse
