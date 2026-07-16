@@ -61,11 +61,22 @@ class UserWiseSalesReportController extends Controller
             ];
         })->values();
 
-        $rows->each(function ($row) use ($grandTotalValue) {
-            $row['sales_percent'] = $grandTotalValue > 0
-                ? round(($row['total_package_value'] / $grandTotalValue) * 100)
-                : 0;
-        });
+        $rawPercents = $rows->map(
+            fn($r) => $grandTotalValue > 0 ? ($r['total_package_value'] / $grandTotalValue) * 100 : 0
+        );
+
+        $roundedPercents = $rawPercents->map(fn($p) => round($p, 2));
+        $remainders = $rawPercents->map(fn($raw, $i) => $raw - $roundedPercents[$i]);
+        $diff = round(100 - $roundedPercents->sum(), 2);
+
+        if ($diff != 0) {
+            $largestIndex = $remainders->search($remainders->max());
+            $roundedPercents[$largestIndex] = round($roundedPercents[$largestIndex] + $diff, 2);
+        }
+
+        $rows = $rows->map(fn($row, $i) => array_merge($row, [
+            'sales_percent' => (float) $roundedPercents[$i],
+        ]));
 
         $summary = [
             'total_users'         => $rows->count(),

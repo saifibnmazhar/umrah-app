@@ -194,7 +194,7 @@ select {
                                         <div class="percent-bar w-20">
                                             <div class="percent-fill" :style="`width: ${row.sales_percent}%`"></div>
                                         </div>
-                                        <span class="font-bold text-blue-600" x-text="row.sales_percent + '%'"></span>
+                                        <span class="font-bold text-blue-600" x-text="row.sales_percent.toFixed(2) + '%'"></span>
                                     </div>
                                 </td>
                             </tr>
