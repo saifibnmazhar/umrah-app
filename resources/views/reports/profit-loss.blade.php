@@ -176,9 +176,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                     <th class="w-40 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
                                     <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
                                     <th class="w-20 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Pax Qty</th>
-                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Package Value (SAR)</th>
-                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Cost (SAR)</th>
-                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right">Profit/Loss (SAR)</th>
+                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Package Value (<span x-text="$store.currency.mode"></span>)</th>
+                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Cost (<span x-text="$store.currency.mode"></span>)</th>
+                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right">Profit/Loss (<span x-text="$store.currency.mode"></span>)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -225,9 +225,9 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                     <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
                                     <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
-                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Package Value (SAR)</th>
-                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Cost (SAR)</th>
-                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right">Profit/Loss (SAR)</th>
+                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Package Value (<span x-text="$store.currency.mode"></span>)</th>
+                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Cost (<span x-text="$store.currency.mode"></span>)</th>
+                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right">Profit/Loss (<span x-text="$store.currency.mode"></span>)</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -285,6 +285,10 @@ function profitLossReport() {
         init() {
             this.setDefaultDates();
             this.loadData();
+            window.addEventListener('currency-toggled', () => {
+                this.customers = [...this.customers];
+                this.passengers = [...this.passengers];
+            });
         },
 
         setDefaultDates() {
@@ -358,6 +362,11 @@ function profitLossReport() {
 
         formatCurrency(amount) {
             const num = Number(amount) || 0;
+            const store = Alpine.store('currency');
+            if (store.mode === 'BDT' && store.rate > 0) {
+                const bdt = num * store.rate;
+                return bdt.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' BDT';
+            }
             return num.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 }) + ' SAR';
         },
 
