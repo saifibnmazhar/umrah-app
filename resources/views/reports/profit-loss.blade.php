@@ -156,13 +156,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
         <div class="bg-white border-x-2 border-b-2 border-gray-400 rounded-xl shadow-md overflow-hidden">
             <div class="border-b border-gray-300 bg-gray-50 px-4 pt-3">
-                <div class="flex gap-0" id="tabButtons">
-                    <button @click="activeTab = 'customer'" :class="activeTab === 'customer' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
-                        Per Customer
-                    </button>
-                    <button @click="activeTab = 'passenger'" :class="activeTab === 'passenger' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
-                        Per Passenger
-                    </button>
+                <div class="flex items-center justify-between">
+                    <div class="flex gap-0" id="tabButtons">
+                        <button @click="activeTab = 'customer'" :class="activeTab === 'customer' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
+                            Per Customer
+                        </button>
+                        <button @click="activeTab = 'passenger'" :class="activeTab === 'passenger' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
+                            Per Passenger
+                        </button>
+                    </div>
+                    <div class="flex items-center gap-2 pr-1 pb-3">
+                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=customer&currency=' + $store.currency.mode" target="_blank" class="export-btn px-3 py-1.5 rounded-md text-xs font-medium text-gray-700">Customer Print</a>
+                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=passenger&currency=' + $store.currency.mode" target="_blank" class="export-btn px-3 py-1.5 rounded-md text-xs font-medium text-gray-700">Passenger Print</a>
+                    </div>
                 </div>
             </div>
 

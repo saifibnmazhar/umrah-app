@@ -275,6 +275,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/statement', fn() => view('reports.statement'))->name('report.statement');
     Route::get('/reports/profit-loss', fn() => view('reports.profit-loss'))->name('report.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/profit-loss', [ProfitLossReportController::class, 'data'])->name('api.reports.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/profit-loss/print', [ProfitLossReportController::class, 'print'])->name('report.profit-loss.print')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/fingerprint', [FingerprintReportController::class, 'index'])->name('report.fingerprint')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
     Route::get('/reports/fingerprint/print', [FingerprintReportController::class, 'print'])->name('report.fingerprint.print')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
     Route::get('/api/reports/fingerprint', [FingerprintReportController::class, 'data'])->name('api.reports.fingerprint')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
