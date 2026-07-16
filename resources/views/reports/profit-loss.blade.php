@@ -166,8 +166,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         </button>
                     </div>
                     <div class="flex items-center gap-2 pr-1 pb-3">
-                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=customer&currency=' + $store.currency.mode" target="_blank" class="export-btn px-3 py-1.5 rounded-md text-xs font-medium text-gray-700">Customer Print</a>
-                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=passenger&currency=' + $store.currency.mode" target="_blank" class="export-btn px-3 py-1.5 rounded-md text-xs font-medium text-gray-700">Passenger Print</a>
+                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=customer&currency=' + $store.currency.mode" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-700">Customer Print</a>
+                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=passenger&currency=' + $store.currency.mode" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-700">Passenger Print</a>
                     </div>
                 </div>
             </div>
