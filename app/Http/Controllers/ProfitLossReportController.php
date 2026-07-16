@@ -34,6 +34,22 @@ class ProfitLossReportController extends Controller
 
         $costService = app(CostTrackingService::class);
 
+        $customers = $bookings->map(function (Booking $booking) use ($costService) {
+            $costSummary = $costService->getBookingCostSummary($booking);
+            $totalCost = $costSummary['total_cost'];
+            $totalAmount = (float) $booking->invoice->total_amount;
+
+            return [
+                'invoice_id'    => $booking->invoice_id,
+                'customer_name' => $booking->customer->name ?? '',
+                'mobile'        => $booking->customer->mobile_no ?? '',
+                'pax_qty'       => $booking->pax_qty,
+                'package_value' => $totalAmount,
+                'total_cost'    => $totalCost,
+                'profit'        => $totalAmount - $totalCost,
+            ];
+        })->values();
+
         $passengers = $bookings->flatMap(function (Booking $booking) use ($costService) {
             $passengerCosts = $costService->getPassengerCosts($booking);
 
@@ -54,6 +70,9 @@ class ProfitLossReportController extends Controller
             });
         })->values();
 
-        return response()->json(['passengers' => $passengers]);
+        return response()->json([
+            'customers'  => $customers,
+            'passengers' => $passengers,
+        ]);
     }
 }
