@@ -48,6 +48,7 @@ use App\Models\Payment;
 use Carbon\Carbon;
 use App\Http\Controllers\VisaAgentReportController;
 use App\Http\Controllers\TicketAgentReportController;
+use App\Http\Controllers\UserWiseSalesReportController;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -294,6 +295,8 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/due/branch/{branchId}/print-datewise', [\App\Http\Controllers\DueReportController::class, 'printDateWise'])->name('report.due.print-datewise')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/reissue-refund', fn() => view('reports.reissue-refund'))->name('report.reissue-refund')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/user-wise-sales', fn() => view('reports.user-wise-sales'))->name('report.user-sales')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/api/reports/user-wise-sales/filters', [UserWiseSalesReportController::class, 'filters'])->name('api.reports.user-wise-sales.filters')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/api/reports/user-wise-sales', [UserWiseSalesReportController::class, 'data'])->name('api.reports.user-wise-sales.data')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/pending-outbound', [\App\Http\Controllers\PendingOutboundReportController::class, 'index'])->name('report.pending-ticket')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/api/reports/pending-outbound', [\App\Http\Controllers\PendingOutboundReportController::class, 'data'])->name('api.reports.pending-outbound')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/payment-receiving', function () {
