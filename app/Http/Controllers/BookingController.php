@@ -154,6 +154,7 @@ class BookingController extends Controller
         $selectedBookingDateFrom = $request->get('booking_date_from');
         $selectedBookingDateTo = $request->get('booking_date_to');
         $selectedFingerprintLocation = $request->get('fingerprint_location');
+        $selectedBookingStatus = $request->get('booking_status');
         $selectedPassengerStatus = $request->get('passenger_status');
         $selectedPackageId = $request->get('package_id');
         $selectedTicketAgentId = $request->get('ticket_agent_id');
@@ -224,6 +225,21 @@ class BookingController extends Controller
             ->when($request->filled('fingerprint_location'), fn ($q) =>
                 $q->where('fingerprint_location', $request->input('fingerprint_location'))
             )
+            ->when($request->filled('booking_status'), function ($q) use ($request) {
+                $status = $request->input('booking_status');
+                if ($status === 'active') {
+                    $q->where('is_cancelled', false);
+                } elseif ($status === 'cancellation_processing') {
+                    $q->where('is_cancelled', true)
+                      ->whereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancellation processing'));
+                } elseif ($status === 'cancelled') {
+                    $q->where('is_cancelled', true)
+                      ->where(function ($q) {
+                          $q->whereDoesntHave('cancelledBooking')
+                            ->orWhereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancelled'));
+                      });
+                }
+            })
             ->orderBy('created_at', 'desc');
 
         $totalBookingCount = (clone $bookingQuery)->count();
@@ -445,6 +461,7 @@ class BookingController extends Controller
             'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
             'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
+            'selectedBookingStatus',
             'selectedPassengerStatus', 'selectedRouteDisplay', 'routesList', 'selectedPackageId', 'selectedTicketAgentId',
             'selectedActualFlightFrom', 'selectedActualFlightTo',
             'selectedReturnDateFrom', 'selectedReturnDateTo',
