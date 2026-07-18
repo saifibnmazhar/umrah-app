@@ -144,7 +144,7 @@ select {
                                 x-text="$currency(agent.paid, 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-semibold"
                                                 :class="agent.balance > 0 ? 'text-green-700' : (agent.balance < 0 ? 'text-red-600' : 'text-gray-600')"
-                                x-text="$currency(Math.abs(agent.balance), 2)"></td>
+                                x-text="(agent.balance > 0 ? '+' : agent.balance < 0 ? '-' : '') + $currency(Math.abs(agent.balance), 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200"
                                 :class="agent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'"
                                 x-text="agent.cancellationFee > 0 ? $currency(agent.cancellationFee, 2) : '-'"></td>
@@ -305,7 +305,7 @@ select {
                                             <td class="px-3 py-3 text-sm text-right" :class="row.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="row.paid > 0 ? $currency(row.paid, 2) : '-'"></td>
                                             <td class="px-3 py-3 text-sm text-right font-semibold"
                                                 :class="row.balance > 0 ? 'text-green-700' : (row.balance < 0 ? 'text-red-600' : 'text-gray-600')"
-                                                x-text="$currency(Math.abs(row.balance), 2)"></td>
+                                                x-text="(row.balance > 0 ? '+' : row.balance < 0 ? '-' : '') + $currency(Math.abs(row.balance), 2)"></td>
                                             <td class="px-3 py-3 text-sm text-right" :class="row.cancellation_fee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="row.cancellation_fee > 0 ? $currency(row.cancellation_fee, 2) : '-'"></td>
                                         </tr>
                                     </template>
