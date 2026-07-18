@@ -86,7 +86,7 @@ class VisaAgentReportController extends Controller
         ]);
 
         $rows = $this->buildCombinedRows($visaAgent, $request->date_from, $request->date_to);
-        $stats = $this->buildAgentRow($visaAgent, null, null);
+        $stats = $this->buildAgentRow($visaAgent, $request->date_from, $request->date_to);
 
         return response()->json([
             'data' => $rows,
