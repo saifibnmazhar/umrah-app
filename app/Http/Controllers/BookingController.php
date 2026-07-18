@@ -401,6 +401,8 @@ class BookingController extends Controller
                 'booking.documents',
                 'booking.package.ticketFare.route',
                 'booking.invoice',
+                'booking.fingerprint',
+                'booking.passengers',
                 'ticketFare.route',
                 'status',
                 'visaSubmission.visaAgent',
