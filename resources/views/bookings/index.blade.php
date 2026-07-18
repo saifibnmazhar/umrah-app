@@ -651,8 +651,22 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->allIssuedTickets->sortByDesc('created_at')->first(fn($t) => $t->outbound_date)?->outbound_date?->format('d M Y') ?? 'N/A' }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
-    @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
-    @if($canViewFinancialColumns)<td class="px-3 py-2"></td>@endif
+    @if($canViewFinancialColumns)
+    <td class="px-3 py-2 text-slate-700">
+        @php $tc = $passengerCosts[$passenger->id]['total_cost'] ?? 0; @endphp
+        @if($tc > 0)@currency($tc, 2, $passBookingRate)@else—@endif
+    </td>
+    @endif
+    @if($canViewFinancialColumns)
+    <td class="px-3 py-2 text-slate-700">
+        @php
+        $tc = $passengerCosts[$passenger->id]['total_cost'] ?? 0;
+        $pv = $passenger->package_value ?? 0;
+        $markup = $pv - $tc;
+        @endphp
+        @if($pv > 0 || $tc > 0)@currency($markup, 2, $passBookingRate)@else—@endif
+    </td>
+    @endif
     <td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice)<div class="font-medium">Total: @currency($passenger->booking->invoice->total_amount, 2, $passBookingRate)</div><div class="font-medium">Due: @currency($passenger->booking->invoice->balance, 2, $passBookingRate)</div>@else—@endif @endif</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->stay_duration ?? '—' }}</td>
     @if($canViewVisaColumns)

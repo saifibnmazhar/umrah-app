@@ -42,6 +42,7 @@ use App\Traits\ConvertsDocumentsToPdf;
 use App\Services\BookingService;
 use App\Services\PaymentService;
 use App\Services\InvoiceService;
+use App\Services\CostTrackingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -421,6 +422,17 @@ class BookingController extends Controller
             ->appends(['tab' => $tab])
             ->withQueryString();
 
+        $costService = app(CostTrackingService::class);
+        $passengerBookingIds = $passengers->pluck('booking_id')->unique();
+        $costBookings = Booking::with(['fingerprint', 'passengers'])
+            ->whereIn('id', $passengerBookingIds)->get();
+        $passengerCosts = [];
+        foreach ($costBookings as $cb) {
+            foreach ($costService->getPassengerCosts($cb) as $pc) {
+                $passengerCosts[$pc['passenger_id']] = $pc;
+            }
+        }
+
         $passengerStatuses = PassengerStatus::all();
         $statusChangeOptions = $passengerStatuses->filter(fn ($s) =>
             in_array($s->name, ['Cancel', 'Delivered', 'Hold'])
@@ -468,7 +480,8 @@ class BookingController extends Controller
             'selectedStatusChangeAction', 'selectedStatusChangeFrom', 'selectedStatusChangeTo',
             'statusChangeOptions',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
-            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt'
+            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt',
+            'passengerCosts'
         ));
     }
 
