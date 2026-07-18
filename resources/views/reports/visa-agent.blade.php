@@ -448,15 +448,16 @@ function visaAgentReport(options = {}) {
                 const res = await fetch(`/api/reports/visa-agent/${agentId}/combined`);
                 const result = await res.json();
                 if (result.agent) {
+                    const stats = result.stats || {};
                     this.modalAgent = {
                         ...this.modalAgent,
                         ...result.agent,
-                        totalSubmitted: agent.totalSubmitted,
-                        totalIssued: agent.totalIssued,
-                        payable: agent.payable,
-                        paid: agent.paid,
-                        balance: agent.balance,
-                        cancellationFee: agent.cancellationFee,
+                        totalSubmitted: stats.totalSubmitted ?? 0,
+                        totalIssued: stats.totalIssued ?? 0,
+                        payable: stats.payable ?? 0,
+                        paid: stats.paid ?? 0,
+                        balance: stats.balance ?? 0,
+                        cancellationFee: stats.cancellationFee ?? 0,
                         loading: false,
                         combined: result.data || [],
                     };

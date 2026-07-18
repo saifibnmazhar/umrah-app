@@ -80,6 +80,7 @@ class VisaAgentReportController extends Controller
     public function combined(VisaAgent $visaAgent): JsonResponse
     {
         $rows = $this->buildCombinedRows($visaAgent);
+        $stats = $this->buildAgentRow($visaAgent, null, null);
 
         return response()->json([
             'data' => $rows,
@@ -87,6 +88,7 @@ class VisaAgentReportController extends Controller
                 'id' => $visaAgent->id,
                 'name' => $visaAgent->name,
             ],
+            'stats' => $stats,
         ]);
     }
 
