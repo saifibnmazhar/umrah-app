@@ -144,7 +144,7 @@ select {
                                 x-text="$currency(agent.paid, 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200 font-semibold"
                                                 :class="agent.balance > 0 ? 'text-green-700' : (agent.balance < 0 ? 'text-red-600' : 'text-gray-600')"
-                                x-text="(agent.balance > 0 ? '+' : agent.balance < 0 ? '-' : '') + $currency(Math.abs(agent.balance), 2)"></td>
+                                x-text="(agent.balance > 0 ? '+' : (agent.balance < 0 ? '-' : '')) + $currency(Math.abs(agent.balance), 2)"></td>
                             <td class="px-2 py-3 text-sm text-right border-r border-gray-200"
                                 :class="agent.cancellationFee > 0 ? 'text-red-600' : 'text-gray-600'"
                                 x-text="agent.cancellationFee > 0 ? $currency(agent.cancellationFee, 2) : '-'"></td>
@@ -189,7 +189,7 @@ select {
                         </div>
                         <div class="flex justify-between border-t border-gray-200 pt-2 mt-1">
                             <span class="text-xs font-bold text-gray-700">Total Balance:</span>
-                            <span class="text-xs font-bold" :class="summary.totalBalance > 0 ? 'text-green-700' : 'text-red-700'" x-text="$currency(Math.abs(summary.totalBalance), 2)"></span>
+                            <span class="text-xs font-bold" :class="summary.totalBalance > 0 ? 'text-green-700' : 'text-red-700'" x-text="(summary.totalBalance > 0 ? '+' : (summary.totalBalance < 0 ? '-' : '')) + $currency(Math.abs(summary.totalBalance), 2)"></span>
                         </div>
                     </div>
                 </div>
@@ -248,7 +248,7 @@ select {
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Balance</p>
-                                <p class="text-xl font-bold mt-1" x-text="$currency(Math.abs(modalAgent.balance || 0), 2)"
+                                <p class="text-xl font-bold mt-1" x-text="((modalAgent.balance || 0) > 0 ? '+' : ((modalAgent.balance || 0) < 0 ? '-' : '')) + $currency(Math.abs(modalAgent.balance || 0), 2)"
                                    :class="(modalAgent.balance || 0) > 0 ? 'text-green-700' : ((modalAgent.balance || 0) < 0 ? 'text-red-600' : 'text-gray-600')"></p>
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
@@ -256,7 +256,7 @@ select {
                                 <p class="text-xl font-bold text-red-700 mt-1" x-text="modalAgent.cancellationFee > 0 ? $currency(modalAgent.cancellationFee, 2) : '-'"></p>
                             </div>
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
-                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Estimated Cost</p>
+                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Estimated Cost</p>
                                 <p class="text-xl font-bold text-gray-800 mt-1" x-text="$currency(modalAgent.estimatedCost || 0, 2)"></p>
                             </div>
                         </div>
@@ -305,7 +305,7 @@ select {
                                             <td class="px-3 py-3 text-sm text-right" :class="row.paid > 0 ? 'text-green-700' : 'text-gray-600'" x-text="row.paid > 0 ? $currency(row.paid, 2) : '-'"></td>
                                             <td class="px-3 py-3 text-sm text-right font-semibold"
                                                 :class="row.balance > 0 ? 'text-green-700' : (row.balance < 0 ? 'text-red-600' : 'text-gray-600')"
-                                                x-text="(row.balance > 0 ? '+' : row.balance < 0 ? '-' : '') + $currency(Math.abs(row.balance), 2)"></td>
+                                                x-text="(row.balance > 0 ? '+' : (row.balance < 0 ? '-' : '')) + $currency(Math.abs(row.balance), 2)"></td>
                                             <td class="px-3 py-3 text-sm text-right" :class="row.cancellation_fee > 0 ? 'text-red-600' : 'text-gray-600'" x-text="row.cancellation_fee > 0 ? $currency(row.cancellation_fee, 2) : '-'"></td>
                                         </tr>
                                     </template>

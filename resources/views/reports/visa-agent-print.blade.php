@@ -99,7 +99,7 @@
             </div>
             <div class="summary-card">
                 <div class="label">Total Balance</div>
-                <div class="value" :style="balance >= 0 ? 'color: #16a34a;' : 'color: #dc2626;'" x-text="balance >= 0 ? $currency(balance, 2) : '- ' + $currency(Math.abs(balance), 2)"></div>
+                <div class="value" :style="balance >= 0 ? 'color: #16a34a;' : 'color: #dc2626;'" x-text="(balance > 0 ? '+' : (balance < 0 ? '-' : '')) + ' ' + $currency(Math.abs(balance), 2)"></div>
             </div>
             <div class="summary-card">
                 <div class="label">Cancellation Fee</div>
@@ -145,7 +145,7 @@
                             <td class="text-right" :class="row.paid > 0 ? 'text-green' : 'text-gray'" x-text="row.paid > 0 ? $currency(row.paid, 2) : '-'"></td>
                             <td class="text-right font-semibold"
                                 :class="row.balance > 0 ? 'text-green' : (row.balance < 0 ? 'text-red' : 'text-gray')"
-                                x-text="$currency(Math.abs(row.balance), 2)"></td>
+                                x-text="(row.balance > 0 ? '+' : (row.balance < 0 ? '-' : '')) + $currency(Math.abs(row.balance), 2)"></td>
                             <td class="text-right" :class="row.cancellation_fee > 0 ? 'text-red' : 'text-gray'" x-text="row.cancellation_fee > 0 ? $currency(row.cancellation_fee, 2) : '-'"></td>
                         </tr>
                     </template>
