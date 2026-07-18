@@ -126,8 +126,10 @@ class VisaAgentReportController extends Controller
             $newValues = $submissionLog ? $submissionLog->new_values : [];
             $estimatedCost = (float) ($newValues['net_visa_cost'] ?? $submission->net_visa_cost ?? 0);
 
+            $rowDate = $submissionLog ? $submissionLog->created_at : $submission->created_at;
             $rows->push([
-                'date' => $submissionLog ? $submissionLog->created_at->format('d-M-Y') : $submission->created_at->format('d-M-Y'),
+                'date' => $rowDate->format('d-M-Y'),
+                'sort_date' => $rowDate->format('Y-m-d'),
                 'invoice_id' => $submission->passenger->booking->invoice_id ?? '-',
                 'passenger_name' => trim(($submission->passenger->first_name ?? '') . ' ' . ($submission->passenger->last_name ?? '')),
                 'passport_no' => $submission->passenger->passport_no ?? '-',
@@ -151,8 +153,10 @@ class VisaAgentReportController extends Controller
                 ->latest()
                 ->first();
 
+            $rowDate = $issueLog ? $issueLog->created_at : $submission->updated_at;
             $rows->push([
-                'date' => $issueLog ? $issueLog->created_at->format('d-M-Y') : $submission->updated_at->format('d-M-Y'),
+                'date' => $rowDate->format('d-M-Y'),
+                'sort_date' => $rowDate->format('Y-m-d'),
                 'invoice_id' => $submission->passenger->booking->invoice_id ?? '-',
                 'passenger_name' => trim(($submission->passenger->first_name ?? '') . ' ' . ($submission->passenger->last_name ?? '')),
                 'passport_no' => $submission->passenger->passport_no ?? '-',
@@ -183,6 +187,7 @@ class VisaAgentReportController extends Controller
 
             $rows->push([
                 'date' => $cs->created_at->format('d-M-Y'),
+                'sort_date' => $cs->created_at->format('Y-m-d'),
                 'invoice_id' => $invoiceId,
                 'passenger_name' => $passengerName,
                 'passport_no' => $passportNo,
@@ -202,6 +207,7 @@ class VisaAgentReportController extends Controller
         foreach ($payments as $payment) {
             $rows->push([
                 'date' => $payment->payment_date->format('d-M-Y'),
+                'sort_date' => $payment->payment_date->format('Y-m-d'),
                 'invoice_id' => null,
                 'passenger_name' => null,
                 'passport_no' => null,
@@ -214,7 +220,7 @@ class VisaAgentReportController extends Controller
             ]);
         }
 
-        $rows = $rows->sortBy('date')->values();
+        $rows = $rows->sortBy('sort_date')->values();
 
         if ($dateFrom || $dateTo) {
             $rows = $rows->filter(function ($item) use ($dateFrom, $dateTo) {
@@ -234,6 +240,10 @@ class VisaAgentReportController extends Controller
             $runningFee += $item['cancellation_fee'];
             $item['balance'] = $runningPaid - $runningPayable - $runningFee;
             return $item;
+        });
+
+        $rows = $rows->map(function ($item) {
+            return collect($item)->forget('sort_date')->all();
         });
 
         return $rows;

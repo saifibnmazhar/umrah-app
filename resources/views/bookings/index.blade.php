@@ -451,7 +451,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         <select x-model="selectedVisaStatus" @change="onVisaStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($visaStatuses as $status)
-                            <option value="{{ $status->value }}" {{ $selectedVisaStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                            <option value="{{ $status->value }}" {{ $selectedVisaStatus === $status->value ? 'selected' : '' }}>{{ $status->value === 'cancelled' ? 'Resubmission Pending' : ucfirst(str_replace('-', ' ', $status->value)) }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -716,10 +716,9 @@ if ($route) {
                 :class="{
                     'bg-green-100 text-green-700': passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued',
                     'bg-blue-100 text-blue-700': passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted',
-                    'bg-red-100 text-red-700': passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled',
-                    'bg-yellow-100 text-yellow-700': passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending'
+                    'bg-yellow-100 text-yellow-700': passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending' || passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled'
                 }"
-                x-text="passengersVisaData[{{ $loop->index }}]?.visa?.status.charAt(0).toUpperCase() + passengersVisaData[{{ $loop->index }}]?.visa?.status.slice(1)">
+                x-text="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' ? 'Resubmission Pending' : (passengersVisaData[{{ $loop->index }}]?.visa?.status.charAt(0).toUpperCase() + passengersVisaData[{{ $loop->index }}]?.visa?.status.slice(1))">
             </span>
         </template>
         <template x-if="!passengersVisaData[{{ $loop->index }}]?.visa">
