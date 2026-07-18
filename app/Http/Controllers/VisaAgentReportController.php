@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
@@ -77,9 +78,14 @@ class VisaAgentReportController extends Controller
         ]);
     }
 
-    public function combined(VisaAgent $visaAgent): JsonResponse
+    public function combined(Request $request, VisaAgent $visaAgent): JsonResponse
     {
-        $rows = $this->buildCombinedRows($visaAgent);
+        $request->validate([
+            'date_from' => 'nullable|date',
+            'date_to' => 'nullable|date',
+        ]);
+
+        $rows = $this->buildCombinedRows($visaAgent, $request->date_from, $request->date_to);
         $stats = $this->buildAgentRow($visaAgent, null, null);
 
         return response()->json([
@@ -100,7 +106,7 @@ class VisaAgentReportController extends Controller
         return view('reports.visa-agent-print', compact('visaAgent', 'rows', 'currencyRate'));
     }
 
-    protected function buildCombinedRows(VisaAgent $visaAgent): Collection
+    protected function buildCombinedRows(VisaAgent $visaAgent, ?string $dateFrom = null, ?string $dateTo = null): Collection
     {
         $agentId = $visaAgent->id;
         $rows = collect();
@@ -208,6 +214,15 @@ class VisaAgentReportController extends Controller
         }
 
         $rows = $rows->sortBy('date')->values();
+
+        if ($dateFrom || $dateTo) {
+            $rows = $rows->filter(function ($item) use ($dateFrom, $dateTo) {
+                $itemDate = Carbon::parse($item['date']);
+                if ($dateFrom && $itemDate->lt(Carbon::parse($dateFrom))) return false;
+                if ($dateTo && $itemDate->gt(Carbon::parse($dateTo))) return false;
+                return true;
+            })->values();
+        }
 
         $runningPayable = 0;
         $runningPaid = 0;

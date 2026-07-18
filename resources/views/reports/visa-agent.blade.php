@@ -219,7 +219,15 @@ select {
 
                 <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)] scrollbar-thin">
                     <div class="mb-6">
-                        <h3 class="text-2xl font-bold text-gray-800 mb-4" x-text="modalAgent.name"></h3>
+                        <div class="flex items-center justify-between mb-4">
+                            <h3 class="text-2xl font-bold text-gray-800" x-text="modalAgent.name"></h3>
+                            <div class="flex items-center gap-2">
+                                <label class="text-xs font-semibold text-gray-500">Date From</label>
+                                <input type="date" x-model="modalDateFrom" @change="loadModalCombined()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                                <label class="text-xs font-semibold text-gray-500">To</label>
+                                <input type="date" x-model="modalDateTo" @change="loadModalCombined()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            </div>
+                        </div>
 
                         <div class="grid grid-cols-1 md:grid-cols-5 gap-4">
                             <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
@@ -398,6 +406,8 @@ function visaAgentReport(options = {}) {
         paymentMethod: '',
         paymentAmount: '',
         editingAgentId: null,
+        modalDateFrom: '',
+        modalDateTo: '',
 
         init() {
             this.loadData();
@@ -436,6 +446,8 @@ function visaAgentReport(options = {}) {
         async openModal(agentId) {
             const agent = this.filteredData.find(a => a.id === agentId);
             if (!agent) return;
+            this.modalDateFrom = '';
+            this.modalDateTo = '';
             this.modalAgent = {
                 ...agent,
                 combined: [],
@@ -444,8 +456,21 @@ function visaAgentReport(options = {}) {
             this.detailModalOpen = true;
             document.body.style.overflow = 'hidden';
 
+            await this.loadModalCombined();
+        },
+
+        async loadModalCombined() {
+            const agentId = this.modalAgent.id;
+            if (!agentId) return;
+            this.modalAgent.combined = [];
+            this.modalAgent.loading = true;
+
             try {
-                const res = await fetch(`/api/reports/visa-agent/${agentId}/combined`);
+                const params = new URLSearchParams();
+                if (this.modalDateFrom) params.set('date_from', this.modalDateFrom);
+                if (this.modalDateTo) params.set('date_to', this.modalDateTo);
+                const qs = params.toString() ? `?${params}` : '';
+                const res = await fetch(`/api/reports/visa-agent/${agentId}/combined${qs}`);
                 const result = await res.json();
                 if (result.agent) {
                     const stats = result.stats || {};
@@ -481,6 +506,8 @@ function visaAgentReport(options = {}) {
 
         closeModal() {
             this.detailModalOpen = false;
+            this.modalDateFrom = '';
+            this.modalDateTo = '';
             document.body.style.overflow = 'auto';
         },
 
