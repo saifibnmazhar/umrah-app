@@ -42,7 +42,6 @@ use App\Traits\ConvertsDocumentsToPdf;
 use App\Services\BookingService;
 use App\Services\PaymentService;
 use App\Services\InvoiceService;
-use App\Services\CostTrackingService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -402,6 +401,8 @@ class BookingController extends Controller
                 'booking.documents',
                 'booking.package.ticketFare.route',
                 'booking.invoice',
+                'booking.fingerprint',
+                'booking.passengers',
                 'ticketFare.route',
                 'status',
                 'visaSubmission.visaAgent',
@@ -421,17 +422,6 @@ class BookingController extends Controller
             ->paginate(15)
             ->appends(['tab' => $tab])
             ->withQueryString();
-
-        $costService = app(CostTrackingService::class);
-        $passengerBookingIds = $passengers->pluck('booking_id')->unique();
-        $costBookings = Booking::with(['fingerprint', 'passengers'])
-            ->whereIn('id', $passengerBookingIds)->get();
-        $passengerCosts = [];
-        foreach ($costBookings as $cb) {
-            foreach ($costService->getPassengerCosts($cb) as $pc) {
-                $passengerCosts[$pc['passenger_id']] = $pc;
-            }
-        }
 
         $passengerStatuses = PassengerStatus::all();
         $statusChangeOptions = $passengerStatuses->filter(fn ($s) =>
@@ -480,8 +470,7 @@ class BookingController extends Controller
             'selectedStatusChangeAction', 'selectedStatusChangeFrom', 'selectedStatusChangeTo',
             'statusChangeOptions',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
-            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt',
-            'passengerCosts'
+            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt'
         ));
     }
 
