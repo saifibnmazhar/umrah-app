@@ -255,6 +255,10 @@ select {
                                 <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Total Cancellation Fee</p>
                                 <p class="text-xl font-bold text-red-700 mt-1" x-text="modalAgent.cancellationFee > 0 ? $currency(modalAgent.cancellationFee, 2) : '-'"></p>
                             </div>
+                            <div class="bg-gray-50 border-2 border-gray-200 rounded-lg p-4">
+                                <p class="text-xs text-gray-500 font-medium uppercase tracking-wide">Estimated Cost</p>
+                                <p class="text-xl font-bold text-gray-800 mt-1" x-text="$currency(modalAgent.estimatedCost || 0, 2)"></p>
+                            </div>
                         </div>
                     </div>
 
@@ -483,6 +487,7 @@ function visaAgentReport(options = {}) {
                         paid: stats.paid ?? 0,
                         balance: stats.balance ?? 0,
                         cancellationFee: stats.cancellationFee ?? 0,
+                        estimatedCost: stats.estimatedCost ?? 0,
                         loading: false,
                         combined: result.data || [],
                     };

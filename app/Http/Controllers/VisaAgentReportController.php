@@ -87,6 +87,7 @@ class VisaAgentReportController extends Controller
 
         $rows = $this->buildCombinedRows($visaAgent, $request->date_from, $request->date_to);
         $stats = $this->buildAgentRow($visaAgent, $request->date_from, $request->date_to);
+        $stats['estimatedCost'] = (float) $rows->sum('estimated_cost');
 
         return response()->json([
             'data' => $rows,
