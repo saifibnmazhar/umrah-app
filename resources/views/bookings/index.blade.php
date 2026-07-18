@@ -2,6 +2,22 @@
 @section('title', 'Booking')
 @section('content')
 @php
+$costService = app(\App\Services\CostTrackingService::class);
+$bookingCostCache = [];
+$passengerTotalCostMap = ($passengers ?? collect())->getCollection()
+    ->keyBy('id')
+    ->map(function ($p) use ($costService, &$bookingCostCache) {
+        $booking = $p->booking;
+        if (! $booking) return 0;
+        $bid = $booking->id;
+        if (! isset($bookingCostCache[$bid])) {
+            $bookingCostCache[$bid] = $costService->getPassengerCosts($booking)->keyBy('passenger_id');
+        }
+        $c = $bookingCostCache[$bid]->get($p->id);
+        return (float) ($c['total_cost'] ?? 0);
+    })
+    ->all();
+
 $passengersVisaData = ($passengers ?? collect())->map(function($p) {
     $rate = $p->booking?->currencyRate?->rate
         ?? app(\App\Services\CurrencyRateService::class)->getRateForDate($p->booking?->created_at)?->rate
@@ -227,6 +243,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'net_fare' => (float)($t->net_fare ?? 0),
         'status' => $t->status,
     ])->values(),
+    'total_cost' => $passengerTotalCostMap[$p->id] ?? 0,
 ])->values();
 @endphp
 <div class="w-full mx-auto" x-data="bookingIndexApp()">
@@ -663,10 +680,10 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)
-    <td class="px-3 py-2 text-slate-700" x-text="computeTotalCost({{ $loop->index }}) > 0 ? $currency(computeTotalCost({{ $loop->index }}), 2, {{ $passBookingRate }}) : '—'"></td>
+    <td class="px-3 py-2 text-slate-700" x-text="(passengersTicketData[{{ $loop->index }}]?.total_cost || 0) > 0 ? $currency(passengersTicketData[{{ $loop->index }}].total_cost, 2, {{ $passBookingRate }}) : '—'"></td>
     @endif
     @if($canViewFinancialColumns)
-    <td class="px-3 py-2 text-slate-700" x-text="({{ $passenger->package_value ?? 0 }} > 0 || computeTotalCost({{ $loop->index }}) > 0) ? $currency({{ $passenger->package_value ?? 0 }} - computeTotalCost({{ $loop->index }}), 2, {{ $passBookingRate }}) : '—'"></td>
+    <td class="px-3 py-2 text-slate-700" x-text="({{ $passenger->package_value ?? 0 }} > 0 || (passengersTicketData[{{ $loop->index }}]?.total_cost || 0) > 0) ? $currency({{ $passenger->package_value ?? 0 }} - passengersTicketData[{{ $loop->index }}].total_cost, 2, {{ $passBookingRate }}) : '—'"></td>
     @endif
     <td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice)<div class="font-medium">Total: @currency($passenger->booking->invoice->total_amount, 2, $passBookingRate)</div><div class="font-medium">Due: @currency($passenger->booking->invoice->balance, 2, $passBookingRate)</div>@else—@endif @endif</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->stay_duration ?? '—' }}</td>
@@ -2241,16 +2258,6 @@ function bookingIndexApp() {
             if (isVisaSubmitted) return 'Visa Submitted';
             if (isFingerprintApproved) return 'Fingerprint Done';
             return 'None';
-        },
-
-        computeTotalCost(index) {
-            const td = this.passengersTicketData[index];
-            const vd = this.passengersVisaData[index];
-            const fpCost = parseFloat(td?.fingerprint_cost) || 0;
-            const visaCost = (vd?.visa?.status === 'issued') ? (parseFloat(vd.visa.final_cost) || 0) : 0;
-            const tickets = td?.all_issued_tickets || [];
-            const ticketCost = tickets.reduce((sum, t) => sum + (parseFloat(t.net_fare) || 0), 0);
-            return fpCost + visaCost + ticketCost;
         },
 
         getCommissionAgents(agentId) {

@@ -18,7 +18,7 @@ class ProfitLossReportController extends Controller
             'invoice',
             'fingerprint',
             'passengers.visaSubmission',
-            'passengers.latestIssuedTicket',
+            'passengers.allIssuedTickets',
         ])
             ->where('is_cancelled', false)
             ->whereHas('invoice');
@@ -40,15 +40,15 @@ class ProfitLossReportController extends Controller
             $totalAmount = (float) $booking->invoice->total_amount;
 
             return [
-                'invoice_id'        => $booking->invoice_id,
-                'customer_name'     => $booking->customer->name ?? '',
+                'invoice_id' => $booking->invoice_id,
+                'customer_name' => $booking->customer->name ?? '',
                 'customer_passport' => $booking->customer->passport_no ?? '',
-                'customer_iqama'    => $booking->customer->iqama_no ?? '',
-                'mobile'            => $booking->customer->mobile_no ?? '',
-                'pax_qty'           => $booking->pax_qty,
-                'package_value'     => $totalAmount,
-                'total_cost'        => $totalCost,
-                'profit'            => $totalAmount - $totalCost,
+                'customer_iqama' => $booking->customer->iqama_no ?? '',
+                'mobile' => $booking->customer->mobile_no ?? '',
+                'pax_qty' => $booking->pax_qty,
+                'package_value' => $totalAmount,
+                'total_cost' => $totalCost,
+                'profit' => $totalAmount - $totalCost,
             ];
         })->values();
 
@@ -61,22 +61,22 @@ class ProfitLossReportController extends Controller
                 $packageValue = (float) $passenger->package_value;
 
                 return [
-                    'invoice_id'        => $booking->invoice_id,
-                    'customer_name'     => $booking->customer->name ?? '',
+                    'invoice_id' => $booking->invoice_id,
+                    'customer_name' => $booking->customer->name ?? '',
                     'customer_passport' => $booking->customer->passport_no ?? '',
-                    'customer_iqama'    => $booking->customer->iqama_no ?? '',
-                    'mobile'            => $passenger->mobile_no,
-                    'passenger_name'    => $passenger->first_name . ' ' . $passenger->last_name,
-                    'passenger_passport'=> $passenger->passport_no ?? '',
-                    'package_value'     => $packageValue,
-                    'total_cost'        => $totalCost,
-                    'profit'            => $packageValue - $totalCost,
+                    'customer_iqama' => $booking->customer->iqama_no ?? '',
+                    'mobile' => $passenger->mobile_no,
+                    'passenger_name' => $passenger->first_name.' '.$passenger->last_name,
+                    'passenger_passport' => $passenger->passport_no ?? '',
+                    'package_value' => $packageValue,
+                    'total_cost' => $totalCost,
+                    'profit' => $packageValue - $totalCost,
                 ];
             });
         })->values();
 
         return response()->json([
-            'customers'  => $customers,
+            'customers' => $customers,
             'passengers' => $passengers,
         ]);
     }
@@ -93,7 +93,7 @@ class ProfitLossReportController extends Controller
             'invoice',
             'fingerprint',
             'passengers.visaSubmission',
-            'passengers.latestIssuedTicket',
+            'passengers.allIssuedTickets',
         ])
             ->where('is_cancelled', false)
             ->whereHas('invoice');
@@ -115,15 +115,15 @@ class ProfitLossReportController extends Controller
             $totalAmount = (float) $booking->invoice->total_amount;
 
             return [
-                'invoice_id'        => $booking->invoice_id,
-                'customer_name'     => $booking->customer->name ?? '',
+                'invoice_id' => $booking->invoice_id,
+                'customer_name' => $booking->customer->name ?? '',
                 'customer_passport' => $booking->customer->passport_no ?? '',
-                'customer_iqama'    => $booking->customer->iqama_no ?? '',
-                'mobile'            => $booking->customer->mobile_no ?? '',
-                'pax_qty'           => $booking->pax_qty,
-                'package_value'     => $totalAmount,
-                'total_cost'        => $totalCost,
-                'profit'            => $totalAmount - $totalCost,
+                'customer_iqama' => $booking->customer->iqama_no ?? '',
+                'mobile' => $booking->customer->mobile_no ?? '',
+                'pax_qty' => $booking->pax_qty,
+                'package_value' => $totalAmount,
+                'total_cost' => $totalCost,
+                'profit' => $totalAmount - $totalCost,
             ];
         })->values();
 
@@ -136,16 +136,16 @@ class ProfitLossReportController extends Controller
                 $packageValue = (float) $passenger->package_value;
 
                 return [
-                    'invoice_id'        => $booking->invoice_id,
-                    'customer_name'     => $booking->customer->name ?? '',
+                    'invoice_id' => $booking->invoice_id,
+                    'customer_name' => $booking->customer->name ?? '',
                     'customer_passport' => $booking->customer->passport_no ?? '',
-                    'customer_iqama'    => $booking->customer->iqama_no ?? '',
-                    'mobile'            => $passenger->mobile_no,
-                    'passenger_name'    => $passenger->first_name . ' ' . $passenger->last_name,
-                    'passenger_passport'=> $passenger->passport_no ?? '',
-                    'package_value'     => $packageValue,
-                    'total_cost'        => $totalCost,
-                    'profit'            => $packageValue - $totalCost,
+                    'customer_iqama' => $booking->customer->iqama_no ?? '',
+                    'mobile' => $passenger->mobile_no,
+                    'passenger_name' => $passenger->first_name.' '.$passenger->last_name,
+                    'passenger_passport' => $passenger->passport_no ?? '',
+                    'package_value' => $packageValue,
+                    'total_cost' => $totalCost,
+                    'profit' => $packageValue - $totalCost,
                 ];
             });
         })->values();
