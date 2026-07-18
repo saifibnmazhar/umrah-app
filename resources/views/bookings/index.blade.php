@@ -221,6 +221,12 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'route' => $lit->ticketFare?->route ? ($lit->ticketFare->route->fromCity?->code . '-' . $lit->ticketFare->route->toCity?->code) : '',
         'route_type' => $lit->ticketFare?->route?->route_type?->value,
     ] : null,
+
+    'all_issued_tickets' => $p->allIssuedTickets->map(fn($t) => [
+        'id' => $t->id,
+        'net_fare' => (float)($t->net_fare ?? 0),
+        'status' => $t->status,
+    ])->values(),
 ])->values();
 @endphp
 <div class="w-full mx-auto" x-data="bookingIndexApp()">
@@ -2242,8 +2248,8 @@ function bookingIndexApp() {
             const vd = this.passengersVisaData[index];
             const fpCost = parseFloat(td?.fingerprint_cost) || 0;
             const visaCost = (vd?.visa?.status === 'issued') ? (parseFloat(vd.visa.final_cost) || 0) : 0;
-            const lt = td?.latest_issued_ticket;
-            const ticketCost = (lt?.status === 'issued' || lt?.status === 're-issued') ? (parseFloat(lt.net_fare) || 0) : 0;
+            const tickets = td?.all_issued_tickets || [];
+            const ticketCost = tickets.reduce((sum, t) => sum + (parseFloat(t.net_fare) || 0), 0);
             return fpCost + visaCost + ticketCost;
         },
 
@@ -3237,6 +3243,10 @@ function bookingIndexApp() {
                         route_type: t.ticket_fare?.route?.route_type,
                     };
                     row.ticket_fare = this.mapIssuedTicketToForm(t);
+                    if (t.status === 'issued' || t.status === 're-issued') {
+                        if (!row.all_issued_tickets) row.all_issued_tickets = [];
+                        row.all_issued_tickets.push({ id: t.id, net_fare: t.net_fare, status: t.status });
+                    }
                     this.showToast(data.message || 'Ticket saved successfully.');
                     this.closeTicketFareModal();
                 } else {
