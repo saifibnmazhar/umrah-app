@@ -184,6 +184,33 @@ $refundRequests = [];
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-600">Total Receiving</h3>
+                    <div class="w-10 h-10 rounded-full bg-indigo-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-indigo-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 9V7a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2m2 4h10a2 2 0 002-2v-6a2 2 0 00-2-2H9a2 2 0 00-2 2v6a2 2 0 002 2zm7-5a2 2 0 11-4 0 2 2 0 014 0z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-center mb-1">
+                    <div class="text-3xl font-bold text-indigo-600">@currency(cascadeRound($totalReceiving), 0, null, cascadeRound($totalReceivingBdt)) <span x-text="$store.currency.mode"></span></div>
+                    <div class="text-xs font-medium text-slate-500">Total</div>
+                </div>
+                <div class="border-t border-slate-200 mt-1 mb-2"></div>
+                <div class="flex justify-between items-center">
+                    <div class="text-left">
+                        <div class="text-2xl font-bold text-emerald-600">@currency(cascadeRound($receivingCash), 0, null, cascadeRound($receivingCashBdt)) <span x-text="$store.currency.mode"></span></div>
+                        <div class="text-xs font-medium text-slate-500">Cash</div>
+                    </div>
+                    <div class="text-right">
+                        <div class="text-2xl font-bold text-blue-600">@currency(cascadeRound($receivingBank), 0, null, cascadeRound($receivingBankBdt)) <span x-text="$store.currency.mode"></span></div>
+                        <div class="text-xs font-medium text-slate-500">Bank</div>
+                    </div>
+                </div>
+                <div class="text-xs text-slate-500 mt-1">Collection (This Month)</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="text-sm font-semibold text-slate-600">Fingerprint</h3>
                     <div class="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
