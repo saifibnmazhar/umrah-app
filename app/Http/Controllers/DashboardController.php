@@ -14,10 +14,12 @@ use App\Models\IssuedTicket;
 use App\Models\IssuedTicketLog;
 use App\Models\Package;
 use App\Models\Passenger;
+use App\Models\Booking;
 use App\Models\Payment;
 use App\Models\VisaSubmission;
 use App\Models\VisaUpdateLog;
 use App\Models\Voucher;
+use App\Services\CostTrackingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -145,6 +147,18 @@ class DashboardController extends Controller
         $initialPaymentBank = $initialPaymentRow->bank_sar ?? 0;
         $initialPaymentBankBdt = $initialPaymentRow->bank_bdt ?? 0;
 
+        $profitBookings = Booking::with(['invoice', 'fingerprint', 'passengers.visaSubmission', 'passengers.allIssuedTickets'])
+            ->where('is_cancelled', false)
+            ->whereHas('invoice')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->when($branchId, fn($q) => $q->where('booking_branch_id', $branchId))
+            ->get();
+        $costService = app(CostTrackingService::class);
+        $totalProfit = $profitBookings->sum(function (Booking $booking) use ($costService) {
+            $costSummary = $costService->getBookingCostSummary($booking);
+            return (float) $booking->invoice->total_amount - $costSummary['total_cost'];
+        });
+
         $paymentRow = Payment::where('payments.created_at', '>=', now()->subDays(30))
             ->when($branchId, fn($q) => $q->where('payments.branch_id', $branchId))
             ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
@@ -162,6 +176,6 @@ class DashboardController extends Controller
         $totalBankPayment = $paymentRow->bank_sar ?? 0;
         $totalBankPaymentBdt = $paymentRow->bank_bdt ?? 0;
 
-        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalPassengers', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt'));
+        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalPassengers', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt', 'totalProfit'));
     }
 }
