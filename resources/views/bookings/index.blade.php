@@ -570,6 +570,14 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     </div>
                     @endunless
                     <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Payment Wise</label>
+                        <select x-model="selectedPaymentWise" @change="onPaymentWiseChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            <option value="clear">Payment Clear</option>
+                            <option value="due">Payment Due</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">&nbsp;</label>
                         <button @click="clearPassengerFilters" class="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 transition text-sm">Clear</button>
                     </div>
@@ -1744,6 +1752,7 @@ function bookingIndexApp() {
         selectedStatusChangeFrom: '{{ $selectedStatusChangeFrom ?? '' }}',
         selectedStatusChangeTo: '{{ $selectedStatusChangeTo ?? '' }}',
         selectedFlightDateRange: '',
+        selectedPaymentWise: '{{ $selectedPaymentWise ?? '' }}',
         flightDateRanges: @json($flightDateRanges),
         totalPassengerCount: {{ $totalPassengerCount }},
 
@@ -2096,6 +2105,17 @@ function bookingIndexApp() {
             window.location.href = url.toString();
         },
 
+        onPaymentWiseChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedPaymentWise) {
+                url.searchParams.set('payment_wise', this.selectedPaymentWise);
+            } else {
+                url.searchParams.delete('payment_wise');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
         clearPassengerFilters() {
             const url = new URL(window.location);
             ['fingerprint_status', 'visa_status', 'ticket_status',
@@ -2105,6 +2125,7 @@ function bookingIndexApp() {
              'return_date_from', 'return_date_to',
              'flight_date_from', 'flight_date_to',
              'status_change_action', 'status_change_from', 'status_change_to',
+             'payment_wise',
              'search', 'page'
             ].forEach(p => url.searchParams.delete(p));
             url.searchParams.set('tab', 'passenger');
