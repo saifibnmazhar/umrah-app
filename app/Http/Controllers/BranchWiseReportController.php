@@ -175,6 +175,13 @@ class BranchWiseReportController extends Controller
         $totalBankPayment = $paymentRow->bank_sar ?? 0;
         $totalBankPaymentBdt = $paymentRow->bank_bdt ?? 0;
 
+        $totalReceiving = $totalInitialPayment + $totalDueCollection;
+        $totalReceivingBdt = $totalInitialPaymentBdt + $totalDueCollectionBdt;
+        $receivingCash = $initialPaymentCash + $dueCollectionCash;
+        $receivingCashBdt = $initialPaymentCashBdt + $dueCollectionCashBdt;
+        $receivingBank = $initialPaymentBank + $dueCollectionBank;
+        $receivingBankBdt = $initialPaymentBankBdt + $dueCollectionBankBdt;
+
         $payments = Payment::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
@@ -211,7 +218,7 @@ class BranchWiseReportController extends Controller
             'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing',
             'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt',
             'inboundTicket', 'outboundTicket', 'pendingTicket',
-            'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalPassengers',
+            'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalPassengers',
             'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt',
             'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId',
             'vouchersByDateJson', 'vouchersByDate'
