@@ -733,6 +733,7 @@ function pendingOutboundReport(options = {}) {
             }
 
             const payload = {
+                issued_ticket_id: f.issued_ticket_id,
                 ticket_number: f.ticket_number || '',
                 pnr: f.pnr || '',
                 ticket_agent_id: f.ticket_agent_id,
