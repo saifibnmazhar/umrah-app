@@ -218,7 +218,13 @@ $refundRequests = [];
                         </svg>
                     </div>
                 </div>
-                <div class="text-3xl font-bold text-teal-600 mb-1">@currency(cascadeRound($totalFingerprintProfit), 0, null, cascadeRound($totalFingerprintProfitBdt))</div>
+                @if(cascadeRound($totalFingerprintProfit) > 0)
+                    <div class="text-3xl font-bold text-emerald-600 mb-1">+@currency(cascadeRound($totalFingerprintProfit), 0, null, cascadeRound($totalFingerprintProfitBdt))</div>
+                @elseif(cascadeRound($totalFingerprintProfit) < 0)
+                    <div class="text-3xl font-bold text-red-600 mb-1">@currency(cascadeRound($totalFingerprintProfit), 0, null, cascadeRound($totalFingerprintProfitBdt))</div>
+                @else
+                    <div class="text-3xl font-bold text-teal-600 mb-1">@currency(cascadeRound($totalFingerprintProfit), 0, null, cascadeRound($totalFingerprintProfitBdt))</div>
+                @endif
                 <div class="text-xs text-slate-500 mt-1">This Month</div>
             </div>
 
