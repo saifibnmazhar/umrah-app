@@ -165,6 +165,7 @@ class BookingController extends Controller
         $selectedStatusChangeAction = $request->get('status_change_action');
         $selectedStatusChangeFrom = $request->get('status_change_from');
         $selectedStatusChangeTo = $request->get('status_change_to');
+        $selectedPaymentWise = $request->get('payment_wise');
 
         $allRouteMaps = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])
             ->get()
@@ -359,6 +360,16 @@ class BookingController extends Controller
                               ->orWhere('pnr', 'like', "%{$search}%")
                         );
                 });
+            })
+            ->when($request->filled('payment_wise'), function ($q) use ($request) {
+                $paymentWise = $request->input('payment_wise');
+                $q->whereHas('booking.invoice', function ($iq) use ($paymentWise) {
+                    if ($paymentWise === 'clear') {
+                        $iq->where('balance', '<=', 0);
+                    } elseif ($paymentWise === 'due') {
+                        $iq->where('balance', '>', 0);
+                    }
+                });
             });
 
         $totalPassengerCount = (clone $passengers)->count();
@@ -468,6 +479,7 @@ class BookingController extends Controller
             'selectedActualFlightFrom', 'selectedActualFlightTo',
             'selectedReturnDateFrom', 'selectedReturnDateTo',
             'selectedStatusChangeAction', 'selectedStatusChangeFrom', 'selectedStatusChangeTo',
+            'selectedPaymentWise',
             'statusChangeOptions',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
             'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt'
