@@ -30,7 +30,7 @@ class BranchWiseReportController extends Controller
     {
         $dateFrom = $request->date_from ? Carbon::parse($request->date_from) : now()->subDays(30);
         $dateTo = $request->date_to ? Carbon::parse($request->date_to) : now();
-        $userBranchId = auth()->user()->branch_id;
+        $userBranchId = auth()->user()?->branch_id;
         $branchId = $userBranchId ?: $request->branch_id;
         $selectedBranch = $branchId;
         $branches = Branch::orderBy('name')->get(['id', 'name']);
