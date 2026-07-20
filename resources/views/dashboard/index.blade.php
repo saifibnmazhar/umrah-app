@@ -211,6 +211,23 @@ $refundRequests = [];
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-600">Total Profit</h3>
+                    <div class="w-10 h-10 rounded-full bg-emerald-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-emerald-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6"/>
+                        </svg>
+                    </div>
+                </div>
+                @if($totalProfit >= 0)
+                    <div class="text-3xl font-bold text-emerald-600 mb-1">+@currency(cascadeRound($totalProfit), 0, null, cascadeRound($totalProfit)) <span x-text="$store.currency.mode"></span></div>
+                @else
+                    <div class="text-3xl font-bold text-red-600 mb-1">-@currency(cascadeRound(abs($totalProfit)), 0, null, cascadeRound(abs($totalProfit))) <span x-text="$store.currency.mode"></span></div>
+                @endif
+                <div class="text-xs text-slate-500 mt-1">This Month</div>
+            </div>
+
+            <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
                 <div class="flex justify-between items-center mb-2">
                     <h3 class="text-sm font-semibold text-slate-600">Fingerprint</h3>
                     <div class="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">

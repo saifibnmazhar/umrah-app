@@ -13,8 +13,10 @@ use App\Models\FingerprintDetailLog;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
 use App\Models\IssuedTicketLog;
+use App\Models\Booking;
 use App\Models\Passenger;
 use App\Models\Payment;
+use App\Services\CostTrackingService;
 use App\Models\VisaSubmission;
 use App\Models\VisaUpdateLog;
 use App\Models\Voucher;
@@ -153,6 +155,19 @@ class BranchWiseReportController extends Controller
         $initialPaymentBank = $initialPaymentRow->bank_sar ?? 0;
         $initialPaymentBankBdt = $initialPaymentRow->bank_bdt ?? 0;
 
+        $profitBookings = Booking::with(['invoice', 'fingerprint', 'passengers.visaSubmission', 'passengers.allIssuedTickets'])
+            ->where('is_cancelled', false)
+            ->whereHas('invoice')
+            ->whereDate('created_at', '>=', $dateFrom)
+            ->whereDate('created_at', '<=', $dateTo)
+            ->when($branchId, fn($q) => $q->where('booking_branch_id', $branchId))
+            ->get();
+        $costService = app(CostTrackingService::class);
+        $totalProfit = $profitBookings->sum(function (Booking $booking) use ($costService) {
+            $costSummary = $costService->getBookingCostSummary($booking);
+            return (float) $booking->invoice->total_amount - $costSummary['total_cost'];
+        });
+
         $totalPassengers = Passenger::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))->count();
@@ -218,7 +233,7 @@ class BranchWiseReportController extends Controller
             'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing',
             'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt',
             'inboundTicket', 'outboundTicket', 'pendingTicket',
-            'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalPassengers',
+            'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalPassengers', 'totalProfit',
             'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt',
             'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId',
             'vouchersByDateJson', 'vouchersByDate'
