@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\IssuedTicket;
 use App\Models\Booking;
+use App\Models\IssuedTicket;
 use App\Models\Passenger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -41,8 +41,12 @@ class TicketIssueController extends Controller
             ->where('passenger_id', $passenger->id)
             ->first();
 
-        if (!$issuedTicket) {
+        if (! $issuedTicket) {
             return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
+        }
+
+        if ($issuedTicket->status !== 'pending') {
+            return response()->json(['message' => 'This ticket has already been issued.'], 400);
         }
 
         try {
@@ -50,24 +54,39 @@ class TicketIssueController extends Controller
 
             $oldData = $issuedTicket->toArray();
 
-            $issuedTicket->update(array_merge($validated, [
+            $updateData = array_merge($validated, [
                 'status' => 'issued',
                 'user_id' => auth()->id(),
-            ]));
+            ]);
+
+            if ($issuedTicket->issue_type === 'pending_outbound') {
+                unset($updateData['issue_type']);
+            } else {
+                $updateData['issue_type'] = 'regular';
+            }
+
+            $issuedTicket->update($updateData);
 
             $passenger->update(['ticket_status' => 'issued']);
 
-            if ($validated['outbound_pending'] ?? false) {
-                IssuedTicket::create([
-                    'passenger_id' => $issuedTicket->passenger_id,
-                    'booking_id' => $issuedTicket->booking_id,
-                    'user_id' => auth()->id(),
-                    'issue_type' => 'pending_outbound',
-                    'status' => 'pending',
-                    'is_refundable' => false,
-                    'is_exchangeable' => false,
-                    'outbound_pending' => false,
-                ]);
+            if ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
+                $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
+                    ->where('issue_type', 'pending_outbound')
+                    ->where('status', 'pending')
+                    ->exists();
+
+                if (! $existingPendingOutbound) {
+                    IssuedTicket::create([
+                        'passenger_id' => $issuedTicket->passenger_id,
+                        'booking_id' => $issuedTicket->booking_id,
+                        'user_id' => auth()->id(),
+                        'issue_type' => 'pending_outbound',
+                        'status' => 'pending',
+                        'is_refundable' => false,
+                        'is_exchangeable' => false,
+                        'outbound_pending' => false,
+                    ]);
+                }
             }
 
             $issuedTicket->logAction('issued', $oldData, $issuedTicket->toArray());
@@ -88,7 +107,8 @@ class TicketIssueController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Ticket issue failed: ' . $e->getMessage());
+            \Log::error('Ticket issue failed: '.$e->getMessage());
+
             return response()->json(['message' => 'Failed to issue ticket.'], 500);
         }
     }
@@ -123,7 +143,7 @@ class TicketIssueController extends Controller
             ->where('passenger_id', $passenger->id)
             ->first();
 
-        if (!$issuedTicket) {
+        if (! $issuedTicket) {
             return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
         }
 
@@ -142,7 +162,7 @@ class TicketIssueController extends Controller
                     ->where('status', 'pending')
                     ->exists();
 
-                if (!$existingPendingOutbound) {
+                if (! $existingPendingOutbound) {
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -172,7 +192,8 @@ class TicketIssueController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Ticket edit failed: ' . $e->getMessage());
+            \Log::error('Ticket edit failed: '.$e->getMessage());
+
             return response()->json(['message' => 'Failed to update ticket.'], 500);
         }
     }

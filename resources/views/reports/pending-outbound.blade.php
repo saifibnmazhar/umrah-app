@@ -424,7 +424,7 @@ select {
                     </div>
 
                     <div class="flex gap-3 mt-6">
-                        <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" x-text="isEdit ? 'Save Changes' : 'Issue Ticket'"></button>
+                        <button type="submit" :disabled="isSubmitting" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" :class="isSubmitting ? 'opacity-50 cursor-not-allowed' : ''" x-text="isEdit ? 'Save Changes' : 'Issue Ticket'"></button>
                         <button type="button" @click="closeModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
                     </div>
                 </form>
@@ -460,6 +460,7 @@ function pendingOutboundReport(options = {}) {
             pending: 0,
             issued: 0,
         },
+        isSubmitting: false,
         modalOpen: false,
         isEdit: false,
         editingRow: null,
@@ -722,12 +723,17 @@ function pendingOutboundReport(options = {}) {
         },
 
         async handleSubmit() {
+            if (this.isSubmitting) return;
+            this.isSubmitting = true;
+
             const f = this.form;
             if (!f.ticket_number) {
+                this.isSubmitting = false;
                 this.showToast('Ticket number is required.', 'error');
                 return;
             }
             if (!f.ticket_agent_id) {
+                this.isSubmitting = false;
                 this.showToast('Ticket agent is required.', 'error');
                 return;
             }
@@ -761,6 +767,7 @@ function pendingOutboundReport(options = {}) {
                     method: this.isEdit ? 'PUT' : 'POST',
                     headers: {
                         'Content-Type': 'application/json',
+                        'Accept': 'application/json',
                         'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
                     },
                     body: JSON.stringify(payload),
@@ -776,6 +783,8 @@ function pendingOutboundReport(options = {}) {
             } catch (err) {
                 console.error('Ticket save error:', err);
                 this.showToast('Failed to save ticket.', 'error');
+            } finally {
+                this.isSubmitting = false;
             }
         },
 

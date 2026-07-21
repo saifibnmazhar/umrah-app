@@ -1602,7 +1602,7 @@ if ($route) {
                 </div>
 
                 <div class="flex gap-3 mt-6">
-                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" x-text="ticketFareModalTitle === 'Issue Ticket' ? 'Issue Ticket' : 'Save Changes'"></button>
+                    <button type="submit" :disabled="isSubmitting" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" :class="isSubmitting ? 'opacity-50 cursor-not-allowed' : ''" x-text="ticketFareModalTitle === 'Issue Ticket' ? 'Issue Ticket' : 'Save Changes'"></button>
                     <button type="button" @click="closeTicketFareModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
                 </div>
             </form>
@@ -2785,6 +2785,7 @@ function bookingIndexApp() {
             });
         },
 
+        isSubmitting: false,
         isTicketFareModalOpen: false,
         editingPassengerIndex: null,
         ticketFareModalTitle: 'Issue Ticket',
@@ -3175,6 +3176,7 @@ function bookingIndexApp() {
 
         handleTicketFareSubmit() {
             if (this.editingPassengerIndex === null) return;
+            if (this.isSubmitting) return;
 
             const f = this.ticketFareForm;
             f.errors = { pnr: '', ticket_number: '', date: '', ticket_agent: '', selling_fare: '', net_fare: '', offer_price: '', inbound_date: '', outbound_date: '' };
@@ -3214,6 +3216,11 @@ function bookingIndexApp() {
             const pendingTicket = (row.all_issued_tickets || []).find(t => t.status === 'pending');
             const issuedTicketId = isEdit ? row.latest_issued_ticket?.id : pendingTicket?.id;
 
+            if (!issuedTicketId) {
+                this.showToast('No pending ticket found for this passenger.', 'error');
+                return;
+            }
+
             const payload = {
                 issued_ticket_id: issuedTicketId,
                 ticket_number: this.ticketFareForm.ticket_number || '',
@@ -3232,8 +3239,9 @@ function bookingIndexApp() {
                 baggage_inbound: this.ticketFareForm.baggage_inbound || '',
                 baggage_outbound: this.ticketFareForm.baggage_outbound || '',
                 outbound_pending: this.ticketFareForm.outbound_pending || false,
-                issue_type: 'regular',
             };
+
+            this.isSubmitting = true;
 
             const url = isEdit
                 ? `/bookings/${row.booking_id}/passengers/${row.id}/ticket-edit`
@@ -3241,7 +3249,7 @@ function bookingIndexApp() {
 
             fetch(url, {
                 method: isEdit ? 'PUT' : 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
                 body: JSON.stringify(payload),
             })
             .then(res => res.json())
@@ -3287,7 +3295,8 @@ function bookingIndexApp() {
             .catch(err => {
                 console.error('Ticket submit error:', err);
                 this.showToast('Failed to save ticket.', 'error');
-            });
+            })
+            .finally(() => { this.isSubmitting = false; });
         },
 
         handleRouteTypeOrFlightTypeChange() {

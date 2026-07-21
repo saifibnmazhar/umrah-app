@@ -94,8 +94,7 @@ class Passenger extends Model
 
     public function allIssuedTickets(): HasMany
     {
-        return $this->hasMany(IssuedTicket::class)
-            ->whereIn('status', ['issued', 're-issued']);
+        return $this->hasMany(IssuedTicket::class);
     }
 
     public function latestIssuedTicket(): HasOne
