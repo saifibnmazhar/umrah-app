@@ -3211,7 +3211,11 @@ function bookingIndexApp() {
                 return;
             }
 
+            const pendingTicket = (row.all_issued_tickets || []).find(t => t.status === 'pending');
+            const issuedTicketId = isEdit ? row.latest_issued_ticket?.id : pendingTicket?.id;
+
             const payload = {
+                issued_ticket_id: issuedTicketId,
                 ticket_number: this.ticketFareForm.ticket_number || '',
                 pnr: this.ticketFareForm.pnr || '',
                 ticket_agent_id: this.getAgentIdByName(this.ticketFareForm.ticket_agent),

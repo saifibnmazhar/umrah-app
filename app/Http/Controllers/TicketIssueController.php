@@ -17,6 +17,7 @@ class TicketIssueController extends Controller
         }
 
         $validated = $request->validate([
+            'issued_ticket_id' => 'required|exists:issued_tickets,id',
             'ticket_number' => 'nullable|string|max:100',
             'pnr' => 'nullable|string|max:50',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
@@ -36,13 +37,12 @@ class TicketIssueController extends Controller
             'issue_type' => 'nullable|in:regular,additional,pending_outbound',
         ]);
 
-        $issuedTicket = IssuedTicket::where('passenger_id', $passenger->id)
-            ->where('status', 'pending')
-            ->latest()
+        $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])
+            ->where('passenger_id', $passenger->id)
             ->first();
 
         if (!$issuedTicket) {
-            return response()->json(['message' => 'No pending ticket record found for this passenger.'], 404);
+            return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
         }
 
         try {
@@ -100,6 +100,7 @@ class TicketIssueController extends Controller
         }
 
         $validated = $request->validate([
+            'issued_ticket_id' => 'required|exists:issued_tickets,id',
             'ticket_number' => 'nullable|string|max:100',
             'pnr' => 'nullable|string|max:50',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
@@ -118,13 +119,12 @@ class TicketIssueController extends Controller
             'outbound_pending' => 'boolean',
         ]);
 
-        $issuedTicket = IssuedTicket::where('passenger_id', $passenger->id)
-            ->where('status', 'issued')
-            ->latest()
+        $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])
+            ->where('passenger_id', $passenger->id)
             ->first();
 
         if (!$issuedTicket) {
-            return response()->json(['message' => 'No issued ticket found for this passenger.'], 404);
+            return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
         }
 
         try {
