@@ -17,6 +17,7 @@ function cascadeRound($value): int {
 $showSummaryCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor', 'Ticket Admin', 'Visa Admin', 'Branch Manager', 'Fingerprint Admin'])->isNotEmpty();
 $showPackages = true;
 $showRequests = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty();
+$showProfitCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
 $stats = [
     'visaSubmitted' => $visaSubmitted,
     'visaIssued' => $visaIssued,
@@ -210,6 +211,7 @@ $refundRequests = [];
                 <div class="text-xs text-slate-500 mt-1">Collection (This Month)</div>
             </div>
 
+            @if($showProfitCards)
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-slate-600">Total Profit</h3>
@@ -226,6 +228,7 @@ $refundRequests = [];
                 @endif
                 <div class="text-xs text-slate-500 mt-1">This Month</div>
             </div>
+            @endif
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
                 <div class="flex justify-between items-center mb-2">
@@ -253,6 +256,7 @@ $refundRequests = [];
                 <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
             </div>
 
+            @if($showProfitCards)
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-slate-600">Total Fingerprint Profit</h3>
@@ -271,6 +275,7 @@ $refundRequests = [];
                 @endif
                 <div class="text-xs text-slate-500 mt-1">This Month</div>
             </div>
+            @endif
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
                 <div class="flex justify-between items-center mb-2">
