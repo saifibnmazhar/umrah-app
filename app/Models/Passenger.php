@@ -94,19 +94,20 @@ class Passenger extends Model
 
     public function allIssuedTickets(): HasMany
     {
-        return $this->hasMany(IssuedTicket::class)
-            ->whereIn('status', ['issued', 're-issued']);
+        return $this->hasMany(IssuedTicket::class);
     }
 
     public function latestIssuedTicket(): HasOne
     {
         return $this->hasOne(IssuedTicket::class)
-            ->where(function ($q) {
-                $q->whereNull('issue_type')
-                  ->orWhere('issue_type', '!=', 'pending_outbound');
-            })
-            ->whereIn('status', ['issued', 're-issued'])
-            ->latestOfMany();
+            ->ofMany(['id' => 'MAX'], function ($query) {
+                $query
+                    ->where(function ($q) {
+                        $q->whereNull('issue_type')
+                          ->orWhere('issue_type', 'regular');
+                    })
+                    ->whereIn('status', ['issued', 're-issued']);
+            });
     }
 
     public function getRouteDisplayAttribute(): string

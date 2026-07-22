@@ -123,6 +123,8 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
     'flight_type' => $fare->route->flight_type?->value,
     'group_ticket_id' => $fare->groupTicket?->id ?? null,
     'pnr' => $fare->groupTicket?->pnr ?? '',
+    'inbound_date' => $fare->groupTicket?->inbound_date?->format('Y-m-d') ?? '',
+    'outbound_date' => $fare->groupTicket?->outbound_date?->format('Y-m-d') ?? '',
     'ticket_qty' => $fare->groupTicket?->ticket_qty ?? null,
     'is_refundable' => $fare->groupTicket?->is_refundable ?? null,
     'is_exchangable' => $fare->groupTicket?->is_exchangable ?? null,
@@ -242,6 +244,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'id' => $t->id,
         'net_fare' => (float)($t->net_fare ?? 0),
         'status' => $t->status,
+        'pnr' => $t->pnr ?? '',
+        'issue_type' => $t->issue_type,
     ])->values(),
     'total_cost' => $passengerTotalCostMap[$p->id] ?? 0,
 ])->values();
@@ -683,8 +687,28 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-600">{{ $routeDisplay }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
-    <td class="px-3 py-2 text-slate-700">{{ $passenger->allIssuedTickets->sortByDesc('created_at')->first(fn($t) => $t->inbound_date)?->inbound_date?->format('d M Y') ?? 'N/A' }}</td>
-    <td class="px-3 py-2 text-slate-700">{{ $passenger->allIssuedTickets->sortByDesc('created_at')->first(fn($t) => $t->outbound_date)?->outbound_date?->format('d M Y') ?? 'N/A' }}</td>
+    @php
+        $regularTicket = $passenger->allIssuedTickets
+            ->first(fn($t) => in_array($t->issue_type, [null, 'regular'], true) && in_array($t->status, ['issued', 're-issued']));
+        $actualFlightDate = 'N/A';
+        if (isset($routeType) && $routeType !== 'oneway_outbound' && $regularTicket) {
+            $actualFlightDate = $regularTicket->inbound_date?->format('d M Y') ?? 'N/A';
+        }
+    @endphp
+    <td class="px-3 py-2 text-slate-700">{{ $actualFlightDate }}</td>
+    @php
+        $returnDate = 'N/A';
+        if (isset($routeType) && $routeType === 'oneway_inbound') {
+            $pendingTicket = $passenger->allIssuedTickets
+                ->first(fn($t) => $t->issue_type === 'pending_outbound');
+            if ($pendingTicket && $pendingTicket->status === 'issued') {
+                $returnDate = $pendingTicket->outbound_date?->format('d M Y') ?? 'N/A';
+            }
+        } elseif (isset($routeType) && $regularTicket) {
+            $returnDate = $regularTicket->outbound_date?->format('d M Y') ?? 'N/A';
+        }
+    @endphp
+    <td class="px-3 py-2 text-slate-700">{{ $returnDate }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)
@@ -800,8 +824,12 @@ if ($route) {
                     }"
                     x-text="passengersTicketData[{{ $loop->index }}]?.ticket_status.charAt(0).toUpperCase() + passengersTicketData[{{ $loop->index }}]?.ticket_status.slice(1)">
                 </span>
-                <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' && passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.pnr">
-                    <div class="text-xs leading-tight">PNR: <span x-text="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.pnr"></span></div>
+                <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued'">
+                    <template x-for="ticket in passengersTicketData[{{ $loop->index }}]?.all_issued_tickets || []">
+                        <template x-if="ticket.pnr && (ticket.status === 'issued' || ticket.status === 're-issued')">
+                            <div class="text-xs leading-tight" x-text="ticket.pnr + (ticket.issue_type ? ' (' + ticket.issue_type + ')' : '')"></div>
+                        </template>
+                    </template>
                 </template>
             </span>
         </template>
@@ -1602,7 +1630,7 @@ if ($route) {
                 </div>
 
                 <div class="flex gap-3 mt-6">
-                    <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" x-text="ticketFareModalTitle === 'Issue Ticket' ? 'Issue Ticket' : 'Save Changes'"></button>
+                    <button type="submit" :disabled="isSubmitting" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" :class="isSubmitting ? 'opacity-50 cursor-not-allowed' : ''" x-text="ticketFareModalTitle === 'Issue Ticket' ? 'Issue Ticket' : 'Save Changes'"></button>
                     <button type="button" @click="closeTicketFareModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
                 </div>
             </form>
@@ -2785,6 +2813,7 @@ function bookingIndexApp() {
             });
         },
 
+        isSubmitting: false,
         isTicketFareModalOpen: false,
         editingPassengerIndex: null,
         ticketFareModalTitle: 'Issue Ticket',
@@ -3127,6 +3156,8 @@ function bookingIndexApp() {
             this.ticketFareForm.offer_price_bdt = '';
             this.ticketFareForm.baggage_inbound = '';
             this.ticketFareForm.baggage_outbound = '';
+            this.ticketFareForm.inbound_date = '';
+            this.ticketFareForm.outbound_date = '';
             this.ticketFareForm.pnr = '';
             this.ticketFareForm.ticket_number = '';
             this.ticketFareForm.ticket_agent = '';
@@ -3175,6 +3206,7 @@ function bookingIndexApp() {
 
         handleTicketFareSubmit() {
             if (this.editingPassengerIndex === null) return;
+            if (this.isSubmitting) return;
 
             const f = this.ticketFareForm;
             f.errors = { pnr: '', ticket_number: '', date: '', ticket_agent: '', selling_fare: '', net_fare: '', offer_price: '', inbound_date: '', outbound_date: '' };
@@ -3214,6 +3246,11 @@ function bookingIndexApp() {
             const pendingTicket = (row.all_issued_tickets || []).find(t => t.status === 'pending');
             const issuedTicketId = isEdit ? row.latest_issued_ticket?.id : pendingTicket?.id;
 
+            if (!issuedTicketId) {
+                this.showToast('No pending ticket found for this passenger.', 'error');
+                return;
+            }
+
             const payload = {
                 issued_ticket_id: issuedTicketId,
                 ticket_number: this.ticketFareForm.ticket_number || '',
@@ -3232,8 +3269,9 @@ function bookingIndexApp() {
                 baggage_inbound: this.ticketFareForm.baggage_inbound || '',
                 baggage_outbound: this.ticketFareForm.baggage_outbound || '',
                 outbound_pending: this.ticketFareForm.outbound_pending || false,
-                issue_type: 'regular',
             };
+
+            this.isSubmitting = true;
 
             const url = isEdit
                 ? `/bookings/${row.booking_id}/passengers/${row.id}/ticket-edit`
@@ -3241,7 +3279,7 @@ function bookingIndexApp() {
 
             fetch(url, {
                 method: isEdit ? 'PUT' : 'POST',
-                headers: { 'Content-Type': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
                 body: JSON.stringify(payload),
             })
             .then(res => res.json())
@@ -3276,7 +3314,12 @@ function bookingIndexApp() {
                     row.ticket_fare = this.mapIssuedTicketToForm(t);
                     if (t.status === 'issued' || t.status === 're-issued') {
                         if (!row.all_issued_tickets) row.all_issued_tickets = [];
-                        row.all_issued_tickets.push({ id: t.id, net_fare: t.net_fare, status: t.status });
+                        const existingIdx = row.all_issued_tickets.findIndex(et => et.id === t.id);
+                        if (existingIdx !== -1) {
+                            row.all_issued_tickets[existingIdx] = { id: t.id, net_fare: t.net_fare, status: t.status, pnr: t.pnr || '', issue_type: t.issue_type };
+                        } else {
+                            row.all_issued_tickets.push({ id: t.id, net_fare: t.net_fare, status: t.status, pnr: t.pnr || '', issue_type: t.issue_type });
+                        }
                     }
                     this.showToast(data.message || 'Ticket saved successfully.');
                     this.closeTicketFareModal();
@@ -3287,7 +3330,8 @@ function bookingIndexApp() {
             .catch(err => {
                 console.error('Ticket submit error:', err);
                 this.showToast('Failed to save ticket.', 'error');
-            });
+            })
+            .finally(() => { this.isSubmitting = false; });
         },
 
         handleRouteTypeOrFlightTypeChange() {
@@ -3366,6 +3410,8 @@ function bookingIndexApp() {
                 this.ticketFareForm.net_fare = 0;
                 this.ticketFareForm.baggage_inbound = '';
                 this.ticketFareForm.baggage_outbound = '';
+                this.ticketFareForm.inbound_date = '';
+                this.ticketFareForm.outbound_date = '';
                 this.ticketFareForm.selling_fare_bdt = '';
                 this.ticketFareForm.net_fare_bdt = '';
                 this.ticketFareForm.offer_price_bdt = '';
@@ -3380,7 +3426,15 @@ function bookingIndexApp() {
                 this.ticketFareForm.airline_id = fare.airline_id;
 
                 this.ticketFareForm.group_ticket_id = fare.group_ticket_id || null;
-                this.ticketFareForm.pnr = fare.pnr || '';
+                if (fare.pnr) {
+                    this.ticketFareForm.pnr = fare.pnr;
+                }
+                if (fare.inbound_date) {
+                    this.ticketFareForm.inbound_date = this.formatToDDMMMYY(fare.inbound_date) || '';
+                }
+                if (fare.outbound_date) {
+                    this.ticketFareForm.outbound_date = this.formatToDDMMMYY(fare.outbound_date) || '';
+                }
                 if (fare.ticket_type === 'group' && fare.is_refundable !== null) {
                     this.ticketFareForm.non_refundable = !fare.is_refundable;
                     this.ticketFareForm.non_exchangeable = !fare.is_exchangable;
