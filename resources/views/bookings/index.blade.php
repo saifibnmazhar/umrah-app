@@ -687,8 +687,28 @@ if ($route) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
     <td class="px-3 py-2 text-slate-600">{{ $routeDisplay }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
-    <td class="px-3 py-2 text-slate-700">{{ $passenger->allIssuedTickets->sortByDesc('created_at')->first(fn($t) => $t->inbound_date)?->inbound_date?->format('d M Y') ?? 'N/A' }}</td>
-    <td class="px-3 py-2 text-slate-700">{{ $passenger->allIssuedTickets->sortByDesc('created_at')->first(fn($t) => $t->outbound_date)?->outbound_date?->format('d M Y') ?? 'N/A' }}</td>
+    @php
+        $regularTicket = $passenger->allIssuedTickets
+            ->first(fn($t) => in_array($t->issue_type, [null, 'regular'], true) && in_array($t->status, ['issued', 're-issued']));
+        $actualFlightDate = 'N/A';
+        if (isset($routeType) && $routeType !== 'oneway_outbound' && $regularTicket) {
+            $actualFlightDate = $regularTicket->inbound_date?->format('d M Y') ?? 'N/A';
+        }
+    @endphp
+    <td class="px-3 py-2 text-slate-700">{{ $actualFlightDate }}</td>
+    @php
+        $returnDate = 'N/A';
+        if (isset($routeType) && $routeType === 'oneway_inbound') {
+            $pendingTicket = $passenger->allIssuedTickets
+                ->first(fn($t) => $t->issue_type === 'pending_outbound');
+            if ($pendingTicket && $pendingTicket->status === 'issued') {
+                $returnDate = $pendingTicket->outbound_date?->format('d M Y') ?? 'N/A';
+            }
+        } elseif (isset($routeType) && $regularTicket) {
+            $returnDate = $regularTicket->outbound_date?->format('d M Y') ?? 'N/A';
+        }
+    @endphp
+    <td class="px-3 py-2 text-slate-700">{{ $returnDate }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)
