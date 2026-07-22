@@ -222,9 +222,9 @@ $refundRequests = [];
                     </div>
                 </div>
                 @if($totalProfit >= 0)
-                    <div class="text-3xl font-bold text-emerald-600 mb-1">+@currency(cascadeRound($totalProfit), 0, null, cascadeRound($totalProfit)) <span x-text="$store.currency.mode"></span></div>
+                    <div class="text-3xl font-bold text-emerald-600 mb-1">+@currency(cascadeRound($totalProfit), 0, null, cascadeRound($totalProfitBdt)) <span x-text="$store.currency.mode"></span></div>
                 @else
-                    <div class="text-3xl font-bold text-red-600 mb-1">-@currency(cascadeRound(abs($totalProfit)), 0, null, cascadeRound(abs($totalProfit))) <span x-text="$store.currency.mode"></span></div>
+                    <div class="text-3xl font-bold text-red-600 mb-1">-@currency(cascadeRound(abs($totalProfit)), 0, null, cascadeRound(abs($totalProfitBdt))) <span x-text="$store.currency.mode"></span></div>
                 @endif
                 <div class="text-xs text-slate-500 mt-1">This Month</div>
             </div>
