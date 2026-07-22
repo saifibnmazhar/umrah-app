@@ -167,6 +167,12 @@ class BranchWiseReportController extends Controller
             $costSummary = $costService->getBookingCostSummary($booking);
             return (float) $booking->invoice->total_amount - $costSummary['total_cost'];
         });
+        $totalProfitBdt = $profitBookings->sum(function (Booking $booking) use ($costService, $firstRate) {
+            $costSummary = $costService->getBookingCostSummary($booking);
+            $profit = (float) $booking->invoice->total_amount - $costSummary['total_cost'];
+            $rate = (float) ($booking->currencyRate?->rate ?? $firstRate);
+            return $profit * $rate;
+        });
 
         $totalPassengers = Passenger::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
@@ -233,7 +239,7 @@ class BranchWiseReportController extends Controller
             'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing',
             'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt',
             'inboundTicket', 'outboundTicket', 'pendingTicket',
-            'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalPassengers', 'totalProfit',
+            'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalPassengers', 'totalProfit', 'totalProfitBdt',
             'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt',
             'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId',
             'vouchersByDateJson', 'vouchersByDate'
