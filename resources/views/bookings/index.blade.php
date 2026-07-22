@@ -242,6 +242,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'id' => $t->id,
         'net_fare' => (float)($t->net_fare ?? 0),
         'status' => $t->status,
+        'pnr' => $t->pnr ?? '',
+        'issue_type' => $t->issue_type,
     ])->values(),
     'total_cost' => $passengerTotalCostMap[$p->id] ?? 0,
 ])->values();
@@ -800,8 +802,12 @@ if ($route) {
                     }"
                     x-text="passengersTicketData[{{ $loop->index }}]?.ticket_status.charAt(0).toUpperCase() + passengersTicketData[{{ $loop->index }}]?.ticket_status.slice(1)">
                 </span>
-                <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' && passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.pnr">
-                    <div class="text-xs leading-tight">PNR: <span x-text="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.pnr"></span></div>
+                <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued'">
+                    <template x-for="ticket in passengersTicketData[{{ $loop->index }}]?.all_issued_tickets || []">
+                        <template x-if="ticket.pnr && (ticket.status === 'issued' || ticket.status === 're-issued')">
+                            <div class="text-xs leading-tight" x-text="ticket.pnr + (ticket.issue_type ? ' (' + ticket.issue_type + ')' : '')"></div>
+                        </template>
+                    </template>
                 </template>
             </span>
         </template>
@@ -3284,7 +3290,7 @@ function bookingIndexApp() {
                     row.ticket_fare = this.mapIssuedTicketToForm(t);
                     if (t.status === 'issued' || t.status === 're-issued') {
                         if (!row.all_issued_tickets) row.all_issued_tickets = [];
-                        row.all_issued_tickets.push({ id: t.id, net_fare: t.net_fare, status: t.status });
+                        row.all_issued_tickets.push({ id: t.id, net_fare: t.net_fare, status: t.status, pnr: t.pnr || '', issue_type: t.issue_type });
                     }
                     this.showToast(data.message || 'Ticket saved successfully.');
                     this.closeTicketFareModal();
