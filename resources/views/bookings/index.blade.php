@@ -3429,8 +3429,12 @@ function bookingIndexApp() {
                 if (fare.pnr) {
                     this.ticketFareForm.pnr = fare.pnr;
                 }
-                this.ticketFareForm.inbound_date = this.formatToDDMMMYY(fare.inbound_date) || '';
-                this.ticketFareForm.outbound_date = this.formatToDDMMMYY(fare.outbound_date) || '';
+                if (fare.inbound_date) {
+                    this.ticketFareForm.inbound_date = this.formatToDDMMMYY(fare.inbound_date) || '';
+                }
+                if (fare.outbound_date) {
+                    this.ticketFareForm.outbound_date = this.formatToDDMMMYY(fare.outbound_date) || '';
+                }
                 if (fare.ticket_type === 'group' && fare.is_refundable !== null) {
                     this.ticketFareForm.non_refundable = !fare.is_refundable;
                     this.ticketFareForm.non_exchangeable = !fare.is_exchangable;
