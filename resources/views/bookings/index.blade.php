@@ -3290,7 +3290,12 @@ function bookingIndexApp() {
                     row.ticket_fare = this.mapIssuedTicketToForm(t);
                     if (t.status === 'issued' || t.status === 're-issued') {
                         if (!row.all_issued_tickets) row.all_issued_tickets = [];
-                        row.all_issued_tickets.push({ id: t.id, net_fare: t.net_fare, status: t.status, pnr: t.pnr || '', issue_type: t.issue_type });
+                        const existingIdx = row.all_issued_tickets.findIndex(et => et.id === t.id);
+                        if (existingIdx !== -1) {
+                            row.all_issued_tickets[existingIdx] = { id: t.id, net_fare: t.net_fare, status: t.status, pnr: t.pnr || '', issue_type: t.issue_type };
+                        } else {
+                            row.all_issued_tickets.push({ id: t.id, net_fare: t.net_fare, status: t.status, pnr: t.pnr || '', issue_type: t.issue_type });
+                        }
                     }
                     this.showToast(data.message || 'Ticket saved successfully.');
                     this.closeTicketFareModal();
@@ -3395,7 +3400,9 @@ function bookingIndexApp() {
                 this.ticketFareForm.airline_id = fare.airline_id;
 
                 this.ticketFareForm.group_ticket_id = fare.group_ticket_id || null;
-                this.ticketFareForm.pnr = fare.pnr || '';
+                if (fare.pnr) {
+                    this.ticketFareForm.pnr = fare.pnr;
+                }
                 if (fare.ticket_type === 'group' && fare.is_refundable !== null) {
                     this.ticketFareForm.non_refundable = !fare.is_refundable;
                     this.ticketFareForm.non_exchangeable = !fare.is_exchangable;
