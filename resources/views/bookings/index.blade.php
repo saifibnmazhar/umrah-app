@@ -123,6 +123,8 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
     'flight_type' => $fare->route->flight_type?->value,
     'group_ticket_id' => $fare->groupTicket?->id ?? null,
     'pnr' => $fare->groupTicket?->pnr ?? '',
+    'inbound_date' => $fare->groupTicket?->inbound_date?->format('Y-m-d') ?? '',
+    'outbound_date' => $fare->groupTicket?->outbound_date?->format('Y-m-d') ?? '',
     'ticket_qty' => $fare->groupTicket?->ticket_qty ?? null,
     'is_refundable' => $fare->groupTicket?->is_refundable ?? null,
     'is_exchangable' => $fare->groupTicket?->is_exchangable ?? null,
@@ -3134,6 +3136,8 @@ function bookingIndexApp() {
             this.ticketFareForm.offer_price_bdt = '';
             this.ticketFareForm.baggage_inbound = '';
             this.ticketFareForm.baggage_outbound = '';
+            this.ticketFareForm.inbound_date = '';
+            this.ticketFareForm.outbound_date = '';
             this.ticketFareForm.pnr = '';
             this.ticketFareForm.ticket_number = '';
             this.ticketFareForm.ticket_agent = '';
@@ -3386,6 +3390,8 @@ function bookingIndexApp() {
                 this.ticketFareForm.net_fare = 0;
                 this.ticketFareForm.baggage_inbound = '';
                 this.ticketFareForm.baggage_outbound = '';
+                this.ticketFareForm.inbound_date = '';
+                this.ticketFareForm.outbound_date = '';
                 this.ticketFareForm.selling_fare_bdt = '';
                 this.ticketFareForm.net_fare_bdt = '';
                 this.ticketFareForm.offer_price_bdt = '';
@@ -3403,6 +3409,8 @@ function bookingIndexApp() {
                 if (fare.pnr) {
                     this.ticketFareForm.pnr = fare.pnr;
                 }
+                this.ticketFareForm.inbound_date = this.formatToDDMMMYY(fare.inbound_date) || '';
+                this.ticketFareForm.outbound_date = this.formatToDDMMMYY(fare.outbound_date) || '';
                 if (fare.ticket_type === 'group' && fare.is_refundable !== null) {
                     this.ticketFareForm.non_refundable = !fare.is_refundable;
                     this.ticketFareForm.non_exchangeable = !fare.is_exchangable;
