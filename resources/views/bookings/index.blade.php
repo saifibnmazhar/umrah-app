@@ -236,11 +236,6 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'travel_class' => $lit->ticketFare?->airlineClass?->class?->name ?? '',
         'route' => $lit->ticketFare?->route ? ($lit->ticketFare->route->fromCity?->code . '-' . $lit->ticketFare->route->toCity?->code) : '',
         'route_type' => $lit->ticketFare?->route?->route_type?->value,
-        'flight_type' => $lit->ticketFare?->route?->flight_type?->value,
-        'route_id' => $lit->ticketFare?->route_id,
-        'airline_id' => $lit->ticketFare?->airline_id,
-        'airline_classes_id' => $lit->ticketFare?->airline_classes_id,
-        'ticket_type' => $lit->ticketFare?->ticket_type?->value ?? 'regular',
     ] : null,
 
     'all_issued_tickets' => $p->allIssuedTickets->map(fn($t) => [
@@ -2905,6 +2900,9 @@ function bookingIndexApp() {
             const isAlreadyIssued = lit && (lit.status === 'issued' || lit.status === 're-issued');
             this.ticketFareModalTitle = isAlreadyIssued ? 'Edit Ticket' : 'Issue Ticket';
 
+            this.ticketFareForm.route = row.route || '';
+            this.ticketFareForm.airline = row.airline || '';
+            this.ticketFareForm.travel_class = row.travel_class || '';
             this.ticketFareForm.passenger_type = row.passenger_type || '';
 
             this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
@@ -2926,20 +2924,16 @@ function bookingIndexApp() {
                 this.ticketFareForm.baggage_inbound = lit.baggage_inbound || '';
                 this.ticketFareForm.baggage_outbound = lit.baggage_outbound || '';
                 this.ticketFareForm.outbound_pending = lit.outbound_pending || false;
-                this.ticketFareForm.route = lit.route || row.route || '';
-                this.ticketFareForm.airline = lit.airline || row.airline || '';
-                this.ticketFareForm.travel_class = lit.travel_class || row.travel_class || '';
-                this.ticketFareForm.group_ticket_id = lit.group_ticket_id || '';
-                this.ticketFareForm.ticket_type = lit.ticket_type || row.ticket_fare?.ticket_type || '';
+                this.ticketFareForm.ticket_type = row.ticket_fare?.ticket_type || '';
                 this.ticketFareForm.route_type = lit.route_type ? (
                     lit.route_type === 'oneway_inbound' ? 'One Way-Inbound' :
                     lit.route_type === 'oneway_outbound' ? 'One Way-Outbound' :
                     lit.route_type === 'round' ? 'Round' :
                     lit.route_type === 'multi_city' ? 'Multi City' : ''
                 ) : (row.ticket_fare?.route_type || '');
-                this.ticketFareForm.flight_type = lit.flight_type || row.ticket_fare?.flight_type || '';
-                this.ticketFareForm.route_id = lit.route_id || row.ticket_fare?.route_id || '';
-                this.ticketFareForm.airline_id = lit.airline_id || row.ticket_fare?.airline_id || '';
+                this.ticketFareForm.flight_type = row.ticket_fare?.flight_type || '';
+                this.ticketFareForm.route_id = row.ticket_fare?.route_id || '';
+                this.ticketFareForm.airline_id = row.ticket_fare?.airline_id || '';
                 const r1 = window.__currencyRate || 0;
                 if (r1 > 0) {
                     this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * r1);
@@ -3005,9 +2999,7 @@ function bookingIndexApp() {
                 const opt = this.filteredTicketOptions.find(o => o.value == fareId);
                 if (opt) {
                     this.ticketFareForm.ticket_option = opt.value;
-                    if (!isAlreadyIssued) {
-                        this.handleTicketOptionChange();
-                    }
+                    this.handleTicketOptionChange();
                 }
             }
 

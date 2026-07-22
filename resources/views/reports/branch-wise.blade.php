@@ -38,6 +38,7 @@
 
     @php
     $dateLabel = $dateFrom->format('d M Y') . ' - ' . $dateTo->format('d M Y');
+    $showProfitCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
 
     function cascadeRound($value): int {
         $parts = explode('.', number_format((float) $value, 6, '.', ''));
@@ -171,6 +172,7 @@
                 <div class="text-xs text-slate-500 mt-1">Collection ({{ $dateLabel }})</div>
             </div>
 
+            @if($showProfitCards)
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
                 <div class="flex items-center justify-between mb-3">
                     <h3 class="text-sm font-semibold text-slate-600">Total Profit</h3>
@@ -186,7 +188,8 @@
                     <div class="text-3xl font-bold text-red-600 mb-1">-@currency(cascadeRound(abs($totalProfit)), 0, null, cascadeRound(abs($totalProfit))) <span x-text="$store.currency.mode"></span></div>
                 @endif
                 <div class="text-xs text-slate-500 mt-1">{{ $dateLabel }}</div>
-        </div>
+            </div>
+            @endif
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
             <div class="flex justify-between items-center mb-2">
