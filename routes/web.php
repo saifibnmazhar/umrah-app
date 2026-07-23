@@ -389,6 +389,7 @@ Route::middleware('auth')->group(function () {
     Route::resource('payments', PaymentController::class)->only(['index', 'create', 'store', 'show'])->middleware('role:Super Admin,Co Admin');
     Route::get('/payments/{payment}/edit', [PaymentController::class, 'edit'])->name('payments.edit')->middleware('role:Super Admin');
     Route::put('/payments/{payment}', [PaymentController::class, 'update'])->name('payments.update')->middleware('role:Super Admin');
+    Route::get('/payments/{payment}/print-voucher', [PaymentController::class, 'printVoucher'])->name('payments.print-voucher')->middleware('role:Super Admin,Co Admin');
 
     /* Temporarily disabled
     Route::resource('invoices', InvoiceController::class)->middleware('role:Super Admin,Co Admin');
