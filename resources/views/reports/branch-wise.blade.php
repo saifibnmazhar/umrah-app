@@ -192,6 +192,19 @@
             @endif
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-600">Total Refund</h3>
+                    <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M16 15v-1a4 4 0 00-8 0v1m0 0a4 4 0 01-4 4h12a4 4 0 01-4-4H8z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-orange-600 mb-1">@currency(cascadeRound($totalRefund), 0, null, cascadeRound($totalRefundBdt)) <span x-text="$store.currency.mode"></span></div>
+                <div class="text-xs text-slate-500 mt-1">{{ $dateLabel }}</div>
+            </div>
+
+        <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
             <div class="flex justify-between items-center mb-2">
                 <h3 class="text-sm font-semibold text-slate-600">Fingerprint</h3>
                 <div class="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">

@@ -138,6 +138,32 @@ class DashboardController extends Controller
         $dueCollectionBank = $dueCollectionRow->bank_sar ?? 0;
         $dueCollectionBankBdt = $dueCollectionRow->bank_bdt ?? 0;
 
+        $scDeductionRow = Voucher::where('vouchers.created_at', '>=', now()->subDays(30))
+            ->when($branchId, fn($q) => $q->where('vouchers.branch_id', $branchId))
+            ->whereHas('transactionType', fn($q) => $q->where('name', 'Service Charge Deduction'))
+            ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw('
+                SUM(vouchers.amount) as sar_total,
+                SUM(vouchers.amount * COALESCE(currency_rates.rate, ?)) as bdt_total
+            ', [$firstRate])
+            ->first();
+        $totalServiceChargeDeduction = $scDeductionRow->sar_total ?? 0;
+        $totalServiceChargeDeductionBdt = $scDeductionRow->bdt_total ?? 0;
+
+        $refundRow = Voucher::where('vouchers.created_at', '>=', now()->subDays(30))
+            ->when($branchId, fn($q) => $q->where('vouchers.branch_id', $branchId))
+            ->whereHas('transactionType', fn($q) => $q->where('name', 'Customer Refund'))
+            ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw('
+                SUM(vouchers.amount) as sar_total,
+                SUM(vouchers.amount * COALESCE(currency_rates.rate, ?)) as bdt_total
+            ', [$firstRate])
+            ->first();
+        $totalRefund = $refundRow->sar_total ?? 0;
+        $totalRefundBdt = $refundRow->bdt_total ?? 0;
+
         $totalPassengers = Passenger::where('created_at', '>=', now()->subDays(30))
             ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))->count();
 
@@ -204,6 +230,6 @@ class DashboardController extends Controller
         $receivingBank = $initialPaymentBank + $dueCollectionBank;
         $receivingBankBdt = $initialPaymentBankBdt + $dueCollectionBankBdt;
 
-        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'totalFingerprintProfit', 'totalFingerprintProfitBdt', 'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalPassengers', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalProfit', 'totalProfitBdt'));
+        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'totalFingerprintProfit', 'totalFingerprintProfitBdt', 'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalPassengers', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalProfit', 'totalProfitBdt', 'totalServiceChargeDeduction', 'totalServiceChargeDeductionBdt', 'totalRefund', 'totalRefundBdt'));
     }
 }
