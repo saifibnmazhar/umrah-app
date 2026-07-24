@@ -34,7 +34,14 @@
         .due-positive { color: #dc2626; }
         .due-negative { color: #16a34a; }
         .footer { border-top: 2px solid #e2e8f0; padding-top: 20px; margin-top: 8px; }
-        .signatures { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 24px; }
+        .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+        .received-section { margin-bottom: 18px; }
+        .form-block { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 40px; }
+        .form-group { }
+        .form-label { font-weight: 700; font-size: 13px; color: #475569; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
+        .form-field { display: flex; align-items: baseline; margin-bottom: 4px; }
+        .form-field .label { font-weight: 600; min-width: 150px; font-size: 13px; color: #475569; }
+        .form-field .blank { border-bottom: 1px dashed #94a3b8; flex: 1; min-height: 20px; display: inline-block; }
         .sig-block { text-align: center; }
         .sig-block .sig-label { font-weight: 700; font-size: 13px; color: #475569; margin-bottom: 2px; }
         .sig-line { border-top: 1px solid #1e293b; margin-top: 48px; padding-top: 6px; font-size: 12px; color: #475569; }
@@ -53,11 +60,21 @@
         .no-print { display: block; }
         @media print {
             body { background: #fff; }
-            .voucher-wrap { max-width: none; margin: 0; border: none; border-radius: 0; box-shadow: none; padding: 12px 16px; }
+            .voucher-wrap { max-width: none; margin: 0; border: none; border-radius: 0; box-shadow: none; padding: 8px 12px; }
             .no-print { display: none !important; }
-            @page { size: landscape; margin: 8mm; }
+            @page { size: landscape; margin: 5mm; }
             th { background: #e2e8f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .summary-row td { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            .info-grid { gap: 4px 24px; }
+            .table-wrap { margin-bottom: 8px; }
+            .received-section { margin-bottom: 8px; }
+            .form-field { margin-bottom: 3px; }
+            .form-block { gap: 12px 24px; }
+            .form-label { margin-bottom: 3px; }
+            .section-title { margin-bottom: 4px; }
+            .sig-line { margin-top: 24px; }
+            .footer { padding-top: 10px; }
+            .info-grid[style*="margin-bottom"] { margin-bottom: 8px !important; }
         }
     </style>
 </head>
@@ -128,9 +145,8 @@
                 <thead>
                     <tr>
                         <th style="width: 40%;">Description</th>
-                        <th style="width: 20%;">Amount</th>
-                        <th style="width: 20%;">Received</th>
-                        <th style="width: 20%;">Remarks</th>
+                        <th style="width: 25%;">Payment</th>
+                        <th style="width: 35%;">Remarks</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -139,37 +155,73 @@
                             <td x-text="item.description"></td>
                             <td class="text-right font-medium" x-text="$currency(item.amount, 2)"></td>
                             <td>&nbsp;</td>
-                            <td>&nbsp;</td>
                         </tr>
                     </template>
                     <tr class="summary-row">
                         <td>Total Amount</td>
                         <td class="text-right font-medium" x-text="$currency(totalAmount, 2)"></td>
                         <td>&nbsp;</td>
-                        <td>&nbsp;</td>
                     </tr>
                     <tr>
                         <td>Paid Amount</td>
                         <td class="text-right font-medium" x-text="$currency(paidAmount, 2)"></td>
-                        <td>&nbsp;</td>
                         <td>&nbsp;</td>
                     </tr>
                     <tr class="summary-row">
                         <td x-text="dueAmount >= 0 ? 'Due' : 'Advance'"></td>
                         <td class="text-right font-medium" :class="dueAmount >= 0 ? 'due-positive' : 'due-negative'" x-text="$currency(Math.abs(dueAmount), 2)"></td>
                         <td>&nbsp;</td>
-                        <td>&nbsp;</td>
                     </tr>
                 </tbody>
             </table>
         </div>
 
+        <div class="received-section">
+            <div class="section-title">Received By</div>
+            <div class="form-block">
+                <div class="form-group">
+                    <div class="form-label">If Cash</div>
+                    <div class="form-field">
+                        <span class="label">Name:</span>
+                        <span class="blank"></span>
+                    </div>
+                    <div class="form-field">
+                        <span class="label">Passport:</span>
+                        <span class="blank"></span>
+                    </div>
+                    <div class="form-field">
+                        <span class="label">Iqama:</span>
+                        <span class="blank"></span>
+                    </div>
+                    <div class="form-field">
+                        <span class="label">Mobile:</span>
+                        <span class="blank"></span>
+                    </div>
+                </div>
+                <div class="form-group">
+                    <div class="form-label">If Bank</div>
+                    <div class="form-field">
+                        <span class="label">Bank Details:</span>
+                        <span class="blank"></span>
+                    </div>
+                    <div class="form-field">
+                        <span class="label">Beneficiary Name:</span>
+                        <span class="blank"></span>
+                    </div>
+                    <div class="form-field">
+                        <span class="label">Bank Name:</span>
+                        <span class="blank"></span>
+                    </div>
+                    <div class="form-field">
+                        <span class="label">Account Number/IBAN:</span>
+                        <span class="blank"></span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
         <div class="footer">
             <div class="signatures">
-                <div class="sig-block">
-                    <div class="sig-label">Received By</div>
-                    <div class="sig-line"></div>
-                </div>
                 <div class="sig-block">
                     <div class="sig-label">Prepared By</div>
                     <div class="sig-line filled">{{ $loggedUser }}</div>
