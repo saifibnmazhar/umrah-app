@@ -146,10 +146,32 @@ class PendingOutboundReportController extends Controller
         }
 
         if ($request->flight_date_from) {
-            $query->whereHas('passenger', fn($q) => $q->whereDate('flight_date_from', '>=', $request->flight_date_from));
+            $query->where(function ($q) use ($request) {
+                $q->whereHas('passenger.issuedTickets', function ($iq) use ($request) {
+                    $iq->where('issue_type', 'regular')
+                       ->whereIn('status', ['issued', 're-issued'])
+                       ->whereDate('inbound_date', '>=', $request->flight_date_from);
+                })->orWhere(function ($q2) use ($request) {
+                    $q2->whereDoesntHave('passenger.issuedTickets', function ($iq) {
+                        $iq->where('issue_type', 'regular')
+                           ->whereIn('status', ['issued', 're-issued']);
+                    })->whereHas('passenger', fn($pq) => $pq->whereDate('flight_date_from', '>=', $request->flight_date_from));
+                });
+            });
         }
         if ($request->flight_date_to) {
-            $query->whereHas('passenger', fn($q) => $q->whereDate('flight_date_to', '<=', $request->flight_date_to));
+            $query->where(function ($q) use ($request) {
+                $q->whereHas('passenger.issuedTickets', function ($iq) use ($request) {
+                    $iq->where('issue_type', 'regular')
+                       ->whereIn('status', ['issued', 're-issued'])
+                       ->whereDate('inbound_date', '<=', $request->flight_date_to);
+                })->orWhere(function ($q2) use ($request) {
+                    $q2->whereDoesntHave('passenger.issuedTickets', function ($iq) {
+                        $iq->where('issue_type', 'regular')
+                           ->whereIn('status', ['issued', 're-issued']);
+                    })->whereHas('passenger', fn($pq) => $pq->whereDate('flight_date_to', '<=', $request->flight_date_to));
+                });
+            });
         }
 
         if ($request->status && $request->status !== 'all') {

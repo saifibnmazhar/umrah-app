@@ -131,36 +131,32 @@ select {
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700">SEARCH BOX</label>
-                <input type="text" x-model="filters.search" @keydown.enter="currentPage = 1; loadData()" placeholder="Search by Invoice No, Customer Name, PAX Name, Mobile, Passport"
+                <input type="text" x-model="filters.search" @input.debounce.300ms="currentPage = 1; loadData()" placeholder="Search by Invoice No, Customer Name, PAX Name, Mobile, Passport"
                        class="search-input w-96 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-700">Booking Date</span>
                 <label class="text-xs text-gray-500">From</label>
-                <input type="date" x-model="filters.booking_date_from" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="date" x-model="filters.booking_date_from" @change="currentPage = 1; loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                 <label class="text-xs text-gray-500">To</label>
-                <input type="date" x-model="filters.booking_date_to" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="date" x-model="filters.booking_date_to" @change="currentPage = 1; loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-700">Expected Flight</span>
                 <label class="text-xs text-gray-500">From</label>
-                <input type="date" x-model="filters.flight_date_from" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="date" x-model="filters.flight_date_from" @change="currentPage = 1; loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                 <label class="text-xs text-gray-500">To</label>
-                <input type="date" x-model="filters.flight_date_to" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <input type="date" x-model="filters.flight_date_to" @change="currentPage = 1; loadData()" class="date-input w-36 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
             </div>
             <div class="flex items-center gap-2">
                 <span class="text-sm font-semibold text-gray-700">Pending Tkt Status</span>
-                <select x-model="filters.status" class="search-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                <select x-model="filters.status" @change="currentPage = 1; loadData()" class="search-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                     <option value="all">All</option>
                     <option value="pending">Pending</option>
                     <option value="issued">Issued</option>
                 </select>
             </div>
             <div class="flex items-center gap-2 ml-auto">
-                <button @click="currentPage = 1; loadData()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 4a1 1 0 011-1h16a1 1 0 011 1v2.586a1 1 0 01-.293.707l-6.414 6.414a1 1 0 00-.293.707V17l-4 4v-6.586a1 1 0 00-.293-.707L3.293 7.293A1 1 0 013 6.586V4z"/></svg>
-                    Filter
-                </button>
                 <button @click="resetFilters()" class="filter-btn px-4 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-1">
                     <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 004.582 9m0 0H9m11 11v-5h-.581m0 0a8.003 8.003 0 01-15.357-2m15.357 2H15"/></svg>
                     Reset
