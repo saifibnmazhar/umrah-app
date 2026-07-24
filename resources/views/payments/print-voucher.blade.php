@@ -73,7 +73,7 @@
             .summary-row td { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             .table-wrap { margin-bottom: 4px; }
             .received-section { margin-bottom: 4px; }
-            .form-field { margin-bottom: 1px; }
+            .form-field { margin-bottom: 4px; }
             .form-field .blank { min-height: 12px; }
             .form-block { gap: 6px 16px; }
             .form-label { margin-bottom: 2px; }
