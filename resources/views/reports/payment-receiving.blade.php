@@ -4,7 +4,7 @@
 <style>
     [x-cloak] { display: none !important; }
 </style>
-<div class="max-w-[1600px] mx-auto" x-data="paymentReceivingReport({ vouchersByDate: {{ $vouchersByDateJson }} })">
+<div class="max-w-[1600px] mx-auto" x-data="paymentReceivingReport({ vouchersByDate: {{ $vouchersByDateJson }}, branches: {{ $branchesJson }} })">
     <div class="mb-3">
         <span class="text-sm text-gray-500 font-medium">Reports</span>
         <span class="text-sm text-gray-400 mx-1">›</span>
@@ -127,7 +127,17 @@
                     </button>
                 </div>
                 <div class="p-6 overflow-y-auto max-h-[calc(90vh-130px)]">
-                    <template x-if="selectedVouchers.length === 0">
+                    <div class="mb-4 flex items-center gap-2">
+                        <label class="text-sm font-semibold text-gray-700">Branch:</label>
+                        <select x-model="selectedBranch" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="all">All Branches</option>
+                            <option value="central">Central</option>
+                            <template x-for="b in branches" :key="b.id">
+                                <option :value="b.id" x-text="b.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <template x-if="filteredVouchers.length === 0">
                         <p class="text-center text-gray-500 py-8">No records found for this date.</p>
                     </template>
                     <template x-if="selectedVouchers.length > 0">
@@ -146,7 +156,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <template x-for="(v, idx) in selectedVouchers" :key="idx">
+                                    <template x-for="(v, idx) in filteredVouchers" :key="idx">
                                         <tr class="border-b border-gray-100 even:bg-[#fafafa]">
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.invoice_id"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.voucher_no"></td>
@@ -194,6 +204,8 @@
     function paymentReceivingReport(options = {}) {
         return {
             vouchersByDate: options.vouchersByDate || {},
+            branches: options.branches || [],
+            selectedBranch: 'all',
             modalOpen: false,
             selectedDate: '',
             selectedVouchers: [],
@@ -204,9 +216,16 @@
                 return d.toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' });
             },
 
+            get filteredVouchers() {
+                if (this.selectedBranch === 'all') return this.selectedVouchers;
+                if (this.selectedBranch === 'central') return this.selectedVouchers.filter(v => !v.receive_branch_id);
+                return this.selectedVouchers.filter(v => v.receive_branch_id == this.selectedBranch);
+            },
+
             openModal(date) {
                 this.selectedDate = date;
                 this.selectedVouchers = this.vouchersByDate[date] || [];
+                this.selectedBranch = 'all';
                 this.modalOpen = true;
             },
 
@@ -215,13 +234,13 @@
             },
 
             get totalCash() {
-                return this.selectedVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + v.amount, 0);
+                return this.filteredVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + v.amount, 0);
             },
             get totalBank() {
-                return this.selectedVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + v.amount, 0);
+                return this.filteredVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + v.amount, 0);
             },
             get totalAmount() {
-                return this.selectedVouchers.reduce((s, v) => s + v.amount, 0);
+                return this.filteredVouchers.reduce((s, v) => s + v.amount, 0);
             },
 
             formatAmount(amount) {

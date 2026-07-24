@@ -374,12 +374,14 @@ Route::middleware('auth')->group(function () {
                     'receive_by' => $v->user?->name ?? '',
                     'receive_at' => $v->user?->branch?->name ?? 'Central',
                     'amount' => (float) $v->amount,
+                    'receive_branch_id' => $v->user?->branch_id,
                 ];
             }
         }
         $vouchersByDateJson = json_encode($vouchersByDate);
+        $branchesJson = json_encode(\App\Models\Branch::orderBy('name')->get(['id', 'name']));
 
-        return view('reports.payment-receiving', compact('totalCashPayment', 'totalBankPayment', 'totalBdOfficeCollection', 'totalKsaOfficeCollection', 'dailyPayments', 'vouchersByDateJson'));
+        return view('reports.payment-receiving', compact('totalCashPayment', 'totalBankPayment', 'totalBdOfficeCollection', 'totalKsaOfficeCollection', 'dailyPayments', 'vouchersByDateJson', 'branchesJson'));
     })->name('report.payment-receiving')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-wise', [BranchWiseReportController::class, 'index'])->name('report.branch-wise');
