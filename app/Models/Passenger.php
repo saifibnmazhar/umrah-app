@@ -39,6 +39,9 @@ class Passenger extends Model
         'is_ticket_held',
         'ticket_held_by',
         'ticket_held_at',
+        'ticket_remarks',
+        'ticket_fare_inbound_id',
+        'ticket_fare_outbound_id',
     ];
 
     protected $casts = [
@@ -75,6 +78,16 @@ class Passenger extends Model
     public function ticketFare(): BelongsTo
     {
         return $this->belongsTo(TicketFare::class);
+    }
+
+    public function ticketFareInbound(): BelongsTo
+    {
+        return $this->belongsTo(TicketFare::class, 'ticket_fare_inbound_id');
+    }
+
+    public function ticketFareOutbound(): BelongsTo
+    {
+        return $this->belongsTo(TicketFare::class, 'ticket_fare_outbound_id');
     }
 
     public function visaSubmission()
