@@ -135,15 +135,11 @@
                         :disabled="currentPage === 1"
                         :class="currentPage === 1 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'"
                         class="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white transition-colors">
-                    Previous
+                    Prev
                 </button>
-                <template x-for="page in Array.from({ length: lastPage }, (_, i) => i + 1)" :key="page">
-                    <button @click="changePage(page)"
-                            :class="page === currentPage ? 'bg-slate-700 text-white border-slate-700' : 'text-slate-600 hover:bg-slate-100 border-slate-300'"
-                            class="px-3 py-1.5 text-sm font-medium rounded-lg border bg-white transition-colors"
-                            x-text="page">
-                    </button>
-                </template>
+                <span class="px-4 py-1.5 text-sm font-semibold text-slate-700">
+                    <span x-text="currentPage"></span>/<span x-text="lastPage"></span>
+                </span>
                 <button @click="changePage(currentPage + 1)"
                         :disabled="currentPage === lastPage"
                         :class="currentPage === lastPage ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'"
