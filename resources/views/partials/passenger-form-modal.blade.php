@@ -86,7 +86,8 @@
                 </div>
             </div>
 
-            <div class="mb-4">
+            {{-- Single ticket travel details --}}
+            <div class="mb-4" x-show="!isDoubleTicket">
                 <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -145,6 +146,71 @@
                                    'bg-red-50 border-red-200 text-red-500': passengerData.baggage_weight === 'No baggage allowance defined',
                                    'bg-blue-50 border-blue-200 text-blue-600': passengerData.baggage_weight.includes('Select') || passengerData.baggage_weight.includes('Define') || passengerData.baggage_weight.includes('Route Type')
                                }">
+                    </div>
+                </div>
+            </div>
+
+            {{-- Double ticket travel details --}}
+            <div class="mb-4" x-show="isDoubleTicket">
+                <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Inbound Travel</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Route Type</label>
+                        <input type="text" x-model="passengerData.inbound_route_type" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type</label>
+                        <input type="text" x-model="passengerData.inbound_flight_type" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
+                        <input type="text" x-model="passengerData.inbound_route" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Route">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Airline</label>
+                        <input type="text" x-model="passengerData.inbound_airline" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Airline">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Class</label>
+                        <input type="text" x-model="passengerData.inbound_class" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Class">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
+                        <select id="passengerFlightDateRangeDouble" x-model="passengerData.flight_date_range" @change="onFlightDateRangeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Date Range</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Allowance</label>
+                        <input type="text" x-model="passengerData.inbound_baggage_weight" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                </div>
+
+                <h4 class="text-sm font-medium text-slate-600 mb-3 mt-4 pb-2 border-b border-slate-200">Outbound Travel</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Route Type</label>
+                        <input type="text" x-model="passengerData.outbound_route_type" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type</label>
+                        <input type="text" x-model="passengerData.outbound_flight_type" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
+                        <input type="text" x-model="passengerData.outbound_route" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Route">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Airline</label>
+                        <input type="text" x-model="passengerData.outbound_airline" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Airline">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Class</label>
+                        <input type="text" x-model="passengerData.outbound_class" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Class">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Allowance</label>
+                        <input type="text" x-model="passengerData.outbound_baggage_weight" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
                     </div>
                 </div>
             </div>

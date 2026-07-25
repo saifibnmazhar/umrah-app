@@ -125,7 +125,17 @@ class Passenger extends Model
 
     public function getRouteDisplayAttribute(): string
     {
-        $route = $this->ticketFare?->route;
+        if ($this->ticket_fare_inbound_id) {
+            $inboundRoute = $this->formatRouteDisplay($this->ticketFareInbound?->route);
+            $outboundRoute = $this->formatRouteDisplay($this->ticketFareOutbound?->route);
+            return ($inboundRoute ?: '?') . "\n" . ($outboundRoute ?: '?');
+        }
+
+        return $this->formatRouteDisplay($this->ticketFare?->route);
+    }
+
+    private function formatRouteDisplay($route): string
+    {
         if (!$route) return '-';
 
         $routeType = $route->route_type?->value;

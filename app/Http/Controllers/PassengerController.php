@@ -64,6 +64,8 @@ class PassengerController extends Controller
             'ticketFare.airlineClass',
             'ticketFare.airlineClass.class',
             'ticketFare.route',
+            'ticketFareInbound.route',
+            'ticketFareOutbound.route',
             'documents',
             'visaSubmission.visaAgent.visaAgentCost',
             'visaSubmission.visaAgent.commissionAgents',
@@ -76,7 +78,12 @@ class PassengerController extends Controller
         ]);
 
         $routeDisplay = null;
-        if ($passenger->ticketFare?->route) {
+        if ($passenger->ticket_fare_inbound_id) {
+            $inbound = $passenger->ticketFareInbound?->route;
+            $outbound = $passenger->ticketFareOutbound?->route;
+            $fmt = fn($r) => $r ? (($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?')) : '?';
+            $routeDisplay = $fmt($inbound) . ' → ' . $fmt($outbound);
+        } elseif ($passenger->ticketFare?->route) {
             $route = $passenger->ticketFare->route;
             $routeType = $route->route_type?->value;
             if ($routeType === 'multi_city') {
@@ -221,6 +228,12 @@ class PassengerController extends Controller
             'ticketFare.airlineClass',
             'ticketFare.airlineClass.class',
             'ticketFare.route',
+            'ticketFareInbound.route',
+            'ticketFareInbound.airline',
+            'ticketFareInbound.airlineClass.class',
+            'ticketFareOutbound.route',
+            'ticketFareOutbound.airline',
+            'ticketFareOutbound.airlineClass.class',
             'documents'
         ]);
 
@@ -276,7 +289,7 @@ class PassengerController extends Controller
         });
 
         $packages = Package::where('is_active', true)
-            ->with(['ticketFare'])
+            ->with(['ticketFare', 'ticketFareInbound', 'ticketFareOutbound'])
             ->get()
             ->map(fn($p) => [
                 'id' => $p->id,
@@ -284,6 +297,9 @@ class PassengerController extends Controller
                 'visa_selling_price' => $p->visaSellingPrice?->selling_price ?? 0,
                 'service_charge' => $p->service_charge ?? 0,
                 'ticket_fare_id' => $p->ticket_fare_id,
+                'is_double_ticket' => (bool) $p->is_double_ticket,
+                'ticket_fare_inbound_id' => $p->ticket_fare_inbound_id ? (string) $p->ticket_fare_inbound_id : null,
+                'ticket_fare_outbound_id' => $p->ticket_fare_outbound_id ? (string) $p->ticket_fare_outbound_id : null,
             ]);
 
         $booking = $passenger->booking;
@@ -479,6 +495,8 @@ class PassengerController extends Controller
             'passenger_type' => 'nullable|in:adult,child,infant',
             'gender' => 'nullable|in:male,female',
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
+            'ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
+            'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
         ]);
 
         try {

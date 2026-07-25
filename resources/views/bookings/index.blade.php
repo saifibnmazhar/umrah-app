@@ -644,16 +644,28 @@ $fareAmount = match($passengerTypeVal) {
     default => $baseFare,
 };
 
-$route = $passenger->ticketFare?->route ?? $passenger->booking?->package?->ticketFare?->route;
+$fmtRoute = function($route) {
+    if (!$route) return '?';
+    $rt = $route->route_type?->value;
+    if ($rt === 'multi_city') {
+        return $route->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+    }
+    $from = $route->fromCity?->code ?? '?';
+    $to = $route->toCity?->code ?? '?';
+    if ($rt === 'round') {
+        return $from . '-' . $to . '-' . ($route->returnCity?->code ?? '?');
+    }
+    return $from . ' → ' . $to;
+};
 $routeDisplay = '—';
-if ($route) {
-    $routeType = $route->route_type?->value;
-    if ($routeType === 'multi_city') {
-        $routeDisplay = $route->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
-    } elseif ($routeType === 'round') {
-        $routeDisplay = ($route->fromCity?->code ?? '?') . '-' . ($route->toCity?->code ?? '?') . '-' . ($route->returnCity?->code ?? '?');
-    } else {
-        $routeDisplay = ($route->fromCity?->code ?? '?') . ' → ' . ($route->toCity?->code ?? '?');
+if ($passenger->ticket_fare_inbound_id) {
+    $inboundRoute = $fmtRoute($passenger->ticketFareInbound?->route);
+    $outboundRoute = $fmtRoute($passenger->ticketFareOutbound?->route);
+    $routeDisplay = $inboundRoute . "\n" . $outboundRoute;
+} else {
+    $route = $passenger->ticketFare?->route ?? $passenger->booking?->package?->ticketFare?->route;
+    if ($route) {
+        $routeDisplay = $fmtRoute($route);
     }
 }
 @endphp
@@ -686,13 +698,13 @@ if ($route) {
         @endif
     </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
-    <td class="px-3 py-2 text-slate-600">{{ $routeDisplay }}</td>
+    <td class="px-3 py-2 text-slate-600">{!! nl2br(e($routeDisplay)) !!}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
     @php
         $regularTicket = $passenger->allIssuedTickets
             ->first(fn($t) => in_array($t->issue_type, [null, 'regular'], true) && in_array($t->status, ['issued', 're-issued']));
         $actualFlightDate = 'N/A';
-        if (isset($routeType) && $routeType !== 'oneway_outbound' && $regularTicket) {
+        if (($routeType ?? null) !== 'oneway_outbound' && $regularTicket) {
             $actualFlightDate = $regularTicket->inbound_date?->format('d M Y') ?? 'N/A';
         }
     @endphp

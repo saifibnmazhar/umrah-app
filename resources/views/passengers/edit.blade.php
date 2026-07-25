@@ -120,63 +120,120 @@
 
             <div class="mb-6">
                 <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
-                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                        <select x-model="passengerData.route_type" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
-                            <option value="">Select</option>
-                            <option value="One Way-Inbound">One Way-Inbound</option>
-                            <option value="One Way-Outbound">One Way-Outbound</option>
-                            <option value="Round">Round</option>
-                            <option value="Multi City">Multi City</option>
-                        </select>
+
+                {{-- Single Ticket Section --}}
+                <div x-show="!isDoubleTicket">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
+                            <select x-model="passengerData.route_type" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
+                                <option value="">Select</option>
+                                <option value="One Way-Inbound">One Way-Inbound</option>
+                                <option value="One Way-Outbound">One Way-Outbound</option>
+                                <option value="Round">Round</option>
+                                <option value="Multi City">Multi City</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                            <select x-model="passengerData.flight_type" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
+                                <option value="">Select</option>
+                                <option value="Transit">Transit</option>
+                                <option value="Direct">Direct</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
+                            <select x-model="passengerData.ticket_fare_id" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
+                                <option value="">Select Ticket</option>
+                                <template x-for="ticket in filteredTickets" :key="ticket.id">
+                                    <option :value="String(ticket.id)" x-text="getTicketDisplayText(ticket)"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
+                            <input type="text" x-model="passengerData.route" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Route">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
+                            <input type="text" x-model="passengerData.airline" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Airline">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
+                            <input type="text" x-model="passengerData.class" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Class">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
+                            <select id="passengerFlightDateRange" x-model="passengerData.flight_date_range" @change="onFlightDateRangeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Date Range</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Allowance</label>
+                            <input type="text"
+                                   x-model="passengerData.baggage_weight"
+                                   readonly
+                                   class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 font-medium"
+                                   :class="{
+                                       'bg-yellow-50 border-yellow-300 text-yellow-700': passengerData.baggage_weight && !passengerData.baggage_weight.includes('Select') && !passengerData.baggage_weight.includes('Define') && !passengerData.baggage_weight.includes('No baggage') && !passengerData.baggage_weight.includes('Route Type'),
+                                       'bg-red-50 border-red-200 text-red-500': passengerData.baggage_weight === 'No baggage allowance defined',
+                                       'bg-blue-50 border-blue-200 text-blue-600': passengerData.baggage_weight.includes('Select') || passengerData.baggage_weight.includes('Define') || passengerData.baggage_weight.includes('Route Type')
+                                   }">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
-                        <select x-model="passengerData.flight_type" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
-                            <option value="">Select</option>
-                            <option value="Transit">Transit</option>
-                            <option value="Direct">Direct</option>
-                        </select>
+                </div>
+
+                {{-- Double Ticket Section --}}
+                <div x-show="isDoubleTicket">
+                    <h5 class="text-sm font-semibold text-slate-700 mb-2">Inbound Travel</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Route</label>
+                            <input type="text" x-model="passengerData.inbound_route" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Inbound Route">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Airline</label>
+                            <input type="text" x-model="passengerData.inbound_airline" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Inbound Airline">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Class</label>
+                            <input type="text" x-model="passengerData.inbound_class" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Inbound Class">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
+                            <select id="passengerFlightDateRangeDouble" x-model="passengerData.flight_date_range" @change="onFlightDateRangeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Date Range</option>
+                            </select>
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                        <select x-model="passengerData.ticket_fare_id" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed">
-                            <option value="">Select Ticket</option>
-                            <template x-for="ticket in filteredTickets" :key="ticket.id">
-                                <option :value="String(ticket.id)" x-text="getTicketDisplayText(ticket)"></option>
-                            </template>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Route *</label>
-                        <input type="text" x-model="passengerData.route" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Route">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Airline *</label>
-                        <input type="text" x-model="passengerData.airline" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Airline">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Class *</label>
-                        <input type="text" x-model="passengerData.class" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Class">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
-                        <select id="passengerFlightDateRange" x-model="passengerData.flight_date_range" @change="onFlightDateRangeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                            <option value="">Select Date Range</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Allowance</label>
-                        <input type="text"
-                               x-model="passengerData.baggage_weight"
-                               readonly
-                               class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 font-medium"
-                               :class="{
-                                   'bg-yellow-50 border-yellow-300 text-yellow-700': passengerData.baggage_weight && !passengerData.baggage_weight.includes('Select') && !passengerData.baggage_weight.includes('Define') && !passengerData.baggage_weight.includes('No baggage') && !passengerData.baggage_weight.includes('Route Type'),
-                                   'bg-red-50 border-red-200 text-red-500': passengerData.baggage_weight === 'No baggage allowance defined',
-                                   'bg-blue-50 border-blue-200 text-blue-600': passengerData.baggage_weight.includes('Select') || passengerData.baggage_weight.includes('Define') || passengerData.baggage_weight.includes('Route Type')
-                               }">
+
+                    <h5 class="text-sm font-semibold text-slate-700 mb-2 mt-4">Outbound Travel</h5>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Route</label>
+                            <input type="text" x-model="passengerData.outbound_route" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Outbound Route">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Airline</label>
+                            <input type="text" x-model="passengerData.outbound_airline" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Outbound Airline">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Class</label>
+                            <input type="text" x-model="passengerData.outbound_class" disabled class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed" placeholder="Outbound Class">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Allowance</label>
+                            <input type="text"
+                                   x-model="passengerData.baggage_weight"
+                                   readonly
+                                   class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 font-medium"
+                                   :class="{
+                                       'bg-yellow-50 border-yellow-300 text-yellow-700': passengerData.baggage_weight && !passengerData.baggage_weight.includes('Select') && !passengerData.baggage_weight.includes('Define') && !passengerData.baggage_weight.includes('No baggage') && !passengerData.baggage_weight.includes('Route Type'),
+                                       'bg-red-50 border-red-200 text-red-500': passengerData.baggage_weight === 'No baggage allowance defined',
+                                       'bg-blue-50 border-blue-200 text-blue-600': passengerData.baggage_weight.includes('Select') || passengerData.baggage_weight.includes('Define') || passengerData.baggage_weight.includes('Route Type')
+                                   }">
+                        </div>
                     </div>
                 </div>
             </div>
@@ -225,32 +282,43 @@
 (function() {
     function registerEditPassengerApp() {
         Alpine.data('editPassengerApp', () => ({
-        passengerData: {
-            first_name: '',
-            last_name: '',
-            passport_no: '',
-            date_of_birth: '',
-            passenger_type: '',
-            gender: '',
-            mobile_no: '',
-            passport_expiry: '',
-            service_required: '',
-            stay_duration: '',
-            stay_duration_int: 0,
-            stay_duration_display: '',
-            route_type: '',
-            flight_type: '',
-            route: '',
-            airline: '',
-            class: '',
-            ticket_fare_id: '',
-            flight_date_range: '',
-            flight_date_from: '',
-            flight_date_to: '',
-            baggage_weight: '',
-            address: '',
-            customDurationDays: ''
-        },
+            passengerData: {
+                first_name: '',
+                last_name: '',
+                passport_no: '',
+                date_of_birth: '',
+                passenger_type: '',
+                gender: '',
+                mobile_no: '',
+                passport_expiry: '',
+                service_required: '',
+                stay_duration: '',
+                stay_duration_int: 0,
+                stay_duration_display: '',
+                route_type: '',
+                flight_type: '',
+                route: '',
+                airline: '',
+                class: '',
+                ticket_fare_id: '',
+                ticket_fare_inbound_id: '',
+                ticket_fare_outbound_id: '',
+                inbound_route: '',
+                inbound_airline: '',
+                inbound_class: '',
+                outbound_route: '',
+                outbound_airline: '',
+                outbound_class: '',
+                flight_date_range: '',
+                flight_date_from: '',
+                flight_date_to: '',
+                baggage_weight: '',
+                address: '',
+                customDurationDays: ''
+            },
+            get isDoubleTicket() {
+                return !!(this.passengerData.ticket_fare_inbound_id && this.passengerData.ticket_fare_outbound_id);
+            },
         allTickets: [],
         filteredTickets: [],
         packages: [],
@@ -322,47 +390,75 @@
 
             this.passengerData.address = p.address || '';
 
-            const ticketFareId = p.ticket_fare_id;
-            if (ticketFareId) {
-                this.passengerData.ticket_fare_id = String(ticketFareId);
+            const inboundId = p.ticket_fare_inbound_id;
+            const outboundId = p.ticket_fare_outbound_id;
 
-                const ticket = this.allTickets.find(t => t.id == ticketFareId);
-                if (ticket) {
-                    const reverseRouteTypeMap = {
-                        'oneway_inbound': 'One Way-Inbound',
-                        'oneway_outbound': 'One Way-Outbound',
-                        'round': 'Round',
-                        'multi_city': 'Multi City',
-                    };
-                    const reverseFlightTypeMap = {
-                        'transit': 'Transit',
-                        'direct': 'Direct',
-                    };
+            if (inboundId && outboundId) {
+                this.passengerData.ticket_fare_inbound_id = String(inboundId);
+                this.passengerData.ticket_fare_outbound_id = String(outboundId);
 
-                    this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
-                    this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+                const inboundTicket = this.allTickets.find(t => t.id == inboundId);
+                const outboundTicket = this.allTickets.find(t => t.id == outboundId);
 
-                    this.filteredTickets = this.allTickets.filter(t2 =>
-                        t2.route_type === ticket.route_type &&
-                        t2.flight_type === ticket.flight_type
-                    );
-
-                    this.passengerData.route = ticket.route || '';
-                    this.passengerData.airline = ticket.airline || '';
-                    this.passengerData.class = ticket.airline_class || '';
-                } else {
-                    this.filteredTickets = this.allTickets;
+                if (inboundTicket) {
+                    this.passengerData.inbound_route = inboundTicket.route || '';
+                    this.passengerData.inbound_airline = inboundTicket.airline || '';
+                    this.passengerData.inbound_class = inboundTicket.airline_class || '';
+                }
+                if (outboundTicket) {
+                    this.passengerData.outbound_route = outboundTicket.route || '';
+                    this.passengerData.outbound_airline = outboundTicket.airline || '';
+                    this.passengerData.outbound_class = outboundTicket.airline_class || '';
                 }
 
-                this.calculateFlightDateRange();
+                if (p.flight_date_from || p.flight_date_to) {
+                    this.passengerData.flight_date_from = this.toDateValue(p.flight_date_from);
+                    this.passengerData.flight_date_to = this.toDateValue(p.flight_date_to);
+                    this.generateDoubleTicketFlightDateRange(this.passengerData.flight_date_from, this.passengerData.flight_date_to);
+                }
             } else {
-                this.filteredTickets = this.allTickets;
-                this.populateFlightDateRangeOptions([]);
-            }
+                const ticketFareId = p.ticket_fare_id;
+                if (ticketFareId) {
+                    this.passengerData.ticket_fare_id = String(ticketFareId);
 
-            if (p.flight_date_from || p.flight_date_to) {
-                this.passengerData.flight_date_from = this.toDateValue(p.flight_date_from);
-                this.passengerData.flight_date_to = this.toDateValue(p.flight_date_to);
+                    const ticket = this.allTickets.find(t => t.id == ticketFareId);
+                    if (ticket) {
+                        const reverseRouteTypeMap = {
+                            'oneway_inbound': 'One Way-Inbound',
+                            'oneway_outbound': 'One Way-Outbound',
+                            'round': 'Round',
+                            'multi_city': 'Multi City',
+                        };
+                        const reverseFlightTypeMap = {
+                            'transit': 'Transit',
+                            'direct': 'Direct',
+                        };
+
+                        this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                        this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+
+                        this.filteredTickets = this.allTickets.filter(t2 =>
+                            t2.route_type === ticket.route_type &&
+                            t2.flight_type === ticket.flight_type
+                        );
+
+                        this.passengerData.route = ticket.route || '';
+                        this.passengerData.airline = ticket.airline || '';
+                        this.passengerData.class = ticket.airline_class || '';
+                    } else {
+                        this.filteredTickets = this.allTickets;
+                    }
+
+                    this.calculateFlightDateRange();
+                } else {
+                    this.filteredTickets = this.allTickets;
+                    this.populateFlightDateRangeOptions([]);
+                }
+
+                if (p.flight_date_from || p.flight_date_to) {
+                    this.passengerData.flight_date_from = this.toDateValue(p.flight_date_from);
+                    this.passengerData.flight_date_to = this.toDateValue(p.flight_date_to);
+                }
             }
 
             this.updateBaggageWeight();
@@ -432,15 +528,16 @@
         },
 
         updateBaggageWeight() {
-            const ticketFareId = this.passengerData.ticket_fare_id;
             const passengerType = this.passengerData.passenger_type;
-            const routeType = this.passengerData.route_type;
+            const inboundId = this.passengerData.ticket_fare_inbound_id;
+            const outboundId = this.passengerData.ticket_fare_outbound_id;
+            const ticketFareId = this.passengerData.ticket_fare_id;
 
-            if (!ticketFareId && !passengerType) {
+            if (!ticketFareId && !inboundId && !outboundId && !passengerType) {
                 this.passengerData.baggage_weight = 'Select a Ticket and Define Passenger Type';
                 return;
             }
-            if (!ticketFareId) {
+            if (!ticketFareId && !inboundId && !outboundId) {
                 this.passengerData.baggage_weight = 'Select a Ticket';
                 return;
             }
@@ -448,44 +545,47 @@
                 this.passengerData.baggage_weight = 'Define Passenger Type';
                 return;
             }
-            if (!routeType) {
-                this.passengerData.baggage_weight = 'Select Route Type';
-                return;
-            }
-
-            const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
-            if (!ticket || !ticket.baggage_allowances || ticket.baggage_allowances.length === 0) {
-                this.passengerData.baggage_weight = 'No baggage allowance defined';
-                return;
-            }
 
             const lowerType = passengerType.toLowerCase();
-            const allowances = ticket.baggage_allowances.filter(
-                ba => ba.passenger_type === lowerType
-            );
-
-            const getAllowance = (direction) => {
-                const found = allowances.find(ba => ba.travel_direction === direction);
-                return found ? found.allowance : null;
+            const getAllowance = (ticketId, direction) => {
+                const ticket = this.allTickets.find(t => String(t.id) === String(ticketId));
+                if (!ticket || !ticket.baggage_allowances || ticket.baggage_allowances.length === 0) return null;
+                const allowance = ticket.baggage_allowances.find(
+                    ba => ba.passenger_type === lowerType && ba.travel_direction === direction
+                );
+                return allowance ? allowance.allowance : null;
             };
 
             let display = '';
-            if (routeType === 'One Way-Inbound') {
-                const a = getAllowance('inbound');
-                display = a ? `Inbound: ${a}` : '';
-            } else if (routeType === 'One Way-Outbound') {
-                const a = getAllowance('outbound');
-                display = a ? `Outbound: ${a}` : '';
-            } else {
-                const inA = getAllowance('inbound');
-                const outA = getAllowance('outbound');
-                if (inA && outA) {
-                    display = `Inbound: ${inA} | Outbound: ${outA}`;
-                } else if (inA) {
-                    display = `Inbound: ${inA}`;
-                } else if (outA) {
-                    display = `Outbound: ${outA}`;
+            if (inboundId && outboundId) {
+                const inA = getAllowance(inboundId, 'inbound');
+                const outA = getAllowance(outboundId, 'outbound');
+                const parts = [];
+                if (inA) parts.push(`Inbound: ${inA}`);
+                if (outA) parts.push(`Outbound: ${outA}`);
+                display = parts.length > 0 ? parts.join(' | ') : 'No baggage allowance defined';
+            } else if (ticketFareId) {
+                const routeType = this.passengerData.route_type;
+                if (!routeType) {
+                    this.passengerData.baggage_weight = 'Select Route Type';
+                    return;
                 }
+                if (routeType === 'One Way-Inbound') {
+                    const a = getAllowance(ticketFareId, 'inbound');
+                    display = a ? `Inbound: ${a}` : 'No baggage allowance defined';
+                } else if (routeType === 'One Way-Outbound') {
+                    const a = getAllowance(ticketFareId, 'outbound');
+                    display = a ? `Outbound: ${a}` : 'No baggage allowance defined';
+                } else {
+                    const inA = getAllowance(ticketFareId, 'inbound');
+                    const outA = getAllowance(ticketFareId, 'outbound');
+                    const parts = [];
+                    if (inA) parts.push(`Inbound: ${inA}`);
+                    if (outA) parts.push(`Outbound: ${outA}`);
+                    display = parts.length > 0 ? parts.join(' | ') : 'No baggage allowance defined';
+                }
+            } else {
+                display = 'No baggage allowance defined';
             }
 
             this.passengerData.baggage_weight = display;
@@ -529,40 +629,80 @@
                 this.passengerData.route_type = '';
                 this.passengerData.flight_type = '';
                 this.passengerData.ticket_fare_id = '';
+                this.passengerData.ticket_fare_inbound_id = '';
+                this.passengerData.ticket_fare_outbound_id = '';
                 this.passengerData.route = '';
                 this.passengerData.airline = '';
                 this.passengerData.class = '';
+                this.passengerData.inbound_route = '';
+                this.passengerData.inbound_airline = '';
+                this.passengerData.inbound_class = '';
+                this.passengerData.outbound_route = '';
+                this.passengerData.outbound_airline = '';
+                this.passengerData.outbound_class = '';
                 this.passengerData.baggage_weight = 'Visa Only - No ticket required';
                 this.filteredTickets = [];
             } else if (window.__bookingServerData?.preSelectedPackageId) {
                 const pkg = this.allPackages.find(p => String(p.id) === String(window.__bookingServerData.preSelectedPackageId));
-                if (pkg && pkg.ticket_fare_id) {
-                    const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
-                    if (ticket) {
-                        const reverseRouteTypeMap = {
-                            'oneway_inbound': 'One Way-Inbound',
-                            'oneway_outbound': 'One Way-Outbound',
-                            'round': 'Round',
-                            'multi_city': 'Multi City',
-                        };
-                        const reverseFlightTypeMap = {
-                            'transit': 'Transit',
-                            'direct': 'Direct',
-                        };
-                        this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
-                        this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
-                        this.filteredTickets = this.allTickets.filter(t =>
-                            t.route_type === ticket.route_type &&
-                            t.flight_type === ticket.flight_type
-                        );
-                        this.passengerData.route = ticket.route;
-                        this.passengerData.airline = ticket.airline || '';
-                        this.passengerData.class = ticket.airline_class || '';
-                        this.$nextTick(() => {
-                            this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
-                            this.calculateFlightDateRange();
-                            this.updateBaggageWeight();
-                        });
+                if (pkg) {
+                    if (pkg.is_double_ticket && pkg.ticket_fare_inbound_id && pkg.ticket_fare_outbound_id) {
+                        const inboundTicket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_inbound_id));
+                        const outboundTicket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_outbound_id));
+                        if (inboundTicket) {
+                            this.passengerData.inbound_route = inboundTicket.route || '';
+                            this.passengerData.inbound_airline = inboundTicket.airline || '';
+                            this.passengerData.inbound_class = inboundTicket.airline_class || '';
+                        }
+                        if (outboundTicket) {
+                            this.passengerData.outbound_route = outboundTicket.route || '';
+                            this.passengerData.outbound_airline = outboundTicket.airline || '';
+                            this.passengerData.outbound_class = outboundTicket.airline_class || '';
+                        }
+                        this.passengerData.ticket_fare_inbound_id = String(pkg.ticket_fare_inbound_id);
+                        this.passengerData.ticket_fare_outbound_id = String(pkg.ticket_fare_outbound_id);
+                        this.passengerData.ticket_fare_id = '';
+                        this.passengerData.route_type = '';
+                        this.passengerData.flight_type = '';
+                        this.passengerData.route = '';
+                        this.passengerData.airline = '';
+                        this.passengerData.class = '';
+                        this.populateFlightDateRangeOptions([]);
+                    } else if (pkg.ticket_fare_id) {
+                        const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
+                        if (ticket) {
+                            const reverseRouteTypeMap = {
+                                'oneway_inbound': 'One Way-Inbound',
+                                'oneway_outbound': 'One Way-Outbound',
+                                'round': 'Round',
+                                'multi_city': 'Multi City',
+                            };
+                            const reverseFlightTypeMap = {
+                                'transit': 'Transit',
+                                'direct': 'Direct',
+                            };
+                            this.passengerData.route_type = reverseRouteTypeMap[ticket.route_type] || '';
+                            this.passengerData.flight_type = reverseFlightTypeMap[ticket.flight_type] || '';
+                            this.filteredTickets = this.allTickets.filter(t =>
+                                t.route_type === ticket.route_type &&
+                                t.flight_type === ticket.flight_type
+                            );
+                            this.passengerData.route = ticket.route;
+                            this.passengerData.airline = ticket.airline || '';
+                            this.passengerData.class = ticket.airline_class || '';
+                            this.passengerData.ticket_fare_inbound_id = '';
+                            this.passengerData.ticket_fare_outbound_id = '';
+                            this.passengerData.inbound_route = '';
+                            this.passengerData.inbound_airline = '';
+                            this.passengerData.inbound_class = '';
+                            this.passengerData.outbound_route = '';
+                            this.passengerData.outbound_airline = '';
+                            this.passengerData.outbound_class = '';
+                            this.$nextTick(() => {
+                                this.passengerData.ticket_fare_id = String(pkg.ticket_fare_id);
+                                this.calculateFlightDateRange();
+                                this.updateBaggageWeight();
+                            });
+                        }
                     }
                 }
             }
@@ -717,6 +857,33 @@
             });
         },
 
+        generateDoubleTicketFlightDateRange(fromDate, toDate) {
+            const fromParts = fromDate.split('-');
+            const toParts = toDate.split('-');
+            if (fromParts.length < 3 || toParts.length < 3) return;
+            const from = new Date(parseInt(fromParts[0]), parseInt(fromParts[1]) - 1, parseInt(fromParts[2]));
+            const to = new Date(parseInt(toParts[0]), parseInt(toParts[1]) - 1, parseInt(toParts[2]));
+            const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+            const rangeStr = `${months[from.getMonth()]} ${from.getDate()}, ${from.getFullYear()} - ${months[to.getMonth()]} ${to.getDate()}, ${to.getFullYear()}`;
+            this.passengerData.flight_date_range = rangeStr;
+
+            this.$nextTick(() => {
+                const select = document.getElementById('passengerFlightDateRangeDouble');
+                if (select) {
+                    const existingOption = Array.from(select.options).find(opt => opt.value === rangeStr);
+                    if (existingOption) {
+                        select.value = rangeStr;
+                    } else {
+                        const option = document.createElement('option');
+                        option.value = rangeStr;
+                        option.textContent = rangeStr;
+                        select.appendChild(option);
+                        select.value = rangeStr;
+                    }
+                }
+            });
+        },
+
         onFlightDateRangeChange() {
             if (this.passengerData.flight_date_range) {
                 const parsed = this.parseFlightDateRange(this.passengerData.flight_date_range);
@@ -855,7 +1022,9 @@
                 address: this.passengerData.address || '',
                 passenger_type: this.passengerData.passenger_type ? this.passengerData.passenger_type.toLowerCase() : null,
                 gender: this.passengerData.gender || null,
-                ticket_fare_id: this.passengerData.ticket_fare_id || null,
+                ticket_fare_id: this.isDoubleTicket ? null : (this.passengerData.ticket_fare_id || null),
+                ticket_fare_inbound_id: this.passengerData.ticket_fare_inbound_id || null,
+                ticket_fare_outbound_id: this.passengerData.ticket_fare_outbound_id || null,
             };
 
             try {
