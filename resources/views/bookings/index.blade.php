@@ -617,6 +617,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Passenger Type</th>
                             @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Fare</th>@endif
                             {{-- @if($canViewTicketAgentColumn)<th class="px-3 py-2 text-left font-medium">Ticket Agent</th>@endif --}}
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
@@ -788,6 +789,13 @@ if ($route) {
         <template x-if="!passengersVisaData[{{ $loop->index }}]?.visa">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">N/A</span>
         </template>
+    </td>
+    <td class="px-3 py-2 text-slate-700">
+        <span x-text="{
+            'adult': 'ADT',
+            'child': 'CHD',
+            'infant': 'INF'
+        }[passengersTicketData[{{ $loop->index }}]?.passenger_type] || '—'">—</span>
     </td>
     @if($canViewTicketFareColumn)
     <td class="px-3 py-2 text-slate-700">
