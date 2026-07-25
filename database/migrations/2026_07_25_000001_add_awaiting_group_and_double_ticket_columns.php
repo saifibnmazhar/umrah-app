@@ -11,6 +11,8 @@ return new class extends Migration
     {
         DB::statement("ALTER TABLE issued_tickets MODIFY COLUMN status ENUM('pending', 'issued', 're-issued', 'refunded', 'awaiting-group') NOT NULL DEFAULT 'pending'");
 
+        DB::statement('ALTER TABLE packages MODIFY COLUMN ticket_fare_id BIGINT UNSIGNED NULL');
+
         Schema::table('packages', function (Blueprint $table) {
             $table->foreignId('ticket_fare_inbound_id')->nullable()->after('ticket_fare_id')->constrained('ticket_fares')->nullOnDelete();
             $table->foreignId('ticket_fare_outbound_id')->nullable()->after('ticket_fare_inbound_id')->constrained('ticket_fares')->nullOnDelete();
@@ -37,6 +39,9 @@ return new class extends Migration
             $table->dropForeign(['ticket_fare_inbound_id']);
             $table->dropColumn(['ticket_fare_outbound_id', 'ticket_fare_inbound_id', 'is_double_ticket']);
         });
+
+        DB::statement('UPDATE packages SET ticket_fare_id = 0 WHERE ticket_fare_id IS NULL');
+        DB::statement('ALTER TABLE packages MODIFY COLUMN ticket_fare_id BIGINT UNSIGNED NOT NULL');
 
         DB::statement("ALTER TABLE issued_tickets MODIFY COLUMN status ENUM('pending', 'issued', 're-issued', 'refunded') NOT NULL DEFAULT 'pending'");
     }
