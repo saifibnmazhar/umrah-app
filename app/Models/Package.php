@@ -16,6 +16,9 @@ class Package extends Model
         'offer_price',
         'service_charge',
         'is_active',
+        'ticket_fare_inbound_id',
+        'ticket_fare_outbound_id',
+        'is_double_ticket',
     ];
 
     protected $casts = [
@@ -23,6 +26,7 @@ class Package extends Model
         'offer_price' => 'decimal:6',
         'service_charge' => 'decimal:6',
         'is_active' => 'boolean',
+        'is_double_ticket' => 'boolean',
     ];
 
     protected $appends = ['is_locked'];
@@ -35,6 +39,16 @@ class Package extends Model
     public function visaSellingPrice(): BelongsTo
     {
         return $this->belongsTo(VisaSellingPrice::class);
+    }
+
+    public function ticketFareInbound(): BelongsTo
+    {
+        return $this->belongsTo(TicketFare::class, 'ticket_fare_inbound_id');
+    }
+
+    public function ticketFareOutbound(): BelongsTo
+    {
+        return $this->belongsTo(TicketFare::class, 'ticket_fare_outbound_id');
     }
 
     public function bookings(): HasMany
