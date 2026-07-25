@@ -924,7 +924,9 @@ class BookingController extends Controller
                 'ticket_fare_id' => $pkg->ticket_fare_id,
                 'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
                 'service_charge' => $pkg->service_charge ?? 0,
-                'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
+                'package_value' => $pkg->is_double_ticket
+                    ? (($pkg->ticketFareInbound?->selling_fare ?? 0) + ($pkg->ticketFareOutbound?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0))
+                    : (($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0)),
             ];
         });
 
@@ -1029,7 +1031,9 @@ class BookingController extends Controller
                 'ticket_fare_id' => $pkg->ticket_fare_id,
                 'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
                 'service_charge' => $pkg->service_charge ?? 0,
-                'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
+                'package_value' => $pkg->is_double_ticket
+                    ? (($pkg->ticketFareInbound?->selling_fare ?? 0) + ($pkg->ticketFareOutbound?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0))
+                    : (($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0)),
                 'is_active' => true,
             ];
         });
@@ -1043,7 +1047,9 @@ class BookingController extends Controller
                     'ticket_fare_id' => $currentPackage->ticket_fare_id,
                     'visa_selling_price' => $currentPackage->visaSellingPrice?->selling_price ?? 0,
                     'service_charge' => $currentPackage->service_charge ?? 0,
-                    'package_value' => ($currentPackage->ticketFare?->selling_fare ?? 0) + ($currentPackage->visaSellingPrice?->selling_price ?? 0) + ($currentPackage->service_charge ?? 0),
+                    'package_value' => $currentPackage->is_double_ticket
+                        ? (($currentPackage->ticketFareInbound?->selling_fare ?? 0) + ($currentPackage->ticketFareOutbound?->selling_fare ?? 0) + ($currentPackage->visaSellingPrice?->selling_price ?? 0) + ($currentPackage->service_charge ?? 0))
+                        : (($currentPackage->ticketFare?->selling_fare ?? 0) + ($currentPackage->visaSellingPrice?->selling_price ?? 0) + ($currentPackage->service_charge ?? 0)),
                     'is_active' => false,
                 ]);
             }

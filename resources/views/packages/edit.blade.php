@@ -35,8 +35,15 @@
             </div>
 
             <div class="mt-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="doubleTicketCheck" name="is_double_ticket" value="1" {{ old('is_double_ticket', $package->is_double_ticket ?? false) ? 'checked' : '' }} class="w-4 h-4 rounded border-slate-300 text-slate-700 focus:ring-slate-400">
+                    <span class="text-sm font-medium text-slate-700">Double Ticket</span>
+                </label>
+            </div>
+
+            <div id="singleTicketFields" class="mt-4">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                <select id="ticketSelect" name="ticket_fare_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+                <select id="ticketSelect" name="ticket_fare_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                     <option value="">Select Ticket</option>
                     @foreach($ticketFares as $fare)
                         @php
@@ -62,6 +69,47 @@
                 @error('ticket_fare_id')
                     <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
                 @enderror
+            </div>
+
+            <div id="doubleTicketFields" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Inbound *</label>
+                    <select id="ticketInboundSelect" name="ticket_fare_inbound_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select Inbound Ticket</option>
+                        @foreach($inboundFares as $fare)
+                            @php
+                                $display = $fare['route'] . ' | ' . strtoupper($fare['ticket_type'] ?? '?') . ' | SAR ' . number_format($fare['selling_fare'], 0);
+                            @endphp
+                            <option value="{{ $fare['id'] }}"
+                                data-selling-fare="{{ $fare['selling_fare'] }}"
+                                {{ (old('ticket_fare_inbound_id', $package->ticket_fare_inbound_id ?? '') == $fare['id']) ? 'selected' : '' }}>
+                                {{ $display }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('ticket_fare_inbound_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Outbound *</label>
+                    <select id="ticketOutboundSelect" name="ticket_fare_outbound_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select Outbound Ticket</option>
+                        @foreach($outboundFares as $fare)
+                            @php
+                                $display = $fare['route'] . ' | ' . strtoupper($fare['ticket_type'] ?? '?') . ' | SAR ' . number_format($fare['selling_fare'], 0);
+                            @endphp
+                            <option value="{{ $fare['id'] }}"
+                                data-selling-fare="{{ $fare['selling_fare'] }}"
+                                {{ (old('ticket_fare_outbound_id', $package->ticket_fare_outbound_id ?? '') == $fare['id']) ? 'selected' : '' }}>
+                                {{ $display }}
+                            </option>
+                        @endforeach
+                    </select>
+                    @error('ticket_fare_outbound_id')
+                        <p class="mt-1 text-sm text-red-600">{{ $message }}</p>
+                    @enderror
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -115,14 +163,42 @@
 
 <script>
 const ticketFares = @json($ticketFares);
+const inboundFares = @json($inboundFares);
+const outboundFares = @json($outboundFares);
 const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
 
-const ticketTypeSelect = document.getElementById('ticketTypeSelect');
+const doubleTicketCheck = document.getElementById('doubleTicketCheck');
+const singleTicketFields = document.getElementById('singleTicketFields');
+const doubleTicketFields = document.getElementById('doubleTicketFields');
 const ticketSelect = document.getElementById('ticketSelect');
+const ticketInboundSelect = document.getElementById('ticketInboundSelect');
+const ticketOutboundSelect = document.getElementById('ticketOutboundSelect');
 const regularPrice = document.getElementById('regularPrice');
 const offerPrice = document.getElementById('offerPrice');
 const offerPriceContainer = document.getElementById('offerPriceContainer');
 const serviceCharge = document.getElementById('serviceCharge');
+const ticketTypeSelect = document.getElementById('ticketTypeSelect');
+
+function toggleDoubleTicket() {
+    const isDouble = doubleTicketCheck.checked;
+    singleTicketFields.classList.toggle('hidden', isDouble);
+    doubleTicketFields.classList.toggle('hidden', !isDouble);
+
+    singleTicketFields.querySelectorAll('select, input').forEach(el => {
+        if (el.id !== 'ticketSelect') return;
+        el.required = !isDouble;
+    });
+    doubleTicketFields.querySelectorAll('select').forEach(el => el.required = isDouble);
+
+    if (isDouble) {
+        ticketSelect.value = '';
+        calculatePrices();
+    } else {
+        ticketInboundSelect.value = '';
+        ticketOutboundSelect.value = '';
+        calculatePrices();
+    }
+}
 
 function buildDisplay(fare) {
     let disp = fare.route + ' | ' + fare.ticket_type.toUpperCase() + ' | SAR ' + fare.selling_fare;
@@ -147,6 +223,21 @@ function filterTickets() {
 }
 
 function calculatePrices() {
+    const isDouble = doubleTicketCheck.checked;
+
+    if (isDouble) {
+        const inboundOption = ticketInboundSelect.options[ticketInboundSelect.selectedIndex];
+        const outboundOption = ticketOutboundSelect.options[ticketOutboundSelect.selectedIndex];
+        const inboundFare = inboundOption && inboundOption.value ? parseFloat(inboundOption.dataset.sellingFare) || 0 : 0;
+        const outboundFare = outboundOption && outboundOption.value ? parseFloat(outboundOption.dataset.sellingFare) || 0 : 0;
+        const totalFare = inboundFare + outboundFare;
+
+        regularPrice.value = totalFare > 0 ? (totalFare + latestVisaPrice).toFixed(6) : '';
+        offerPriceContainer.classList.add('hidden');
+        offerPrice.value = '';
+        return;
+    }
+
     const selectedOption = ticketSelect.options[ticketSelect.selectedIndex];
     if (!selectedOption || !selectedOption.value) {
         regularPrice.value = '';
@@ -169,10 +260,14 @@ function calculatePrices() {
     }
 }
 
+doubleTicketCheck.addEventListener('change', toggleDoubleTicket);
 ticketTypeSelect.addEventListener('change', filterTickets);
 ticketSelect.addEventListener('change', calculatePrices);
+ticketInboundSelect.addEventListener('change', calculatePrices);
+ticketOutboundSelect.addEventListener('change', calculatePrices);
 
 document.addEventListener('DOMContentLoaded', function() {
+    toggleDoubleTicket();
     filterTickets();
     calculatePrices();
 });

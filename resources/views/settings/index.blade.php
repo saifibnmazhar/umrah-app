@@ -336,6 +336,281 @@
     @endif
     </script>
 
+    <script>
+    function toggleDoubleTicket() {
+        const isDouble = document.getElementById('modalDoubleTicketCheck').checked;
+        document.getElementById('modalSingleTicketFields').classList.toggle('hidden', isDouble);
+        document.getElementById('modalDoubleTicketFields').classList.toggle('hidden', !isDouble);
+        if (isDouble) {
+            document.getElementById('modalTicketSelect').value = '';
+            document.getElementById('modalTicketSelect').required = false;
+            document.getElementById('modalTicketInboundSelect').required = true;
+            document.getElementById('modalTicketOutboundSelect').required = true;
+            calculateModalPrices();
+        } else {
+            document.getElementById('modalTicketInboundSelect').value = '';
+            document.getElementById('modalTicketOutboundSelect').value = '';
+            document.getElementById('modalTicketInboundSelect').required = false;
+            document.getElementById('modalTicketOutboundSelect').required = false;
+            document.getElementById('modalTicketSelect').required = true;
+            calculateModalPrices();
+        }
+    }
+
+    function showPackageModal() {
+        document.getElementById('modalTitle').textContent = 'Add Package';
+        document.getElementById('packageForm').action = '{{ route('settings.package.store') }}';
+        document.getElementById('formMethod').value = 'POST';
+        document.getElementById('packageId').value = '';
+        document.getElementById('packageName').value = '';
+        document.getElementById('modalTicketTypeSelect').value = '';
+        document.getElementById('modalTicketSelect').value = '';
+        document.getElementById('modalRegularPrice').value = '';
+        document.getElementById('modalRegularPrice').dataset.sarValue = '0';
+        document.getElementById('modalServiceCharge').value = 0;
+        document.getElementById('modalServiceCharge').dataset.sarValue = '0';
+        document.getElementById('modalOfferPrice').value = '';
+        document.getElementById('modalOfferPrice').dataset.sarValue = '0';
+        document.getElementById('modalOfferPrice').readOnly = false;
+        document.getElementById('modalOfferPriceContainer').classList.add('hidden');
+        document.getElementById('modalDoubleTicketCheck').checked = false;
+        filterModalTickets();
+        toggleDoubleTicket();
+        document.getElementById('packageModal').classList.remove('hidden');
+        syncInputCurrency();
+        updateModalGross();
+    }
+
+    function editPackage(id) {
+        const pkg = packages.find(p => p.id === id);
+        if (!pkg) return;
+        if (pkg.is_locked) {
+            alert('This package cannot be edited because it has existing bookings.');
+            return;
+        }
+        document.getElementById('modalTitle').textContent = 'Edit Package';
+        document.getElementById('packageForm').action = '/settings/package/' + id;
+        document.getElementById('formMethod').value = 'PUT';
+        document.getElementById('packageId').value = pkg.id;
+        document.getElementById('packageName').value = pkg.package_name;
+        const isDouble = pkg.is_double_ticket || false;
+        document.getElementById('modalDoubleTicketCheck').checked = isDouble;
+        toggleDoubleTicket();
+        const ticketOption = Array.from(document.getElementById('modalTicketSelect').options).find(opt => opt.value == pkg.ticket_fare_id);
+        if (ticketOption) {
+            document.getElementById('modalTicketTypeSelect').value = ticketOption.dataset.ticketType || '';
+            filterModalTickets(pkg.ticket_fare_id);
+            document.getElementById('modalTicketSelect').value = pkg.ticket_fare_id;
+        }
+        document.getElementById('modalTicketInboundSelect').value = pkg.ticket_fare_inbound_id || '';
+        document.getElementById('modalTicketOutboundSelect').value = pkg.ticket_fare_outbound_id || '';
+        document.getElementById('modalRegularPrice').dataset.sarValue = parseFloat(pkg.regular_price || 0).toFixed(6);
+        document.getElementById('modalServiceCharge').dataset.sarValue = parseFloat(pkg.service_charge || 0).toFixed(6);
+        if (pkg.offer_price) {
+            document.getElementById('modalOfferPrice').dataset.sarValue = parseFloat(pkg.offer_price).toFixed(6);
+        }
+        if (!isDouble && ticketOption && ticketOption.dataset.ticketType === 'offer') {
+            document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
+            document.getElementById('modalOfferPrice').readOnly = true;
+        } else {
+            document.getElementById('modalOfferPriceContainer').classList.add('hidden');
+            document.getElementById('modalOfferPrice').value = '';
+            document.getElementById('modalOfferPrice').dataset.sarValue = '0';
+            document.getElementById('modalOfferPrice').readOnly = false;
+        }
+        document.getElementById('packageModal').classList.remove('hidden');
+        syncInputCurrency();
+        updateModalGross();
+    }
+
+    function hidePackageModal() {
+        document.getElementById('packageModal').classList.add('hidden');
+    }
+
+    function filterModalTickets(exceptFareId = null) {
+        const selectedType = document.getElementById('modalTicketTypeSelect').value;
+        Array.from(document.getElementById('modalTicketSelect').options).forEach(option => {
+            if (option.value === '') return;
+            const ticketType = option.dataset.ticketType;
+            const isUsed = option.dataset.used === 'true';
+            const isExcepted = exceptFareId && option.value == exceptFareId;
+            let show = (selectedType === '' || ticketType === selectedType);
+            if (show && isUsed && !isExcepted) {
+                show = false;
+            }
+            option.style.display = show ? '' : 'none';
+        });
+        Array.from(document.getElementById('modalTicketInboundSelect').options).forEach(option => {
+            if (option.value === '' || !option.dataset.ticketType) return;
+            option.style.display = (selectedType === '' || option.dataset.ticketType === selectedType) ? '' : 'none';
+        });
+        Array.from(document.getElementById('modalTicketOutboundSelect').options).forEach(option => {
+            if (option.value === '' || !option.dataset.ticketType) return;
+            option.style.display = (selectedType === '' || option.dataset.ticketType === selectedType) ? '' : 'none';
+        });
+    }
+
+    function syncInputCurrency() {
+        const currency = window.Alpine?.store('currency');
+        if (!currency) return;
+        const isBDT = currency.mode === 'BDT';
+        const rate = currency.rate;
+        document.querySelectorAll('[data-sar-value]').forEach(input => {
+            const sar = parseFloat(input.dataset.sarValue) || 0;
+            if (isBDT) {
+                input.value = Math.round(sar * rate);
+            } else {
+                input.value = sar.toFixed(6);
+            }
+        });
+        document.querySelectorAll('.currency-label').forEach(el => {
+            el.textContent = isBDT ? 'BDT' : 'SAR';
+        });
+    }
+
+    function updateModalGross() {
+        const isDouble = document.getElementById('modalDoubleTicketCheck')?.checked;
+        const regularSar = parseFloat(document.getElementById('modalRegularPrice')?.dataset?.sarValue || 0);
+        const offerSar = parseFloat(document.getElementById('modalOfferPrice')?.dataset?.sarValue || 0);
+        const serviceSar = parseFloat(document.getElementById('modalServiceCharge')?.dataset?.sarValue || 0);
+        const selectedOption = document.getElementById('modalTicketSelect').options[document.getElementById('modalTicketSelect').selectedIndex];
+        const ticketType = selectedOption?.dataset?.ticketType;
+        let gross = 0;
+        if (isDouble) {
+            gross = regularSar + serviceSar;
+        } else if (ticketType === 'offer') {
+            gross = offerSar + serviceSar;
+        } else {
+            gross = regularSar + serviceSar;
+        }
+        const grossDisplay = document.getElementById('modalGrossDisplay');
+        if (!grossDisplay) return;
+        const sar = gross;
+        const currency = window.Alpine?.store('currency');
+        const isBDT = currency?.mode === 'BDT';
+        const rate = currency?.rate || 1;
+        grossDisplay.dataset.sar = sar.toFixed(6);
+        grossDisplay.dataset.dec = '0';
+        if (isBDT) {
+            grossDisplay.textContent = 'BDT ' + Math.round(sar * rate).toLocaleString();
+        } else {
+            grossDisplay.textContent = 'SAR ' + Math.round(sar).toLocaleString();
+        }
+    }
+
+    function calculateModalPrices() {
+        const isDouble = document.getElementById('modalDoubleTicketCheck').checked;
+        if (isDouble) {
+            const inboundSelect = document.getElementById('modalTicketInboundSelect');
+            const outboundSelect = document.getElementById('modalTicketOutboundSelect');
+            const inboundOption = inboundSelect.options[inboundSelect.selectedIndex];
+            const outboundOption = outboundSelect.options[outboundSelect.selectedIndex];
+            const hasInbound = inboundOption && inboundOption.value;
+            const hasOutbound = outboundOption && outboundOption.value;
+            const inboundSelling = hasInbound ? parseFloat(inboundOption.dataset.sellingFare) || 0 : 0;
+            const outboundSelling = hasOutbound ? parseFloat(outboundOption.dataset.sellingFare) || 0 : 0;
+            const totalFare = inboundSelling + outboundSelling;
+            const regularSar = totalFare > 0 ? totalFare + latestVisaPrice : 0;
+            document.getElementById('modalRegularPrice').dataset.sarValue = regularSar > 0 ? regularSar.toFixed(6) : '0';
+
+            const inboundType = hasInbound ? inboundOption.dataset.ticketType : null;
+            const outboundType = hasOutbound ? outboundOption.dataset.ticketType : null;
+            const serviceSar = parseFloat(document.getElementById('modalServiceCharge')?.dataset?.sarValue || 0);
+            if (inboundType === 'offer' && outboundType === 'offer' && hasInbound && hasOutbound) {
+                const inboundOffer = parseFloat(inboundOption.dataset.offerPrice) || 0;
+                const outboundOffer = parseFloat(outboundOption.dataset.offerPrice) || 0;
+                const offerSar = inboundOffer + outboundOffer + latestVisaPrice;
+                document.getElementById('modalOfferPrice').dataset.sarValue = offerSar.toFixed(6);
+                document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
+                document.getElementById('modalOfferPrice').readOnly = true;
+            } else {
+                document.getElementById('modalOfferPrice').dataset.sarValue = '0';
+                document.getElementById('modalOfferPriceContainer').classList.add('hidden');
+                document.getElementById('modalOfferPrice').value = '';
+                document.getElementById('modalOfferPrice').readOnly = false;
+            }
+            syncInputCurrency();
+            updateModalGross();
+            return;
+        }
+        const selectedOption = document.getElementById('modalTicketSelect').options[document.getElementById('modalTicketSelect').selectedIndex];
+        if (!selectedOption || !selectedOption.value) {
+            document.getElementById('modalRegularPrice').value = '';
+            document.getElementById('modalRegularPrice').dataset.sarValue = '0';
+            document.getElementById('modalOfferPrice').value = '';
+            document.getElementById('modalOfferPrice').dataset.sarValue = '0';
+            syncInputCurrency();
+            updateModalGross();
+            return;
+        }
+        const sellingFare = parseFloat(selectedOption.dataset.sellingFare) || 0;
+        const offerFare = parseFloat(selectedOption.dataset.offerPrice) || 0;
+        const ticketType = selectedOption.dataset.ticketType;
+        if (ticketType === 'offer') {
+            const regularSar = sellingFare + latestVisaPrice;
+            const offerSar = offerFare + latestVisaPrice;
+            document.getElementById('modalRegularPrice').dataset.sarValue = regularSar.toFixed(6);
+            document.getElementById('modalOfferPrice').dataset.sarValue = offerSar.toFixed(6);
+            document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
+            document.getElementById('modalOfferPrice').readOnly = true;
+        } else {
+            const regularSar = sellingFare + latestVisaPrice;
+            document.getElementById('modalRegularPrice').dataset.sarValue = regularSar.toFixed(6);
+            document.getElementById('modalOfferPrice').dataset.sarValue = '0';
+            document.getElementById('modalOfferPriceContainer').classList.add('hidden');
+            document.getElementById('modalOfferPrice').value = '';
+            document.getElementById('modalOfferPrice').readOnly = false;
+        }
+        syncInputCurrency();
+        updateModalGross();
+    }
+
+    function handlePriceInput(el) {
+        const currency = window.Alpine?.store('currency');
+        const isBDT = currency?.mode === 'BDT';
+        const rate = currency?.rate || 1;
+        if (isBDT) {
+            const bdtValue = parseFloat(el.value || 0);
+            el.dataset.sarValue = (bdtValue / rate).toFixed(6);
+        } else {
+            el.dataset.sarValue = parseFloat(el.value || 0).toFixed(6);
+        }
+        syncInputCurrency();
+        updateModalGross();
+    }
+
+    function updateSelectLabels(selectId) {
+        const currency = window.Alpine?.store('currency');
+        if (!currency) return;
+        const select = document.getElementById(selectId);
+        if (!select) return;
+        Array.from(select.options).forEach(opt => {
+            if (!opt.value || !opt.dataset.displayPrefix) return;
+            const sellingFare = parseFloat(opt.dataset.sellingFare) || 0;
+            const offerPrice = parseFloat(opt.dataset.offerPrice) || 0;
+            let display = opt.dataset.displayPrefix;
+            if (currency.mode === 'BDT') {
+                display += ' | BDT ' + Math.round(sellingFare * currency.rate).toLocaleString();
+                if (opt.dataset.ticketType === 'offer') {
+                    display += ' | BDT ' + Math.round(offerPrice * currency.rate).toLocaleString();
+                }
+            } else {
+                display += ' | SAR ' + sellingFare.toLocaleString();
+                if (opt.dataset.ticketType === 'offer') {
+                    display += ' | SAR ' + offerPrice.toLocaleString();
+                }
+            }
+            opt.textContent = display;
+        });
+    }
+
+    function updateModalTicketLabels() {
+        updateSelectLabels('modalTicketSelect');
+        updateSelectLabels('modalTicketInboundSelect');
+        updateSelectLabels('modalTicketOutboundSelect');
+    }
+    </script>
+
     @if($isSettingsAdmin)
     <div x-show="activeTab === 'package-configuration'" x-cloak>
         @if(session('success'))
@@ -400,18 +675,30 @@
                     <tbody class="divide-y divide-slate-200">
                         @forelse($packages as $package)
                             @php
-                                $route = $package->ticketFare?->route;
-                                if ($route && $route->multiSegments && $route->multiSegments->count() > 0) {
-                                    $routeName = $route->multiSegments->map(
-                                        fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?')
-                                    )->implode(', ');
-                                } elseif ($route && $route->returnCity) {
-                                    $routeName = ($route->fromCity?->code ?? '?') . ' - ' . ($route->toCity?->code ?? '?') . ' - ' . ($route->returnCity?->code ?? '?');
+                                if ($package->is_double_ticket) {
+                                    $inboundRoute = $package->ticketFareInbound?->route;
+                                    $outboundRoute = $package->ticketFareOutbound?->route;
+                                    $inboundName = ($inboundRoute ? ($inboundRoute->fromCity?->code ?? '?') . ' → ' . ($inboundRoute->toCity?->code ?? '?') : '?');
+                                    $outboundName = ($outboundRoute ? ($outboundRoute->fromCity?->code ?? '?') . ' → ' . ($outboundRoute->toCity?->code ?? '?') : '?');
+                                    $routeName = $inboundName . ' + ' . $outboundName;
                                 } else {
-                                    $routeName = ($route?->fromCity?->code ?? '?') . ' → ' . ($route?->toCity?->code ?? '?');
+                                    $route = $package->ticketFare?->route;
+                                    if ($route && $route->multiSegments && $route->multiSegments->count() > 0) {
+                                        $routeName = $route->multiSegments->map(
+                                            fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?')
+                                        )->implode(', ');
+                                    } elseif ($route && $route->returnCity) {
+                                        $routeName = ($route->fromCity?->code ?? '?') . ' - ' . ($route->toCity?->code ?? '?') . ' - ' . ($route->returnCity?->code ?? '?');
+                                    } else {
+                                        $routeName = ($route?->fromCity?->code ?? '?') . ' → ' . ($route?->toCity?->code ?? '?');
+                                    }
                                 }
-                                $ticketSellingFare = $package->ticketFare?->selling_fare ?? 0;
-                                $ticketOfferFare = $package->ticketFare?->offer_price;
+                                $ticketSellingFare = $package->is_double_ticket
+                                    ? (($package->ticketFareInbound?->selling_fare ?? 0) + ($package->ticketFareOutbound?->selling_fare ?? 0))
+                                    : ($package->ticketFare?->selling_fare ?? 0);
+                                $ticketOfferFare = $package->is_double_ticket
+                                    ? (($package->ticketFareInbound?->offer_price ?? 0) + ($package->ticketFareOutbound?->offer_price ?? 0))
+                                    : ($package->ticketFare?->offer_price);
                                 $visaSellingPrice = $package->regular_price - $ticketSellingFare;
                             @endphp
                             <tr class="hover:bg-slate-50">
@@ -429,7 +716,7 @@
                                 <td class="px-3 py-2 text-right text-slate-600">@currency($package->service_charge ?? 0, 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency(($package->regular_price ?? 0) + ($package->service_charge ?? 0), 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-600 pr-8">
-                                    @if($package->ticketFare?->ticket_type === \App\Enums\TicketType::OFFER)
+                                    @if($package->ticketFare?->ticket_type === \App\Enums\TicketType::OFFER || $package->offer_price)
                                         @currency(($package->offer_price ?? 0) + ($package->service_charge ?? 0), 0)
                                     @else
                                         -
@@ -510,7 +797,7 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type *</label>
-                            <select id="modalTicketTypeSelect" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required onchange="toggleModalOfferPriceField()">
+                            <select id="modalTicketTypeSelect" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
                                 <option value="">Select Ticket Type</option>
                                 <option value="regular">REGULAR</option>
                                 <option value="offer">OFFER</option>
@@ -520,8 +807,15 @@
                     </div>
 
                     <div class="mt-4">
+                        <label class="flex items-center gap-2 cursor-pointer">
+                            <input type="checkbox" id="modalDoubleTicketCheck" name="is_double_ticket" value="1" class="w-4 h-4 rounded border-slate-300 text-slate-700 focus:ring-slate-400">
+                            <span class="text-sm font-medium text-slate-700">Double Ticket</span>
+                        </label>
+                    </div>
+
+                    <div id="modalSingleTicketFields" class="mt-4">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                        <select id="modalTicketSelect" name="ticket_fare_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+                        <select id="modalTicketSelect" name="ticket_fare_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Ticket</option>
                             @foreach($ticketFares as $fare)
                                 @php
@@ -538,6 +832,49 @@
                                 </option>
                             @endforeach
                         </select>
+                    </div>
+
+                    <div id="modalDoubleTicketFields" class="mt-4 hidden">
+                        <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Inbound *</label>
+                                <select id="modalTicketInboundSelect" name="ticket_fare_inbound_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                    <option value="">Select Inbound Ticket</option>
+                                    @foreach($inboundFares as $fare)
+                                        @php
+                                            $inType = $fare['ticket_type'];
+                                            $inPrefix = $fare['airline'] . ' | ' . $fare['route'] . ' | ' . strtoupper($inType ?? '?');
+                                        @endphp
+                                        <option value="{{ $fare['id'] }}"
+                                            data-selling-fare="{{ $fare['selling_fare'] }}"
+                                            data-ticket-type="{{ $fare['ticket_type'] }}"
+                                            data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
+                                            data-display-prefix="{{ $inPrefix }}">
+                                            {{ $inPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $inType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                            <div>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Outbound *</label>
+                                <select id="modalTicketOutboundSelect" name="ticket_fare_outbound_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                    <option value="">Select Outbound Ticket</option>
+                                    @foreach($outboundFares as $fare)
+                                        @php
+                                            $outType = $fare['ticket_type'];
+                                            $outPrefix = $fare['airline'] . ' | ' . $fare['route'] . ' | ' . strtoupper($outType ?? '?');
+                                        @endphp
+                                        <option value="{{ $fare['id'] }}"
+                                            data-selling-fare="{{ $fare['selling_fare'] }}"
+                                            data-ticket-type="{{ $fare['ticket_type'] }}"
+                                            data-offer-price="{{ $fare['offer_price'] ?? 0 }}"
+                                            data-display-prefix="{{ $outPrefix }}">
+                                            {{ $outPrefix }} | SAR {{ number_format($fare['selling_fare'], 0) }}{{ $outType === 'offer' ? ' | SAR ' . number_format($fare['offer_price'] ?? 0, 0) : '' }}
+                                        </option>
+                                    @endforeach
+                                </select>
+                            </div>
+                        </div>
                     </div>
 
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -582,223 +919,23 @@
 
         <script>
         const ticketFares = @json($ticketFares);
+        const inboundFares = @json($inboundFares);
+        const outboundFares = @json($outboundFares);
         const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
         const packages = @json($packages->items());
         const usedFareIds = @json($usedFareIds);
+        </script>
 
-        function showPackageModal() {
-            document.getElementById('modalTitle').textContent = 'Add Package';
-            document.getElementById('packageForm').action = '{{ route('settings.package.store') }}';
-            document.getElementById('formMethod').value = 'POST';
-            document.getElementById('packageId').value = '';
-            document.getElementById('packageName').value = '';
-            document.getElementById('modalTicketTypeSelect').value = '';
-            document.getElementById('modalTicketSelect').value = '';
-            document.getElementById('modalRegularPrice').value = '';
-            document.getElementById('modalRegularPrice').dataset.sarValue = '0';
-            document.getElementById('modalServiceCharge').value = 0;
-            document.getElementById('modalServiceCharge').dataset.sarValue = '0';
-            document.getElementById('modalOfferPrice').value = '';
-            document.getElementById('modalOfferPrice').dataset.sarValue = '0';
-            document.getElementById('modalOfferPrice').readOnly = false;
-            document.getElementById('modalOfferPriceContainer').classList.add('hidden');
-            filterModalTickets();
-            document.getElementById('packageModal').classList.remove('hidden');
-            syncInputCurrency();
-            updateModalGross();
-        }
-
-        function editPackage(id) {
-            const pkg = packages.find(p => p.id === id);
-            if (!pkg) return;
-            if (pkg.is_locked) {
-                alert('This package cannot be edited because it has existing bookings.');
-                return;
-            }
-
-            document.getElementById('modalTitle').textContent = 'Edit Package';
-            document.getElementById('packageForm').action = '/settings/package/' + id;
-            document.getElementById('formMethod').value = 'PUT';
-            document.getElementById('packageId').value = pkg.id;
-            document.getElementById('packageName').value = pkg.package_name;
-            
-            // Find ticket type from ticket_fare
-            const ticketOption = Array.from(document.getElementById('modalTicketSelect').options).find(opt => opt.value == pkg.ticket_fare_id);
-            if (ticketOption) {
-                document.getElementById('modalTicketTypeSelect').value = ticketOption.dataset.ticketType || '';
-                filterModalTickets(pkg.ticket_fare_id);
-                document.getElementById('modalTicketSelect').value = pkg.ticket_fare_id;
-            }
-            
-            document.getElementById('modalRegularPrice').dataset.sarValue = parseFloat(pkg.regular_price || 0).toFixed(6);
-            document.getElementById('modalServiceCharge').dataset.sarValue = parseFloat(pkg.service_charge || 0).toFixed(6);
-            if (pkg.offer_price) {
-                document.getElementById('modalOfferPrice').dataset.sarValue = parseFloat(pkg.offer_price).toFixed(6);
-            }
-            
-            if (ticketOption && ticketOption.dataset.ticketType === 'offer') {
-                document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
-                document.getElementById('modalOfferPrice').readOnly = true;
-            } else {
-                document.getElementById('modalOfferPriceContainer').classList.add('hidden');
-                document.getElementById('modalOfferPrice').value = '';
-                document.getElementById('modalOfferPrice').dataset.sarValue = '0';
-                document.getElementById('modalOfferPrice').readOnly = false;
-            }
-            
-            document.getElementById('packageModal').classList.remove('hidden');
-            syncInputCurrency();
-            updateModalGross();
-        }
-
-        function hidePackageModal() {
-            document.getElementById('packageModal').classList.add('hidden');
-        }
-
-        function filterModalTickets(exceptFareId = null) {
-            const selectedType = document.getElementById('modalTicketTypeSelect').value;
-            Array.from(document.getElementById('modalTicketSelect').options).forEach(option => {
-                if (option.value === '') return;
-                const ticketType = option.dataset.ticketType;
-                const isUsed = option.dataset.used === 'true';
-                const isExcepted = exceptFareId && option.value == exceptFareId;
-                let show = (selectedType === '' || ticketType === selectedType);
-                if (show && isUsed && !isExcepted) {
-                    show = false;
-                }
-                option.style.display = show ? '' : 'none';
-            });
-        }
-
-        function syncInputCurrency() {
-            const currency = window.Alpine?.store('currency');
-            if (!currency) return;
-            const isBDT = currency.mode === 'BDT';
-            const rate = currency.rate;
-
-            document.querySelectorAll('[data-sar-value]').forEach(input => {
-                const sar = parseFloat(input.dataset.sarValue) || 0;
-                if (isBDT) {
-                    input.value = Math.round(sar * rate);
-                } else {
-                    input.value = sar.toFixed(6);
-                }
-            });
-
-            document.querySelectorAll('.currency-label').forEach(el => {
-                el.textContent = isBDT ? 'BDT' : 'SAR';
-            });
-        }
-
-        function updateModalGross() {
-            const regularSar = parseFloat(document.getElementById('modalRegularPrice')?.dataset?.sarValue || 0);
-            const offerSar = parseFloat(document.getElementById('modalOfferPrice')?.dataset?.sarValue || 0);
-            const serviceSar = parseFloat(document.getElementById('modalServiceCharge')?.dataset?.sarValue || 0);
-            const selectedOption = document.getElementById('modalTicketSelect').options[document.getElementById('modalTicketSelect').selectedIndex];
-            const ticketType = selectedOption?.dataset?.ticketType;
-
-            let gross = 0;
-            if (ticketType === 'offer') {
-                gross = offerSar + serviceSar;
-            } else {
-                gross = regularSar + serviceSar;
-            }
-
-            const grossDisplay = document.getElementById('modalGrossDisplay');
-            if (!grossDisplay) return;
-
-            const sar = gross;
-            const currency = window.Alpine?.store('currency');
-            const isBDT = currency?.mode === 'BDT';
-            const rate = currency?.rate || 1;
-
-            grossDisplay.dataset.sar = sar.toFixed(6);
-            grossDisplay.dataset.dec = '0';
-            if (isBDT) {
-                grossDisplay.textContent = 'BDT ' + Math.round(sar * rate).toLocaleString();
-            } else {
-                grossDisplay.textContent = 'SAR ' + Math.round(sar).toLocaleString();
-            }
-        }
-
-        function calculateModalPrices() {
-            const selectedOption = document.getElementById('modalTicketSelect').options[document.getElementById('modalTicketSelect').selectedIndex];
-            if (!selectedOption || !selectedOption.value) {
-                document.getElementById('modalRegularPrice').value = '';
-                document.getElementById('modalRegularPrice').dataset.sarValue = '0';
-                document.getElementById('modalOfferPrice').value = '';
-                document.getElementById('modalOfferPrice').dataset.sarValue = '0';
-                syncInputCurrency();
-                updateModalGross();
-                return;
-            }
-
-            const sellingFare = parseFloat(selectedOption.dataset.sellingFare) || 0;
-            const offerFare = parseFloat(selectedOption.dataset.offerPrice) || 0;
-            const ticketType = selectedOption.dataset.ticketType;
-            
-            if (ticketType === 'offer') {
-                const regularSar = sellingFare + latestVisaPrice;
-                const offerSar = offerFare + latestVisaPrice;
-                document.getElementById('modalRegularPrice').dataset.sarValue = regularSar.toFixed(6);
-                document.getElementById('modalOfferPrice').dataset.sarValue = offerSar.toFixed(6);
-                document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
-                document.getElementById('modalOfferPrice').readOnly = true;
-            } else {
-                const regularSar = sellingFare + latestVisaPrice;
-                document.getElementById('modalRegularPrice').dataset.sarValue = regularSar.toFixed(6);
-                document.getElementById('modalOfferPrice').dataset.sarValue = '0';
-                document.getElementById('modalOfferPriceContainer').classList.add('hidden');
-                document.getElementById('modalOfferPrice').value = '';
-                document.getElementById('modalOfferPrice').readOnly = false;
-            }
-            syncInputCurrency();
-            updateModalGross();
-        }
-
+        <script>
+        document.getElementById('modalDoubleTicketCheck').addEventListener('change', toggleDoubleTicket);
         document.getElementById('modalTicketTypeSelect').addEventListener('change', filterModalTickets);
         document.getElementById('modalTicketSelect').addEventListener('change', calculateModalPrices);
+        document.getElementById('modalTicketInboundSelect').addEventListener('change', calculateModalPrices);
+        document.getElementById('modalTicketOutboundSelect').addEventListener('change', calculateModalPrices);
 
-        function handlePriceInput(el) {
-            const currency = window.Alpine?.store('currency');
-            const isBDT = currency?.mode === 'BDT';
-            const rate = currency?.rate || 1;
-            if (isBDT) {
-                const bdtValue = parseFloat(el.value || 0);
-                el.dataset.sarValue = (bdtValue / rate).toFixed(6);
-            } else {
-                el.dataset.sarValue = parseFloat(el.value || 0).toFixed(6);
-            }
-            syncInputCurrency();
-            updateModalGross();
-        }
         document.getElementById('modalOfferPrice').addEventListener('input', function () { handlePriceInput(this); });
         document.getElementById('modalServiceCharge').addEventListener('input', function () { handlePriceInput(this); });
 
-        function updateModalTicketLabels() {
-            const currency = window.Alpine?.store('currency');
-            if (!currency) return;
-            const select = document.getElementById('modalTicketSelect');
-            if (!select) return;
-            Array.from(select.options).forEach(opt => {
-                if (!opt.value || !opt.dataset.displayPrefix) return;
-                const sellingFare = parseFloat(opt.dataset.sellingFare) || 0;
-                const offerPrice = parseFloat(opt.dataset.offerPrice) || 0;
-                let display = opt.dataset.displayPrefix;
-                if (currency.mode === 'BDT') {
-                    display += ' | BDT ' + Math.round(sellingFare * currency.rate).toLocaleString();
-                    if (opt.dataset.ticketType === 'offer') {
-                        display += ' | BDT ' + Math.round(offerPrice * currency.rate).toLocaleString();
-                    }
-                } else {
-                    display += ' | SAR ' + sellingFare.toLocaleString();
-                    if (opt.dataset.ticketType === 'offer') {
-                        display += ' | SAR ' + offerPrice.toLocaleString();
-                    }
-                }
-                opt.textContent = display;
-            });
-        }
         window.addEventListener('currency-toggled', () => {
             updateModalTicketLabels();
             syncInputCurrency();
@@ -818,21 +955,6 @@
                 });
             }
         });
-
-        function toggleModalOfferPriceField() {
-            const ticketType = document.getElementById('modalTicketTypeSelect').value;
-            const offerPriceContainer = document.getElementById('modalOfferPriceContainer');
-            const offerInput = document.getElementById('modalOfferPrice');
-            
-            if (ticketType === 'offer') {
-                offerPriceContainer.classList.remove('hidden');
-                offerInput.readOnly = true;
-            } else {
-                offerPriceContainer.classList.add('hidden');
-                offerInput.value = '';
-                offerInput.readOnly = false;
-            }
-        }
         </script>
     </div>
     @endif

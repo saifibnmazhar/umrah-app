@@ -86,15 +86,28 @@ class BookingService
         $visaAmount = 0;
         $serviceChargeAmount = 0;
 
-        if ($ticketFare && $serviceRequired !== 'visa_only') {
-            $baseFare = $ticketFare->ticket_type === TicketType::OFFER
-                ? (float) ($ticketFare->offer_price ?? $ticketFare->selling_fare)
-                : (float) $ticketFare->selling_fare;
-            $ticketAmount = match ($passengerType) {
-                'child'  => $baseFare * ((float) $ticketFare->child_fare_percentage) / 100,
-                'infant' => $baseFare * ((float) $ticketFare->infant_fare_percentage) / 100,
-                default  => $baseFare,
-            };
+        if ($serviceRequired !== 'visa_only') {
+            if ($package && $package->is_double_ticket) {
+                $inboundFare = $package->ticketFareInbound;
+                $outboundFare = $package->ticketFareOutbound;
+                $inboundAmount = $inboundFare ? (float) $inboundFare->selling_fare : 0;
+                $outboundAmount = $outboundFare ? (float) $outboundFare->selling_fare : 0;
+                $baseFare = $inboundAmount + $outboundAmount;
+                $ticketAmount = match ($passengerType) {
+                    'child'  => $baseFare * ((float) ($inboundFare->child_fare_percentage ?? 70)) / 100,
+                    'infant' => $baseFare * ((float) ($inboundFare->infant_fare_percentage ?? 30)) / 100,
+                    default  => $baseFare,
+                };
+            } elseif ($ticketFare) {
+                $baseFare = $ticketFare->ticket_type === TicketType::OFFER
+                    ? (float) ($ticketFare->offer_price ?? $ticketFare->selling_fare)
+                    : (float) $ticketFare->selling_fare;
+                $ticketAmount = match ($passengerType) {
+                    'child'  => $baseFare * ((float) $ticketFare->child_fare_percentage) / 100,
+                    'infant' => $baseFare * ((float) $ticketFare->infant_fare_percentage) / 100,
+                    default  => $baseFare,
+                };
+            }
         }
 
         if ($serviceRequired !== 'ticket_only' && $package) {
