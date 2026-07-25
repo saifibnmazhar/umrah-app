@@ -168,7 +168,12 @@
                         <td>&nbsp;</td>
                     </tr>
                     <tr>
-                        <td>Paid Amount</td>
+                        <td x-text="previousDueAmount >= 0 ? 'Previous Due' : 'Previous Advance'"></td>
+                        <td class="text-right font-medium" :class="previousDueAmount >= 0 ? 'due-positive' : 'due-negative'" x-text="$currency(Math.abs(previousDueAmount), 2)"></td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>Current Paid Amount</td>
                         <td class="text-right font-medium" x-text="$currency(paidAmount, 2)"></td>
                         <td>&nbsp;</td>
                     </tr>
@@ -248,6 +253,7 @@
             return {
                 items: @json($lineItemsBdt ?? $lineItems),
                 totalAmount: {{ $totalAmount }},
+                previousDueAmount: {{ $previousDueAmount }},
                 paidAmount: {{ $paidAmount }},
                 dueAmount: {{ $dueAmount }},
             };
