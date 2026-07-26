@@ -115,7 +115,8 @@ class TicketIssueController extends Controller
                 'ticketAgent',
                 'ticketFare.airline',
                 'ticketFare.airlineClass.class',
-                'ticketFare.route',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
             ]);
 
             return response()->json([
@@ -214,7 +215,8 @@ class TicketIssueController extends Controller
                 'ticketAgent',
                 'ticketFare.airline',
                 'ticketFare.airlineClass.class',
-                'ticketFare.route',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
             ]);
 
             return response()->json([

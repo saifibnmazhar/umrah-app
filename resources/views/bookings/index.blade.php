@@ -301,10 +301,25 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     'all_issued_tickets' => $p->allIssuedTickets->map(fn($t) => [
         'id' => $t->id,
+        'ticket_number' => $t->ticket_number ?? '',
+        'issued_date' => $t->issued_date?->format('Y-m-d') ?? '',
+        'inbound_date' => $t->inbound_date?->format('Y-m-d') ?? '',
+        'outbound_date' => $t->outbound_date?->format('Y-m-d') ?? '',
+        'selling_fare' => (float)($t->selling_fare ?? 0),
         'net_fare' => (float)($t->net_fare ?? 0),
-        'status' => $t->status,
         'pnr' => $t->pnr ?? '',
+        'status' => $t->status,
         'issue_type' => $t->issue_type,
+        'is_refundable' => $t->is_refundable ?? false,
+        'is_exchangeable' => $t->is_exchangeable ?? false,
+        'baggage_inbound' => $t->baggage_inbound ?? '',
+        'baggage_outbound' => $t->baggage_outbound ?? '',
+        'airline' => $t->ticketFare?->airline?->name ?? '',
+        'travel_class' => $t->ticketFare?->airlineClass?->class?->name ?? '',
+        'route' => $t->ticketFare?->route ? ($t->ticketFare->route->fromCity?->code . '-' . $t->ticketFare->route->toCity?->code) : '',
+        'route_type' => $t->ticketFare?->route?->route_type?->value,
+        'ticket_agent_name' => $t->ticketAgent?->name ?? '',
+        'issuer_name' => $t->issuer?->name ?? '',
     ])->values(),
     'pending_outbound_issued_ticket' => ($poit = $p->allIssuedTickets
         ->first(fn($t) => $t->issue_type === 'pending_outbound')) ? [
@@ -976,15 +991,27 @@ if ($passenger->ticket_fare_inbound_id) {
                     <button @click="openOutboundTicketFareModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                    <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
-                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
-                        </button>
-                        <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex items-center gap-1 px-2 py-1 whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                            <button @click="open = false; toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
-                            <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued')" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
-                            <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="open = false; openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
+                    <div class="flex items-center gap-1">
+                        <div class="relative" x-data="{ open: false }">
+                            <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
+                                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
+                            </button>
+                            <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex items-center gap-1 px-2 py-1 whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                                <button @click="open = false; toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
+                                <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued')" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
+                                <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="open = false; openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
+                            </div>
                         </div>
+                        <button
+                            x-show="hasViewableTickets({{ $loop->index }})"
+                            title="View Ticket Info"
+                            @click="openTicketInfoModal({{ $loop->index }})"
+                            class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500">
+                            <svg class="w-3.5 h-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 12a3 3 0 11-6 0 3 3 0 016 0z"/>
+                                <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M2.458 12C3.732 7.943 7.523 5 12 5c4.478 0 8.268 2.943 9.542 7-1.274 4.057-5.064 7-9.542 7-4.477 0-8.268-2.943-9.542-7z"/>
+                            </svg>
+                        </button>
                     </div>
                 </template>
                 <template x-if="passengersTicketData[{{ $loop->index }}]?.is_cancelled">
@@ -1456,6 +1483,72 @@ if ($passenger->ticket_fare_inbound_id) {
                     <button type="button" @click="closeVisaCancelModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Close</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    {{-- Ticket Info Modal --}}
+    <div x-show="isTicketInfoModalOpen" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="isTicketInfoModalOpen = false">
+        <div class="fixed inset-0 bg-black/50" @click="isTicketInfoModalOpen = false"></div>
+        <div x-show="isTicketInfoModalOpen" x-cloak class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold text-slate-800">Ticket Info</h3>
+                <button type="button" @click="isTicketInfoModalOpen = false" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+            <template x-if="ticketInfoPassengerIndex !== null">
+                <div>
+                    <div class="mb-3 p-3 bg-slate-50 rounded-lg">
+                        <div class="text-sm font-medium text-slate-700">
+                            <span x-text="passengersTicketData[ticketInfoPassengerIndex]?.passenger_name || ''"></span>
+                            <span class="text-slate-400 mx-1">|</span>
+                            <span x-text="passengersTicketData[ticketInfoPassengerIndex]?.passenger_type || ''"></span>
+                        </div>
+                    </div>
+                    <div class="overflow-x-auto">
+                        <table class="w-full text-sm">
+                            <thead>
+                                <tr class="border-b border-slate-200 text-left text-xs font-medium text-slate-500 uppercase tracking-wider">
+                                    <th class="px-3 py-2">#</th>
+                                    <th class="px-3 py-2">Issue Date</th>
+                                    <th class="px-3 py-2">Ticket No</th>
+                                    <th class="px-3 py-2">PNR</th>
+                                    <th class="px-3 py-2">Route</th>
+                                    <th class="px-3 py-2">Airline</th>
+                                    <th class="px-3 py-2">Class</th>
+                                    <th class="px-3 py-2">Status</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                <template x-for="(ticket, idx) in viewableTickets(ticketInfoPassengerIndex)" :key="ticket.id">
+                                    <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                        <td class="px-3 py-2 text-slate-500" x-text="idx + 1"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.issued_date || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700 font-mono" x-text="ticket.ticket_number || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700 font-mono" x-text="ticket.pnr || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.route || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.airline || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.travel_class || '—'"></td>
+                                        <td class="px-3 py-2">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                                                :class="{
+                                                    'bg-green-100 text-green-700': ticket.status === 'issued',
+                                                    'bg-purple-100 text-purple-700': ticket.status === 're-issued',
+                                                    'bg-red-100 text-red-700': ticket.status === 'refunded',
+                                                }"
+                                                x-text="ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)">
+                                            </span>
+                                        </td>
+                                    </tr>
+                                </template>
+                            </tbody>
+                        </table>
+                        <template x-if="viewableTickets(ticketInfoPassengerIndex).length === 0">
+                            <p class="text-center text-slate-400 py-6">No ticket information available.</p>
+                        </template>
+                    </div>
+                </div>
+            </template>
         </div>
     </div>
 
@@ -3003,6 +3096,8 @@ function bookingIndexApp() {
         isTicketFareModalOpen: false,
         editingPassengerIndex: null,
         ticketFareModalTitle: 'Issue Ticket',
+        isTicketInfoModalOpen: false,
+        ticketInfoPassengerIndex: null,
 
         ticketFareForm: {
             ticket_type: '',
@@ -3380,6 +3475,21 @@ function bookingIndexApp() {
             this.isTicketFareModalOpen = true;
         },
 
+        openTicketInfoModal(rowIndex) {
+            this.ticketInfoPassengerIndex = rowIndex;
+            this.isTicketInfoModalOpen = true;
+        },
+
+        viewableTickets(rowIndex) {
+            const row = this.passengersTicketData[rowIndex];
+            if (!row) return [];
+            return (row.all_issued_tickets || []).filter(t => ['issued', 're-issued', 'refunded'].includes(t.status));
+        },
+
+        hasViewableTickets(rowIndex) {
+            return this.viewableTickets(rowIndex).length > 0;
+        },
+
         calculateFareForPassengerType(baseFare, passengerType, childPct, infantPct) {
             if (passengerType === 'child') return Math.round((baseFare * (childPct || 70)) / 100);
             if (passengerType === 'infant') return Math.round((baseFare * (infantPct || 30)) / 100);
@@ -3676,10 +3786,29 @@ function bookingIndexApp() {
                     if (t.status === 'issued' || t.status === 're-issued') {
                         if (!row.all_issued_tickets) row.all_issued_tickets = [];
                         const existingIdx = row.all_issued_tickets.findIndex(et => et.id === t.id);
+                        const routeStr = t.ticket_fare?.route
+                            ? [t.ticket_fare.route.from_city?.code, t.ticket_fare.route.to_city?.code].filter(Boolean).join('-')
+                            : '';
+                        const ticketObj = {
+                            id: t.id, ticket_number: t.ticket_number || '',
+                            issued_date: t.issued_date || '', status: t.status,
+                            pnr: t.pnr || '', issue_type: t.issue_type,
+                            selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0,
+                            is_refundable: t.is_refundable ?? false,
+                            is_exchangeable: t.is_exchangeable ?? false,
+                            baggage_inbound: t.baggage_inbound || '',
+                            baggage_outbound: t.baggage_outbound || '',
+                            airline: t.ticket_fare?.airline?.name || '',
+                            travel_class: t.ticket_fare?.airlineClass?.class?.name || '',
+                            route: routeStr,
+                            route_type: t.ticket_fare?.route?.route_type || '',
+                            ticket_agent_name: t.ticket_agent?.name || '',
+                            issuer_name: t.issuer?.name || '',
+                        };
                         if (existingIdx !== -1) {
-                            row.all_issued_tickets[existingIdx] = { id: t.id, net_fare: t.net_fare, status: t.status, pnr: t.pnr || '', issue_type: t.issue_type };
+                            row.all_issued_tickets[existingIdx] = ticketObj;
                         } else {
-                            row.all_issued_tickets.push({ id: t.id, net_fare: t.net_fare, status: t.status, pnr: t.pnr || '', issue_type: t.issue_type });
+                            row.all_issued_tickets.push(ticketObj);
                         }
                     }
                     if (data.pending_outbound_ticket) {
@@ -3704,9 +3833,17 @@ function bookingIndexApp() {
                         const exists = row.all_issued_tickets.some(t => t.id === po.id);
                         if (!exists) {
                             row.all_issued_tickets.push({
-                                id: po.id, net_fare: po.net_fare ?? 0,
-                                status: po.status, pnr: po.pnr ?? '',
-                                issue_type: 'pending_outbound'
+                                id: po.id, ticket_number: po.ticket_number || '',
+                                issued_date: po.issued_date || '', status: po.status,
+                                pnr: po.pnr || '', issue_type: 'pending_outbound',
+                                selling_fare: po.selling_fare ?? 0, net_fare: po.net_fare ?? 0,
+                                is_refundable: po.is_refundable ?? false,
+                                is_exchangeable: po.is_exchangeable ?? false,
+                                baggage_inbound: '', baggage_outbound: po.baggage_outbound || '',
+                                airline: '', travel_class: '',
+                                route: '', route_type: '',
+                                ticket_agent_name: po.ticket_agent_name || '',
+                                issuer_name: '',
                             });
                         }
                     }
