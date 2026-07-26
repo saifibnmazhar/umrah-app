@@ -155,6 +155,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         ->filter(fn($t) => is_null($t->issue_type) || $t->issue_type === 'regular')
         ->sortByDesc('id')
         ->first()?->status ?? null,
+    'ticket_remarks' => $p->ticket_remarks ?? '',
     'due' => $p->booking?->invoice?->balance ?? 0,
     'required_flight_date' => $p->flight_date_from?->format('Y-m-d') ?? '',
     'actual_flight_date' => $p->actual_flight_date?->format('Y-m-d') ?? '',
@@ -777,6 +778,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Fare</th>@endif
                             {{-- @if($canViewTicketAgentColumn)<th class="px-3 py-2 text-left font-medium">Ticket Agent</th>@endif --}}
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket Remarks</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
                             <th class="px-3 py-2 text-left font-medium">Remarks</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
@@ -1054,6 +1056,12 @@ if ($passenger->ticket_fare_inbound_id) {
         <template x-if="!passengersTicketData[{{ $loop->index }}]?.ticket_status">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
         </template>
+    </td>
+    <td class="px-3 py-2">
+        <button @click="openRemarksModal({{ $loop->index }})"
+                class="text-xs px-2 py-1 rounded font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 transition">
+            Remarks
+        </button>
     </td>
     <td class="px-3 py-2">
         @php
@@ -1960,6 +1968,46 @@ if ($passenger->ticket_fare_inbound_id) {
             </div>
         </div>
     </div>
+
+    {{-- Ticket Remarks Modal --}}
+    <div x-show="remarksModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeRemarksModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeRemarksModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Ticket Remarks</h3>
+
+            <template x-if="!remarksEditMode">
+                <div>
+                    <template x-if="remarksContent">
+                        <p class="text-slate-700 text-sm whitespace-pre-wrap" x-text="remarksContent"></p>
+                    </template>
+                    <template x-if="!remarksContent">
+                        <p class="text-slate-400 text-sm italic">No Remarks Entered</p>
+                    </template>
+                    <div class="flex gap-3 mt-6">
+                        <button @click="remarksEditMode = true" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Edit</button>
+                        <button @click="closeRemarksModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Close</button>
+                    </div>
+                </div>
+            </template>
+
+            <template x-if="remarksEditMode">
+                <form @submit.prevent="updateRemarks()">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                            <textarea x-model="remarksForm.text"
+                                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
+                                      rows="4"></textarea>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Update</button>
+                        <button type="button" @click="closeRemarksModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                    </div>
+                </form>
+            </template>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -1981,6 +2029,11 @@ function bookingIndexApp() {
         selectedFingerprintStatus: '{{ $selectedFingerprintStatus ?? '' }}',
         selectedVisaStatus: '{{ $selectedVisaStatus ?? '' }}',
         selectedTicketStatus: '{{ $selectedTicketStatus ?? '' }}',
+        remarksModalVisible: false,
+        remarksEditMode: false,
+        editingRemarksIndex: null,
+        remarksContent: '',
+        remarksForm: { text: '' },
         selectedVisaAgentId: '{{ $selectedVisaAgentId ?? '' }}',
         selectedBookingDateFrom: '{{ $selectedBookingDateFrom ?? '' }}',
         selectedBookingDateTo: '{{ $selectedBookingDateTo ?? '' }}',
@@ -3241,6 +3294,50 @@ function bookingIndexApp() {
             .catch(err => {
                 console.error('Confirm group error:', err);
                 this.showToast('Failed to confirm tickets.', 'error');
+            });
+        },
+        
+        openRemarksModal(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return;
+            this.editingRemarksIndex = index;
+            this.remarksContent = row.ticket_remarks || '';
+            this.remarksForm.text = this.remarksContent;
+            this.remarksEditMode = false;
+            this.remarksModalVisible = true;
+        },
+
+        closeRemarksModal() {
+            this.editingRemarksIndex = null;
+            this.remarksModalVisible = false;
+            this.remarksEditMode = false;
+            this.remarksContent = '';
+            this.remarksForm.text = '';
+        },
+
+        updateRemarks() {
+            const row = this.passengersTicketData[this.editingRemarksIndex];
+            if (!row) return;
+
+            fetch(`/passengers/${row.id}/ticket-remarks`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: JSON.stringify({ ticket_remarks: this.remarksForm.text }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    row.ticket_remarks = this.remarksForm.text;
+                    this.remarksContent = this.remarksForm.text;
+                    this.remarksEditMode = false;
+                    this.showToast('Remarks updated successfully.');
+                } else {
+                    this.showToast(data.message || 'Failed to update remarks.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Update remarks error:', err);
+                this.showToast('Failed to update remarks.', 'error');
             });
         },
 

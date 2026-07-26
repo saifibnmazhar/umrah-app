@@ -688,4 +688,18 @@ class PassengerController extends Controller
             ], 500);
         }
     }
+
+    public function updateTicketRemarks(Request $request, Passenger $passenger)
+    {
+        $validated = $request->validate([
+            'ticket_remarks' => 'nullable|string|max:65535',
+        ]);
+
+        $passenger->update(['ticket_remarks' => $validated['ticket_remarks'] ?? null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Remarks updated successfully.',
+        ]);
+    }
 }
