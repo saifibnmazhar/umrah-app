@@ -409,6 +409,8 @@ Route::middleware('auth')->group(function () {
             ->name('bookings.passengers.ticket-issue');
         Route::put('/bookings/{booking}/passengers/{passenger}/ticket-edit', [TicketIssueController::class, 'edit'])
             ->name('bookings.passengers.ticket-edit');
+        Route::put('/passengers/{passenger}/confirm-group', [TicketIssueController::class, 'confirmGroup'])
+            ->name('passengers.confirm-group');
     });
 
     Route::post('/api/banks/quick-create', [BankController::class, 'quickStore']);

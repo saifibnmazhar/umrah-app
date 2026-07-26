@@ -88,7 +88,6 @@ class TicketIssueController extends Controller
             } elseif ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
                 $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
-                    ->where('status', 'pending')
                     ->exists();
 
                 if (! $existingPendingOutbound) {
@@ -219,7 +218,6 @@ class TicketIssueController extends Controller
             } elseif ($validated['outbound_pending'] ?? false) {
                 $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
-                    ->where('status', 'pending')
                     ->exists();
 
                 if (! $existingPendingOutbound) {
@@ -264,6 +262,108 @@ class TicketIssueController extends Controller
             \Log::error('Ticket edit failed: '.$e->getMessage());
 
             return response()->json(['message' => 'Failed to update ticket.'], 500);
+        }
+    }
+
+    public function confirmGroup(Request $request, Passenger $passenger)
+    {
+        $validated = $request->validate([
+            'action' => 'required|in:all,in,out,both',
+            'booking_id' => 'required|exists:bookings,id',
+        ]);
+
+        $booking = Booking::findOrFail($validated['booking_id']);
+        if ($passenger->booking_id !== $booking->id) {
+            abort(403, 'Passenger does not belong to this booking.');
+        }
+
+        $allTickets = $passenger->allIssuedTickets;
+        $regularTicket = $allTickets->first(fn($t) => is_null($t->issue_type) || $t->issue_type === 'regular');
+        $outboundTicket = $allTickets->first(fn($t) => $t->issue_type === 'pending_outbound');
+
+        $updatedIds = [];
+        $createdTicket = null;
+
+        try {
+            DB::beginTransaction();
+
+            $action = $validated['action'];
+
+            if ($action === 'all') {
+                $confirmable = $passenger->allIssuedTickets->filter(fn($t) => in_array($t->status, ['pending', 'refunded']));
+                foreach ($confirmable as $ticket) {
+                    $oldData = $ticket->toArray();
+                    $ticket->update(['status' => 'awaiting-group']);
+                    $ticket->logAction('confirmed_group', $oldData, $ticket->toArray());
+                    $updatedIds[] = $ticket->id;
+                }
+            }
+
+            if ($action === 'in') {
+                if ($regularTicket && in_array($regularTicket->status, ['pending', 'refunded'])) {
+                    $oldData = $regularTicket->toArray();
+                    $regularTicket->update(['status' => 'awaiting-group']);
+                    $regularTicket->logAction('confirmed_group', $oldData, $regularTicket->toArray());
+                    $updatedIds[] = $regularTicket->id;
+                }
+            }
+
+            if ($action === 'out' || $action === 'both') {
+                if (!$outboundTicket) {
+                    $createdTicket = IssuedTicket::create([
+                        'passenger_id' => $passenger->id,
+                        'booking_id' => $booking->id,
+                        'user_id' => auth()->id(),
+                        'issue_type' => 'pending_outbound',
+                        'status' => 'awaiting-group',
+                        'is_refundable' => false,
+                        'is_exchangeable' => false,
+                        'outbound_pending' => false,
+                        'ticket_fare_id' => $regularTicket?->ticket_fare_id ?? $passenger->ticket_fare_outbound_id ?? $passenger->ticket_fare_id,
+                    ]);
+                    $updatedIds[] = $createdTicket->id;
+                    $outboundTicket = $createdTicket;
+                }
+                if ($outboundTicket && in_array($outboundTicket->status, ['pending', 'refunded'])) {
+                    $oldData = $outboundTicket->toArray();
+                    $outboundTicket->update(['status' => 'awaiting-group']);
+                    $outboundTicket->logAction('confirmed_group', $oldData, $outboundTicket->toArray());
+                    $updatedIds[] = $outboundTicket->id;
+                }
+                if ($regularTicket && !$regularTicket->outbound_pending) {
+                    $oldData = $regularTicket->toArray();
+                    $regularTicket->update(['outbound_pending' => true]);
+                }
+                if ($createdTicket || $outboundTicket) {
+                    $fareId = $regularTicket?->ticket_fare_id ?? $passenger->ticket_fare_outbound_id ?? $passenger->ticket_fare_id;
+                    if ($fareId) {
+                        $passenger->update(['ticket_fare_outbound_id' => $fareId]);
+                    }
+                }
+            }
+
+            if ($action === 'both') {
+                if ($regularTicket && in_array($regularTicket->status, ['pending', 'refunded'])) {
+                    $oldData = $regularTicket->toArray();
+                    $regularTicket->update(['status' => 'awaiting-group']);
+                    $regularTicket->logAction('confirmed_group', $oldData, $regularTicket->toArray());
+                    $updatedIds[] = $regularTicket->id;
+                }
+            }
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Tickets confirmed successfully.',
+                'updated_ids' => $updatedIds,
+                'created_ticket' => $createdTicket,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Ticket confirm group failed: '.$e->getMessage());
+
+            return response()->json(['message' => 'Failed to confirm tickets.'], 500);
         }
     }
 }
