@@ -116,6 +116,14 @@ class PendingOutboundReportController extends Controller
                 'passenger.ticketFare.route.toCity',
                 'passenger.ticketFare.airline',
                 'passenger.ticketFare.airlineClass.class',
+                'passenger.ticketFareOutbound.route.fromCity',
+                'passenger.ticketFareOutbound.route.toCity',
+                'passenger.ticketFareOutbound.route.returnCity',
+                'passenger.ticketFareOutbound.route.multiSegments.fromCity',
+                'passenger.ticketFareOutbound.route.multiSegments.toCity',
+                'passenger.ticketFareOutbound.airline',
+                'passenger.ticketFareOutbound.airlineClass.class',
+                'passenger.ticketFareOutbound.baggageAllowances',
                 'passenger.issuedTickets' => function ($q) {
                     $q->where('issue_type', 'regular')
                       ->whereIn('status', ['issued', 're-issued']);
@@ -209,10 +217,45 @@ class PendingOutboundReportController extends Controller
                 }
             }
 
+            $outboundFare = $passenger?->ticketFareOutbound;
+            $outboundFareRoute = $outboundFare?->route;
+            $outboundRouteDisplay = '-';
+            if ($outboundFareRoute) {
+                $r = $outboundFareRoute;
+                $from = $r->fromCity?->code ?? '?';
+                $to = $r->toCity?->code ?? '?';
+                if ($r->route_type?->value === 'round' && $r->returnCity) {
+                    $outboundRouteDisplay = "{$from}-{$to}-{$r->returnCity->code}";
+                } elseif ($r->route_type?->value === 'multi_city') {
+                    $outboundRouteDisplay = $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                } else {
+                    $outboundRouteDisplay = "{$from}-{$to}";
+                }
+            }
+
             return [
                 'id' => $ticket->id,
                 'booking_id' => $booking?->id,
                 'passenger_id' => $passenger?->id,
+                'passenger_ticket_fare_outbound_id' => $passenger?->ticket_fare_outbound_id,
+                'outbound_fare' => $outboundFare ? [
+                    'id' => $outboundFare->id,
+                    'ticket_type' => $outboundFare->ticket_type?->value ?? 'regular',
+                    'flight_type' => $outboundFareRoute?->flight_type?->value,
+                    'route_display' => $outboundRouteDisplay,
+                    'airline' => $outboundFare->airline?->name ?? '',
+                    'travel_class' => $outboundFare->airlineClass?->class?->name ?? '',
+                    'selling_fare' => (float)($outboundFare->selling_fare ?? 0),
+                    'net_fare' => (float)($outboundFare->net_fare ?? 0),
+                    'offer_price' => $outboundFare->ticket_type?->value === 'offer' ? (float)($outboundFare->offer_price ?? 0) : null,
+                    'with_offer' => (bool)($outboundFare->ticket_type?->value === 'offer'),
+                    'child_fare_percentage' => (float)($outboundFare->child_fare_percentage ?? 70),
+                    'infant_fare_percentage' => (float)($outboundFare->infant_fare_percentage ?? 30),
+                    'baggage_outbound' => $outboundFare->baggageAllowances
+                        ->filter(fn($ba) => $ba->travel_direction?->value === 'outbound' && $ba->passenger_type?->value === ($passenger?->passenger_type?->value ?? 'adult'))
+                        ->first()?->allowance ?? '',
+                ] : null,
+
                 'booking_date' => $booking?->created_at?->format('d-M-Y') ?? '-',
                 'invoice' => $booking?->invoice_id ?? '-',
                 'customer_name' => $customer?->name ?? '-',

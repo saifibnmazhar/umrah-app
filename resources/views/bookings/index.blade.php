@@ -166,6 +166,65 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     })(),
     'documents' => [],
     'passenger_data' => null,
+    'ticket_fare_inbound_id' => $p->ticket_fare_inbound_id,
+    'ticket_fare_outbound_id' => $p->ticket_fare_outbound_id,
+    'is_double_ticket' => !is_null($p->ticket_fare_inbound_id),
+
+    'inbound_ticket_fare' => $p->ticketFareInbound ? [
+        'id' => $p->ticketFareInbound->id,
+        'ticket_type' => $p->ticketFareInbound->ticket_type?->value ?? 'regular',
+        'flight_type' => $p->ticketFareInbound->route?->flight_type?->value,
+        'route_display' => (function() use ($p) {
+            $r = $p->ticketFareInbound->route;
+            if (!$r) return '';
+            if ($r->route_type?->value === 'multi_city') {
+                return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+            }
+            $from = $r->fromCity?->code ?? '?';
+            $to = $r->toCity?->code ?? '?';
+            $return = $r->returnCity?->code ?? '';
+            return ($r->route_type?->value === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+        })(),
+        'airline' => $p->ticketFareInbound->airline?->name ?? '',
+        'travel_class' => $p->ticketFareInbound->airlineClass?->class?->name ?? '',
+        'selling_fare' => (float)($p->ticketFareInbound->selling_fare ?? 0),
+        'net_fare' => (float)($p->ticketFareInbound->net_fare ?? 0),
+        'child_fare_percentage' => (float)($p->ticketFareInbound->child_fare_percentage ?? 70),
+        'infant_fare_percentage' => (float)($p->ticketFareInbound->infant_fare_percentage ?? 30),
+        'offer_price' => $p->ticketFareInbound->ticket_type?->value === 'offer' ? (float)($p->ticketFareInbound->offer_price ?? 0) : null,
+        'with_offer' => (bool)($p->ticketFareInbound->ticket_type?->value === 'offer'),
+        'baggage_inbound' => $p->ticketFareInbound->baggageAllowances
+            ->filter(fn($ba) => $ba->travel_direction?->value === 'inbound' && $ba->passenger_type?->value === ($p->passenger_type?->value ?? 'adult'))
+            ->first()?->allowance ?? '',
+    ] : null,
+
+    'outbound_ticket_fare' => $p->ticketFareOutbound ? [
+        'id' => $p->ticketFareOutbound->id,
+        'ticket_type' => $p->ticketFareOutbound->ticket_type?->value ?? 'regular',
+        'flight_type' => $p->ticketFareOutbound->route?->flight_type?->value,
+        'route_display' => (function() use ($p) {
+            $r = $p->ticketFareOutbound->route;
+            if (!$r) return '';
+            if ($r->route_type?->value === 'multi_city') {
+                return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+            }
+            $from = $r->fromCity?->code ?? '?';
+            $to = $r->toCity?->code ?? '?';
+            $return = $r->returnCity?->code ?? '';
+            return ($r->route_type?->value === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+        })(),
+        'airline' => $p->ticketFareOutbound->airline?->name ?? '',
+        'travel_class' => $p->ticketFareOutbound->airlineClass?->class?->name ?? '',
+        'selling_fare' => (float)($p->ticketFareOutbound->selling_fare ?? 0),
+        'net_fare' => (float)($p->ticketFareOutbound->net_fare ?? 0),
+        'child_fare_percentage' => (float)($p->ticketFareOutbound->child_fare_percentage ?? 70),
+        'infant_fare_percentage' => (float)($p->ticketFareOutbound->infant_fare_percentage ?? 30),
+        'offer_price' => $p->ticketFareOutbound->ticket_type?->value === 'offer' ? (float)($p->ticketFareOutbound->offer_price ?? 0) : null,
+        'with_offer' => (bool)($p->ticketFareOutbound->ticket_type?->value === 'offer'),
+        'baggage_outbound' => $p->ticketFareOutbound->baggageAllowances
+            ->filter(fn($ba) => $ba->travel_direction?->value === 'outbound' && $ba->passenger_type?->value === ($p->passenger_type?->value ?? 'adult'))
+            ->first()?->allowance ?? '',
+    ] : null,
 
     'ticket_fare' => $p->ticketFare ? [
         'ticket_type' => $p->ticketFare->ticket_type?->value ?? 'regular',
@@ -1644,7 +1703,7 @@ if ($passenger->ticket_fare_inbound_id) {
 
                 <div class="mb-4" x-show="ticketFareForm.route_type === 'One Way-Inbound'">
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" x-model="ticketFareForm.outbound_pending" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                        <input type="checkbox" x-model="ticketFareForm.outbound_pending" :disabled="ticketFareForm.double_ticket_active" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
                         <span class="text-sm text-slate-700">Outbound Ticket Pending</span>
                     </label>
                 </div>
@@ -2865,6 +2924,8 @@ function bookingIndexApp() {
             non_refundable: false,
             non_exchangeable: false,
             outbound_pending: false,
+            clear_double_ticket: false,
+            double_ticket_active: false,
             showInboundDate: false,
             showOutboundDate: false,
             showBaggage: false,
@@ -3051,6 +3112,28 @@ function bookingIndexApp() {
                 }
             }
 
+            if (row.is_double_ticket && row.ticket_fare_inbound_id) {
+                if (isAlreadyIssued && this.ticketFareForm.outbound_pending) {
+                    this.ticketFareForm.double_ticket_active = true;
+                } else if (!isAlreadyIssued) {
+                    this.ticketFareForm.double_ticket_active = true;
+                    this.ticketFareForm.clear_double_ticket = false;
+                    this.ticketFareForm.route_type = 'One Way-Inbound';
+                    this.handleTicketFareRouteTypeChange();
+                    this.ticketFareForm.outbound_pending = true;
+                    this.ticketFareForm.route = row.inbound_ticket_fare?.route_display || '';
+                    this.ticketFareForm.airline = row.inbound_ticket_fare?.airline || '';
+                    this.ticketFareForm.travel_class = row.inbound_ticket_fare?.travel_class || '';
+            if (row.inbound_ticket_fare) {
+                const fare = row.inbound_ticket_fare;
+                this.ticketFareForm.ticket_type = fare.ticket_type;
+                this.ticketFareForm.flight_type = fare.flight_type === 'direct' ? 'Direct' : 'Transit';
+                this.ticketFareForm.ticket_option = fare.id;
+                this.handleTicketOptionChange();
+            }
+                }
+            }
+
             this._initLock = false;
             this.suggestBaggage();
             this.isTicketFareModalOpen = true;
@@ -3157,6 +3240,12 @@ function bookingIndexApp() {
                     f.showInboundDate = true;
                     f.showOutboundDate = true;
                     break;
+            }
+
+            if (f.double_ticket_active && routeType !== 'One Way-Inbound') {
+                f.outbound_pending = false;
+                f.double_ticket_active = false;
+                f.clear_double_ticket = true;
             }
         },
 
@@ -3289,6 +3378,9 @@ function bookingIndexApp() {
                 baggage_inbound: this.ticketFareForm.baggage_inbound || '',
                 baggage_outbound: this.ticketFareForm.baggage_outbound || '',
                 outbound_pending: this.ticketFareForm.outbound_pending || false,
+                clear_double_ticket: this.ticketFareForm.clear_double_ticket || false,
+                ticket_fare_inbound_id: this.ticketFareForm.double_ticket_active ? row.ticket_fare_inbound_id : null,
+                ticket_fare_outbound_id: this.ticketFareForm.double_ticket_active ? row.ticket_fare_outbound_id : null,
             };
 
             this.isSubmitting = true;
