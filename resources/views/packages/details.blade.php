@@ -17,18 +17,41 @@
                 <div>
                     <h3 class="text-sm font-medium text-slate-500 uppercase mb-3">Package Information</h3>
                     <div class="space-y-3">
-                        <div class="flex justify-between">
-                            <span class="text-sm text-slate-600">Ticket Fare</span>
-                            <span class="text-sm font-medium text-slate-900">{{ $package->ticketFare->ticket_type->value ?? 'N/A' }}</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm text-slate-600">Ticket Net Fare</span>
-                            <span class="text-sm font-medium text-slate-900">@currency($package->ticketFare->net_fare ?? 0, 2)</span>
-                        </div>
-                        <div class="flex justify-between">
-                            <span class="text-sm text-slate-600">Ticket Selling Fare</span>
-                            <span class="text-sm font-medium text-slate-900">@currency($package->ticketFare->selling_fare ?? 0, 2)</span>
-                        </div>
+                        @if($package->is_double_ticket)
+                            <div class="flex justify-between">
+                                <span class="text-sm text-slate-600">Type</span>
+                                <span class="text-sm font-medium text-slate-900">Double Ticket</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-slate-600">Ticket Inbound</span>
+                                <span class="text-sm font-medium text-slate-900">{{ $package->ticketFareInbound?->route?->fromCity?->code ?? '?' }} → {{ $package->ticketFareInbound?->route?->toCity?->code ?? '?' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-slate-600">Inbound Fare</span>
+                                <span class="text-sm font-medium text-slate-900">@currency($package->ticketFareInbound?->selling_fare ?? 0, 2)</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-slate-600">Ticket Outbound</span>
+                                <span class="text-sm font-medium text-slate-900">{{ $package->ticketFareOutbound?->route?->fromCity?->code ?? '?' }} → {{ $package->ticketFareOutbound?->route?->toCity?->code ?? '?' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-slate-600">Outbound Fare</span>
+                                <span class="text-sm font-medium text-slate-900">@currency($package->ticketFareOutbound?->selling_fare ?? 0, 2)</span>
+                            </div>
+                        @else
+                            <div class="flex justify-between">
+                                <span class="text-sm text-slate-600">Ticket Fare</span>
+                                <span class="text-sm font-medium text-slate-900">{{ $package->ticketFare->ticket_type->value ?? 'N/A' }}</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-slate-600">Ticket Net Fare</span>
+                                <span class="text-sm font-medium text-slate-900">@currency($package->ticketFare->net_fare ?? 0, 2)</span>
+                            </div>
+                            <div class="flex justify-between">
+                                <span class="text-sm text-slate-600">Ticket Selling Fare</span>
+                                <span class="text-sm font-medium text-slate-900">@currency($package->ticketFare->selling_fare ?? 0, 2)</span>
+                            </div>
+                        @endif
                     </div>
                 </div>
                 <div>

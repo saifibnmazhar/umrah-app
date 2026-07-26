@@ -178,8 +178,22 @@
                                         <div><span class="text-slate-500">Type:</span> <span class="text-slate-700 ml-1" x-text="passenger.passenger_type"></span></div>
                                         <div><span class="text-slate-500">Service:</span> <span class="text-slate-700 ml-1" x-text="serviceLabel(passenger.service_required)"></span></div>
                                         <div><span class="text-slate-500">DOB:</span> <span class="text-slate-700 ml-1" x-text="passenger.date_of_birth"></span></div>
-                                        <div><span class="text-slate-500">Route:</span> <span class="text-slate-700 ml-1" x-text="passenger.route || '-'"></span></div>
-                                        <div><span class="text-slate-500">Airline:</span> <span class="text-slate-700 ml-1" x-text="passenger.airline || '-'"></span></div>
+                                        <div><span class="text-slate-500">Route:</span> <span class="text-slate-700 ml-1">
+                                            <template x-if="passenger.ticket_fare_inbound_id">
+                                                <span><span x-text="passenger.inbound_route || '-'"></span><br><span x-text="passenger.outbound_route || '-'"></span></span>
+                                            </template>
+                                            <template x-if="!passenger.ticket_fare_inbound_id">
+                                                <span x-text="passenger.route || '-'"></span>
+                                            </template>
+                                        </span></div>
+                                        <div><span class="text-slate-500">Airline:</span> <span class="text-slate-700 ml-1">
+                                            <template x-if="passenger.ticket_fare_inbound_id">
+                                                <span><span x-text="passenger.inbound_airline || '-'"></span><br><span x-text="passenger.outbound_airline || '-'"></span></span>
+                                            </template>
+                                            <template x-if="!passenger.ticket_fare_inbound_id">
+                                                <span x-text="passenger.airline || '-'"></span>
+                                            </template>
+                                        </span></div>
                                         <div><span class="text-slate-500">Flight:</span> <span class="text-slate-700 ml-1" x-text="passenger.flight_type || '-'"></span></div>
                                         <div><span class="text-slate-500">Duration:</span> <span class="text-slate-700 ml-1" x-text="passenger.stay_duration || '-'"></span></div>
                                         <div><span class="text-slate-500">Passenger Value:</span> <span class="text-slate-700 ml-1" x-text="getPassengerFare(passenger)"></span></div>
@@ -196,6 +210,8 @@
                                     <input type="hidden" :name="'passengers[' + index + '][route_type]'" :value="passenger.route_type">
                                     <input type="hidden" :name="'passengers[' + index + '][flight_type]'" :value="passenger.flight_type">
                                     <input type="hidden" :name="'passengers[' + index + '][ticket_fare_id]'" :value="passenger.ticket_fare_id">
+                                    <input type="hidden" :name="'passengers[' + index + '][ticket_fare_inbound_id]'" :value="passenger.ticket_fare_inbound_id">
+                                    <input type="hidden" :name="'passengers[' + index + '][ticket_fare_outbound_id]'" :value="passenger.ticket_fare_outbound_id">
                                     <input type="hidden" :name="'passengers[' + index + '][route]'" :value="passenger.route">
                                     <input type="hidden" :name="'passengers[' + index + '][airline]'" :value="passenger.airline">
                                     <input type="hidden" :name="'passengers[' + index + '][class]'" :value="passenger.class">

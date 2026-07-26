@@ -392,6 +392,10 @@ select {
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
                                 <input type="number" x-model="form.net_fare" min="0" step="0.000001" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
                             </div>
+                            <div x-show="form.ticket_type === 'offer'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
+                                <input type="number" x-model="form.offer_price" min="0" step="0.000001" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
+                            </div>
                         </div>
                     </div>
 
@@ -567,6 +571,7 @@ function pendingOutboundReport(options = {}) {
             this.form.airline_id = '';
             this.form.selling_fare = 0;
             this.form.net_fare = 0;
+            this.form.offer_price = 0;
             this.form.baggage_outbound = '';
         },
 
@@ -581,6 +586,7 @@ function pendingOutboundReport(options = {}) {
                 this.form.airline_id = '';
                 this.form.selling_fare = 0;
                 this.form.net_fare = 0;
+                this.form.offer_price = 0;
                 this.form.baggage_outbound = '';
                 return;
             }
@@ -595,6 +601,9 @@ function pendingOutboundReport(options = {}) {
                 const pType = this.form.passenger_type || 'adult';
                 this.form.selling_fare = this.calculateFareForPassengerType(fare.selling_fare || 0, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                 this.form.net_fare = this.calculateFareForPassengerType(fare.net_fare || 0, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                if (fare.ticket_type === 'offer' && fare.offer_price) {
+                    this.form.offer_price = this.calculateFareForPassengerType(fare.offer_price, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                }
                 this.form.baggage_outbound = fare['baggage_outbound' + (pType !== 'adult' ? '_' + pType : '')] || '';
                 this.form.flight_type = fare.flight_type || '';
             }
@@ -671,10 +680,21 @@ function pendingOutboundReport(options = {}) {
                 passenger_type: row.passenger_type || 'adult',
                 selling_fare: 0,
                 net_fare: 0,
+                offer_price: 0,
                 baggage_outbound: '',
                 non_refundable: false,
                 non_exchangeable: false,
             };
+
+            const outboundFare = row.outbound_fare;
+            if (outboundFare) {
+                this.form.ticket_type = outboundFare.ticket_type;
+                this.form.flight_type = outboundFare.flight_type;
+                this.form.ticket_option = outboundFare.id;
+                this.form.ticket_fare_id = outboundFare.id;
+                this.handleTicketOptionChange();
+            }
+
             this.modalOpen = true;
         },
 
@@ -706,10 +726,35 @@ function pendingOutboundReport(options = {}) {
                 passenger_type: row.passenger_type || 'adult',
                 selling_fare: cur.selling_fare || regular.selling_fare || 0,
                 net_fare: cur.net_fare || regular.net_fare || 0,
+                offer_price: cur.offer_price || regular.offer_price || 0,
                 baggage_outbound: cur.baggage_outbound || regular.baggage_outbound || '',
                 non_refundable: !cur.is_refundable,
                 non_exchangeable: !cur.is_exchangeable,
             };
+
+            const outboundFare = row.outbound_fare;
+            if (outboundFare) {
+                this.form.ticket_type = outboundFare.ticket_type;
+                this.form.flight_type = outboundFare.flight_type;
+                this.form.ticket_option = outboundFare.id;
+                this.form.ticket_fare_id = outboundFare.id;
+                this.form.route_display = outboundFare.route_display || '';
+                this.form.airline = outboundFare.airline || '';
+                this.form.travel_class = outboundFare.travel_class || '';
+                if (!this.form.selling_fare) {
+                    const pType = row.passenger_type || 'adult';
+                    this.form.selling_fare = this.calculateFareForPassengerType(outboundFare.selling_fare, pType, outboundFare.child_fare_percentage, outboundFare.infant_fare_percentage);
+                    this.form.net_fare = this.calculateFareForPassengerType(outboundFare.net_fare, pType, outboundFare.child_fare_percentage, outboundFare.infant_fare_percentage);
+                }
+                if (!this.form.offer_price && outboundFare.with_offer && outboundFare.offer_price) {
+                    const pType = row.passenger_type || 'adult';
+                    this.form.offer_price = this.calculateFareForPassengerType(outboundFare.offer_price, pType, outboundFare.child_fare_percentage, outboundFare.infant_fare_percentage);
+                }
+                if (!this.form.baggage_outbound) {
+                    this.form.baggage_outbound = outboundFare.baggage_outbound || '';
+                }
+            }
+
             this.modalOpen = true;
         },
 
@@ -746,7 +791,7 @@ function pendingOutboundReport(options = {}) {
                 outbound_date: this.parseDDMMMYY(f.outbound_date) || null,
                 selling_fare: parseFloat(f.selling_fare) || 0,
                 net_fare: parseFloat(f.net_fare) || 0,
-                offer_price: 0,
+                offer_price: parseFloat(f.offer_price) || 0,
                 is_refundable: !f.non_refundable,
                 is_exchangeable: !f.non_exchangeable,
                 baggage_inbound: '',

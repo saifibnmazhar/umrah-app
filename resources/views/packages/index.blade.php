@@ -61,22 +61,31 @@
                 <tbody class="divide-y divide-slate-200">
                     @forelse($packages as $package)
                         @php
-                            $route = $package->ticketFare?->route;
-                            if ($route && $route->multiSegments && $route->multiSegments->count() > 0) {
-                                $routeName = $route->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
-                            } elseif ($route && $route->returnCity) {
-                                $routeName = ($route->fromCity?->code ?? '?') . ' - ' . ($route->toCity?->code ?? '?') . ' - ' . ($route->returnCity?->code ?? '?');
+                            if ($package->is_double_ticket) {
+                                $inboundRoute = $package->ticketFareInbound?->route;
+                                $outboundRoute = $package->ticketFareOutbound?->route;
+                                $inboundName = ($inboundRoute ? ($inboundRoute->fromCity?->code ?? '?') . ' → ' . ($inboundRoute->toCity?->code ?? '?') : '?');
+                                $outboundName = ($outboundRoute ? ($outboundRoute->fromCity?->code ?? '?') . ' → ' . ($outboundRoute->toCity?->code ?? '?') : '?');
+                                $ticketDisplay = $inboundName . ' + ' . $outboundName
+                                    . ' | SAR ' . number_format(($package->ticketFareInbound?->selling_fare ?? 0) + ($package->ticketFareOutbound?->selling_fare ?? 0), 0);
                             } else {
-                                $routeName = ($route?->fromCity?->code ?? '?') . ' → ' . ($route?->toCity?->code ?? '?');
-                            }
-                            $seats = $package->ticketFare?->groupTicket?->ticket_qty ?? null;
-                            $ticketType = $package->ticketFare?->ticket_type?->value;
-                            $ticketDisplay = $routeName . ' | ' . strtoupper($ticketType ?? '?') . ' | SAR ' . number_format($package->ticketFare?->selling_fare ?? 0, 0);
-                            if ($ticketType === 'offer') {
-                                $ticketDisplay .= ' | SAR ' . number_format($package->ticketFare?->offer_price ?? 0, 0);
-                            }
-                            if ($ticketType === 'group' && $seats) {
-                                $ticketDisplay .= ' | ' . $seats . ' seats';
+                                $route = $package->ticketFare?->route;
+                                if ($route && $route->multiSegments && $route->multiSegments->count() > 0) {
+                                    $routeName = $route->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                                } elseif ($route && $route->returnCity) {
+                                    $routeName = ($route->fromCity?->code ?? '?') . ' - ' . ($route->toCity?->code ?? '?') . ' - ' . ($route->returnCity?->code ?? '?');
+                                } else {
+                                    $routeName = ($route?->fromCity?->code ?? '?') . ' → ' . ($route?->toCity?->code ?? '?');
+                                }
+                                $seats = $package->ticketFare?->groupTicket?->ticket_qty ?? null;
+                                $ticketType = $package->ticketFare?->ticket_type?->value;
+                                $ticketDisplay = $routeName . ' | ' . strtoupper($ticketType ?? '?') . ' | SAR ' . number_format($package->ticketFare?->selling_fare ?? 0, 0);
+                                if ($ticketType === 'offer') {
+                                    $ticketDisplay .= ' | SAR ' . number_format($package->ticketFare?->offer_price ?? 0, 0);
+                                }
+                                if ($ticketType === 'group' && $seats) {
+                                    $ticketDisplay .= ' | ' . $seats . ' seats';
+                                }
                             }
                         @endphp
                         <tr class="hover:bg-slate-50">
@@ -167,10 +176,32 @@
             </div>
 
             <div class="mt-4">
+                <label class="flex items-center gap-2 cursor-pointer">
+                    <input type="checkbox" id="modalDoubleTicketCheck" name="is_double_ticket" value="1" class="w-4 h-4 rounded border-slate-300 text-slate-700 focus:ring-slate-400">
+                    <span class="text-sm font-medium text-slate-700">Double Ticket</span>
+                </label>
+            </div>
+
+            <div id="modalSingleTicketFields" class="mt-4">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                <select id="modalTicketSelect" name="ticket_fare_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+                <select id="modalTicketSelect" name="ticket_fare_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                     <option value="">Select Ticket</option>
                 </select>
+            </div>
+
+            <div id="modalDoubleTicketFields" class="mt-4 grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Inbound *</label>
+                    <select id="modalTicketInboundSelect" name="ticket_fare_inbound_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select Inbound Ticket</option>
+                    </select>
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Outbound *</label>
+                    <select id="modalTicketOutboundSelect" name="ticket_fare_outbound_id" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select Outbound Ticket</option>
+                    </select>
+                </div>
             </div>
 
             <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
@@ -211,10 +242,14 @@
 
 <script>
 const ticketFares = @json($ticketFares);
+const inboundFares = @json($inboundFares);
+const outboundFares = @json($outboundFares);
 const latestVisaPrice = {{ $latestVisa?->selling_price ?? 0 }};
 const packages = @json($packagesArray);
 const usedFareIds = @json($usedFareIds);
+</script>
 
+<script>
 function buildDisplay(fare) {
     let disp = fare.route + ' | ' + fare.ticket_type.toUpperCase() + ' | SAR ' + fare.selling_fare;
     if (fare.ticket_type === 'offer') {
@@ -238,12 +273,35 @@ function showPackageModal() {
     document.getElementById('modalOfferPrice').value = '';
     document.getElementById('modalOfferPriceContainer').classList.add('hidden');
     document.getElementById('modalServiceCharge').value = '0';
+    document.getElementById('modalDoubleTicketCheck').checked = false;
 
     populateModalTickets();
+    toggleModalDoubleTicket();
 }
 
 function hidePackageModal() {
     document.getElementById('packageModal').classList.add('hidden');
+}
+
+function toggleModalDoubleTicket() {
+    const isDouble = document.getElementById('modalDoubleTicketCheck').checked;
+    document.getElementById('modalSingleTicketFields').classList.toggle('hidden', isDouble);
+    document.getElementById('modalDoubleTicketFields').classList.toggle('hidden', !isDouble);
+
+    document.getElementById('modalSingleTicketFields').querySelectorAll('select, input').forEach(el => {
+        if (el.id !== 'modalTicketSelect') return;
+        el.required = !isDouble;
+    });
+    document.getElementById('modalDoubleTicketFields').querySelectorAll('select').forEach(el => el.required = isDouble);
+
+    if (isDouble) {
+        document.getElementById('modalTicketSelect').value = '';
+        calculateModalPrices();
+    } else {
+        document.getElementById('modalTicketInboundSelect').value = '';
+        document.getElementById('modalTicketOutboundSelect').value = '';
+        calculateModalPrices();
+    }
 }
 
 function populateModalTickets(includeFareId = null) {
@@ -263,9 +321,65 @@ function populateModalTickets(includeFareId = null) {
         option.textContent = buildDisplay(fare);
         select.appendChild(option);
     });
+
+    const inboundSelect = document.getElementById('modalTicketInboundSelect');
+    inboundSelect.innerHTML = '<option value="">Select Inbound Ticket</option>';
+    inboundFares.forEach(fare => {
+        if (selectedType && fare.ticket_type !== selectedType) return;
+        const option = document.createElement('option');
+        option.value = fare.id;
+        option.dataset.ticketType = fare.ticket_type;
+        option.dataset.sellingFare = fare.selling_fare;
+        option.dataset.offerPrice = fare.offer_price;
+        option.textContent = buildDisplay(fare);
+        inboundSelect.appendChild(option);
+    });
+
+    const outboundSelect = document.getElementById('modalTicketOutboundSelect');
+    outboundSelect.innerHTML = '<option value="">Select Outbound Ticket</option>';
+    outboundFares.forEach(fare => {
+        if (selectedType && fare.ticket_type !== selectedType) return;
+        const option = document.createElement('option');
+        option.value = fare.id;
+        option.dataset.ticketType = fare.ticket_type;
+        option.dataset.sellingFare = fare.selling_fare;
+        option.dataset.offerPrice = fare.offer_price;
+        option.textContent = buildDisplay(fare);
+        outboundSelect.appendChild(option);
+    });
 }
 
 function calculateModalPrices() {
+    const isDouble = document.getElementById('modalDoubleTicketCheck').checked;
+
+    if (isDouble) {
+        const inboundSelect = document.getElementById('modalTicketInboundSelect');
+        const outboundSelect = document.getElementById('modalTicketOutboundSelect');
+        const inboundOption = inboundSelect.options[inboundSelect.selectedIndex];
+        const outboundOption = outboundSelect.options[outboundSelect.selectedIndex];
+        const hasInbound = inboundOption && inboundOption.value;
+        const hasOutbound = outboundOption && outboundOption.value;
+        const inboundSelling = hasInbound ? parseFloat(inboundOption.dataset.sellingFare) || 0 : 0;
+        const outboundSelling = hasOutbound ? parseFloat(outboundOption.dataset.sellingFare) || 0 : 0;
+        const totalFare = inboundSelling + outboundSelling;
+
+        document.getElementById('modalRegularPrice').value = totalFare > 0 ? (totalFare + latestVisaPrice).toFixed(6) : '';
+
+        const inboundType = hasInbound ? inboundOption.dataset.ticketType : null;
+        const outboundType = hasOutbound ? outboundOption.dataset.ticketType : null;
+        const serviceCharge = parseFloat(document.getElementById('modalServiceCharge')?.value || 0);
+        if (inboundType === 'offer' && outboundType === 'offer' && hasInbound && hasOutbound) {
+            const inboundOffer = parseFloat(inboundOption.dataset.offerPrice) || 0;
+            const outboundOffer = parseFloat(outboundOption.dataset.offerPrice) || 0;
+            document.getElementById('modalOfferPrice').value = (inboundOffer + outboundOffer + latestVisaPrice).toFixed(6);
+            document.getElementById('modalOfferPriceContainer').classList.remove('hidden');
+        } else {
+            document.getElementById('modalOfferPriceContainer').classList.add('hidden');
+            document.getElementById('modalOfferPrice').value = '';
+        }
+        return;
+    }
+
     const selectedOption = document.getElementById('modalTicketSelect').options[document.getElementById('modalTicketSelect').selectedIndex];
     if (!selectedOption || !selectedOption.value) {
         document.getElementById('modalRegularPrice').value = '';
@@ -305,12 +419,21 @@ function editPackage(id) {
 
     document.getElementById('modalServiceCharge').value = pkg.service_charge ?? 0;
 
+    const isDouble = pkg.is_double_ticket || false;
+    document.getElementById('modalDoubleTicketCheck').checked = isDouble;
+    toggleModalDoubleTicket();
+
     populateModalTickets(pkg.ticket_fare_id);
     document.getElementById('modalTicketSelect').value = pkg.ticket_fare_id;
+    document.getElementById('modalTicketInboundSelect').value = pkg.ticket_fare_inbound_id || '';
+    document.getElementById('modalTicketOutboundSelect').value = pkg.ticket_fare_outbound_id || '';
     calculateModalPrices();
 }
 
+document.getElementById('modalDoubleTicketCheck').addEventListener('change', toggleModalDoubleTicket);
 document.getElementById('modalTicketTypeSelect').addEventListener('change', populateModalTickets);
 document.getElementById('modalTicketSelect').addEventListener('change', calculateModalPrices);
+document.getElementById('modalTicketInboundSelect').addEventListener('change', calculateModalPrices);
+document.getElementById('modalTicketOutboundSelect').addEventListener('change', calculateModalPrices);
 </script>
 @endsection

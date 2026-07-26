@@ -35,6 +35,9 @@ class TicketIssueController extends Controller
             'baggage_outbound' => 'nullable|string|max:255',
             'outbound_pending' => 'boolean',
             'issue_type' => 'nullable|in:regular,additional,pending_outbound',
+            'clear_double_ticket' => 'boolean',
+            'ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
+            'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
         ]);
 
         $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])
@@ -69,7 +72,17 @@ class TicketIssueController extends Controller
 
             $passenger->update(['ticket_status' => 'issued']);
 
-            if ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
+            if ($validated['clear_double_ticket'] ?? false) {
+                $passenger->update([
+                    'ticket_fare_inbound_id' => null,
+                    'ticket_fare_outbound_id' => null,
+                    'ticket_fare_id' => $validated['ticket_fare_id'] ?? null,
+                ]);
+                IssuedTicket::where('passenger_id', $passenger->id)
+                    ->where('issue_type', 'pending_outbound')
+                    ->where('status', 'pending')
+                    ->delete();
+            } elseif ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
                 $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
                     ->where('status', 'pending')
@@ -137,6 +150,9 @@ class TicketIssueController extends Controller
             'baggage_inbound' => 'nullable|string|max:255',
             'baggage_outbound' => 'nullable|string|max:255',
             'outbound_pending' => 'boolean',
+            'clear_double_ticket' => 'boolean',
+            'ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
+            'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
         ]);
 
         $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])
@@ -156,7 +172,17 @@ class TicketIssueController extends Controller
 
             $issuedTicket->logAction('edited', $oldData, $issuedTicket->toArray());
 
-            if ($validated['outbound_pending'] ?? false) {
+            if ($validated['clear_double_ticket'] ?? false) {
+                $passenger->update([
+                    'ticket_fare_inbound_id' => null,
+                    'ticket_fare_outbound_id' => null,
+                    'ticket_fare_id' => $validated['ticket_fare_id'] ?? null,
+                ]);
+                IssuedTicket::where('passenger_id', $passenger->id)
+                    ->where('issue_type', 'pending_outbound')
+                    ->where('status', 'pending')
+                    ->delete();
+            } elseif ($validated['outbound_pending'] ?? false) {
                 $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
                     ->where('status', 'pending')
