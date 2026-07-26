@@ -437,10 +437,19 @@ class BookingController extends Controller
                 'fingerprintDetail.approvedLog',
                 'ticketFare.baggageAllowances',
                 'allIssuedTickets',
+                'allIssuedTickets.ticketAgent',
                 'latestIssuedTicket.ticketAgent',
                 'latestIssuedTicket.ticketFare.airline',
                 'latestIssuedTicket.ticketFare.airlineClass.class',
                 'latestIssuedTicket.ticketFare.route',
+                'ticketFareInbound.airline',
+                'ticketFareInbound.airlineClass.class',
+                'ticketFareInbound.route',
+                'ticketFareInbound.baggageAllowances',
+                'ticketFareOutbound.airline',
+                'ticketFareOutbound.airlineClass.class',
+                'ticketFareOutbound.route',
+                'ticketFareOutbound.baggageAllowances',
             ])
             ->withCount('documents')
             ->orderBy('created_at', 'desc')

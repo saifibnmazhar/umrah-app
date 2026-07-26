@@ -306,6 +306,84 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'pnr' => $t->pnr ?? '',
         'issue_type' => $t->issue_type,
     ])->values(),
+    'pending_outbound_issued_ticket' => ($poit = $p->allIssuedTickets
+        ->first(fn($t) => $t->issue_type === 'pending_outbound')) ? [
+        'id' => $poit->id,
+        'ticket_number' => $poit->ticket_number ?? '',
+        'pnr' => $poit->pnr ?? '',
+        'ticket_agent_id' => $poit->ticket_agent_id,
+        'ticket_agent_name' => $poit->ticketAgent?->name ?? '',
+        'ticket_fare_id' => $poit->ticket_fare_id,
+        'issued_date' => $poit->issued_date?->format('Y-m-d') ?? '',
+        'outbound_date' => $poit->outbound_date?->format('Y-m-d') ?? '',
+        'selling_fare' => (float)($poit->selling_fare ?? 0),
+        'net_fare' => (float)($poit->net_fare ?? 0),
+        'offer_price' => (float)($poit->offer_price ?? 0),
+        'is_refundable' => $poit->is_refundable ?? false,
+        'is_exchangeable' => $poit->is_exchangeable ?? false,
+        'baggage_outbound' => $poit->baggage_outbound ?? '',
+        'status' => $poit->status,
+    ] : null,
+    'inbound_ticket_fare' => ($inFare = $p->ticketFareInbound) ? (function() use ($inFare) {
+        $inRoute = $inFare->route;
+        $inRouteDisplay = '—';
+        if ($inRoute) {
+            $inRouteType = $inRoute->route_type?->value;
+            if ($inRouteType === 'multi_city') {
+                $inRouteDisplay = $inRoute->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+            } elseif ($inRouteType === 'round') {
+                $inRouteDisplay = ($inRoute->fromCity?->code ?? '?') . '-' . ($inRoute->toCity?->code ?? '?') . '-' . ($inRoute->returnCity?->code ?? '?');
+            } else {
+                $inRouteDisplay = ($inRoute->fromCity?->code ?? '?') . ' → ' . ($inRoute->toCity?->code ?? '?');
+            }
+        }
+        return [
+            'id' => $inFare->id,
+            'route_display' => $inRouteDisplay,
+            'airline' => $inFare->airline?->name ?? '',
+            'travel_class' => $inFare->airlineClass?->class?->name ?? '',
+            'ticket_type' => $inFare->ticket_type?->value ?? 'regular',
+            'flight_type' => $inFare->route?->flight_type?->value ?? '',
+            'selling_fare' => (float)($inFare->selling_fare ?? 0),
+            'net_fare' => (float)($inFare->net_fare ?? 0),
+            'offer_price' => $inFare->ticket_type?->value === 'offer' ? (float)($inFare->offer_price ?? 0) : null,
+            'with_offer' => (bool)($inFare->ticket_type?->value === 'offer'),
+            'child_fare_percentage' => (float)($inFare->child_fare_percentage ?? 70),
+            'infant_fare_percentage' => (float)($inFare->infant_fare_percentage ?? 30),
+            'baggage_inbound' => '',
+            'baggage_outbound' => '',
+        ];
+    })() : null,
+    'outbound_ticket_fare' => ($outFare = $p->ticketFareOutbound) ? (function() use ($outFare) {
+        $outRoute = $outFare->route;
+        $outRouteDisplay = '—';
+        if ($outRoute) {
+            $outRouteType = $outRoute->route_type?->value;
+            if ($outRouteType === 'multi_city') {
+                $outRouteDisplay = $outRoute->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+            } elseif ($outRouteType === 'round') {
+                $outRouteDisplay = ($outRoute->fromCity?->code ?? '?') . '-' . ($outRoute->toCity?->code ?? '?') . '-' . ($outRoute->returnCity?->code ?? '?');
+            } else {
+                $outRouteDisplay = ($outRoute->fromCity?->code ?? '?') . ' → ' . ($outRoute->toCity?->code ?? '?');
+            }
+        }
+        return [
+            'id' => $outFare->id,
+            'route_display' => $outRouteDisplay,
+            'airline' => $outFare->airline?->name ?? '',
+            'travel_class' => $outFare->airlineClass?->class?->name ?? '',
+            'ticket_type' => $outFare->ticket_type?->value ?? 'regular',
+            'flight_type' => $outFare->route?->flight_type?->value ?? '',
+            'selling_fare' => (float)($outFare->selling_fare ?? 0),
+            'net_fare' => (float)($outFare->net_fare ?? 0),
+            'offer_price' => $outFare->ticket_type?->value === 'offer' ? (float)($outFare->offer_price ?? 0) : null,
+            'with_offer' => (bool)($outFare->ticket_type?->value === 'offer'),
+            'child_fare_percentage' => (float)($outFare->child_fare_percentage ?? 70),
+            'infant_fare_percentage' => (float)($outFare->infant_fare_percentage ?? 30),
+            'baggage_inbound' => '',
+            'baggage_outbound' => '',
+        ];
+    })() : null,
     'total_cost' => $passengerTotalCostMap[$p->id] ?? 0,
 ])->values();
 @endphp
@@ -692,17 +770,34 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 $isFirstRow = ($lastBookingId !== $passenger->booking_id);
 $lastBookingId = $passenger->booking_id;
 
-$ticketFare = $passenger->ticketFare;
-$baseFare = $ticketFare?->ticket_type?->value === 'offer'
-    ? ($ticketFare->offer_price ?? $ticketFare->selling_fare ?? $ticketFare->net_fare ?? 0)
-    : ($ticketFare?->selling_fare ?? $ticketFare?->net_fare ?? 0);
 $passengerTypeVal = $passenger->passenger_type?->value;
-$fareAmount = match($passengerTypeVal) {
-    'child' => $baseFare * ($ticketFare?->child_fare_percentage ?? 70) / 100,
-    'infant' => $baseFare * ($ticketFare?->infant_fare_percentage ?? 30) / 100,
-    default => $baseFare,
+
+$calcFare = function($fare, $pType) {
+    if (!$fare) return 0;
+    $base = $fare->ticket_type?->value === 'offer'
+        ? ($fare->offer_price ?? $fare->selling_fare ?? $fare->net_fare ?? 0)
+        : ($fare->selling_fare ?? $fare->net_fare ?? 0);
+    return match($pType) {
+        'child' => $base * ($fare->child_fare_percentage ?? 70) / 100,
+        'infant' => $base * ($fare->infant_fare_percentage ?? 30) / 100,
+        default => $base,
+    };
 };
 
+$hasIssuedTicket = $passenger->allIssuedTickets->contains(fn($t) => in_array($t->status, ['issued', 're-issued']));
+
+if ($hasIssuedTicket) {
+    $fareAmount = $passenger->allIssuedTickets
+        ->filter(fn($t) => in_array($t->status, ['issued', 're-issued']))
+        ->sum(fn($t) => (float)($t->selling_fare ?? 0));
+} elseif ($passenger->ticketFareInbound && $passenger->ticketFareOutbound) {
+    $fareAmount = $calcFare($passenger->ticketFareInbound, $passengerTypeVal)
+                + $calcFare($passenger->ticketFareOutbound, $passengerTypeVal);
+} else {
+    $fareAmount = $calcFare($passenger->ticketFare, $passengerTypeVal);
+}
+
+$route = $passenger->ticketFare?->route ?? $passenger->booking?->package?->ticketFare?->route;
 $fmtRoute = function($route) {
     if (!$route) return '?';
     $rt = $route->route_type?->value;
@@ -870,23 +965,35 @@ if ($passenger->ticket_fare_inbound_id) {
     </td>
     @if($canViewTicketFareColumn)
     <td class="px-3 py-2 text-slate-700">
-        <div class="flex items-center gap-1 flex-wrap">
-            <span class="font-medium text-sm">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
-                <button x-show="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || passengersTicketData[{{ $loop->index }}]?.ticket_status === 'pending') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
-            </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
-                <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
-            </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
-                <button @click="toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'bg-yellow-100 hover:bg-yellow-200 text-yellow-600' : 'bg-orange-100 hover:bg-orange-200 text-orange-600'" class="text-xs px-2 py-1 rounded font-medium transition" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
-            </template>
-            <template x-if="passengersTicketData[{{ $loop->index }}]?.is_cancelled">
-                <span class="text-xs text-slate-400 italic">Booking Cancelled</span>
-            </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
-                <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
-            </template>
+        <div class="flex items-center gap-1 w-full">
+            <span class="font-medium text-sm shrink-0">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
+            <div class="flex items-center gap-1 flex-1"
+                 :class="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || passengersTicketData[{{ $loop->index }}]?.ticket_status === 'pending' || rowHasPendingOutbound({{ $loop->index }})) ? 'justify-start' : 'justify-center'">
+                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                    <button x-show="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || passengersTicketData[{{ $loop->index }}]?.ticket_status === 'pending') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
+                </template>
+                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && rowHasPendingOutbound({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
+                    <button @click="openOutboundTicketFareModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
+                </template>
+                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
+                        </button>
+                        <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex items-center gap-1 px-2 py-1 whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                            <button @click="open = false; toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
+                            <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued')" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
+                            <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="open = false; openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
+                        </div>
+                    </div>
+                </template>
+                <template x-if="passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                    <span class="text-xs text-slate-400 italic">Booking Cancelled</span>
+                </template>
+                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved'">
+                    <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
+                </template>
+            </div>
         </div>
     </td>
     @endif
@@ -1373,7 +1480,7 @@ if ($passenger->ticket_fare_inbound_id) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                            <select x-model="ticketFareForm.route_type" @change="handleTicketFareRouteTypeChange(); handleRouteTypeOrFlightTypeChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="ticketFareForm.route_type" @change="handleTicketFareRouteTypeChange(); handleRouteTypeOrFlightTypeChange()" :disabled="ticketFareForm.isOutboundMode" :class="ticketFareForm.isOutboundMode ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <option value="">Select</option>
                                 <option value="One Way-Inbound">One Way-Inbound</option>
                                 <option value="One Way-Outbound">One Way-Outbound</option>
@@ -1701,7 +1808,7 @@ if ($passenger->ticket_fare_inbound_id) {
                     </div>
                 </div>
 
-                <div class="mb-4" x-show="ticketFareForm.route_type === 'One Way-Inbound'">
+                <div class="mb-4" x-show="ticketFareForm.route_type === 'One Way-Inbound' && !ticketFareForm.isOutboundMode">
                     <label class="flex items-center gap-2 cursor-pointer">
                         <input type="checkbox" x-model="ticketFareForm.outbound_pending" :disabled="ticketFareForm.double_ticket_active" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
                         <span class="text-sm text-slate-700">Outbound Ticket Pending</span>
@@ -2924,6 +3031,8 @@ function bookingIndexApp() {
             non_refundable: false,
             non_exchangeable: false,
             outbound_pending: false,
+            isOutboundMode: false,
+            issued_ticket_id: null,
             clear_double_ticket: false,
             double_ticket_active: false,
             showInboundDate: false,
@@ -3000,6 +3109,135 @@ function bookingIndexApp() {
             });
         },
 
+        rowHasPendingOutbound(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            return (row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound' && t.status === 'pending');
+        },
+
+        rowHasIssuedOutbound(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            return (row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound' && (t.status === 'issued' || t.status === 're-issued'));
+        },
+
+        openOutboundTicketFareModal(rowIndex) {
+            this.editingPassengerIndex = rowIndex;
+            const row = this.passengersTicketData[rowIndex];
+            if (!row) return;
+
+            this.ticketFareModalTitle = 'Issue Outbound Ticket';
+            this.ticketFareForm.isOutboundMode = true;
+
+            const pendingOutbound = (row.all_issued_tickets || []).find(t => t.issue_type === 'pending_outbound' && t.status === 'pending');
+            this.ticketFareForm.issued_ticket_id = pendingOutbound?.id || null;
+
+            const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
+            this.ticketFareForm.ticket_type = '';
+            this.ticketFareForm.route_type = 'One Way-Outbound';
+            this.ticketFareForm.flight_type = '';
+            this.ticketFareForm.inbound_date = '';
+            this.ticketFareForm.outbound_date = '';
+            this.ticketFareForm.pnr = '';
+            this.ticketFareForm.ticket_number = '';
+            this.ticketFareForm.date = today;
+            this.ticketFareForm.ticket_agent = '';
+            this.ticketFareForm.route = '';
+            this.ticketFareForm.airline = '';
+            this.ticketFareForm.travel_class = '';
+            this.ticketFareForm.selling_fare = 0;
+            this.ticketFareForm.net_fare = 0;
+            this.ticketFareForm.offer_price = 0;
+            this.ticketFareForm.baggage_inbound = '';
+            this.ticketFareForm.baggage_outbound = '';
+            this.ticketFareForm.outbound_pending = false;
+            this.ticketFareForm.clear_double_ticket = false;
+            this.ticketFareForm.double_ticket_active = false;
+            this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
+
+            if (row.outbound_ticket_fare) {
+                const fare = row.outbound_ticket_fare;
+                this.ticketFareForm.ticket_type = fare.ticket_type || '';
+                this.ticketFareForm.flight_type = fare.flight_type === 'direct' ? 'Direct' : 'Transit';
+                this.ticketFareForm.ticket_option = fare.id || '';
+                this.ticketFareForm.route = fare.route_display || '';
+                this.ticketFareForm.airline = fare.airline || '';
+                this.ticketFareForm.travel_class = fare.travel_class || '';
+                const pType = row.passenger_type || 'adult';
+                this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(fare.selling_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                this.ticketFareForm.net_fare = this.calculateFareForPassengerType(fare.net_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                if (fare.with_offer && fare.offer_price) {
+                    this.ticketFareForm.offer_price = this.calculateFareForPassengerType(fare.offer_price, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                }
+                this.ticketFareForm.baggage_outbound = fare.baggage_outbound || '';
+            }
+
+            this.handleTicketFareRouteTypeChange();
+            this.isTicketFareModalOpen = true;
+        },
+
+        openOutboundEditTicketFareModal(rowIndex) {
+            this.editingPassengerIndex = rowIndex;
+            const row = this.passengersTicketData[rowIndex];
+            if (!row) return;
+
+            this.ticketFareModalTitle = 'Edit Outbound Ticket';
+            this.ticketFareForm.isOutboundMode = true;
+
+            const poit = row.pending_outbound_issued_ticket;
+            if (!poit) return;
+
+            this.ticketFareForm.issued_ticket_id = poit.id;
+
+            const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
+            this.ticketFareForm.ticket_type = '';
+            this.ticketFareForm.route_type = 'One Way-Outbound';
+            this.ticketFareForm.flight_type = '';
+            this.ticketFareForm.inbound_date = '';
+            this.ticketFareForm.outbound_date = poit.outbound_date ? this.formatToDDMMMYY(poit.outbound_date) : '';
+            this.ticketFareForm.pnr = poit.pnr || '';
+            this.ticketFareForm.ticket_number = poit.ticket_number || '';
+            this.ticketFareForm.date = poit.issued_date ? this.formatToDDMMMYY(poit.issued_date) : today;
+            this.ticketFareForm.ticket_agent = poit.ticket_agent_name || '';
+            this.ticketFareForm.route = '';
+            this.ticketFareForm.airline = '';
+            this.ticketFareForm.travel_class = '';
+            this.ticketFareForm.selling_fare = poit.selling_fare || 0;
+            this.ticketFareForm.net_fare = poit.net_fare || 0;
+            this.ticketFareForm.offer_price = poit.offer_price || 0;
+            this.ticketFareForm.baggage_inbound = '';
+            this.ticketFareForm.baggage_outbound = poit.baggage_outbound || '';
+            this.ticketFareForm.outbound_pending = false;
+            this.ticketFareForm.clear_double_ticket = false;
+            this.ticketFareForm.double_ticket_active = false;
+            this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
+
+            if (row.outbound_ticket_fare) {
+                const fare = row.outbound_ticket_fare;
+                this.ticketFareForm.ticket_type = fare.ticket_type || '';
+                this.ticketFareForm.flight_type = fare.flight_type === 'direct' ? 'Direct' : 'Transit';
+                this.ticketFareForm.ticket_option = fare.id || '';
+                this.ticketFareForm.route = fare.route_display || '';
+                this.ticketFareForm.airline = fare.airline || '';
+                this.ticketFareForm.travel_class = fare.travel_class || '';
+                if (!this.ticketFareForm.selling_fare) {
+                    const pType = row.passenger_type || 'adult';
+                    this.ticketFareForm.selling_fare = this.calculateFareForPassengerType(fare.selling_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                    this.ticketFareForm.net_fare = this.calculateFareForPassengerType(fare.net_fare, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                }
+                if (!this.ticketFareForm.offer_price && fare.with_offer && fare.offer_price) {
+                    const pType = row.passenger_type || 'adult';
+                    this.ticketFareForm.offer_price = this.calculateFareForPassengerType(fare.offer_price, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
+                }
+                if (!this.ticketFareForm.baggage_outbound) {
+                    this.ticketFareForm.baggage_outbound = fare.baggage_outbound || '';
+                }
+            }
+
+            this.handleTicketFareRouteTypeChange();
+            this.isTicketFareModalOpen = true;
+        },
+
         openTicketFareModal(rowIndex) {
             this.editingPassengerIndex = rowIndex;
             const row = this.passengersTicketData[rowIndex];
@@ -3008,6 +3246,9 @@ function bookingIndexApp() {
             const lit = row.latest_issued_ticket;
             const isAlreadyIssued = lit && (lit.status === 'issued' || lit.status === 're-issued');
             this.ticketFareModalTitle = isAlreadyIssued ? 'Edit Ticket' : 'Issue Ticket';
+
+            this.ticketFareForm.isOutboundMode = false;
+            this.ticketFareForm.issued_ticket_id = null;
 
             this.ticketFareForm.route = row.route || '';
             this.ticketFareForm.airline = row.airline || '';
@@ -3345,15 +3586,23 @@ function bookingIndexApp() {
             const row = this.passengersTicketData[this.editingPassengerIndex];
             if (!row) return;
 
-            const isEdit = row.latest_issued_ticket && (row.latest_issued_ticket.status === 'issued' || row.latest_issued_ticket.status === 're-issued');
+            let isEdit, issuedTicketId;
 
-            if (!isEdit && row.latest_issued_ticket && row.latest_issued_ticket.status !== 'pending') {
-                this.showToast('This ticket cannot be issued again.', 'error');
-                return;
+            if (this.ticketFareForm.isOutboundMode) {
+                issuedTicketId = this.ticketFareForm.issued_ticket_id;
+                const targetTicket = (row.all_issued_tickets || []).find(t => t.id === issuedTicketId);
+                isEdit = targetTicket && (targetTicket.status === 'issued' || targetTicket.status === 're-issued');
+            } else {
+                isEdit = row.latest_issued_ticket && (row.latest_issued_ticket.status === 'issued' || row.latest_issued_ticket.status === 're-issued');
+
+                if (!isEdit && row.latest_issued_ticket && row.latest_issued_ticket.status !== 'pending') {
+                    this.showToast('This ticket cannot be issued again.', 'error');
+                    return;
+                }
+
+                const pendingTicket = (row.all_issued_tickets || []).find(t => t.status === 'pending');
+                issuedTicketId = isEdit ? row.latest_issued_ticket?.id : pendingTicket?.id;
             }
-
-            const pendingTicket = (row.all_issued_tickets || []).find(t => t.status === 'pending');
-            const issuedTicketId = isEdit ? row.latest_issued_ticket?.id : pendingTicket?.id;
 
             if (!issuedTicketId) {
                 this.showToast('No pending ticket found for this passenger.', 'error');
