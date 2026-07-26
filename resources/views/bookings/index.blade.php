@@ -314,6 +314,21 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'ticket_agent_id' => $poit->ticket_agent_id,
         'ticket_agent_name' => $poit->ticketAgent?->name ?? '',
         'ticket_fare_id' => $poit->ticket_fare_id,
+        'ticket_type' => $poit->ticketFare?->ticket_type?->value ?? '',
+        'flight_type' => $poit->ticketFare?->route?->flight_type?->value ?? '',
+        'route_display' => $poit->ticketFare?->route ? (function() use ($poit) {
+            $r = $poit->ticketFare->route;
+            $rt = $r->route_type?->value;
+            if ($rt === 'multi_city') {
+                return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+            }
+            $from = $r->fromCity?->code ?? '?';
+            $to = $r->toCity?->code ?? '?';
+            $return = $r->returnCity?->code ?? '';
+            return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+        })() : '',
+        'airline' => $poit->ticketFare?->airline?->name ?? '',
+        'travel_class' => $poit->ticketFare?->airlineClass?->class?->name ?? '',
         'issued_date' => $poit->issued_date?->format('Y-m-d') ?? '',
         'outbound_date' => $poit->outbound_date?->format('Y-m-d') ?? '',
         'selling_fare' => (float)($poit->selling_fare ?? 0),
@@ -3155,6 +3170,8 @@ function bookingIndexApp() {
             this.ticketFareForm.double_ticket_active = false;
             this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
 
+            this.ticketFareForm.passenger_type = row.passenger_type || '';
+
             if (row.outbound_ticket_fare) {
                 const fare = row.outbound_ticket_fare;
                 this.ticketFareForm.ticket_type = fare.ticket_type || '';
@@ -3190,18 +3207,13 @@ function bookingIndexApp() {
             this.ticketFareForm.issued_ticket_id = poit.id;
 
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
-            this.ticketFareForm.ticket_type = '';
             this.ticketFareForm.route_type = 'One Way-Outbound';
-            this.ticketFareForm.flight_type = '';
             this.ticketFareForm.inbound_date = '';
             this.ticketFareForm.outbound_date = poit.outbound_date ? this.formatToDDMMMYY(poit.outbound_date) : '';
             this.ticketFareForm.pnr = poit.pnr || '';
             this.ticketFareForm.ticket_number = poit.ticket_number || '';
             this.ticketFareForm.date = poit.issued_date ? this.formatToDDMMMYY(poit.issued_date) : today;
             this.ticketFareForm.ticket_agent = poit.ticket_agent_name || '';
-            this.ticketFareForm.route = '';
-            this.ticketFareForm.airline = '';
-            this.ticketFareForm.travel_class = '';
             this.ticketFareForm.selling_fare = poit.selling_fare || 0;
             this.ticketFareForm.net_fare = poit.net_fare || 0;
             this.ticketFareForm.offer_price = poit.offer_price || 0;
@@ -3212,7 +3224,17 @@ function bookingIndexApp() {
             this.ticketFareForm.double_ticket_active = false;
             this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
 
-            if (row.outbound_ticket_fare) {
+            this.ticketFareForm.passenger_type = row.passenger_type || '';
+
+            const fareFromPoit = poit.ticket_fare_id && poit.ticket_type;
+            if (fareFromPoit) {
+                this.ticketFareForm.ticket_type = poit.ticket_type || '';
+                this.ticketFareForm.flight_type = poit.flight_type === 'direct' ? 'Direct' : 'Transit';
+                this.ticketFareForm.ticket_option = poit.ticket_fare_id || '';
+                this.ticketFareForm.route = poit.route_display || '';
+                this.ticketFareForm.airline = poit.airline || '';
+                this.ticketFareForm.travel_class = poit.travel_class || '';
+            } else if (row.outbound_ticket_fare) {
                 const fare = row.outbound_ticket_fare;
                 this.ticketFareForm.ticket_type = fare.ticket_type || '';
                 this.ticketFareForm.flight_type = fare.flight_type === 'direct' ? 'Direct' : 'Transit';
@@ -3686,6 +3708,7 @@ function bookingIndexApp() {
                         const po = data.pending_outbound_ticket;
                         row.pending_outbound_issued_ticket = {
                             id: po.id,
+                            ticket_fare_id: po.ticket_fare_id,
                             status: po.status,
                             selling_fare: po.selling_fare ?? 0,
                             net_fare: po.net_fare ?? 0,
@@ -3699,6 +3722,22 @@ function bookingIndexApp() {
                             is_refundable: po.is_refundable ?? false,
                             is_exchangeable: po.is_exchangeable ?? false,
                             baggage_outbound: po.baggage_outbound ?? '',
+                            ticket_type: po.ticket_fare?.ticket_type?.value || po.ticket_fare?.ticket_type || '',
+                            flight_type: po.ticket_fare?.route?.flight_type?.value || po.ticket_fare?.route?.flight_type || '',
+                            route_display: (() => {
+                                const r = po.ticket_fare?.route;
+                                if (!r) return '';
+                                const rt = r.route_type?.value || r.route_type;
+                                if (rt === 'multi_city') {
+                                    return (r.multi_segments || []).map(s => (s.from_city?.code || s.fromCity?.code || '?') + '-' + (s.to_city?.code || s.toCity?.code || '?')).join(', ');
+                                }
+                                const from = r.from_city?.code || r.fromCity?.code || '?';
+                                const to = r.to_city?.code || r.toCity?.code || '?';
+                                const ret = r.return_city?.code || r.returnCity?.code || '';
+                                return (rt === 'round' && ret) ? from + '-' + to + '-' + ret : from + '-' + to;
+                            })(),
+                            airline: po.ticket_fare?.airline?.name || '',
+                            travel_class: po.ticket_fare?.airlineClass?.class?.name || '',
                         };
                         if (!row.all_issued_tickets) row.all_issued_tickets = [];
                         const exists = row.all_issued_tickets.some(t => t.id === po.id);
@@ -3709,6 +3748,40 @@ function bookingIndexApp() {
                                 issue_type: 'pending_outbound'
                             });
                         }
+                    } else if (t.issue_type === 'pending_outbound') {
+                        row.pending_outbound_issued_ticket = {
+                            id: t.id,
+                            ticket_fare_id: t.ticket_fare_id,
+                            status: t.status,
+                            selling_fare: t.selling_fare ?? 0,
+                            net_fare: t.net_fare ?? 0,
+                            offer_price: t.offer_price ?? 0,
+                            pnr: t.pnr || '',
+                            ticket_number: t.ticket_number || '',
+                            ticket_agent_id: t.ticket_agent_id,
+                            ticket_agent_name: t.ticket_agent?.name || payload.ticket_agent || '',
+                            issued_date: t.issued_date ? this.formatToDDMMMYY(t.issued_date) : '',
+                            outbound_date: t.outbound_date ? this.formatToDDMMMYY(t.outbound_date) : '',
+                            is_refundable: t.is_refundable ?? false,
+                            is_exchangeable: t.is_exchangeable ?? false,
+                            baggage_outbound: t.baggage_outbound || '',
+                            ticket_type: t.ticket_fare?.ticket_type?.value || t.ticket_fare?.ticket_type || '',
+                            flight_type: t.ticket_fare?.route?.flight_type?.value || t.ticket_fare?.route?.flight_type || '',
+                            route_display: (() => {
+                                const r = t.ticket_fare?.route;
+                                if (!r) return '';
+                                const rt = r.route_type?.value || r.route_type;
+                                if (rt === 'multi_city') {
+                                    return (r.multi_segments || []).map(s => (s.from_city?.code || s.fromCity?.code || '?') + '-' + (s.to_city?.code || s.toCity?.code || '?')).join(', ');
+                                }
+                                const from = r.from_city?.code || r.fromCity?.code || '?';
+                                const to = r.to_city?.code || r.toCity?.code || '?';
+                                const ret = r.return_city?.code || r.returnCity?.code || '';
+                                return (rt === 'round' && ret) ? from + '-' + to + '-' + ret : from + '-' + to;
+                            })(),
+                            airline: t.ticket_fare?.airline?.name || '',
+                            travel_class: t.ticket_fare?.airlineClass?.class?.name || '',
+                        };
                     }
                     this.showToast(data.message || 'Ticket saved successfully.');
                     this.closeTicketFareModal();

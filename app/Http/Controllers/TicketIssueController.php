@@ -64,6 +64,9 @@ class TicketIssueController extends Controller
 
             if ($issuedTicket->issue_type === 'pending_outbound') {
                 unset($updateData['issue_type']);
+                if (isset($validated['ticket_fare_id'])) {
+                    $passenger->update(['ticket_fare_outbound_id' => $validated['ticket_fare_id']]);
+                }
             } else {
                 $updateData['issue_type'] = 'regular';
             }
@@ -89,6 +92,7 @@ class TicketIssueController extends Controller
                     ->exists();
 
                 if (! $existingPendingOutbound) {
+                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -98,7 +102,11 @@ class TicketIssueController extends Controller
                         'is_refundable' => false,
                         'is_exchangeable' => false,
                         'outbound_pending' => false,
+                        'ticket_fare_id' => $pendingOutboundFareId,
                     ]);
+                    if ($pendingOutboundFareId) {
+                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
+                    }
                 }
             }
 
@@ -115,8 +123,24 @@ class TicketIssueController extends Controller
                 'ticketAgent',
                 'ticketFare.airline',
                 'ticketFare.airlineClass.class',
-                'ticketFare.route',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
+                'ticketFare.route.returnCity',
+                'ticketFare.route.multiSegments.fromCity',
+                'ticketFare.route.multiSegments.toCity',
             ]);
+
+            if ($pendingOutboundTicket) {
+                $pendingOutboundTicket->load([
+                    'ticketFare.airline',
+                    'ticketFare.airlineClass.class',
+                    'ticketFare.route.fromCity',
+                    'ticketFare.route.toCity',
+                    'ticketFare.route.returnCity',
+                    'ticketFare.route.multiSegments.fromCity',
+                    'ticketFare.route.multiSegments.toCity',
+                ]);
+            }
 
             return response()->json([
                 'success' => true,
@@ -178,6 +202,10 @@ class TicketIssueController extends Controller
 
             $issuedTicket->logAction('edited', $oldData, $issuedTicket->toArray());
 
+            if ($issuedTicket->issue_type === 'pending_outbound' && isset($validated['ticket_fare_id'])) {
+                $passenger->update(['ticket_fare_outbound_id' => $validated['ticket_fare_id']]);
+            }
+
             if ($validated['clear_double_ticket'] ?? false) {
                 $passenger->update([
                     'ticket_fare_inbound_id' => null,
@@ -195,6 +223,7 @@ class TicketIssueController extends Controller
                     ->exists();
 
                 if (! $existingPendingOutbound) {
+                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -204,7 +233,11 @@ class TicketIssueController extends Controller
                         'is_refundable' => false,
                         'is_exchangeable' => false,
                         'outbound_pending' => false,
+                        'ticket_fare_id' => $pendingOutboundFareId,
                     ]);
+                    if ($pendingOutboundFareId) {
+                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
+                    }
                 }
             }
 
@@ -214,7 +247,11 @@ class TicketIssueController extends Controller
                 'ticketAgent',
                 'ticketFare.airline',
                 'ticketFare.airlineClass.class',
-                'ticketFare.route',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
+                'ticketFare.route.returnCity',
+                'ticketFare.route.multiSegments.fromCity',
+                'ticketFare.route.multiSegments.toCity',
             ]);
 
             return response()->json([
