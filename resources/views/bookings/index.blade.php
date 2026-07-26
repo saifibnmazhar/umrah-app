@@ -617,8 +617,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Passenger Type</th>
                             @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Fare</th>@endif
-                            @if($canViewTicketAgentColumn)<th class="px-3 py-2 text-left font-medium">Ticket Agent</th>@endif
+                            {{-- @if($canViewTicketAgentColumn)<th class="px-3 py-2 text-left font-medium">Ticket Agent</th>@endif --}}
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
                             <th class="px-3 py-2 text-left font-medium">Remarks</th>
@@ -789,6 +790,13 @@ if ($route) {
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">N/A</span>
         </template>
     </td>
+    <td class="px-3 py-2 text-slate-700">
+        <span x-text="{
+            'adult': 'ADT',
+            'child': 'CHD',
+            'infant': 'INF'
+        }[passengersTicketData[{{ $loop->index }}]?.passenger_type] || '—'">—</span>
+    </td>
     @if($canViewTicketFareColumn)
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 flex-wrap">
@@ -811,7 +819,7 @@ if ($route) {
         </div>
     </td>
     @endif
-    @if($canViewTicketAgentColumn)<td class="px-3 py-2 text-slate-700"><span x-text="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.ticket_agent_name || '—'">—</span></td>@endif
+    {{-- @if($canViewTicketAgentColumn)<td class="px-3 py-2 text-slate-700"><span x-text="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.ticket_agent_name || '—'">—</span></td>@endif --}}
     <td class="px-3 py-2">
         <template x-if="passengersTicketData[{{ $loop->index }}]?.ticket_status">
             <span>
