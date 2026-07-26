@@ -60,21 +60,26 @@
         .no-print { display: block; }
         @media print {
             body { background: #fff; }
-            .voucher-wrap { max-width: none; margin: 0; border: none; border-radius: 0; box-shadow: none; padding: 8px 12px; }
+            .voucher-wrap { max-width: none; margin: 0; border: none; border-radius: 0; box-shadow: none; padding: 4px 8px; }
             .no-print { display: none !important; }
-            @page { size: landscape; margin: 5mm; }
-            th { background: #e2e8f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+            @page { size: landscape; margin: 3mm; }
+            .header { padding-bottom: 6px; margin-bottom: 8px; }
+            .info-grid { gap: 2px 16px; }
+            .info-row .value.blank { min-height: 12px; }
+            .section-title { margin-bottom: 2px; }
+            .info-grid[style*="margin-bottom"] { margin-bottom: 4px !important; }
+            th { background: #e2e8f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; padding: 6px 8px; }
+            td { padding: 4px 8px; }
             .summary-row td { background: #f1f5f9 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .info-grid { gap: 4px 24px; }
-            .table-wrap { margin-bottom: 8px; }
-            .received-section { margin-bottom: 8px; }
-            .form-field { margin-bottom: 3px; }
-            .form-block { gap: 12px 24px; }
-            .form-label { margin-bottom: 3px; }
-            .section-title { margin-bottom: 4px; }
-            .sig-line { margin-top: 24px; }
-            .footer { padding-top: 10px; }
-            .info-grid[style*="margin-bottom"] { margin-bottom: 8px !important; }
+            .table-wrap { margin-bottom: 4px; }
+            .received-section { margin-bottom: 4px; }
+            .form-field { margin-bottom: 4px; }
+            .form-field .blank { min-height: 12px; }
+            .form-block { gap: 6px 16px; }
+            .form-label { margin-bottom: 2px; }
+            .footer { padding-top: 4px; margin-top: 0; }
+            .sig-line { margin-top: 10px; }
+            .disclaimer { margin-top: 6px; }
         }
     </style>
 </head>
@@ -163,7 +168,12 @@
                         <td>&nbsp;</td>
                     </tr>
                     <tr>
-                        <td>Paid Amount</td>
+                        <td x-text="previousDueAmount >= 0 ? 'Previous Due' : 'Previous Advance'"></td>
+                        <td class="text-right font-medium" :class="previousDueAmount >= 0 ? 'due-positive' : 'due-negative'" x-text="$currency(Math.abs(previousDueAmount), 2)"></td>
+                        <td>&nbsp;</td>
+                    </tr>
+                    <tr>
+                        <td>Current Paid Amount</td>
                         <td class="text-right font-medium" x-text="$currency(paidAmount, 2)"></td>
                         <td>&nbsp;</td>
                     </tr>
@@ -243,6 +253,7 @@
             return {
                 items: @json($lineItemsBdt ?? $lineItems),
                 totalAmount: {{ $totalAmount }},
+                previousDueAmount: {{ $previousDueAmount }},
                 paidAmount: {{ $paidAmount }},
                 dueAmount: {{ $dueAmount }},
             };

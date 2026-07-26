@@ -177,7 +177,27 @@ class PaymentController extends Controller
 
         $totalAmount = collect($lineItems)->sum('amount');
         $paidAmount = (float) $payment->amount;
-        $dueAmount = $totalAmount - $paidAmount;
+
+        $previousPayments = 0;
+        if ($payment->visa_agent_id) {
+            $previousPayments = Payment::where('visa_agent_id', $payment->visa_agent_id)
+                ->where('id', '!=', $payment->id)
+                ->whereHas('voucher.transactionType', fn($q) => $q->where('name', 'Visa Agent Payment'))
+                ->sum('amount');
+        } elseif ($payment->ticket_agent_id) {
+            $previousPayments = Payment::where('ticket_agent_id', $payment->ticket_agent_id)
+                ->where('id', '!=', $payment->id)
+                ->whereHas('voucher.transactionType', fn($q) => $q->where('name', 'Ticket Agent Payment'))
+                ->sum('amount');
+        } elseif ($payment->commission_agent_id) {
+            $previousPayments = Payment::where('commission_agent_id', $payment->commission_agent_id)
+                ->where('id', '!=', $payment->id)
+                ->whereHas('voucher.transactionType', fn($q) => $q->where('name', 'Commission Agent Payment'))
+                ->sum('amount');
+        }
+
+        $previousDueAmount = $totalAmount - $previousPayments;
+        $dueAmount = $previousDueAmount - $paidAmount;
 
         $currencyRate = $rate;
         $lineItemsBdt = collect($lineItems)->map(fn($item) => [
@@ -187,12 +207,13 @@ class PaymentController extends Controller
         ])->toArray();
         $totalAmountBdt = $totalAmount * ($rate > 0 ? $rate : 0);
         $paidAmountBdt = (float) $payment->bdt_amount;
-        $dueAmountBdt = $totalAmountBdt - $paidAmountBdt;
+        $previousDueAmountBdt = $previousDueAmount * ($rate > 0 ? $rate : 0);
+        $dueAmountBdt = $previousDueAmountBdt - $paidAmountBdt;
 
         return view('payments.print-voucher', compact(
             'payment', 'rate', 'currencyRate', 'loggedUser', 'lineItems', 'paymentType',
-            'totalAmount', 'paidAmount', 'dueAmount',
-            'lineItemsBdt', 'totalAmountBdt', 'paidAmountBdt', 'dueAmountBdt'
+            'totalAmount', 'paidAmount', 'dueAmount', 'previousDueAmount',
+            'lineItemsBdt', 'totalAmountBdt', 'paidAmountBdt', 'dueAmountBdt', 'previousDueAmountBdt'
         ));
     }
 
