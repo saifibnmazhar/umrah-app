@@ -104,6 +104,11 @@ class TicketIssueController extends Controller
 
             $issuedTicket->logAction('issued', $oldData, $issuedTicket->toArray());
 
+            $pendingOutboundTicket = IssuedTicket::where('passenger_id', $passenger->id)
+                ->where('issue_type', 'pending_outbound')
+                ->where('status', 'pending')
+                ->first();
+
             DB::commit();
 
             $issuedTicket->load([
@@ -117,6 +122,7 @@ class TicketIssueController extends Controller
                 'success' => true,
                 'message' => 'Ticket issued successfully.',
                 'issued_ticket' => $issuedTicket,
+                'pending_outbound_ticket' => $pendingOutboundTicket,
             ]);
         } catch (\Exception $e) {
             DB::rollBack();

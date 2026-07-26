@@ -3682,6 +3682,34 @@ function bookingIndexApp() {
                             row.all_issued_tickets.push({ id: t.id, net_fare: t.net_fare, status: t.status, pnr: t.pnr || '', issue_type: t.issue_type });
                         }
                     }
+                    if (data.pending_outbound_ticket) {
+                        const po = data.pending_outbound_ticket;
+                        row.pending_outbound_issued_ticket = {
+                            id: po.id,
+                            status: po.status,
+                            selling_fare: po.selling_fare ?? 0,
+                            net_fare: po.net_fare ?? 0,
+                            offer_price: po.offer_price ?? 0,
+                            pnr: po.pnr ?? '',
+                            ticket_number: po.ticket_number ?? '',
+                            ticket_agent_id: po.ticket_agent_id,
+                            ticket_agent_name: '',
+                            issued_date: po.issued_date ?? '',
+                            outbound_date: po.outbound_date ?? '',
+                            is_refundable: po.is_refundable ?? false,
+                            is_exchangeable: po.is_exchangeable ?? false,
+                            baggage_outbound: po.baggage_outbound ?? '',
+                        };
+                        if (!row.all_issued_tickets) row.all_issued_tickets = [];
+                        const exists = row.all_issued_tickets.some(t => t.id === po.id);
+                        if (!exists) {
+                            row.all_issued_tickets.push({
+                                id: po.id, net_fare: po.net_fare ?? 0,
+                                status: po.status, pnr: po.pnr ?? '',
+                                issue_type: 'pending_outbound'
+                            });
+                        }
+                    }
                     this.showToast(data.message || 'Ticket saved successfully.');
                     this.closeTicketFareModal();
                 } else {
