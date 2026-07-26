@@ -151,7 +151,11 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'guardian' => '',
 
     'is_ticket_held' => (bool)($p->is_ticket_held ?? false),
-    'ticket_status' => $p->ticket_status?->value ?? null,
+    'ticket_status' => $p->allIssuedTickets
+        ->filter(fn($t) => is_null($t->issue_type) || $t->issue_type === 'regular')
+        ->sortByDesc('id')
+        ->first()?->status ?? null,
+    'ticket_remarks' => $p->ticket_remarks ?? '',
     'due' => $p->booking?->invoice?->balance ?? 0,
     'required_flight_date' => $p->flight_date_from?->format('Y-m-d') ?? '',
     'actual_flight_date' => $p->actual_flight_date?->format('Y-m-d') ?? '',
@@ -169,6 +173,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'ticket_fare_inbound_id' => $p->ticket_fare_inbound_id,
     'ticket_fare_outbound_id' => $p->ticket_fare_outbound_id,
     'is_double_ticket' => !is_null($p->ticket_fare_inbound_id),
+    'package_is_double_ticket' => $p->booking?->package?->is_double_ticket ?? false,
 
     'inbound_ticket_fare' => $p->ticketFareInbound ? [
         'id' => $p->ticketFareInbound->id,
@@ -329,6 +334,21 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'ticket_agent_id' => $poit->ticket_agent_id,
         'ticket_agent_name' => $poit->ticketAgent?->name ?? '',
         'ticket_fare_id' => $poit->ticket_fare_id,
+        'ticket_type' => $poit->ticketFare?->ticket_type?->value ?? '',
+        'flight_type' => $poit->ticketFare?->route?->flight_type?->value ?? '',
+        'route_display' => $poit->ticketFare?->route ? (function() use ($poit) {
+            $r = $poit->ticketFare->route;
+            $rt = $r->route_type?->value;
+            if ($rt === 'multi_city') {
+                return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+            }
+            $from = $r->fromCity?->code ?? '?';
+            $to = $r->toCity?->code ?? '?';
+            $return = $r->returnCity?->code ?? '';
+            return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+        })() : '',
+        'airline' => $poit->ticketFare?->airline?->name ?? '',
+        'travel_class' => $poit->ticketFare?->airlineClass?->class?->name ?? '',
         'issued_date' => $poit->issued_date?->format('Y-m-d') ?? '',
         'outbound_date' => $poit->outbound_date?->format('Y-m-d') ?? '',
         'selling_fare' => (float)($poit->selling_fare ?? 0),
@@ -773,6 +793,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Fare</th>@endif
                             {{-- @if($canViewTicketAgentColumn)<th class="px-3 py-2 text-left font-medium">Ticket Agent</th>@endif --}}
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket Remarks</th>
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
                             <th class="px-3 py-2 text-left font-medium">Remarks</th>
                             <th class="px-3 py-2 text-left font-medium">Actions</th>
@@ -991,6 +1012,26 @@ if ($passenger->ticket_fare_inbound_id) {
                     <button @click="openOutboundTicketFareModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
+                    <div class="relative" x-data="{ open: false }">
+                        <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
+                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
+                        </button>
+                        <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex items-center gap-1 px-2 py-1 whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                            <button @click="open = false; toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
+                            <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued')" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
+                            <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="open = false; openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
+                            <template x-if="rowHasConfirmableTickets({{ $loop->index }})">
+                                <template x-if="!showThreeButtonsMode({{ $loop->index }})">
+                                    <button @click="open = false; confirmTickets({{ $loop->index }}, 'all')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm</button>
+                                </template>
+                                <template x-if="showThreeButtonsMode({{ $loop->index }})">
+                                    <span>
+                                        <button x-show="showGConfirmIn({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'in')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm In</button>
+                                        <button x-show="showGConfirmOut({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'out')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Out</button>
+                                        <button x-show="showGConfirmBoth({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'both')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Both</button>
+                                    </span>
+                                </template>
+                            </template>
                     <div class="flex items-center gap-1">
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
@@ -1033,7 +1074,8 @@ if ($passenger->ticket_fare_inbound_id) {
                         'bg-green-100 text-green-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued',
                         'bg-purple-100 text-purple-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued',
                         'bg-red-100 text-red-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'refunded',
-                        'bg-slate-100 text-slate-600': ['issued','re-issued','refunded'].indexOf(passengersTicketData[{{ $loop->index }}]?.ticket_status) === -1
+                        'bg-yellow-100 text-yellow-700': passengersTicketData[{{ $loop->index }}]?.ticket_status === 'awaiting-group',
+                        'bg-slate-100 text-slate-600': ['issued','re-issued','refunded','awaiting-group'].indexOf(passengersTicketData[{{ $loop->index }}]?.ticket_status) === -1
                     }"
                     x-text="passengersTicketData[{{ $loop->index }}]?.ticket_status.charAt(0).toUpperCase() + passengersTicketData[{{ $loop->index }}]?.ticket_status.slice(1)">
                 </span>
@@ -1049,6 +1091,12 @@ if ($passenger->ticket_fare_inbound_id) {
         <template x-if="!passengersTicketData[{{ $loop->index }}]?.ticket_status">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
         </template>
+    </td>
+    <td class="px-3 py-2">
+        <button @click="openRemarksModal({{ $loop->index }})"
+                class="text-xs px-2 py-1 rounded font-medium bg-slate-100 hover:bg-slate-200 text-slate-600 transition">
+            Remarks
+        </button>
     </td>
     <td class="px-3 py-2">
         @php
@@ -2021,6 +2069,46 @@ if ($passenger->ticket_fare_inbound_id) {
             </div>
         </div>
     </div>
+
+    {{-- Ticket Remarks Modal --}}
+    <div x-show="remarksModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeRemarksModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeRemarksModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-lg mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Ticket Remarks</h3>
+
+            <template x-if="!remarksEditMode">
+                <div>
+                    <template x-if="remarksContent">
+                        <p class="text-slate-700 text-sm whitespace-pre-wrap" x-text="remarksContent"></p>
+                    </template>
+                    <template x-if="!remarksContent">
+                        <p class="text-slate-400 text-sm italic">No Remarks Entered</p>
+                    </template>
+                    <div class="flex gap-3 mt-6">
+                        <button @click="remarksEditMode = true" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Edit</button>
+                        <button @click="closeRemarksModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Close</button>
+                    </div>
+                </div>
+            </template>
+
+            <template x-if="remarksEditMode">
+                <form @submit.prevent="updateRemarks()">
+                    <div class="space-y-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                            <textarea x-model="remarksForm.text"
+                                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
+                                      rows="4"></textarea>
+                        </div>
+                    </div>
+                    <div class="flex gap-3 mt-6">
+                        <button type="submit" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Update</button>
+                        <button type="button" @click="closeRemarksModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                    </div>
+                </form>
+            </template>
+        </div>
+    </div>
 </div>
 
 <style>
@@ -2042,6 +2130,11 @@ function bookingIndexApp() {
         selectedFingerprintStatus: '{{ $selectedFingerprintStatus ?? '' }}',
         selectedVisaStatus: '{{ $selectedVisaStatus ?? '' }}',
         selectedTicketStatus: '{{ $selectedTicketStatus ?? '' }}',
+        remarksModalVisible: false,
+        remarksEditMode: false,
+        editingRemarksIndex: null,
+        remarksContent: '',
+        remarksForm: { text: '' },
         selectedVisaAgentId: '{{ $selectedVisaAgentId ?? '' }}',
         selectedBookingDateFrom: '{{ $selectedBookingDateFrom ?? '' }}',
         selectedBookingDateTo: '{{ $selectedBookingDateTo ?? '' }}',
@@ -3216,6 +3309,141 @@ function bookingIndexApp() {
             return (row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound' && (t.status === 'issued' || t.status === 're-issued'));
         },
 
+        rowHasConfirmableTickets(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            return (row.all_issued_tickets || []).some(t => ['pending', 'refunded'].includes(t.status));
+        },
+
+        showThreeButtonsMode(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return false;
+            const hasRegular = (row.all_issued_tickets || []).some(t => !t.issue_type || t.issue_type === 'regular');
+            const hasPendingOutbound = (row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound');
+            return row.package_is_double_ticket || (hasRegular && hasPendingOutbound);
+        },
+
+        hasConfirmableRegular(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return false;
+            const regular = (row.all_issued_tickets || []).find(t => !t.issue_type || t.issue_type === 'regular');
+            return regular && ['pending', 'refunded'].includes(regular.status);
+        },
+
+        hasConfirmableOutbound(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return false;
+            const outbound = (row.all_issued_tickets || []).find(t => t.issue_type === 'pending_outbound');
+            return outbound && ['pending', 'refunded'].includes(outbound.status);
+        },
+
+        hasNoOutboundTicket(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return false;
+            return !(row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound');
+        },
+
+        showGConfirmIn(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return false;
+            return this.hasConfirmableRegular(index) || (this.hasNoOutboundTicket(index) && row.package_is_double_ticket);
+        },
+
+        showGConfirmOut(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return false;
+            return this.hasConfirmableOutbound(index) || (this.hasNoOutboundTicket(index) && row.package_is_double_ticket);
+        },
+
+        showGConfirmBoth(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return false;
+            return (this.hasConfirmableRegular(index) && this.hasConfirmableOutbound(index))
+                || (this.hasNoOutboundTicket(index) && row.package_is_double_ticket && this.hasConfirmableRegular(index));
+        },
+
+        confirmTickets(index, action) {
+            const row = this.passengersTicketData[index];
+            if (!row) return;
+
+            fetch(`/passengers/${row.id}/confirm-group`, {
+                method: 'PUT',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: JSON.stringify({ action, booking_id: row.booking_id }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    row.ticket_status = 'awaiting-group';
+                    (row.all_issued_tickets || []).forEach(t => {
+                        if (data.updated_ids.includes(t.id)) {
+                            t.status = 'awaiting-group';
+                        }
+                    });
+                    if (data.created_ticket) {
+                        const ct = data.created_ticket;
+                        if (!row.all_issued_tickets) row.all_issued_tickets = [];
+                        row.all_issued_tickets.push({
+                            id: ct.id, net_fare: ct.net_fare ?? 0,
+                            status: ct.status, pnr: ct.pnr ?? '',
+                            issue_type: 'pending_outbound'
+                        });
+                    }
+                    this.showToast(data.message || 'Tickets confirmed successfully.');
+                } else {
+                    this.showToast(data.message || 'Failed to confirm tickets.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Confirm group error:', err);
+                this.showToast('Failed to confirm tickets.', 'error');
+            });
+        },
+        
+        openRemarksModal(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return;
+            this.editingRemarksIndex = index;
+            this.remarksContent = row.ticket_remarks || '';
+            this.remarksForm.text = this.remarksContent;
+            this.remarksEditMode = false;
+            this.remarksModalVisible = true;
+        },
+
+        closeRemarksModal() {
+            this.editingRemarksIndex = null;
+            this.remarksModalVisible = false;
+            this.remarksEditMode = false;
+            this.remarksContent = '';
+            this.remarksForm.text = '';
+        },
+
+        updateRemarks() {
+            const row = this.passengersTicketData[this.editingRemarksIndex];
+            if (!row) return;
+
+            fetch(`/passengers/${row.id}/ticket-remarks`, {
+                method: 'PATCH',
+                headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '' },
+                body: JSON.stringify({ ticket_remarks: this.remarksForm.text }),
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    row.ticket_remarks = this.remarksForm.text;
+                    this.remarksContent = this.remarksForm.text;
+                    this.remarksEditMode = false;
+                    this.showToast('Remarks updated successfully.');
+                } else {
+                    this.showToast(data.message || 'Failed to update remarks.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Update remarks error:', err);
+                this.showToast('Failed to update remarks.', 'error');
+            });
+        },
+
         openOutboundTicketFareModal(rowIndex) {
             this.editingPassengerIndex = rowIndex;
             const row = this.passengersTicketData[rowIndex];
@@ -3249,6 +3477,8 @@ function bookingIndexApp() {
             this.ticketFareForm.clear_double_ticket = false;
             this.ticketFareForm.double_ticket_active = false;
             this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
+
+            this.ticketFareForm.passenger_type = row.passenger_type || '';
 
             if (row.outbound_ticket_fare) {
                 const fare = row.outbound_ticket_fare;
@@ -3285,18 +3515,13 @@ function bookingIndexApp() {
             this.ticketFareForm.issued_ticket_id = poit.id;
 
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
-            this.ticketFareForm.ticket_type = '';
             this.ticketFareForm.route_type = 'One Way-Outbound';
-            this.ticketFareForm.flight_type = '';
             this.ticketFareForm.inbound_date = '';
             this.ticketFareForm.outbound_date = poit.outbound_date ? this.formatToDDMMMYY(poit.outbound_date) : '';
             this.ticketFareForm.pnr = poit.pnr || '';
             this.ticketFareForm.ticket_number = poit.ticket_number || '';
             this.ticketFareForm.date = poit.issued_date ? this.formatToDDMMMYY(poit.issued_date) : today;
             this.ticketFareForm.ticket_agent = poit.ticket_agent_name || '';
-            this.ticketFareForm.route = '';
-            this.ticketFareForm.airline = '';
-            this.ticketFareForm.travel_class = '';
             this.ticketFareForm.selling_fare = poit.selling_fare || 0;
             this.ticketFareForm.net_fare = poit.net_fare || 0;
             this.ticketFareForm.offer_price = poit.offer_price || 0;
@@ -3307,7 +3532,17 @@ function bookingIndexApp() {
             this.ticketFareForm.double_ticket_active = false;
             this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
 
-            if (row.outbound_ticket_fare) {
+            this.ticketFareForm.passenger_type = row.passenger_type || '';
+
+            const fareFromPoit = poit.ticket_fare_id && poit.ticket_type;
+            if (fareFromPoit) {
+                this.ticketFareForm.ticket_type = poit.ticket_type || '';
+                this.ticketFareForm.flight_type = poit.flight_type === 'direct' ? 'Direct' : 'Transit';
+                this.ticketFareForm.ticket_option = poit.ticket_fare_id || '';
+                this.ticketFareForm.route = poit.route_display || '';
+                this.ticketFareForm.airline = poit.airline || '';
+                this.ticketFareForm.travel_class = poit.travel_class || '';
+            } else if (row.outbound_ticket_fare) {
                 const fare = row.outbound_ticket_fare;
                 this.ticketFareForm.ticket_type = fare.ticket_type || '';
                 this.ticketFareForm.flight_type = fare.flight_type === 'direct' ? 'Direct' : 'Transit';
@@ -3815,6 +4050,7 @@ function bookingIndexApp() {
                         const po = data.pending_outbound_ticket;
                         row.pending_outbound_issued_ticket = {
                             id: po.id,
+                            ticket_fare_id: po.ticket_fare_id,
                             status: po.status,
                             selling_fare: po.selling_fare ?? 0,
                             net_fare: po.net_fare ?? 0,
@@ -3828,6 +4064,22 @@ function bookingIndexApp() {
                             is_refundable: po.is_refundable ?? false,
                             is_exchangeable: po.is_exchangeable ?? false,
                             baggage_outbound: po.baggage_outbound ?? '',
+                            ticket_type: po.ticket_fare?.ticket_type?.value || po.ticket_fare?.ticket_type || '',
+                            flight_type: po.ticket_fare?.route?.flight_type?.value || po.ticket_fare?.route?.flight_type || '',
+                            route_display: (() => {
+                                const r = po.ticket_fare?.route;
+                                if (!r) return '';
+                                const rt = r.route_type?.value || r.route_type;
+                                if (rt === 'multi_city') {
+                                    return (r.multi_segments || []).map(s => (s.from_city?.code || s.fromCity?.code || '?') + '-' + (s.to_city?.code || s.toCity?.code || '?')).join(', ');
+                                }
+                                const from = r.from_city?.code || r.fromCity?.code || '?';
+                                const to = r.to_city?.code || r.toCity?.code || '?';
+                                const ret = r.return_city?.code || r.returnCity?.code || '';
+                                return (rt === 'round' && ret) ? from + '-' + to + '-' + ret : from + '-' + to;
+                            })(),
+                            airline: po.ticket_fare?.airline?.name || '',
+                            travel_class: po.ticket_fare?.airlineClass?.class?.name || '',
                         };
                         if (!row.all_issued_tickets) row.all_issued_tickets = [];
                         const exists = row.all_issued_tickets.some(t => t.id === po.id);
@@ -3846,6 +4098,40 @@ function bookingIndexApp() {
                                 issuer_name: '',
                             });
                         }
+                    } else if (t.issue_type === 'pending_outbound') {
+                        row.pending_outbound_issued_ticket = {
+                            id: t.id,
+                            ticket_fare_id: t.ticket_fare_id,
+                            status: t.status,
+                            selling_fare: t.selling_fare ?? 0,
+                            net_fare: t.net_fare ?? 0,
+                            offer_price: t.offer_price ?? 0,
+                            pnr: t.pnr || '',
+                            ticket_number: t.ticket_number || '',
+                            ticket_agent_id: t.ticket_agent_id,
+                            ticket_agent_name: t.ticket_agent?.name || payload.ticket_agent || '',
+                            issued_date: t.issued_date ? this.formatToDDMMMYY(t.issued_date) : '',
+                            outbound_date: t.outbound_date ? this.formatToDDMMMYY(t.outbound_date) : '',
+                            is_refundable: t.is_refundable ?? false,
+                            is_exchangeable: t.is_exchangeable ?? false,
+                            baggage_outbound: t.baggage_outbound || '',
+                            ticket_type: t.ticket_fare?.ticket_type?.value || t.ticket_fare?.ticket_type || '',
+                            flight_type: t.ticket_fare?.route?.flight_type?.value || t.ticket_fare?.route?.flight_type || '',
+                            route_display: (() => {
+                                const r = t.ticket_fare?.route;
+                                if (!r) return '';
+                                const rt = r.route_type?.value || r.route_type;
+                                if (rt === 'multi_city') {
+                                    return (r.multi_segments || []).map(s => (s.from_city?.code || s.fromCity?.code || '?') + '-' + (s.to_city?.code || s.toCity?.code || '?')).join(', ');
+                                }
+                                const from = r.from_city?.code || r.fromCity?.code || '?';
+                                const to = r.to_city?.code || r.toCity?.code || '?';
+                                const ret = r.return_city?.code || r.returnCity?.code || '';
+                                return (rt === 'round' && ret) ? from + '-' + to + '-' + ret : from + '-' + to;
+                            })(),
+                            airline: t.ticket_fare?.airline?.name || '',
+                            travel_class: t.ticket_fare?.airlineClass?.class?.name || '',
+                        };
                     }
                     this.showToast(data.message || 'Ticket saved successfully.');
                     this.closeTicketFareModal();

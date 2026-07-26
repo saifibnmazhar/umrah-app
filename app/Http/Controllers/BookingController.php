@@ -271,7 +271,10 @@ class BookingController extends Controller
                 $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status')))
             )
             ->when($request->filled('ticket_status'), fn ($q) =>
-                $q->where('ticket_status', $request->input('ticket_status'))
+                $q->whereHas('allIssuedTickets', fn ($q) =>
+                    $q->where('status', $request->input('ticket_status'))
+                        ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular'))
+                )
             )
             ->when($request->filled('visa_agent_id') && $canFilterByVisaAgent, fn ($q) =>
                 $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
@@ -438,6 +441,13 @@ class BookingController extends Controller
                 'ticketFare.baggageAllowances',
                 'allIssuedTickets',
                 'allIssuedTickets.ticketAgent',
+                'allIssuedTickets.ticketFare.airline',
+                'allIssuedTickets.ticketFare.airlineClass.class',
+                'allIssuedTickets.ticketFare.route.fromCity',
+                'allIssuedTickets.ticketFare.route.toCity',
+                'allIssuedTickets.ticketFare.route.returnCity',
+                'allIssuedTickets.ticketFare.route.multiSegments.fromCity',
+                'allIssuedTickets.ticketFare.route.multiSegments.toCity',
                 'latestIssuedTicket.ticketAgent',
                 'latestIssuedTicket.ticketFare.airline',
                 'latestIssuedTicket.ticketFare.airlineClass.class',
