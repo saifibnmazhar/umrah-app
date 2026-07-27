@@ -410,6 +410,8 @@ Route::middleware('auth')->group(function () {
             ->name('bookings.passengers.ticket-issue');
         Route::put('/bookings/{booking}/passengers/{passenger}/ticket-edit', [TicketIssueController::class, 'edit'])
             ->name('bookings.passengers.ticket-edit');
+        Route::post('/bookings/{booking}/passengers/{passenger}/re-issue', [ReIssueController::class, 'store'])
+            ->name('bookings.passengers.re-issue');
         Route::put('/passengers/{passenger}/confirm-group', [TicketIssueController::class, 'confirmGroup'])
             ->name('passengers.confirm-group');
     });
