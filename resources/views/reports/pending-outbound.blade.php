@@ -404,7 +404,7 @@ select {
                         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                             <div>
                                 <label class="block text-sm text-slate-600 mb-1">Outbound Baggage (KG)</label>
-                                <input type="text" x-model="form.baggage_outbound" placeholder="e.g. 50" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none">
+                                <input type="text" x-model="form.baggage_outbound" placeholder="e.g. 50" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
                         </div>
                     </div>
@@ -412,13 +412,13 @@ select {
                     <div class="mb-4">
                         <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Options</h4>
                         <div class="flex flex-wrap gap-6">
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" x-model="form.non_refundable" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
-                                <span class="text-sm text-slate-700">Non-Refundable</span>
+                            <label class="flex items-center gap-2 cursor-not-allowed">
+                                <input type="checkbox" x-model="form.non_refundable" disabled class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                                <span class="text-sm text-slate-500">Non-Refundable</span>
                             </label>
-                            <label class="flex items-center gap-2 cursor-pointer">
-                                <input type="checkbox" x-model="form.non_exchangeable" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
-                                <span class="text-sm text-slate-700">Non-Exchangeable</span>
+                            <label class="flex items-center gap-2 cursor-not-allowed">
+                                <input type="checkbox" x-model="form.non_exchangeable" disabled class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                                <span class="text-sm text-slate-500">Non-Exchangeable</span>
                             </label>
                         </div>
                     </div>
