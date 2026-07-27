@@ -11,7 +11,7 @@ class RefundedTicket extends Model
     use SoftDeletes;
 
     protected $fillable = [
-        'user_id', 'ticket_agent_id', 'ticket_fare_id', 'group_ticket_id',
+        'user_id', 'ticket_agent_id', 'ticket_fare_id', 'group_ticket_id', 'issued_ticket_id',
         'ticket_number', 'pnr',
         'refund_date', 'inbound_date', 'outbound_date',
         'selling_fare', 'net_fare', 'offer_price',
@@ -55,6 +55,11 @@ class RefundedTicket extends Model
     public function groupTicket(): BelongsTo
     {
         return $this->belongsTo(GroupTicket::class);
+    }
+
+    public function issuedTicket(): BelongsTo
+    {
+        return $this->belongsTo(IssuedTicket::class);
     }
 
     public function reason(): BelongsTo

@@ -14,6 +14,7 @@ return new class extends Migration
             $table->foreignId('ticket_agent_id')->nullable()->constrained('ticket_agents')->restrictOnDelete();
             $table->foreignId('ticket_fare_id')->nullable()->constrained('ticket_fares')->nullOnDelete();
             $table->foreignId('group_ticket_id')->nullable()->constrained('group_tickets')->nullOnDelete();
+            $table->foreignId('issued_ticket_id')->nullable()->constrained('issued_tickets')->nullOnDelete();
 
             $table->string('ticket_number', 100)->nullable();
             $table->string('pnr', 50)->nullable();
