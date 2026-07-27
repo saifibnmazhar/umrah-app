@@ -716,7 +716,13 @@
                                 <td class="px-3 py-2 text-right text-slate-600">@currency($package->service_charge ?? 0, 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-800 font-medium">@currency(($package->regular_price ?? 0) + ($package->service_charge ?? 0), 0)</td>
                                 <td class="px-3 py-2 text-right text-slate-600 pr-8">
-                                    @if($package->ticketFare?->ticket_type === \App\Enums\TicketType::OFFER || $package->offer_price)
+                                    @if(
+                                        (!$package->is_double_ticket && $package->ticketFare?->ticket_type === \App\Enums\TicketType::OFFER) ||
+                                        ($package->is_double_ticket && (
+                                            $package->ticketFareInbound?->ticket_type === \App\Enums\TicketType::OFFER ||
+                                            $package->ticketFareOutbound?->ticket_type === \App\Enums\TicketType::OFFER
+                                        ))
+                                    )
                                         @currency(($package->offer_price ?? 0) + ($package->service_charge ?? 0), 0)
                                     @else
                                         -
