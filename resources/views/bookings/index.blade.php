@@ -3328,7 +3328,12 @@ function bookingIndexApp() {
         rowHasConfirmableTickets(index) {
             const row = this.passengersTicketData[index];
             if (!row || row.is_cancelled) return false;
-            return (row.all_issued_tickets || []).some(t => ['pending', 'refunded'].includes(t.status));
+            const hasConfirmable = (row.all_issued_tickets || []).some(t => ['pending', 'refunded'].includes(t.status));
+            if (hasConfirmable) return true;
+            if (row.package_is_double_ticket) {
+                return !(row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound');
+            }
+            return false;
         },
 
         getTicketStatuses(index) {
@@ -3379,7 +3384,7 @@ function bookingIndexApp() {
                 if (R.status === 'pending')
                     statuses.push('Pending');
                 if (R.status === 'awaiting-group')
-                    statuses.push('Awaiting Group');
+                    statuses.push(row.package_is_double_ticket ? 'Awaiting Group Inbound' : 'Awaiting Group');
                 if (isInboundRoute && R.status === 'issued')
                     statuses.push('Inbound Issued');
                 if (isOutboundRoute && R.status === 'issued')
@@ -3450,7 +3455,7 @@ function bookingIndexApp() {
         showGConfirmIn(index) {
             const row = this.passengersTicketData[index];
             if (!row) return false;
-            return this.hasConfirmableRegular(index) || (this.hasNoOutboundTicket(index) && row.package_is_double_ticket);
+            return this.hasConfirmableRegular(index);
         },
 
         showGConfirmOut(index) {
@@ -3484,6 +3489,9 @@ function bookingIndexApp() {
                             t.status = 'awaiting-group';
                         }
                     });
+                    if (row.latest_issued_ticket && data.updated_ids.includes(row.latest_issued_ticket.id)) {
+                        row.latest_issued_ticket.status = 'awaiting-group';
+                    }
                     if (data.created_ticket) {
                         const ct = data.created_ticket;
                         if (!row.all_issued_tickets) row.all_issued_tickets = [];

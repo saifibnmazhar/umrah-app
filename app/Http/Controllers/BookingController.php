@@ -330,6 +330,13 @@ class BookingController extends Controller
                                             ->where('status', '!=', $poStatus));
                                     }
                                 });
+                                $wq->orWhere(function ($oq) use ($status) {
+                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                        ->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', $status));
+                                });
                             } elseif ($routeFilter === 'outbound') {
                                 $wq->orWhere(function ($oq) use ($status, $isIssued) {
                                     if ($isIssued) {
@@ -344,12 +351,26 @@ class BookingController extends Controller
                                                 ->where('status', $status));
                                     }
                                 });
+                                $wq->orWhere(function ($oq) use ($status) {
+                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', $status))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $status)
+                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
+                                });
                             } elseif ($routeFilter === 'both') {
                                 $wq->orWhere(function ($oq) use ($status) {
                                     $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
                                         ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
                                         ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
                                             ->where('status', $status));
+                                });
+                                $wq->orWhere(function ($oq) use ($status) {
+                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', $status))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
                                 });
                             }
                         });
