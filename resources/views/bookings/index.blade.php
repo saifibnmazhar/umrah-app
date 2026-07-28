@@ -92,7 +92,7 @@ $classesList = \App\Models\TravelClass::all()->map(fn($c) => [
 $activeFares = \App\Models\TicketFare::where('is_active', true)->with([
     'route.fromCity', 'route.toCity', 'route.returnCity',
     'route.multiSegments.fromCity', 'route.multiSegments.toCity',
-    'airline', 'airlineClass.class', 'groupTicket',
+    'airline', 'airlineClass.class', 'groupTicket', 'baggageAllowances',
 ])->get();
 
 $inactiveFareIds = \App\Models\Passenger::whereNotNull('ticket_fare_id')
@@ -103,7 +103,7 @@ $inactiveFareIds = \App\Models\Passenger::whereNotNull('ticket_fare_id')
 $inactiveFares = \App\Models\TicketFare::whereIn('id', $inactiveFareIds)->with([
     'route.fromCity', 'route.toCity', 'route.returnCity',
     'route.multiSegments.fromCity', 'route.multiSegments.toCity',
-    'airline', 'airlineClass.class', 'groupTicket',
+    'airline', 'airlineClass.class', 'groupTicket', 'baggageAllowances',
 ])->get();
 
 $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
@@ -134,6 +134,11 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
     'child_fare_percentage' => (float)($fare->child_fare_percentage ?? 70),
     'infant_fare_percentage' => (float)($fare->infant_fare_percentage ?? 30),
     'is_active' => $fare->is_active,
+    'baggage_allowances' => $fare->baggageAllowances->map(fn($b) => [
+        'passenger_type' => $b->passenger_type,
+        'travel_direction' => $b->travel_direction,
+        'allowance' => $b->allowance,
+    ])->values()->toArray(),
 ])->values();
 
 $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
@@ -3578,9 +3583,9 @@ function bookingIndexApp() {
                 if (fare.with_offer && fare.offer_price) {
                     this.ticketFareForm.offer_price = this.calculateFareForPassengerType(fare.offer_price, pType, fare.child_fare_percentage, fare.infant_fare_percentage);
                 }
-                this.ticketFareForm.baggage_outbound = fare.baggage_outbound || '';
             }
 
+            this.handleTicketOptionChange();
             this.handleTicketFareRouteTypeChange();
             this.isTicketFareModalOpen = true;
         },
@@ -3648,6 +3653,7 @@ function bookingIndexApp() {
                 }
             }
 
+            this.handleTicketOptionChange();
             this.handleTicketFareRouteTypeChange();
             this.isTicketFareModalOpen = true;
         },
@@ -4365,14 +4371,14 @@ function bookingIndexApp() {
                     }
                 }
             }
-            this.suggestBaggage();
+            this.suggestBaggage(fare?.baggage_allowances);
         },
 
-        suggestBaggage() {
+        suggestBaggage(allowancesOverride = null) {
             const idx = this.editingPassengerIndex;
             if (idx === null) return;
             const row = this.passengersTicketData[idx];
-            const allowances = row?.ticket_fare?.baggage_allowances;
+            const allowances = allowancesOverride || row?.ticket_fare?.baggage_allowances;
             if (!allowances?.length) return;
             const pType = this.ticketFareForm.passenger_type || 'adult';
             const inbound = allowances.find(b => b.passenger_type === pType && b.travel_direction === 'inbound');
