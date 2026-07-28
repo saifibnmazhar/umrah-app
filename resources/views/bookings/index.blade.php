@@ -3346,9 +3346,9 @@ function bookingIndexApp() {
             const hasInb = !!R.inbound_date;
             const hasOut = !!R.outbound_date;
 
-            const isInboundRoute = rt === 'oneway_inbound' || !hasOut;
-            const isOutboundRoute = rt === 'oneway_outbound' || !hasInb;
-            const isRoundOrMulti = rt === 'round' || rt === 'multi_city' || (hasInb && hasOut);
+            const isInboundRoute = rt === 'oneway_inbound' || (!hasOut && rt !== 'oneway_outbound' && rt !== 'round' && rt !== 'multi_city');
+            const isOutboundRoute = rt === 'oneway_outbound' || (!hasInb && rt !== 'oneway_inbound' && rt !== 'round' && rt !== 'multi_city');
+            const isRoundOrMulti = rt === 'round' || rt === 'multi_city' || (hasInb && hasOut && rt !== 'oneway_inbound' && rt !== 'oneway_outbound');
 
             if (row.is_ticket_held) statuses.push('Hold');
 

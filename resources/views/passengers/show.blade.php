@@ -12,6 +12,18 @@
         || (auth()->user()->hasRole('Fingerprint Admin') && auth()->user()->branch_id
             && (auth()->user()->branch_id === ($passenger->booking?->fingerprint_branch_id)
                 || auth()->user()->branch_id === ($passenger->booking?->booking_branch_id)));
+
+    $fmtRoute = function($route) {
+        if (!$route) return '-';
+        $rt = $route->route_type?->value;
+        if ($rt === 'multi_city') {
+            return $route->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+        }
+        $from = $route->fromCity?->code ?? '?';
+        $to = $route->toCity?->code ?? '?';
+        $return = $route->returnCity?->code ?? '';
+        return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+    };
 @endphp
 <div class="max-w-5xl mx-auto pt-6">
     <div id="passengerDetailsContent" class="space-y-6">
@@ -104,48 +116,125 @@
 
                 <div class="bg-slate-50 rounded-lg p-4">
                     <h3 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Travel Details</h3>
-                    <div class="space-y-3">
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <span class="text-xs text-slate-400">Route</span>
-                                <p class="text-slate-800">{{ $routeDisplay ?? '-' }}</p>
+                    @if($passenger->ticket_fare_inbound_id || $outboundIssuedTicket)
+                        @php
+                            $inboundRoute = $passenger->ticketFareInbound?->route ?? $passenger->ticketFare?->route;
+                            $inboundAirline = $passenger->ticketFareInbound?->airline?->name ?? $passenger->ticketFare?->airline?->name;
+                            $inboundClass = $passenger->ticketFareInbound?->airlineClass?->class?->name ?? $passenger->ticketFare?->airlineClass?->class?->name;
+                            $outboundRoute = $passenger->ticketFareOutbound?->route ?? $outboundIssuedTicket?->ticketFare?->route;
+                            $outboundAirline = $passenger->ticketFareOutbound?->airline?->name ?? $outboundIssuedTicket?->ticketFare?->airline?->name;
+                            $outboundClass = $passenger->ticketFareOutbound?->airlineClass?->class?->name ?? $outboundIssuedTicket?->ticketFare?->airlineClass?->class?->name;
+                        @endphp
+                        <div class="space-y-4">
+                            <div class="border border-slate-200 rounded-lg p-3">
+                                <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Inbound Travel</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <span class="text-xs text-slate-400">Route</span>
+                                        <p class="text-slate-800">{{ $fmtRoute($inboundRoute) }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs text-slate-400">Airline</span>
+                                        <p class="text-slate-800">{{ $inboundAirline ?? '-' }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs text-slate-400">Class</span>
+                                        <p class="text-slate-800">{{ $inboundClass ?? '-' }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs text-slate-400">PNR</span>
+                                        <p class="text-slate-800">{{ $inboundIssuedTicket?->pnr ?? '-' }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs text-slate-400">Ticket Number</span>
+                                        <p class="text-slate-800">{{ $inboundIssuedTicket?->ticket_number ?? '-' }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs text-slate-400">Flight Date Range</span>
+                                        <p class="text-slate-800">
+                                            @if($passenger->flight_date_from && $passenger->flight_date_to)
+                                                {{ $passenger->flight_date_from->format('d M Y') }} → {{ $passenger->flight_date_to->format('d M Y') }}
+                                            @else
+                                                -
+                                            @endif
+                                        </p>
+                                    </div>
+                                </div>
+                            </div>
+                            <div class="border border-slate-200 rounded-lg p-3">
+                                <h4 class="text-xs font-semibold text-slate-500 uppercase tracking-wider mb-2">Outbound Travel</h4>
+                                <div class="grid grid-cols-2 gap-3">
+                                    <div>
+                                        <span class="text-xs text-slate-400">Route</span>
+                                        <p class="text-slate-800">{{ $fmtRoute($outboundRoute) }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs text-slate-400">Airline</span>
+                                        <p class="text-slate-800">{{ $outboundAirline ?? '-' }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs text-slate-400">Class</span>
+                                        <p class="text-slate-800">{{ $outboundClass ?? '-' }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs text-slate-400">PNR</span>
+                                        <p class="text-slate-800">{{ $outboundIssuedTicket?->pnr ?? '-' }}</p>
+                                    </div>
+                                    <div>
+                                        <span class="text-xs text-slate-400">Ticket Number</span>
+                                        <p class="text-slate-800">{{ $outboundIssuedTicket?->ticket_number ?? '-' }}</p>
+                                    </div>
+                                </div>
                             </div>
                             <div>
-                                <span class="text-xs text-slate-400">Airline</span>
-                                <p class="text-slate-800">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</p>
+                                <span class="text-xs text-slate-400">Address (BD)</span>
+                                <p class="text-slate-800">{{ $passenger->address ?? '-' }}</p>
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <span class="text-xs text-slate-400">Class</span>
-                                <p class="text-slate-800">{{ $passenger->ticketFare?->airlineClass?->class?->name ?? '-' }}</p>
+                    @else
+                        <div class="space-y-3">
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <span class="text-xs text-slate-400">Route</span>
+                                    <p class="text-slate-800">{{ $routeDisplay ?? '-' }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-slate-400">Airline</span>
+                                    <p class="text-slate-800">{{ $passenger->ticketFare?->airline?->name ?? '-' }}</p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <span class="text-xs text-slate-400">Class</span>
+                                    <p class="text-slate-800">{{ $passenger->ticketFare?->airlineClass?->class?->name ?? '-' }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-slate-400">Flight Date Range</span>
+                                    <p class="text-slate-800">
+                                        @if($passenger->flight_date_from && $passenger->flight_date_to)
+                                            {{ $passenger->flight_date_from->format('d M Y') }} → {{ $passenger->flight_date_to->format('d M Y') }}
+                                        @else
+                                            -
+                                        @endif
+                                    </p>
+                                </div>
+                            </div>
+                            <div class="grid grid-cols-2 gap-3">
+                                <div>
+                                    <span class="text-xs text-slate-400">PNR</span>
+                                    <p class="text-slate-800">{{ $passenger->latestIssuedTicket?->pnr ?? '-' }}</p>
+                                </div>
+                                <div>
+                                    <span class="text-xs text-slate-400">Ticket Number</span>
+                                    <p class="text-slate-800">{{ $passenger->latestIssuedTicket?->ticket_number ?? '-' }}</p>
+                                </div>
                             </div>
                             <div>
-                                <span class="text-xs text-slate-400">Flight Date Range</span>
-                                <p class="text-slate-800">
-                                    @if($passenger->flight_date_from && $passenger->flight_date_to)
-                                        {{ $passenger->flight_date_from->format('d M Y') }} → {{ $passenger->flight_date_to->format('d M Y') }}
-                                    @else
-                                        -
-                                    @endif
-                                </p>
+                                <span class="text-xs text-slate-400">Address (BD)</span>
+                                <p class="text-slate-800">{{ $passenger->address ?? '-' }}</p>
                             </div>
                         </div>
-                        <div class="grid grid-cols-2 gap-3">
-                            <div>
-                                <span class="text-xs text-slate-400">PNR</span>
-                                <p class="text-slate-800">{{ $passenger->latestIssuedTicket?->pnr ?? '-' }}</p>
-                            </div>
-                            <div>
-                                <span class="text-xs text-slate-400">Ticket Number</span>
-                                <p class="text-slate-800">{{ $passenger->latestIssuedTicket?->ticket_number ?? '-' }}</p>
-                            </div>
-                        </div>
-                        <div>
-                            <span class="text-xs text-slate-400">Address (BD)</span>
-                            <p class="text-slate-800">{{ $passenger->address ?? '-' }}</p>
-                        </div>
-                    </div>
+                    @endif
                 </div>
 
                 @if($canViewFinancialSection)

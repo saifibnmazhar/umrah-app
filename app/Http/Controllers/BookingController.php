@@ -301,23 +301,63 @@ class BookingController extends Controller
                         }
                     });
                 } elseif (str_starts_with($val, 'issued-') || str_starts_with($val, 'awaiting-group')) {
-                    $status = str_starts_with($val, 'issued-') ? 'issued' : 'awaiting-group';
-                    $routeFilter = str_starts_with($val, 'issued-') ? substr($val, 7) : substr($val, 15);
+                    $isIssued = str_starts_with($val, 'issued-');
+                    $status = $isIssued ? 'issued' : 'awaiting-group';
+                    $routeFilter = $isIssued ? substr($val, 7) : substr($val, 15);
 
-                    $q->whereHas('allIssuedTickets', function ($iq) use ($status, $routeFilter) {
-                        $iq->where('status', $status)
-                            ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular'));
-
-                        if ($routeFilter) {
-                            $iq->whereHas('ticketFare.route', function ($rq) use ($routeFilter) {
-                                match ($routeFilter) {
-                                    'inbound' => $rq->where('route_type', 'oneway_inbound'),
-                                    'outbound' => $rq->where('route_type', 'oneway_outbound'),
-                                    'both' => $rq->whereIn('route_type', ['round', 'multi_city']),
-                                };
+                    if ($routeFilter === 'inbound' || $routeFilter === 'outbound' || $routeFilter === 'both') {
+                        $q->where(function ($wq) use ($status, $routeFilter, $isIssued) {
+                            $wq->where(function ($nq) use ($status, $routeFilter) {
+                                $nq->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'))
+                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular'))
+                                        ->whereHas('ticketFare.route', fn ($rq) => match ($routeFilter) {
+                                            'inbound' => $rq->where('route_type', 'oneway_inbound'),
+                                            'outbound' => $rq->where('route_type', 'oneway_outbound'),
+                                            'both' => $rq->whereIn('route_type', ['round', 'multi_city']),
+                                        }));
                             });
-                        }
-                    });
+                            if ($routeFilter === 'inbound') {
+                                $wq->orWhere(function ($oq) use ($status, $isIssued) {
+                                    $poStatus = $isIssued ? 'pending' : 'awaiting-group';
+                                    $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
+                                    if ($isIssued) {
+                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', $poStatus));
+                                    } else {
+                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', '!=', $poStatus));
+                                    }
+                                });
+                            } elseif ($routeFilter === 'outbound') {
+                                $wq->orWhere(function ($oq) use ($status, $isIssued) {
+                                    if ($isIssued) {
+                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', 'pending')
+                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                                ->where('status', 'issued'));
+                                    } else {
+                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $status)
+                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                                ->where('status', $status));
+                                    }
+                                });
+                            } elseif ($routeFilter === 'both') {
+                                $wq->orWhere(function ($oq) use ($status) {
+                                    $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', $status));
+                                });
+                            }
+                        });
+                    } elseif ($routeFilter === '') {
+                        $q->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'))
+                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
+                    }
                 } else {
                     $q->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $val)
                         ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular')));
