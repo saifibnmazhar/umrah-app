@@ -300,7 +300,17 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'status' => $lit->status,
         'airline' => $lit->ticketFare?->airline?->name ?? '',
         'travel_class' => $lit->ticketFare?->airlineClass?->class?->name ?? '',
-        'route' => $lit->ticketFare?->route ? ($lit->ticketFare->route->fromCity?->code . '-' . $lit->ticketFare->route->toCity?->code) : '',
+        'route' => $lit->ticketFare?->route ? (function() use ($lit) {
+            $r = $lit->ticketFare->route;
+            $rt = $r->route_type?->value;
+            if ($rt === 'multi_city') {
+                return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+            }
+            $from = $r->fromCity?->code ?? '?';
+            $to = $r->toCity?->code ?? '?';
+            $return = $r->returnCity?->code ?? '';
+            return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+        })() : '',
         'route_type' => $lit->ticketFare?->route?->route_type?->value,
     ] : null,
 
@@ -321,7 +331,17 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'baggage_outbound' => $t->baggage_outbound ?? '',
         'airline' => $t->ticketFare?->airline?->name ?? '',
         'travel_class' => $t->ticketFare?->airlineClass?->class?->name ?? '',
-        'route' => $t->ticketFare?->route ? ($t->ticketFare->route->fromCity?->code . '-' . $t->ticketFare->route->toCity?->code) : '',
+        'route' => $t->ticketFare?->route ? (function() use ($t) {
+            $r = $t->ticketFare->route;
+            $rt = $r->route_type?->value;
+            if ($rt === 'multi_city') {
+                return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+            }
+            $from = $r->fromCity?->code ?? '?';
+            $to = $r->toCity?->code ?? '?';
+            $return = $r->returnCity?->code ?? '';
+            return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+        })() : '',
         'route_type' => $t->ticketFare?->route?->route_type?->value,
         'ticket_agent_name' => $t->ticketAgent?->name ?? '',
         'issuer_name' => $t->issuer?->name ?? '',
@@ -1012,26 +1032,6 @@ if ($passenger->ticket_fare_inbound_id) {
                     <button @click="openOutboundTicketFareModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                    <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
-                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
-                        </button>
-                        <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex items-center gap-1 px-2 py-1 whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                            <button @click="open = false; toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
-                            <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued')" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
-                            <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="open = false; openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
-                            <template x-if="rowHasConfirmableTickets({{ $loop->index }})">
-                                <template x-if="!showThreeButtonsMode({{ $loop->index }})">
-                                    <button @click="open = false; confirmTickets({{ $loop->index }}, 'all')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm</button>
-                                </template>
-                                <template x-if="showThreeButtonsMode({{ $loop->index }})">
-                                    <span>
-                                        <button x-show="showGConfirmIn({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'in')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm In</button>
-                                        <button x-show="showGConfirmOut({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'out')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Out</button>
-                                        <button x-show="showGConfirmBoth({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'both')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Both</button>
-                                    </span>
-                                </template>
-                            </template>
                     <div class="flex items-center gap-1">
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
@@ -1041,6 +1041,20 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <button @click="open = false; toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
                                 <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued')" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
                                 <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="open = false; openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
+                                <template x-if="rowHasConfirmableTickets({{ $loop->index }})">
+                                    <div>
+                                        <template x-if="!showThreeButtonsMode({{ $loop->index }})">
+                                            <button @click="open = false; confirmTickets({{ $loop->index }}, 'all')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm</button>
+                                        </template>
+                                        <template x-if="showThreeButtonsMode({{ $loop->index }})">
+                                            <span>
+                                                <button x-show="showGConfirmIn({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'in')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm In</button>
+                                                <button x-show="showGConfirmOut({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'out')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Out</button>
+                                                <button x-show="showGConfirmBoth({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'both')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Both</button>
+                                            </span>
+                                        </template>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                         <button
