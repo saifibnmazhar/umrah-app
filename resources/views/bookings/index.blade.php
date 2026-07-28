@@ -684,7 +684,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         <select x-model="selectedTicketStatus" @change="onTicketStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($ticketStatuses as $status)
-                            <option value="{{ $status->value }}" {{ $selectedTicketStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                            <option value="{{ $status['value'] }}" {{ $selectedTicketStatus === $status['value'] ? 'selected' : '' }}>{{ $status['label'] }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -810,7 +810,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
                             <th class="px-3 py-2 text-left font-medium">Passenger Type</th>
-                            @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Fare</th>@endif
+                            @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Panel</th>@endif
                             {{-- @if($canViewTicketAgentColumn)<th class="px-3 py-2 text-left font-medium">Ticket Agent</th>@endif --}}
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Ticket Remarks</th>
@@ -1142,18 +1142,24 @@ if ($passenger->ticket_fare_inbound_id) {
         {{ $passenger->booking?->remarks ?? '—' }}
     </td>
     <td class="px-3 py-2">
-        <div class="flex flex-col gap-1">
-            <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" class="text-slate-600 hover:text-slate-800">View</a>
-            @if($passenger->documents_count > 0)
-                <a href="{{ route('passengers.download-all-docs', $passenger->id) }}" class="text-green-600 hover:text-green-800 font-medium">Download</a>
-            @else
-                <span class="text-slate-300 cursor-not-allowed font-medium">Download</span>
-            @endif
-            @if($passenger->booking->documents->isNotEmpty() || ($passenger->booking->customer && $passenger->booking->customer->documents->isNotEmpty()))
-                <a href="{{ route('bookings.download-all-docs', ['booking' => $passenger->booking_id, 'passenger_id' => $passenger->id]) }}" class="text-green-600 hover:text-green-800 font-medium">Download All</a>
-            @else
-                <span class="text-slate-300 cursor-not-allowed font-medium">Download All</span>
-            @endif
+        <div class="relative" x-data="{ open: false }">
+            <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
+            </button>
+            <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex flex-col whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">View Passenger</a>
+                <button x-show="hasViewableTickets({{ $loop->index }})" @click="open = false; openTicketInfoModal({{ $loop->index }})" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition text-left">View Tickets</button>
+                @if($passenger->documents_count > 0)
+                    <a href="{{ route('passengers.download-all-docs', $passenger->id) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download</a>
+                @else
+                    <span class="px-3 py-1.5 text-xs font-medium text-slate-300 cursor-not-allowed">Download</span>
+                @endif
+                @if($passenger->booking->documents->isNotEmpty() || ($passenger->booking->customer && $passenger->booking->customer->documents->isNotEmpty()))
+                    <a href="{{ route('bookings.download-all-docs', ['booking' => $passenger->booking_id, 'passenger_id' => $passenger->id]) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download All</a>
+                @else
+                    <span class="px-3 py-1.5 text-xs font-medium text-slate-300 cursor-not-allowed">Download All</span>
+                @endif
+            </div>
         </div>
     </td>
 </tr>

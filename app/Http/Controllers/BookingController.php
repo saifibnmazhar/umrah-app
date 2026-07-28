@@ -270,12 +270,59 @@ class BookingController extends Controller
             ->when($request->filled('visa_status'), fn ($q) =>
                 $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status')))
             )
-            ->when($request->filled('ticket_status'), fn ($q) =>
-                $q->whereHas('allIssuedTickets', fn ($q) =>
-                    $q->where('status', $request->input('ticket_status'))
-                        ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular'))
-                )
-            )
+            ->when($request->filled('ticket_status'), function ($q) use ($request) {
+                $val = $request->input('ticket_status');
+
+                if (in_array($val, ['partial-re-issued', 'partial-refunded', 're-issued', 'refunded'])) {
+                    $targetStatus = str_contains($val, 're-issued') ? 're-issued' : 'refunded';
+                    $isPartial = str_starts_with($val, 'partial-');
+
+                    $q->where(function ($wq) use ($targetStatus, $isPartial) {
+                        if ($isPartial) {
+                            $wq->where(function ($wq2) use ($targetStatus) {
+                                $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $targetStatus)
+                                    ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                        ->where('status', '!=', $targetStatus));
+                            })->orWhere(function ($wq2) use ($targetStatus) {
+                                $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                    ->where('status', $targetStatus))
+                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $targetStatus)
+                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
+                            });
+                        } else {
+                            $wq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $targetStatus)
+                                ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                ->where(function ($wq2) use ($targetStatus) {
+                                    $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                        ->where('status', $targetStatus))
+                                        ->orWhereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'));
+                                });
+                        }
+                    });
+                } elseif (str_starts_with($val, 'issued-') || str_starts_with($val, 'awaiting-group')) {
+                    $status = str_starts_with($val, 'issued-') ? 'issued' : 'awaiting-group';
+                    $routeFilter = str_starts_with($val, 'issued-') ? substr($val, 7) : substr($val, 15);
+
+                    $q->whereHas('allIssuedTickets', function ($iq) use ($status, $routeFilter) {
+                        $iq->where('status', $status)
+                            ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular'));
+
+                        if ($routeFilter) {
+                            $iq->whereHas('ticketFare.route', function ($rq) use ($routeFilter) {
+                                match ($routeFilter) {
+                                    'inbound' => $rq->where('route_type', 'oneway_inbound'),
+                                    'outbound' => $rq->where('route_type', 'oneway_outbound'),
+                                    'both' => $rq->whereIn('route_type', ['round', 'multi_city']),
+                                };
+                            });
+                        }
+                    });
+                } else {
+                    $q->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $val)
+                        ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular')));
+                }
+            })
             ->when($request->filled('visa_agent_id') && $canFilterByVisaAgent, fn ($q) =>
                 $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
             )
@@ -497,7 +544,20 @@ class BookingController extends Controller
 
         $fingerprintStatuses = FingerprintStatus::cases();
         $visaStatuses = VisaStatus::cases();
-        $ticketStatuses = TicketStatus::cases();
+        $ticketStatuses = [
+            ['value' => 'pending', 'label' => 'Pending'],
+            ['value' => 'issued-inbound', 'label' => 'Issued - Inbound'],
+            ['value' => 'issued-outbound', 'label' => 'Issued - Outbound'],
+            ['value' => 'issued-both', 'label' => 'Issued - Both'],
+            ['value' => 'awaiting-group', 'label' => 'Awaiting Group'],
+            ['value' => 'awaiting-group-inbound', 'label' => 'Awaiting Group - Inbound'],
+            ['value' => 'awaiting-group-outbound', 'label' => 'Awaiting Group - Outbound'],
+            ['value' => 'awaiting-group-both', 'label' => 'Awaiting Group - Both'],
+            ['value' => 'partial-re-issued', 'label' => 'Partial Re-Issued'],
+            ['value' => 're-issued', 'label' => 'Re-Issued'],
+            ['value' => 'partial-refunded', 'label' => 'Partial Refunded'],
+            ['value' => 'refunded', 'label' => 'Refunded'],
+        ];
         $fingerprintLocations = FingerprintLocation::cases();
 
         return view('bookings.index', compact(
