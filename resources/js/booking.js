@@ -1245,23 +1245,47 @@ Alpine.data('createBookingApp', () => ({
 
     calculatePackageValue(passenger, selectedPackage) {
         const ticketFareId = passenger.ticket_fare_id;
+        const inboundFareId = passenger.ticket_fare_inbound_id;
+        const outboundFareId = passenger.ticket_fare_outbound_id;
         const serviceRequired = passenger.service_required || 'all';
         const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
 
         let ticketAmount = 0;
         if (serviceRequired !== 'visa_only') {
-            const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
-            if (ticket) {
-                const baseFare = ticket.ticket_type === 'offer'
-                    ? (parseFloat(ticket.offer_price) || 0)
-                    : (parseFloat(ticket.selling_fare) || 0);
-                ticketAmount = baseFare;
-                if (passengerType === 'child') {
-                    const pct = parseFloat(ticket.child_fare_percentage) || 0;
-                    ticketAmount = baseFare * pct / 100;
-                } else if (passengerType === 'infant') {
-                    const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-                    ticketAmount = baseFare * pct / 100;
+            if (inboundFareId && outboundFareId) {
+                const inboundTicket = this.allTickets.find(t => String(t.id) === String(inboundFareId));
+                const outboundTicket = this.allTickets.find(t => String(t.id) === String(outboundFareId));
+                let inboundFare = 0, outboundFare = 0;
+                if (inboundTicket) {
+                    inboundFare = inboundTicket.ticket_type === 'offer'
+                        ? (parseFloat(inboundTicket.offer_price) || 0)
+                        : (parseFloat(inboundTicket.selling_fare) || 0);
+                }
+                if (outboundTicket) {
+                    outboundFare = outboundTicket.ticket_type === 'offer'
+                        ? (parseFloat(outboundTicket.offer_price) || 0)
+                        : (parseFloat(outboundTicket.selling_fare) || 0);
+                }
+                const baseFare = inboundFare + outboundFare;
+                ticketAmount = passengerType === 'child'
+                    ? baseFare * ((parseFloat(inboundTicket?.child_fare_percentage) || 70)) / 100
+                    : passengerType === 'infant'
+                        ? baseFare * ((parseFloat(inboundTicket?.infant_fare_percentage) || 30)) / 100
+                        : baseFare;
+            } else {
+                const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+                if (ticket) {
+                    const baseFare = ticket.ticket_type === 'offer'
+                        ? (parseFloat(ticket.offer_price) || 0)
+                        : (parseFloat(ticket.selling_fare) || 0);
+                    ticketAmount = baseFare;
+                    if (passengerType === 'child') {
+                        const pct = parseFloat(ticket.child_fare_percentage) || 0;
+                        ticketAmount = baseFare * pct / 100;
+                    } else if (passengerType === 'infant') {
+                        const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+                        ticketAmount = baseFare * pct / 100;
+                    }
                 }
             }
         }
