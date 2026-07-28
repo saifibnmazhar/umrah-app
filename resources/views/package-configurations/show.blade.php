@@ -75,8 +75,6 @@
                     <div class="bg-slate-50 rounded-lg p-4">
                         <p class="text-sm text-slate-500 mb-1">Ticket Details (Inbound)</p>
                         <p class="text-slate-800 font-medium">{{ $buildRouteDetails($package->ticketFareInbound) }}</p>
-                    </div>
-                    <div class="bg-slate-50 rounded-lg p-4">
                         <p class="text-sm text-slate-500 mb-1">Ticket Details (Outbound)</p>
                         <p class="text-slate-800 font-medium">{{ $buildRouteDetails($package->ticketFareOutbound) }}</p>
                     </div>
@@ -97,6 +95,10 @@
                             @endif
                         </p>
                     </div>
+                    <!--<div class="bg-slate-50 rounded-lg p-4">
+                        <p class="text-sm text-slate-500 mb-1">Ticket Details (Outbound)</p>
+                        <p class="text-slate-800 font-medium">{{ $buildRouteDetails($package->ticketFareOutbound) }}</p>
+                    </div>-->
                     <div class="bg-slate-50 rounded-lg p-4">
                         <p class="text-sm text-slate-500 mb-1">Effective From</p>
                         <p class="text-slate-800 font-medium">
@@ -111,48 +113,48 @@
                             {{ $package->ticketFareOutbound?->effective_to?->format('d M Y') ?? '-' }} (Outbound)
                         </p>
                     </div>
+                    @php
+                        $inboundTransits = $package->ticketFareInbound?->route?->transits;
+                        $outboundTransits = $package->ticketFareOutbound?->route?->transits;
+                        $inboundIsTransit = $package->ticketFareInbound?->route?->flight_type?->value === 'transit';
+                        $outboundIsTransit = $package->ticketFareOutbound?->route?->flight_type?->value === 'transit';
+                    @endphp
+                    @if(($inboundIsTransit && $inboundTransits && $inboundTransits->count() > 0) || ($outboundIsTransit && $outboundTransits && $outboundTransits->count() > 0))
+                        <!--<div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">-->
+                            @if($inboundIsTransit && $inboundTransits && $inboundTransits->count() > 0)
+                                @foreach($inboundTransits as $transit)
+                                    @php
+                                        $cityName = $transit->transitCity?->city_name ?? '-';
+                                        $minutes = $transit->transit_time ?? 0;
+                                        $hours = intdiv($minutes, 60);
+                                        $mins = $minutes % 60;
+                                        $timeDisplay = $hours > 0 ? $hours . 'h ' . $mins . 'm' : $mins . 'm';
+                                    @endphp
+                                    <div class="bg-slate-50 rounded-lg p-4">
+                                        <p class="text-sm text-slate-500 mb-1">Transit (Inbound)</p>
+                                        <p class="text-slate-800 font-medium">{{ $cityName }} · {{ $timeDisplay }}</p>
+                                    </div>
+                                @endforeach
+                            @endif
+                            @if($outboundIsTransit && $outboundTransits && $outboundTransits->count() > 0)
+                                @foreach($outboundTransits as $transit)
+                                    @php
+                                        $cityName = $transit->transitCity?->city_name ?? '-';
+                                        $minutes = $transit->transit_time ?? 0;
+                                        $hours = intdiv($minutes, 60);
+                                        $mins = $minutes % 60;
+                                        $timeDisplay = $hours > 0 ? $hours . 'h ' . $mins . 'm' : $mins . 'm';
+                                    @endphp
+                                    <div class="bg-slate-50 rounded-lg p-4">
+                                        <p class="text-sm text-slate-500 mb-1">Transit (Outbound)</p>
+                                        <p class="text-slate-800 font-medium">{{ $cityName }} · {{ $timeDisplay }}</p>
+                                    </div>
+                                @endforeach
+                            @endif
+                        <!--</div>-->
+                    @endif
                 </div>
 
-                @php
-                    $inboundTransits = $package->ticketFareInbound?->route?->transits;
-                    $outboundTransits = $package->ticketFareOutbound?->route?->transits;
-                    $inboundIsTransit = $package->ticketFareInbound?->route?->flight_type?->value === 'transit';
-                    $outboundIsTransit = $package->ticketFareOutbound?->route?->flight_type?->value === 'transit';
-                @endphp
-                @if(($inboundIsTransit && $inboundTransits && $inboundTransits->count() > 0) || ($outboundIsTransit && $outboundTransits && $outboundTransits->count() > 0))
-                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mt-4">
-                        @if($inboundIsTransit && $inboundTransits && $inboundTransits->count() > 0)
-                            @foreach($inboundTransits as $transit)
-                                @php
-                                    $cityName = $transit->transitCity?->city_name ?? '-';
-                                    $minutes = $transit->transit_time ?? 0;
-                                    $hours = intdiv($minutes, 60);
-                                    $mins = $minutes % 60;
-                                    $timeDisplay = $hours > 0 ? $hours . 'h ' . $mins . 'm' : $mins . 'm';
-                                @endphp
-                                <div class="bg-slate-50 rounded-lg p-4">
-                                    <p class="text-sm text-slate-500 mb-1">Transit (Inbound)</p>
-                                    <p class="text-slate-800 font-medium">{{ $cityName }} · {{ $timeDisplay }}</p>
-                                </div>
-                            @endforeach
-                        @endif
-                        @if($outboundIsTransit && $outboundTransits && $outboundTransits->count() > 0)
-                            @foreach($outboundTransits as $transit)
-                                @php
-                                    $cityName = $transit->transitCity?->city_name ?? '-';
-                                    $minutes = $transit->transit_time ?? 0;
-                                    $hours = intdiv($minutes, 60);
-                                    $mins = $minutes % 60;
-                                    $timeDisplay = $hours > 0 ? $hours . 'h ' . $mins . 'm' : $mins . 'm';
-                                @endphp
-                                <div class="bg-slate-50 rounded-lg p-4">
-                                    <p class="text-sm text-slate-500 mb-1">Transit (Outbound)</p>
-                                    <p class="text-slate-800 font-medium">{{ $cityName }} · {{ $timeDisplay }}</p>
-                                </div>
-                            @endforeach
-                        @endif
-                    </div>
-                @endif
             @else
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div class="bg-slate-50 rounded-lg p-4">
