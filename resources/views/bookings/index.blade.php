@@ -305,7 +305,17 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'status' => $lit->status,
         'airline' => $lit->ticketFare?->airline?->name ?? '',
         'travel_class' => $lit->ticketFare?->airlineClass?->class?->name ?? '',
-        'route' => $lit->ticketFare?->route ? ($lit->ticketFare->route->fromCity?->code . '-' . $lit->ticketFare->route->toCity?->code) : '',
+        'route' => $lit->ticketFare?->route ? (function() use ($lit) {
+            $r = $lit->ticketFare->route;
+            $rt = $r->route_type?->value;
+            if ($rt === 'multi_city') {
+                return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+            }
+            $from = $r->fromCity?->code ?? '?';
+            $to = $r->toCity?->code ?? '?';
+            $return = $r->returnCity?->code ?? '';
+            return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+        })() : '',
         'route_type' => $lit->ticketFare?->route?->route_type?->value,
     ] : null,
 
@@ -326,7 +336,17 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'baggage_outbound' => $t->baggage_outbound ?? '',
         'airline' => $t->ticketFare?->airline?->name ?? '',
         'travel_class' => $t->ticketFare?->airlineClass?->class?->name ?? '',
-        'route' => $t->ticketFare?->route ? ($t->ticketFare->route->fromCity?->code . '-' . $t->ticketFare->route->toCity?->code) : '',
+        'route' => $t->ticketFare?->route ? (function() use ($t) {
+            $r = $t->ticketFare->route;
+            $rt = $r->route_type?->value;
+            if ($rt === 'multi_city') {
+                return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+            }
+            $from = $r->fromCity?->code ?? '?';
+            $to = $r->toCity?->code ?? '?';
+            $return = $r->returnCity?->code ?? '';
+            return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+        })() : '',
         'route_type' => $t->ticketFare?->route?->route_type?->value,
         'ticket_agent_name' => $t->ticketAgent?->name ?? '',
         'issuer_name' => $t->issuer?->name ?? '',
@@ -669,7 +689,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                         <select x-model="selectedTicketStatus" @change="onTicketStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
                             @foreach($ticketStatuses as $status)
-                            <option value="{{ $status->value }}" {{ $selectedTicketStatus === $status->value ? 'selected' : '' }}>{{ ucfirst(str_replace('-', ' ', $status->value)) }}</option>
+                            <option value="{{ $status['value'] }}" {{ $selectedTicketStatus === $status['value'] ? 'selected' : '' }}>{{ $status['label'] }}</option>
                             @endforeach
                         </select>
                     </div>
@@ -795,7 +815,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
                             <th class="px-3 py-2 text-left font-medium">Visa Status</th>
                             <th class="px-3 py-2 text-left font-medium">Passenger Type</th>
-                            @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Fare</th>@endif
+                            @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Panel</th>@endif
                             {{-- @if($canViewTicketAgentColumn)<th class="px-3 py-2 text-left font-medium">Ticket Agent</th>@endif --}}
                             <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
                             <th class="px-3 py-2 text-left font-medium">Ticket Remarks</th>
@@ -1017,26 +1037,6 @@ if ($passenger->ticket_fare_inbound_id) {
                     <button @click="openOutboundTicketFareModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                    <div class="relative" x-data="{ open: false }">
-                        <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
-                            <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
-                        </button>
-                        <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex items-center gap-1 px-2 py-1 whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                            <button @click="open = false; toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
-                            <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued')" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
-                            <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="open = false; openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
-                            <template x-if="rowHasConfirmableTickets({{ $loop->index }})">
-                                <template x-if="!showThreeButtonsMode({{ $loop->index }})">
-                                    <button @click="open = false; confirmTickets({{ $loop->index }}, 'all')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm</button>
-                                </template>
-                                <template x-if="showThreeButtonsMode({{ $loop->index }})">
-                                    <span>
-                                        <button x-show="showGConfirmIn({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'in')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm In</button>
-                                        <button x-show="showGConfirmOut({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'out')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Out</button>
-                                        <button x-show="showGConfirmBoth({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'both')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Both</button>
-                                    </span>
-                                </template>
-                            </template>
                     <div class="flex items-center gap-1">
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
@@ -1046,6 +1046,20 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <button @click="open = false; toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
                                 <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued')" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
                                 <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="open = false; openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
+                                <template x-if="rowHasConfirmableTickets({{ $loop->index }})">
+                                    <div>
+                                        <template x-if="!showThreeButtonsMode({{ $loop->index }})">
+                                            <button @click="open = false; confirmTickets({{ $loop->index }}, 'all')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm</button>
+                                        </template>
+                                        <template x-if="showThreeButtonsMode({{ $loop->index }})">
+                                            <span>
+                                                <button x-show="showGConfirmIn({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'in')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm In</button>
+                                                <button x-show="showGConfirmOut({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'out')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Out</button>
+                                                <button x-show="showGConfirmBoth({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'both')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Both</button>
+                                            </span>
+                                        </template>
+                                    </div>
+                                </template>
                             </div>
                         </div>
                         <button
@@ -1133,18 +1147,24 @@ if ($passenger->ticket_fare_inbound_id) {
         {{ $passenger->booking?->remarks ?? '—' }}
     </td>
     <td class="px-3 py-2">
-        <div class="flex flex-col gap-1">
-            <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" class="text-slate-600 hover:text-slate-800">View</a>
-            @if($passenger->documents_count > 0)
-                <a href="{{ route('passengers.download-all-docs', $passenger->id) }}" class="text-green-600 hover:text-green-800 font-medium">Download</a>
-            @else
-                <span class="text-slate-300 cursor-not-allowed font-medium">Download</span>
-            @endif
-            @if($passenger->booking->documents->isNotEmpty() || ($passenger->booking->customer && $passenger->booking->customer->documents->isNotEmpty()))
-                <a href="{{ route('bookings.download-all-docs', ['booking' => $passenger->booking_id, 'passenger_id' => $passenger->id]) }}" class="text-green-600 hover:text-green-800 font-medium">Download All</a>
-            @else
-                <span class="text-slate-300 cursor-not-allowed font-medium">Download All</span>
-            @endif
+        <div class="relative" x-data="{ open: false }">
+            <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
+                <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
+            </button>
+            <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex flex-col whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">View Passenger</a>
+                <button x-show="hasViewableTickets({{ $loop->index }})" @click="open = false; openTicketInfoModal({{ $loop->index }})" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition text-left">View Tickets</button>
+                @if($passenger->documents_count > 0)
+                    <a href="{{ route('passengers.download-all-docs', $passenger->id) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download</a>
+                @else
+                    <span class="px-3 py-1.5 text-xs font-medium text-slate-300 cursor-not-allowed">Download</span>
+                @endif
+                @if($passenger->booking->documents->isNotEmpty() || ($passenger->booking->customer && $passenger->booking->customer->documents->isNotEmpty()))
+                    <a href="{{ route('bookings.download-all-docs', ['booking' => $passenger->booking_id, 'passenger_id' => $passenger->id]) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download All</a>
+                @else
+                    <span class="px-3 py-1.5 text-xs font-medium text-slate-300 cursor-not-allowed">Download All</span>
+                @endif
+            </div>
         </div>
     </td>
 </tr>
@@ -3313,7 +3333,12 @@ function bookingIndexApp() {
         rowHasConfirmableTickets(index) {
             const row = this.passengersTicketData[index];
             if (!row || row.is_cancelled) return false;
-            return (row.all_issued_tickets || []).some(t => ['pending', 'refunded'].includes(t.status));
+            const hasConfirmable = (row.all_issued_tickets || []).some(t => ['pending', 'refunded'].includes(t.status));
+            if (hasConfirmable) return true;
+            if (row.package_is_double_ticket) {
+                return !(row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound');
+            }
+            return false;
         },
 
         getTicketStatuses(index) {
@@ -3331,9 +3356,9 @@ function bookingIndexApp() {
             const hasInb = !!R.inbound_date;
             const hasOut = !!R.outbound_date;
 
-            const isInboundRoute = rt === 'oneway_inbound' || !hasOut;
-            const isOutboundRoute = rt === 'oneway_outbound' || !hasInb;
-            const isRoundOrMulti = rt === 'round' || rt === 'multi_city' || (hasInb && hasOut);
+            const isInboundRoute = rt === 'oneway_inbound' || (!hasOut && rt !== 'oneway_outbound' && rt !== 'round' && rt !== 'multi_city');
+            const isOutboundRoute = rt === 'oneway_outbound' || (!hasInb && rt !== 'oneway_inbound' && rt !== 'round' && rt !== 'multi_city');
+            const isRoundOrMulti = rt === 'round' || rt === 'multi_city' || (hasInb && hasOut && rt !== 'oneway_inbound' && rt !== 'oneway_outbound');
 
             if (row.is_ticket_held) statuses.push('Hold');
 
@@ -3364,7 +3389,7 @@ function bookingIndexApp() {
                 if (R.status === 'pending')
                     statuses.push('Pending');
                 if (R.status === 'awaiting-group')
-                    statuses.push('Awaiting Group');
+                    statuses.push(row.package_is_double_ticket ? 'Awaiting Group Inbound' : 'Awaiting Group');
                 if (isInboundRoute && R.status === 'issued')
                     statuses.push('Inbound Issued');
                 if (isOutboundRoute && R.status === 'issued')
@@ -3435,7 +3460,7 @@ function bookingIndexApp() {
         showGConfirmIn(index) {
             const row = this.passengersTicketData[index];
             if (!row) return false;
-            return this.hasConfirmableRegular(index) || (this.hasNoOutboundTicket(index) && row.package_is_double_ticket);
+            return this.hasConfirmableRegular(index);
         },
 
         showGConfirmOut(index) {
@@ -3469,6 +3494,9 @@ function bookingIndexApp() {
                             t.status = 'awaiting-group';
                         }
                     });
+                    if (row.latest_issued_ticket && data.updated_ids.includes(row.latest_issued_ticket.id)) {
+                        row.latest_issued_ticket.status = 'awaiting-group';
+                    }
                     if (data.created_ticket) {
                         const ct = data.created_ticket;
                         if (!row.all_issued_tickets) row.all_issued_tickets = [];

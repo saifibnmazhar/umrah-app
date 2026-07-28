@@ -118,8 +118,7 @@ class Passenger extends Model
                     ->where(function ($q) {
                         $q->whereNull('issue_type')
                           ->orWhere('issue_type', 'regular');
-                    })
-                    ->whereIn('status', ['issued', 're-issued']);
+                    });
             });
     }
 
