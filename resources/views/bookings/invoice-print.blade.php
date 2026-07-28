@@ -272,17 +272,23 @@
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $_out }}</td>
                         @php
                             $_cabinVal = $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-';
-                            $_cabinRt = $passenger->ticketFare?->route?->route_type?->value;
                             $_cabinTop = $_cabinVal;
                             $_cabinBottom = $_cabinVal;
                             $_cabinSplit = false;
 
-                            if ($_cabinRt === 'oneway_inbound') {
-                                $_cabinBottom = 'N/A';
+                            if ($passenger->ticket_fare_inbound_id) {
+                                $_cabinTop = $passenger->ticketFareInbound?->airlineClass?->travelClass?->name ?? 'N/A';
+                                $_cabinBottom = $passenger->ticketFareOutbound?->airlineClass?->travelClass?->name ?? 'N/A';
                                 $_cabinSplit = true;
-                            } elseif ($_cabinRt === 'oneway_outbound') {
-                                $_cabinTop = 'N/A';
-                                $_cabinSplit = true;
+                            } else {
+                                $_cabinRt = $passenger->ticketFare?->route?->route_type?->value;
+                                if ($_cabinRt === 'oneway_inbound') {
+                                    $_cabinBottom = 'N/A';
+                                    $_cabinSplit = true;
+                                } elseif ($_cabinRt === 'oneway_outbound') {
+                                    $_cabinTop = 'N/A';
+                                    $_cabinSplit = true;
+                                }
                             }
                         @endphp
                         @if($_cabinSplit)
