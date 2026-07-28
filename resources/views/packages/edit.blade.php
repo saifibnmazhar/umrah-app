@@ -81,6 +81,7 @@
                                 $display = $fare['route'] . ' | ' . strtoupper($fare['ticket_type'] ?? '?') . ' | SAR ' . number_format($fare['selling_fare'], 0);
                             @endphp
                             <option value="{{ $fare['id'] }}"
+                                data-ticket-type="{{ $fare['ticket_type'] }}"
                                 data-selling-fare="{{ $fare['selling_fare'] }}"
                                 {{ (old('ticket_fare_inbound_id', $package->ticket_fare_inbound_id ?? '') == $fare['id']) ? 'selected' : '' }}>
                                 {{ $display }}
@@ -100,6 +101,7 @@
                                 $display = $fare['route'] . ' | ' . strtoupper($fare['ticket_type'] ?? '?') . ' | SAR ' . number_format($fare['selling_fare'], 0);
                             @endphp
                             <option value="{{ $fare['id'] }}"
+                                data-ticket-type="{{ $fare['ticket_type'] }}"
                                 data-selling-fare="{{ $fare['selling_fare'] }}"
                                 {{ (old('ticket_fare_outbound_id', $package->ticket_fare_outbound_id ?? '') == $fare['id']) ? 'selected' : '' }}>
                                 {{ $display }}
@@ -213,12 +215,15 @@ function buildDisplay(fare) {
 
 function filterTickets() {
     const selectedType = ticketTypeSelect.value;
-    Array.from(ticketSelect.options).forEach(option => {
-        if (option.value === '') return;
-        const ticketType = option.dataset.ticketType;
-        option.style.display = (selectedType === '' || ticketType === selectedType) ? '' : 'none';
-    });
     ticketSelect.value = '';
+    ticketInboundSelect.value = '';
+    ticketOutboundSelect.value = '';
+    [ticketSelect, ticketInboundSelect, ticketOutboundSelect].forEach(sel => {
+        Array.from(sel.options).forEach(option => {
+            if (option.value === '') return;
+            option.style.display = (selectedType === '' || option.dataset.ticketType === selectedType) ? '' : 'none';
+        });
+    });
     calculatePrices();
 }
 
