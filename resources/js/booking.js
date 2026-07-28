@@ -2678,6 +2678,20 @@ Alpine.data('editBookingApp', () => ({
                 flight_type: p.flight_type || '',
                 ticket_fare_id: p.ticket_fare_id ? String(p.ticket_fare_id) : '',
                 ticket_fare: p.ticket_fare || null,
+                ticket_fare_inbound_id: p.ticket_fare_inbound_id ? String(p.ticket_fare_inbound_id) : '',
+                ticket_fare_outbound_id: p.ticket_fare_outbound_id ? String(p.ticket_fare_outbound_id) : '',
+                inbound_route_type: p.inbound_route_type || '',
+                inbound_flight_type: p.inbound_flight_type || '',
+                inbound_route: p.inbound_route || '',
+                inbound_airline: p.inbound_airline || '',
+                inbound_class: p.inbound_class || '',
+                inbound_baggage_weight: p.inbound_baggage_weight || '',
+                outbound_route_type: p.outbound_route_type || '',
+                outbound_flight_type: p.outbound_flight_type || '',
+                outbound_route: p.outbound_route || '',
+                outbound_airline: p.outbound_airline || '',
+                outbound_class: p.outbound_class || '',
+                outbound_baggage_weight: p.outbound_baggage_weight || '',
                 flight_date_from: p.flight_date_from ? p.flight_date_from.split('T')[0] : '',
                 flight_date_to: p.flight_date_to ? p.flight_date_to.split('T')[0] : '',
                 address: p.address || '',
@@ -2699,6 +2713,25 @@ Alpine.data('editBookingApp', () => ({
                             const flightTypeMap = { 'transit': 'Transit', 'direct': 'Direct' };
                             p.flight_type = flightTypeMap[ticket.flight_type] || '';
                         }
+                    }
+                } else if (p.ticket_fare_inbound_id && p.ticket_fare_outbound_id) {
+                    const inboundTicket = this.allTickets.find(t => String(t.id) === String(p.ticket_fare_inbound_id));
+                    const outboundTicket = this.allTickets.find(t => String(t.id) === String(p.ticket_fare_outbound_id));
+                    const routeTypeMap = { 'oneway_inbound': 'One Way-Inbound', 'oneway_outbound': 'One Way-Outbound', 'round': 'Round', 'multi_city': 'Multi City' };
+                    const flightTypeMap = { 'transit': 'Transit', 'direct': 'Direct' };
+                    if (inboundTicket) {
+                        if (!p.inbound_route) p.inbound_route = inboundTicket.route || '';
+                        if (!p.inbound_airline) p.inbound_airline = inboundTicket.airline || '';
+                        if (!p.inbound_class) p.inbound_class = inboundTicket.airline_class || '';
+                        if (!p.inbound_route_type) p.inbound_route_type = routeTypeMap[inboundTicket.route_type] || '';
+                        if (!p.inbound_flight_type) p.inbound_flight_type = flightTypeMap[inboundTicket.flight_type] || '';
+                    }
+                    if (outboundTicket) {
+                        if (!p.outbound_route) p.outbound_route = outboundTicket.route || '';
+                        if (!p.outbound_airline) p.outbound_airline = outboundTicket.airline || '';
+                        if (!p.outbound_class) p.outbound_class = outboundTicket.airline_class || '';
+                        if (!p.outbound_route_type) p.outbound_route_type = routeTypeMap[outboundTicket.route_type] || '';
+                        if (!p.outbound_flight_type) p.outbound_flight_type = flightTypeMap[outboundTicket.flight_type] || '';
                     }
                 }
             });
