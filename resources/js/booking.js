@@ -3772,6 +3772,13 @@ Alpine.data('showBookingApp', () => ({
         return false;
     },
 
+    get isDoubleTicket() {
+        const pkgId = window.__bookingServerData?.preSelectedPackageId;
+        if (!pkgId) return false;
+        const pkg = this.allPackages.find(p => String(p.id) === String(pkgId));
+        return pkg && pkg.is_double_ticket;
+    },
+
     passengers: [],
     lastAddedPassenger: null,
     firstAddedPassenger: null,
