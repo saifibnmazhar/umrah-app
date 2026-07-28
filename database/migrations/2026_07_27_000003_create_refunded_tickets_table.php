@@ -37,7 +37,7 @@ return new class extends Migration
             $table->decimal('refund_to_customer', 14, 6)->default(0);
             $table->decimal('service_charge', 14, 6)->default(0);
 
-            $table->boolean('is_reparation')->default(false);
+            $table->enum('payment_by', ['customer', 'airline', 'employee'])->nullable();
 
             $table->foreignId('reason_id')->nullable()->constrained('re_issue_refund_reasons')->nullOnDelete();
             $table->text('remarks')->nullable();

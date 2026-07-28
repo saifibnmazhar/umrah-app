@@ -18,7 +18,7 @@ class RefundedTicket extends Model
         'is_refundable', 'is_exchangeable',
         'baggage_inbound', 'baggage_outbound',
         'iata_refunded_amount', 'refund_to_customer', 'service_charge',
-        'is_reparation',
+        'payment_by',
         'reason_id', 'remarks',
     ];
 
@@ -34,7 +34,7 @@ class RefundedTicket extends Model
         'service_charge' => 'decimal:6',
         'is_refundable' => 'boolean',
         'is_exchangeable' => 'boolean',
-        'is_reparation' => 'boolean',
+
     ];
 
     public function user(): BelongsTo

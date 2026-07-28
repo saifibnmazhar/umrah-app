@@ -38,7 +38,7 @@ class ReIssueController extends Controller
             'other_costs' => 'required|numeric|min:0',
             'service_charge' => 'required|numeric|min:0',
             'remarks' => 'nullable|string',
-            'is_reparation' => 'boolean',
+            'payment_by' => 'nullable|in:customer,airline,employee',
         ]);
 
         $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])

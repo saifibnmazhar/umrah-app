@@ -4,6 +4,7 @@ use App\Http\Controllers\BookingConditionController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BranchWiseReportController;
 use App\Http\Controllers\PassengerController;
+use App\Http\Controllers\ReIssueController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AirlineCityController;
 use App\Http\Controllers\AirlineClassController;
