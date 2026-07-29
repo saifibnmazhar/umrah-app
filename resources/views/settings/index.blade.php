@@ -429,6 +429,10 @@
 
     function filterModalTickets(exceptFareId = null) {
         const selectedType = document.getElementById('modalTicketTypeSelect').value;
+        document.getElementById('modalTicketSelect').value = '';
+        document.getElementById('modalTicketInboundSelect').value = '';
+        document.getElementById('modalTicketOutboundSelect').value = '';
+        calculateModalPrices();
         Array.from(document.getElementById('modalTicketSelect').options).forEach(option => {
             if (option.value === '') return;
             const ticketType = option.dataset.ticketType;
