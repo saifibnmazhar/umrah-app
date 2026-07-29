@@ -48,7 +48,7 @@ class TicketIssueController extends Controller
             return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
         }
 
-        if ($issuedTicket->status !== 'pending') {
+        if (!in_array($issuedTicket->status, ['pending', 'awaiting-group'])) {
             return response()->json(['message' => 'This ticket has already been issued.'], 400);
         }
 

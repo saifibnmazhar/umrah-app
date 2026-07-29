@@ -1029,9 +1029,9 @@ if ($passenger->ticket_fare_inbound_id) {
         <div class="flex items-center gap-1 w-full">
             <span class="font-medium text-sm shrink-0">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
             <div class="flex items-center gap-1 flex-1"
-                 :class="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || passengersTicketData[{{ $loop->index }}]?.ticket_status === 'pending' || rowHasPendingOutbound({{ $loop->index }})) ? 'justify-start' : 'justify-center'">
+                 :class="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || ['pending', 'awaiting-group'].includes(passengersTicketData[{{ $loop->index }}]?.ticket_status) || rowHasPendingOutbound({{ $loop->index }})) ? 'justify-start' : 'justify-center'">
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
-                    <button x-show="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || passengersTicketData[{{ $loop->index }}]?.ticket_status === 'pending') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
+                    <button x-show="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || ['pending', 'awaiting-group'].includes(passengersTicketData[{{ $loop->index }}]?.ticket_status)) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
                 </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && rowHasPendingOutbound({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                     <button @click="openOutboundTicketFareModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
@@ -3321,7 +3321,7 @@ function bookingIndexApp() {
         rowHasPendingOutbound(index) {
             const row = this.passengersTicketData[index];
             if (!row || row.is_cancelled) return false;
-            return (row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound' && t.status === 'pending');
+            return (row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound' && ['pending', 'awaiting-group'].includes(t.status));
         },
 
         rowHasIssuedOutbound(index) {
@@ -3569,7 +3569,7 @@ function bookingIndexApp() {
             this.ticketFareModalTitle = 'Issue Outbound Ticket';
             this.ticketFareForm.isOutboundMode = true;
 
-            const pendingOutbound = (row.all_issued_tickets || []).find(t => t.issue_type === 'pending_outbound' && t.status === 'pending');
+            const pendingOutbound = (row.all_issued_tickets || []).find(t => t.issue_type === 'pending_outbound' && ['pending', 'awaiting-group'].includes(t.status));
             this.ticketFareForm.issued_ticket_id = pendingOutbound?.id || null;
 
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
@@ -4058,12 +4058,12 @@ function bookingIndexApp() {
             } else {
                 isEdit = row.latest_issued_ticket && (row.latest_issued_ticket.status === 'issued' || row.latest_issued_ticket.status === 're-issued');
 
-                if (!isEdit && row.latest_issued_ticket && row.latest_issued_ticket.status !== 'pending') {
+                if (!isEdit && row.latest_issued_ticket && !['pending', 'awaiting-group'].includes(row.latest_issued_ticket.status)) {
                     this.showToast('This ticket cannot be issued again.', 'error');
                     return;
                 }
 
-                const pendingTicket = (row.all_issued_tickets || []).find(t => t.status === 'pending');
+                const pendingTicket = (row.all_issued_tickets || []).find(t => ['pending', 'awaiting-group'].includes(t.status));
                 issuedTicketId = isEdit ? row.latest_issued_ticket?.id : pendingTicket?.id;
             }
 
