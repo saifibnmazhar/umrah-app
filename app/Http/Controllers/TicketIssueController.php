@@ -64,9 +64,6 @@ class TicketIssueController extends Controller
 
             if ($issuedTicket->issue_type === 'pending_outbound') {
                 unset($updateData['issue_type']);
-                if (isset($validated['ticket_fare_id'])) {
-                    $passenger->update(['ticket_fare_outbound_id' => $validated['ticket_fare_id']]);
-                }
             } else {
                 $updateData['issue_type'] = 'regular';
             }
@@ -76,11 +73,6 @@ class TicketIssueController extends Controller
             $passenger->update(['ticket_status' => 'issued']);
 
             if ($validated['clear_double_ticket'] ?? false) {
-                $passenger->update([
-                    'ticket_fare_inbound_id' => null,
-                    'ticket_fare_outbound_id' => null,
-                    'ticket_fare_id' => $validated['ticket_fare_id'] ?? null,
-                ]);
                 IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
                     ->where('status', 'pending')
@@ -91,7 +83,6 @@ class TicketIssueController extends Controller
                     ->exists();
 
                 if (! $existingPendingOutbound) {
-                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -101,11 +92,8 @@ class TicketIssueController extends Controller
                         'is_refundable' => false,
                         'is_exchangeable' => false,
                         'outbound_pending' => false,
-                        'ticket_fare_id' => $pendingOutboundFareId,
+                        'ticket_fare_id' => null,
                     ]);
-                    if ($pendingOutboundFareId) {
-                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
-                    }
                 }
             }
 
@@ -201,16 +189,7 @@ class TicketIssueController extends Controller
 
             $issuedTicket->logAction('edited', $oldData, $issuedTicket->toArray());
 
-            if ($issuedTicket->issue_type === 'pending_outbound' && isset($validated['ticket_fare_id'])) {
-                $passenger->update(['ticket_fare_outbound_id' => $validated['ticket_fare_id']]);
-            }
-
             if ($validated['clear_double_ticket'] ?? false) {
-                $passenger->update([
-                    'ticket_fare_inbound_id' => null,
-                    'ticket_fare_outbound_id' => null,
-                    'ticket_fare_id' => $validated['ticket_fare_id'] ?? null,
-                ]);
                 IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
                     ->where('status', 'pending')
@@ -221,7 +200,6 @@ class TicketIssueController extends Controller
                     ->exists();
 
                 if (! $existingPendingOutbound) {
-                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -231,11 +209,8 @@ class TicketIssueController extends Controller
                         'is_refundable' => false,
                         'is_exchangeable' => false,
                         'outbound_pending' => false,
-                        'ticket_fare_id' => $pendingOutboundFareId,
+                        'ticket_fare_id' => null,
                     ]);
-                    if ($pendingOutboundFareId) {
-                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
-                    }
                 }
             }
 
@@ -302,7 +277,7 @@ class TicketIssueController extends Controller
                 'is_refundable' => false,
                 'is_exchangeable' => false,
                 'outbound_pending' => false,
-                'ticket_fare_id' => $passenger->ticket_fare_outbound_id,
+                'ticket_fare_id' => null,
             ]);
 
             IssuedTicket::where('passenger_id', $passenger->id)
@@ -389,7 +364,7 @@ class TicketIssueController extends Controller
                         'is_refundable' => false,
                         'is_exchangeable' => false,
                         'outbound_pending' => false,
-                        'ticket_fare_id' => $regularTicket?->ticket_fare_id ?? $passenger->ticket_fare_outbound_id ?? $passenger->ticket_fare_id,
+                        'ticket_fare_id' => null,
                     ]);
                     $updatedIds[] = $createdTicket->id;
                     $outboundTicket = $createdTicket;
@@ -403,12 +378,6 @@ class TicketIssueController extends Controller
                 if ($regularTicket && !$regularTicket->outbound_pending) {
                     $oldData = $regularTicket->toArray();
                     $regularTicket->update(['outbound_pending' => true]);
-                }
-                if ($createdTicket || $outboundTicket) {
-                    $fareId = $regularTicket?->ticket_fare_id ?? $passenger->ticket_fare_outbound_id ?? $passenger->ticket_fare_id;
-                    if ($fareId) {
-                        $passenger->update(['ticket_fare_outbound_id' => $fareId]);
-                    }
                 }
             }
 
