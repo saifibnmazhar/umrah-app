@@ -412,6 +412,8 @@ Route::middleware('auth')->group(function () {
             ->name('bookings.passengers.ticket-edit');
         Route::put('/passengers/{passenger}/confirm-group', [TicketIssueController::class, 'confirmGroup'])
             ->name('passengers.confirm-group');
+        Route::post('/passengers/{passenger}/create-outbound-pending', [TicketIssueController::class, 'createPendingOutbound'])
+            ->name('passengers.create-outbound-pending');
     });
 
     Route::post('/api/banks/quick-create', [BankController::class, 'quickStore']);

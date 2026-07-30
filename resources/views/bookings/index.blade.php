@@ -157,7 +157,6 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     'is_ticket_held' => (bool)($p->is_ticket_held ?? false),
     'ticket_status' => $p->allIssuedTickets
-        ->filter(fn($t) => is_null($t->issue_type) || $t->issue_type === 'regular')
         ->sortByDesc('id')
         ->first()?->status ?? null,
     'ticket_remarks' => $p->ticket_remarks ?? '',
@@ -282,7 +281,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         ]) ?? [],
     ] : null,
 
-    'latest_issued_ticket' => ($lit = $p->latestIssuedTicket) ? [
+    'latest_issued_ticket' => ($lit = $p->allIssuedTickets
+        ->filter(fn($t) => is_null($t->issue_type) || $t->issue_type === 'regular')
+        ->sortByDesc('id')
+        ->first()) ? [
         'id' => $lit->id,
         'ticket_number' => $lit->ticket_number ?? '',
         'pnr' => $lit->pnr ?? '',
@@ -1029,9 +1031,9 @@ if ($passenger->ticket_fare_inbound_id) {
         <div class="flex items-center gap-1 w-full">
             <span class="font-medium text-sm shrink-0">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
             <div class="flex items-center gap-1 flex-1"
-                 :class="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || ['pending', 'awaiting-group'].includes(passengersTicketData[{{ $loop->index }}]?.ticket_status) || rowHasPendingOutbound({{ $loop->index }})) ? 'justify-start' : 'justify-center'">
+                 :class="(!hasRegularIssued({{ $loop->index }}) || rowHasPendingOutbound({{ $loop->index }})) ? 'justify-start' : 'justify-center'">
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
-                    <button x-show="(!passengersTicketData[{{ $loop->index }}]?.ticket_status || ['pending', 'awaiting-group'].includes(passengersTicketData[{{ $loop->index }}]?.ticket_status)) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
+                    <button x-show="!hasRegularIssued({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
                 </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && rowHasPendingOutbound({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                     <button @click="openOutboundTicketFareModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
@@ -1044,7 +1046,8 @@ if ($passenger->ticket_fare_inbound_id) {
                             </button>
                             <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex items-center gap-1 px-2 py-1 whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                                 <button @click="open = false; toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
-                                <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued')" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
+                                <button x-show="canShowIssueOutInMenu({{ $loop->index }})" @click="open = false; handleIssueOutFromMenu({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Issue-Out</button>
+                                <button x-show="hasRegularIssued({{ $loop->index }})" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
                                 <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="open = false; openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
                                 <template x-if="rowHasConfirmableTickets({{ $loop->index }})">
                                     <div>
@@ -1086,7 +1089,7 @@ if ($passenger->ticket_fare_inbound_id) {
     @endif
     {{-- @if($canViewTicketAgentColumn)<td class="px-3 py-2 text-slate-700"><span x-text="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket?.ticket_agent_name || '—'">—</span></td>@endif --}}
     <td class="px-3 py-2">
-        <template x-if="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket || passengersTicketData[{{ $loop->index }}]?.is_ticket_held">
+        <template x-if="passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket || passengersTicketData[{{ $loop->index }}]?.pending_outbound_issued_ticket || passengersTicketData[{{ $loop->index }}]?.is_ticket_held">
             <div>
                 <div class="flex flex-wrap gap-1 mb-1">
                     <template x-for="status in getTicketStatuses({{ $loop->index }})" :key="status">
@@ -1103,7 +1106,7 @@ if ($passenger->ticket_fare_inbound_id) {
                 </template>
             </div>
         </template>
-        <template x-if="!passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket && !passengersTicketData[{{ $loop->index }}]?.is_ticket_held">
+        <template x-if="!passengersTicketData[{{ $loop->index }}]?.latest_issued_ticket && !passengersTicketData[{{ $loop->index }}]?.pending_outbound_issued_ticket && !passengersTicketData[{{ $loop->index }}]?.is_ticket_held">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
         </template>
     </td>
@@ -3330,6 +3333,27 @@ function bookingIndexApp() {
             return (row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound' && (t.status === 'issued' || t.status === 're-issued'));
         },
 
+        canShowIssueOutInMenu(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            if (!row.package_is_double_ticket && !row.is_double_ticket) return false;
+            if (!row.outbound_ticket_fare) return false;
+            const hasIssuedOutbound = (row.all_issued_tickets || []).some(
+                t => t.issue_type === 'pending_outbound' && ['issued', 're-issued'].includes(t.status)
+            );
+            if (hasIssuedOutbound) return false;
+            return true;
+        },
+
+        hasRegularIssued(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return false;
+            const regular = (row.all_issued_tickets || []).find(
+                t => !t.issue_type || t.issue_type === 'regular'
+            );
+            return regular && ['issued', 're-issued'].includes(regular.status);
+        },
+
         rowHasConfirmableTickets(index) {
             const row = this.passengersTicketData[index];
             if (!row || row.is_cancelled) return false;
@@ -3349,7 +3373,18 @@ function bookingIndexApp() {
             const PO = row.pending_outbound_issued_ticket;
             const statuses = [];
 
-            if (!R) return row.is_ticket_held ? ['Hold'] : [];
+            if (!R) {
+                const s = [];
+                if (row.is_ticket_held) s.push('Hold');
+                if (PO) {
+                    if (PO.status === 'pending') s.push('Pending');
+                    if (PO.status === 'issued') s.push('Outbound Issued');
+                    if (PO.status === 'awaiting-group') s.push('Awaiting Group Outbound');
+                    if (PO.status === 're-issued') s.push('Re-Issued');
+                    if (PO.status === 'refunded') s.push('Refunded');
+                }
+                return s;
+            }
 
             const OP = R.outbound_pending ?? false;
             const rt = (R.route_type || '').toLowerCase();
@@ -3558,6 +3593,59 @@ function bookingIndexApp() {
             .catch(err => {
                 console.error('Update remarks error:', err);
                 this.showToast('Failed to update remarks.', 'error');
+            });
+        },
+
+        handleIssueOutFromMenu(rowIndex) {
+            const row = this.passengersTicketData[rowIndex];
+            if (!row) return;
+
+            const existingPending = (row.all_issued_tickets || []).find(
+                t => t.issue_type === 'pending_outbound' && ['pending', 'awaiting-group'].includes(t.status)
+            );
+
+            if (existingPending) {
+                this.openOutboundTicketFareModal(rowIndex);
+                return;
+            }
+
+            fetch(`/passengers/${row.id}/create-outbound-pending`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    const t = data.ticket;
+                    if (!row.all_issued_tickets) row.all_issued_tickets = [];
+                    const exists = row.all_issued_tickets.some(et => et.id === t.id);
+                    if (!exists) {
+                        row.all_issued_tickets.push({
+                            id: t.id, ticket_number: t.ticket_number || '',
+                            issued_date: t.issued_date || '', status: t.status,
+                            pnr: t.pnr || '', issue_type: 'pending_outbound',
+                            selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0,
+                            is_refundable: t.is_refundable ?? false,
+                            is_exchangeable: t.is_exchangeable ?? false,
+                            baggage_inbound: '', baggage_outbound: t.baggage_outbound || '',
+                            airline: '', travel_class: '',
+                            route: '', route_type: '',
+                            ticket_agent_name: t.ticket_agent_name || '',
+                            issuer_name: '',
+                        });
+                    }
+                    this.openOutboundTicketFareModal(rowIndex);
+                } else {
+                    this.showToast(data.message || 'Failed to create pending outbound ticket.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Create pending outbound error:', err);
+                this.showToast('Failed to create pending outbound ticket.', 'error');
             });
         },
 
@@ -4109,7 +4197,9 @@ function bookingIndexApp() {
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
-                    row.ticket_status = 'issued';
+                    if (!this.ticketFareForm.isOutboundMode) {
+                        row.ticket_status = 'issued';
+                    }
                     const t = data.issued_ticket;
                     row.latest_issued_ticket = {
                         id: t.id,

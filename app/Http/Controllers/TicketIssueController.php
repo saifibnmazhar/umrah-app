@@ -265,6 +265,76 @@ class TicketIssueController extends Controller
         }
     }
 
+    public function createPendingOutbound(Request $request, Passenger $passenger)
+    {
+        if (!$passenger->ticket_fare_outbound_id) {
+            return response()->json(['message' => 'No outbound fare configured for this passenger.'], 400);
+        }
+
+        $existing = IssuedTicket::where('passenger_id', $passenger->id)
+            ->where('issue_type', 'pending_outbound')
+            ->whereIn('status', ['pending', 'awaiting-group'])
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Pending outbound ticket already exists.',
+                'ticket' => $existing->load([
+                    'ticketFare.airline',
+                    'ticketFare.airlineClass.class',
+                    'ticketFare.route.fromCity',
+                    'ticketFare.route.toCity',
+                    'ticketFare.route.returnCity',
+                    'ticketFare.route.multiSegments.fromCity',
+                    'ticketFare.route.multiSegments.toCity',
+                ]),
+            ]);
+        }
+
+        try {
+            $ticket = IssuedTicket::create([
+                'passenger_id' => $passenger->id,
+                'booking_id' => $passenger->booking_id,
+                'user_id' => auth()->id(),
+                'issue_type' => 'pending_outbound',
+                'status' => 'pending',
+                'is_refundable' => false,
+                'is_exchangeable' => false,
+                'outbound_pending' => false,
+                'ticket_fare_id' => $passenger->ticket_fare_outbound_id,
+            ]);
+
+            IssuedTicket::where('passenger_id', $passenger->id)
+                ->where(function ($q) {
+                    $q->whereNull('issue_type')->orWhere('issue_type', 'regular');
+                })
+                ->where(function ($q) {
+                    $q->whereNull('outbound_pending')->orWhere('outbound_pending', false);
+                })
+                ->update(['outbound_pending' => true]);
+
+            $ticket->load([
+                'ticketFare.airline',
+                'ticketFare.airlineClass.class',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
+                'ticketFare.route.returnCity',
+                'ticketFare.route.multiSegments.fromCity',
+                'ticketFare.route.multiSegments.toCity',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pending outbound ticket created.',
+                'ticket' => $ticket,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Create pending outbound failed: '.$e->getMessage());
+            return response()->json(['message' => 'Failed to create pending outbound ticket.'], 500);
+        }
+    }
+
     public function confirmGroup(Request $request, Passenger $passenger)
     {
         $validated = $request->validate([
