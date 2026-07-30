@@ -173,6 +173,25 @@ class Passenger extends Model
 
     public function getBaggageDisplayAttribute(): string
     {
+        if ($this->ticket_fare_inbound_id) {
+            $passengerType = $this->passenger_type?->value;
+            $inboundAllowances = $this->ticketFareInbound?->baggageAllowances ?? collect();
+            $outboundAllowances = $this->ticketFareOutbound?->baggageAllowances ?? collect();
+
+            $inboundBag = $inboundAllowances
+                ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+                ->first()?->allowance;
+
+            $outboundBag = $outboundAllowances
+                ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+                ->first()?->allowance;
+
+            $parts = [];
+            if ($inboundBag !== null) $parts[] = "In: {$inboundBag}";
+            if ($outboundBag !== null) $parts[] = "Out: {$outboundBag}";
+            return empty($parts) ? '-' : implode("\n", $parts);
+        }
+
         $ticketFare = $this->ticketFare;
         if (!$ticketFare) return '-';
 
@@ -207,6 +226,11 @@ class Passenger extends Model
 
     public function getMealDisplayAttribute(): string
     {
+        if ($this->ticket_fare_inbound_id) {
+            $inbound = $this->ticketFareInbound?->with_meal === true ? 'Yes' : 'No';
+            $outbound = $this->ticketFareOutbound?->with_meal === true ? 'Yes' : 'No';
+            return "In: {$inbound}\nOut: {$outbound}";
+        }
         return $this->ticketFare?->with_meal === true ? 'Yes' : 'No';
     }
 
