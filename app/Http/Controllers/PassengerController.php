@@ -64,7 +64,11 @@ class PassengerController extends Controller
             'ticketFare.airlineClass',
             'ticketFare.airlineClass.class',
             'ticketFare.route',
+            'ticketFareInbound.airline',
+            'ticketFareInbound.airlineClass.class',
             'ticketFareInbound.route',
+            'ticketFareOutbound.airline',
+            'ticketFareOutbound.airlineClass.class',
             'ticketFareOutbound.route',
             'documents',
             'visaSubmission.visaAgent.visaAgentCost',
@@ -75,6 +79,9 @@ class PassengerController extends Controller
             'visaSubmission.cancelledSubmission',
             'visaSubmission.logs.user',
             'latestIssuedTicket',
+            'allIssuedTickets.ticketFare.airline',
+            'allIssuedTickets.ticketFare.airlineClass.class',
+            'allIssuedTickets.ticketFare.route',
         ]);
 
         $routeDisplay = null;
@@ -94,6 +101,11 @@ class PassengerController extends Controller
                 $routeDisplay = ($route->fromCity?->code ?? '?') . ' → ' . ($route->toCity?->code ?? '?');
             }
         }
+
+        $inboundIssuedTicket = $passenger->allIssuedTickets
+            ->first(fn($t) => is_null($t->issue_type) || $t->issue_type === 'regular');
+        $outboundIssuedTicket = $passenger->allIssuedTickets
+            ->first(fn($t) => $t->issue_type === 'pending_outbound');
 
         $ticketFare = 0;
         if ($passenger->ticketFare) {
@@ -207,7 +219,7 @@ class PassengerController extends Controller
             ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
             ?? 0;
 
-        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa', 'historyRows', 'rate'));
+        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa', 'historyRows', 'rate', 'inboundIssuedTicket', 'outboundIssuedTicket'));
     }
 
     public function edit(Passenger $passenger)
@@ -687,5 +699,19 @@ class PassengerController extends Controller
                 'message' => 'Failed to update status'
             ], 500);
         }
+    }
+
+    public function updateTicketRemarks(Request $request, Passenger $passenger)
+    {
+        $validated = $request->validate([
+            'ticket_remarks' => 'nullable|string|max:65535',
+        ]);
+
+        $passenger->update(['ticket_remarks' => $validated['ticket_remarks'] ?? null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Remarks updated successfully.',
+        ]);
     }
 }
