@@ -841,19 +841,13 @@ $calcFare = function($fare, $pType) {
         ? ($fare->offer_price ?? $fare->selling_fare ?? $fare->net_fare ?? 0)
         : ($fare->selling_fare ?? $fare->net_fare ?? 0);
     return match($pType) {
-        'child' => $base * ($fare->child_fare_percentage ?? 70) / 100,
-        'infant' => $base * ($fare->infant_fare_percentage ?? 30) / 100,
+        'child' => $base * ($fare->child_fare_percentage) / 100,
+        'infant' => $base * ($fare->infant_fare_percentage) / 100,
         default => $base,
     };
 };
 
-$hasIssuedTicket = $passenger->allIssuedTickets->contains(fn($t) => in_array($t->status, ['issued', 're-issued']));
-
-if ($hasIssuedTicket) {
-    $fareAmount = $passenger->allIssuedTickets
-        ->filter(fn($t) => in_array($t->status, ['issued', 're-issued']))
-        ->sum(fn($t) => (float)($t->selling_fare ?? 0));
-} elseif ($passenger->ticketFareInbound && $passenger->ticketFareOutbound) {
+if ($passenger->ticket_fare_inbound_id && $passenger->ticket_fare_outbound_id) {
     $fareAmount = $calcFare($passenger->ticketFareInbound, $passengerTypeVal)
                 + $calcFare($passenger->ticketFareOutbound, $passengerTypeVal);
 } else {
