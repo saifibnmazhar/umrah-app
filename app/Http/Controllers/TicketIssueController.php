@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
+use App\Models\TicketFare;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -72,7 +73,9 @@ class TicketIssueController extends Controller
 
             $passenger->update(['ticket_status' => 'issued']);
 
-            if ($validated['clear_double_ticket'] ?? false) {
+            if ($issuedTicket->issue_type !== 'pending_outbound' && !empty($validated['ticket_fare_id'])) {
+                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
+            } elseif ($validated['clear_double_ticket'] ?? false) {
                 IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
                     ->where('status', 'pending')
@@ -189,7 +192,9 @@ class TicketIssueController extends Controller
 
             $issuedTicket->logAction('edited', $oldData, $issuedTicket->toArray());
 
-            if ($validated['clear_double_ticket'] ?? false) {
+            if ($issuedTicket->issue_type !== 'pending_outbound' && !empty($validated['ticket_fare_id'])) {
+                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
+            } elseif ($validated['clear_double_ticket'] ?? false) {
                 IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
                     ->where('status', 'pending')
@@ -404,5 +409,25 @@ class TicketIssueController extends Controller
 
             return response()->json(['message' => 'Failed to confirm tickets.'], 500);
         }
+    }
+
+    private function clearPendingOutboundForRoundMulti(Passenger $passenger, int $ticketFareId, IssuedTicket $issuedTicket): void
+    {
+        if (! $passenger->ticket_fare_inbound_id || ! $passenger->ticket_fare_outbound_id) {
+            return;
+        }
+
+        $routeType = TicketFare::with('route')->find($ticketFareId)?->route?->route_type?->value;
+
+        if (! in_array($routeType, ['round', 'multi_city'], true)) {
+            return;
+        }
+
+        IssuedTicket::where('passenger_id', $passenger->id)
+            ->where('issue_type', 'pending_outbound')
+            ->whereIn('status', ['pending', 'awaiting-group'])
+            ->delete();
+
+        $issuedTicket->update(['outbound_pending' => false]);
     }
 }

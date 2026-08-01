@@ -1029,7 +1029,7 @@ if ($passenger->ticket_fare_inbound_id) {
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
                     <button x-show="!hasRegularIssued({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
                 </template>
-                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && rowHasPendingOutbound({{ $loop->index }}) && hasRegularIssued({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
+                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && rowHasPendingOutbound({{ $loop->index }}) && hasRegularIssued({{ $loop->index }}) && !regularTicketCoversOutbound({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                     <button @click="openOutboundTicketFareModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
@@ -3327,9 +3327,19 @@ function bookingIndexApp() {
             return (row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound' && (t.status === 'issued' || t.status === 're-issued'));
         },
 
+        regularTicketCoversOutbound(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            const lit = row.latest_issued_ticket;
+            if (!lit || lit.issue_type !== 'regular') return false;
+            if (!['issued', 're-issued'].includes(lit.status)) return false;
+            return ['round', 'multi_city'].includes(lit.route_type);
+        },
+
         canShowIssueOutInMenu(index) {
             const row = this.passengersTicketData[index];
             if (!row || row.is_cancelled) return false;
+            if (this.regularTicketCoversOutbound(index)) return false;
             if (!row.package_is_double_ticket && !row.is_double_ticket) return false;
             if (!row.outbound_ticket_fare) return false;
             const hasIssuedOutbound = (row.all_issued_tickets || []).some(
@@ -4337,6 +4347,10 @@ function bookingIndexApp() {
                             airline: t.ticket_fare?.airline?.name || '',
                             travel_class: t.ticket_fare?.airlineClass?.class?.name || '',
                         };
+                    }
+                    if (!this.ticketFareForm.isOutboundMode && !data.pending_outbound_ticket) {
+                        row.all_issued_tickets = (row.all_issued_tickets || []).filter(t => !(t.issue_type === 'pending_outbound' && ['pending', 'awaiting-group'].includes(t.status)));
+                        row.pending_outbound_issued_ticket = null;
                     }
                     this.showToast(data.message || 'Ticket saved successfully.');
                     this.closeTicketFareModal();
