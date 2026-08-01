@@ -3499,6 +3499,17 @@ function bookingIndexApp() {
             return !(row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound');
         },
 
+        isRegularTicketIssuedRoundOrMultiCity(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return false;
+            const regular = (row.all_issued_tickets || []).find(
+                t => !t.issue_type || t.issue_type === 'regular'
+            );
+            return regular
+                && regular.status === 'issued'
+                && (regular.route_type === 'round' || regular.route_type === 'multi_city');
+        },
+
         showGConfirmIn(index) {
             const row = this.passengersTicketData[index];
             if (!row) return false;
@@ -3508,14 +3519,16 @@ function bookingIndexApp() {
         showGConfirmOut(index) {
             const row = this.passengersTicketData[index];
             if (!row) return false;
-            return this.hasConfirmableOutbound(index) || (this.hasNoOutboundTicket(index) && row.package_is_double_ticket);
+            return (this.hasConfirmableOutbound(index) || (this.hasNoOutboundTicket(index) && row.package_is_double_ticket))
+                && !this.isRegularTicketIssuedRoundOrMultiCity(index);
         },
 
         showGConfirmBoth(index) {
             const row = this.passengersTicketData[index];
             if (!row) return false;
-            return (this.hasConfirmableRegular(index) && this.hasConfirmableOutbound(index))
-                || (this.hasNoOutboundTicket(index) && row.package_is_double_ticket && this.hasConfirmableRegular(index));
+            return ((this.hasConfirmableRegular(index) && this.hasConfirmableOutbound(index))
+                || (this.hasNoOutboundTicket(index) && row.package_is_double_ticket && this.hasConfirmableRegular(index)))
+                && !this.isRegularTicketIssuedRoundOrMultiCity(index);
         },
 
         confirmTickets(index, action) {
