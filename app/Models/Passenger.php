@@ -39,6 +39,9 @@ class Passenger extends Model
         'is_ticket_held',
         'ticket_held_by',
         'ticket_held_at',
+        'ticket_remarks',
+        'ticket_fare_inbound_id',
+        'ticket_fare_outbound_id',
     ];
 
     protected $casts = [
@@ -77,6 +80,16 @@ class Passenger extends Model
         return $this->belongsTo(TicketFare::class);
     }
 
+    public function ticketFareInbound(): BelongsTo
+    {
+        return $this->belongsTo(TicketFare::class, 'ticket_fare_inbound_id');
+    }
+
+    public function ticketFareOutbound(): BelongsTo
+    {
+        return $this->belongsTo(TicketFare::class, 'ticket_fare_outbound_id');
+    }
+
     public function visaSubmission()
     {
         return $this->hasOne(VisaSubmission::class)->latestOfMany();
@@ -105,14 +118,23 @@ class Passenger extends Model
                     ->where(function ($q) {
                         $q->whereNull('issue_type')
                           ->orWhere('issue_type', 'regular');
-                    })
-                    ->whereIn('status', ['issued', 're-issued']);
+                    });
             });
     }
 
     public function getRouteDisplayAttribute(): string
     {
-        $route = $this->ticketFare?->route;
+        if ($this->ticket_fare_inbound_id) {
+            $inboundRoute = $this->formatRouteDisplay($this->ticketFareInbound?->route);
+            $outboundRoute = $this->formatRouteDisplay($this->ticketFareOutbound?->route);
+            return ($inboundRoute ?: '?') . "\n" . ($outboundRoute ?: '?');
+        }
+
+        return $this->formatRouteDisplay($this->ticketFare?->route);
+    }
+
+    private function formatRouteDisplay($route): string
+    {
         if (!$route) return '-';
 
         $routeType = $route->route_type?->value;
@@ -150,6 +172,25 @@ class Passenger extends Model
 
     public function getBaggageDisplayAttribute(): string
     {
+        if ($this->ticket_fare_inbound_id) {
+            $passengerType = $this->passenger_type?->value;
+            $inboundAllowances = $this->ticketFareInbound?->baggageAllowances ?? collect();
+            $outboundAllowances = $this->ticketFareOutbound?->baggageAllowances ?? collect();
+
+            $inboundBag = $inboundAllowances
+                ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+                ->first()?->allowance;
+
+            $outboundBag = $outboundAllowances
+                ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+                ->first()?->allowance;
+
+            $parts = [];
+            if ($inboundBag !== null) $parts[] = "In: {$inboundBag}";
+            if ($outboundBag !== null) $parts[] = "Out: {$outboundBag}";
+            return empty($parts) ? '-' : implode("\n", $parts);
+        }
+
         $ticketFare = $this->ticketFare;
         if (!$ticketFare) return '-';
 
@@ -184,6 +225,11 @@ class Passenger extends Model
 
     public function getMealDisplayAttribute(): string
     {
+        if ($this->ticket_fare_inbound_id) {
+            $inbound = $this->ticketFareInbound?->with_meal === true ? 'Yes' : 'No';
+            $outbound = $this->ticketFareOutbound?->with_meal === true ? 'Yes' : 'No';
+            return "In: {$inbound}\nOut: {$outbound}";
+        }
         return $this->ticketFare?->with_meal === true ? 'Yes' : 'No';
     }
 

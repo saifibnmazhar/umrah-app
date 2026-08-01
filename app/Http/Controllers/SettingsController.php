@@ -28,8 +28,24 @@ class SettingsController extends Controller
 
         $flightDateGap = FlightDateGap::first();
 
-        $packagesQuery = Package::with(['ticketFare', 'ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity', 'ticketFare.airline', 'visaSellingPrice'])
-            ->withCount('bookings');
+        $packagesQuery = Package::with([
+            'ticketFare',
+            'ticketFare.route.fromCity',
+            'ticketFare.route.toCity',
+            'ticketFare.route.returnCity',
+            'ticketFare.route.multiSegments.fromCity',
+            'ticketFare.route.multiSegments.toCity',
+            'ticketFare.airline',
+            'ticketFareInbound',
+            'ticketFareInbound.route.fromCity',
+            'ticketFareInbound.route.toCity',
+            'ticketFareInbound.airline',
+            'ticketFareOutbound',
+            'ticketFareOutbound.route.fromCity',
+            'ticketFareOutbound.route.toCity',
+            'ticketFareOutbound.airline',
+            'visaSellingPrice',
+        ])->withCount('bookings');
 
         if (request()->has('status') && request('status') === 'inactive') {
             $packagesQuery->where('is_active', false);
@@ -82,6 +98,40 @@ class SettingsController extends Controller
                 ];
             });
 
+        $inboundFares = TicketFare::with([
+            'airline',
+            'route.fromCity',
+            'route.toCity',
+        ])->where('is_active', true)
+            ->whereHas('route', fn($q) => $q->where('route_type', 'oneway_inbound'))
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(fn($fare) => [
+                'id' => $fare->id,
+                'route' => ($fare->route->fromCity?->code ?? '?') . ' - ' . ($fare->route->toCity?->code ?? '?'),
+                'selling_fare' => $fare->selling_fare,
+                'offer_price' => $fare->offer_price,
+                'airline' => $fare->airline->name ?? '-',
+                'ticket_type' => $fare->ticket_type?->value ?? 'regular',
+            ]);
+
+        $outboundFares = TicketFare::with([
+            'airline',
+            'route.fromCity',
+            'route.toCity',
+        ])->where('is_active', true)
+            ->whereHas('route', fn($q) => $q->where('route_type', 'oneway_outbound'))
+            ->orderBy('id', 'desc')
+            ->get()
+            ->map(fn($fare) => [
+                'id' => $fare->id,
+                'route' => ($fare->route->fromCity?->code ?? '?') . ' - ' . ($fare->route->toCity?->code ?? '?'),
+                'selling_fare' => $fare->selling_fare,
+                'offer_price' => $fare->offer_price,
+                'airline' => $fare->airline->name ?? '-',
+                'ticket_type' => $fare->ticket_type?->value ?? 'regular',
+            ]);
+
         $usedFareIds = Package::pluck('ticket_fare_id')->toArray();
 
         $latestVisa = VisaSellingPrice::latest()->first();
@@ -95,6 +145,8 @@ class SettingsController extends Controller
             'flightDateGap',
             'packages',
             'ticketFares',
+            'inboundFares',
+            'outboundFares',
             'latestVisa',
             'usedFareIds',
             'stayDurationLimit'
@@ -127,21 +179,46 @@ class SettingsController extends Controller
 
     public function storePackage(Request $request)
     {
-        $validated = $request->validate([
+        $isDoubleTicket = $request->boolean('is_double_ticket');
+
+        $rules = [
             'package_name' => 'required|string|max:255',
-            'ticket_fare_id' => 'required|exists:ticket_fares,id',
+            'is_double_ticket' => 'nullable|boolean',
             'regular_price' => 'required|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
             'service_charge' => 'nullable|numeric|min:0',
-        ]);
+        ];
+
+        if ($isDoubleTicket) {
+            $rules['ticket_fare_inbound_id'] = ['required', 'integer', 'exists:ticket_fares,id'];
+            $rules['ticket_fare_outbound_id'] = ['required', 'integer', 'exists:ticket_fares,id'];
+            $rules['ticket_fare_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
+        } else {
+            $rules['ticket_fare_id'] = ['required', 'integer', 'exists:ticket_fares,id'];
+            $rules['ticket_fare_inbound_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
+            $rules['ticket_fare_outbound_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
+        }
+
+        $validated = $request->validate($rules);
+
+        $validated['is_double_ticket'] = $isDoubleTicket;
+
+        if (!$isDoubleTicket) {
+            $validated['ticket_fare_inbound_id'] = null;
+            $validated['ticket_fare_outbound_id'] = null;
+        } else {
+            $validated['ticket_fare_id'] = null;
+        }
 
         if (empty($validated['offer_price'])) {
             $validated['offer_price'] = null;
         }
 
-        $ticketFare = TicketFare::find($validated['ticket_fare_id']);
-        if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {
-            $validated['offer_price'] = $validated['regular_price'];
+        if (!$isDoubleTicket) {
+            $ticketFare = TicketFare::find($validated['ticket_fare_id']);
+            if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {
+                $validated['offer_price'] = $validated['regular_price'];
+            }
         }
 
         try {
@@ -164,21 +241,46 @@ class SettingsController extends Controller
             return redirect()->back()->with('error', 'This package cannot be edited because it has existing bookings.');
         }
 
-        $validated = $request->validate([
+        $isDoubleTicket = $request->boolean('is_double_ticket');
+
+        $rules = [
             'package_name' => 'required|string|max:255',
-            'ticket_fare_id' => 'required|exists:ticket_fares,id',
+            'is_double_ticket' => 'nullable|boolean',
             'regular_price' => 'required|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
             'service_charge' => 'nullable|numeric|min:0',
-        ]);
+        ];
+
+        if ($isDoubleTicket) {
+            $rules['ticket_fare_inbound_id'] = ['required', 'integer', 'exists:ticket_fares,id'];
+            $rules['ticket_fare_outbound_id'] = ['required', 'integer', 'exists:ticket_fares,id'];
+            $rules['ticket_fare_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
+        } else {
+            $rules['ticket_fare_id'] = ['required', 'integer', 'exists:ticket_fares,id'];
+            $rules['ticket_fare_inbound_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
+            $rules['ticket_fare_outbound_id'] = ['nullable', 'integer', 'exists:ticket_fares,id'];
+        }
+
+        $validated = $request->validate($rules);
+
+        $validated['is_double_ticket'] = $isDoubleTicket;
+
+        if (!$isDoubleTicket) {
+            $validated['ticket_fare_inbound_id'] = null;
+            $validated['ticket_fare_outbound_id'] = null;
+        } else {
+            $validated['ticket_fare_id'] = null;
+        }
 
         if (empty($validated['offer_price'])) {
             $validated['offer_price'] = null;
         }
 
-        $ticketFare = TicketFare::find($validated['ticket_fare_id']);
-        if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {
-            $validated['offer_price'] = $validated['regular_price'];
+        if (!$isDoubleTicket) {
+            $ticketFare = TicketFare::find($validated['ticket_fare_id']);
+            if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {
+                $validated['offer_price'] = $validated['regular_price'];
+            }
         }
 
         try {
@@ -196,8 +298,30 @@ class SettingsController extends Controller
 
     public function showPackage(Package $package)
     {
-        $package->load(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity', 'ticketFare.route.transits.transitCity', 'ticketFare.airline', 'ticketFare.airlineClass', 'ticketFare.groupTicket']);
-        
+        $package->load([
+            'ticketFare.route.fromCity',
+            'ticketFare.route.toCity',
+            'ticketFare.route.returnCity',
+            'ticketFare.route.multiSegments.fromCity',
+            'ticketFare.route.multiSegments.toCity',
+            'ticketFare.route.transits.transitCity',
+            'ticketFare.airline',
+            'ticketFare.airlineClass',
+            'ticketFare.groupTicket',
+            'ticketFareInbound.route.fromCity',
+            'ticketFareInbound.route.toCity',
+            'ticketFareInbound.route.transits.transitCity',
+            'ticketFareInbound.airline',
+            'ticketFareInbound.airlineClass',
+            'ticketFareInbound.groupTicket',
+            'ticketFareOutbound.route.fromCity',
+            'ticketFareOutbound.route.toCity',
+            'ticketFareOutbound.route.transits.transitCity',
+            'ticketFareOutbound.airline',
+            'ticketFareOutbound.airlineClass',
+            'ticketFareOutbound.groupTicket',
+        ]);
+
         return view('package-configurations.show', compact('package'));
     }
 

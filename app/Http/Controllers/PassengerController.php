@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Passenger;
 use App\Models\Booking;
 use App\Models\Document;
+use App\Models\FingerprintCharge;
 use App\Models\Package;
 use App\Models\TicketFare;
 use App\Models\VisaAgent;
@@ -64,6 +65,12 @@ class PassengerController extends Controller
             'ticketFare.airlineClass',
             'ticketFare.airlineClass.class',
             'ticketFare.route',
+            'ticketFareInbound.airline',
+            'ticketFareInbound.airlineClass.class',
+            'ticketFareInbound.route',
+            'ticketFareOutbound.airline',
+            'ticketFareOutbound.airlineClass.class',
+            'ticketFareOutbound.route',
             'documents',
             'visaSubmission.visaAgent.visaAgentCost',
             'visaSubmission.visaAgent.commissionAgents',
@@ -73,10 +80,18 @@ class PassengerController extends Controller
             'visaSubmission.cancelledSubmission',
             'visaSubmission.logs.user',
             'latestIssuedTicket',
+            'allIssuedTickets.ticketFare.airline',
+            'allIssuedTickets.ticketFare.airlineClass.class',
+            'allIssuedTickets.ticketFare.route',
         ]);
 
         $routeDisplay = null;
-        if ($passenger->ticketFare?->route) {
+        if ($passenger->ticket_fare_inbound_id) {
+            $inbound = $passenger->ticketFareInbound?->route;
+            $outbound = $passenger->ticketFareOutbound?->route;
+            $fmt = fn($r) => $r ? (($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?')) : '?';
+            $routeDisplay = $fmt($inbound) . ' → ' . $fmt($outbound);
+        } elseif ($passenger->ticketFare?->route) {
             $route = $passenger->ticketFare->route;
             $routeType = $route->route_type?->value;
             if ($routeType === 'multi_city') {
@@ -88,23 +103,52 @@ class PassengerController extends Controller
             }
         }
 
+        $inboundIssuedTicket = $passenger->allIssuedTickets
+            ->first(fn($t) => is_null($t->issue_type) || $t->issue_type === 'regular');
+        $outboundIssuedTicket = $passenger->allIssuedTickets
+            ->first(fn($t) => $t->issue_type === 'pending_outbound');
+
         $ticketFare = 0;
-        if ($passenger->ticketFare) {
-            $baseFare = (float) $passenger->ticketFare->selling_fare;
-            $passengerType = $passenger->passenger_type;
-            if ($passengerType instanceof \BackedEnum) {
-                $passengerType = $passengerType->value;
+        $passengerType = $passenger->passenger_type;
+        if ($passengerType instanceof \BackedEnum) {
+            $passengerType = $passengerType->value;
+        }
+        $passengerType = strtolower($passengerType ?? '');
+
+        $fareBase = function ($fare) {
+            if (!$fare) return 0;
+            if ($fare->ticket_type?->value === 'offer') {
+                return (float) ($fare->offer_price ?? $fare->selling_fare ?? $fare->net_fare ?? 0);
             }
-            $ticketFare = match (strtolower($passengerType ?? '')) {
-                'child' => $baseFare * ((float) $passenger->ticketFare->child_fare_percentage) / 100,
-                'infant' => $baseFare * ((float) $passenger->ticketFare->infant_fare_percentage) / 100,
-                default => $baseFare,
+            return (float) ($fare->selling_fare ?? $fare->net_fare ?? 0);
+        };
+
+        $fareForType = function ($fare, $pType) use ($fareBase) {
+            if (!$fare) return 0;
+            $base = $fareBase($fare);
+            return match ($pType) {
+                'child' => $base * ((float) $fare->child_fare_percentage) / 100,
+                'infant' => $base * ((float) $fare->infant_fare_percentage) / 100,
+                default => $base,
             };
+        };
+
+        if ($passenger->ticket_fare_inbound_id && $passenger->ticket_fare_outbound_id) {
+            $ticketFare = $fareForType($passenger->ticketFareInbound, $passengerType)
+                        + $fareForType($passenger->ticketFareOutbound, $passengerType);
+        } elseif ($passenger->ticketFare) {
+            $ticketFare = $fareForType($passenger->ticketFare, $passengerType);
         }
         $visaCost = $passenger->booking?->package?->visaSellingPrice?->selling_price ?? 0;
-        $fingerprintCost = ($passenger->booking?->fingerprint_location === 'home' && $passenger->booking?->fingerprintCharge)
-            ? $passenger->booking->fingerprintCharge->fingerprint_charge
-            : 0;
+        $fingerprintCost = 0;
+        $fpLocation = $passenger->booking?->fingerprint_location;
+        if ($fpLocation instanceof \BackedEnum) {
+            $fpLocation = $fpLocation->value;
+        }
+        if ($fpLocation && strtolower($fpLocation) !== 'office') {
+            $fpCharge = FingerprintCharge::where('district_id', $passenger->booking?->district_id)->first();
+            $fingerprintCost = $fpCharge ? (float) $fpCharge->fingerprint_charge : 0;
+        }
         $due = $passenger->booking?->invoice?->balance ?? 0;
         $paid = $passenger->booking?->invoice?->paid_amount ?? 0;
 
@@ -200,7 +244,7 @@ class PassengerController extends Controller
             ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
             ?? 0;
 
-        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa', 'historyRows', 'rate'));
+        return view('passengers.show', compact('passenger', 'routeDisplay', 'ticketFare', 'visaCost', 'fingerprintCost', 'due', 'paid', 'visaAgents', 'canEditVisa', 'historyRows', 'rate', 'inboundIssuedTicket', 'outboundIssuedTicket'));
     }
 
     public function edit(Passenger $passenger)
@@ -221,6 +265,12 @@ class PassengerController extends Controller
             'ticketFare.airlineClass',
             'ticketFare.airlineClass.class',
             'ticketFare.route',
+            'ticketFareInbound.route',
+            'ticketFareInbound.airline',
+            'ticketFareInbound.airlineClass.class',
+            'ticketFareOutbound.route',
+            'ticketFareOutbound.airline',
+            'ticketFareOutbound.airlineClass.class',
             'documents'
         ]);
 
@@ -276,7 +326,7 @@ class PassengerController extends Controller
         });
 
         $packages = Package::where('is_active', true)
-            ->with(['ticketFare'])
+            ->with(['ticketFare', 'ticketFareInbound', 'ticketFareOutbound'])
             ->get()
             ->map(fn($p) => [
                 'id' => $p->id,
@@ -284,6 +334,9 @@ class PassengerController extends Controller
                 'visa_selling_price' => $p->visaSellingPrice?->selling_price ?? 0,
                 'service_charge' => $p->service_charge ?? 0,
                 'ticket_fare_id' => $p->ticket_fare_id,
+                'is_double_ticket' => (bool) $p->is_double_ticket,
+                'ticket_fare_inbound_id' => $p->ticket_fare_inbound_id ? (string) $p->ticket_fare_inbound_id : null,
+                'ticket_fare_outbound_id' => $p->ticket_fare_outbound_id ? (string) $p->ticket_fare_outbound_id : null,
             ]);
 
         $booking = $passenger->booking;
@@ -479,6 +532,8 @@ class PassengerController extends Controller
             'passenger_type' => 'nullable|in:adult,child,infant',
             'gender' => 'nullable|in:male,female',
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
+            'ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
+            'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
         ]);
 
         try {
@@ -669,5 +724,19 @@ class PassengerController extends Controller
                 'message' => 'Failed to update status'
             ], 500);
         }
+    }
+
+    public function updateTicketRemarks(Request $request, Passenger $passenger)
+    {
+        $validated = $request->validate([
+            'ticket_remarks' => 'nullable|string|max:65535',
+        ]);
+
+        $passenger->update(['ticket_remarks' => $validated['ticket_remarks'] ?? null]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Remarks updated successfully.',
+        ]);
     }
 }

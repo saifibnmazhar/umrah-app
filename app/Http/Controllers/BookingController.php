@@ -270,9 +270,120 @@ class BookingController extends Controller
             ->when($request->filled('visa_status'), fn ($q) =>
                 $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status')))
             )
-            ->when($request->filled('ticket_status'), fn ($q) =>
-                $q->where('ticket_status', $request->input('ticket_status'))
-            )
+            ->when($request->filled('ticket_status'), function ($q) use ($request) {
+                $val = $request->input('ticket_status');
+
+                if (in_array($val, ['partial-re-issued', 'partial-refunded', 're-issued', 'refunded'])) {
+                    $targetStatus = str_contains($val, 're-issued') ? 're-issued' : 'refunded';
+                    $isPartial = str_starts_with($val, 'partial-');
+
+                    $q->where(function ($wq) use ($targetStatus, $isPartial) {
+                        if ($isPartial) {
+                            $wq->where(function ($wq2) use ($targetStatus) {
+                                $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $targetStatus)
+                                    ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                        ->where('status', '!=', $targetStatus));
+                            })->orWhere(function ($wq2) use ($targetStatus) {
+                                $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                    ->where('status', $targetStatus))
+                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $targetStatus)
+                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
+                            });
+                        } else {
+                            $wq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $targetStatus)
+                                ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                ->where(function ($wq2) use ($targetStatus) {
+                                    $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                        ->where('status', $targetStatus))
+                                        ->orWhereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'));
+                                });
+                        }
+                    });
+                } elseif (str_starts_with($val, 'issued-') || str_starts_with($val, 'awaiting-group')) {
+                    $isIssued = str_starts_with($val, 'issued-');
+                    $status = $isIssued ? 'issued' : 'awaiting-group';
+                    $routeFilter = $isIssued ? substr($val, 7) : substr($val, 15);
+
+                    if ($routeFilter === 'inbound' || $routeFilter === 'outbound' || $routeFilter === 'both') {
+                        $q->where(function ($wq) use ($status, $routeFilter, $isIssued) {
+                            $wq->where(function ($nq) use ($status, $routeFilter) {
+                                $nq->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'))
+                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular'))
+                                        ->whereHas('ticketFare.route', fn ($rq) => match ($routeFilter) {
+                                            'inbound' => $rq->where('route_type', 'oneway_inbound'),
+                                            'outbound' => $rq->where('route_type', 'oneway_outbound'),
+                                            'both' => $rq->whereIn('route_type', ['round', 'multi_city']),
+                                        }));
+                            });
+                            if ($routeFilter === 'inbound') {
+                                $wq->orWhere(function ($oq) use ($status, $isIssued) {
+                                    $poStatus = $isIssued ? 'pending' : 'awaiting-group';
+                                    $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
+                                    if ($isIssued) {
+                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', $poStatus));
+                                    } else {
+                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', '!=', $poStatus));
+                                    }
+                                });
+                                $wq->orWhere(function ($oq) use ($status) {
+                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                        ->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', $status));
+                                });
+                            } elseif ($routeFilter === 'outbound') {
+                                $wq->orWhere(function ($oq) use ($status, $isIssued) {
+                                    if ($isIssued) {
+                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', 'pending')
+                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                                ->where('status', 'issued'));
+                                    } else {
+                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $status)
+                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                                ->where('status', $status));
+                                    }
+                                });
+                                $wq->orWhere(function ($oq) use ($status) {
+                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', $status))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $status)
+                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
+                                });
+                            } elseif ($routeFilter === 'both') {
+                                $wq->orWhere(function ($oq) use ($status) {
+                                    $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', $status));
+                                });
+                                $wq->orWhere(function ($oq) use ($status) {
+                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
+                                            ->where('status', $status))
+                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
+                                });
+                            }
+                        });
+                    } elseif ($routeFilter === '') {
+                        $q->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'))
+                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
+                                ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
+                    }
+                } else {
+                    $q->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $val)
+                        ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular')));
+                }
+            })
             ->when($request->filled('visa_agent_id') && $canFilterByVisaAgent, fn ($q) =>
                 $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
             )
@@ -336,7 +447,11 @@ class BookingController extends Controller
             ->when($selectedRouteDisplay, function ($q) use ($routeDisplayMap, $selectedRouteDisplay) {
                 $routeIds = $routeDisplayMap[$selectedRouteDisplay] ?? [];
                 if (!empty($routeIds)) {
-                    $q->whereHas('ticketFare', fn ($q) => $q->whereIn('route_id', $routeIds));
+                    $q->where(function ($q) use ($routeIds) {
+                        $q->whereHas('ticketFare', fn ($q) => $q->whereIn('route_id', $routeIds))
+                          ->orWhereHas('ticketFareInbound', fn ($q) => $q->whereIn('route_id', $routeIds))
+                          ->orWhereHas('ticketFareOutbound', fn ($q) => $q->whereIn('route_id', $routeIds));
+                    });
                 }
             })
             ->when($request->filled('package_id'), fn ($q) =>
@@ -411,10 +526,20 @@ class BookingController extends Controller
                 'booking.customer.documents',
                 'booking.documents',
                 'booking.package.ticketFare.route',
+                'booking.package.ticketFareInbound',
+                'booking.package.ticketFareOutbound',
                 'booking.invoice',
                 'booking.fingerprint',
                 'booking.passengers',
                 'ticketFare.route',
+                'ticketFareInbound.route',
+                'ticketFareInbound.airline',
+                'ticketFareInbound.airlineClass.class',
+                'ticketFareInbound.baggageAllowances',
+                'ticketFareOutbound.route',
+                'ticketFareOutbound.airline',
+                'ticketFareOutbound.airlineClass.class',
+                'ticketFareOutbound.baggageAllowances',
                 'status',
                 'visaSubmission.visaAgent',
                 'visaSubmission.visaSellingPrice',
@@ -423,10 +548,26 @@ class BookingController extends Controller
                 'fingerprintDetail.approvedLog',
                 'ticketFare.baggageAllowances',
                 'allIssuedTickets',
+                'allIssuedTickets.ticketAgent',
+                'allIssuedTickets.ticketFare.airline',
+                'allIssuedTickets.ticketFare.airlineClass.class',
+                'allIssuedTickets.ticketFare.route.fromCity',
+                'allIssuedTickets.ticketFare.route.toCity',
+                'allIssuedTickets.ticketFare.route.returnCity',
+                'allIssuedTickets.ticketFare.route.multiSegments.fromCity',
+                'allIssuedTickets.ticketFare.route.multiSegments.toCity',
                 'latestIssuedTicket.ticketAgent',
                 'latestIssuedTicket.ticketFare.airline',
                 'latestIssuedTicket.ticketFare.airlineClass.class',
                 'latestIssuedTicket.ticketFare.route',
+                'ticketFareInbound.airline',
+                'ticketFareInbound.airlineClass.class',
+                'ticketFareInbound.route',
+                'ticketFareInbound.baggageAllowances',
+                'ticketFareOutbound.airline',
+                'ticketFareOutbound.airlineClass.class',
+                'ticketFareOutbound.route',
+                'ticketFareOutbound.baggageAllowances',
             ])
             ->withCount('documents')
             ->orderBy('created_at', 'desc')
@@ -464,7 +605,20 @@ class BookingController extends Controller
 
         $fingerprintStatuses = FingerprintStatus::cases();
         $visaStatuses = VisaStatus::cases();
-        $ticketStatuses = TicketStatus::cases();
+        $ticketStatuses = [
+            ['value' => 'pending', 'label' => 'Pending'],
+            ['value' => 'issued-inbound', 'label' => 'Issued - Inbound'],
+            ['value' => 'issued-outbound', 'label' => 'Issued - Outbound'],
+            ['value' => 'issued-both', 'label' => 'Issued - Both'],
+            ['value' => 'awaiting-group', 'label' => 'Awaiting Group'],
+            ['value' => 'awaiting-group-inbound', 'label' => 'Awaiting Group - Inbound'],
+            ['value' => 'awaiting-group-outbound', 'label' => 'Awaiting Group - Outbound'],
+            ['value' => 'awaiting-group-both', 'label' => 'Awaiting Group - Both'],
+            ['value' => 'partial-re-issued', 'label' => 'Partial Re-Issued'],
+            ['value' => 're-issued', 'label' => 'Re-Issued'],
+            ['value' => 'partial-refunded', 'label' => 'Partial Refunded'],
+            ['value' => 'refunded', 'label' => 'Refunded'],
+        ];
         $fingerprintLocations = FingerprintLocation::cases();
 
         return view('bookings.index', compact(
@@ -505,11 +659,14 @@ class BookingController extends Controller
         }
 
         $districts = District::orderBy('name')->get();
-        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice', 'ticketFareInbound', 'ticketFareOutbound'])->orderBy('package_name')->get()->map(function ($pkg) {
             return [
                 'id' => $pkg->id,
                 'package_name' => $pkg->package_name,
                 'ticket_fare_id' => $pkg->ticket_fare_id,
+                'is_double_ticket' => $pkg->is_double_ticket,
+                'ticket_fare_inbound_id' => $pkg->ticket_fare_inbound_id,
+                'ticket_fare_outbound_id' => $pkg->ticket_fare_outbound_id,
                 'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
                 'service_charge' => $pkg->service_charge ?? 0,
             ];
@@ -607,6 +764,8 @@ class BookingController extends Controller
             'passengers.*.address' => 'nullable|string|max:500',
             'passengers.*.gender' => 'nullable|in:male,female',
             'passengers.*.ticket_fare_id' => 'nullable|exists:ticket_fares,id',
+            'passengers.*.ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
+            'passengers.*.ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
             'booking_customer_docs' => 'nullable|array',
             'booking_customer_docs.*' => 'nullable|file|mimes:jpg,jpeg,png,pdf|max:5120',
             'passenger_docs' => 'nullable|array',
@@ -734,6 +893,8 @@ class BookingController extends Controller
                     // $passengerData['stay_duration'] ?? null
                 );
 
+                $isDoubleTicket = $booking->package?->is_double_ticket;
+
                 $passenger = Passenger::create([
                     'booking_id' => $booking->id,
                     'first_name' => $passengerData['first_name'],
@@ -749,9 +910,17 @@ class BookingController extends Controller
                     'flight_date_from' => $passengerData['flight_date_from'] ?? null,
                     'flight_date_to' => $passengerData['flight_date_to'] ?? null,
                     'address' => $passengerData['address'] ?? null,
-                    'ticket_fare_id' => ($passengerData['service_required'] ?? '') === 'visa_only'
+                    'ticket_fare_id' => $isDoubleTicket
                         ? null
-                        : ($passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id),
+                        : (($passengerData['service_required'] ?? '') === 'visa_only'
+                            ? null
+                            : ($passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id)),
+                    'ticket_fare_inbound_id' => $isDoubleTicket
+                        ? ($passengerData['ticket_fare_inbound_id'] ?? $booking->package?->ticket_fare_inbound_id)
+                        : null,
+                    'ticket_fare_outbound_id' => $isDoubleTicket
+                        ? ($passengerData['ticket_fare_outbound_id'] ?? $booking->package?->ticket_fare_outbound_id)
+                        : null,
                     'package_value' => 0,
                 ]);
 
@@ -909,6 +1078,8 @@ class BookingController extends Controller
             'passengers',
             'passengers.documents',
             'passengers.ticketFare',
+            'passengers.ticketFareInbound.route',
+            'passengers.ticketFareOutbound.route',
             'user',
             'district',
             'package',
@@ -917,14 +1088,19 @@ class BookingController extends Controller
             'payments.vouchers', 'payments.bank',
         ]);
 
-        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice', 'ticketFareInbound', 'ticketFareOutbound'])->orderBy('package_name')->get()->map(function ($pkg) {
             return [
                 'id' => $pkg->id,
                 'package_name' => $pkg->package_name,
                 'ticket_fare_id' => $pkg->ticket_fare_id,
+                'is_double_ticket' => $pkg->is_double_ticket,
+                'ticket_fare_inbound_id' => $pkg->ticket_fare_inbound_id,
+                'ticket_fare_outbound_id' => $pkg->ticket_fare_outbound_id,
                 'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
                 'service_charge' => $pkg->service_charge ?? 0,
-                'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
+                'package_value' => $pkg->is_double_ticket
+                    ? (($pkg->ticketFareInbound?->selling_fare ?? 0) + ($pkg->ticketFareOutbound?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0))
+                    : (($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0)),
             ];
         });
 
@@ -1016,34 +1192,44 @@ class BookingController extends Controller
             abort(403);
         }
 
-        $booking->load(['customer', 'passengers', 'district', 'fingerprintBranch', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'fingerprintCharge']);
+        $booking->load(['customer', 'passengers', 'district', 'fingerprintBranch', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'passengers.ticketFareInbound.route', 'passengers.ticketFareOutbound.route', 'fingerprintCharge']);
 
         $bookingBranches = $this->isAdminRole() ? Branch::orderBy('name')->get(['id', 'name']) : collect();
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get(['id', 'name']);
 
         $districts = District::orderBy('name')->get();
-        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice'])->orderBy('package_name')->get()->map(function ($pkg) {
+        $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice', 'ticketFareInbound', 'ticketFareOutbound'])->orderBy('package_name')->get()->map(function ($pkg) {
             return [
                 'id' => $pkg->id,
                 'package_name' => $pkg->package_name,
                 'ticket_fare_id' => $pkg->ticket_fare_id,
+                'is_double_ticket' => $pkg->is_double_ticket,
+                'ticket_fare_inbound_id' => $pkg->ticket_fare_inbound_id,
+                'ticket_fare_outbound_id' => $pkg->ticket_fare_outbound_id,
                 'visa_selling_price' => $pkg->visaSellingPrice?->selling_price ?? 0,
                 'service_charge' => $pkg->service_charge ?? 0,
-                'package_value' => ($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0),
+                'package_value' => $pkg->is_double_ticket
+                    ? (($pkg->ticketFareInbound?->selling_fare ?? 0) + ($pkg->ticketFareOutbound?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0))
+                    : (($pkg->ticketFare?->selling_fare ?? 0) + ($pkg->visaSellingPrice?->selling_price ?? 0) + ($pkg->service_charge ?? 0)),
                 'is_active' => true,
             ];
         });
 
         if ($booking->package_id) {
-            $currentPackage = Package::with(['ticketFare', 'visaSellingPrice'])->find($booking->package_id);
+            $currentPackage = Package::with(['ticketFare', 'visaSellingPrice', 'ticketFareInbound', 'ticketFareOutbound'])->find($booking->package_id);
             if ($currentPackage && !$currentPackage->is_active) {
                 $packages->push([
                     'id' => $currentPackage->id,
                     'package_name' => $currentPackage->package_name,
                     'ticket_fare_id' => $currentPackage->ticket_fare_id,
+                    'is_double_ticket' => $currentPackage->is_double_ticket,
+                    'ticket_fare_inbound_id' => $currentPackage->ticket_fare_inbound_id,
+                    'ticket_fare_outbound_id' => $currentPackage->ticket_fare_outbound_id,
                     'visa_selling_price' => $currentPackage->visaSellingPrice?->selling_price ?? 0,
                     'service_charge' => $currentPackage->service_charge ?? 0,
-                    'package_value' => ($currentPackage->ticketFare?->selling_fare ?? 0) + ($currentPackage->visaSellingPrice?->selling_price ?? 0) + ($currentPackage->service_charge ?? 0),
+                    'package_value' => $currentPackage->is_double_ticket
+                        ? (($currentPackage->ticketFareInbound?->selling_fare ?? 0) + ($currentPackage->ticketFareOutbound?->selling_fare ?? 0) + ($currentPackage->visaSellingPrice?->selling_price ?? 0) + ($currentPackage->service_charge ?? 0))
+                        : (($currentPackage->ticketFare?->selling_fare ?? 0) + ($currentPackage->visaSellingPrice?->selling_price ?? 0) + ($currentPackage->service_charge ?? 0)),
                     'is_active' => false,
                 ]);
             }
@@ -1162,14 +1348,31 @@ class BookingController extends Controller
             $booking->update($validated);
 
             if ($request->has('package_id') && $booking->wasChanged('package_id')) {
-                $package = Package::with('ticketFare')->find($request->input('package_id'));
-                if ($package && $package->ticket_fare_id) {
-                    $booking->passengers()
-                        ->where(function ($q) {
-                            $q->where('service_required', '!=', 'visa_only')
-                              ->orWhereNull('service_required');
-                        })
-                        ->update(['ticket_fare_id' => $package->ticket_fare_id]);
+                $package = Package::with(['ticketFare', 'ticketFareInbound', 'ticketFareOutbound'])->find($request->input('package_id'));
+                if ($package) {
+                    if ($package->is_double_ticket) {
+                        $booking->passengers()
+                            ->where(function ($q) {
+                                $q->where('service_required', '!=', 'visa_only')
+                                  ->orWhereNull('service_required');
+                            })
+                            ->update([
+                                'ticket_fare_id' => null,
+                                'ticket_fare_inbound_id' => $package->ticket_fare_inbound_id,
+                                'ticket_fare_outbound_id' => $package->ticket_fare_outbound_id,
+                            ]);
+                    } elseif ($package->ticket_fare_id) {
+                        $booking->passengers()
+                            ->where(function ($q) {
+                                $q->where('service_required', '!=', 'visa_only')
+                                  ->orWhereNull('service_required');
+                            })
+                            ->update([
+                                'ticket_fare_id' => $package->ticket_fare_id,
+                                'ticket_fare_inbound_id' => null,
+                                'ticket_fare_outbound_id' => null,
+                            ]);
+                    }
                 }
             }
 
@@ -1336,6 +1539,8 @@ class BookingController extends Controller
             'address' => 'nullable|string|max:500',
             'gender' => 'nullable|in:male,female',
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
+            'ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
+            'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
         ]);
 
         $passengerType = $this->bookingService->calculatePassengerType(
@@ -1343,13 +1548,23 @@ class BookingController extends Controller
             // $validated['stay_duration'] ?? null
         );
 
+        $isDoubleTicket = $booking->package?->is_double_ticket;
+
         $validated['booking_id'] = $booking->id;
         $validated['passenger_type'] = $passengerType;
         $validated['service_required'] = $validated['service_required'] ?? 'All';
         $validated['stay_duration'] = $validated['stay_duration'] ?? 14;
-        $validated['ticket_fare_id'] = ($validated['service_required'] ?? '') === 'visa_only'
+        $validated['ticket_fare_id'] = $isDoubleTicket
             ? null
-            : ($validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id);
+            : (($validated['service_required'] ?? '') === 'visa_only'
+                ? null
+                : ($validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id));
+        $validated['ticket_fare_inbound_id'] = $isDoubleTicket
+            ? ($validated['ticket_fare_inbound_id'] ?? $booking->package?->ticket_fare_inbound_id)
+            : null;
+        $validated['ticket_fare_outbound_id'] = $isDoubleTicket
+            ? ($validated['ticket_fare_outbound_id'] ?? $booking->package?->ticket_fare_outbound_id)
+            : null;
 
         return DB::transaction(function () use ($booking, $validated, $passengerType) {
             $passenger = Passenger::create($validated);
