@@ -3336,6 +3336,9 @@ function bookingIndexApp() {
                 t => t.issue_type === 'pending_outbound' && ['issued', 're-issued'].includes(t.status)
             );
             if (hasIssuedOutbound) return false;
+            if (this.rowHasPendingOutbound(index) && this.hasRegularIssued(index) && row.fingerprint_status === 'approved') {
+                return false;
+            }
             return true;
         },
 
