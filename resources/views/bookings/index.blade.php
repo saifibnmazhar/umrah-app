@@ -1039,20 +1039,20 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
                             </button>
                             <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex items-center gap-1 px-2 py-1 whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                                <button @click="open = false; toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
-                                <button x-show="canShowIssueOutInMenu({{ $loop->index }})" @click="open = false; handleIssueOutFromMenu({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Issue-Out</button>
-                                <button x-show="hasRegularIssued({{ $loop->index }})" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
-                                <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="open = false; openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
+                                <button @click="toggleTicketHold({{ $loop->index }})" :disabled="isTogglingTicketHold[{{ $loop->index }}]" class="px-2 py-1 text-xs font-medium rounded hover:bg-slate-50 transition" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'text-yellow-600' : 'text-orange-600'" x-text="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'Unhold' : 'Hold'"></button>
+                                <button x-show="canShowIssueOutInMenu({{ $loop->index }})" @click="handleIssueOutFromMenu({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Issue-Out</button>
+                                <button x-show="hasRegularIssued({{ $loop->index }})" @click="openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
+                                <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
                                 <template x-if="rowHasConfirmableTickets({{ $loop->index }})">
                                     <div>
                                         <template x-if="!showThreeButtonsMode({{ $loop->index }})">
-                                            <button @click="open = false; confirmTickets({{ $loop->index }}, 'all')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm</button>
+                                            <button @click="confirmTickets({{ $loop->index }}, 'all')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm</button>
                                         </template>
                                         <template x-if="showThreeButtonsMode({{ $loop->index }})">
                                             <span>
-                                                <button x-show="showGConfirmIn({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'in')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm In</button>
-                                                <button x-show="showGConfirmOut({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'out')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Out</button>
-                                                <button x-show="showGConfirmBoth({{ $loop->index }})" @click="open = false; confirmTickets({{ $loop->index }}, 'both')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Both</button>
+                                                <button x-show="showGConfirmIn({{ $loop->index }})" @click="confirmTickets({{ $loop->index }}, 'in')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm In</button>
+                                                <button x-show="showGConfirmOut({{ $loop->index }})" @click="confirmTickets({{ $loop->index }}, 'out')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Out</button>
+                                                <button x-show="showGConfirmBoth({{ $loop->index }})" @click="confirmTickets({{ $loop->index }}, 'both')" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">G-Confirm Both</button>
                                             </span>
                                         </template>
                                     </div>
@@ -1149,15 +1149,15 @@ if ($passenger->ticket_fare_inbound_id) {
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
             </button>
             <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex flex-col whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">View Passenger</a>
-                <button x-show="hasViewableTickets({{ $loop->index }})" @click="open = false; openTicketInfoModal({{ $loop->index }})" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition text-left">View Tickets</button>
+                <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">View Passenger</a>
+                <button x-show="hasViewableTickets({{ $loop->index }})" @click="openTicketInfoModal({{ $loop->index }})" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition text-left">View Tickets</button>
                 @if($passenger->documents_count > 0)
-                    <a href="{{ route('passengers.download-all-docs', $passenger->id) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download</a>
+                    <a href="{{ route('passengers.download-all-docs', $passenger->id) }}" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download</a>
                 @else
                     <span class="px-3 py-1.5 text-xs font-medium text-slate-300 cursor-not-allowed">Download</span>
                 @endif
                 @if($passenger->booking->documents->isNotEmpty() || ($passenger->booking->customer && $passenger->booking->customer->documents->isNotEmpty()))
-                    <a href="{{ route('bookings.download-all-docs', ['booking' => $passenger->booking_id, 'passenger_id' => $passenger->id]) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download All</a>
+                    <a href="{{ route('bookings.download-all-docs', ['booking' => $passenger->booking_id, 'passenger_id' => $passenger->id]) }}" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download All</a>
                 @else
                     <span class="px-3 py-1.5 text-xs font-medium text-slate-300 cursor-not-allowed">Download All</span>
                 @endif
