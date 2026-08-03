@@ -1,0 +1,89 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Booking;
+use App\Models\IssuedTicket;
+use App\Models\Passenger;
+use App\Models\RefundedTicket;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
+
+class RefundController extends Controller
+{
+    public function store(Request $request, Booking $booking, Passenger $passenger)
+    {
+        if ($passenger->booking_id !== $booking->id) {
+            abort(403, 'Passenger does not belong to this booking.');
+        }
+
+        $validated = $request->validate([
+            'issued_ticket_id' => 'required|exists:issued_tickets,id',
+            'ticket_number' => 'nullable|string|max:100',
+            'pnr' => 'nullable|string|max:50',
+            'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
+            'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
+            'group_ticket_id' => 'nullable|exists:group_tickets,id',
+            'refund_date' => 'required|date',
+            'inbound_date' => 'nullable|date',
+            'outbound_date' => 'nullable|date',
+            'is_refundable' => 'boolean',
+            'is_exchangeable' => 'boolean',
+            'baggage_inbound' => 'nullable|string|max:255',
+            'baggage_outbound' => 'nullable|string|max:255',
+
+            'reason_id' => 'required|exists:re_issue_refund_reasons,id',
+            'iata_refund' => 'required|numeric|min:0',
+            'customer_refund' => 'required|numeric|min:0',
+            'service_charge' => 'required|numeric|min:0',
+            'remarks' => 'nullable|string',
+            'payment_by' => 'nullable|in:customer,airline,employee',
+        ]);
+
+        $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])
+            ->where('passenger_id', $passenger->id)
+            ->first();
+
+        if (! $issuedTicket) {
+            return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
+        }
+
+        if (! in_array($issuedTicket->status, ['issued', 're-issued'])) {
+            return response()->json(['message' => 'This ticket cannot be refunded.'], 400);
+        }
+
+        try {
+            DB::beginTransaction();
+
+            $oldData = $issuedTicket->toArray();
+
+            $refundData = array_merge($validated, [
+                'user_id' => auth()->id(),
+                'selling_fare' => $issuedTicket->selling_fare ?? 0,
+                'net_fare' => $issuedTicket->net_fare ?? 0,
+                'offer_price' => $issuedTicket->offer_price ?? 0,
+                'iata_refunded_amount' => $validated['iata_refund'] ?? 0,
+                'refund_to_customer' => $validated['customer_refund'] ?? 0,
+            ]);
+
+            $refundedTicket = RefundedTicket::create($refundData);
+
+            $issuedTicket->update(['status' => 'refunded']);
+
+            $issuedTicket->logAction('refunded', $oldData, $issuedTicket->toArray());
+
+            DB::commit();
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Ticket refunded successfully.',
+                'refunded_ticket' => $refundedTicket,
+            ]);
+        } catch (\Exception $e) {
+            DB::rollBack();
+            \Log::error('Ticket refund failed: '.$e->getMessage());
+
+            return response()->json(['message' => 'Failed to refund ticket.'], 500);
+        }
+    }
+}

@@ -89,6 +89,8 @@ $classesList = \App\Models\TravelClass::all()->map(fn($c) => [
     'name' => $c->name,
 ])->values();
 
+$refundReasons = \App\Models\ReIssueRefundReason::where('reason_of', 'refund')->get();
+
 $activeFares = \App\Models\TicketFare::where('is_active', true)->with([
     'route.fromCity', 'route.toCity', 'route.returnCity',
     'route.multiSegments.fromCity', 'route.multiSegments.toCity',
@@ -330,6 +332,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'outbound_date' => $t->outbound_date?->format('Y-m-d') ?? '',
         'selling_fare' => (float)($t->selling_fare ?? 0),
         'net_fare' => (float)($t->net_fare ?? 0),
+        'offer_price' => (float)($t->offer_price ?? 0),
         'pnr' => $t->pnr ?? '',
         'status' => $t->status,
         'issue_type' => $t->issue_type,
@@ -337,6 +340,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'is_exchangeable' => $t->is_exchangeable ?? false,
         'baggage_inbound' => $t->baggage_inbound ?? '',
         'baggage_outbound' => $t->baggage_outbound ?? '',
+        'ticket_agent_id' => $t->ticket_agent_id,
+        'ticket_fare_id' => $t->ticket_fare_id,
+        'group_ticket_id' => $t->group_ticket_id,
         'airline' => $t->ticketFare?->airline?->name ?? '',
         'travel_class' => $t->ticketFare?->airlineClass?->class?->name ?? '',
         'route' => $t->ticketFare?->route ? (function() use ($t) {
@@ -1598,6 +1604,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                     <th class="px-3 py-2">Airline</th>
                                     <th class="px-3 py-2">Class</th>
                                     <th class="px-3 py-2">Status</th>
+                                    <th class="px-3 py-2">Active</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1620,6 +1627,14 @@ if ($passenger->ticket_fare_inbound_id) {
                                                 x-text="ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)">
                                             </span>
                                         </td>
+                                        <td class="px-3 py-2">
+                                            <template x-if="ticket.status === 'issued' || ticket.status === 're-issued'">
+                                                <button type="button" @click="openRefundModal(ticketInfoPassengerIndex, idx)" class="px-3 py-1 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition">Refund</button>
+                                            </template>
+                                            <template x-else>
+                                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-400">Refunded</span>
+                                            </template>
+                                        </td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -1630,6 +1645,123 @@ if ($passenger->ticket_fare_inbound_id) {
                     </div>
                 </div>
             </template>
+        </div>
+    </div>
+
+    {{-- Refund Modal --}}
+    <div x-show="isRefundModalOpen" x-cloak class="fixed inset-0 z-[65] flex items-center justify-center" @keydown.escape="closeRefundModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeRefundModal()"></div>
+        <div x-show="isRefundModalOpen" x-cloak class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-3xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <div class="flex items-center justify-between mb-4">
+                <h3 class="text-xl font-semibold text-slate-800">Refund Ticket</h3>
+                <button type="button" @click="closeRefundModal()" class="text-slate-400 hover:text-slate-600">
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/></svg>
+                </button>
+            </div>
+
+            <form novalidate @submit.prevent="handleRefundSubmit()">
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Original Ticket Info</h4>
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
+                        <div x-show="refundForm.selling_fare > 0">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Selling Fare</label>
+                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" class="text-sm text-slate-800">SAR <span x-text="refundForm.selling_fare.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'BDT'" class="text-sm text-slate-800">BDT <span x-text="refundForm.selling_fare_bdt.toLocaleString()"></span></p>
+                        </div>
+                        <div x-show="refundForm.net_fare > 0">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Net Fare</label>
+                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" class="text-sm text-slate-800">SAR <span x-text="refundForm.net_fare.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'BDT'" class="text-sm text-slate-800">BDT <span x-text="refundForm.net_fare_bdt.toLocaleString()"></span></p>
+                        </div>
+                        <div x-show="refundForm.offer_price > 0">
+                            <label class="block text-xs font-medium text-slate-500 mb-1">Offer Price</label>
+                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" class="text-sm text-slate-800">SAR <span x-text="refundForm.offer_price.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'BDT'" class="text-sm text-slate-800">BDT <span x-text="refundForm.offer_price_bdt.toLocaleString()"></span></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Refund Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Reason *</label>
+                            <select x-model="refundForm.reason_id"
+                                    @input="refundForm.errors.reason_id = ''"
+                                    :class="refundForm.errors.reason_id ? 'border-red-500' : ''"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Reason</option>
+                                <template x-for="reason in refundReasons" :key="reason.id">
+                                    <option :value="reason.id" x-text="reason.name"></option>
+                                </template>
+                            </select>
+                            <p x-show="refundForm.errors.reason_id" x-text="refundForm.errors.reason_id" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (SAR) *</label>
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund"
+                                       @input="handleRefundSarInput('iata_refund')"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (BDT) *</label>
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund_bdt"
+                                       @input="handleRefundBdtInput('iata_refund')"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                                <input type="number" x-model.number="refundForm.iata_refund" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
+                            </div>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (SAR) *</label>
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund"
+                                       @input="handleRefundSarInput('customer_refund')"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (BDT) *</label>
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund_bdt"
+                                       @input="handleRefundBdtInput('customer_refund')"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                                <input type="number" x-model.number="refundForm.customer_refund" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
+                            </div>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR) *</label>
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.service_charge"
+                                       @input="handleRefundSarInput('service_charge')"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT) *</label>
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.service_charge_bdt"
+                                       @input="handleRefundBdtInput('service_charge')"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                                <input type="number" x-model.number="refundForm.service_charge" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
+                            </div>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
+                            <select x-model="refundForm.payment_by" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="customer">Customer</option>
+                                <option value="airline">Airline</option>
+                                <option value="employee">Employee</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                            <textarea x-model="refundForm.remarks" rows="3" placeholder="Enter remarks" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"></textarea>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="flex items-center justify-end gap-3 pt-4 border-t border-slate-200">
+                    <button type="button" @click="closeRefundModal()" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition">Cancel</button>
+                    <button type="submit" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition">Submit Refund</button>
+                </div>
+            </form>
         </div>
     </div>
 
@@ -3536,6 +3668,49 @@ function bookingIndexApp() {
         ticketInfoPassengerIndex: null,
         isReIssueModalOpen: false,
         reIssueModalIsOutbound: false,
+        isRefundModalOpen: false,
+        refundPassengerIndex: null,
+        refundTicketIndex: null,
+        refundReasons: @json($refundReasons),
+
+        refundForm: {
+            booking_id: null,
+            passenger_id: null,
+            issued_ticket_id: null,
+            ticket_number: '',
+            pnr: '',
+            refund_date: '',
+            inbound_date: '',
+            outbound_date: '',
+            selling_fare: 0,
+            selling_fare_bdt: 0,
+            net_fare: 0,
+            net_fare_bdt: 0,
+            offer_price: 0,
+            offer_price_bdt: 0,
+            is_refundable: false,
+            is_exchangeable: false,
+            baggage_inbound: '',
+            baggage_outbound: '',
+            ticket_agent_id: null,
+            ticket_fare_id: null,
+            group_ticket_id: null,
+            route: '',
+            airline: '',
+            travel_class: '',
+            reason_id: '',
+            iata_refund: 0,
+            iata_refund_bdt: 0,
+            customer_refund: 0,
+            customer_refund_bdt: 0,
+            service_charge: 0,
+            service_charge_bdt: 0,
+            payment_by: 'customer',
+            remarks: '',
+            errors: {
+                reason_id: '',
+            },
+        },
 
         ticketFareForm: {
             ticket_type: '',
@@ -4503,6 +4678,151 @@ function bookingIndexApp() {
 
         closeReIssueModal() {
             this.isReIssueModalOpen = false;
+        },
+
+        openRefundModal(rowIndex, ticketIndex) {
+            const row = this.passengersTicketData[rowIndex];
+            if (!row) return;
+
+            const ticket = this.viewableTickets(rowIndex)[ticketIndex];
+            if (!ticket) return;
+
+            const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
+
+            const f = this.refundForm;
+            f.booking_id = row.booking_id;
+            f.passenger_id = row.id;
+            f.issued_ticket_id = ticket.id;
+            f.ticket_number = ticket.ticket_number || '';
+            f.pnr = ticket.pnr || '';
+            f.refund_date = today;
+            f.inbound_date = ticket.inbound_date || '';
+            f.outbound_date = ticket.outbound_date || '';
+            f.selling_fare = ticket.selling_fare || 0;
+            f.net_fare = ticket.net_fare || 0;
+            f.offer_price = ticket.offer_price || 0;
+            f.is_refundable = ticket.is_refundable || false;
+            f.is_exchangeable = ticket.is_exchangeable || false;
+            f.baggage_inbound = ticket.baggage_inbound || '';
+            f.baggage_outbound = ticket.baggage_outbound || '';
+            f.ticket_agent_id = ticket.ticket_agent_id ?? null;
+            f.ticket_fare_id = ticket.ticket_fare_id ?? null;
+            f.group_ticket_id = ticket.group_ticket_id ?? null;
+            f.route = ticket.route || '';
+            f.airline = ticket.airline || '';
+            f.travel_class = ticket.travel_class || '';
+            f.reason_id = '';
+            f.iata_refund = 0;
+            f.customer_refund = 0;
+            f.service_charge = 0;
+            f.payment_by = 'customer';
+            f.remarks = '';
+            f.errors.reason_id = '';
+
+            const rate = window.__currencyRate || 0;
+            f.selling_fare_bdt = 0;
+            f.net_fare_bdt = 0;
+            f.offer_price_bdt = 0;
+            f.iata_refund_bdt = 0;
+            f.customer_refund_bdt = 0;
+            f.service_charge_bdt = 0;
+            if (rate > 0) {
+                f.selling_fare_bdt = Math.round(f.selling_fare * rate);
+                f.net_fare_bdt = Math.round(f.net_fare * rate);
+                f.offer_price_bdt = Math.round(f.offer_price * rate);
+            }
+
+            this.refundPassengerIndex = rowIndex;
+            this.refundTicketIndex = ticketIndex;
+            this.isRefundModalOpen = true;
+        },
+
+        closeRefundModal() {
+            this.isRefundModalOpen = false;
+        },
+
+        handleRefundSarInput(field) {
+            if (this._converting) return;
+            this._converting = true;
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                const sar = parseFloat(this.refundForm[field]) || 0;
+                this.refundForm[field + '_bdt'] = Math.round(sar * rate);
+            }
+            this._converting = false;
+        },
+
+        handleRefundBdtInput(field) {
+            if (this._converting) return;
+            this._converting = true;
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                const bdt = parseFloat(this.refundForm[field + '_bdt']) || 0;
+                this.refundForm[field] = (Math.round(bdt / rate * 1e6) / 1e6).toFixed(6);
+            }
+            this._converting = false;
+        },
+
+        handleRefundSubmit() {
+            if (this.isSubmitting) return;
+            const f = this.refundForm;
+            f.errors.reason_id = '';
+
+            if (!f.reason_id) {
+                f.errors.reason_id = 'Please select a reason.';
+                return;
+            }
+
+            this.isSubmitting = true;
+
+            const payload = {
+                issued_ticket_id: f.issued_ticket_id,
+                ticket_number: f.ticket_number,
+                pnr: f.pnr,
+                ticket_agent_id: f.ticket_agent_id,
+                ticket_fare_id: f.ticket_fare_id,
+                group_ticket_id: f.group_ticket_id,
+                refund_date: this.parseDDMMMYY(f.refund_date),
+                inbound_date: f.inbound_date ? this.parseDDMMMYY(f.inbound_date) : '',
+                outbound_date: f.outbound_date ? this.parseDDMMMYY(f.outbound_date) : '',
+                is_refundable: f.is_refundable,
+                is_exchangeable: f.is_exchangeable,
+                baggage_inbound: f.baggage_inbound,
+                baggage_outbound: f.baggage_outbound,
+                reason_id: f.reason_id,
+                iata_refund: f.iata_refund || 0,
+                customer_refund: f.customer_refund || 0,
+                service_charge: f.service_charge || 0,
+                remarks: f.remarks,
+                payment_by: f.payment_by,
+            };
+
+            fetch('/bookings/' + f.booking_id + '/passengers/' + f.passenger_id + '/refund', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    this.showToast('Ticket refunded successfully.');
+                    this.closeRefundModal();
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    this.showToast(res.message || 'Failed to refund ticket.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Refund error:', err);
+                this.showToast('Failed to refund ticket.', 'error');
+            })
+            .finally(() => {
+                this.isSubmitting = false;
+            });
         },
 
         handleReIssueSarInput(field) {
