@@ -828,6 +828,7 @@ Alpine.data('createBookingApp', () => ({
     discountModalVisible: false,
     paymentModalVisible: false,
     customDurationModalVisible: false,
+    discountValueBdt: '',
     paymentData: {
         currency: 'SAR',
         method: 'cash',
@@ -2452,6 +2453,7 @@ Alpine.data('editBookingApp', () => ({
     discountModalVisible: false,
     paymentModalVisible: false,
     customDurationModalVisible: false,
+    discountValueBdt: '',
     paymentData: {
         currency: 'SAR',
         method: 'cash',

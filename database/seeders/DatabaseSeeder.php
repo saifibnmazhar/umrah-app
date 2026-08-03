@@ -20,6 +20,7 @@ class DatabaseSeeder extends Seeder
             TransactionTypeSeeder::class,
             UserSeeder::class,
             PassengerStatusSeeder::class,
+            ReIssueRefundReasonSeeder::class,
         ]);
     }
 }

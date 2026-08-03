@@ -65,6 +65,9 @@ class TicketIssueController extends Controller
 
             if ($issuedTicket->issue_type === 'pending_outbound') {
                 unset($updateData['issue_type']);
+                if (isset($validated['ticket_fare_id'])) {
+                    $passenger->update(['ticket_fare_outbound_id' => $validated['ticket_fare_id']]);
+                }
             } else {
                 $updateData['issue_type'] = 'regular';
             }
@@ -86,6 +89,7 @@ class TicketIssueController extends Controller
                     ->exists();
 
                 if (! $existingPendingOutbound) {
+                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -97,6 +101,9 @@ class TicketIssueController extends Controller
                         'outbound_pending' => false,
                         'ticket_fare_id' => null,
                     ]);
+                    if ($pendingOutboundFareId) {
+                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
+                    }
                 }
             }
 
@@ -205,6 +212,7 @@ class TicketIssueController extends Controller
                     ->exists();
 
                 if (! $existingPendingOutbound) {
+                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -216,6 +224,9 @@ class TicketIssueController extends Controller
                         'outbound_pending' => false,
                         'ticket_fare_id' => null,
                     ]);
+                    if ($pendingOutboundFareId) {
+                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
+                    }
                 }
             }
 

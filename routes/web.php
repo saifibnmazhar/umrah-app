@@ -4,6 +4,7 @@ use App\Http\Controllers\BookingConditionController;
 use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BranchWiseReportController;
 use App\Http\Controllers\PassengerController;
+use App\Http\Controllers\ReIssueController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\AirlineCityController;
 use App\Http\Controllers\AirlineClassController;
@@ -414,6 +415,10 @@ Route::middleware('auth')->group(function () {
             ->name('passengers.confirm-group');
         Route::post('/passengers/{passenger}/create-outbound-pending', [TicketIssueController::class, 'createPendingOutbound'])
             ->name('passengers.create-outbound-pending');
+        Route::post('/bookings/{booking}/passengers/{passenger}/re-issue', [ReIssueController::class, 'store'])
+            ->name('bookings.passengers.re-issue');
+        Route::put('/passengers/{passenger}/confirm-group', [TicketIssueController::class, 'confirmGroup'])
+            ->name('passengers.confirm-group');
     });
 
     Route::post('/api/banks/quick-create', [BankController::class, 'quickStore']);

@@ -157,6 +157,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     'is_ticket_held' => (bool)($p->is_ticket_held ?? false),
     'ticket_status' => $p->allIssuedTickets
+        ->filter(fn($t) => is_null($t->issue_type) || $t->issue_type === 'regular')
         ->sortByDesc('id')
         ->first()?->status ?? null,
     'ticket_remarks' => $p->ticket_remarks ?? '',
@@ -386,7 +387,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'baggage_outbound' => $poit->baggage_outbound ?? '',
         'status' => $poit->status,
     ] : null,
-    'inbound_ticket_fare' => ($inFare = $p->ticketFareInbound) ? (function() use ($inFare) {
+    'inbound_ticket_fare' => ($inFare = $p->ticketFareInbound) ? (function() use ($inFare, $p) {
         $inRoute = $inFare->route;
         $inRouteDisplay = '—';
         if ($inRoute) {
@@ -399,6 +400,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                 $inRouteDisplay = ($inRoute->fromCity?->code ?? '?') . ' → ' . ($inRoute->toCity?->code ?? '?');
             }
         }
+        $pType = $p->passenger_type?->value ?? 'adult';
         return [
             'id' => $inFare->id,
             'route_display' => $inRouteDisplay,
@@ -412,11 +414,15 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'with_offer' => (bool)($inFare->ticket_type?->value === 'offer'),
             'child_fare_percentage' => (float)($inFare->child_fare_percentage ?? 70),
             'infant_fare_percentage' => (float)($inFare->infant_fare_percentage ?? 30),
-            'baggage_inbound' => '',
-            'baggage_outbound' => '',
+            'baggage_inbound' => $inFare->baggageAllowances
+                ->filter(fn($ba) => $ba->travel_direction?->value === 'inbound' && $ba->passenger_type?->value === $pType)
+                ->first()?->allowance ?? '',
+            'baggage_outbound' => $inFare->baggageAllowances
+                ->filter(fn($ba) => $ba->travel_direction?->value === 'outbound' && $ba->passenger_type?->value === $pType)
+                ->first()?->allowance ?? '',
         ];
     })() : null,
-    'outbound_ticket_fare' => ($outFare = $p->ticketFareOutbound) ? (function() use ($outFare) {
+    'outbound_ticket_fare' => ($outFare = $p->ticketFareOutbound) ? (function() use ($outFare, $p) {
         $outRoute = $outFare->route;
         $outRouteDisplay = '—';
         if ($outRoute) {
@@ -429,6 +435,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                 $outRouteDisplay = ($outRoute->fromCity?->code ?? '?') . ' → ' . ($outRoute->toCity?->code ?? '?');
             }
         }
+        $pType = $p->passenger_type?->value ?? 'adult';
         return [
             'id' => $outFare->id,
             'route_display' => $outRouteDisplay,
@@ -442,8 +449,12 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'with_offer' => (bool)($outFare->ticket_type?->value === 'offer'),
             'child_fare_percentage' => (float)($outFare->child_fare_percentage ?? 70),
             'infant_fare_percentage' => (float)($outFare->infant_fare_percentage ?? 30),
-            'baggage_inbound' => '',
-            'baggage_outbound' => '',
+            'baggage_inbound' => $outFare->baggageAllowances
+                ->filter(fn($ba) => $ba->travel_direction?->value === 'inbound' && $ba->passenger_type?->value === $pType)
+                ->first()?->allowance ?? '',
+            'baggage_outbound' => $outFare->baggageAllowances
+                ->filter(fn($ba) => $ba->travel_direction?->value === 'outbound' && $ba->passenger_type?->value === $pType)
+                ->first()?->allowance ?? '',
         ];
     })() : null,
     'total_cost' => $passengerTotalCostMap[$p->id] ?? 0,
@@ -1057,6 +1068,10 @@ if ($passenger->ticket_fare_inbound_id) {
                                         </template>
                                     </div>
                                 </template>
+                                <button x-show="(passengersTicketData[{{ $loop->index }}]?.ticket_status === 'issued' || passengersTicketData[{{ $loop->index }}]?.ticket_status === 're-issued')" @click="open = false; openTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-slate-600 rounded hover:bg-slate-50 transition">Edit</button>
+                                <button x-show="rowHasIssuedOutbound({{ $loop->index }})" @click="open = false; openOutboundEditTicketFareModal({{ $loop->index }})" class="px-2 py-1 text-xs font-medium text-blue-600 rounded hover:bg-slate-50 transition">Edit-Out</button>
+                                <button x-show="rowHasReIssueableTicket({{ $loop->index }})" @click="open = false; openReIssueModal({{ $loop->index }}, false)" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">Re-Issue</button>
+                                <button x-show="rowHasReIssueableOutbound({{ $loop->index }})" @click="open = false; openReIssueModal({{ $loop->index }}, true)" class="px-2 py-1 text-xs font-medium text-indigo-600 rounded hover:bg-slate-50 transition">Re-Issue Out</button>
                             </div>
                         </div>
                         <button
@@ -1982,6 +1997,315 @@ if ($passenger->ticket_fare_inbound_id) {
         </div>
     </div>
 
+    {{-- Re-Issue Ticket Modal --}}
+    <div x-show="isReIssueModalOpen" x-cloak class="fixed inset-0 z-[65] flex items-center justify-center" @keydown.escape="closeReIssueModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeReIssueModal()"></div>
+        <div x-show="isReIssueModalOpen" x-cloak class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4" x-text="reIssueModalIsOutbound ? 'Re-Issue Outbound Ticket' : 'Re-Issue Ticket'"></h3>
+            <form novalidate @submit.prevent="handleReIssueSubmit()">
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                    <select x-model="reIssueForm.ticket_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="">Select</option>
+                        <option value="regular">Regular</option>
+                        <option value="offer">Offer</option>
+                        <option value="group">Group</option>
+                    </select>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Information</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
+                            <select x-model="reIssueForm.route_type" @change="reIssueForm.ticket_option = ''" :disabled="reIssueForm.isRouteTypeLocked" :class="reIssueForm.isRouteTypeLocked ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <option value="">Select</option>
+                                <option value="One Way-Inbound">One Way-Inbound</option>
+                                <option value="One Way-Outbound">One Way-Outbound</option>
+                                <option value="Round">Round</option>
+                                <option value="Multi City">Multi City</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                            <select x-model="reIssueForm.flight_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select</option>
+                                <option value="Transit">Transit</option>
+                                <option value="Direct">Direct</option>
+                            </select>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
+                            <select x-model="reIssueForm.ticket_option" @change="handleReIssueTicketOptionChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Ticket</option>
+                                <template x-for="opt in filteredReIssueTicketOptions" :key="opt.value">
+                                    <option :value="opt.value" :disabled="opt.is_active === false" x-text="opt.display"></option>
+                                </template>
+                            </select>
+                        </div>
+                        <div x-show="!reIssueForm.route_type || reIssueForm.route_type !== 'One Way-Outbound'">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
+                            <input type="text" x-model="reIssueForm.inbound_date" placeholder="DD-MMM-YY"
+                                   @input="reIssueForm.errors.inbound_date = ''"
+                                   :class="reIssueForm.errors.inbound_date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <p x-show="reIssueForm.errors.inbound_date" x-text="reIssueForm.errors.inbound_date" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                        <div x-show="!reIssueForm.route_type || reIssueForm.route_type !== 'One Way-Inbound'">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date</label>
+                            <input type="text" x-model="reIssueForm.outbound_date" placeholder="DD-MMM-YY"
+                                   @input="reIssueForm.errors.outbound_date = ''"
+                                   :class="reIssueForm.errors.outbound_date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <p x-show="reIssueForm.errors.outbound_date" x-text="reIssueForm.errors.outbound_date" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">PNR *</label>
+                            <input type="text" x-model="reIssueForm.pnr"
+                                   @input="reIssueForm.errors.pnr = ''"
+                                   :class="reIssueForm.errors.pnr ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter PNR">
+                            <p x-show="reIssueForm.errors.pnr" x-text="reIssueForm.errors.pnr" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Number *</label>
+                            <input type="text" x-model="reIssueForm.ticket_number"
+                                   @input="reIssueForm.errors.ticket_number = ''"
+                                   :class="reIssueForm.errors.ticket_number ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter Ticket Number">
+                            <p x-show="reIssueForm.errors.ticket_number" x-text="reIssueForm.errors.ticket_number" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
+                            <input type="text" x-model="reIssueForm.date" placeholder="DD-MMM-YY"
+                                   @input="reIssueForm.errors.date = ''"
+                                   :class="reIssueForm.errors.date ? 'border-red-500' : ''"
+                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <p x-show="reIssueForm.errors.date" x-text="reIssueForm.errors.date" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
+                            <select x-model="reIssueForm.ticket_agent_id"
+                                    @input="reIssueForm.errors.ticket_agent_id = ''"
+                                    :class="reIssueForm.errors.ticket_agent_id ? 'border-red-500' : ''"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Agent</option>
+                                <template x-for="agent in ticketAgents" :key="agent.id">
+                                    <option :value="agent.id" x-text="agent.name"></option>
+                                </template>
+                            </select>
+                            <p x-show="reIssueForm.errors.ticket_agent_id" x-text="reIssueForm.errors.ticket_agent_id" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
+                            <input type="text" x-model="reIssueForm.route" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Airline</label>
+                            <input type="text" x-model="reIssueForm.airline" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Class</label>
+                            <input type="text" x-model="reIssueForm.travel_class" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
+                            <input type="text" x-model="reIssueForm.passenger_type" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Fare Calculation (from original ticket)</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
+                                <input type="number" x-model="reIssueForm.selling_fare" step="0.000001" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
+                                <input type="number" x-model="reIssueForm.selling_fare_bdt" step="0.000001" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.selling_fare" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
+                                <input type="number" x-model="reIssueForm.net_fare" step="0.000001" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
+                                <input type="number" x-model="reIssueForm.net_fare_bdt" step="0.000001" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.net_fare" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
+                                <input type="number" x-model="reIssueForm.offer_price" step="0.000001" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
+                                <input type="number" x-model="reIssueForm.offer_price_bdt" step="0.000001" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.offer_price" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Re-Issue Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Reason *</label>
+                            <select x-model="reIssueForm.reason_id"
+                                    @change="reIssueForm.errors.reason_id = ''"
+                                    :class="reIssueForm.errors.reason_id ? 'border-red-500' : ''"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+                                <option value="">Select Reason</option>
+                                <template x-for="reason in reIssueReasons" :key="reason.id">
+                                    <option :value="reason.id" x-text="reason.name"></option>
+                                </template>
+                            </select>
+                            <p x-show="reIssueForm.errors.reason_id" x-text="reIssueForm.errors.reason_id" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR) *</label>
+                                <input type="number" x-model="reIssueForm.re_issue_charge" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
+                                       :class="reIssueForm.errors.re_issue_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT) *</label>
+                                <input type="number" x-model="reIssueForm.re_issue_charge_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
+                                       :class="reIssueForm.errors.re_issue_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.re_issue_charge" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR) *</label>
+                                <input type="number" x-model="reIssueForm.fare_difference" step="0.000001"
+                                       @input="handleReIssueSarInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
+                                       :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT) *</label>
+                                <input type="number" x-model="reIssueForm.fare_difference_bdt" step="0.000001"
+                                       @input="handleReIssueBdtInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
+                                       :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.fare_difference" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (SAR)</label>
+                                <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('other_costs'); reIssueForm.errors.other_costs = ''"
+                                       :class="reIssueForm.errors.other_costs ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (BDT)</label>
+                                <input type="number" x-model="reIssueForm.other_costs_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('other_costs'); reIssueForm.errors.other_costs = ''"
+                                       :class="reIssueForm.errors.other_costs ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
+                                <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('service_charge'); reIssueForm.errors.service_charge = ''"
+                                       :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                                <input type="number" x-model="reIssueForm.service_charge_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('service_charge'); reIssueForm.errors.service_charge = ''"
+                                       :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                            <textarea x-model="reIssueForm.remarks" rows="3"
+                                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter remarks"></textarea>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
+                            <select x-model="reIssueForm.payment_by"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Payment</option>
+                                <option value="customer">Customer</option>
+                                <option value="airline">Airline</option>
+                                <option value="employee">Employee</option>
+                            </select>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div x-show="!reIssueForm.route_type || reIssueForm.route_type !== 'One Way-Outbound'">
+                            <label class="block text-sm text-slate-600 mb-1">Inbound Baggage (KG)</label>
+                            <input type="text" x-model="reIssueForm.baggage_inbound" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                        </div>
+                        <div x-show="!reIssueForm.route_type || reIssueForm.route_type !== 'One Way-Inbound'">
+                            <label class="block text-sm text-slate-600 mb-1">Outbound Baggage (KG)</label>
+                            <input type="text" x-model="reIssueForm.baggage_outbound" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="mb-4">
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Ticket Options</h4>
+                    <div class="flex flex-wrap gap-6">
+                        <label class="flex items-center gap-2 cursor-not-allowed">
+                            <input type="checkbox" x-model="reIssueForm.non_refundable" disabled class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                            <span class="text-sm text-slate-500">Non-Refundable</span>
+                        </label>
+                        <label class="flex items-center gap-2 cursor-not-allowed">
+                            <input type="checkbox" x-model="reIssueForm.non_exchangeable" disabled class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                            <span class="text-sm text-slate-500">Non-Exchangeable</span>
+                        </label>
+                    </div>
+                </div>
+
+                <div class="flex gap-3 mt-6">
+                    <button type="submit" :disabled="isSubmitting" class="flex-1 px-6 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 transition font-medium" :class="isSubmitting ? 'opacity-50 cursor-not-allowed' : ''">Re-Issue Ticket</button>
+                    <button type="button" @click="closeReIssueModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
     @include('partials.route-form-modal')
     @include('partials.airline-form-modal')
     @include('partials.class-form-modal')
@@ -2556,6 +2880,7 @@ function bookingIndexApp() {
         passengerStatusMap: @json($passengerStatuses->pluck('id', 'name')),
 
         ticketAgents: @json($ticketAgents),
+        reIssueReasons: @json($reIssueReasons),
 
         routesList: @json($routesList),
         airlinesList: @json($airlinesList),
@@ -3209,6 +3534,8 @@ function bookingIndexApp() {
         ticketFareModalTitle: 'Issue Ticket',
         isTicketInfoModalOpen: false,
         ticketInfoPassengerIndex: null,
+        isReIssueModalOpen: false,
+        reIssueModalIsOutbound: false,
 
         ticketFareForm: {
             ticket_type: '',
@@ -3252,6 +3579,61 @@ function bookingIndexApp() {
                 selling_fare: '',
                 net_fare: '',
                 offer_price: '',
+                inbound_date: '',
+                outbound_date: '',
+            },
+        },
+
+        reIssueForm: {
+            issued_ticket_id: null,
+            isOutboundMode: false,
+            ticket_type: '',
+            group_ticket_id: '',
+            route_type: '',
+            flight_type: '',
+            ticket_option: '',
+            inbound_date: '',
+            outbound_date: '',
+            pnr: '',
+            ticket_number: '',
+            date: (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })(),
+            ticket_agent_id: '',
+            route: '',
+            airline: '',
+            travel_class: '',
+            passenger_type: '',
+            selling_fare: 0,
+            selling_fare_bdt: '',
+            net_fare: 0,
+            net_fare_bdt: '',
+            offer_price: 0,
+            offer_price_bdt: '',
+            baggage_inbound: '',
+            baggage_outbound: '',
+            non_refundable: false,
+            non_exchangeable: false,
+            reason_id: '',
+            re_issue_charge: 0,
+            re_issue_charge_bdt: '',
+            fare_difference: 0,
+            fare_difference_bdt: '',
+            other_costs: 0,
+            other_costs_bdt: '',
+            service_charge: 0,
+            service_charge_bdt: '',
+            remarks: '',
+            payment_by: 'customer',
+            isRouteTypeLocked: false,
+            errors: {
+                pnr: '',
+                ticket_number: '',
+                date: '',
+                ticket_agent_id: '',
+                reason_id: '',
+                re_issue_charge: '',
+                fare_difference: '',
+                other_costs: '',
+                service_charge: '',
                 inbound_date: '',
                 outbound_date: '',
             },
@@ -3359,6 +3741,22 @@ function bookingIndexApp() {
                 t => !t.issue_type || t.issue_type === 'regular'
             );
             return regular && ['issued', 're-issued'].includes(regular.status);
+        rowHasReIssueableTicket(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            return (row.all_issued_tickets || []).some(t =>
+                (!t.issue_type || t.issue_type === 'regular' || t.issue_type === 'additional') &&
+                (t.status === 'issued' || t.status === 'refunded')
+            );
+        },
+
+        rowHasReIssueableOutbound(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            return (row.all_issued_tickets || []).some(t =>
+                t.issue_type === 'pending_outbound' &&
+                (t.status === 'issued' || t.status === 'refunded')
+            );
         },
 
         rowHasConfirmableTickets(index) {
@@ -3370,6 +3768,7 @@ function bookingIndexApp() {
                 return !(row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound');
             }
             return false;
+            return (row.all_issued_tickets || []).some(t => ['pending', 'refunded'].includes(t.status));
         },
 
         getTicketStatuses(index) {
@@ -3392,6 +3791,7 @@ function bookingIndexApp() {
                 }
                 return s;
             }
+            if (!R) return row.is_ticket_held ? ['Hold'] : [];
 
             const OP = R.outbound_pending ?? false;
             const rt = (R.route_type || '').toLowerCase();
@@ -4030,6 +4430,158 @@ function bookingIndexApp() {
             this.editingPassengerIndex = null;
         },
 
+        openReIssueModal(rowIndex, isOutbound) {
+            const row = this.passengersTicketData[rowIndex];
+            if (!row) return;
+
+            const ticket = isOutbound
+                ? row.pending_outbound_issued_ticket
+                : row.latest_issued_ticket;
+            if (!ticket) return;
+
+            const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
+
+            this.reIssueForm.issued_ticket_id = ticket.id;
+            this.reIssueForm.isOutboundMode = isOutbound;
+            this.reIssueForm.passenger_id = row.id;
+            this.reIssueForm.booking_id = row.booking_id;
+
+            this.reIssueForm.selling_fare = ticket.selling_fare || 0;
+            this.reIssueForm.net_fare = ticket.net_fare || 0;
+            this.reIssueForm.offer_price = ticket.offer_price || 0;
+
+            this.reIssueForm.ticket_type = '';
+            const isDoubleTicket = !!row.pending_outbound_issued_ticket;
+
+            if (isOutbound) {
+                this.reIssueForm.route_type = 'One Way-Outbound';
+                this.reIssueForm.isRouteTypeLocked = true;
+            } else if (isDoubleTicket) {
+                this.reIssueForm.route_type = 'One Way-Inbound';
+                this.reIssueForm.isRouteTypeLocked = true;
+            } else {
+                this.reIssueForm.route_type = '';
+                this.reIssueForm.isRouteTypeLocked = false;
+            }
+            this.reIssueForm.flight_type = '';
+            this.reIssueForm.ticket_option = '';
+            this.reIssueForm.group_ticket_id = '';
+            this.reIssueForm.ticket_number = '';
+            this.reIssueForm.pnr = '';
+            this.reIssueForm.date = today;
+            this.reIssueForm.ticket_agent_id = '';
+            this.reIssueForm.inbound_date = '';
+            this.reIssueForm.outbound_date = '';
+            this.reIssueForm.route = '';
+            this.reIssueForm.airline = '';
+            this.reIssueForm.travel_class = '';
+            this.reIssueForm.passenger_type = row.passenger_type || '';
+            this.reIssueForm.baggage_inbound = '';
+            this.reIssueForm.baggage_outbound = '';
+            this.reIssueForm.non_refundable = false;
+            this.reIssueForm.non_exchangeable = false;
+            this.reIssueForm.reason_id = '';
+            this.reIssueForm.re_issue_charge = 0;
+            this.reIssueForm.fare_difference = 0;
+            this.reIssueForm.other_costs = 0;
+            this.reIssueForm.service_charge = 0;
+            this.reIssueForm.remarks = '';
+            this.reIssueForm.payment_by = 'customer';
+
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                this.reIssueForm.selling_fare_bdt = Math.round(ticket.selling_fare * rate);
+                this.reIssueForm.net_fare_bdt = Math.round(ticket.net_fare * rate);
+                this.reIssueForm.offer_price_bdt = Math.round(ticket.offer_price * rate);
+            }
+
+            this.reIssueModalIsOutbound = isOutbound;
+            this.isReIssueModalOpen = true;
+        },
+
+        closeReIssueModal() {
+            this.isReIssueModalOpen = false;
+        },
+
+        handleReIssueSarInput(field) {
+            if (this._converting) return;
+            this._converting = true;
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                const sar = parseFloat(this.reIssueForm[field]) || 0;
+                this.reIssueForm[field + '_bdt'] = Math.round(sar * rate);
+            }
+            this._converting = false;
+        },
+
+        handleReIssueBdtInput(field) {
+            if (this._converting) return;
+            this._converting = true;
+            const rate = window.__currencyRate || 0;
+            if (rate > 0) {
+                const bdt = parseFloat(this.reIssueForm[field + '_bdt']) || 0;
+                this.reIssueForm[field] = (Math.round(bdt / rate * 1e6) / 1e6).toFixed(6);
+            }
+            this._converting = false;
+        },
+
+        handleReIssueSubmit() {
+            if (this.isSubmitting) return;
+            const form = this.reIssueForm;
+            if (!form.issued_ticket_id) return;
+
+            this.isSubmitting = true;
+
+            const payload = {
+                issued_ticket_id: form.issued_ticket_id,
+                ticket_number: form.ticket_number,
+                pnr: form.pnr,
+                ticket_agent_id: form.ticket_agent_id,
+                ticket_fare_id: form.ticket_option || null,
+                re_issue_date: this.parseDDMMMYY(form.date),
+                inbound_date: this.parseDDMMMYY(form.inbound_date),
+                outbound_date: this.parseDDMMMYY(form.outbound_date),
+                is_refundable: !form.non_refundable,
+                is_exchangeable: !form.non_exchangeable,
+                baggage_inbound: form.baggage_inbound,
+                baggage_outbound: form.baggage_outbound,
+                reason_id: form.reason_id,
+                re_issue_charge: form.re_issue_charge || 0,
+                fare_difference: form.fare_difference || 0,
+                other_costs: form.other_costs || 0,
+                service_charge: form.service_charge || 0,
+                remarks: form.remarks,
+                payment_by: form.payment_by,
+            };
+
+            fetch('/bookings/' + form.booking_id + '/passengers/' + form.passenger_id + '/re-issue', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || ''
+                },
+                body: JSON.stringify(payload)
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    this.showToast('Ticket re-issued successfully.');
+                    this.closeReIssueModal();
+                    setTimeout(() => location.reload(), 800);
+                } else {
+                    this.showToast(res.message || 'Failed to re-issue ticket.', 'error');
+                }
+            })
+            .catch(err => {
+                console.error('Re-issue error:', err);
+                this.showToast('Failed to re-issue ticket.', 'error');
+            })
+            .finally(() => {
+                this.isSubmitting = false;
+            });
+        },
+
         handleTicketFareRouteTypeChange() {
             const routeType = this.ticketFareForm.route_type;
             const f = this.ticketFareForm;
@@ -4514,6 +5066,89 @@ function bookingIndexApp() {
                 }
             }
             this.suggestBaggage(fare?.baggage_allowances);
+        },
+
+        get filteredReIssueTicketOptions() {
+            const tt = this.reIssueForm.ticket_type;
+            const rt = this.reIssueForm.route_type;
+            const ft = this.reIssueForm.flight_type;
+            const rtMap = {'One Way-Inbound':'oneway_inbound','One Way-Outbound':'oneway_outbound','Round':'round','Multi City':'multi_city'};
+            const ftMap = {'Transit':'transit','Direct':'direct'};
+            let fares = this.ticketFaresList;
+            if (tt) {
+                fares = fares.filter(f => f.ticket_type === tt);
+            }
+            if (rt && ft) {
+                fares = fares.filter(f => f.route_type === (rtMap[rt]||rt) && f.flight_type === (ftMap[ft]||ft));
+            }
+            return fares.map(f => {
+                let display = f.route + ' | ' + f.airline + ' | ' + f.airline_class + ' | ' + f.ticket_type;
+                if (f.ticket_type === 'group' && f.pnr && f.ticket_qty) {
+                    display += ' | ' + f.pnr + ' | ' + f.ticket_qty;
+                }
+                return { display, value: f.id, is_active: f.is_active };
+            });
+        },
+
+        handleReIssueTicketOptionChange() {
+            const val = this.reIssueForm.ticket_option;
+            if (!val) {
+                this.reIssueForm.route = '';
+                this.reIssueForm.airline = '';
+                this.reIssueForm.travel_class = '';
+                this.reIssueForm.baggage_inbound = '';
+                this.reIssueForm.baggage_outbound = '';
+                this.reIssueForm.inbound_date = '';
+                this.reIssueForm.outbound_date = '';
+                return;
+            }
+            const fare = this.ticketFaresList.find(f => f.id == val);
+            if (fare) {
+                this.reIssueForm.route = fare.route || '';
+                this.reIssueForm.airline = fare.airline || '';
+                this.reIssueForm.travel_class = fare.airline_class || '';
+                if (fare.inbound_date && this.reIssueForm.route_type !== 'One Way-Outbound') {
+                    this.reIssueForm.inbound_date = this.formatToDDMMMYY(fare.inbound_date) || '';
+                }
+                if (fare.outbound_date && this.reIssueForm.route_type !== 'One Way-Inbound') {
+                    this.reIssueForm.outbound_date = this.formatToDDMMMYY(fare.outbound_date) || '';
+                }
+                const row = this.passengersTicketData.find(r => r.id === this.reIssueForm.passenger_id);
+                if (row) {
+                    let inboundBaggage = '';
+                    let outboundBaggage = '';
+
+                    if (row.inbound_ticket_fare && row.inbound_ticket_fare.id == val) {
+                        inboundBaggage = row.inbound_ticket_fare.baggage_inbound;
+                    }
+                    if (row.outbound_ticket_fare && row.outbound_ticket_fare.id == val) {
+                        outboundBaggage = row.outbound_ticket_fare.baggage_outbound;
+                    }
+
+                    if (!inboundBaggage && !outboundBaggage && row.ticket_fare?.baggage_allowances) {
+                        const pType = this.reIssueForm.passenger_type || 'adult';
+                        const inboundAllowance = row.ticket_fare.baggage_allowances.find(
+                            b => b.passenger_type === pType && b.travel_direction === 'inbound'
+                        );
+                        const outboundAllowance = row.ticket_fare.baggage_allowances.find(
+                            b => b.passenger_type === pType && b.travel_direction === 'outbound'
+                        );
+                        if (inboundAllowance && !inboundBaggage) inboundBaggage = inboundAllowance.allowance;
+                        if (outboundAllowance && !outboundBaggage) outboundBaggage = outboundAllowance.allowance;
+                    }
+
+                    if (!outboundBaggage && row.pending_outbound_issued_ticket?.baggage_outbound) {
+                        outboundBaggage = row.pending_outbound_issued_ticket.baggage_outbound;
+                    }
+
+                    if (inboundBaggage && this.reIssueForm.route_type !== 'One Way-Outbound') {
+                        this.reIssueForm.baggage_inbound = inboundBaggage;
+                    }
+                    if (outboundBaggage && this.reIssueForm.route_type !== 'One Way-Inbound') {
+                        this.reIssueForm.baggage_outbound = outboundBaggage;
+                    }
+                }
+            }
         },
 
         suggestBaggage(allowancesOverride = null) {

@@ -14,6 +14,7 @@ use App\Models\Fingerprint;
 use App\Models\BookingCondition;
 use App\Models\FingerprintDetail;
 use App\Models\Route;
+use App\Models\ReIssueRefundReason;
 use App\Models\Airline;
 use App\Models\TravelClass;
 use App\Models\TicketFare;
@@ -621,6 +622,8 @@ class BookingController extends Controller
         ];
         $fingerprintLocations = FingerprintLocation::cases();
 
+        $reIssueReasons = ReIssueRefundReason::where('reason_of', 're-issue')->get();
+
         return view('bookings.index', compact(
             'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'ticketAgents', 'canEditVisa',
             'canFilterByVisaAgent', 'canFilterByTicketAgent',
@@ -636,7 +639,8 @@ class BookingController extends Controller
             'selectedPaymentWise',
             'statusChangeOptions',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
-            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt'
+            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt',
+            'reIssueReasons'
         ));
     }
 
