@@ -178,18 +178,23 @@
                             <div class="py-0.5 leading-tight">Out Bound</div>
                         </td>
                         @php
-                            $_alCode = $passenger->ticketFare?->airline?->code ?? null;
-                            $_rt = $passenger->ticketFare?->route?->route_type?->value;
                             $_airIn = 'N/A';
                             $_airOut = 'N/A';
-                            if ($_alCode) {
-                                if ($_rt === 'oneway_inbound') {
-                                    $_airIn = $_alCode;
-                                } elseif ($_rt === 'oneway_outbound') {
-                                    $_airOut = $_alCode;
-                                } else {
-                                    $_airIn = $_alCode;
-                                    $_airOut = $_alCode;
+                            if ($passenger->ticket_fare_inbound_id) {
+                                $_airIn = $passenger->ticketFareInbound?->airline?->code ?? 'N/A';
+                                $_airOut = $passenger->ticketFareOutbound?->airline?->code ?? 'N/A';
+                            } else {
+                                $_alCode = $passenger->ticketFare?->airline?->code ?? null;
+                                $_rt = $passenger->ticketFare?->route?->route_type?->value;
+                                if ($_alCode) {
+                                    if ($_rt === 'oneway_inbound') {
+                                        $_airIn = $_alCode;
+                                    } elseif ($_rt === 'oneway_outbound') {
+                                        $_airOut = $_alCode;
+                                    } else {
+                                        $_airIn = $_alCode;
+                                        $_airOut = $_alCode;
+                                    }
                                 }
                             }
                         @endphp
@@ -199,28 +204,38 @@
                             <div class="py-0.5 leading-tight">{{ $_airOut }}</div>
                         </td>
                         @php
-                            $_routeType = $passenger->ticketFare?->route?->route_type?->value;
                             $_routeTop = 'N/A';
                             $_routeBottom = 'N/A';
                             $_isSplit = false;
+                            $_fmtRt = function($r) {
+                                if (!$r) return 'N/A';
+                                return ($r->fromCity?->code ?? '-') . '-' . ($r->toCity?->code ?? '-');
+                            };
 
-                            if ($_routeType === 'oneway_inbound') {
-                                $_routeTop = $passenger->route_display;
+                            if ($passenger->ticket_fare_inbound_id) {
+                                $_routeTop = $_fmtRt($passenger->ticketFareInbound?->route);
+                                $_routeBottom = $_fmtRt($passenger->ticketFareOutbound?->route);
                                 $_isSplit = true;
-                            } elseif ($_routeType === 'oneway_outbound') {
-                                $_routeBottom = $passenger->route_display;
-                                $_isSplit = true;
-                            } elseif ($_routeType === 'multi_city') {
-                                $_segments = $passenger->ticketFare?->route?->multiSegments ?? collect();
-                                $_inSegment = $_segments->first(fn($s) => $s->segment_direction?->value === 'inbound');
-                                $_outSegment = $_segments->first(fn($s) => $s->segment_direction?->value === 'outbound');
-                                if ($_inSegment && $_inSegment->fromCity && $_inSegment->toCity) {
-                                    $_routeTop = $_inSegment->fromCity->code . ' → ' . $_inSegment->toCity->code;
+                            } else {
+                                $_routeType = $passenger->ticketFare?->route?->route_type?->value;
+                                if ($_routeType === 'oneway_inbound') {
+                                    $_routeTop = $passenger->route_display;
+                                    $_isSplit = true;
+                                } elseif ($_routeType === 'oneway_outbound') {
+                                    $_routeBottom = $passenger->route_display;
+                                    $_isSplit = true;
+                                } elseif ($_routeType === 'multi_city') {
+                                    $_segments = $passenger->ticketFare?->route?->multiSegments ?? collect();
+                                    $_inSegment = $_segments->first(fn($s) => $s->segment_direction?->value === 'inbound');
+                                    $_outSegment = $_segments->first(fn($s) => $s->segment_direction?->value === 'outbound');
+                                    if ($_inSegment && $_inSegment->fromCity && $_inSegment->toCity) {
+                                        $_routeTop = $_inSegment->fromCity->code . ' → ' . $_inSegment->toCity->code;
+                                    }
+                                    if ($_outSegment && $_outSegment->fromCity && $_outSegment->toCity) {
+                                        $_routeBottom = $_outSegment->fromCity->code . ' → ' . $_outSegment->toCity->code;
+                                    }
+                                    $_isSplit = true;
                                 }
-                                if ($_outSegment && $_outSegment->fromCity && $_outSegment->toCity) {
-                                    $_routeBottom = $_outSegment->fromCity->code . ' → ' . $_outSegment->toCity->code;
-                                }
-                                $_isSplit = true;
                             }
                         @endphp
                         @if($_isSplit)
@@ -257,17 +272,23 @@
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $_out }}</td>
                         @php
                             $_cabinVal = $passenger->ticketFare?->airlineClass?->travelClass?->name ?? '-';
-                            $_cabinRt = $passenger->ticketFare?->route?->route_type?->value;
                             $_cabinTop = $_cabinVal;
                             $_cabinBottom = $_cabinVal;
                             $_cabinSplit = false;
 
-                            if ($_cabinRt === 'oneway_inbound') {
-                                $_cabinBottom = 'N/A';
+                            if ($passenger->ticket_fare_inbound_id) {
+                                $_cabinTop = $passenger->ticketFareInbound?->airlineClass?->travelClass?->name ?? 'N/A';
+                                $_cabinBottom = $passenger->ticketFareOutbound?->airlineClass?->travelClass?->name ?? 'N/A';
                                 $_cabinSplit = true;
-                            } elseif ($_cabinRt === 'oneway_outbound') {
-                                $_cabinTop = 'N/A';
-                                $_cabinSplit = true;
+                            } else {
+                                $_cabinRt = $passenger->ticketFare?->route?->route_type?->value;
+                                if ($_cabinRt === 'oneway_inbound') {
+                                    $_cabinBottom = 'N/A';
+                                    $_cabinSplit = true;
+                                } elseif ($_cabinRt === 'oneway_outbound') {
+                                    $_cabinTop = 'N/A';
+                                    $_cabinSplit = true;
+                                }
                             }
                         @endphp
                         @if($_cabinSplit)
@@ -281,17 +302,25 @@
                         @endif
                         @php
                             $_mealVal = $passenger->meal_display;
-                            $_mealRt = $passenger->ticketFare?->route?->route_type?->value;
                             $_mealTop = $_mealVal;
                             $_mealBottom = $_mealVal;
                             $_mealSplit = false;
 
-                            if ($_mealRt === 'oneway_inbound') {
-                                $_mealBottom = 'N/A';
+                            if ($passenger->ticket_fare_inbound_id) {
+                                foreach (explode("\n", $_mealVal) as $_line) {
+                                    if (str_starts_with($_line, 'In:')) $_mealTop = trim(substr($_line, 3)) ?: 'N/A';
+                                    elseif (str_starts_with($_line, 'Out:')) $_mealBottom = trim(substr($_line, 4)) ?: 'N/A';
+                                }
                                 $_mealSplit = true;
-                            } elseif ($_mealRt === 'oneway_outbound') {
-                                $_mealTop = 'N/A';
-                                $_mealSplit = true;
+                            } else {
+                                $_mealRt = $passenger->ticketFare?->route?->route_type?->value;
+                                if ($_mealRt === 'oneway_inbound') {
+                                    $_mealBottom = 'N/A';
+                                    $_mealSplit = true;
+                                } elseif ($_mealRt === 'oneway_outbound') {
+                                    $_mealTop = 'N/A';
+                                    $_mealSplit = true;
+                                }
                             }
                         @endphp
                         @if($_mealSplit)
@@ -304,12 +333,6 @@
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $_mealVal }}</td>
                         @endif
                         @php
-                            $_ftRt = $passenger->ticketFare?->route?->route_type?->value;
-                            $_ftType = $passenger->ticketFare?->route?->flight_type?->value;
-                            $_transits = $passenger->ticketFare?->route?->transits ?? collect();
-                            $_inMins = $_transits->filter(fn($t) => $t->route_direction?->value === 'inbound')->sum('transit_time');
-                            $_outMins = $_transits->filter(fn($t) => $t->route_direction?->value === 'outbound')->sum('transit_time');
-
                             $_fmt = function($mins) {
                                 if (!$mins || $mins <= 0) return 'Direct';
                                 $h = intdiv($mins, 60);
@@ -321,19 +344,39 @@
                             $_ftBottom = 'N/A';
                             $_ftSplit = false;
 
-                            if ($_ftRt === 'oneway_inbound') {
-                                $_ftTop = $_ftType === 'transit' ? $_fmt($_inMins) : 'Direct';
+                            if ($passenger->ticket_fare_inbound_id) {
+                                $inRoute = $passenger->ticketFareInbound?->route;
+                                $outRoute = $passenger->ticketFareOutbound?->route;
+                                if ($inRoute) {
+                                    $mins = $inRoute->transits->sum('transit_time');
+                                    $_ftTop = $inRoute->flight_type?->value === 'transit' ? $_fmt($mins) : 'Direct';
+                                }
+                                if ($outRoute) {
+                                    $mins = $outRoute->transits->sum('transit_time');
+                                    $_ftBottom = $outRoute->flight_type?->value === 'transit' ? $_fmt($mins) : 'Direct';
+                                }
                                 $_ftSplit = true;
-                            } elseif ($_ftRt === 'oneway_outbound') {
-                                $_ftBottom = $_ftType === 'transit' ? $_fmt($_outMins) : 'Direct';
-                                $_ftSplit = true;
-                            } elseif (in_array($_ftRt, ['round', 'multi_city'])) {
-                                if ($_ftType === 'transit') {
-                                    $_ftTop = $_fmt($_inMins);
-                                    $_ftBottom = $_fmt($_outMins);
+                            } else {
+                                $_ftRt = $passenger->ticketFare?->route?->route_type?->value;
+                                $_ftType = $passenger->ticketFare?->route?->flight_type?->value;
+                                $_transits = $passenger->ticketFare?->route?->transits ?? collect();
+                                $_inMins = $_transits->filter(fn($t) => $t->route_direction?->value === 'inbound')->sum('transit_time');
+                                $_outMins = $_transits->filter(fn($t) => $t->route_direction?->value === 'outbound')->sum('transit_time');
+
+                                if ($_ftRt === 'oneway_inbound') {
+                                    $_ftTop = $_ftType === 'transit' ? $_fmt($_inMins) : 'Direct';
                                     $_ftSplit = true;
-                                } else {
-                                    $_ftTop = 'Direct';
+                                } elseif ($_ftRt === 'oneway_outbound') {
+                                    $_ftBottom = $_ftType === 'transit' ? $_fmt($_outMins) : 'Direct';
+                                    $_ftSplit = true;
+                                } elseif (in_array($_ftRt, ['round', 'multi_city'])) {
+                                    if ($_ftType === 'transit') {
+                                        $_ftTop = $_fmt($_inMins);
+                                        $_ftBottom = $_fmt($_outMins);
+                                        $_ftSplit = true;
+                                    } else {
+                                        $_ftTop = 'Direct';
+                                    }
                                 }
                             }
                         @endphp

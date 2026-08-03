@@ -1146,8 +1146,40 @@ Alpine.data('createBookingApp', () => ({
 
     updateBaggageWeight() {
         const ticketFareId = this.passengerData.ticket_fare_id;
+        const inboundFareId = this.passengerData.ticket_fare_inbound_id;
+        const outboundFareId = this.passengerData.ticket_fare_outbound_id;
         const passengerType = this.passengerData.passenger_type;
         const routeType = this.passengerData.route_type;
+
+        if (inboundFareId && outboundFareId) {
+            if (!passengerType) {
+                this.passengerData.inbound_baggage_weight = 'Define Passenger Type';
+                this.passengerData.outbound_baggage_weight = 'Define Passenger Type';
+                return;
+            }
+            const lowerType = passengerType.toLowerCase();
+            const inboundTicket = this.allTickets.find(t => String(t.id) === String(inboundFareId));
+            const outboundTicket = this.allTickets.find(t => String(t.id) === String(outboundFareId));
+
+            if (inboundTicket && inboundTicket.baggage_allowances) {
+                const match = inboundTicket.baggage_allowances.find(
+                    ba => ba.passenger_type === lowerType && ba.travel_direction === 'inbound'
+                );
+                this.passengerData.inbound_baggage_weight = match ? String(match.allowance) : 'No baggage allowance defined';
+            } else {
+                this.passengerData.inbound_baggage_weight = 'No baggage allowance defined';
+            }
+
+            if (outboundTicket && outboundTicket.baggage_allowances) {
+                const match = outboundTicket.baggage_allowances.find(
+                    ba => ba.passenger_type === lowerType && ba.travel_direction === 'outbound'
+                );
+                this.passengerData.outbound_baggage_weight = match ? String(match.allowance) : 'No baggage allowance defined';
+            } else {
+                this.passengerData.outbound_baggage_weight = 'No baggage allowance defined';
+            }
+            return;
+        }
 
         if (!ticketFareId && !passengerType) {
             this.passengerData.baggage_weight = 'Select a Ticket and Define Passenger Type';
@@ -1246,23 +1278,47 @@ Alpine.data('createBookingApp', () => ({
 
     calculatePackageValue(passenger, selectedPackage) {
         const ticketFareId = passenger.ticket_fare_id;
+        const inboundFareId = passenger.ticket_fare_inbound_id;
+        const outboundFareId = passenger.ticket_fare_outbound_id;
         const serviceRequired = passenger.service_required || 'all';
         const passengerType = (passenger.passenger_type || 'adult').toLowerCase();
 
         let ticketAmount = 0;
         if (serviceRequired !== 'visa_only') {
-            const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
-            if (ticket) {
-                const baseFare = ticket.ticket_type === 'offer'
-                    ? (parseFloat(ticket.offer_price) || 0)
-                    : (parseFloat(ticket.selling_fare) || 0);
-                ticketAmount = baseFare;
-                if (passengerType === 'child') {
-                    const pct = parseFloat(ticket.child_fare_percentage) || 0;
-                    ticketAmount = baseFare * pct / 100;
-                } else if (passengerType === 'infant') {
-                    const pct = parseFloat(ticket.infant_fare_percentage) || 0;
-                    ticketAmount = baseFare * pct / 100;
+            if (inboundFareId && outboundFareId) {
+                const inboundTicket = this.allTickets.find(t => String(t.id) === String(inboundFareId));
+                const outboundTicket = this.allTickets.find(t => String(t.id) === String(outboundFareId));
+                let inboundFare = 0, outboundFare = 0;
+                if (inboundTicket) {
+                    inboundFare = inboundTicket.ticket_type === 'offer'
+                        ? (parseFloat(inboundTicket.offer_price) || 0)
+                        : (parseFloat(inboundTicket.selling_fare) || 0);
+                }
+                if (outboundTicket) {
+                    outboundFare = outboundTicket.ticket_type === 'offer'
+                        ? (parseFloat(outboundTicket.offer_price) || 0)
+                        : (parseFloat(outboundTicket.selling_fare) || 0);
+                }
+                const baseFare = inboundFare + outboundFare;
+                ticketAmount = passengerType === 'child'
+                    ? baseFare * ((parseFloat(inboundTicket?.child_fare_percentage) || 70)) / 100
+                    : passengerType === 'infant'
+                        ? baseFare * ((parseFloat(inboundTicket?.infant_fare_percentage) || 30)) / 100
+                        : baseFare;
+            } else {
+                const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
+                if (ticket) {
+                    const baseFare = ticket.ticket_type === 'offer'
+                        ? (parseFloat(ticket.offer_price) || 0)
+                        : (parseFloat(ticket.selling_fare) || 0);
+                    ticketAmount = baseFare;
+                    if (passengerType === 'child') {
+                        const pct = parseFloat(ticket.child_fare_percentage) || 0;
+                        ticketAmount = baseFare * pct / 100;
+                    } else if (passengerType === 'infant') {
+                        const pct = parseFloat(ticket.infant_fare_percentage) || 0;
+                        ticketAmount = baseFare * pct / 100;
+                    }
                 }
             }
         }
@@ -2624,6 +2680,20 @@ Alpine.data('editBookingApp', () => ({
                 flight_type: p.flight_type || '',
                 ticket_fare_id: p.ticket_fare_id ? String(p.ticket_fare_id) : '',
                 ticket_fare: p.ticket_fare || null,
+                ticket_fare_inbound_id: p.ticket_fare_inbound_id ? String(p.ticket_fare_inbound_id) : '',
+                ticket_fare_outbound_id: p.ticket_fare_outbound_id ? String(p.ticket_fare_outbound_id) : '',
+                inbound_route_type: p.inbound_route_type || '',
+                inbound_flight_type: p.inbound_flight_type || '',
+                inbound_route: p.inbound_route || '',
+                inbound_airline: p.inbound_airline || '',
+                inbound_class: p.inbound_class || '',
+                inbound_baggage_weight: p.inbound_baggage_weight || '',
+                outbound_route_type: p.outbound_route_type || '',
+                outbound_flight_type: p.outbound_flight_type || '',
+                outbound_route: p.outbound_route || '',
+                outbound_airline: p.outbound_airline || '',
+                outbound_class: p.outbound_class || '',
+                outbound_baggage_weight: p.outbound_baggage_weight || '',
                 flight_date_from: p.flight_date_from ? p.flight_date_from.split('T')[0] : '',
                 flight_date_to: p.flight_date_to ? p.flight_date_to.split('T')[0] : '',
                 address: p.address || '',
@@ -2645,6 +2715,25 @@ Alpine.data('editBookingApp', () => ({
                             const flightTypeMap = { 'transit': 'Transit', 'direct': 'Direct' };
                             p.flight_type = flightTypeMap[ticket.flight_type] || '';
                         }
+                    }
+                } else if (p.ticket_fare_inbound_id && p.ticket_fare_outbound_id) {
+                    const inboundTicket = this.allTickets.find(t => String(t.id) === String(p.ticket_fare_inbound_id));
+                    const outboundTicket = this.allTickets.find(t => String(t.id) === String(p.ticket_fare_outbound_id));
+                    const routeTypeMap = { 'oneway_inbound': 'One Way-Inbound', 'oneway_outbound': 'One Way-Outbound', 'round': 'Round', 'multi_city': 'Multi City' };
+                    const flightTypeMap = { 'transit': 'Transit', 'direct': 'Direct' };
+                    if (inboundTicket) {
+                        if (!p.inbound_route) p.inbound_route = inboundTicket.route || '';
+                        if (!p.inbound_airline) p.inbound_airline = inboundTicket.airline || '';
+                        if (!p.inbound_class) p.inbound_class = inboundTicket.airline_class || '';
+                        if (!p.inbound_route_type) p.inbound_route_type = routeTypeMap[inboundTicket.route_type] || '';
+                        if (!p.inbound_flight_type) p.inbound_flight_type = flightTypeMap[inboundTicket.flight_type] || '';
+                    }
+                    if (outboundTicket) {
+                        if (!p.outbound_route) p.outbound_route = outboundTicket.route || '';
+                        if (!p.outbound_airline) p.outbound_airline = outboundTicket.airline || '';
+                        if (!p.outbound_class) p.outbound_class = outboundTicket.airline_class || '';
+                        if (!p.outbound_route_type) p.outbound_route_type = routeTypeMap[outboundTicket.route_type] || '';
+                        if (!p.outbound_flight_type) p.outbound_flight_type = flightTypeMap[outboundTicket.flight_type] || '';
                     }
                 }
             });
@@ -2777,8 +2866,40 @@ Alpine.data('editBookingApp', () => ({
 
     updateBaggageWeight() {
         const ticketFareId = this.passengerData.ticket_fare_id;
+        const inboundFareId = this.passengerData.ticket_fare_inbound_id;
+        const outboundFareId = this.passengerData.ticket_fare_outbound_id;
         const passengerType = this.passengerData.passenger_type;
         const routeType = this.passengerData.route_type;
+
+        if (inboundFareId && outboundFareId) {
+            if (!passengerType) {
+                this.passengerData.inbound_baggage_weight = 'Define Passenger Type';
+                this.passengerData.outbound_baggage_weight = 'Define Passenger Type';
+                return;
+            }
+            const lowerType = passengerType.toLowerCase();
+            const inboundTicket = this.allTickets.find(t => String(t.id) === String(inboundFareId));
+            const outboundTicket = this.allTickets.find(t => String(t.id) === String(outboundFareId));
+
+            if (inboundTicket && inboundTicket.baggage_allowances) {
+                const match = inboundTicket.baggage_allowances.find(
+                    ba => ba.passenger_type === lowerType && ba.travel_direction === 'inbound'
+                );
+                this.passengerData.inbound_baggage_weight = match ? String(match.allowance) : 'No baggage allowance defined';
+            } else {
+                this.passengerData.inbound_baggage_weight = 'No baggage allowance defined';
+            }
+
+            if (outboundTicket && outboundTicket.baggage_allowances) {
+                const match = outboundTicket.baggage_allowances.find(
+                    ba => ba.passenger_type === lowerType && ba.travel_direction === 'outbound'
+                );
+                this.passengerData.outbound_baggage_weight = match ? String(match.allowance) : 'No baggage allowance defined';
+            } else {
+                this.passengerData.outbound_baggage_weight = 'No baggage allowance defined';
+            }
+            return;
+        }
 
         if (!ticketFareId && !passengerType) {
             this.passengerData.baggage_weight = 'Select a Ticket and Define Passenger Type';
@@ -3686,6 +3807,13 @@ Alpine.data('showBookingApp', () => ({
         return false;
     },
 
+    get isDoubleTicket() {
+        const pkgId = window.__bookingServerData?.preSelectedPackageId;
+        if (!pkgId) return false;
+        const pkg = this.allPackages.find(p => String(p.id) === String(pkgId));
+        return pkg && pkg.is_double_ticket;
+    },
+
     passengers: [],
     lastAddedPassenger: null,
     firstAddedPassenger: null,
@@ -4108,8 +4236,41 @@ Alpine.data('showBookingApp', () => ({
 
     updateBaggageWeight() {
         const ticketFareId = this.passengerData.ticket_fare_id;
+        const inboundFareId = this.passengerData.ticket_fare_inbound_id;
+        const outboundFareId = this.passengerData.ticket_fare_outbound_id;
         const passengerType = this.passengerData.passenger_type;
         const routeType = this.passengerData.route_type;
+
+        if (inboundFareId && outboundFareId) {
+            if (!passengerType) {
+                this.passengerData.inbound_baggage_weight = 'Define Passenger Type';
+                this.passengerData.outbound_baggage_weight = 'Define Passenger Type';
+                return;
+            }
+            const lowerType = passengerType.toLowerCase();
+            const inboundTicket = this.allTickets.find(t => String(t.id) === String(inboundFareId));
+            const outboundTicket = this.allTickets.find(t => String(t.id) === String(outboundFareId));
+
+            if (inboundTicket && inboundTicket.baggage_allowances) {
+                const match = inboundTicket.baggage_allowances.find(
+                    ba => ba.passenger_type === lowerType && ba.travel_direction === 'inbound'
+                );
+                this.passengerData.inbound_baggage_weight = match ? String(match.allowance) : 'No baggage allowance defined';
+            } else {
+                this.passengerData.inbound_baggage_weight = 'No baggage allowance defined';
+            }
+
+            if (outboundTicket && outboundTicket.baggage_allowances) {
+                const match = outboundTicket.baggage_allowances.find(
+                    ba => ba.passenger_type === lowerType && ba.travel_direction === 'outbound'
+                );
+                this.passengerData.outbound_baggage_weight = match ? String(match.allowance) : 'No baggage allowance defined';
+            } else {
+                this.passengerData.outbound_baggage_weight = 'No baggage allowance defined';
+            }
+            return;
+        }
+
         if (!ticketFareId && !passengerType) {
             this.passengerData.baggage_weight = 'Select a Ticket and Define Passenger Type';
             return;
@@ -4126,6 +4287,7 @@ Alpine.data('showBookingApp', () => ({
             this.passengerData.baggage_weight = 'Select Route Type';
             return;
         }
+
         const ticket = this.allTickets.find(t => String(t.id) === String(ticketFareId));
         if (!ticket || !ticket.baggage_allowances || ticket.baggage_allowances.length === 0) {
             this.passengerData.baggage_weight = 'No baggage allowance defined';

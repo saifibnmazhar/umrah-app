@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
+use App\Models\TicketFare;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -48,7 +49,7 @@ class TicketIssueController extends Controller
             return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
         }
 
-        if ($issuedTicket->status !== 'pending') {
+        if (!in_array($issuedTicket->status, ['pending', 'awaiting-group'])) {
             return response()->json(['message' => 'This ticket has already been issued.'], 400);
         }
 
@@ -75,12 +76,9 @@ class TicketIssueController extends Controller
 
             $passenger->update(['ticket_status' => 'issued']);
 
-            if ($validated['clear_double_ticket'] ?? false) {
-                $passenger->update([
-                    'ticket_fare_inbound_id' => null,
-                    'ticket_fare_outbound_id' => null,
-                    'ticket_fare_id' => $validated['ticket_fare_id'] ?? null,
-                ]);
+            if ($issuedTicket->issue_type !== 'pending_outbound' && !empty($validated['ticket_fare_id'])) {
+                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
+            } elseif ($validated['clear_double_ticket'] ?? false) {
                 IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
                     ->where('status', 'pending')
@@ -101,7 +99,7 @@ class TicketIssueController extends Controller
                         'is_refundable' => false,
                         'is_exchangeable' => false,
                         'outbound_pending' => false,
-                        'ticket_fare_id' => $pendingOutboundFareId,
+                        'ticket_fare_id' => null,
                     ]);
                     if ($pendingOutboundFareId) {
                         $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
@@ -201,16 +199,9 @@ class TicketIssueController extends Controller
 
             $issuedTicket->logAction('edited', $oldData, $issuedTicket->toArray());
 
-            if ($issuedTicket->issue_type === 'pending_outbound' && isset($validated['ticket_fare_id'])) {
-                $passenger->update(['ticket_fare_outbound_id' => $validated['ticket_fare_id']]);
-            }
-
-            if ($validated['clear_double_ticket'] ?? false) {
-                $passenger->update([
-                    'ticket_fare_inbound_id' => null,
-                    'ticket_fare_outbound_id' => null,
-                    'ticket_fare_id' => $validated['ticket_fare_id'] ?? null,
-                ]);
+            if ($issuedTicket->issue_type !== 'pending_outbound' && !empty($validated['ticket_fare_id'])) {
+                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
+            } elseif ($validated['clear_double_ticket'] ?? false) {
                 IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
                     ->where('status', 'pending')
@@ -231,7 +222,7 @@ class TicketIssueController extends Controller
                         'is_refundable' => false,
                         'is_exchangeable' => false,
                         'outbound_pending' => false,
-                        'ticket_fare_id' => $pendingOutboundFareId,
+                        'ticket_fare_id' => null,
                     ]);
                     if ($pendingOutboundFareId) {
                         $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
@@ -262,6 +253,76 @@ class TicketIssueController extends Controller
             \Log::error('Ticket edit failed: '.$e->getMessage());
 
             return response()->json(['message' => 'Failed to update ticket.'], 500);
+        }
+    }
+
+    public function createPendingOutbound(Request $request, Passenger $passenger)
+    {
+        if (!$passenger->ticket_fare_outbound_id) {
+            return response()->json(['message' => 'No outbound fare configured for this passenger.'], 400);
+        }
+
+        $existing = IssuedTicket::where('passenger_id', $passenger->id)
+            ->where('issue_type', 'pending_outbound')
+            ->whereIn('status', ['pending', 'awaiting-group'])
+            ->first();
+
+        if ($existing) {
+            return response()->json([
+                'success' => true,
+                'message' => 'Pending outbound ticket already exists.',
+                'ticket' => $existing->load([
+                    'ticketFare.airline',
+                    'ticketFare.airlineClass.class',
+                    'ticketFare.route.fromCity',
+                    'ticketFare.route.toCity',
+                    'ticketFare.route.returnCity',
+                    'ticketFare.route.multiSegments.fromCity',
+                    'ticketFare.route.multiSegments.toCity',
+                ]),
+            ]);
+        }
+
+        try {
+            $ticket = IssuedTicket::create([
+                'passenger_id' => $passenger->id,
+                'booking_id' => $passenger->booking_id,
+                'user_id' => auth()->id(),
+                'issue_type' => 'pending_outbound',
+                'status' => 'pending',
+                'is_refundable' => false,
+                'is_exchangeable' => false,
+                'outbound_pending' => false,
+                'ticket_fare_id' => null,
+            ]);
+
+            IssuedTicket::where('passenger_id', $passenger->id)
+                ->where(function ($q) {
+                    $q->whereNull('issue_type')->orWhere('issue_type', 'regular');
+                })
+                ->where(function ($q) {
+                    $q->whereNull('outbound_pending')->orWhere('outbound_pending', false);
+                })
+                ->update(['outbound_pending' => true]);
+
+            $ticket->load([
+                'ticketFare.airline',
+                'ticketFare.airlineClass.class',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
+                'ticketFare.route.returnCity',
+                'ticketFare.route.multiSegments.fromCity',
+                'ticketFare.route.multiSegments.toCity',
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => 'Pending outbound ticket created.',
+                'ticket' => $ticket,
+            ]);
+        } catch (\Exception $e) {
+            \Log::error('Create pending outbound failed: '.$e->getMessage());
+            return response()->json(['message' => 'Failed to create pending outbound ticket.'], 500);
         }
     }
 
@@ -319,7 +380,7 @@ class TicketIssueController extends Controller
                         'is_refundable' => false,
                         'is_exchangeable' => false,
                         'outbound_pending' => false,
-                        'ticket_fare_id' => $regularTicket?->ticket_fare_id ?? $passenger->ticket_fare_outbound_id ?? $passenger->ticket_fare_id,
+                        'ticket_fare_id' => null,
                     ]);
                     $updatedIds[] = $createdTicket->id;
                     $outboundTicket = $createdTicket;
@@ -333,12 +394,6 @@ class TicketIssueController extends Controller
                 if ($regularTicket && !$regularTicket->outbound_pending) {
                     $oldData = $regularTicket->toArray();
                     $regularTicket->update(['outbound_pending' => true]);
-                }
-                if ($createdTicket || $outboundTicket) {
-                    $fareId = $regularTicket?->ticket_fare_id ?? $passenger->ticket_fare_outbound_id ?? $passenger->ticket_fare_id;
-                    if ($fareId) {
-                        $passenger->update(['ticket_fare_outbound_id' => $fareId]);
-                    }
                 }
             }
 
@@ -365,5 +420,25 @@ class TicketIssueController extends Controller
 
             return response()->json(['message' => 'Failed to confirm tickets.'], 500);
         }
+    }
+
+    private function clearPendingOutboundForRoundMulti(Passenger $passenger, int $ticketFareId, IssuedTicket $issuedTicket): void
+    {
+        if (! $passenger->ticket_fare_inbound_id || ! $passenger->ticket_fare_outbound_id) {
+            return;
+        }
+
+        $routeType = TicketFare::with('route')->find($ticketFareId)?->route?->route_type?->value;
+
+        if (! in_array($routeType, ['round', 'multi_city'], true)) {
+            return;
+        }
+
+        IssuedTicket::where('passenger_id', $passenger->id)
+            ->where('issue_type', 'pending_outbound')
+            ->whereIn('status', ['pending', 'awaiting-group'])
+            ->delete();
+
+        $issuedTicket->update(['outbound_pending' => false]);
     }
 }

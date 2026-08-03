@@ -298,8 +298,30 @@ class SettingsController extends Controller
 
     public function showPackage(Package $package)
     {
-        $package->load(['ticketFare.route.fromCity', 'ticketFare.route.toCity', 'ticketFare.route.returnCity', 'ticketFare.route.multiSegments.fromCity', 'ticketFare.route.multiSegments.toCity', 'ticketFare.route.transits.transitCity', 'ticketFare.airline', 'ticketFare.airlineClass', 'ticketFare.groupTicket']);
-        
+        $package->load([
+            'ticketFare.route.fromCity',
+            'ticketFare.route.toCity',
+            'ticketFare.route.returnCity',
+            'ticketFare.route.multiSegments.fromCity',
+            'ticketFare.route.multiSegments.toCity',
+            'ticketFare.route.transits.transitCity',
+            'ticketFare.airline',
+            'ticketFare.airlineClass',
+            'ticketFare.groupTicket',
+            'ticketFareInbound.route.fromCity',
+            'ticketFareInbound.route.toCity',
+            'ticketFareInbound.route.transits.transitCity',
+            'ticketFareInbound.airline',
+            'ticketFareInbound.airlineClass',
+            'ticketFareInbound.groupTicket',
+            'ticketFareOutbound.route.fromCity',
+            'ticketFareOutbound.route.toCity',
+            'ticketFareOutbound.route.transits.transitCity',
+            'ticketFareOutbound.airline',
+            'ticketFareOutbound.airlineClass',
+            'ticketFareOutbound.groupTicket',
+        ]);
+
         return view('package-configurations.show', compact('package'));
     }
 
