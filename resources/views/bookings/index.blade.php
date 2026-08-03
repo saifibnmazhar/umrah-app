@@ -3741,6 +3741,8 @@ function bookingIndexApp() {
                 t => !t.issue_type || t.issue_type === 'regular'
             );
             return regular && ['issued', 're-issued'].includes(regular.status);
+        },
+
         rowHasReIssueableTicket(index) {
             const row = this.passengersTicketData[index];
             if (!row || row.is_cancelled) return false;
