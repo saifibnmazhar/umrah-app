@@ -499,36 +499,34 @@ $refundRequests = [];
             <div id="reIssueNotificationsEmpty" class="text-center py-8 text-slate-500">No pending re-issue requests</div>
         </div>
 
-        <div x-show="activeTab === 'addticket'" class="space-y-3" style="display: none;">
+        <div x-show="activeTab === 'addticket'" class="space-y-3">
             @forelse($addTicketRequests ?? [] as $request)
             <a href="{{ route('tickets.add-confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-purple-500">
                 <div class="flex justify-between items-center">
                     <div>
-                        <span class="font-medium text-slate-800">Invoice ID: {{ $request['invoiceId'] }}</span>
-                        <span class="text-slate-500 text-sm ml-2">({{ $request['invoiceNo'] }}{{ isset($request['branch']) ? ' • ' . $request['branch'] : '' }})</span>
+                        <span class="font-bold text-slate-800">{{ $request['invoiceNo'] ?? $request['invoiceId'] }}</span>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm text-slate-500">{{ $request['branch'] ?? '-' }}</span>
                         <span class="text-sm text-slate-500">{{ $request['passengers']['count'] ?? 1 }} passenger(s)</span>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
                     </div>
                 </div>
-            </a> 
+            </a>
             @empty
             <div class="text-center py-8 text-slate-500">No pending additional ticket requests</div>
             @endforelse
         </div>
 
-        <div x-show="activeTab === 'refund'" class="space-y-3" style="display: none;">
+        <div x-show="activeTab === 'refund'" class="space-y-3">
             @forelse($refundRequests ?? [] as $request)
             <a href="{{ route('refunds.confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-orange-500">
                 <div class="flex justify-between items-center">
                     <div>
-                        <span class="font-medium text-slate-800">Invoice ID: {{ $request['invoiceId'] }}</span>
-                        <span class="text-slate-500 text-sm ml-2">({{ $request['invoiceNo'] }}{{ isset($request['branch']) ? ' • ' . $request['branch'] : '' }})</span>
+                        <span class="font-bold text-slate-800">{{ $request['invoiceNo'] ?? $request['invoiceId'] }}</span>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm text-slate-500">{{ $request['branch'] ?? '-' }}</span>
                         <span class="text-sm text-slate-500">{{ $request['passengers']['count'] ?? 1 }} passenger(s)</span>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
                     </div>
                 </div>
             </a>

@@ -130,106 +130,7 @@
 
 @push('scripts')
 <script>
-let currentRequest = null;
-
-function loadConfirmation() {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id') || '{{ $id }}';
-
-    if (id === null || id === '') {
-        showNotFound();
-        return;
-    }
-
-    const requestId = parseInt(id);
-    let refundRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-
-    if (refundRequests.length === 0) {
-        const seedData = [
-            {
-                id: 1,
-                invoiceId: 1001,
-                invoiceNo: 'INV-2024-001',
-                customerName: 'Karim Hussein',
-                customerMobile: '0551234567',
-                branch: 'Madinah Branch',
-                requestedAt: new Date(Date.now() - 86400000 * 4).toISOString(),
-                status: 'Pending',
-                passengers: [
-                    { name: 'Karim Hussein', passport: 'P1122445', pnr: 'YZA567' },
-                    { name: 'Laila Mohamed', passport: 'P6677889', pnr: 'BCD890' },
-                ]
-            }
-        ];
-        refundRequests = seedData;
-        localStorage.setItem('refundRequests', JSON.stringify(seedData));
-        localStorage.setItem('refundRequests_seed', JSON.stringify(seedData));
-    }
-
-    const request = refundRequests.find(r => r.id === requestId) || refundRequests[0];
-
-    if (!request) {
-        showNotFound();
-        return;
-    }
-
-    currentRequest = request;
-    renderConfirmation(request);
-}
-
-function renderConfirmation(request) {
-    document.getElementById('invoiceId').textContent = request.invoiceId;
-    document.getElementById('invoiceNo').textContent = request.invoiceNo;
-    document.getElementById('customerName').textContent = request.customerName || '-';
-    document.getElementById('customerMobile').textContent = request.customerMobile || '-';
-    document.getElementById('branch').textContent = request.branch || '-';
-    document.getElementById('requestedDate').textContent = new Date(request.requestedAt).toLocaleDateString();
-    document.getElementById('passengerCount').textContent = request.passengers.length;
-
-    const statusBadge = document.getElementById('statusBadge');
-    statusBadge.textContent = request.status === 'Pending' ? 'Pending' : request.status;
-    statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ' + (
-        request.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-        request.status === 'Approved' || request.status === 'Processed' ? 'bg-green-100 text-green-700' :
-        request.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-        'bg-yellow-100 text-yellow-700'
-    );
-
-    const passengerListEl = document.getElementById('passengerList');
-    passengerListEl.innerHTML = request.passengers.map((p, pIndex) => `
-        <div class="flex justify-between items-center p-4 bg-slate-50 rounded-lg">
-            <div class="flex items-center gap-3">
-                <span class="font-medium text-slate-800">${escapeHtml(p.name)}</span>
-                <span class="text-slate-500 text-sm ml-2">(${escapeHtml(p.passport)}${p.pnr ? ' | PNR: ' + escapeHtml(p.pnr) : ''})</span>
-            </div>
-            <div class="flex items-center gap-3">
-                <button onclick="rejectRefund(${pIndex})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium">Reject</button>
-                <button onclick="processConfirmation(${pIndex})" class="px-4 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition font-medium">Process Confirmation</button>
-            </div>
-        </div>
-    `).join('');
-}
-
-function processConfirmation(passengerIndex) {
-    const passenger = currentRequest.passengers[passengerIndex];
-    if (!passenger) return;
-
-    document.getElementById('modalPassengerName').textContent = passenger.name + ' (' + passenger.passport + ')';
-    document.getElementById('infoPassport').textContent = passenger.passport;
-    document.getElementById('infoMobile').textContent = passenger.mobile || '-';
-    document.getElementById('infoPnr').textContent = passenger.pnr || 'ABCD1234';
-    document.getElementById('infoFlightDate').textContent = '2026-05-15';
-    document.getElementById('infoRoute').textContent = 'DAC-JED-DAC';
-    document.getElementById('infoAirline').textContent = 'Saudi Arabian Airlines';
-    document.getElementById('infoClass').textContent = 'Economy';
-    document.getElementById('infoType').textContent = 'Adult';
-
-    document.getElementById('inputAgentRefundAmount').value = '';
-    document.getElementById('inputCustomerRefundAmount').value = '';
-    document.getElementById('inputPaymentMethod').value = '';
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
-
+function openProcessConfirmationModal() {
     document.getElementById('processConfirmationModal').classList.remove('hidden');
 }
 
@@ -258,46 +159,13 @@ function handlePaymentMethodChange() {
 }
 
 function confirmProcess() {
-    const refundData = {
-        agentRefundAmount: parseFloat(document.getElementById('inputAgentRefundAmount').value) || 0,
-        customerRefundAmount: parseFloat(document.getElementById('inputCustomerRefundAmount').value) || 0,
-        paymentMethod: document.getElementById('inputPaymentMethod').value,
-        bankMethod: document.getElementById('inputBankMethod')?.value || '',
-        branch: document.getElementById('inputBranch')?.value || '',
-    };
-
-    if (currentRequest) {
-        const requests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-        const idx = requests.findIndex(r => r.id === currentRequest.id);
-        if (idx !== -1) {
-            requests[idx].refundData = refundData;
-            requests[idx].status = 'Processed';
-            localStorage.setItem('refundRequests', JSON.stringify(requests));
-            currentRequest = requests[idx];
-            renderConfirmation(currentRequest);
-        }
-    }
-
     showToast('Refund process confirmed successfully!', 'success');
     closeProcessConfirmationModal();
 }
 
-function rejectRefund(passengerIndex) {
-    if (!currentRequest) return;
+function rejectRefund() {
     if (!confirm('Are you sure you want to reject this passenger\'s refund request?')) return;
-
-    const requests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-    const idx = requests.findIndex(r => r.id === currentRequest.id);
-    if (idx !== -1) {
-        requests[idx].passengers.splice(passengerIndex, 1);
-        if (requests[idx].passengers.length === 0) {
-            requests[idx].status = 'Rejected';
-        }
-        localStorage.setItem('refundRequests', JSON.stringify(requests));
-        currentRequest = requests[idx];
-        renderConfirmation(currentRequest);
-        showToast('Refund request rejected', 'info');
-    }
+    showToast('Refund request rejected', 'info');
 }
 
 function showNotFound() {
@@ -325,8 +193,6 @@ function showToast(message, type = 'info') {
     container.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
-
-loadConfirmation();
 </script>
 @endpush
 @endsection
