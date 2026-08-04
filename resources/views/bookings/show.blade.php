@@ -1312,16 +1312,40 @@ function submitReIssueRequest() {
     }
 
     const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-    requests.push({
-        id: Date.now(),
-        invoiceId: {{ $booking->id }},
-        invoiceNo: @json($booking->invoice_id ?? ''),
-        customerName: @json($booking->customer->name ?? ''),
-        passengers: selectedPassengers,
-        status: 'Pending',
-        requestedAt: new Date().toISOString(),
-    });
-    localStorage.setItem('reIssueRequests', JSON.stringify(requests));
+    const bookingId = {{ $booking->id }};
+    const existing = requests.find(r => r.invoiceId === bookingId && r.status === 'Pending');
+
+    if (existing) {
+        existing.passengers = existing.passengers || [];
+        selectedPassengers.forEach(np => {
+            const ep = existing.passengers.find(p => p.name === np.name && p.passport === np.passport);
+            if (ep) {
+                const existingTickets = ep.tickets || [];
+                const newTickets = (np.tickets || []).filter(t =>
+                    !existingTickets.some(et => et.ticketNumber && et.ticketNumber === t.ticketNumber)
+                );
+                if (newTickets.length > 0) {
+                    ep.tickets = [...existingTickets, ...newTickets];
+                }
+            } else {
+                existing.passengers.push(np);
+            }
+        });
+        localStorage.setItem('reIssueRequests', JSON.stringify(requests));
+    } else {
+        requests.push({
+            id: Date.now(),
+            invoiceId: {{ $booking->id }},
+            invoiceNo: @json($booking->invoice_id ?? ''),
+            customerName: @json($booking->customer->name ?? ''),
+            customerMobile: @json($booking->customer->mobile_no ?? ''),
+            branch: @json($booking->bookingBranch?->name ?? ''),
+            passengers: selectedPassengers,
+            status: 'Pending',
+            requestedAt: new Date().toISOString(),
+        });
+        localStorage.setItem('reIssueRequests', JSON.stringify(requests));
+    }
 
     showToast('Re-issue request submitted successfully!', 'success');
     closeReIssueModal();

@@ -182,8 +182,10 @@
 
 @push('scripts')
 <script>
+const bookingBranchMap = @json($bookingBranches ?? []);
 let currentRequest = null;
 let currentPassengerIndex = null;
+let currentTicketIndex = null;
 
 function loadConfirmation() {
     const params = new URLSearchParams(window.location.search);
@@ -197,33 +199,36 @@ function loadConfirmation() {
     const requestId = parseInt(id);
     let reIssueRequests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
 
-    if (reIssueRequests.length === 0) {
-        const seedData = [
-            {
-                id: 1,
-                invoiceId: 1001,
-                invoiceNo: 'INV-2024-001',
-                customerName: 'Ahmed Al-Rashid',
-                customerMobile: '0501234567',
-                branch: 'Riyadh Branch',
-                requestedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-                status: 'Pending',
-                passengers: [
-                    { name: 'Ahmed Al-Rashid', passport: 'P123456', ticketOption: 'up', probableDateUp: '2026-05-20', probableDateDown: '', visaExpiry: '2026-08-15', pnr: 'ABC123' },
-                    { name: 'Sara Khan', passport: 'P654321', ticketOption: 'both', probableDateUp: '2026-05-22', probableDateDown: '2026-06-10', visaExpiry: '2026-08-15', pnr: 'DEF456' },
-                ]
-            }
-        ];
-        reIssueRequests = seedData;
-        localStorage.setItem('reIssueRequests', JSON.stringify(seedData));
-        localStorage.setItem('reIssueRequests_seed', JSON.stringify(seedData));
-    }
-
     const request = reIssueRequests.find(r => r.id === requestId) || reIssueRequests[0];
 
     if (!request) {
         showNotFound();
         return;
+    }
+
+    request.passengers = request.passengers || [];
+    const invoiceId = request.invoiceId;
+    const others = reIssueRequests.filter(r => r.invoiceId === invoiceId && r.status === 'Pending' && r.id !== request.id);
+
+    if (others.length > 0) {
+        others.forEach(o => {
+            (o.passengers || []).forEach(op => {
+                const ep = request.passengers.find(p => p.name === op.name && p.passport === op.passport);
+                if (ep) {
+                    const existingTickets = ep.tickets || [];
+                    const newTickets = (op.tickets || []).filter(t =>
+                        !existingTickets.some(et => et.ticketNumber && et.ticketNumber === t.ticketNumber)
+                    );
+                    if (newTickets.length > 0) {
+                        ep.tickets = [...existingTickets, ...newTickets];
+                    }
+                } else {
+                    request.passengers.push(op);
+                }
+            });
+        });
+        reIssueRequests = reIssueRequests.filter(r => !(r.invoiceId === invoiceId && r.status === 'Pending' && r.id !== request.id));
+        localStorage.setItem('reIssueRequests', JSON.stringify(reIssueRequests));
     }
 
     currentRequest = request;
@@ -235,9 +240,9 @@ function renderConfirmation(request) {
     document.getElementById('invoiceNo').textContent = request.invoiceNo;
     document.getElementById('customerName').textContent = request.customerName || '-';
     document.getElementById('customerMobile').textContent = request.customerMobile || '-';
-    document.getElementById('branch').textContent = request.branch || '-';
+    document.getElementById('branch').textContent = (bookingBranchMap[request.invoiceId] || request.branch || '-');
     document.getElementById('requestedDate').textContent = new Date(request.requestedAt).toLocaleDateString();
-    document.getElementById('passengerCount').textContent = request.passengers.length;
+    document.getElementById('passengerCount').textContent = (request.passengers || []).length;
 
     const statusBadge = document.getElementById('statusBadge');
     statusBadge.textContent = request.status === 'Pending' ? 'Pending' : request.status;
@@ -249,62 +254,86 @@ function renderConfirmation(request) {
     }`;
 
     const passengerListEl = document.getElementById('passengerList');
-    passengerListEl.innerHTML = request.passengers.map((p, pIndex) => `
-        <div class="flex justify-between items-center p-4 bg-slate-50 rounded-lg cursor-pointer" onclick="selectPassenger(${pIndex})">
-            <div class="flex flex-col items-start gap-1">
-                <div>
-                    <span class="font-medium text-slate-800">${escapeHtml(p.name)}</span>
+
+    function ticketsFor(p) {
+        if (Array.isArray(p.tickets) && p.tickets.length > 0) return p.tickets;
+        return [{
+            ticketNumber: p.ticketNumber || '',
+            pnr: p.pnr || '',
+            route: p.route || '',
+            ticketOption: p.ticketOption || '',
+            probableDateUp: p.probableDateUp || '',
+            probableDateDown: p.probableDateDown || '',
+            visaExpiry: p.visaExpiry || '',
+        }];
+    }
+
+    passengerListEl.innerHTML = (request.passengers || []).map((p, pIndex) => {
+        const tickets = ticketsFor(p);
+        return `
+            <div class="bg-slate-50 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <span class="font-medium text-slate-800">${escapeHtml(p.name)}</span>
+                        <span class="text-slate-500 text-sm ml-2">(${escapeHtml(p.passport)})</span>
+                    </div>
+                    <span class="text-sm text-slate-500">${tickets.length} ticket(s)</span>
                 </div>
-                <div>
-                    <span class="text-slate-500 text-sm">(${escapeHtml(p.passport)}${p.pnr ? ' | PNR: ' + escapeHtml(p.pnr) : ''})</span>
+                <div class="space-y-3">
+                    ${tickets.map((t, tIndex) => `
+                        <div class="bg-white rounded-lg border border-slate-200 p-4">
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                                <div class="text-sm"><span class="text-slate-500">Ticket No: </span><span class="text-slate-800 font-medium">${escapeHtml(t.ticketNumber) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">PNR: </span><span class="text-slate-800 font-medium">${escapeHtml(t.pnr) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Route: </span><span class="text-slate-800 font-medium">${escapeHtml(t.route) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Ticket Option: </span><span class="text-slate-800 font-medium">${escapeHtml(t.ticketOption) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Probable (Inbound): </span><span class="text-slate-800 font-medium">${escapeHtml(t.probableDateUp) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Probable (Outbound): </span><span class="text-slate-800 font-medium">${escapeHtml(t.probableDateDown) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Visa Expiry: </span><span class="text-slate-800 font-medium">${escapeHtml(t.visaExpiry) || '-'}</span></div>
+                            </div>
+                            ${t.reIssueData ? `<div class="mb-3"><span class="text-sm text-green-600 font-medium">Confirmed: ${escapeHtml(t.reIssueData.travelDate) || ''}${t.reIssueData.route ? ' • ' + escapeHtml(t.reIssueData.route) : ''}</span></div>` : ''}
+                            <div class="flex gap-3">
+                                <button onclick="rejectReIssue(${pIndex}, ${tIndex})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium" ${t.reIssueData ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Reject</button>
+                                <button onclick="processConfirmation(${pIndex}, ${tIndex})" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-medium">Process Confirmation</button>
+                            </div>
+                        </div>
+                    `).join('')}
                 </div>
             </div>
-            <div class="flex items-center gap-6">
-                <div class="text-sm">
-                    <span class="text-slate-500">Ticket Option: </span>
-                    <span class="text-slate-800 font-medium">${p.ticketOption || '-'}</span>
-                </div>
-                <div class="text-sm">
-                    <span class="text-slate-500">Probable (Inbound): </span>
-                    <span class="text-slate-800 font-medium">${p.probableDateUp || '-'}</span>
-                </div>
-                <div class="text-sm">
-                    <span class="text-slate-500">Probable (Outbound): </span>
-                    <span class="text-slate-800 font-medium">${p.probableDateDown || '-'}</span>
-                </div>
-                <div class="text-sm">
-                    <span class="text-slate-500">Visa Expiry: </span>
-                    <span class="text-slate-800 font-medium">${p.visaExpiry || '-'}</span>
-                </div>
-                <button onclick="event.stopPropagation(); rejectReIssue(${pIndex})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium">Reject</button>
-                <button onclick="event.stopPropagation(); processConfirmation(${pIndex})" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-medium">Process Confirmation</button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
-function selectPassenger(index) {
-    currentPassengerIndex = index;
-}
-
-function processConfirmation(passengerIndex) {
+function processConfirmation(passengerIndex, ticketIndex) {
     const passenger = currentRequest.passengers[passengerIndex];
     if (!passenger) return;
 
+    const tickets = Array.isArray(passenger.tickets) && passenger.tickets.length > 0
+        ? passenger.tickets
+        : [{
+            pnr: passenger.pnr || '',
+            route: passenger.route || '',
+            probableDateUp: passenger.probableDateUp || '',
+            probableDateDown: passenger.probableDateDown || '',
+        }];
+    const ticket = tickets[ticketIndex];
+    if (!ticket) return;
+
     currentPassengerIndex = passengerIndex;
+    currentTicketIndex = ticketIndex;
 
     document.getElementById('modalPassengerName').textContent = passenger.name + ' (' + passenger.passport + ')';
     document.getElementById('infoPassport').textContent = passenger.passport;
     document.getElementById('infoMobile').textContent = passenger.mobile || '-';
-    document.getElementById('infoPnr').textContent = passenger.pnr || 'ABCD1234';
-    document.getElementById('infoFlightDate').textContent = passenger.probableDateUp || '2026-05-15';
-    document.getElementById('infoRoute').textContent = 'DAC-JED-DAC';
+    document.getElementById('infoPnr').textContent = ticket.pnr || 'ABCD1234';
+    document.getElementById('infoFlightDate').textContent = ticket.probableDateUp || '2026-05-15';
+    document.getElementById('infoRoute').textContent = ticket.route || 'DAC-JED-DAC';
     document.getElementById('infoAirline').textContent = 'Saudi Arabian Airlines';
     document.getElementById('infoClass').textContent = 'Economy';
     document.getElementById('infoType').textContent = 'Adult';
 
-    document.getElementById('inputUpDate').value = passenger.probableDateUp || '';
-    document.getElementById('inputDownDate').value = passenger.probableDateDown || '';
+    document.getElementById('inputUpDate').value = ticket.probableDateUp || '';
+    document.getElementById('inputDownDate').value = ticket.probableDateDown || '';
     document.getElementById('inputTravelDate').value = '';
     document.getElementById('inputRoute').value = '';
     document.getElementById('inputAgent').value = '';
@@ -387,11 +416,20 @@ function confirmProcess() {
         branch: document.getElementById('inputBranch')?.value || '',
     };
 
-    if (currentRequest && currentPassengerIndex !== null) {
+    if (currentRequest && currentPassengerIndex !== null && currentTicketIndex !== null) {
         const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
         const idx = requests.findIndex(r => r.id === currentRequest.id);
         if (idx !== -1) {
-            requests[idx].passengers[currentPassengerIndex].reIssueData = reIssueData;
+            const passenger = requests[idx].passengers[currentPassengerIndex];
+            if (passenger) {
+                if (Array.isArray(passenger.tickets) && passenger.tickets.length > 0) {
+                    if (passenger.tickets[currentTicketIndex]) {
+                        passenger.tickets[currentTicketIndex].reIssueData = reIssueData;
+                    }
+                } else {
+                    passenger.reIssueData = reIssueData;
+                }
+            }
             requests[idx].status = 'Processed';
             localStorage.setItem('reIssueRequests', JSON.stringify(requests));
             currentRequest = requests[idx];
@@ -403,14 +441,22 @@ function confirmProcess() {
     closeProcessConfirmationModal();
 }
 
-function rejectReIssue(passengerIndex) {
+function rejectReIssue(passengerIndex, ticketIndex) {
     if (!currentRequest) return;
-    if (!confirm('Are you sure you want to reject this passenger\'s re-issue request?')) return;
+    if (!confirm('Are you sure you want to reject this ticket\'s re-issue request?')) return;
 
     const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
     const idx = requests.findIndex(r => r.id === currentRequest.id);
     if (idx !== -1) {
-        requests[idx].passengers.splice(passengerIndex, 1);
+        const passenger = requests[idx].passengers[passengerIndex];
+        if (passenger && Array.isArray(passenger.tickets) && passenger.tickets.length > 0) {
+            passenger.tickets.splice(ticketIndex, 1);
+            if (passenger.tickets.length === 0) {
+                requests[idx].passengers.splice(passengerIndex, 1);
+            }
+        } else {
+            requests[idx].passengers.splice(passengerIndex, 1);
+        }
         if (requests[idx].passengers.length === 0) {
             requests[idx].status = 'Rejected';
         }

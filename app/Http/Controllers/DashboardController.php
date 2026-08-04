@@ -230,6 +230,11 @@ class DashboardController extends Controller
         $receivingBank = $initialPaymentBank + $dueCollectionBank;
         $receivingBankBdt = $initialPaymentBankBdt + $dueCollectionBankBdt;
 
-        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'totalFingerprintProfit', 'totalFingerprintProfitBdt', 'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalPassengers', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalProfit', 'totalProfitBdt', 'totalServiceChargeDeduction', 'totalServiceChargeDeductionBdt', 'totalRefund', 'totalRefundBdt'));
+        $bookingBranches = Booking::whereNotNull('booking_branch_id')
+            ->join('branches', 'branches.id', '=', 'bookings.booking_branch_id')
+            ->pluck('branches.name', 'bookings.id')
+            ->toArray();
+
+        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'totalFingerprintProfit', 'totalFingerprintProfitBdt', 'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalPassengers', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalProfit', 'totalProfitBdt', 'totalServiceChargeDeduction', 'totalServiceChargeDeductionBdt', 'totalRefund', 'totalRefundBdt', 'bookingBranches'));
     }
 }

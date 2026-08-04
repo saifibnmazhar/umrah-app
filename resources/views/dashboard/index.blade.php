@@ -495,22 +495,8 @@ $refundRequests = [];
         </div>
 
         <div x-show="activeTab === 'reissue'" class="space-y-3">
-            {{-- @forelse($reissueRequests ?? [] as $request)  --}}
-            {{-- <a href="{{ route('re-issues.confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-blue-500">
-                <div class="flex justify-between items-center">
-                    <div>
-                        <span class="font-medium text-slate-800">Invoice ID: {{ $request['invoiceId'] }}</span>
-                        <span class="text-slate-500 text-sm ml-2">({{ $request['invoiceNo'] }}{{ isset($request['branch']) ? ' • ' . $request['branch'] : '' }})</span>
-                    </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm text-slate-500">{{ $request['passengers']['count'] ?? 1 }} passenger(s)</span>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
-                    </div>
-                </div>
-            </a> --}}
-            {{-- @empty --}}
-            <div class="text-center py-8 text-slate-500">No pending re-issue requests</div>
-            {{-- @endforelse --}}
+            <div id="reIssueNotificationsList" class="space-y-3"></div>
+            <div id="reIssueNotificationsEmpty" class="text-center py-8 text-slate-500">No pending re-issue requests</div>
         </div>
 
         <div x-show="activeTab === 'addticket'" class="space-y-3" style="display: none;">
@@ -554,3 +540,63 @@ $refundRequests = [];
     @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+const bookingBranchMap = @json($bookingBranches ?? []);
+
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+
+function renderReIssueNotifications() {
+    const listEl = document.getElementById('reIssueNotificationsList');
+    const emptyEl = document.getElementById('reIssueNotificationsEmpty');
+    if (!listEl || !emptyEl) return;
+
+    let requests = [];
+    try {
+        requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
+    } catch (e) {
+        requests = [];
+    }
+
+    const pending = requests.filter(r => r.status === 'Pending');
+
+    const groups = {};
+    pending.forEach(r => {
+        if (!groups[r.invoiceId]) {
+            groups[r.invoiceId] = { request: r, count: 0 };
+        }
+        groups[r.invoiceId].count += Array.isArray(r.passengers) ? r.passengers.length : 0;
+    });
+    const grouped = Object.values(groups);
+
+    listEl.innerHTML = grouped.map(g => {
+        const request = g.request;
+        const branch = bookingBranchMap[request.invoiceId] || request.branch || '-';
+        return `
+        <a href="/re-issues/${request.id}/confirm" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-blue-500">
+            <div class="flex justify-between items-center">
+                <div>
+                    <span class="font-bold text-slate-800">${escapeHtml(request.invoiceNo || '-')}</span>
+                </div>
+                <div class="flex items-center gap-4">
+                    <span class="text-sm text-slate-500">${escapeHtml(branch)}</span>
+                    <span class="text-sm text-slate-500">${g.count} passenger(s)</span>
+                </div>
+            </div>
+        </a>
+        `;
+    }).join('');
+
+    listEl.classList.toggle('hidden', grouped.length === 0);
+    emptyEl.classList.toggle('hidden', grouped.length > 0);
+}
+
+renderReIssueNotifications();
+</script>
+@endpush
