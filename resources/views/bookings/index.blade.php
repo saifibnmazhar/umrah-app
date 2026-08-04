@@ -1144,13 +1144,26 @@ if ($passenger->ticket_fare_inbound_id) {
         {{ $passenger->booking?->remarks ?? '—' }}
     </td>
     <td class="px-3 py-2">
-        <div class="relative" x-data="{ open: false }">
-            <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
+        <div x-data="{ open: false, ddTop: 0, ddRight: 0, ddStartTop: 0, ddStartLeft: 0 }" x-init="(() => {
+            const container = $el.closest('.overflow-auto');
+            if (!container) return;
+            container.addEventListener('scroll', () => {
+                if (!open) return;
+                const menu = $refs.ddMenu;
+                if (!menu) return;
+                const h = menu.getBoundingClientRect().height || 0;
+                const w = menu.getBoundingClientRect().width || 0;
+                const dTop = Math.abs(container.scrollTop - ddStartTop);
+                const dLeft = Math.abs(container.scrollLeft - ddStartLeft);
+                if (dTop >= h || dLeft >= w) { open = false; }
+            });
+        })()">
+            <button x-ref="ddBtn" @click="open = !open; if (open) { const r = $el.getBoundingClientRect(); ddTop = r.bottom + 4; ddRight = window.innerWidth - r.right; const c = $el.closest('.overflow-auto'); ddStartTop = c ? c.scrollTop : 0; ddStartLeft = c ? c.scrollLeft : 0; }" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
                 <svg class="w-3.5 h-3.5" fill="currentColor" viewBox="0 0 20 20"><circle cx="10" cy="4" r="2"/><circle cx="10" cy="10" r="2"/><circle cx="10" cy="16" r="2"/></svg>
             </button>
-            <div x-show="open" @click.outside="open = false" class="absolute right-0 top-full mt-1 z-50 bg-white border border-slate-200 rounded-lg shadow-lg flex flex-col whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
-                <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">View Passenger</a>
-                <button x-show="hasViewableTickets({{ $loop->index }})" @click="openTicketInfoModal({{ $loop->index }})" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition text-left">View Tickets</button>
+            <div x-ref="ddMenu" x-show="open" @click.outside="open = false" :style="'position:fixed;top:' + ddTop + 'px;right:' + ddRight + 'px;z-index:9999'" class="bg-white border border-slate-200 rounded-lg shadow-lg flex flex-col whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
+                <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">View Passenger</a>
+                <button x-show="hasViewableTickets({{ $loop->index }})" @click="open = false; openTicketInfoModal({{ $loop->index }})" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition text-left">View Tickets</button>
                 @if($passenger->documents_count > 0)
                     <a href="{{ route('passengers.download-all-docs', $passenger->id) }}" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download</a>
                 @else
