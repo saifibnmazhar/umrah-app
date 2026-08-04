@@ -264,6 +264,7 @@ class BookingController extends Controller
                     })
                 )
             )
+            ->whereHas('booking', fn ($q) => $q->where('is_cancelled', false))
             ->when($request->filled('fingerprint_status'), fn ($q) =>
                 $q->whereHas('fingerprintDetail', fn ($q) => $q->where('status', $request->input('fingerprint_status')))
             )
