@@ -264,7 +264,19 @@ class BookingController extends Controller
                     })
                 )
             )
-            ->whereHas('booking', fn ($q) => $q->where('is_cancelled', false))
+            ->when($request->filled('booking_status'), function ($q) use ($request) {
+                $status = $request->input('booking_status');
+                if ($status === 'active') {
+                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', false));
+                } elseif ($status === 'cancellation_processing') {
+                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', true)
+                        ->whereHas('cancelledBooking', fn ($cq) => $cq->where('status', 'cancellation processing')));
+                } elseif ($status === 'cancelled') {
+                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', true)
+                        ->where(fn ($bw) => $bw->whereDoesntHave('cancelledBooking')
+                            ->orWhereHas('cancelledBooking', fn ($cq) => $cq->where('status', 'cancelled'))));
+                }
+            })
             ->when($request->filled('fingerprint_status'), fn ($q) =>
                 $q->whereHas('fingerprintDetail', fn ($q) => $q->where('status', $request->input('fingerprint_status')))
             )

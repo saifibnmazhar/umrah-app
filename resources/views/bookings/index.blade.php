@@ -773,6 +773,15 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     </div>
                     @endunless
                     <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Booking Status</label>
+                        <select x-model="selectedBookingStatus" @change="onBookingStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="">All</option>
+                            <option value="active" {{ $selectedBookingStatus === 'active' ? 'selected' : '' }}>Active</option>
+                            <option value="cancellation_processing" {{ $selectedBookingStatus === 'cancellation_processing' ? 'selected' : '' }}>Cancellation Processing</option>
+                            <option value="cancelled" {{ $selectedBookingStatus === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Payment Wise</label>
                         <select x-model="selectedPaymentWise" @change="onPaymentWiseChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
@@ -2567,6 +2576,7 @@ function bookingIndexApp() {
              'flight_date_from', 'flight_date_to',
              'status_change_action', 'status_change_from', 'status_change_to',
              'payment_wise',
+             'booking_status',
              'search', 'page'
             ].forEach(p => url.searchParams.delete(p));
             url.searchParams.set('tab', 'passenger');
