@@ -527,37 +527,73 @@
         </div>
         <div id="reIssuePassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
             @foreach($booking->passengers as $index => $passenger)
+            @php
+                $viewableTickets = collect($passenger->allIssuedTickets)
+                    ->filter(fn($t) => in_array($t->status, ['issued', 're-issued', 'refunded']))
+                    ->values();
+            @endphp
             <div class="border border-slate-200 rounded-lg p-4">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <input type="checkbox" id="reIssue_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('reIssue_{{ $index }}', 'reIssueFields_{{ $index }}')">
+                        <input type="checkbox" id="reIssue_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('reIssue_{{ $index }}', 'reIssueTicketList_{{ $index }}')">
                         <label for="reIssue_{{ $index }}" class="font-medium text-slate-800 whitespace-nowrap">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
                     </div>
-                    <div id="reIssueFields_{{ $index }}" class="hidden flex items-center gap-3">
-                        <label for="ticketOption_{{ $index }}" class="text-sm font-medium text-slate-700">Ticket Option</label>
-                        <select id="ticketOption_{{ $index }}" onchange="toggleTicketOptionFields('{{ $index }}')" class="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                            <option value="">Select</option>
-                            <option value="up">Inbound</option>
-                            <option value="down">Outbound</option>
-                            <option value="both">Both</option>
-                        </select>
-                    </div>
                 </div>
-                <div id="reIssueDateFields_{{ $index }}" class="hidden mt-3 pl-7">
-                    <div class="flex gap-6 mb-2">
-                        <div id="probableDateUp_{{ $index }}" class="hidden flex flex-col">
-                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Inbound):</label>
-                            <input type="date" id="probableDateUp_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                        </div>
-                        <div id="probableDateDown_{{ $index }}" class="hidden flex flex-col">
-                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Outbound):</label>
-                            <input type="date" id="probableDateDown_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                        </div>
-                        <div id="visaExpiry_{{ $index }}" class="flex flex-col">
-                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Visa Expiry Date:</label>
-                            <input type="date" id="visaExpiry_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                <div id="reIssueTicketList_{{ $index }}" class="hidden mt-3 pl-7">
+                    @forelse($viewableTickets as $ticket)
+                    @php
+                        $tIndex = $loop->index;
+                        $tRoute = '';
+                        $tRouteRaw = $ticket->ticketFare?->route;
+                        $tRouteType = $tRouteRaw?->route_type?->value ?? '';
+                        if ($tRouteRaw) {
+                            if ($tRouteType === 'multi_city') {
+                                $tRoute = $tRouteRaw->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                            } else {
+                                $tFrom = $tRouteRaw->fromCity?->code ?? '?';
+                                $tTo = $tRouteRaw->toCity?->code ?? '?';
+                                $tReturn = $tRouteRaw->returnCity?->code ?? '';
+                                $tRoute = ($tRouteType === 'round' && $tReturn) ? "{$tFrom}-{$tTo}-{$tReturn}" : "{$tFrom}-{$tTo}";
+                            }
+                        }
+                        $tStatus = $ticket->status ?? '';
+                        $statusClass = $tStatus === 'issued' ? 'bg-green-100 text-green-700' : ($tStatus === 're-issued' ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700');
+                    @endphp
+                    <div class="border border-slate-100 rounded-lg p-3 mb-2">
+                        <label for="reIssueTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer">
+                            <input type="checkbox" id="reIssueTicket_{{ $index }}_{{ $tIndex }}" data-ticket-number="{{ $ticket->ticket_number ?? '' }}" data-pnr="{{ $ticket->pnr ?? '' }}" data-route="{{ $tRoute }}" data-route-type="{{ $tRouteType }}" data-issue-type="{{ $ticket->issue_type }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueTicketFields('{{ $index }}', '{{ $tIndex }}')">
+                            <span class="text-sm text-slate-700">
+                                <span class="font-medium">#{{ $loop->iteration }}</span>
+                                <span class="mx-1">|</span>
+                                <span class="font-mono text-slate-800">{{ $ticket->ticket_number }}</span>
+                                <span class="mx-1">|</span>
+                                <span class="font-mono">{{ $ticket->pnr }}</span>
+                                <span class="block mt-1 text-xs text-slate-500">
+                                    {{ $tRoute }} | {{ $ticket->ticketFare?->airline?->name ?? '-' }} | {{ $ticket->ticketFare?->airlineClass?->class?->name ?? '-' }} | {{ $ticket->issued_date?->format('d-m-Y') ?? '-' }}
+                                </span>
+                            </span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $statusClass }} ml-auto">{{ $tStatus }}</span>
+                        </label>
+                        <div id="reIssueTicketDateFields_{{ $index }}_{{ $tIndex }}" class="hidden mt-3">
+                            <div class="flex flex-wrap gap-6">
+                                <div id="probableDateUp_{{ $index }}_{{ $tIndex }}" class="hidden flex flex-col">
+                                    <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Inbound):</label>
+                                    <input type="date" id="probableDateUpInput_{{ $index }}_{{ $tIndex }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                                <div id="probableDateDown_{{ $index }}_{{ $tIndex }}" class="hidden flex flex-col">
+                                    <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Outbound):</label>
+                                    <input type="date" id="probableDateDownInput_{{ $index }}_{{ $tIndex }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                                <div id="visaExpiry_{{ $index }}_{{ $tIndex }}" class="flex flex-col">
+                                    <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Visa Expiry Date:</label>
+                                    <input type="date" id="visaExpiryInput_{{ $index }}_{{ $tIndex }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    @empty
+                    <p class="text-sm text-slate-500">No issued tickets found for this passenger.</p>
+                    @endforelse
                 </div>
             </div>
             @endforeach
@@ -670,15 +706,15 @@
                     <div class="flex gap-6 mb-2">
                         <div id="addTicketProbableDateUp_{{ $index }}" class="hidden flex flex-col">
                             <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Date (Inbound):</label>
-                            <input type="date" id="addTicketProbableDateUp_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="date" id="addTicketProbableDateUpInput_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div id="addTicketProbableDateDown_{{ $index }}" class="hidden flex flex-col">
                             <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Date (Outbound):</label>
-                            <input type="date" id="addTicketProbableDateDown_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="date" id="addTicketProbableDateDownInput_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div id="addTicketVisaExpiry_{{ $index }}" class="flex flex-col">
                             <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Visa Expiry Date:</label>
-                            <input type="date" id="addTicketVisaExpiry_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="date" id="addTicketVisaExpiryInput_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                     </div>
                 </div>
@@ -1114,55 +1150,80 @@ function switchTab(tabName) {
     activeTab.classList.add('border-blue-600', 'text-blue-600');
 }
 
-function toggleReIssueFields(checkboxId, fieldsId) {
+function toggleReIssueFields(checkboxId, ticketListId) {
     const checkbox = document.getElementById(checkboxId);
-    const fields = document.getElementById(fieldsId);
+    const list = document.getElementById(ticketListId);
+    if (!checkbox || !list) return;
+
     if (checkbox.checked) {
-        fields.classList.remove('hidden');
+        list.classList.remove('hidden');
     } else {
-        fields.classList.add('hidden');
+        list.classList.add('hidden');
         const idx = checkboxId.replace('reIssue_', '');
-        document.getElementById('reIssueDateFields_' + idx)?.classList.add('hidden');
+        list.querySelectorAll('input[type="checkbox"][id^="reIssueTicket_"]').forEach(tcb => {
+            tcb.checked = false;
+            const tIdx = tcb.id.replace('reIssueTicket_' + idx + '_', '');
+            const dateFields = document.getElementById('reIssueTicketDateFields_' + idx + '_' + tIdx);
+            if (dateFields) {
+                dateFields.classList.add('hidden');
+                document.getElementById('probableDateUp_' + idx + '_' + tIdx)?.classList.add('hidden');
+                document.getElementById('probableDateDown_' + idx + '_' + tIdx)?.classList.add('hidden');
+                document.getElementById('visaExpiry_' + idx + '_' + tIdx)?.classList.add('hidden');
+            }
+        });
     }
 }
 
-function toggleTicketOptionFields(pIndex) {
-    const ticketOption = document.getElementById('ticketOption_' + pIndex);
-    const dateFields = document.getElementById('reIssueDateFields_' + pIndex);
-    const probableDateUp = document.getElementById('probableDateUp_' + pIndex);
-    const probableDateDown = document.getElementById('probableDateDown_' + pIndex);
-    const visaExpiry = document.getElementById('visaExpiry_' + pIndex);
+function toggleReIssueTicketFields(pIndex, tIndex) {
+    const checkbox = document.getElementById('reIssueTicket_' + pIndex + '_' + tIndex);
+    const dateFields = document.getElementById('reIssueTicketDateFields_' + pIndex + '_' + tIndex);
+    if (!checkbox || !dateFields) return;
 
-    if (!ticketOption || !dateFields) return;
+    const probableDateUp = document.getElementById('probableDateUp_' + pIndex + '_' + tIndex);
+    const probableDateDown = document.getElementById('probableDateDown_' + pIndex + '_' + tIndex);
+    const visaExpiry = document.getElementById('visaExpiry_' + pIndex + '_' + tIndex);
 
-    dateFields.classList.remove('hidden');
-    probableDateUp.classList.add('hidden');
-    probableDateDown.classList.add('hidden');
-    visaExpiry.classList.add('hidden');
+    if (checkbox.checked) {
+        dateFields.classList.remove('hidden');
+        probableDateUp.classList.add('hidden');
+        probableDateDown.classList.add('hidden');
+        visaExpiry.classList.remove('hidden');
 
-    if (ticketOption.value === 'up') {
-        probableDateUp.classList.remove('hidden');
-        visaExpiry.classList.remove('hidden');
-    } else if (ticketOption.value === 'down') {
-        probableDateDown.classList.remove('hidden');
-        visaExpiry.classList.remove('hidden');
-    } else if (ticketOption.value === 'both') {
-        probableDateUp.classList.remove('hidden');
-        probableDateDown.classList.remove('hidden');
-        visaExpiry.classList.remove('hidden');
+        const routeType = checkbox.dataset.routeType || '';
+        const issueType = checkbox.dataset.issueType || '';
+
+        if (routeType === 'oneway_inbound') {
+            probableDateUp.classList.remove('hidden');
+        } else if (routeType === 'oneway_outbound' || issueType === 'pending_outbound') {
+            probableDateDown.classList.remove('hidden');
+        } else {
+            probableDateUp.classList.remove('hidden');
+            probableDateDown.classList.remove('hidden');
+        }
+    } else {
+        dateFields.classList.add('hidden');
+        probableDateUp.classList.add('hidden');
+        probableDateDown.classList.add('hidden');
+        visaExpiry.classList.add('hidden');
     }
 }
 
 function openReIssueModal() {
     document.getElementById('reIssueModal').classList.remove('hidden');
-    const checkboxes = document.querySelectorAll('#reIssuePassengers input[type="checkbox"]');
-    checkboxes.forEach((cb, idx) => {
-        cb.checked = false;
-        document.getElementById('reIssueFields_' + idx)?.classList.add('hidden');
-        document.getElementById('reIssueDateFields_' + idx)?.classList.add('hidden');
-        document.getElementById('probableDateUp_' + idx)?.classList.add('hidden');
-        document.getElementById('probableDateDown_' + idx)?.classList.add('hidden');
+    document.querySelectorAll('#reIssuePassengers > div').forEach((row, idx) => {
+        const cb = document.getElementById('reIssue_' + idx);
+        if (cb) cb.checked = false;
+        document.getElementById('reIssueTicketList_' + idx)?.classList.add('hidden');
     });
+    document.querySelectorAll('#reIssuePassengers input[type="checkbox"][id^="reIssueTicket_"]').forEach(tcb => {
+        tcb.checked = false;
+    });
+    document.querySelectorAll('#reIssuePassengers [id^="reIssueTicketDateFields_"]').forEach(el => {
+        el.classList.add('hidden');
+    });
+    document.querySelectorAll('#reIssuePassengers [id^="probableDateUp_"]').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('#reIssuePassengers [id^="probableDateDown_"]').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('#reIssuePassengers [id^="visaExpiry_"]').forEach(el => el.classList.add('hidden'));
 }
 
 function closeReIssueModal() {
@@ -1178,13 +1239,24 @@ function submitReIssueRequest() {
         const checkbox = document.getElementById('reIssue_' + pIndex);
         if (checkbox && checkbox.checked) {
             foundChecked = true;
+            const tickets = [];
+            row.querySelectorAll('input[type="checkbox"][id^="reIssueTicket_"]').forEach(tcb => {
+                if (!tcb.checked) return;
+                const tIndex = tcb.id.replace('reIssueTicket_' + pIndex + '_', '');
+                tickets.push({
+                    ticketNumber: tcb.dataset.ticketNumber || '',
+                    pnr: tcb.dataset.pnr || '',
+                    route: tcb.dataset.route || '',
+                    routeType: tcb.dataset.routeType || '',
+                    probableDateUp: document.getElementById('probableDateUpInput_' + pIndex + '_' + tIndex)?.value || '',
+                    probableDateDown: document.getElementById('probableDateDownInput_' + pIndex + '_' + tIndex)?.value || '',
+                    visaExpiry: document.getElementById('visaExpiryInput_' + pIndex + '_' + tIndex)?.value || '',
+                });
+            });
             selectedPassengers.push({
                 name: checkbox.dataset.name,
                 passport: checkbox.dataset.passport,
-                ticketOption: document.getElementById('ticketOption_' + pIndex)?.value || '',
-                probableDateUp: document.getElementById('probableDateUp_' + pIndex)?.value || '',
-                probableDateDown: document.getElementById('probableDateDown_' + pIndex)?.value || '',
-                visaExpiry: document.getElementById('visaExpiry_' + pIndex)?.value || '',
+                tickets: tickets,
             });
         }
     });
@@ -1354,9 +1426,9 @@ function submitAddTicketRequest() {
                 name: checkbox.dataset.name,
                 passport: checkbox.dataset.passport,
                 ticketOption: document.getElementById('addTicketOption_' + pIndex)?.value || '',
-                probableDateUp: document.getElementById('addTicketProbableDateUp_' + pIndex)?.value || '',
-                probableDateDown: document.getElementById('addTicketProbableDateDown_' + pIndex)?.value || '',
-                visaExpiry: document.getElementById('addTicketVisaExpiry_' + pIndex)?.value || '',
+                probableDateUp: document.getElementById('addTicketProbableDateUpInput_' + pIndex)?.value || '',
+                probableDateDown: document.getElementById('addTicketProbableDateDownInput_' + pIndex)?.value || '',
+                visaExpiry: document.getElementById('addTicketVisaExpiryInput_' + pIndex)?.value || '',
             });
         }
     });
