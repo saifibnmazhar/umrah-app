@@ -142,6 +142,7 @@ class FingerprintController extends Controller
                         'fingerprint_branch_id' => $booking->fingerprint_branch_id,
                         'passenger_name' => $passenger->first_name . ' ' . $passenger->last_name,
                         'fingerprint_status' => $detail?->status?->value ?? 'none',
+                        'passenger_status' => $passenger->status?->name ?? null,
                         'fingerprint_status_display' => $statusDisplay,
                         'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
                         'is_cancelled' => $booking->is_cancelled,
@@ -290,6 +291,7 @@ class FingerprintController extends Controller
                         'rate' => $rate,
                         'can_edit_cost' => $canEditCost,
                         'fingerprint_status' => $detail?->status?->value ?? 'none',
+                        'passenger_status' => $passenger->status?->name ?? null,
                         'fingerprint_status_display' => $statusDisplay,
                         'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
                         'is_cancelled' => $booking->is_cancelled,
@@ -347,6 +349,14 @@ class FingerprintController extends Controller
             ], 422);
         }
 
+        $passengers = $fingerprint->booking->passengers;
+        if ($passengers->isNotEmpty() && $passengers->every(fn ($p) => $p->isOnHold())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot update fingerprint for a passenger on Hold'
+            ], 422);
+        }
+
         $validated = $request->validate([
             'assigned_staff_id' => 'required|exists:users,id',
         ]);
@@ -369,6 +379,14 @@ class FingerprintController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot update cost for a cancelled booking'
+            ], 422);
+        }
+
+        $passengers = $fingerprint->booking->passengers;
+        if ($passengers->isNotEmpty() && $passengers->every(fn ($p) => $p->isOnHold())) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot update fingerprint for a passenger on Hold'
             ], 422);
         }
 
@@ -413,6 +431,13 @@ class FingerprintController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot update status for a cancelled booking'
+            ], 422);
+        }
+
+        if ($fingerprintDetail->passenger?->isOnHold()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot update fingerprint for a passenger on Hold'
             ], 422);
         }
 
@@ -482,6 +507,13 @@ class FingerprintController extends Controller
             return response()->json([
                 'success' => false,
                 'message' => 'Cannot hold fingerprint for a cancelled booking'
+            ], 422);
+        }
+
+        if ($fingerprintDetail->passenger?->isOnHold()) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot update fingerprint for a passenger on Hold'
             ], 422);
         }
 

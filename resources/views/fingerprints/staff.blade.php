@@ -104,7 +104,7 @@
       x-text="formatCost(row.cost, row.rate, currencyToggleCounter)"></span>
                             </td>
                             <td class="px-3 py-2">
-                                <select x-show="canEditStatus && !row.is_cancelled"
+                                <select x-show="canEditStatus && !row.is_cancelled && row.passenger_status !== 'Hold'"
                                         @change="handleStatusChange(row.fingerprint_detail_id, $event, row.cost, row.fingerprint_location)"
                                         class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
                                     <template x-for="opt in displayStatuses" :key="opt">
@@ -113,10 +113,14 @@
                                                 x-text="opt"></option>
                                     </template>
                                 </select>
-                                <span x-show="!canEditStatus || row.is_cancelled"
-                                      class="px-2 py-1 rounded-full text-xs font-medium"
-                                      :class="getStatusClass(row.fingerprint_status_display)"
-                                      x-text="row.fingerprint_status_display"></span>
+                                <span x-show="!canEditStatus || row.is_cancelled || row.passenger_status === 'Hold'"
+                                      class="inline-flex items-center gap-1">
+                                    <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                          :class="getStatusClass(row.fingerprint_status_display)"
+                                          x-text="row.fingerprint_status_display"></span>
+                                    <span x-show="row.passenger_status === 'Hold'"
+                                          class="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Hold</span>
+                                </span>
                             </td>
                         </tr>
                     </template>
@@ -469,6 +473,8 @@ function fingerprintStaff(options = {}) {
                         }
                     });
                     this.data = this.enrichData(this.data);
+                } else {
+                    this.showToast(result.message || 'Failed to update cost', 'error');
                 }
             } catch (error) {
                 console.error('Failed to update cost:', error);

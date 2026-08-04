@@ -279,6 +279,11 @@ class Passenger extends Model
         return $this->hasMany(PassengerUpdateLog::class);
     }
 
+    public function isOnHold(): bool
+    {
+        return $this->status?->name === 'Hold';
+    }
+
     public function syncComputedStatus(): void
     {
         $statusName = $this->computed_status;

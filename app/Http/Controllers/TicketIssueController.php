@@ -17,6 +17,10 @@ class TicketIssueController extends Controller
             abort(403, 'Passenger does not belong to this booking.');
         }
 
+        if ($passenger->isOnHold()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a passenger on Hold'], 422);
+        }
+
         $validated = $request->validate([
             'issued_ticket_id' => 'required|exists:issued_tickets,id',
             'ticket_number' => 'nullable|string|max:100',
@@ -152,6 +156,10 @@ class TicketIssueController extends Controller
             abort(403, 'Passenger does not belong to this booking.');
         }
 
+        if ($passenger->isOnHold()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a passenger on Hold'], 422);
+        }
+
         $validated = $request->validate([
             'issued_ticket_id' => 'required|exists:issued_tickets,id',
             'ticket_number' => 'nullable|string|max:100',
@@ -247,6 +255,10 @@ class TicketIssueController extends Controller
 
     public function createPendingOutbound(Request $request, Passenger $passenger)
     {
+        if ($passenger->isOnHold()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a passenger on Hold'], 422);
+        }
+
         if (!$passenger->ticket_fare_outbound_id) {
             return response()->json(['message' => 'No outbound fare configured for this passenger.'], 400);
         }
@@ -317,6 +329,10 @@ class TicketIssueController extends Controller
 
     public function confirmGroup(Request $request, Passenger $passenger)
     {
+        if ($passenger->isOnHold()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a passenger on Hold'], 422);
+        }
+
         $validated = $request->validate([
             'action' => 'required|in:all,in,out,both',
             'booking_id' => 'required|exists:bookings,id',

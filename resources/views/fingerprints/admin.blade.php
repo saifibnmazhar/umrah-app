@@ -146,7 +146,7 @@
                             </td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.passenger_name"></td>
                             <td class="px-3 py-2">
-                                <template x-if="canAssignStaff && row.fingerprint_location === 'office' && !row.is_cancelled">
+                                <template x-if="canAssignStaff && row.fingerprint_location === 'office' && !row.is_cancelled && row.passenger_status !== 'Hold'">
                                     <select @change="handleStatusChange(row.fingerprint_detail_id, $event.target.value)"
                                             class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
                                         <template x-for="opt in displayStatuses" :key="opt">
@@ -156,10 +156,14 @@
                                         </template>
                                     </select>
                                 </template>
-                                <template x-if="!canAssignStaff || row.fingerprint_location !== 'office' || row.is_cancelled">
-                                    <span class="px-2 py-1 rounded-full text-xs font-medium"
-                                          :class="getStatusClass(row.fingerprint_status_display)"
-                                          x-text="row.fingerprint_status_display"></span>
+                                <template x-if="!canAssignStaff || row.fingerprint_location !== 'office' || row.is_cancelled || row.passenger_status === 'Hold'">
+                                    <span class="inline-flex items-center gap-1">
+                                        <span class="px-2 py-1 rounded-full text-xs font-medium"
+                                              :class="getStatusClass(row.fingerprint_status_display)"
+                                              x-text="row.fingerprint_status_display"></span>
+                                        <span x-show="row.passenger_status === 'Hold'"
+                                              class="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Hold</span>
+                                    </span>
                                 </template>
                             </td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.required_flight_date || '-'"></td>
@@ -406,6 +410,8 @@ function fingerprintAdmin(options = {}) {
                             row.assigned_staff_name = staff?.name;
                         }
                     });
+                } else {
+                    window.showToast(result.message || 'Failed to assign staff', 'error');
                 }
             } catch (error) {
                 console.error('Failed to assign staff:', error);

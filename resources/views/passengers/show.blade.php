@@ -321,19 +321,22 @@
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-semibold text-slate-800">Visa Submission History</h3>
                         <div class="flex gap-2">
+                            @if($passenger->isOnHold())
+                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">Hold</span>
+                            @endif
                             @php $vsStatus = $passenger->visaSubmission?->status?->value; @endphp
                             <button onclick="openCancellationModal()"
-                                {{ $vsStatus !== 'submitted' || !$canEditVisa ? 'disabled' : '' }}
+                                {{ $vsStatus !== 'submitted' || !$canEditVisa || $passenger->isOnHold() ? 'disabled' : '' }}
                                 class="px-4 py-2 rounded-lg transition font-medium text-sm
-                                {{ $vsStatus === 'submitted' && $canEditVisa
+                                {{ $vsStatus === 'submitted' && $canEditVisa && !$passenger->isOnHold()
                                     ? 'bg-red-600 text-white hover:bg-red-700'
                                     : 'bg-gray-300 text-gray-500 cursor-not-allowed' }}">
                                 Cancel
                             </button>
                             <button onclick="openVisaResubmitModal()"
-                                {{ $vsStatus !== 'cancelled' || !$canEditVisa ? 'disabled' : '' }}
+                                {{ $vsStatus !== 'cancelled' || !$canEditVisa || $passenger->isOnHold() ? 'disabled' : '' }}
                                 class="px-4 py-2 rounded-lg transition font-medium text-sm
-                                {{ $vsStatus === 'cancelled' && $canEditVisa
+                                {{ $vsStatus === 'cancelled' && $canEditVisa && !$passenger->isOnHold()
                                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                                     : 'bg-gray-300 text-gray-500 cursor-not-allowed' }}">
                                 Visa Re-Submit

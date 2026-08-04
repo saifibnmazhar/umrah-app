@@ -17,6 +17,10 @@ class VisaSubmissionController extends Controller
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
         }
 
+        if ($passenger->isOnHold()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold'], 422);
+        }
+
         $validated = $request->validate([
             'visa_agent_id' => 'required|exists:visa_agents,id',
             'commission_agent_id' => 'nullable|exists:commission_agents,id',
@@ -57,6 +61,10 @@ class VisaSubmissionController extends Controller
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
         }
 
+        if ($passenger->isOnHold()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold'], 422);
+        }
+
         $validated = $request->validate([
             'visa_number' => 'required|string|max:255',
             'additional_cost' => 'nullable|numeric|min:0',
@@ -94,6 +102,10 @@ class VisaSubmissionController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
+        }
+
+        if ($passenger->isOnHold()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold'], 422);
         }
 
         $validated = $request->validate([
@@ -139,6 +151,10 @@ class VisaSubmissionController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
+        }
+
+        if ($passenger->isOnHold()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold'], 422);
         }
 
         $validated = $request->validate([
@@ -187,6 +203,10 @@ class VisaSubmissionController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
+        }
+
+        if ($passenger->isOnHold()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold'], 422);
         }
 
         $validated = $request->validate([
