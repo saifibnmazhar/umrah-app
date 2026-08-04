@@ -2150,7 +2150,7 @@ if ($passenger->ticket_fare_inbound_id) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
-                            <select x-model="reIssueForm.route_type" @change="reIssueForm.ticket_option = ''" :disabled="reIssueForm.isRouteTypeLocked" :class="reIssueForm.isRouteTypeLocked ? 'bg-slate-100 cursor-not-allowed' : 'bg-white'" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <select x-model="reIssueForm.route_type" @change="reIssueForm.ticket_option = ''" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select</option>
                                 <option value="One Way-Inbound">One Way-Inbound</option>
                                 <option value="One Way-Outbound">One Way-Outbound</option>
@@ -2278,7 +2278,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <input type="number" x-model="reIssueForm.net_fare" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                             </div>
                         </div>
-                        <div>
+                        <div x-show="reIssueForm.ticket_type === 'offer'">
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
                                 <input type="number" x-model="reIssueForm.offer_price" step="0.000001" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
@@ -4632,14 +4632,12 @@ function bookingIndexApp() {
 
             if (isOutbound) {
                 this.reIssueForm.route_type = 'One Way-Outbound';
-                this.reIssueForm.isRouteTypeLocked = true;
             } else if (isDoubleTicket) {
                 this.reIssueForm.route_type = 'One Way-Inbound';
-                this.reIssueForm.isRouteTypeLocked = true;
             } else {
                 this.reIssueForm.route_type = '';
-                this.reIssueForm.isRouteTypeLocked = false;
             }
+            this.reIssueForm.isRouteTypeLocked = false;
             this.reIssueForm.flight_type = '';
             this.reIssueForm.ticket_option = '';
             this.reIssueForm.group_ticket_id = '';
@@ -5435,39 +5433,19 @@ function bookingIndexApp() {
                 if (fare.outbound_date && this.reIssueForm.route_type !== 'One Way-Inbound') {
                     this.reIssueForm.outbound_date = this.formatToDDMMMYY(fare.outbound_date) || '';
                 }
-                const row = this.passengersTicketData.find(r => r.id === this.reIssueForm.passenger_id);
-                if (row) {
-                    let inboundBaggage = '';
-                    let outboundBaggage = '';
-
-                    if (row.inbound_ticket_fare && row.inbound_ticket_fare.id == val) {
-                        inboundBaggage = row.inbound_ticket_fare.baggage_inbound;
+                const pType = this.reIssueForm.passenger_type || 'adult';
+                if (fare.baggage_allowances && fare.baggage_allowances.length) {
+                    const inboundAllowance = fare.baggage_allowances.find(
+                        b => b.passenger_type === pType && b.travel_direction === 'inbound'
+                    );
+                    const outboundAllowance = fare.baggage_allowances.find(
+                        b => b.passenger_type === pType && b.travel_direction === 'outbound'
+                    );
+                    if (inboundAllowance && this.reIssueForm.route_type !== 'One Way-Outbound') {
+                        this.reIssueForm.baggage_inbound = inboundAllowance.allowance;
                     }
-                    if (row.outbound_ticket_fare && row.outbound_ticket_fare.id == val) {
-                        outboundBaggage = row.outbound_ticket_fare.baggage_outbound;
-                    }
-
-                    if (!inboundBaggage && !outboundBaggage && row.ticket_fare?.baggage_allowances) {
-                        const pType = this.reIssueForm.passenger_type || 'adult';
-                        const inboundAllowance = row.ticket_fare.baggage_allowances.find(
-                            b => b.passenger_type === pType && b.travel_direction === 'inbound'
-                        );
-                        const outboundAllowance = row.ticket_fare.baggage_allowances.find(
-                            b => b.passenger_type === pType && b.travel_direction === 'outbound'
-                        );
-                        if (inboundAllowance && !inboundBaggage) inboundBaggage = inboundAllowance.allowance;
-                        if (outboundAllowance && !outboundBaggage) outboundBaggage = outboundAllowance.allowance;
-                    }
-
-                    if (!outboundBaggage && row.pending_outbound_issued_ticket?.baggage_outbound) {
-                        outboundBaggage = row.pending_outbound_issued_ticket.baggage_outbound;
-                    }
-
-                    if (inboundBaggage && this.reIssueForm.route_type !== 'One Way-Outbound') {
-                        this.reIssueForm.baggage_inbound = inboundBaggage;
-                    }
-                    if (outboundBaggage && this.reIssueForm.route_type !== 'One Way-Inbound') {
-                        this.reIssueForm.baggage_outbound = outboundBaggage;
+                    if (outboundAllowance && this.reIssueForm.route_type !== 'One Way-Inbound') {
+                        this.reIssueForm.baggage_outbound = outboundAllowance.allowance;
                     }
                 }
             }
