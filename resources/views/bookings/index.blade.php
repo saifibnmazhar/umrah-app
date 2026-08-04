@@ -1576,7 +1576,7 @@ if ($passenger->ticket_fare_inbound_id) {
     {{-- Ticket Info Modal --}}
     <div x-show="isTicketInfoModalOpen" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="isTicketInfoModalOpen = false">
         <div class="fixed inset-0 bg-black/50" @click="isTicketInfoModalOpen = false"></div>
-        <div x-show="isTicketInfoModalOpen" x-cloak class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-4xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
+        <div x-show="isTicketInfoModalOpen" x-cloak class="modal-content relative bg-white rounded-xl shadow-2xl w-full max-w-7xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <div class="flex items-center justify-between mb-4">
                 <h3 class="text-xl font-semibold text-slate-800">Ticket Info</h3>
                 <button type="button" @click="isTicketInfoModalOpen = false" class="text-slate-400 hover:text-slate-600">
@@ -1601,10 +1601,12 @@ if ($passenger->ticket_fare_inbound_id) {
                                     <th class="px-3 py-2">Ticket No</th>
                                     <th class="px-3 py-2">PNR</th>
                                     <th class="px-3 py-2">Route</th>
+                                    <th class="px-3 py-2">Route Type</th>
+                                    <th class="px-3 py-2">Issue Type</th>
                                     <th class="px-3 py-2">Airline</th>
                                     <th class="px-3 py-2">Class</th>
                                     <th class="px-3 py-2">Status</th>
-                                    <th class="px-3 py-2">Active</th>
+                                    <th class="px-3 py-2">Actions</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -1615,6 +1617,18 @@ if ($passenger->ticket_fare_inbound_id) {
                                         <td class="px-3 py-2 text-slate-700 font-mono" x-text="ticket.ticket_number || '—'"></td>
                                         <td class="px-3 py-2 text-slate-700 font-mono" x-text="ticket.pnr || '—'"></td>
                                         <td class="px-3 py-2 text-slate-700" x-text="ticket.route || '—'"></td>
+                                        <td class="px-3 py-2">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                                                :class="routeTypeClass(ticket.route_type)"
+                                                x-text="routeTypeLabel(ticket.route_type)">
+                                            </span>
+                                        </td>
+                                        <td class="px-3 py-2">
+                                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                                                :class="issueTypeClass(ticket.issue_type)"
+                                                x-text="issueTypeLabel(ticket.issue_type)">
+                                            </span>
+                                        </td>
                                         <td class="px-3 py-2 text-slate-700" x-text="ticket.airline || '—'"></td>
                                         <td class="px-3 py-2 text-slate-700" x-text="ticket.travel_class || '—'"></td>
                                         <td class="px-3 py-2">
@@ -4526,6 +4540,44 @@ function bookingIndexApp() {
 
         hasViewableTickets(rowIndex) {
             return this.viewableTickets(rowIndex).length > 0;
+        },
+
+        issueTypeLabel(value) {
+            const map = {
+                'regular': 'Regular',
+                'pending_outbound': 'Pending Outbound',
+                'additional': 'Additional',
+            };
+            return map[value] || '—';
+        },
+
+        issueTypeClass(value) {
+            const map = {
+                'regular': 'bg-green-100 text-green-700',
+                'pending_outbound': 'bg-orange-100 text-orange-700',
+                'additional': 'bg-blue-100 text-blue-700',
+            };
+            return map[value] || 'bg-slate-100 text-slate-500';
+        },
+
+        routeTypeLabel(value) {
+            const map = {
+                'oneway_inbound': 'One Way-Inbound',
+                'oneway_outbound': 'One Way-Outbound',
+                'round': 'Round',
+                'multi_city': 'Multi City',
+            };
+            return map[value] || '—';
+        },
+
+        routeTypeClass(value) {
+            const map = {
+                'oneway_inbound': 'bg-sky-100 text-sky-700',
+                'oneway_outbound': 'bg-cyan-100 text-cyan-800',
+                'round': 'bg-purple-100 text-purple-700',
+                'multi_city': 'bg-amber-100 text-amber-700',
+            };
+            return map[value] || 'bg-slate-100 text-slate-500';
         },
 
         calculateFareForPassengerType(baseFare, passengerType, childPct, infantPct) {
