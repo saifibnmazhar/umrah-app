@@ -638,10 +638,55 @@
         </div>
         <div id="refundPassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
             @foreach($booking->passengers as $index => $passenger)
+            @php
+                $viewableTickets = collect($passenger->allIssuedTickets)
+                    ->filter(fn($t) => in_array($t->status, ['issued', 're-issued', 'refunded']))
+                    ->values();
+            @endphp
             <div class="border border-slate-200 rounded-lg p-4">
                 <div class="flex items-center gap-3">
-                    <input type="checkbox" id="refund_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded">
+                    <input type="checkbox" id="refund_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleRefundFields('refund_{{ $index }}', 'refundTicketList_{{ $index }}')">
                     <label for="refund_{{ $index }}" class="font-medium text-slate-800">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                </div>
+                <div id="refundTicketList_{{ $index }}" class="hidden mt-3 pl-7">
+                    @forelse($viewableTickets as $ticket)
+                    @php
+                        $tIndex = $loop->index;
+                        $tRoute = '';
+                        $tRouteRaw = $ticket->ticketFare?->route;
+                        $tRouteType = $tRouteRaw?->route_type?->value ?? '';
+                        if ($tRouteRaw) {
+                            if ($tRouteType === 'multi_city') {
+                                $tRoute = $tRouteRaw->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                            } else {
+                                $tFrom = $tRouteRaw->fromCity?->code ?? '?';
+                                $tTo = $tRouteRaw->toCity?->code ?? '?';
+                                $tReturn = $tRouteRaw->returnCity?->code ?? '';
+                                $tRoute = ($tRouteType === 'round' && $tReturn) ? "{$tFrom}-{$tTo}-{$tReturn}" : "{$tFrom}-{$tTo}";
+                            }
+                        }
+                        $tStatus = $ticket->status ?? '';
+                        $statusClass = $tStatus === 'issued' ? 'bg-green-100 text-green-700' : ($tStatus === 're-issued' ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700');
+                    @endphp
+                    <div class="border border-slate-100 rounded-lg p-3 mb-2">
+                        <label for="refundTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer">
+                            <input type="checkbox" id="refundTicket_{{ $index }}_{{ $tIndex }}" data-ticket-number="{{ $ticket->ticket_number ?? '' }}" data-pnr="{{ $ticket->pnr ?? '' }}" data-route="{{ $tRoute }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded">
+                            <span class="text-sm text-slate-700">
+                                <span class="font-medium">#{{ $loop->iteration }}</span>
+                                <span class="mx-1">|</span>
+                                <span class="font-mono text-slate-800">{{ $ticket->ticket_number }}</span>
+                                <span class="mx-1">|</span>
+                                <span class="font-mono">{{ $ticket->pnr }}</span>
+                                <span class="block mt-1 text-xs text-slate-500">
+                                    {{ $tRoute }} | {{ $ticket->ticketFare?->airline?->name ?? '-' }} | {{ $ticket->ticketFare?->airlineClass?->class?->name ?? '-' }} | {{ $ticket->issued_date?->format('d-m-Y') ?? '-' }}
+                                </span>
+                            </span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $statusClass }} ml-auto">{{ $tStatus }}</span>
+                        </label>
+                    </div>
+                    @empty
+                    <p class="text-sm text-slate-500">No issued tickets found for this passenger.</p>
+                    @endforelse
                 </div>
             </div>
             @endforeach
@@ -1461,10 +1506,29 @@ function submitAddTicketRequest() {
     renderAdditionalTicketHistory();
 }
 
+function toggleRefundFields(checkboxId, ticketListId) {
+    const checkbox = document.getElementById(checkboxId);
+    const list = document.getElementById(ticketListId);
+    if (!checkbox || !list) return;
+
+    if (checkbox.checked) {
+        list.classList.remove('hidden');
+    } else {
+        list.classList.add('hidden');
+        list.querySelectorAll('input[type="checkbox"][id^="refundTicket_"]').forEach(tcb => {
+            tcb.checked = false;
+        });
+    }
+}
+
 function openRefundModal() {
     document.getElementById('refundModal').classList.remove('hidden');
-    const checkboxes = document.querySelectorAll('#refundPassengers input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = false);
+    document.querySelectorAll('#refundPassengers > div').forEach(row => {
+        const cb = row.querySelector('input[type="checkbox"][id^="refund_"]');
+        if (cb) cb.checked = false;
+        row.querySelectorAll('[id^="refundTicketList_"]').forEach(el => el.classList.add('hidden'));
+        row.querySelectorAll('input[type="checkbox"][id^="refundTicket_"]').forEach(tcb => tcb.checked = false);
+    });
 }
 
 function closeRefundModal() {
@@ -1479,9 +1543,19 @@ function submitRefundRequest() {
         const checkbox = document.getElementById('refund_' + pIndex);
         if (checkbox && checkbox.checked) {
             foundChecked = true;
+            const tickets = [];
+            row.querySelectorAll('input[type="checkbox"][id^="refundTicket_"]').forEach(tcb => {
+                if (!tcb.checked) return;
+                tickets.push({
+                    ticketNumber: tcb.dataset.ticketNumber || '',
+                    pnr: tcb.dataset.pnr || '',
+                    route: tcb.dataset.route || '',
+                });
+            });
             selectedPassengers.push({
                 name: checkbox.dataset.name,
                 passport: checkbox.dataset.passport,
+                tickets: tickets,
             });
         }
     });
@@ -1490,6 +1564,13 @@ function submitRefundRequest() {
         showToast('Please select at least one passenger', 'error');
         return;
     }
+
+    if (selectedPassengers.some(p => p.tickets.length === 0)) {
+        showToast('Please select at least one ticket for each passenger', 'error');
+        return;
+    }
+
+    const firstTicket = selectedPassengers.find(p => p.tickets.length)?.tickets[0];
 
     const requests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
     requests.push({
@@ -1503,7 +1584,7 @@ function submitRefundRequest() {
         agentRefund: 0,
         customerRefund: 0,
         profit: 0,
-        pnr: '-',
+        pnr: firstTicket?.pnr || '-',
         agent: '-',
         requestedAt: new Date().toISOString(),
     });
@@ -1607,6 +1688,7 @@ function generateRefundDetailsHTML(item) {
                     <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${fmt(item.customerRefund || 0)}</p></div>
                     <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${fmt(item.profit || 0)}</p></div>
                     <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
+                    <div><span class="text-xs text-slate-400">Tickets</span><p class="text-slate-800">${(item.passengers || []).flatMap(p => p.tickets || []).map(t => escapeHtml(t.ticketNumber)).join(', ') || '-'}</p></div>
                 </div>
             </div>
             <div class="bg-slate-50 rounded-lg p-4">
