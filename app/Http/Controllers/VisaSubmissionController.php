@@ -17,8 +17,8 @@ class VisaSubmissionController extends Controller
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
         }
 
-        if ($passenger->isOnHold()) {
-            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold'], 422);
+        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold or Cancel'], 422);
         }
 
         $validated = $request->validate([
@@ -61,8 +61,8 @@ class VisaSubmissionController extends Controller
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
         }
 
-        if ($passenger->isOnHold()) {
-            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold'], 422);
+        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold or Cancel'], 422);
         }
 
         $validated = $request->validate([
@@ -104,8 +104,8 @@ class VisaSubmissionController extends Controller
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
         }
 
-        if ($passenger->isOnHold()) {
-            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold'], 422);
+        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold or Cancel'], 422);
         }
 
         $validated = $request->validate([
@@ -153,8 +153,8 @@ class VisaSubmissionController extends Controller
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
         }
 
-        if ($passenger->isOnHold()) {
-            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold'], 422);
+        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold or Cancel'], 422);
         }
 
         $validated = $request->validate([
@@ -205,8 +205,8 @@ class VisaSubmissionController extends Controller
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
         }
 
-        if ($passenger->isOnHold()) {
-            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold'], 422);
+        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a passenger on Hold or Cancel'], 422);
         }
 
         $validated = $request->validate([

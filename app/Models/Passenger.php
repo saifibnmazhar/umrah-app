@@ -284,6 +284,11 @@ class Passenger extends Model
         return $this->status?->name === 'Hold';
     }
 
+    public function isOnCancel(): bool
+    {
+        return $this->status?->name === 'Cancel';
+    }
+
     public function syncComputedStatus(): void
     {
         $statusName = $this->computed_status;

@@ -321,22 +321,22 @@
                     <div class="flex justify-between items-center mb-4">
                         <h3 class="text-lg font-semibold text-slate-800">Visa Submission History</h3>
                         <div class="flex gap-2">
-                            @if($passenger->isOnHold())
-                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium bg-purple-100 text-purple-700">Hold</span>
+                            @if($passenger->isOnHold() || $passenger->isOnCancel())
+                            <span class="inline-flex items-center px-2 py-1 rounded text-xs font-medium {{ $passenger->isOnCancel() ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700' }}">{{ $passenger->isOnCancel() ? 'Cancel' : 'Hold' }}</span>
                             @endif
                             @php $vsStatus = $passenger->visaSubmission?->status?->value; @endphp
                             <button onclick="openCancellationModal()"
-                                {{ $vsStatus !== 'submitted' || !$canEditVisa || $passenger->isOnHold() ? 'disabled' : '' }}
+                                {{ $vsStatus !== 'submitted' || !$canEditVisa || $passenger->isOnHold() || $passenger->isOnCancel() ? 'disabled' : '' }}
                                 class="px-4 py-2 rounded-lg transition font-medium text-sm
-                                {{ $vsStatus === 'submitted' && $canEditVisa && !$passenger->isOnHold()
+                                {{ $vsStatus === 'submitted' && $canEditVisa && !$passenger->isOnHold() && !$passenger->isOnCancel()
                                     ? 'bg-red-600 text-white hover:bg-red-700'
                                     : 'bg-gray-300 text-gray-500 cursor-not-allowed' }}">
                                 Cancel
                             </button>
                             <button onclick="openVisaResubmitModal()"
-                                {{ $vsStatus !== 'cancelled' || !$canEditVisa || $passenger->isOnHold() ? 'disabled' : '' }}
+                                {{ $vsStatus !== 'cancelled' || !$canEditVisa || $passenger->isOnHold() || $passenger->isOnCancel() ? 'disabled' : '' }}
                                 class="px-4 py-2 rounded-lg transition font-medium text-sm
-                                {{ $vsStatus === 'cancelled' && $canEditVisa && !$passenger->isOnHold()
+                                {{ $vsStatus === 'cancelled' && $canEditVisa && !$passenger->isOnHold() && !$passenger->isOnCancel()
                                     ? 'bg-blue-600 text-white hover:bg-blue-700'
                                     : 'bg-gray-300 text-gray-500 cursor-not-allowed' }}">
                                 Visa Re-Submit

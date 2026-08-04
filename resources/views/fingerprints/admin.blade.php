@@ -146,7 +146,7 @@
                             </td>
                             <td class="px-3 py-2 text-slate-600" x-text="row.passenger_name"></td>
                             <td class="px-3 py-2">
-                                <template x-if="canAssignStaff && row.fingerprint_location === 'office' && !row.is_cancelled && row.passenger_status !== 'Hold'">
+                                <template x-if="canAssignStaff && row.fingerprint_location === 'office' && !row.is_cancelled && row.passenger_status !== 'Hold' && row.passenger_status !== 'Cancel'">
                                     <select @change="handleStatusChange(row.fingerprint_detail_id, $event.target.value)"
                                             class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
                                         <template x-for="opt in displayStatuses" :key="opt">
@@ -156,13 +156,15 @@
                                         </template>
                                     </select>
                                 </template>
-                                <template x-if="!canAssignStaff || row.fingerprint_location !== 'office' || row.is_cancelled || row.passenger_status === 'Hold'">
+                                <template x-if="!canAssignStaff || row.fingerprint_location !== 'office' || row.is_cancelled || ['Hold', 'Cancel'].includes(row.passenger_status)">
                                     <span class="inline-flex items-center gap-1">
                                         <span class="px-2 py-1 rounded-full text-xs font-medium"
                                               :class="getStatusClass(row.fingerprint_status_display)"
                                               x-text="row.fingerprint_status_display"></span>
-                                        <span x-show="row.passenger_status === 'Hold'"
-                                              class="px-2 py-1 rounded-full text-xs font-medium bg-purple-100 text-purple-700">Hold</span>
+                                        <span x-show="['Hold', 'Cancel'].includes(row.passenger_status)"
+                                              class="px-2 py-1 rounded-full text-xs font-medium"
+                                              :class="row.passenger_status === 'Cancel' ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'"
+                                              x-text="row.passenger_status"></span>
                                     </span>
                                 </template>
                             </td>
