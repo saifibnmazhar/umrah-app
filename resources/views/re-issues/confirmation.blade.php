@@ -83,24 +83,26 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Route Type</label>
+                        <select id="inputRouteType" onchange="applyRouteType()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="oneway_inbound">One Way-Inbound</option>
+                            <option value="oneway_outbound">One Way-Outbound</option>
+                            <option value="round">Round</option>
+                            <option value="multi_city">Multi City</option>
+                        </select>
+                    </div>
+                    <div id="fieldUpDate">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
                         <input type="date" id="inputUpDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
-                    <div>
+                    <div id="fieldDownDate">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date</label>
                         <input type="date" id="inputDownDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Re-issue Date</label>
                         <input type="date" id="inputTravelDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
-                        <select id="inputRoute" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                            <option value="">Select Route</option>
-                            <option value="DAC-JED-DAC">DAC-JED-DAC</option>
-                            <option value="DAC-MED-DAC">DAC-MED-DAC</option>
-                        </select>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
@@ -317,10 +319,10 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('infoPassport').textContent = p.passport_no || '-';
     document.getElementById('infoMobile').textContent = p.mobile_no || '-';
     document.getElementById('infoPnr').textContent = t.pnr || '-';
-    document.getElementById('infoFlightDate').textContent = p.flight_date_display || '-';
-    document.getElementById('infoRoute').textContent = p.route_display || '-';
-    document.getElementById('infoAirline').textContent = p.airline_display || '-';
-    document.getElementById('infoClass').textContent = p.class_display || '-';
+    document.getElementById('infoFlightDate').textContent = formatDate(t.outbound_date || t.inbound_date) || '-';
+    document.getElementById('infoRoute').textContent = formatRoute(t.ticket_fare?.route) || '-';
+    document.getElementById('infoAirline').textContent = t.ticket_fare?.airline?.name || '-';
+    document.getElementById('infoClass').textContent = t.ticket_fare?.airline_class?.class?.name || '-';
     document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
 
     document.getElementById('inputUpDate').value = r.probable_date_up || '';
@@ -337,12 +339,24 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('confirmButtons').classList.remove('hidden');
     document.getElementById('holdButtons').classList.add('hidden');
 
+    const originalRt = t.ticket_fare?.route?.route_type || '';
+    const rtSelect = document.getElementById('inputRouteType');
+    rtSelect.value = originalRt;
+    rtSelect.disabled = originalRt === 'oneway_outbound';
+    applyRouteType();
+
     document.getElementById('processConfirmationModal').classList.remove('hidden');
 }
 
 function closeProcessConfirmationModal() {
     document.getElementById('processConfirmationModal').classList.add('hidden');
     currentTicketRequestId = null;
+}
+
+function applyRouteType() {
+    const rt = document.getElementById('inputRouteType').value;
+    document.getElementById('fieldUpDate').classList.toggle('hidden', rt === 'oneway_outbound');
+    document.getElementById('fieldDownDate').classList.toggle('hidden', rt === 'oneway_inbound');
 }
 
 function handlePaymentMethodChange() {
@@ -381,6 +395,8 @@ function confirmProcess() {
         other_costs: parseFloat(document.getElementById('inputOtherCosts').value) || 0,
         service_charge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
         travel_date: document.getElementById('inputTravelDate').value || null,
+        inbound_date: document.getElementById('inputUpDate').value || null,
+        outbound_date: document.getElementById('inputDownDate').value || null,
         payment_method: document.getElementById('inputPaymentMethod').value || null,
         bank_method: document.getElementById('inputBankMethod')?.value || null,
         branch: document.getElementById('inputBranch')?.value || null,
@@ -452,6 +468,19 @@ function formatDate(val) {
     const d = new Date(val);
     if (!isNaN(d.getTime())) return d.toLocaleDateString();
     return val;
+}
+
+function formatRoute(route) {
+    if (!route) return '-';
+    const rt = route.route_type || '';
+    if (rt === 'multi_city' && route.multi_segments?.length) {
+        return route.multi_segments.map(s => (s.from_city?.code || '?') + '-' + (s.to_city?.code || '?')).join(', ');
+    }
+    const from = route.from_city?.code || '?';
+    const to = route.to_city?.code || '?';
+    const ret = route.return_city?.code || '';
+    if (rt === 'round' && ret) return from + '-' + to + '-' + ret;
+    return from + '-' + to;
 }
 
 function escapeHtml(str) {

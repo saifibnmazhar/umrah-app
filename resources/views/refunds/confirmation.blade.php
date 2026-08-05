@@ -260,10 +260,10 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('infoPassport').textContent = p.passport_no || '-';
     document.getElementById('infoMobile').textContent = p.mobile_no || '-';
     document.getElementById('infoPnr').textContent = t.pnr || '-';
-    document.getElementById('infoFlightDate').textContent = p.flight_date_display || '-';
-    document.getElementById('infoRoute').textContent = p.route_display || '-';
-    document.getElementById('infoAirline').textContent = p.airline_display || '-';
-    document.getElementById('infoClass').textContent = p.class_display || '-';
+    document.getElementById('infoFlightDate').textContent = formatDate(t.outbound_date || t.inbound_date) || '-';
+    document.getElementById('infoRoute').textContent = formatRoute(t.ticket_fare?.route) || '-';
+    document.getElementById('infoAirline').textContent = t.ticket_fare?.airline?.name || '-';
+    document.getElementById('infoClass').textContent = t.ticket_fare?.airline_class?.class?.name || '-';
     document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
 
     document.getElementById('inputAgentRefundAmount').value = '';
@@ -371,6 +371,19 @@ function formatDate(val) {
     const d = new Date(val);
     if (!isNaN(d.getTime())) return d.toLocaleDateString();
     return val;
+}
+
+function formatRoute(route) {
+    if (!route) return '-';
+    const rt = route.route_type || '';
+    if (rt === 'multi_city' && route.multi_segments?.length) {
+        return route.multi_segments.map(s => (s.from_city?.code || '?') + '-' + (s.to_city?.code || '?')).join(', ');
+    }
+    const from = route.from_city?.code || '?';
+    const to = route.to_city?.code || '?';
+    const ret = route.return_city?.code || '';
+    if (rt === 'round' && ret) return from + '-' + to + '-' + ret;
+    return from + '-' + to;
 }
 
 function escapeHtml(str) {
