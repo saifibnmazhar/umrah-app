@@ -16,6 +16,7 @@ use App\Models\Package;
 use App\Models\Passenger;
 use App\Models\Booking;
 use App\Models\Payment;
+use App\Models\TicketRequest;
 use App\Models\VisaSubmission;
 use App\Models\VisaUpdateLog;
 use App\Models\Voucher;
@@ -235,6 +236,54 @@ class DashboardController extends Controller
             ->pluck('branches.name', 'bookings.id')
             ->toArray();
 
-        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'totalFingerprintProfit', 'totalFingerprintProfitBdt', 'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalPassengers', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalProfit', 'totalProfitBdt', 'totalServiceChargeDeduction', 'totalServiceChargeDeductionBdt', 'totalRefund', 'totalRefundBdt', 'bookingBranches'));
+        $pendingReIssueRequests = TicketRequest::where('status', 'pending')
+            ->where('request_type', 're_issue')
+            ->when($branchId, fn($q) => $q->whereHas('booking', fn($b) => $b->where('booking_branch_id', $branchId)))
+            ->with(['booking.customer', 'booking.bookingBranch', 'passenger', 'issuedTicket'])
+            ->get()
+            ->groupBy('booking_id')
+            ->map(fn($rows, $bookingId) => [
+                'booking_id' => $bookingId,
+                'invoice_no' => $rows->first()->booking?->invoice_id ?? $bookingId,
+                'customer_name' => $rows->first()->booking?->customer?->name ?? '-',
+                'branch' => $rows->first()->booking?->bookingBranch?->name ?? '-',
+                'passenger_count' => $rows->pluck('passenger_id')->unique()->count(),
+                'requested_at' => $rows->min('requested_at'),
+            ])
+            ->values();
+
+        $pendingAdditionalRequests = TicketRequest::where('status', 'pending')
+            ->where('request_type', 'additional')
+            ->when($branchId, fn($q) => $q->whereHas('booking', fn($b) => $b->where('booking_branch_id', $branchId)))
+            ->with(['booking.customer', 'booking.bookingBranch', 'passenger'])
+            ->get()
+            ->groupBy('booking_id')
+            ->map(fn($rows, $bookingId) => [
+                'booking_id' => $bookingId,
+                'invoice_no' => $rows->first()->booking?->invoice_id ?? $bookingId,
+                'customer_name' => $rows->first()->booking?->customer?->name ?? '-',
+                'branch' => $rows->first()->booking?->bookingBranch?->name ?? '-',
+                'passenger_count' => $rows->pluck('passenger_id')->unique()->count(),
+                'requested_at' => $rows->min('requested_at'),
+            ])
+            ->values();
+
+        $pendingRefundRequests = TicketRequest::where('status', 'pending')
+            ->where('request_type', 'refund')
+            ->when($branchId, fn($q) => $q->whereHas('booking', fn($b) => $b->where('booking_branch_id', $branchId)))
+            ->with(['booking.customer', 'booking.bookingBranch', 'passenger'])
+            ->get()
+            ->groupBy('booking_id')
+            ->map(fn($rows, $bookingId) => [
+                'booking_id' => $bookingId,
+                'invoice_no' => $rows->first()->booking?->invoice_id ?? $bookingId,
+                'customer_name' => $rows->first()->booking?->customer?->name ?? '-',
+                'branch' => $rows->first()->booking?->bookingBranch?->name ?? '-',
+                'passenger_count' => $rows->pluck('passenger_id')->unique()->count(),
+                'requested_at' => $rows->min('requested_at'),
+            ])
+            ->values();
+
+        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'totalFingerprintProfit', 'totalFingerprintProfitBdt', 'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalPassengers', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalProfit', 'totalProfitBdt', 'totalServiceChargeDeduction', 'totalServiceChargeDeductionBdt', 'totalRefund', 'totalRefundBdt', 'bookingBranches', 'pendingReIssueRequests', 'pendingAdditionalRequests', 'pendingRefundRequests'));
     }
 }

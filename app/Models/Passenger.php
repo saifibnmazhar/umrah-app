@@ -238,6 +238,26 @@ class Passenger extends Model
         return $this->ticketFare?->route?->flight_type?->value ?? '-';
     }
 
+    public function getAirlineDisplayAttribute(): string
+    {
+        if ($this->ticket_fare_inbound_id) {
+            $inbound = $this->ticketFareInbound?->airline?->name ?? '-';
+            $outbound = $this->ticketFareOutbound?->airline?->name ?? '-';
+            return "In: {$inbound}\nOut: {$outbound}";
+        }
+        return $this->ticketFare?->airline?->name ?? '-';
+    }
+
+    public function getClassDisplayAttribute(): string
+    {
+        if ($this->ticket_fare_inbound_id) {
+            $inbound = $this->ticketFareInbound?->airlineClass?->class?->name ?? '-';
+            $outbound = $this->ticketFareOutbound?->airlineClass?->class?->name ?? '-';
+            return "In: {$inbound}\nOut: {$outbound}";
+        }
+        return $this->ticketFare?->airlineClass?->class?->name ?? '-';
+    }
+
     public function getTripDisplayAttribute(): string
     {
         $routeType = $this->ticketFare?->route?->route_type?->value;

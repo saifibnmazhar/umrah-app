@@ -33,11 +33,9 @@ $stats = [
     'departureDone' => 50,
     'departureStay' => 30,
 ];
-$reissueRequests = [
-    ['id' => 1, 'invoiceId' => 1001, 'invoiceNo' => 'INV-2024-001', 'branch' => 'Riyadh', 'passengers' => ['count' => 2]],
-];
-$addTicketRequests = [];
-$refundRequests = [];
+$reissueRequests = $pendingReIssueRequests ?? collect();
+$addTicketRequests = $pendingAdditionalRequests ?? collect();
+$refundRequests = $pendingRefundRequests ?? collect();
 @endphp
 <div class="max-w-7xl mx-auto pt-6">
     <section class="mb-8">
@@ -495,20 +493,33 @@ $refundRequests = [];
         </div>
 
         <div x-show="activeTab === 'reissue'" class="space-y-3">
-            <div id="reIssueNotificationsList" class="space-y-3"></div>
-            <div id="reIssueNotificationsEmpty" class="text-center py-8 text-slate-500">No pending re-issue requests</div>
+            @forelse($reissueRequests as $request)
+            <a href="{{ route('re-issues.confirmation', $request['booking_id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-blue-500">
+                <div class="flex justify-between items-center">
+                    <div>
+                        <span class="font-bold text-slate-800">{{ $request['invoice_no'] }}</span>
+                    </div>
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm text-slate-500">{{ $request['branch'] }}</span>
+                        <span class="text-sm text-slate-500">{{ $request['passenger_count'] }} passenger(s)</span>
+                    </div>
+                </div>
+            </a>
+            @empty
+            <div class="text-center py-8 text-slate-500">No pending re-issue requests</div>
+            @endforelse
         </div>
 
         <div x-show="activeTab === 'addticket'" class="space-y-3">
-            @forelse($addTicketRequests ?? [] as $request)
-            <a href="{{ route('tickets.add-confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-purple-500">
+            @forelse($addTicketRequests as $request)
+            <a href="{{ route('tickets.add-confirmation', $request['booking_id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-purple-500">
                 <div class="flex justify-between items-center">
                     <div>
-                        <span class="font-bold text-slate-800">{{ $request['invoiceNo'] ?? $request['invoiceId'] }}</span>
+                        <span class="font-bold text-slate-800">{{ $request['invoice_no'] }}</span>
                     </div>
                     <div class="flex items-center gap-4">
-                        <span class="text-sm text-slate-500">{{ $request['branch'] ?? '-' }}</span>
-                        <span class="text-sm text-slate-500">{{ $request['passengers']['count'] ?? 1 }} passenger(s)</span>
+                        <span class="text-sm text-slate-500">{{ $request['branch'] }}</span>
+                        <span class="text-sm text-slate-500">{{ $request['passenger_count'] }} passenger(s)</span>
                     </div>
                 </div>
             </a>
@@ -518,15 +529,15 @@ $refundRequests = [];
         </div>
 
         <div x-show="activeTab === 'refund'" class="space-y-3">
-            @forelse($refundRequests ?? [] as $request)
-            <a href="{{ route('refunds.confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-orange-500">
+            @forelse($refundRequests as $request)
+            <a href="{{ route('refunds.confirmation', $request['booking_id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-orange-500">
                 <div class="flex justify-between items-center">
                     <div>
-                        <span class="font-bold text-slate-800">{{ $request['invoiceNo'] ?? $request['invoiceId'] }}</span>
+                        <span class="font-bold text-slate-800">{{ $request['invoice_no'] }}</span>
                     </div>
                     <div class="flex items-center gap-4">
-                        <span class="text-sm text-slate-500">{{ $request['branch'] ?? '-' }}</span>
-                        <span class="text-sm text-slate-500">{{ $request['passengers']['count'] ?? 1 }} passenger(s)</span>
+                        <span class="text-sm text-slate-500">{{ $request['branch'] }}</span>
+                        <span class="text-sm text-slate-500">{{ $request['passenger_count'] }} passenger(s)</span>
                     </div>
                 </div>
             </a>
@@ -541,60 +552,11 @@ $refundRequests = [];
 
 @push('scripts')
 <script>
-const bookingBranchMap = @json($bookingBranches ?? []);
-
 function escapeHtml(str) {
     if (!str) return '';
     const div = document.createElement('div');
     div.textContent = str;
     return div.innerHTML;
 }
-
-function renderReIssueNotifications() {
-    const listEl = document.getElementById('reIssueNotificationsList');
-    const emptyEl = document.getElementById('reIssueNotificationsEmpty');
-    if (!listEl || !emptyEl) return;
-
-    let requests = [];
-    try {
-        requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-    } catch (e) {
-        requests = [];
-    }
-
-    const pending = requests.filter(r => r.status === 'Pending');
-
-    const groups = {};
-    pending.forEach(r => {
-        if (!groups[r.invoiceId]) {
-            groups[r.invoiceId] = { request: r, count: 0 };
-        }
-        groups[r.invoiceId].count += Array.isArray(r.passengers) ? r.passengers.length : 0;
-    });
-    const grouped = Object.values(groups);
-
-    listEl.innerHTML = grouped.map(g => {
-        const request = g.request;
-        const branch = bookingBranchMap[request.invoiceId] || request.branch || '-';
-        return `
-        <a href="/re-issues/${request.id}/confirm" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-blue-500">
-            <div class="flex justify-between items-center">
-                <div>
-                    <span class="font-bold text-slate-800">${escapeHtml(request.invoiceNo || '-')}</span>
-                </div>
-                <div class="flex items-center gap-4">
-                    <span class="text-sm text-slate-500">${escapeHtml(branch)}</span>
-                    <span class="text-sm text-slate-500">${g.count} passenger(s)</span>
-                </div>
-            </div>
-        </a>
-        `;
-    }).join('');
-
-    listEl.classList.toggle('hidden', grouped.length === 0);
-    emptyEl.classList.toggle('hidden', grouped.length > 0);
-}
-
-renderReIssueNotifications();
 </script>
 @endpush

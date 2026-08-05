@@ -77,7 +77,13 @@
                 <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Refund Details</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Refund Amount</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Reason</label>
+                        <select id="inputReason" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Reason</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund Amount</label>
                         <input type="number" id="inputAgentRefundAmount" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                     </div>
                     <div>
@@ -130,47 +136,241 @@
 
 @push('scripts')
 <script>
-function openProcessConfirmationModal() {
+const bookingId = {{ $id }};
+let allRequests = [];
+let currentTicketRequestId = null;
+
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+}
+
+function loadConfirmation() {
+    fetch('/bookings/' + bookingId + '/ticket-requests?type=refund', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(requests => {
+        allRequests = requests;
+        if (!requests.length) {
+            showNotFound();
+            return;
+        }
+        const first = requests[0];
+        const booking = first.booking || {};
+        const customer = booking.customer || {};
+        const branch = booking.booking_branch || booking.bookingBranch || {};
+
+        document.getElementById('invoiceId').textContent = booking.id || '-';
+        document.getElementById('invoiceNo').textContent = booking.invoice_id || '-';
+        document.getElementById('customerName').textContent = customer.name || '-';
+        document.getElementById('customerMobile').textContent = customer.mobile_no || '-';
+        document.getElementById('branch').textContent = branch.name || '-';
+        document.getElementById('requestedDate').textContent = formatDate(first.requested_at);
+        document.getElementById('passengerCount').textContent = [...new Set(requests.map(r => r.passenger_id))].length;
+
+        renderConfirmation(requests);
+        loadReasons();
+    });
+}
+
+function loadReasons() {
+    fetch('/ticket-requests/reasons?type=refund', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(reasons => {
+        const select = document.getElementById('inputReason');
+        select.innerHTML = '<option value="">Select Reason</option>' +
+            reasons.map(r => '<option value="' + r.id + '">' + escapeHtml(r.name) + '</option>').join('');
+    });
+}
+
+function renderConfirmation(requests) {
+    const passengerListEl = document.getElementById('passengerList');
+    const grouped = {};
+    requests.forEach(r => {
+        if (!grouped[r.passenger_id]) {
+            grouped[r.passenger_id] = { passenger: r.passenger, tickets: [] };
+        }
+        grouped[r.passenger_id].tickets.push(r);
+    });
+
+    const statusCounts = { pending: 0, processed: 0, rejected: 0 };
+    requests.forEach(r => statusCounts[r.status] = (statusCounts[r.status] || 0) + 1);
+    const statusBadge = document.getElementById('statusBadge');
+    if (statusCounts.pending === 0 && statusCounts.processed > 0) {
+        statusBadge.textContent = 'Processed';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700';
+    } else if (statusCounts.pending === 0 && statusCounts.rejected > 0) {
+        statusBadge.textContent = 'Rejected';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700';
+    } else {
+        statusBadge.textContent = 'Pending';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700';
+    }
+
+    passengerListEl.innerHTML = Object.values(grouped).map(g => {
+        const p = g.passenger || {};
+        return `
+            <div class="bg-slate-50 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <span class="font-medium text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</span>
+                        <span class="text-slate-500 text-sm ml-2">(${escapeHtml(p.passport_no || '-')})</span>
+                    </div>
+                    <span class="text-sm text-slate-500">${g.tickets.length} ticket(s)</span>
+                </div>
+                <div class="space-y-3">
+                    ${g.tickets.map(r => {
+                        const t = r.issued_ticket || {};
+                        const isProcessed = r.status === 'processed';
+                        const isRejected = r.status === 'rejected';
+                        const badgeClass = isProcessed ? 'bg-green-100 text-green-700' : isRejected ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+                        const statusLabel = isProcessed ? 'Processed' : isRejected ? 'Rejected' : 'Pending';
+                        return `
+                        <div class="bg-white rounded-lg border border-slate-200 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusLabel}</span>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                                <div class="text-sm"><span class="text-slate-500">Ticket No: </span><span class="text-slate-800 font-medium">${escapeHtml(t.ticket_number) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">PNR: </span><span class="text-slate-800 font-medium">${escapeHtml(t.pnr) || '-'}</span></div>
+                            </div>
+                            <div class="flex gap-3">
+                                <button onclick="rejectRefund(${r.id})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Reject</button>
+                                <button onclick="processConfirmation(${r.id})" class="px-4 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Process Confirmation</button>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function processConfirmation(ticketRequestId) {
+    currentTicketRequestId = ticketRequestId;
+    const r = allRequests.find(req => req.id === ticketRequestId);
+    if (!r) return;
+    const p = r.passenger || {};
+    const t = r.issued_ticket || {};
+
+    document.getElementById('modalPassengerName').textContent = (p.first_name || '') + ' ' + (p.last_name || '') + ' (' + (p.passport_no || '-') + ')';
+    document.getElementById('infoPassport').textContent = p.passport_no || '-';
+    document.getElementById('infoMobile').textContent = p.mobile_no || '-';
+    document.getElementById('infoPnr').textContent = t.pnr || '-';
+    document.getElementById('infoFlightDate').textContent = p.flight_date_display || '-';
+    document.getElementById('infoRoute').textContent = p.route_display || '-';
+    document.getElementById('infoAirline').textContent = p.airline_display || '-';
+    document.getElementById('infoClass').textContent = p.class_display || '-';
+    document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
+
+    document.getElementById('inputAgentRefundAmount').value = '';
+    document.getElementById('inputCustomerRefundAmount').value = '';
+    document.getElementById('inputReason').value = '';
+    document.getElementById('inputPaymentMethod').value = '';
+    document.getElementById('bankMethodSection').classList.add('hidden');
+    document.getElementById('branchSection').classList.add('hidden');
+
     document.getElementById('processConfirmationModal').classList.remove('hidden');
 }
 
 function closeProcessConfirmationModal() {
     document.getElementById('processConfirmationModal').classList.add('hidden');
-    document.getElementById('inputAgentRefundAmount').value = '';
-    document.getElementById('inputCustomerRefundAmount').value = '';
-    document.getElementById('inputPaymentMethod').value = '';
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
+    currentTicketRequestId = null;
 }
 
 function handlePaymentMethodChange() {
     const paymentMethod = document.getElementById('inputPaymentMethod').value;
-    const bankMethodSection = document.getElementById('bankMethodSection');
-    const branchSection = document.getElementById('branchSection');
-
-    bankMethodSection.classList.add('hidden');
-    branchSection.classList.add('hidden');
-
+    document.getElementById('bankMethodSection').classList.add('hidden');
+    document.getElementById('branchSection').classList.add('hidden');
     if (paymentMethod === 'Bank Transfer') {
-        bankMethodSection.classList.remove('hidden');
+        document.getElementById('bankMethodSection').classList.remove('hidden');
     } else if (paymentMethod === 'Pay from Branch') {
-        branchSection.classList.remove('hidden');
+        document.getElementById('branchSection').classList.remove('hidden');
     }
 }
 
 function confirmProcess() {
-    showToast('Refund process confirmed successfully!', 'success');
-    closeProcessConfirmationModal();
+    if (!currentTicketRequestId) return;
+
+    const payload = {
+        reason_id: document.getElementById('inputReason').value,
+        iata_refund: parseFloat(document.getElementById('inputAgentRefundAmount').value) || 0,
+        customer_refund: parseFloat(document.getElementById('inputCustomerRefundAmount').value) || 0,
+        service_charge: 0,
+        payment_method: document.getElementById('inputPaymentMethod').value || null,
+        bank_method: document.getElementById('inputBankMethod')?.value || null,
+        branch: document.getElementById('inputBranch')?.value || null,
+    };
+
+    if (!payload.reason_id) {
+        showToast('Please select a reason', 'error');
+        return;
+    }
+
+    fetch('/ticket-requests/' + currentTicketRequestId + '/process-refund', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Refund processed successfully!', 'success');
+            closeProcessConfirmationModal();
+            loadConfirmation();
+        } else {
+            showToast(data.message || 'Failed to process', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error processing request', 'error');
+    });
 }
 
-function rejectRefund() {
-    if (!confirm('Are you sure you want to reject this passenger\'s refund request?')) return;
-    showToast('Refund request rejected', 'info');
+function rejectRefund(ticketRequestId) {
+    if (!confirm('Are you sure you want to reject this ticket\'s refund request?')) return;
+
+    fetch('/ticket-requests/' + ticketRequestId + '/reject', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Refund request rejected', 'info');
+            loadConfirmation();
+        } else {
+            showToast(data.message || 'Failed to reject', 'error');
+        }
+    });
 }
 
 function showNotFound() {
     document.getElementById('confirmationContent').classList.add('hidden');
     document.getElementById('notFound').classList.remove('hidden');
+}
+
+function formatDate(val) {
+    if (!val) return '-';
+    const parts = val.split('T')[0].split('-');
+    if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    return val;
 }
 
 function escapeHtml(str) {
@@ -193,6 +393,8 @@ function showToast(message, type = 'info') {
     container.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
+
+loadConfirmation();
 </script>
 @endpush
 @endsection

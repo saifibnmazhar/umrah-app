@@ -77,6 +77,12 @@
                 <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Re-Issue Details</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Reason</label>
+                        <select id="inputReason" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Reason</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
                         <input type="date" id="inputUpDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
@@ -182,167 +188,149 @@
 
 @push('scripts')
 <script>
-const bookingBranchMap = @json($bookingBranches ?? []);
-let currentRequest = null;
-let currentPassengerIndex = null;
-let currentTicketIndex = null;
+const bookingId = {{ $id }};
+let allRequests = [];
+let currentTicketRequestId = null;
 
-function loadConfirmation() {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id') || '{{ $id }}';
-
-    if (id === null || id === '') {
-        showNotFound();
-        return;
-    }
-
-    const requestId = parseInt(id);
-    let reIssueRequests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-
-    const request = reIssueRequests.find(r => r.id === requestId) || reIssueRequests[0];
-
-    if (!request) {
-        showNotFound();
-        return;
-    }
-
-    request.passengers = request.passengers || [];
-    const invoiceId = request.invoiceId;
-    const others = reIssueRequests.filter(r => r.invoiceId === invoiceId && r.status === 'Pending' && r.id !== request.id);
-
-    if (others.length > 0) {
-        others.forEach(o => {
-            (o.passengers || []).forEach(op => {
-                const ep = request.passengers.find(p => p.name === op.name && p.passport === op.passport);
-                if (ep) {
-                    const existingTickets = ep.tickets || [];
-                    const newTickets = (op.tickets || []).filter(t =>
-                        !existingTickets.some(et => et.ticketNumber && et.ticketNumber === t.ticketNumber)
-                    );
-                    if (newTickets.length > 0) {
-                        ep.tickets = [...existingTickets, ...newTickets];
-                    }
-                } else {
-                    request.passengers.push(op);
-                }
-            });
-        });
-        reIssueRequests = reIssueRequests.filter(r => !(r.invoiceId === invoiceId && r.status === 'Pending' && r.id !== request.id));
-        localStorage.setItem('reIssueRequests', JSON.stringify(reIssueRequests));
-    }
-
-    currentRequest = request;
-    renderConfirmation(request);
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 }
 
-function renderConfirmation(request) {
-    document.getElementById('invoiceId').textContent = request.invoiceId;
-    document.getElementById('invoiceNo').textContent = request.invoiceNo;
-    document.getElementById('customerName').textContent = request.customerName || '-';
-    document.getElementById('customerMobile').textContent = request.customerMobile || '-';
-    document.getElementById('branch').textContent = (bookingBranchMap[request.invoiceId] || request.branch || '-');
-    document.getElementById('requestedDate').textContent = new Date(request.requestedAt).toLocaleDateString();
-    document.getElementById('passengerCount').textContent = (request.passengers || []).length;
+function loadConfirmation() {
+    fetch('/bookings/' + bookingId + '/ticket-requests?type=re_issue', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(requests => {
+        allRequests = requests;
+        if (!requests.length) {
+            showNotFound();
+            return;
+        }
+        const first = requests[0];
+        const booking = first.booking || {};
+        const customer = booking.customer || {};
+        const branch = booking.booking_branch || booking.bookingBranch || {};
 
-    const statusBadge = document.getElementById('statusBadge');
-    statusBadge.textContent = request.status === 'Pending' ? 'Pending' : request.status;
-    statusBadge.className = `inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-        request.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-        request.status === 'Approved' || request.status === 'Processed' ? 'bg-green-100 text-green-700' :
-        request.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-        'bg-yellow-100 text-yellow-700'
-    }`;
+        document.getElementById('invoiceId').textContent = booking.id || '-';
+        document.getElementById('invoiceNo').textContent = booking.invoice_id || '-';
+        document.getElementById('customerName').textContent = customer.name || '-';
+        document.getElementById('customerMobile').textContent = customer.mobile_no || '-';
+        document.getElementById('branch').textContent = branch.name || '-';
+        document.getElementById('requestedDate').textContent = formatDate(first.requested_at);
+        document.getElementById('passengerCount').textContent = [...new Set(requests.map(r => r.passenger_id))].length;
 
+        renderConfirmation(requests);
+        loadReasons();
+    });
+}
+
+function loadReasons() {
+    fetch('/ticket-requests/reasons?type=re_issue', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(reasons => {
+        const select = document.getElementById('inputReason');
+        select.innerHTML = '<option value="">Select Reason</option>' +
+            reasons.map(r => '<option value="' + r.id + '">' + escapeHtml(r.name) + '</option>').join('');
+    });
+}
+
+function renderConfirmation(requests) {
     const passengerListEl = document.getElementById('passengerList');
+    const grouped = {};
+    requests.forEach(r => {
+        if (!grouped[r.passenger_id]) {
+            grouped[r.passenger_id] = { passenger: r.passenger, tickets: [] };
+        }
+        grouped[r.passenger_id].tickets.push(r);
+    });
 
-    function ticketsFor(p) {
-        if (Array.isArray(p.tickets) && p.tickets.length > 0) return p.tickets;
-        return [{
-            ticketNumber: p.ticketNumber || '',
-            pnr: p.pnr || '',
-            route: p.route || '',
-            ticketOption: p.ticketOption || '',
-            probableDateUp: p.probableDateUp || '',
-            probableDateDown: p.probableDateDown || '',
-            visaExpiry: p.visaExpiry || '',
-        }];
+    const statusCounts = { pending: 0, processed: 0, rejected: 0 };
+    requests.forEach(r => statusCounts[r.status] = (statusCounts[r.status] || 0) + 1);
+    const statusBadge = document.getElementById('statusBadge');
+    if (statusCounts.pending === 0 && statusCounts.processed > 0) {
+        statusBadge.textContent = 'Processed';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700';
+    } else if (statusCounts.pending === 0 && statusCounts.rejected > 0) {
+        statusBadge.textContent = 'Rejected';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700';
+    } else {
+        statusBadge.textContent = 'Pending';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700';
     }
 
-    passengerListEl.innerHTML = (request.passengers || []).map((p, pIndex) => {
-        const tickets = ticketsFor(p);
+    passengerListEl.innerHTML = Object.values(grouped).map(g => {
+        const p = g.passenger || {};
         return `
             <div class="bg-slate-50 rounded-lg p-4">
                 <div class="flex items-center justify-between mb-3">
                     <div>
-                        <span class="font-medium text-slate-800">${escapeHtml(p.name)}</span>
-                        <span class="text-slate-500 text-sm ml-2">(${escapeHtml(p.passport)})</span>
+                        <span class="font-medium text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</span>
+                        <span class="text-slate-500 text-sm ml-2">(${escapeHtml(p.passport_no || '-')})</span>
                     </div>
-                    <span class="text-sm text-slate-500">${tickets.length} ticket(s)</span>
+                    <span class="text-sm text-slate-500">${g.tickets.length} ticket(s)</span>
                 </div>
                 <div class="space-y-3">
-                    ${tickets.map((t, tIndex) => `
+                    ${g.tickets.map(r => {
+                        const t = r.issued_ticket || {};
+                        const route = t.ticket_fare?.route || {};
+                        const isProcessed = r.status === 'processed';
+                        const isRejected = r.status === 'rejected';
+                        const badgeClass = isProcessed ? 'bg-green-100 text-green-700' : isRejected ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+                        const statusLabel = isProcessed ? 'Processed' : isRejected ? 'Rejected' : 'Pending';
+                        return `
                         <div class="bg-white rounded-lg border border-slate-200 p-4">
-                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
-                                <div class="text-sm"><span class="text-slate-500">Ticket No: </span><span class="text-slate-800 font-medium">${escapeHtml(t.ticketNumber) || '-'}</span></div>
-                                <div class="text-sm"><span class="text-slate-500">PNR: </span><span class="text-slate-800 font-medium">${escapeHtml(t.pnr) || '-'}</span></div>
-                                <div class="text-sm"><span class="text-slate-500">Route: </span><span class="text-slate-800 font-medium">${escapeHtml(t.route) || '-'}</span></div>
-                                <div class="text-sm"><span class="text-slate-500">Ticket Option: </span><span class="text-slate-800 font-medium">${escapeHtml(t.ticketOption) || '-'}</span></div>
-                                <div class="text-sm"><span class="text-slate-500">Probable (Inbound): </span><span class="text-slate-800 font-medium">${escapeHtml(t.probableDateUp) || '-'}</span></div>
-                                <div class="text-sm"><span class="text-slate-500">Probable (Outbound): </span><span class="text-slate-800 font-medium">${escapeHtml(t.probableDateDown) || '-'}</span></div>
-                                <div class="text-sm"><span class="text-slate-500">Visa Expiry: </span><span class="text-slate-800 font-medium">${escapeHtml(t.visaExpiry) || '-'}</span></div>
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusLabel}</span>
                             </div>
-                            ${t.reIssueData ? `<div class="mb-3"><span class="text-sm text-green-600 font-medium">Confirmed: ${escapeHtml(t.reIssueData.travelDate) || ''}${t.reIssueData.route ? ' • ' + escapeHtml(t.reIssueData.route) : ''}</span></div>` : ''}
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                                <div class="text-sm"><span class="text-slate-500">Ticket No: </span><span class="text-slate-800 font-medium">${escapeHtml(t.ticket_number) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">PNR: </span><span class="text-slate-800 font-medium">${escapeHtml(t.pnr) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Probable (Inbound): </span><span class="text-slate-800 font-medium">${formatDate(r.probable_date_up)}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Probable (Outbound): </span><span class="text-slate-800 font-medium">${formatDate(r.probable_date_down)}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Visa Expiry: </span><span class="text-slate-800 font-medium">${formatDate(r.visa_expiry_date)}</span></div>
+                            </div>
                             <div class="flex gap-3">
-                                <button onclick="rejectReIssue(${pIndex}, ${tIndex})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium" ${t.reIssueData ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Reject</button>
-                                <button onclick="processConfirmation(${pIndex}, ${tIndex})" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-medium">Process Confirmation</button>
+                                <button onclick="rejectReIssue(${r.id})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Reject</button>
+                                <button onclick="processConfirmation(${r.id})" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Process Confirmation</button>
                             </div>
                         </div>
-                    `).join('')}
+                        `;
+                    }).join('')}
                 </div>
             </div>
         `;
     }).join('');
 }
 
-function processConfirmation(passengerIndex, ticketIndex) {
-    const passenger = currentRequest.passengers[passengerIndex];
-    if (!passenger) return;
+function processConfirmation(ticketRequestId) {
+    currentTicketRequestId = ticketRequestId;
+    const r = allRequests.find(req => req.id === ticketRequestId);
+    if (!r) return;
 
-    const tickets = Array.isArray(passenger.tickets) && passenger.tickets.length > 0
-        ? passenger.tickets
-        : [{
-            pnr: passenger.pnr || '',
-            route: passenger.route || '',
-            probableDateUp: passenger.probableDateUp || '',
-            probableDateDown: passenger.probableDateDown || '',
-        }];
-    const ticket = tickets[ticketIndex];
-    if (!ticket) return;
+    const p = r.passenger || {};
+    const t = r.issued_ticket || {};
 
-    currentPassengerIndex = passengerIndex;
-    currentTicketIndex = ticketIndex;
+    document.getElementById('modalPassengerName').textContent = (p.first_name || '') + ' ' + (p.last_name || '') + ' (' + (p.passport_no || '-') + ')';
+    document.getElementById('infoPassport').textContent = p.passport_no || '-';
+    document.getElementById('infoMobile').textContent = p.mobile_no || '-';
+    document.getElementById('infoPnr').textContent = t.pnr || '-';
+    document.getElementById('infoFlightDate').textContent = p.flight_date_display || '-';
+    document.getElementById('infoRoute').textContent = p.route_display || '-';
+    document.getElementById('infoAirline').textContent = p.airline_display || '-';
+    document.getElementById('infoClass').textContent = p.class_display || '-';
+    document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
 
-    document.getElementById('modalPassengerName').textContent = passenger.name + ' (' + passenger.passport + ')';
-    document.getElementById('infoPassport').textContent = passenger.passport;
-    document.getElementById('infoMobile').textContent = passenger.mobile || '-';
-    document.getElementById('infoPnr').textContent = ticket.pnr || 'ABCD1234';
-    document.getElementById('infoFlightDate').textContent = ticket.probableDateUp || '2026-05-15';
-    document.getElementById('infoRoute').textContent = ticket.route || 'DAC-JED-DAC';
-    document.getElementById('infoAirline').textContent = 'Saudi Arabian Airlines';
-    document.getElementById('infoClass').textContent = 'Economy';
-    document.getElementById('infoType').textContent = 'Adult';
-
-    document.getElementById('inputUpDate').value = ticket.probableDateUp || '';
-    document.getElementById('inputDownDate').value = ticket.probableDateDown || '';
+    document.getElementById('inputUpDate').value = r.probable_date_up || '';
+    document.getElementById('inputDownDate').value = r.probable_date_down || '';
+    document.getElementById('inputReason').value = '';
     document.getElementById('inputTravelDate').value = '';
-    document.getElementById('inputRoute').value = '';
-    document.getElementById('inputAgent').value = '';
     document.getElementById('inputReIssueCharge').value = '';
     document.getElementById('inputFareDifference').value = '';
     document.getElementById('inputOtherCosts').value = '';
-    document.getElementById('inputTotalCost').value = '';
     document.getElementById('inputServiceCharge').value = '';
-    document.getElementById('inputTotalPayment').value = '';
     document.getElementById('inputPaymentMethod').value = '';
     document.getElementById('bankMethodSection').classList.add('hidden');
     document.getElementById('branchSection').classList.add('hidden');
@@ -354,22 +342,7 @@ function processConfirmation(passengerIndex, ticketIndex) {
 
 function closeProcessConfirmationModal() {
     document.getElementById('processConfirmationModal').classList.add('hidden');
-    document.getElementById('inputUpDate').value = '';
-    document.getElementById('inputDownDate').value = '';
-    document.getElementById('inputTravelDate').value = '';
-    document.getElementById('inputRoute').value = '';
-    document.getElementById('inputAgent').value = '';
-    document.getElementById('inputReIssueCharge').value = '';
-    document.getElementById('inputFareDifference').value = '';
-    document.getElementById('inputOtherCosts').value = '';
-    document.getElementById('inputTotalCost').value = '';
-    document.getElementById('inputServiceCharge').value = '';
-    document.getElementById('inputTotalPayment').value = '';
-    document.getElementById('inputPaymentMethod').value = '';
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
-    document.getElementById('confirmButtons').classList.remove('hidden');
-    document.getElementById('holdButtons').classList.add('hidden');
+    currentTicketRequestId = null;
 }
 
 function handlePaymentMethodChange() {
@@ -399,77 +372,86 @@ function holdProcess() {
 }
 
 function confirmProcess() {
-    const reIssueData = {
-        upDate: document.getElementById('inputUpDate').value,
-        downDate: document.getElementById('inputDownDate').value,
-        travelDate: document.getElementById('inputTravelDate').value,
-        route: document.getElementById('inputRoute').value,
-        agent: document.getElementById('inputAgent').value,
-        reIssueCharge: parseFloat(document.getElementById('inputReIssueCharge').value) || 0,
-        fareDifference: parseFloat(document.getElementById('inputFareDifference').value) || 0,
-        otherCosts: parseFloat(document.getElementById('inputOtherCosts').value) || 0,
-        totalCost: parseFloat(document.getElementById('inputTotalCost').value) || 0,
-        serviceCharge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
-        totalPayment: parseFloat(document.getElementById('inputTotalPayment').value) || 0,
-        paymentMethod: document.getElementById('inputPaymentMethod').value,
-        bankMethod: document.getElementById('inputBankMethod')?.value || '',
-        branch: document.getElementById('inputBranch')?.value || '',
+    if (!currentTicketRequestId) return;
+
+    const payload = {
+        reason_id: document.getElementById('inputReason').value,
+        re_issue_charge: parseFloat(document.getElementById('inputReIssueCharge').value) || 0,
+        fare_difference: parseFloat(document.getElementById('inputFareDifference').value) || 0,
+        other_costs: parseFloat(document.getElementById('inputOtherCosts').value) || 0,
+        service_charge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
+        travel_date: document.getElementById('inputTravelDate').value || null,
+        payment_method: document.getElementById('inputPaymentMethod').value || null,
+        bank_method: document.getElementById('inputBankMethod')?.value || null,
+        branch: document.getElementById('inputBranch')?.value || null,
     };
 
-    if (currentRequest && currentPassengerIndex !== null && currentTicketIndex !== null) {
-        const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-        const idx = requests.findIndex(r => r.id === currentRequest.id);
-        if (idx !== -1) {
-            const passenger = requests[idx].passengers[currentPassengerIndex];
-            if (passenger) {
-                if (Array.isArray(passenger.tickets) && passenger.tickets.length > 0) {
-                    if (passenger.tickets[currentTicketIndex]) {
-                        passenger.tickets[currentTicketIndex].reIssueData = reIssueData;
-                    }
-                } else {
-                    passenger.reIssueData = reIssueData;
-                }
-            }
-            requests[idx].status = 'Processed';
-            localStorage.setItem('reIssueRequests', JSON.stringify(requests));
-            currentRequest = requests[idx];
-            renderConfirmation(currentRequest);
-        }
+    if (!payload.reason_id) {
+        showToast('Please select a reason', 'error');
+        return;
     }
 
-    showToast('Process confirmed successfully!', 'success');
-    closeProcessConfirmationModal();
+    fetch('/ticket-requests/' + currentTicketRequestId + '/process-reissue', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Re-issue processed successfully!', 'success');
+            closeProcessConfirmationModal();
+            loadConfirmation();
+        } else {
+            showToast(data.message || 'Failed to process', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error processing request', 'error');
+    });
 }
 
-function rejectReIssue(passengerIndex, ticketIndex) {
-    if (!currentRequest) return;
+function rejectReIssue(ticketRequestId) {
     if (!confirm('Are you sure you want to reject this ticket\'s re-issue request?')) return;
 
-    const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-    const idx = requests.findIndex(r => r.id === currentRequest.id);
-    if (idx !== -1) {
-        const passenger = requests[idx].passengers[passengerIndex];
-        if (passenger && Array.isArray(passenger.tickets) && passenger.tickets.length > 0) {
-            passenger.tickets.splice(ticketIndex, 1);
-            if (passenger.tickets.length === 0) {
-                requests[idx].passengers.splice(passengerIndex, 1);
-            }
+    fetch('/ticket-requests/' + ticketRequestId + '/reject', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Re-issue request rejected', 'info');
+            loadConfirmation();
         } else {
-            requests[idx].passengers.splice(passengerIndex, 1);
+            showToast(data.message || 'Failed to reject', 'error');
         }
-        if (requests[idx].passengers.length === 0) {
-            requests[idx].status = 'Rejected';
-        }
-        localStorage.setItem('reIssueRequests', JSON.stringify(requests));
-        currentRequest = requests[idx];
-        renderConfirmation(currentRequest);
-        showToast('Re-issue request rejected', 'info');
-    }
+    });
 }
 
 function showNotFound() {
     document.getElementById('confirmationContent').classList.add('hidden');
     document.getElementById('notFound').classList.remove('hidden');
+}
+
+function formatDate(val) {
+    if (!val) return '-';
+    const parts = val.split('T')[0].split('-');
+    if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    return val;
 }
 
 function escapeHtml(str) {
@@ -486,7 +468,7 @@ function showToast(message, type = 'info') {
     toast.className = 'toast px-4 py-3 rounded-lg shadow-lg text-white ' + (
         type === 'success' ? 'bg-green-600' :
         type === 'error' ? 'bg-red-600' :
-        type === 'info' ? 'bg-slate-700' : 'bg-slate-700'
+        'bg-slate-700'
     );
     toast.textContent = message;
     container.appendChild(toast);

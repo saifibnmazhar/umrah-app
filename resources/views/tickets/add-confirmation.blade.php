@@ -64,12 +64,8 @@
                 <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
                     <div><span class="text-slate-500 text-xs">Passport No.</span><p class="text-slate-800 font-medium" id="infoPassport">-</p></div>
                     <div><span class="text-slate-500 text-xs">Mobile</span><p class="text-slate-800 font-medium" id="infoMobile">-</p></div>
-                    <div><span class="text-slate-500 text-xs">PNR</span><p class="text-slate-800 font-medium" id="infoPnr">ABCD1234</p></div>
-                    <div><span class="text-slate-500 text-xs">Flight Date</span><p class="text-slate-800 font-medium" id="infoFlightDate">2026-05-15</p></div>
-                    <div><span class="text-slate-500 text-xs">Route</span><p class="text-slate-800 font-medium" id="infoRoute">DAC-JED-DAC</p></div>
-                    <div><span class="text-slate-500 text-xs">Airline</span><p class="text-slate-800 font-medium" id="infoAirline">Saudi Arabian Airlines</p></div>
-                    <div><span class="text-slate-500 text-xs">Class</span><p class="text-slate-800 font-medium" id="infoClass">Economy</p></div>
-                    <div><span class="text-slate-500 text-xs">Type</span><p class="text-slate-800 font-medium" id="infoType">Adult</p></div>
+                    <div><span class="text-slate-500 text-xs">Type</span><p class="text-slate-800 font-medium" id="infoType">-</p></div>
+                    <div><span class="text-slate-500 text-xs">Gender</span><p class="text-slate-800 font-medium" id="infoGender">-</p></div>
                 </div>
             </div>
 
@@ -182,28 +178,135 @@
 
 @push('scripts')
 <script>
-function openProcessConfirmationModal() {
-    document.getElementById('processConfirmationModal').classList.remove('hidden');
+const bookingId = {{ $id }};
+let allRequests = [];
+let currentTicketRequestId = null;
+
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
 }
 
-function closeProcessConfirmationModal() {
-    document.getElementById('processConfirmationModal').classList.add('hidden');
-    document.getElementById('inputUpDate').value = '';
-    document.getElementById('inputDownDate').value = '';
+function loadConfirmation() {
+    fetch('/bookings/' + bookingId + '/ticket-requests?type=additional', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(requests => {
+        allRequests = requests;
+        if (!requests.length) {
+            showNotFound();
+            return;
+        }
+        const first = requests[0];
+        const booking = first.booking || {};
+        const customer = booking.customer || {};
+        const branch = booking.booking_branch || booking.bookingBranch || {};
+
+        document.getElementById('invoiceId').textContent = booking.id || '-';
+        document.getElementById('invoiceNo').textContent = booking.invoice_id || '-';
+        document.getElementById('customerName').textContent = customer.name || '-';
+        document.getElementById('customerMobile').textContent = customer.mobile_no || '-';
+        document.getElementById('branch').textContent = branch.name || '-';
+        document.getElementById('requestedDate').textContent = formatDate(first.requested_at);
+        document.getElementById('passengerCount').textContent = [...new Set(requests.map(r => r.passenger_id))].length;
+
+        renderConfirmation(requests);
+    });
+}
+
+function renderConfirmation(requests) {
+    const passengerListEl = document.getElementById('passengerList');
+    const grouped = {};
+    requests.forEach(r => {
+        if (!grouped[r.passenger_id]) {
+            grouped[r.passenger_id] = { passenger: r.passenger, tickets: [] };
+        }
+        grouped[r.passenger_id].tickets.push(r);
+    });
+
+    const statusCounts = { pending: 0, processed: 0, rejected: 0 };
+    requests.forEach(r => statusCounts[r.status] = (statusCounts[r.status] || 0) + 1);
+    const statusBadge = document.getElementById('statusBadge');
+    if (statusCounts.pending === 0 && statusCounts.processed > 0) {
+        statusBadge.textContent = 'Processed';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700';
+    } else if (statusCounts.pending === 0 && statusCounts.rejected > 0) {
+        statusBadge.textContent = 'Rejected';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700';
+    } else {
+        statusBadge.textContent = 'Pending';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700';
+    }
+
+    passengerListEl.innerHTML = Object.values(grouped).map(g => {
+        const p = g.passenger || {};
+        const optionMap = { up: 'Inbound', down: 'Outbound', both: 'Both' };
+        return `
+            <div class="bg-slate-50 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <span class="font-medium text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</span>
+                        <span class="text-slate-500 text-sm ml-2">(${escapeHtml(p.passport_no || '-')})</span>
+                    </div>
+                    <span class="text-sm text-slate-500">${g.tickets.length} ticket(s)</span>
+                </div>
+                <div class="space-y-3">
+                    ${g.tickets.map(r => {
+                        const isProcessed = r.status === 'processed';
+                        const isRejected = r.status === 'rejected';
+                        const badgeClass = isProcessed ? 'bg-green-100 text-green-700' : isRejected ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+                        const statusLabel = isProcessed ? 'Processed' : isRejected ? 'Rejected' : 'Pending';
+                        return `
+                        <div class="bg-white rounded-lg border border-slate-200 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusLabel}</span>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                                <div class="text-sm"><span class="text-slate-500">Ticket Option: </span><span class="text-slate-800 font-medium">${optionMap[r.ticket_option] || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Probable (Inbound): </span><span class="text-slate-800 font-medium">${formatDate(r.probable_date_up)}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Probable (Outbound): </span><span class="text-slate-800 font-medium">${formatDate(r.probable_date_down)}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Visa Expiry: </span><span class="text-slate-800 font-medium">${formatDate(r.visa_expiry_date)}</span></div>
+                            </div>
+                            <div class="flex gap-3">
+                                <button onclick="rejectAddTicket(${r.id})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Reject</button>
+                                <button onclick="processConfirmation(${r.id})" class="px-4 py-2 bg-purple-600 text-white text-sm rounded-lg hover:bg-purple-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Process Confirmation</button>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function processConfirmation(ticketRequestId) {
+    currentTicketRequestId = ticketRequestId;
+    const r = allRequests.find(req => req.id === ticketRequestId);
+    if (!r) return;
+    const p = r.passenger || {};
+
+    document.getElementById('modalPassengerName').textContent = (p.first_name || '') + ' ' + (p.last_name || '') + ' (' + (p.passport_no || '-') + ')';
+    document.getElementById('infoPassport').textContent = p.passport_no || '-';
+    document.getElementById('infoMobile').textContent = p.mobile_no || '-';
+    document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
+    document.getElementById('infoGender').textContent = ({ male: 'Male', female: 'Female' })[p.gender] || '-';
+
+    document.getElementById('inputUpDate').value = r.probable_date_up || '';
+    document.getElementById('inputDownDate').value = r.probable_date_down || '';
     document.getElementById('inputTravelDate').value = '';
-    document.getElementById('inputRoute').value = '';
-    document.getElementById('inputAgent').value = '';
-    document.getElementById('inputAddTicketCharge').value = '';
-    document.getElementById('inputFareDifference').value = '';
-    document.getElementById('inputOtherCosts').value = '';
-    document.getElementById('inputTotalCost').value = '';
-    document.getElementById('inputServiceCharge').value = '';
-    document.getElementById('inputTotalPayment').value = '';
     document.getElementById('inputPaymentMethod').value = '';
     document.getElementById('bankMethodSection').classList.add('hidden');
     document.getElementById('branchSection').classList.add('hidden');
     document.getElementById('confirmButtons').classList.remove('hidden');
     document.getElementById('holdButtons').classList.add('hidden');
+
+    document.getElementById('processConfirmationModal').classList.remove('hidden');
+}
+
+function closeProcessConfirmationModal() {
+    document.getElementById('processConfirmationModal').classList.add('hidden');
+    currentTicketRequestId = null;
 }
 
 function handlePaymentMethodChange() {
@@ -233,18 +336,71 @@ function holdProcess() {
 }
 
 function confirmProcess() {
-    showToast('Process confirmed successfully!', 'success');
-    closeProcessConfirmationModal();
+    if (!currentTicketRequestId) return;
+
+    const payload = {};
+
+    fetch('/ticket-requests/' + currentTicketRequestId + '/process-additional', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Additional ticket issued successfully!', 'success');
+            closeProcessConfirmationModal();
+            loadConfirmation();
+        } else {
+            showToast(data.message || 'Failed to process', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error processing request', 'error');
+    });
 }
 
-function rejectAddTicket() {
-    if (!confirm('Are you sure you want to reject this passenger\'s additional ticket request?')) return;
-    showToast('Additional ticket request rejected', 'info');
+function rejectAddTicket(ticketRequestId) {
+    if (!confirm('Are you sure you want to reject this additional ticket request?')) return;
+
+    fetch('/ticket-requests/' + ticketRequestId + '/reject', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Additional ticket request rejected', 'info');
+            loadConfirmation();
+        } else {
+            showToast(data.message || 'Failed to reject', 'error');
+        }
+    });
 }
 
 function showNotFound() {
     document.getElementById('confirmationContent').classList.add('hidden');
     document.getElementById('notFound').classList.remove('hidden');
+}
+
+function formatDate(val) {
+    if (!val) return '-';
+    const parts = val.split('T')[0].split('-');
+    if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    return val;
 }
 
 function escapeHtml(str) {
@@ -267,6 +423,8 @@ function showToast(message, type = 'info') {
     container.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
 }
+
+loadConfirmation();
 </script>
 @endpush
 @endsection

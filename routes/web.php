@@ -414,6 +414,13 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/{id}/add-confirm', fn($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
 
     Route::middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff')->group(function () {
+        Route::post('/ticket-requests', [\App\Http\Controllers\TicketRequestController::class, 'store'])->name('ticket-requests.store');
+        Route::put('/ticket-requests/{ticketRequest}/process-reissue', [\App\Http\Controllers\TicketRequestController::class, 'processReIssue'])->name('ticket-requests.process-reissue');
+        Route::put('/ticket-requests/{ticketRequest}/process-refund', [\App\Http\Controllers\TicketRequestController::class, 'processRefund'])->name('ticket-requests.process-refund');
+        Route::put('/ticket-requests/{ticketRequest}/process-additional', [\App\Http\Controllers\TicketRequestController::class, 'processAdditional'])->name('ticket-requests.process-additional');
+        Route::put('/ticket-requests/{ticketRequest}/reject', [\App\Http\Controllers\TicketRequestController::class, 'reject'])->name('ticket-requests.reject');
+        Route::get('/bookings/{booking}/ticket-requests', [\App\Http\Controllers\TicketRequestController::class, 'byBooking'])->name('ticket-requests.by-booking');
+        Route::get('/ticket-requests/reasons', [\App\Http\Controllers\TicketRequestController::class, 'reasons'])->name('ticket-requests.reasons');
         Route::post('/bookings/{booking}/passengers/{passenger}/ticket-issue', [TicketIssueController::class, 'issue'])
             ->name('bookings.passengers.ticket-issue');
         Route::put('/bookings/{booking}/passengers/{passenger}/ticket-edit', [TicketIssueController::class, 'edit'])
