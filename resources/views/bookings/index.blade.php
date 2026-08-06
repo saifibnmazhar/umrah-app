@@ -924,20 +924,21 @@ if ($passenger->ticket_fare_inbound_id) {
         $regularTicket = $passenger->allIssuedTickets
             ->first(fn($t) => in_array($t->issue_type, [null, 'regular'], true) && in_array($t->status, ['issued', 're-issued']));
         $actualFlightDate = 'N/A';
-        if (($routeType ?? null) !== 'oneway_outbound' && $regularTicket) {
+        if ($regularTicket) {
             $actualFlightDate = $regularTicket->inbound_date?->format('d M Y') ?? 'N/A';
         }
     @endphp
     <td class="px-3 py-2 text-slate-700">{{ $actualFlightDate }}</td>
     @php
         $returnDate = 'N/A';
-        if (isset($routeType) && $routeType === 'oneway_inbound') {
+        if ($regularTicket && $regularTicket->outbound_pending) {
             $pendingTicket = $passenger->allIssuedTickets
-                ->first(fn($t) => $t->issue_type === 'pending_outbound');
-            if ($pendingTicket && $pendingTicket->status === 'issued') {
+                ->first(fn($t) => $t->issue_type === 'pending_outbound'
+                    && in_array($t->status, ['issued', 're-issued'], true));
+            if ($pendingTicket) {
                 $returnDate = $pendingTicket->outbound_date?->format('d M Y') ?? 'N/A';
             }
-        } elseif (isset($routeType) && $regularTicket) {
+        } elseif ($regularTicket) {
             $returnDate = $regularTicket->outbound_date?->format('d M Y') ?? 'N/A';
         }
     @endphp
