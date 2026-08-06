@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Edit Booking')
 @section('content')
+@php $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty(); @endphp
 <script>window.__bookingServerData = {
     ticketFares: @json($ticketFares ?? []),
     packages: @json($packages ?? []),
@@ -242,6 +243,7 @@
         </form>
     </div>
 
+    @if($canApplyDiscount)
     {{-- Discount Modal --}}
     <div x-show="discountModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
         <div class="fixed inset-0 bg-black/50" @click="closeDiscountModal()"></div>
@@ -290,6 +292,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     {{-- Payment Modal --}}
     <div x-show="paymentModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">

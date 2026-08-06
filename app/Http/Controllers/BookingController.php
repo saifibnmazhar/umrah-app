@@ -863,8 +863,8 @@ class BookingController extends Controller
                 'fingerprint_charge_id' => $validated['fingerprint_charge_id'] ?? null,
                 'fingerprint_location' => $validated['fingerprint_location'] ?? 'Office',
                 'pax_qty' => count($validated['passengers']),
-                'discount_type' => ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage',
-                'discount_value' => $validated['discount_value'] ?? 0,
+                'discount_type' => $this->isAdminRole() ? (($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage') : 'fixed_amount',
+                'discount_value' => $this->isAdminRole() ? ($validated['discount_value'] ?? 0) : 0,
                 'discount_amount' => 0,
                 'remarks' => $validated['remarks'] ?? null,
                 'currency_rate_id' => $currentCurrencyRate?->id,
@@ -1374,6 +1374,8 @@ class BookingController extends Controller
             if (! $this->isAdminRole()) {
                 unset($validated['booking_branch_id']);
                 unset($validated['package_id']);
+                unset($validated['discount_type']);
+                unset($validated['discount_value']);
             }
             $booking->update($validated);
 
