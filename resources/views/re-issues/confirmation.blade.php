@@ -18,7 +18,6 @@
                 <div><span class="text-slate-500 text-sm">Customer</span><p class="text-slate-800 font-medium" id="customerName">-</p></div>
                 <div><span class="text-slate-500 text-sm">Mobile</span><p class="text-slate-800 font-medium" id="customerMobile">-</p></div>
                 <div><span class="text-slate-500 text-sm">Branch</span><p class="text-slate-800 font-medium" id="branch">-</p></div>
-                <div><span class="text-slate-500 text-sm">Requested Date</span><p class="text-slate-800 font-medium" id="requestedDate">-</p></div>
                 <div><span class="text-slate-500 text-sm">Passengers</span><p class="text-slate-800 font-medium" id="passengerCount">-</p></div>
             </div>
         </div>
@@ -84,12 +83,35 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Route Type</label>
-                        <select id="inputRouteType" onchange="applyRouteType()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select id="inputRouteType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select</option>
                             <option value="oneway_inbound">One Way-Inbound</option>
                             <option value="oneway_outbound">One Way-Outbound</option>
                             <option value="round">Round</option>
                             <option value="multi_city">Multi City</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                        <select id="inputTicketType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">All</option>
+                            <option value="regular">Regular</option>
+                            <option value="offer">Offer</option>
+                            <option value="group">Group</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type</label>
+                        <select id="inputFlightType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">All</option>
+                            <option value="direct">Direct</option>
+                            <option value="transit">Transit</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket</label>
+                        <select id="inputTicketFare" onchange="handleTicketSelect()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Ticket</option>
                         </select>
                     </div>
                     <div id="fieldUpDate">
@@ -108,9 +130,6 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
                         <select id="inputAgent" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Agent</option>
-                            <option value="Agent A">Agent A</option>
-                            <option value="Agent B">Agent B</option>
-                            <option value="Agent C">Agent C</option>
                         </select>
                     </div>
                     <div>
@@ -141,8 +160,6 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
                         <select id="inputPaymentMethod" onchange="handlePaymentMethodChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Payment Method</option>
-                            <option value="Pay to Branch">Pay to Branch</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
                         </select>
                     </div>
                 </div>
@@ -193,6 +210,8 @@
 const bookingId = {{ $id }};
 let allRequests = [];
 let currentTicketRequestId = null;
+let allTicketFares = [];
+let selectedTicketFareId = null;
 
 function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -219,11 +238,12 @@ function loadConfirmation() {
         document.getElementById('customerName').textContent = customer.name || '-';
         document.getElementById('customerMobile').textContent = customer.mobile_no || '-';
         document.getElementById('branch').textContent = branch.name || '-';
-        document.getElementById('requestedDate').textContent = formatDate(first.requested_at);
         document.getElementById('passengerCount').textContent = [...new Set(requests.map(r => r.passenger_id))].length;
 
         renderConfirmation(requests);
         loadReasons();
+        loadAgents();
+        loadPaymentMethods();
     });
 }
 
@@ -237,6 +257,76 @@ function loadReasons() {
         select.innerHTML = '<option value="">Select Reason</option>' +
             reasons.map(r => '<option value="' + r.id + '">' + escapeHtml(r.name) + '</option>').join('');
     });
+}
+
+function loadAgents() {
+    fetch('/ticket-requests/agents', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(agents => {
+        const select = document.getElementById('inputAgent');
+        select.innerHTML = '<option value="">Select Agent</option>' +
+            agents.map(a => '<option value="' + a.id + '">' + escapeHtml(a.name) + '</option>').join('');
+    });
+}
+
+function loadPaymentMethods() {
+    fetch('/ticket-requests/payment-methods', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(methods => {
+        const select = document.getElementById('inputPaymentMethod');
+        select.innerHTML = '<option value="">Select Payment Method</option>' +
+            methods.map(m => '<option value="' + m.value + '">' + escapeHtml(m.label) + '</option>').join('');
+    });
+}
+
+function loadTicketFares(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.route_type) params.append('route_type', filters.route_type);
+    if (filters.ticket_type) params.append('ticket_type', filters.ticket_type);
+    if (filters.flight_type) params.append('flight_type', filters.flight_type);
+
+    fetch('/ticket-fares/options?' + params.toString(), {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(fares => {
+        allTicketFares = fares;
+        const select = document.getElementById('inputTicketFare');
+        const currentVal = select.value || selectedTicketFareId;
+        select.innerHTML = '<option value="">Select Ticket</option>' +
+            fares.map(f => {
+                const route = f.route || {};
+                const airline = f.airline || {};
+                const cls = f.airline_class?.class || {};
+                const routeLabel = formatRoute(route);
+                return '<option value="' + f.id + '">' +
+                    escapeHtml(f.ticket_type || '') + ' - ' +
+                    escapeHtml(routeLabel) + ' - ' +
+                    escapeHtml(airline.name || '') + ' - ' +
+                    escapeHtml(cls.name || '') +
+                    '</option>';
+            }).join('');
+        if (currentVal) select.value = currentVal;
+    });
+}
+
+function handleFilterChange() {
+    const filters = {
+        route_type: document.getElementById('inputRouteType').value,
+        ticket_type: document.getElementById('inputTicketType').value,
+        flight_type: document.getElementById('inputFlightType').value,
+    };
+    loadTicketFares(filters);
+    applyRouteType();
+}
+
+function handleTicketSelect() {
+    const fareId = document.getElementById('inputTicketFare').value;
+    selectedTicketFareId = fareId || null;
 }
 
 function renderConfirmation(requests) {
@@ -293,6 +383,7 @@ function renderConfirmation(requests) {
                                 <div class="text-sm"><span class="text-slate-500">Probable (Inbound): </span><span class="text-slate-800 font-medium">${formatDate(r.probable_date_up)}</span></div>
                                 <div class="text-sm"><span class="text-slate-500">Probable (Outbound): </span><span class="text-slate-800 font-medium">${formatDate(r.probable_date_down)}</span></div>
                                 <div class="text-sm"><span class="text-slate-500">Visa Expiry: </span><span class="text-slate-800 font-medium">${formatDate(r.visa_expiry_date)}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Requested: </span><span class="text-slate-800 font-medium">${formatDate(r.requested_at)}</span></div>
                             </div>
                             <div class="flex gap-3">
                                 <button onclick="rejectReIssue(${r.id})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Reject</button>
@@ -334,15 +425,34 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('inputOtherCosts').value = '';
     document.getElementById('inputServiceCharge').value = '';
     document.getElementById('inputPaymentMethod').value = '';
+    document.getElementById('inputAgent').value = t.ticket_agent_id || '';
     document.getElementById('bankMethodSection').classList.add('hidden');
     document.getElementById('branchSection').classList.add('hidden');
     document.getElementById('confirmButtons').classList.remove('hidden');
     document.getElementById('holdButtons').classList.add('hidden');
 
     const originalRt = t.ticket_fare?.route?.route_type || '';
+    const originalTt = t.ticket_fare?.ticket_type || '';
+    const originalFt = t.ticket_fare?.route?.flight_type || '';
+
     const rtSelect = document.getElementById('inputRouteType');
     rtSelect.value = originalRt;
     rtSelect.disabled = originalRt === 'oneway_outbound';
+
+    const ttSelect = document.getElementById('inputTicketType');
+    ttSelect.value = originalTt;
+
+    const ftSelect = document.getElementById('inputFlightType');
+    ftSelect.value = originalFt;
+
+    selectedTicketFareId = t.ticket_fare_id || null;
+
+    loadTicketFares({
+        route_type: originalRt,
+        ticket_type: originalTt,
+        flight_type: originalFt,
+    });
+
     applyRouteType();
 
     document.getElementById('processConfirmationModal').classList.remove('hidden');
@@ -390,6 +500,7 @@ function confirmProcess() {
 
     const payload = {
         reason_id: document.getElementById('inputReason').value,
+        ticket_fare_id: document.getElementById('inputTicketFare').value || selectedTicketFareId,
         re_issue_charge: parseFloat(document.getElementById('inputReIssueCharge').value) || 0,
         fare_difference: parseFloat(document.getElementById('inputFareDifference').value) || 0,
         other_costs: parseFloat(document.getElementById('inputOtherCosts').value) || 0,
@@ -397,6 +508,7 @@ function confirmProcess() {
         travel_date: document.getElementById('inputTravelDate').value || null,
         inbound_date: document.getElementById('inputUpDate').value || null,
         outbound_date: document.getElementById('inputDownDate').value || null,
+        ticket_agent_id: document.getElementById('inputAgent').value || null,
         payment_method: document.getElementById('inputPaymentMethod').value || null,
         bank_method: document.getElementById('inputBankMethod')?.value || null,
         branch: document.getElementById('inputBranch')?.value || null,
@@ -404,6 +516,11 @@ function confirmProcess() {
 
     if (!payload.reason_id) {
         showToast('Please select a reason', 'error');
+        return;
+    }
+
+    if (!payload.ticket_fare_id) {
+        showToast('Please select a ticket', 'error');
         return;
     }
 

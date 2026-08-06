@@ -95,6 +95,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/ticket-fares/baggage', [\App\Http\Controllers\TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
     Route::get('/api/ticket-fares/flight-date-gap', [\App\Http\Controllers\TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
     Route::patch('/ticket-fares/{ticketFare}/toggle-active', [\App\Http\Controllers\TicketFareController::class, 'toggleActive'])->name('ticket-fares.toggle-active')->middleware('role:Super Admin,Co Admin,Ticket Admin');
+    Route::get('/ticket-fares/options', [\App\Http\Controllers\TicketRequestController::class, 'ticketFares'])->name('ticket-fares.options');
     Route::resource('ticket-fares', \App\Http\Controllers\TicketFareController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('commission-agents', CommissionAgentController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('visa-agent-costs', VisaAgentCostController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
@@ -421,6 +422,8 @@ Route::middleware('auth')->group(function () {
         Route::put('/ticket-requests/{ticketRequest}/reject', [\App\Http\Controllers\TicketRequestController::class, 'reject'])->name('ticket-requests.reject');
         Route::get('/bookings/{booking}/ticket-requests', [\App\Http\Controllers\TicketRequestController::class, 'byBooking'])->name('ticket-requests.by-booking');
         Route::get('/ticket-requests/reasons', [\App\Http\Controllers\TicketRequestController::class, 'reasons'])->name('ticket-requests.reasons');
+    Route::get('/ticket-requests/agents', [\App\Http\Controllers\TicketRequestController::class, 'agents'])->name('ticket-requests.agents');
+    Route::get('/ticket-requests/payment-methods', [\App\Http\Controllers\TicketRequestController::class, 'paymentMethods'])->name('ticket-requests.payment-methods');
         Route::post('/bookings/{booking}/passengers/{passenger}/ticket-issue', [TicketIssueController::class, 'issue'])
             ->name('bookings.passengers.ticket-issue');
         Route::put('/bookings/{booking}/passengers/{passenger}/ticket-edit', [TicketIssueController::class, 'edit'])

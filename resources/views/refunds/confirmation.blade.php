@@ -18,7 +18,6 @@
                 <div><span class="text-slate-500 text-sm">Customer</span><p class="text-slate-800 font-medium" id="customerName">-</p></div>
                 <div><span class="text-slate-500 text-sm">Mobile</span><p class="text-slate-800 font-medium" id="customerMobile">-</p></div>
                 <div><span class="text-slate-500 text-sm">Branch</span><p class="text-slate-800 font-medium" id="branch">-</p></div>
-                <div><span class="text-slate-500 text-sm">Requested Date</span><p class="text-slate-800 font-medium" id="requestedDate">-</p></div>
                 <div><span class="text-slate-500 text-sm">Passengers</span><p class="text-slate-800 font-medium" id="passengerCount">-</p></div>
             </div>
         </div>
@@ -91,11 +90,15 @@
                         <input type="number" id="inputCustomerRefundAmount" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
+                        <select id="inputAgent" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" disabled>
+                            <option value="">Select Agent</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
                         <select id="inputPaymentMethod" onchange="handlePaymentMethodChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Payment Method</option>
-                            <option value="Pay from Branch">Pay from Branch</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
                         </select>
                     </div>
                     <div id="bankMethodSection" class="hidden">
@@ -116,6 +119,14 @@
                             <option value="Jeddah Branch">Jeddah Branch</option>
                             <option value="Madinah Branch">Madinah Branch</option>
                         </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge</label>
+                        <input type="number" id="inputServiceCharge" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                        <textarea id="inputRemarks" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none resize-none" placeholder="Enter remarks..."></textarea>
                     </div>
                 </div>
             </div>
@@ -165,11 +176,12 @@ function loadConfirmation() {
         document.getElementById('customerName').textContent = customer.name || '-';
         document.getElementById('customerMobile').textContent = customer.mobile_no || '-';
         document.getElementById('branch').textContent = branch.name || '-';
-        document.getElementById('requestedDate').textContent = formatDate(first.requested_at);
         document.getElementById('passengerCount').textContent = [...new Set(requests.map(r => r.passenger_id))].length;
 
         renderConfirmation(requests);
         loadReasons();
+        loadAgents();
+        loadPaymentMethods();
     });
 }
 
@@ -182,6 +194,30 @@ function loadReasons() {
         const select = document.getElementById('inputReason');
         select.innerHTML = '<option value="">Select Reason</option>' +
             reasons.map(r => '<option value="' + r.id + '">' + escapeHtml(r.name) + '</option>').join('');
+    });
+}
+
+function loadAgents() {
+    fetch('/ticket-requests/agents', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(agents => {
+        const select = document.getElementById('inputAgent');
+        select.innerHTML = '<option value="">Select Agent</option>' +
+            agents.map(a => '<option value="' + a.id + '">' + escapeHtml(a.name) + '</option>').join('');
+    });
+}
+
+function loadPaymentMethods() {
+    fetch('/ticket-requests/payment-methods', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(methods => {
+        const select = document.getElementById('inputPaymentMethod');
+        select.innerHTML = '<option value="">Select Payment Method</option>' +
+            methods.map(m => '<option value="' + m.value + '">' + escapeHtml(m.label) + '</option>').join('');
     });
 }
 
@@ -235,6 +271,7 @@ function renderConfirmation(requests) {
                             <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
                                 <div class="text-sm"><span class="text-slate-500">Ticket No: </span><span class="text-slate-800 font-medium">${escapeHtml(t.ticket_number) || '-'}</span></div>
                                 <div class="text-sm"><span class="text-slate-500">PNR: </span><span class="text-slate-800 font-medium">${escapeHtml(t.pnr) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Requested: </span><span class="text-slate-800 font-medium">${formatDate(r.requested_at)}</span></div>
                             </div>
                             <div class="flex gap-3">
                                 <button onclick="rejectRefund(${r.id})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Reject</button>
@@ -270,8 +307,13 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('inputCustomerRefundAmount').value = '';
     document.getElementById('inputReason').value = '';
     document.getElementById('inputPaymentMethod').value = '';
+    document.getElementById('inputServiceCharge').value = '';
+    document.getElementById('inputRemarks').value = '';
     document.getElementById('bankMethodSection').classList.add('hidden');
     document.getElementById('branchSection').classList.add('hidden');
+
+    const agentSelect = document.getElementById('inputAgent');
+    agentSelect.value = t.ticket_agent_id || '';
 
     document.getElementById('processConfirmationModal').classList.remove('hidden');
 }
@@ -299,7 +341,8 @@ function confirmProcess() {
         reason_id: document.getElementById('inputReason').value,
         iata_refund: parseFloat(document.getElementById('inputAgentRefundAmount').value) || 0,
         customer_refund: parseFloat(document.getElementById('inputCustomerRefundAmount').value) || 0,
-        service_charge: 0,
+        service_charge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
+        remarks: document.getElementById('inputRemarks').value || null,
         payment_method: document.getElementById('inputPaymentMethod').value || null,
         bank_method: document.getElementById('inputBankMethod')?.value || null,
         branch: document.getElementById('inputBranch')?.value || null,

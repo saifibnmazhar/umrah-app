@@ -9,6 +9,10 @@ use App\Models\ReIssueRefundReason;
 use App\Models\ReIssuedTicket;
 use App\Models\RefundedTicket;
 use App\Models\TicketRequest;
+use App\Models\TicketAgent;
+use App\Models\TicketFare;
+use App\Models\BaggageAllowance;
+use App\Enums\PaymentMethod;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -110,6 +114,8 @@ class TicketRequestController extends Controller
             'travel_date' => 'nullable|date',
             'inbound_date' => 'nullable|date',
             'outbound_date' => 'nullable|date',
+            'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
+            'ticket_fare_id' => 'required|exists:ticket_fares,id',
             'route' => 'nullable|string|max:255',
             'agent' => 'nullable|string|max:255',
             'payment_method' => 'nullable|string|max:255',
@@ -122,9 +128,7 @@ class TicketRequestController extends Controller
             return response()->json(['message' => 'Issued ticket not found.'], 404);
         }
 
-        if (! in_array($issuedTicket->status, ['issued', 'refunded'])) {
-            return response()->json(['message' => 'This ticket cannot be re-issued.'], 400);
-        }
+        $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
 
         try {
             DB::beginTransaction();
@@ -136,19 +140,19 @@ class TicketRequestController extends Controller
                 'issued_ticket_id' => $issuedTicket->id,
                 'ticket_number' => $issuedTicket->ticket_number,
                 'pnr' => $issuedTicket->pnr,
-                'ticket_agent_id' => $issuedTicket->ticket_agent_id,
-                'ticket_fare_id' => $issuedTicket->ticket_fare_id,
-                'group_ticket_id' => $issuedTicket->group_ticket_id,
+                'ticket_agent_id' => $validated['ticket_agent_id'] ?? $issuedTicket->ticket_agent_id,
+                'ticket_fare_id' => $selectedFare->id,
+                'group_ticket_id' => $selectedFare->groupTicket?->id ?? $issuedTicket->group_ticket_id,
                 're_issue_date' => $validated['travel_date'] ?? now(),
                 'inbound_date' => $validated['inbound_date'] ?? $issuedTicket->inbound_date,
                 'outbound_date' => $validated['outbound_date'] ?? $issuedTicket->outbound_date,
-                'selling_fare' => $issuedTicket->selling_fare ?? 0,
-                'net_fare' => $issuedTicket->net_fare ?? 0,
-                'offer_price' => $issuedTicket->offer_price ?? 0,
-                'is_refundable' => $issuedTicket->is_refundable,
-                'is_exchangeable' => $issuedTicket->is_exchangeable,
-                'baggage_inbound' => $issuedTicket->baggage_inbound,
-                'baggage_outbound' => $issuedTicket->baggage_outbound,
+                'selling_fare' => $selectedFare->selling_fare ?? 0,
+                'net_fare' => $selectedFare->net_fare ?? 0,
+                'offer_price' => $selectedFare->offer_price ?? 0,
+                'is_refundable' => $selectedFare->is_refundable ?? $issuedTicket->is_refundable,
+                'is_exchangeable' => $selectedFare->is_exchangeable ?? $issuedTicket->is_exchangeable,
+                'baggage_inbound' => BaggageAllowance::where('ticket_fare_id', $selectedFare->id)->where('passenger_type', $ticketRequest->passenger->passenger_type)->where('travel_direction', 'inbound')->value('allowance'),
+                'baggage_outbound' => BaggageAllowance::where('ticket_fare_id', $selectedFare->id)->where('passenger_type', $ticketRequest->passenger->passenger_type)->where('travel_direction', 'outbound')->value('allowance'),
                 're_issue_charge' => $validated['re_issue_charge'],
                 'fare_difference' => $validated['fare_difference'],
                 'other_costs' => $validated['other_costs'],
@@ -274,17 +278,10 @@ class TicketRequestController extends Controller
             'ticket_number' => 'nullable|string|max:100',
             'pnr' => 'nullable|string|max:50',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
-            'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
+            'ticket_fare_id' => 'required|exists:ticket_fares,id',
             'issued_date' => 'nullable|date',
             'inbound_date' => 'nullable|date',
             'outbound_date' => 'nullable|date',
-            'selling_fare' => 'nullable|numeric|min:0',
-            'net_fare' => 'nullable|numeric|min:0',
-            'offer_price' => 'nullable|numeric|min:0',
-            'is_refundable' => 'boolean',
-            'is_exchangeable' => 'boolean',
-            'baggage_inbound' => 'nullable|string|max:255',
-            'baggage_outbound' => 'nullable|string|max:255',
             'remarks' => 'nullable|string',
         ]);
 
@@ -292,6 +289,8 @@ class TicketRequestController extends Controller
         if (! $passenger) {
             return response()->json(['message' => 'Passenger not found.'], 404);
         }
+
+        $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
 
         try {
             DB::beginTransaction();
@@ -301,19 +300,19 @@ class TicketRequestController extends Controller
                 'booking_id' => $ticketRequest->booking_id,
                 'user_id' => auth()->id(),
                 'ticket_agent_id' => $validated['ticket_agent_id'] ?? null,
-                'ticket_fare_id' => $validated['ticket_fare_id'] ?? null,
+                'ticket_fare_id' => $selectedFare->id,
                 'ticket_number' => $validated['ticket_number'] ?? null,
                 'pnr' => $validated['pnr'] ?? null,
                 'issued_date' => $validated['issued_date'] ?? now(),
                 'inbound_date' => $validated['inbound_date'] ?? null,
                 'outbound_date' => $validated['outbound_date'] ?? null,
-                'selling_fare' => $validated['selling_fare'] ?? 0,
-                'net_fare' => $validated['net_fare'] ?? 0,
-                'offer_price' => $validated['offer_price'] ?? 0,
-                'is_refundable' => $validated['is_refundable'] ?? false,
-                'is_exchangeable' => $validated['is_exchangeable'] ?? false,
-                'baggage_inbound' => $validated['baggage_inbound'] ?? null,
-                'baggage_outbound' => $validated['baggage_outbound'] ?? null,
+                'selling_fare' => $selectedFare->selling_fare ?? 0,
+                'net_fare' => $selectedFare->net_fare ?? 0,
+                'offer_price' => $selectedFare->offer_price ?? 0,
+                'is_refundable' => $selectedFare->is_refundable ?? false,
+                'is_exchangeable' => $selectedFare->is_exchangeable ?? false,
+                'baggage_inbound' => BaggageAllowance::where('ticket_fare_id', $selectedFare->id)->where('passenger_type', $passenger->passenger_type)->where('travel_direction', 'inbound')->value('allowance'),
+                'baggage_outbound' => BaggageAllowance::where('ticket_fare_id', $selectedFare->id)->where('passenger_type', $passenger->passenger_type)->where('travel_direction', 'outbound')->value('allowance'),
                 'issue_type' => 'additional',
                 'status' => 'issued',
             ]);
@@ -418,5 +417,40 @@ class TicketRequestController extends Controller
         }
 
         return response()->json($query->get(['id', 'name']));
+    }
+
+    public function agents()
+    {
+        return response()->json(TicketAgent::orderBy('name')->get(['id', 'name']));
+    }
+
+    public function paymentMethods()
+    {
+        return response()->json(
+            collect(PaymentMethod::cases())->map(fn($case) => ['value' => $case->value, 'label' => ucfirst($case->value)])->values()
+        );
+    }
+
+    public function ticketFares(Request $request)
+    {
+        $query = TicketFare::query();
+
+        if ($routeType = $request->query('route_type')) {
+            $query->whereHas('route', fn($q) => $q->where('route_type', $routeType));
+        }
+        if ($ticketType = $request->query('ticket_type')) {
+            $query->where('ticket_type', $ticketType);
+        }
+        if ($flightType = $request->query('flight_type')) {
+            $query->whereHas('route', fn($q) => $q->where('flight_type', $flightType));
+        }
+
+        $fares = $query->with([
+            'route.fromCity', 'route.toCity', 'route.returnCity',
+            'route.multiSegments.fromCity', 'route.multiSegments.toCity',
+            'airline', 'airlineClass.class',
+        ])->get();
+
+        return response()->json($fares);
     }
 }
