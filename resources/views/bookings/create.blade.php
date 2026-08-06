@@ -32,17 +32,6 @@
     </div>
     @endif
 
-    <div x-ref="submitError" x-show="error" x-cloak class="bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 flex items-start justify-between">
-        <div>
-            <div class="font-medium">Booking could not be created</div>
-            <div x-text="error"></div>
-            <div x-show="errorRef" class="text-sm mt-1">Error reference: <span class="font-mono font-semibold" x-text="errorRef"></span></div>
-        </div>
-        <button type="button" @click="error = null; errorRef = null" class="text-red-700 hover:text-red-900 ml-4" aria-label="Dismiss error">
-            <span aria-hidden="true">&times;</span>
-        </button>
-    </div>
-
     <div class="bg-white rounded-xl shadow-lg p-6">
         <form method="POST" action="{{ route('bookings.store') }}" enctype="multipart/form-data" @submit="submitForm($event)">
             @csrf
@@ -162,7 +151,6 @@
                 </div>
                 <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                 <div id="booking_customer_docs_list" class="mt-2 space-y-1"></div>
-                <div id="booking_customer_docs_warnings" class="mt-1"></div>
             </div>
 
             <div class="mb-6" x-show="passengers.length === 0">
@@ -294,10 +282,10 @@
             <div class="flex justify-end gap-3 pt-6 border-t border-slate-200">
                 <button type="submit"
                     class="w-64 px-8 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium"
-                    :disabled="submitting || (!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0)"
-                    :class="(submitting || !paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0) ? 'opacity-50 cursor-not-allowed' : ''"
+                    :disabled="(!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0)"
+                    :class="(!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0) ? 'opacity-50 cursor-not-allowed' : ''"
                     :title="(!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0) ? 'Please save payment first' : ''"
-                ><span x-show="submitting">Submitting...</span><span x-show="!submitting">Submit</span></button>
+                >Submit</button>
                 <button type="button" @click="clearForm()" class="px-6 py-3 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Clear</button>
                 <a href="{{ route('bookings.index') }}" class="px-6 py-3 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</a>
             </div>
@@ -442,7 +430,6 @@
         <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <h3 class="text-xl font-semibold text-slate-800 mb-4">Add New Customer</h3>
             <form @submit.prevent="submitNewCustomer()">
-                <div id="customer_form_error" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm"></div>
                 <div class="grid grid-cols-1 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-600 mb-1">Name *</label>
@@ -486,7 +473,6 @@
                         </div>
                         <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                         <div id="customer_docs_list" class="mt-2 space-y-1"></div>
-                        <div id="customer_docs_warnings" class="mt-1"></div>
                     </div>
                     <div x-show="newCustomer.iqama_type === 'referral'">
                         <label class="block text-sm font-medium text-slate-600 mb-1">Referral Iqama No.</label>
@@ -508,7 +494,6 @@
                             </div>
                         </div>
                         <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
-                        <div id="ref_iqama_doc_warnings" class="mt-1"></div>
                     </div>
                 </div>
                 <div class="flex gap-3 pt-4 border-t border-slate-200">
