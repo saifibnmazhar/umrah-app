@@ -839,9 +839,6 @@ Alpine.data('createBookingApp', () => ({
     },
     paymentSaved: false,
     paymentMaxAmount: 0,
-    error: null,
-    errorRef: null,
-    submitting: false,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     userBranchLocation: window.__bookingServerData?.userBranchLocation || null,
     banks: window.__bookingServerData?.banks || [],
@@ -2044,11 +2041,6 @@ Alpine.data('createBookingApp', () => ({
         if (docsList) docsList.innerHTML = '';
         const docsInput = document.getElementById('customer_docs');
         if (docsInput) docsInput.value = '';
-        window.__customerDocs = [];
-        window.__docTotals.customer = 0;
-        window.__refIqamaSize = 0;
-        window.renderDocWarnings('customer_docs_warnings', []);
-        window.renderDocWarnings('ref_iqama_doc_warnings', []);
         this.customerModalVisible = true;
         this.customerSuggestions = [];
     },
@@ -2058,7 +2050,6 @@ Alpine.data('createBookingApp', () => ({
     },
 
     async submitNewCustomer() {
-        window.renderCustomerFormError([]);
         try {
             const formData = new FormData();
             Object.keys(this.newCustomer).forEach(key => {
@@ -2089,11 +2080,11 @@ Alpine.data('createBookingApp', () => ({
             try {
                 data = JSON.parse(text);
             } catch (parseError) {
-                window.renderCustomerFormError(['Server error: received a non-JSON response (HTTP ' + response.status + '). Please try again or contact support.']);
-                console.error('Parse error:', parseError);
+                alert('Server error: Received non-JSON response. Check console for details.');
+                console.log('Parse error:', parseError);
                 return;
             }
-            if (response.ok && data.success) {
+            if (data.success) {
                 this.selectedCustomer = data.customer;
                 this.customerSearch = data.customer.passport_no;
                 this.customerSuggestions = [];
@@ -2110,14 +2101,11 @@ Alpine.data('createBookingApp', () => ({
                 };
                 alert('Customer added successfully');
             } else {
-                const messages = data.errors
-                    ? Object.values(data.errors).flat()
-                    : [data.message || 'Failed to add customer'];
-                window.renderCustomerFormError(messages);
+                alert(data.message || 'Failed to add customer');
             }
         } catch (e) {
             console.error('Error:', e);
-            window.renderCustomerFormError(['Failed to add customer. Please try again or contact support.']);
+            alert('Failed to add customer');
         }
     },
 
@@ -2271,38 +2259,29 @@ Alpine.data('createBookingApp', () => ({
 
     submitForm(e) {
         e.preventDefault();
-        if (this.submitting) return;
-        this.error = null;
-        this.errorRef = null;
         if (!this.selectedCustomer) {
-            this.error = 'Please select a customer';
-            this.scrollToError();
+            alert('Please select a customer');
             return;
         }
         if (this.passengers.length === 0) {
-            this.error = 'Please add at least one passenger';
-            this.scrollToError();
+            alert('Please add at least one passenger');
             return;
         }
         if (!this.paymentSaved || (parseFloat(this.paymentData.amount_sar) || 0) <= 0) {
-            this.error = 'Please save a payment before submitting the booking';
-            this.scrollToError();
+            alert('Please save a payment before submitting the booking');
             return;
         }
         // Validate required fields
         if (!this.bookingData.district_id) {
-            this.error = 'Please select a district';
-            this.scrollToError();
+            alert('Please select a district');
             return;
         }
         if (document.querySelector('[name="fingerprint_branch_id"]') && !this.bookingData.fingerprint_branch_id) {
-            this.error = 'Please select a fingerprint branch';
-            this.scrollToError();
+            alert('Please select a fingerprint branch');
             return;
         }
         if (!this.bookingData.fingerprint_charge_id) {
-            this.error = 'Fingerprint charge not configured for selected district';
-            this.scrollToError();
+            alert('Fingerprint charge not configured for selected district');
             return;
         }
 
@@ -2318,8 +2297,6 @@ Alpine.data('createBookingApp', () => ({
                 }
             });
         }
-
-        this.submitting = true;
 
         fetch(e.target.action, {
             method: 'POST',
@@ -2342,18 +2319,15 @@ Alpine.data('createBookingApp', () => ({
                         data = JSON.parse(text);
                     } catch (e) {
                         console.error('Submit failed (non-JSON):', resp.status, text);
-                        this.error = 'An error occurred while submitting the form (HTTP ' + resp.status + '). Please contact support.';
-                        this.scrollToError();
+                        alert('An error occurred while submitting the form. Check console.');
                         return;
                     }
                     if (data.errors) {
                         const firstError = Object.values(data.errors)[0];
-                        this.error = firstError[0] || 'Validation failed';
+                        alert(firstError[0] || 'Validation failed');
                     } else {
-                        this.error = data.message || 'An error occurred';
-                        this.errorRef = data.error_ref || null;
+                        alert(data.message || 'An error occurred');
                     }
-                    this.scrollToError();
                     console.error('Submit failed:', resp.status, data);
                 });
             }
@@ -2361,28 +2335,13 @@ Alpine.data('createBookingApp', () => ({
                 if (data.success || resp.ok) {
                     window.location.href = data.url || '/bookings';
                 } else {
-                    this.error = data.message || 'Failed to create booking';
-                    this.errorRef = data.error_ref || null;
-                    this.scrollToError();
+                    alert(data.message || 'Failed to create booking');
                 }
             });
         })
         .catch(err => {
             console.error('Submit error:', err);
-            this.error = 'An error occurred while submitting the form. Please try again or contact support.';
-            this.scrollToError();
-        })
-        .finally(() => {
-            this.submitting = false;
-        });
-    },
-
-    scrollToError() {
-        this.$nextTick(() => {
-            const el = this.$refs.submitError;
-            if (el) {
-                el.scrollIntoView({ behavior: 'smooth', block: 'center' });
-            }
+            alert('An error occurred while submitting the form. Please check the console for details.');
         });
     },
 
@@ -2422,7 +2381,15 @@ Alpine.data('createBookingApp', () => ({
     },
 
     handleBookingCustomerDocsUpload(input) {
-        window.handleBookingCustomerDocsUpload(input);
+        const list = document.getElementById('booking_customer_docs_list');
+        if (!list) return;
+        list.innerHTML = '';
+        Array.from(input.files).forEach(file => {
+            const item = document.createElement('div');
+            item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+            item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeBookingCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+            list.appendChild(item);
+        });
     },
 
     removeBookingCustomerDoc(btn) {
@@ -3731,11 +3698,6 @@ Alpine.data('editBookingApp', () => ({
         if (docsList) docsList.innerHTML = '';
         const docsInput = document.getElementById('customer_docs');
         if (docsInput) docsInput.value = '';
-        window.__customerDocs = [];
-        window.__docTotals.customer = 0;
-        window.__refIqamaSize = 0;
-        window.renderDocWarnings('customer_docs_warnings', []);
-        window.renderDocWarnings('ref_iqama_doc_warnings', []);
         this.customerModalVisible = true;
         this.customerSuggestions = [];
     },
@@ -3745,7 +3707,6 @@ Alpine.data('editBookingApp', () => ({
     },
 
     async submitNewCustomer() {
-        window.renderCustomerFormError([]);
         try {
             const formData = new FormData();
             Object.keys(this.newCustomer).forEach(key => {
@@ -3776,11 +3737,11 @@ Alpine.data('editBookingApp', () => ({
             try {
                 data = JSON.parse(text);
             } catch (parseError) {
-                window.renderCustomerFormError(['Server error: received a non-JSON response (HTTP ' + response.status + '). Please try again or contact support.']);
-                console.error('Parse error:', parseError);
+                alert('Server error: Received non-JSON response. Check console for details.');
+                console.log('Parse error:', parseError);
                 return;
             }
-            if (response.ok && data.success) {
+            if (data.success) {
                 this.selectedCustomer = data.customer;
                 this.customerSearch = data.customer.passport_no;
                 this.customerSuggestions = [];
@@ -3797,14 +3758,11 @@ Alpine.data('editBookingApp', () => ({
                 };
                 alert('Customer added successfully');
             } else {
-                const messages = data.errors
-                    ? Object.values(data.errors).flat()
-                    : [data.message || 'Failed to add customer'];
-                window.renderCustomerFormError(messages);
+                alert(data.message || 'Failed to add customer');
             }
         } catch (e) {
             console.error('Error:', e);
-            window.renderCustomerFormError(['Failed to add customer. Please try again or contact support.']);
+            alert('Failed to add customer');
         }
     }
 }));
@@ -4854,148 +4812,32 @@ Alpine.data('showBookingApp', () => ({
     },
 }));
 
-window.BOOKING_DOC_LIMITS = {
-    maxFileBytes: 5 * 1024 * 1024,
-    maxTotalBytes: 20 * 1024 * 1024,
-    allowedTypes: ['pdf', 'jpg', 'jpeg', 'png'],
-};
-
-window.validateBookingDocs = function(files, existingBytes = 0) {
-    const warnings = [];
-    const accepted = [];
-    let totalBytes = existingBytes;
-
-    Array.from(files).forEach(file => {
-        const ext = (file.name.split('.').pop() || '').toLowerCase();
-
-        if (!window.BOOKING_DOC_LIMITS.allowedTypes.includes(ext)) {
-            warnings.push(`"${file.name}" is not an allowed file type. Only PDF, JPG, JPEG, and PNG files are allowed.`);
-            return;
-        }
-        if (file.size > window.BOOKING_DOC_LIMITS.maxFileBytes) {
-            warnings.push(`"${file.name}" exceeds the 5 MB per-file limit.`);
-            return;
-        }
-        if (totalBytes + file.size > window.BOOKING_DOC_LIMITS.maxTotalBytes) {
-            warnings.push(`"${file.name}" would exceed the 20 MB total limit for this submission.`);
-            return;
-        }
-
-        totalBytes += file.size;
-        accepted.push(file);
-    });
-
-    return { accepted, warnings, totalBytes };
-};
-
-window.renderDocWarnings = function(containerId, warnings) {
-    const container = document.getElementById(containerId);
-    if (!container) return;
-    container.innerHTML = '';
-    warnings.forEach(w => {
-        const div = document.createElement('div');
-        div.className = 'text-xs text-red-600 mt-1';
-        div.textContent = w;
-        container.appendChild(div);
-    });
-};
-
-window.__docTotals = window.__docTotals || {};
-
-window.addDocToTotal = function(scope, size) {
-    if (!window.__docTotals[scope]) window.__docTotals[scope] = 0;
-    window.__docTotals[scope] += size;
-};
-
-window.removeDocFromTotal = function(scope, size) {
-    window.__docTotals[scope] = Math.max(0, (window.__docTotals[scope] || 0) - (size || 0));
-};
-
-window.docTotal = function(scope) {
-    return window.__docTotals[scope] || 0;
-};
-
-window.renderCustomerFormError = function(messages) {
-    const container = document.getElementById('customer_form_error');
-    if (!container) return;
-    container.innerHTML = '';
-    const arr = Array.isArray(messages) ? messages : [messages];
-    arr.filter(Boolean).forEach(m => {
-        const div = document.createElement('div');
-        div.textContent = m;
-        container.appendChild(div);
-    });
-    container.classList.toggle('hidden', arr.length === 0);
-};
-
-window.__bookingCustomerDocs = window.__bookingCustomerDocs || [];
-window.__customerDocs = window.__customerDocs || [];
-
-window.setInputFiles = function(input, files) {
-    if (!input) return;
-    const dt = new DataTransfer();
-    files.forEach(f => dt.items.add(f));
-    input.files = dt.files;
-};
-
-window.renderMainCustomerDocs = function() {
-    const list = document.getElementById('booking_customer_docs_list');
-    window.setInputFiles(document.getElementById('booking_customer_docs'), window.__bookingCustomerDocs);
-    if (!list) return;
-    list.innerHTML = '';
-    window.__bookingCustomerDocs.forEach((file, i) => {
-        const item = document.createElement('div');
-        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
-        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeBookingCustomerDoc(' + i + ')" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
-        list.appendChild(item);
-    });
-};
-
 window.handleBookingCustomerDocsUpload = function(input) {
-    const { accepted, warnings } = window.validateBookingDocs(input.files, window.docTotal('booking'));
-    window.renderDocWarnings('booking_customer_docs_warnings', warnings);
-    input.value = '';
-    accepted.forEach(f => window.addDocToTotal('booking', f.size));
-    window.__bookingCustomerDocs = window.__bookingCustomerDocs.concat(accepted);
-    window.renderMainCustomerDocs();
-};
-
-window.removeBookingCustomerDoc = function(i) {
-    const file = window.__bookingCustomerDocs[i];
-    if (file) window.removeDocFromTotal('booking', file.size);
-    window.__bookingCustomerDocs.splice(i, 1);
-    window.renderMainCustomerDocs();
-};
-
-window.renderCustomerDocs = function() {
-    const list = document.getElementById('customer_docs_list');
-    window.setInputFiles(document.getElementById('customer_docs'), window.__customerDocs);
+    const list = document.getElementById('booking_customer_docs_list');
     if (!list) return;
-    list.innerHTML = '';
-    window.__customerDocs.forEach((file, i) => {
+    Array.from(input.files).forEach(file => {
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
-        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeCustomerDoc(' + i + ')" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeBookingCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
         list.appendChild(item);
     });
+};
+
+window.removeBookingCustomerDoc = function(btn) {
+    btn.parentElement.remove();
 };
 
 window.handlePassengerDocUpload = function(input) {
     const list = document.getElementById('passenger_doc_list');
     if (!list) return;
-    const scope = 'booking';
-    const { accepted, warnings } = window.validateBookingDocs(input.files, window.docTotal(scope));
-    window.renderDocWarnings('passenger_doc_warnings', warnings);
     if (!window.__pendingPassengerDocs) window.__pendingPassengerDocs = [];
-    accepted.forEach((file) => {
+    Array.from(input.files).forEach((file) => {
         window.__pendingPassengerDocs.push(file);
         const item = document.createElement('div');
         item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
-        item.dataset.size = file.size;
         item.dataset.fileIndex = window.__pendingPassengerDocs.length - 1;
         item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removePassengerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
         list.appendChild(item);
-        window.addDocToTotal(scope, file.size);
     });
     input.value = '';
 };
@@ -5006,8 +4848,6 @@ window.removePassengerDoc = function(btn) {
     if (!isNaN(index) && window.__pendingPassengerDocs) {
         window.__pendingPassengerDocs.splice(index, 1);
     }
-    const size = parseInt(item.dataset.size || '0');
-    window.removeDocFromTotal('booking', size);
     item.remove();
     const list = document.getElementById('passenger_doc_list');
     if (list) {
@@ -5018,37 +4858,23 @@ window.removePassengerDoc = function(btn) {
 };
 
 window.handleRefIqamaFileUpload = function(input) {
-    const scope = 'customer';
-    if (window.__refIqamaSize) {
-        window.removeDocFromTotal(scope, window.__refIqamaSize);
-        window.__refIqamaSize = 0;
-    }
-    const { accepted, warnings } = window.validateBookingDocs(input.files, window.docTotal(scope));
-    window.renderDocWarnings('ref_iqama_doc_warnings', warnings);
+    const file = input.files[0];
     const display = document.getElementById('ref_iqama_doc_filename');
-    if (accepted.length > 0) {
-        const file = accepted[0];
-        window.__refIqamaSize = file.size;
-        window.addDocToTotal(scope, file.size);
-        if (display) display.textContent = file.name;
-    } else {
-        input.value = '';
-        if (display) display.textContent = 'click to upload';
-    }
+    if (file && display) display.textContent = file.name;
 };
 
 window.handleCustomerDocUpload = function(input) {
-    const { accepted, warnings } = window.validateBookingDocs(input.files, window.docTotal('customer'));
-    window.renderDocWarnings('customer_docs_warnings', warnings);
-    input.value = '';
-    accepted.forEach(f => window.addDocToTotal('customer', f.size));
-    window.__customerDocs = window.__customerDocs.concat(accepted);
-    window.renderCustomerDocs();
+    const list = document.getElementById('customer_docs_list');
+    if (!list) return;
+    list.innerHTML = '';
+    Array.from(input.files).forEach(file => {
+        const item = document.createElement('div');
+        item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
+        item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+        list.appendChild(item);
+    });
 };
 
-window.removeCustomerDoc = function(i) {
-    const file = window.__customerDocs[i];
-    if (file) window.removeDocFromTotal('customer', file.size);
-    window.__customerDocs.splice(i, 1);
-    window.renderCustomerDocs();
+window.removeCustomerDoc = function(btn) {
+    btn.parentElement.remove();
 };

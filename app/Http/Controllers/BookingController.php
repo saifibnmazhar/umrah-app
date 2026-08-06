@@ -1009,11 +1009,7 @@ class BookingController extends Controller
             $paymentAmount = (float) ($validated['payment']['amount'] ?? 0);
             $paymentBdtAmount = (float) ($validated['payment']['bdt_amount'] ?? 0);
 
-            $paymentDebug = $validated['payment'] ?? [];
-            if (isset($paymentDebug['transaction_id'])) {
-                $paymentDebug['transaction_id'] = '***';
-            }
-            \Log::info('Payment debug - amount: ' . $paymentAmount . ', bdt_amount: ' . $paymentBdtAmount . ', payment array: ', $paymentDebug);
+            \Log::info('Payment debug - amount: ' . $paymentAmount . ', bdt_amount: ' . $paymentBdtAmount . ', payment array: ', $validated['payment'] ?? []);
 
             if ($paymentAmount > 0 || $paymentBdtAmount > 0) {
                 \Log::info('Processing payment...');
@@ -1065,22 +1061,10 @@ class BookingController extends Controller
             return redirect()->route('bookings.print', $booking->id)
                 ->with('success', 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage);
 
-        } catch (\Throwable $e) {
+        } catch (\Exception $e) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
-
-            $errorRef = substr(md5(uniqid('', true)), 0, 8);
-
-            \Log::error('Booking creation failed', [
-                'error_ref' => $errorRef,
-                'exception' => get_class($e),
-                'message' => $e->getMessage(),
-                'trace' => $e->getTraceAsString(),
-                'user_id' => auth()->id(),
-                'url' => $request->fullUrl(),
-            ]);
-
             $dbMessage = $e instanceof \Illuminate\Database\QueryException
                 ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
                 : 'An unexpected error occurred. Please try again.';
@@ -1089,10 +1073,9 @@ class BookingController extends Controller
                 return response()->json([
                     'success' => false,
                     'message' => $dbMessage,
-                    'error_ref' => $errorRef,
                 ], 500);
             }
-            return redirect()->back()->with('error', $dbMessage . ' (Ref: ' . $errorRef . ')')->withInput();
+            return redirect()->back()->with('error', $dbMessage)->withInput();
         }
     }
 
