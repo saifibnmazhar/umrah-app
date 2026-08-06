@@ -373,6 +373,7 @@
         <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
             <h3 class="text-xl font-semibold text-slate-800 mb-4">Add New Customer</h3>
             <form @submit.prevent="submitNewCustomer()">
+                <div id="customer_form_error" class="hidden bg-red-100 border border-red-400 text-red-700 px-4 py-3 rounded mb-4 text-sm"></div>
                 <div class="grid grid-cols-1 gap-4 mb-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-600 mb-1">Name *</label>
@@ -416,6 +417,7 @@
                         </div>
                         <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
                         <div id="customer_docs_list" class="mt-2 space-y-1"></div>
+                        <div id="customer_docs_warnings" class="mt-1"></div>
                     </div>
                     <div x-show="newCustomer.iqama_type === 'referral'">
                         <label class="block text-sm font-medium text-slate-600 mb-1">Referral Iqama No.</label>
@@ -437,6 +439,7 @@
                             </div>
                         </div>
                         <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
+                        <div id="ref_iqama_doc_warnings" class="mt-1"></div>
                     </div>
                 </div>
                 <div class="flex gap-3 pt-4 border-t border-slate-200">

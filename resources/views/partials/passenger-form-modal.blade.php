@@ -236,6 +236,7 @@
                     </div>
                 </div>
                 <div id="passenger_doc_list" class="mt-3 space-y-2"></div>
+                <div id="passenger_doc_warnings" class="mt-1"></div>
             </div>
 
             <div class="flex gap-3 pt-4 border-t border-slate-200">
