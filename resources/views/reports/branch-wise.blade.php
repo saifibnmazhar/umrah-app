@@ -25,6 +25,7 @@
             <label class="block text-xs font-medium text-slate-500 mb-1">Branch</label>
             <select name="branch_id" class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" onchange="this.form.submit()">
                 <option value="">All Branches</option>
+                <option value="central" {{ $selectedBranch === 'central' ? 'selected' : '' }}>Central</option>
                 @foreach($branches as $branch)
                 <option value="{{ $branch->id }}" {{ ($selectedBranch ?? '') == $branch->id ? 'selected' : '' }}>
                     {{ $branch->name }}
