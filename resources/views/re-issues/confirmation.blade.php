@@ -18,7 +18,6 @@
                 <div><span class="text-slate-500 text-sm">Customer</span><p class="text-slate-800 font-medium" id="customerName">-</p></div>
                 <div><span class="text-slate-500 text-sm">Mobile</span><p class="text-slate-800 font-medium" id="customerMobile">-</p></div>
                 <div><span class="text-slate-500 text-sm">Branch</span><p class="text-slate-800 font-medium" id="branch">-</p></div>
-                <div><span class="text-slate-500 text-sm">Requested Date</span><p class="text-slate-800 font-medium" id="requestedDate">-</p></div>
                 <div><span class="text-slate-500 text-sm">Passengers</span><p class="text-slate-800 font-medium" id="passengerCount">-</p></div>
             </div>
         </div>
@@ -77,10 +76,49 @@
                 <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Re-Issue Details</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Reason</label>
+                        <select id="inputReason" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Reason</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Route Type</label>
+                        <select id="inputRouteType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="oneway_inbound">One Way-Inbound</option>
+                            <option value="oneway_outbound">One Way-Outbound</option>
+                            <option value="round">Round</option>
+                            <option value="multi_city">Multi City</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                        <select id="inputTicketType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">All</option>
+                            <option value="regular">Regular</option>
+                            <option value="offer">Offer</option>
+                            <option value="group">Group</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type</label>
+                        <select id="inputFlightType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">All</option>
+                            <option value="direct">Direct</option>
+                            <option value="transit">Transit</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket</label>
+                        <select id="inputTicketFare" onchange="handleTicketSelect()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Ticket</option>
+                        </select>
+                    </div>
+                    <div id="fieldUpDate">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
                         <input type="date" id="inputUpDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
-                    <div>
+                    <div id="fieldDownDate">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date</label>
                         <input type="date" id="inputDownDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
@@ -89,20 +127,9 @@
                         <input type="date" id="inputTravelDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
-                        <select id="inputRoute" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                            <option value="">Select Route</option>
-                            <option value="DAC-JED-DAC">DAC-JED-DAC</option>
-                            <option value="DAC-MED-DAC">DAC-MED-DAC</option>
-                        </select>
-                    </div>
-                    <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
                         <select id="inputAgent" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Agent</option>
-                            <option value="Agent A">Agent A</option>
-                            <option value="Agent B">Agent B</option>
-                            <option value="Agent C">Agent C</option>
                         </select>
                     </div>
                     <div>
@@ -133,8 +160,6 @@
                         <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
                         <select id="inputPaymentMethod" onchange="handlePaymentMethodChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Payment Method</option>
-                            <option value="Pay to Branch">Pay to Branch</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
                         </select>
                     </div>
                 </div>
@@ -182,165 +207,266 @@
 
 @push('scripts')
 <script>
-let currentRequest = null;
-let currentPassengerIndex = null;
+const bookingId = {{ $id }};
+let allRequests = [];
+let currentTicketRequestId = null;
+let allTicketFares = [];
+let selectedTicketFareId = null;
+
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+}
 
 function loadConfirmation() {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id') || '{{ $id }}';
+    fetch('/bookings/' + bookingId + '/ticket-requests?type=re_issue', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(requests => {
+        allRequests = requests;
+        if (!requests.length) {
+            showNotFound();
+            return;
+        }
+        const first = requests[0];
+        const booking = first.booking || {};
+        const customer = booking.customer || {};
+        const branch = booking.booking_branch || booking.bookingBranch || {};
 
-    if (id === null || id === '') {
-        showNotFound();
-        return;
-    }
+        document.getElementById('invoiceId').textContent = booking.id || '-';
+        document.getElementById('invoiceNo').textContent = booking.invoice_id || '-';
+        document.getElementById('customerName').textContent = customer.name || '-';
+        document.getElementById('customerMobile').textContent = customer.mobile_no || '-';
+        document.getElementById('branch').textContent = branch.name || '-';
+        document.getElementById('passengerCount').textContent = [...new Set(requests.map(r => r.passenger_id))].length;
 
-    const requestId = parseInt(id);
-    let reIssueRequests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-
-    if (reIssueRequests.length === 0) {
-        const seedData = [
-            {
-                id: 1,
-                invoiceId: 1001,
-                invoiceNo: 'INV-2024-001',
-                customerName: 'Ahmed Al-Rashid',
-                customerMobile: '0501234567',
-                branch: 'Riyadh Branch',
-                requestedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-                status: 'Pending',
-                passengers: [
-                    { name: 'Ahmed Al-Rashid', passport: 'P123456', ticketOption: 'up', probableDateUp: '2026-05-20', probableDateDown: '', visaExpiry: '2026-08-15', pnr: 'ABC123' },
-                    { name: 'Sara Khan', passport: 'P654321', ticketOption: 'both', probableDateUp: '2026-05-22', probableDateDown: '2026-06-10', visaExpiry: '2026-08-15', pnr: 'DEF456' },
-                ]
-            }
-        ];
-        reIssueRequests = seedData;
-        localStorage.setItem('reIssueRequests', JSON.stringify(seedData));
-        localStorage.setItem('reIssueRequests_seed', JSON.stringify(seedData));
-    }
-
-    const request = reIssueRequests.find(r => r.id === requestId) || reIssueRequests[0];
-
-    if (!request) {
-        showNotFound();
-        return;
-    }
-
-    currentRequest = request;
-    renderConfirmation(request);
+        renderConfirmation(requests);
+        loadReasons();
+        loadAgents();
+        loadPaymentMethods();
+    });
 }
 
-function renderConfirmation(request) {
-    document.getElementById('invoiceId').textContent = request.invoiceId;
-    document.getElementById('invoiceNo').textContent = request.invoiceNo;
-    document.getElementById('customerName').textContent = request.customerName || '-';
-    document.getElementById('customerMobile').textContent = request.customerMobile || '-';
-    document.getElementById('branch').textContent = request.branch || '-';
-    document.getElementById('requestedDate').textContent = new Date(request.requestedAt).toLocaleDateString();
-    document.getElementById('passengerCount').textContent = request.passengers.length;
+function loadReasons() {
+    fetch('/ticket-requests/reasons?type=re_issue', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(reasons => {
+        const select = document.getElementById('inputReason');
+        select.innerHTML = '<option value="">Select Reason</option>' +
+            reasons.map(r => '<option value="' + r.id + '">' + escapeHtml(r.name) + '</option>').join('');
+    });
+}
 
-    const statusBadge = document.getElementById('statusBadge');
-    statusBadge.textContent = request.status === 'Pending' ? 'Pending' : request.status;
-    statusBadge.className = `inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-        request.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-        request.status === 'Approved' || request.status === 'Processed' ? 'bg-green-100 text-green-700' :
-        request.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-        'bg-yellow-100 text-yellow-700'
-    }`;
+function loadAgents() {
+    fetch('/ticket-requests/agents', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(agents => {
+        const select = document.getElementById('inputAgent');
+        select.innerHTML = '<option value="">Select Agent</option>' +
+            agents.map(a => '<option value="' + a.id + '">' + escapeHtml(a.name) + '</option>').join('');
+    });
+}
 
+function loadPaymentMethods() {
+    fetch('/ticket-requests/payment-methods', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(methods => {
+        const select = document.getElementById('inputPaymentMethod');
+        select.innerHTML = '<option value="">Select Payment Method</option>' +
+            methods.map(m => '<option value="' + m.value + '">' + escapeHtml(m.label) + '</option>').join('');
+    });
+}
+
+function loadTicketFares(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.route_type) params.append('route_type', filters.route_type);
+    if (filters.ticket_type) params.append('ticket_type', filters.ticket_type);
+    if (filters.flight_type) params.append('flight_type', filters.flight_type);
+
+    fetch('/ticket-fares/options?' + params.toString(), {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(fares => {
+        allTicketFares = fares;
+        const select = document.getElementById('inputTicketFare');
+        const currentVal = select.value || selectedTicketFareId;
+        select.innerHTML = '<option value="">Select Ticket</option>' +
+            fares.map(f => {
+                const route = f.route || {};
+                const airline = f.airline || {};
+                const cls = f.airline_class?.class || {};
+                const routeLabel = formatRoute(route);
+                return '<option value="' + f.id + '">' +
+                    escapeHtml(f.ticket_type || '') + ' - ' +
+                    escapeHtml(routeLabel) + ' - ' +
+                    escapeHtml(airline.name || '') + ' - ' +
+                    escapeHtml(cls.name || '') +
+                    '</option>';
+            }).join('');
+        if (currentVal) select.value = currentVal;
+    });
+}
+
+function handleFilterChange() {
+    const filters = {
+        route_type: document.getElementById('inputRouteType').value,
+        ticket_type: document.getElementById('inputTicketType').value,
+        flight_type: document.getElementById('inputFlightType').value,
+    };
+    loadTicketFares(filters);
+    applyRouteType();
+}
+
+function handleTicketSelect() {
+    const fareId = document.getElementById('inputTicketFare').value;
+    selectedTicketFareId = fareId || null;
+}
+
+function renderConfirmation(requests) {
     const passengerListEl = document.getElementById('passengerList');
-    passengerListEl.innerHTML = request.passengers.map((p, pIndex) => `
-        <div class="flex justify-between items-center p-4 bg-slate-50 rounded-lg cursor-pointer" onclick="selectPassenger(${pIndex})">
-            <div class="flex flex-col items-start gap-1">
-                <div>
-                    <span class="font-medium text-slate-800">${escapeHtml(p.name)}</span>
+    const grouped = {};
+    requests.forEach(r => {
+        if (!grouped[r.passenger_id]) {
+            grouped[r.passenger_id] = { passenger: r.passenger, tickets: [] };
+        }
+        grouped[r.passenger_id].tickets.push(r);
+    });
+
+    const statusCounts = { pending: 0, processed: 0, rejected: 0 };
+    requests.forEach(r => statusCounts[r.status] = (statusCounts[r.status] || 0) + 1);
+    const statusBadge = document.getElementById('statusBadge');
+    if (statusCounts.pending === 0 && statusCounts.processed > 0) {
+        statusBadge.textContent = 'Processed';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700';
+    } else if (statusCounts.pending === 0 && statusCounts.rejected > 0) {
+        statusBadge.textContent = 'Rejected';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700';
+    } else {
+        statusBadge.textContent = 'Pending';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700';
+    }
+
+    passengerListEl.innerHTML = Object.values(grouped).map(g => {
+        const p = g.passenger || {};
+        return `
+            <div class="bg-slate-50 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <span class="font-medium text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</span>
+                        <span class="text-slate-500 text-sm ml-2">(${escapeHtml(p.passport_no || '-')})</span>
+                    </div>
+                    <span class="text-sm text-slate-500">${g.tickets.length} ticket(s)</span>
                 </div>
-                <div>
-                    <span class="text-slate-500 text-sm">(${escapeHtml(p.passport)}${p.pnr ? ' | PNR: ' + escapeHtml(p.pnr) : ''})</span>
+                <div class="space-y-3">
+                    ${g.tickets.map(r => {
+                        const t = r.issued_ticket || {};
+                        const route = t.ticket_fare?.route || {};
+                        const isProcessed = r.status === 'processed';
+                        const isRejected = r.status === 'rejected';
+                        const badgeClass = isProcessed ? 'bg-green-100 text-green-700' : isRejected ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+                        const statusLabel = isProcessed ? 'Processed' : isRejected ? 'Rejected' : 'Pending';
+                        return `
+                        <div class="bg-white rounded-lg border border-slate-200 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusLabel}</span>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                                <div class="text-sm"><span class="text-slate-500">Ticket No: </span><span class="text-slate-800 font-medium">${escapeHtml(t.ticket_number) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">PNR: </span><span class="text-slate-800 font-medium">${escapeHtml(t.pnr) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Probable (Inbound): </span><span class="text-slate-800 font-medium">${formatDate(r.probable_date_up)}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Probable (Outbound): </span><span class="text-slate-800 font-medium">${formatDate(r.probable_date_down)}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Visa Expiry: </span><span class="text-slate-800 font-medium">${formatDate(r.visa_expiry_date)}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Requested: </span><span class="text-slate-800 font-medium">${formatDate(r.requested_at)}</span></div>
+                            </div>
+                            <div class="flex gap-3">
+                                <button onclick="rejectReIssue(${r.id})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Reject</button>
+                                <button onclick="processConfirmation(${r.id})" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Process Confirmation</button>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
                 </div>
             </div>
-            <div class="flex items-center gap-6">
-                <div class="text-sm">
-                    <span class="text-slate-500">Ticket Option: </span>
-                    <span class="text-slate-800 font-medium">${p.ticketOption || '-'}</span>
-                </div>
-                <div class="text-sm">
-                    <span class="text-slate-500">Probable (Inbound): </span>
-                    <span class="text-slate-800 font-medium">${p.probableDateUp || '-'}</span>
-                </div>
-                <div class="text-sm">
-                    <span class="text-slate-500">Probable (Outbound): </span>
-                    <span class="text-slate-800 font-medium">${p.probableDateDown || '-'}</span>
-                </div>
-                <div class="text-sm">
-                    <span class="text-slate-500">Visa Expiry: </span>
-                    <span class="text-slate-800 font-medium">${p.visaExpiry || '-'}</span>
-                </div>
-                <button onclick="event.stopPropagation(); rejectReIssue(${pIndex})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium">Reject</button>
-                <button onclick="event.stopPropagation(); processConfirmation(${pIndex})" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-medium">Process Confirmation</button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
-function selectPassenger(index) {
-    currentPassengerIndex = index;
-}
+function processConfirmation(ticketRequestId) {
+    currentTicketRequestId = ticketRequestId;
+    const r = allRequests.find(req => req.id === ticketRequestId);
+    if (!r) return;
 
-function processConfirmation(passengerIndex) {
-    const passenger = currentRequest.passengers[passengerIndex];
-    if (!passenger) return;
+    const p = r.passenger || {};
+    const t = r.issued_ticket || {};
 
-    currentPassengerIndex = passengerIndex;
+    document.getElementById('modalPassengerName').textContent = (p.first_name || '') + ' ' + (p.last_name || '') + ' (' + (p.passport_no || '-') + ')';
+    document.getElementById('infoPassport').textContent = p.passport_no || '-';
+    document.getElementById('infoMobile').textContent = p.mobile_no || '-';
+    document.getElementById('infoPnr').textContent = t.pnr || '-';
+    document.getElementById('infoFlightDate').textContent = formatDate(t.outbound_date || t.inbound_date) || '-';
+    document.getElementById('infoRoute').textContent = formatRoute(t.ticket_fare?.route) || '-';
+    document.getElementById('infoAirline').textContent = t.ticket_fare?.airline?.name || '-';
+    document.getElementById('infoClass').textContent = t.ticket_fare?.airline_class?.class?.name || '-';
+    document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
 
-    document.getElementById('modalPassengerName').textContent = passenger.name + ' (' + passenger.passport + ')';
-    document.getElementById('infoPassport').textContent = passenger.passport;
-    document.getElementById('infoMobile').textContent = passenger.mobile || '-';
-    document.getElementById('infoPnr').textContent = passenger.pnr || 'ABCD1234';
-    document.getElementById('infoFlightDate').textContent = passenger.probableDateUp || '2026-05-15';
-    document.getElementById('infoRoute').textContent = 'DAC-JED-DAC';
-    document.getElementById('infoAirline').textContent = 'Saudi Arabian Airlines';
-    document.getElementById('infoClass').textContent = 'Economy';
-    document.getElementById('infoType').textContent = 'Adult';
-
-    document.getElementById('inputUpDate').value = passenger.probableDateUp || '';
-    document.getElementById('inputDownDate').value = passenger.probableDateDown || '';
+    document.getElementById('inputUpDate').value = r.probable_date_up || '';
+    document.getElementById('inputDownDate').value = r.probable_date_down || '';
+    document.getElementById('inputReason').value = '';
     document.getElementById('inputTravelDate').value = '';
-    document.getElementById('inputRoute').value = '';
-    document.getElementById('inputAgent').value = '';
     document.getElementById('inputReIssueCharge').value = '';
     document.getElementById('inputFareDifference').value = '';
     document.getElementById('inputOtherCosts').value = '';
-    document.getElementById('inputTotalCost').value = '';
     document.getElementById('inputServiceCharge').value = '';
-    document.getElementById('inputTotalPayment').value = '';
     document.getElementById('inputPaymentMethod').value = '';
+    document.getElementById('inputAgent').value = t.ticket_agent_id || '';
     document.getElementById('bankMethodSection').classList.add('hidden');
     document.getElementById('branchSection').classList.add('hidden');
     document.getElementById('confirmButtons').classList.remove('hidden');
     document.getElementById('holdButtons').classList.add('hidden');
+
+    const originalRt = t.ticket_fare?.route?.route_type || '';
+    const originalTt = t.ticket_fare?.ticket_type || '';
+    const originalFt = t.ticket_fare?.route?.flight_type || '';
+
+    const rtSelect = document.getElementById('inputRouteType');
+    rtSelect.value = originalRt;
+    rtSelect.disabled = originalRt === 'oneway_outbound';
+
+    const ttSelect = document.getElementById('inputTicketType');
+    ttSelect.value = originalTt;
+
+    const ftSelect = document.getElementById('inputFlightType');
+    ftSelect.value = originalFt;
+
+    selectedTicketFareId = t.ticket_fare_id || null;
+
+    loadTicketFares({
+        route_type: originalRt,
+        ticket_type: originalTt,
+        flight_type: originalFt,
+    });
+
+    applyRouteType();
 
     document.getElementById('processConfirmationModal').classList.remove('hidden');
 }
 
 function closeProcessConfirmationModal() {
     document.getElementById('processConfirmationModal').classList.add('hidden');
-    document.getElementById('inputUpDate').value = '';
-    document.getElementById('inputDownDate').value = '';
-    document.getElementById('inputTravelDate').value = '';
-    document.getElementById('inputRoute').value = '';
-    document.getElementById('inputAgent').value = '';
-    document.getElementById('inputReIssueCharge').value = '';
-    document.getElementById('inputFareDifference').value = '';
-    document.getElementById('inputOtherCosts').value = '';
-    document.getElementById('inputTotalCost').value = '';
-    document.getElementById('inputServiceCharge').value = '';
-    document.getElementById('inputTotalPayment').value = '';
-    document.getElementById('inputPaymentMethod').value = '';
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
-    document.getElementById('confirmButtons').classList.remove('hidden');
-    document.getElementById('holdButtons').classList.add('hidden');
+    currentTicketRequestId = null;
+}
+
+function applyRouteType() {
+    const rt = document.getElementById('inputRouteType').value;
+    document.getElementById('fieldUpDate').classList.toggle('hidden', rt === 'oneway_outbound');
+    document.getElementById('fieldDownDate').classList.toggle('hidden', rt === 'oneway_inbound');
 }
 
 function handlePaymentMethodChange() {
@@ -370,60 +496,108 @@ function holdProcess() {
 }
 
 function confirmProcess() {
-    const reIssueData = {
-        upDate: document.getElementById('inputUpDate').value,
-        downDate: document.getElementById('inputDownDate').value,
-        travelDate: document.getElementById('inputTravelDate').value,
-        route: document.getElementById('inputRoute').value,
-        agent: document.getElementById('inputAgent').value,
-        reIssueCharge: parseFloat(document.getElementById('inputReIssueCharge').value) || 0,
-        fareDifference: parseFloat(document.getElementById('inputFareDifference').value) || 0,
-        otherCosts: parseFloat(document.getElementById('inputOtherCosts').value) || 0,
-        totalCost: parseFloat(document.getElementById('inputTotalCost').value) || 0,
-        serviceCharge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
-        totalPayment: parseFloat(document.getElementById('inputTotalPayment').value) || 0,
-        paymentMethod: document.getElementById('inputPaymentMethod').value,
-        bankMethod: document.getElementById('inputBankMethod')?.value || '',
-        branch: document.getElementById('inputBranch')?.value || '',
+    if (!currentTicketRequestId) return;
+
+    const payload = {
+        reason_id: document.getElementById('inputReason').value,
+        ticket_fare_id: document.getElementById('inputTicketFare').value || selectedTicketFareId,
+        re_issue_charge: parseFloat(document.getElementById('inputReIssueCharge').value) || 0,
+        fare_difference: parseFloat(document.getElementById('inputFareDifference').value) || 0,
+        other_costs: parseFloat(document.getElementById('inputOtherCosts').value) || 0,
+        service_charge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
+        travel_date: document.getElementById('inputTravelDate').value || null,
+        inbound_date: document.getElementById('inputUpDate').value || null,
+        outbound_date: document.getElementById('inputDownDate').value || null,
+        ticket_agent_id: document.getElementById('inputAgent').value || null,
+        payment_method: document.getElementById('inputPaymentMethod').value || null,
+        bank_method: document.getElementById('inputBankMethod')?.value || null,
+        branch: document.getElementById('inputBranch')?.value || null,
     };
 
-    if (currentRequest && currentPassengerIndex !== null) {
-        const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-        const idx = requests.findIndex(r => r.id === currentRequest.id);
-        if (idx !== -1) {
-            requests[idx].passengers[currentPassengerIndex].reIssueData = reIssueData;
-            requests[idx].status = 'Processed';
-            localStorage.setItem('reIssueRequests', JSON.stringify(requests));
-            currentRequest = requests[idx];
-            renderConfirmation(currentRequest);
-        }
+    if (!payload.reason_id) {
+        showToast('Please select a reason', 'error');
+        return;
     }
 
-    showToast('Process confirmed successfully!', 'success');
-    closeProcessConfirmationModal();
+    if (!payload.ticket_fare_id) {
+        showToast('Please select a ticket', 'error');
+        return;
+    }
+
+    fetch('/ticket-requests/' + currentTicketRequestId + '/process-reissue', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Re-issue processed successfully!', 'success');
+            closeProcessConfirmationModal();
+            loadConfirmation();
+        } else {
+            showToast(data.message || 'Failed to process', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error processing request', 'error');
+    });
 }
 
-function rejectReIssue(passengerIndex) {
-    if (!currentRequest) return;
-    if (!confirm('Are you sure you want to reject this passenger\'s re-issue request?')) return;
+function rejectReIssue(ticketRequestId) {
+    if (!confirm('Are you sure you want to reject this ticket\'s re-issue request?')) return;
 
-    const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-    const idx = requests.findIndex(r => r.id === currentRequest.id);
-    if (idx !== -1) {
-        requests[idx].passengers.splice(passengerIndex, 1);
-        if (requests[idx].passengers.length === 0) {
-            requests[idx].status = 'Rejected';
+    fetch('/ticket-requests/' + ticketRequestId + '/reject', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Re-issue request rejected', 'info');
+            loadConfirmation();
+        } else {
+            showToast(data.message || 'Failed to reject', 'error');
         }
-        localStorage.setItem('reIssueRequests', JSON.stringify(requests));
-        currentRequest = requests[idx];
-        renderConfirmation(currentRequest);
-        showToast('Re-issue request rejected', 'info');
-    }
+    });
 }
 
 function showNotFound() {
     document.getElementById('confirmationContent').classList.add('hidden');
     document.getElementById('notFound').classList.remove('hidden');
+}
+
+function formatDate(val) {
+    if (!val) return '-';
+    const parts = val.split('T')[0].split('-');
+    if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    return val;
+}
+
+function formatRoute(route) {
+    if (!route) return '-';
+    const rt = route.route_type || '';
+    if (rt === 'multi_city' && route.multi_segments?.length) {
+        return route.multi_segments.map(s => (s.from_city?.code || '?') + '-' + (s.to_city?.code || '?')).join(', ');
+    }
+    const from = route.from_city?.code || '?';
+    const to = route.to_city?.code || '?';
+    const ret = route.return_city?.code || '';
+    if (rt === 'round' && ret) return from + '-' + to + '-' + ret;
+    return from + '-' + to;
 }
 
 function escapeHtml(str) {
@@ -440,7 +614,7 @@ function showToast(message, type = 'info') {
     toast.className = 'toast px-4 py-3 rounded-lg shadow-lg text-white ' + (
         type === 'success' ? 'bg-green-600' :
         type === 'error' ? 'bg-red-600' :
-        type === 'info' ? 'bg-slate-700' : 'bg-slate-700'
+        'bg-slate-700'
     );
     toast.textContent = message;
     container.appendChild(toast);

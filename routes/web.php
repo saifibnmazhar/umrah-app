@@ -95,6 +95,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/ticket-fares/baggage', [\App\Http\Controllers\TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
     Route::get('/api/ticket-fares/flight-date-gap', [\App\Http\Controllers\TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
     Route::patch('/ticket-fares/{ticketFare}/toggle-active', [\App\Http\Controllers\TicketFareController::class, 'toggleActive'])->name('ticket-fares.toggle-active')->middleware('role:Super Admin,Co Admin,Ticket Admin');
+    Route::get('/ticket-fares/options', [\App\Http\Controllers\TicketRequestController::class, 'ticketFares'])->name('ticket-fares.options');
     Route::resource('ticket-fares', \App\Http\Controllers\TicketFareController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('commission-agents', CommissionAgentController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('visa-agent-costs', VisaAgentCostController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
@@ -401,13 +402,28 @@ Route::middleware('auth')->group(function () {
     Route::resource('vouchers', VoucherController::class)->middleware('role:Super Admin,Co Admin');
     */
     Route::get('/invoices/{id}/print', fn($id) => view('invoices.print', compact('id')))->name('invoices.print');
-    Route::get('/re-issues/{id}/confirm', fn($id) => view('re-issues.confirmation', compact('id')))->name('re-issues.confirmation');
+    Route::get('/re-issues/{id}/confirm', function ($id) {
+        $bookingBranches = \App\Models\Booking::whereNotNull('booking_branch_id')
+            ->join('branches', 'branches.id', '=', 'bookings.booking_branch_id')
+            ->pluck('branches.name', 'bookings.id')
+            ->toArray();
+        return view('re-issues.confirmation', compact('id', 'bookingBranches'));
+    })->name('re-issues.confirmation');
     Route::get('/refunds/{id}/confirm', fn($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation');
     Route::get('/tickets', fn() => view('tickets.index'))->name('tickets.index')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/tickets/{id}/print', fn($id) => view('tickets.print', compact('id')))->name('tickets.print')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/tickets/{id}/add-confirm', fn($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
 
     Route::middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff')->group(function () {
+        Route::post('/ticket-requests', [\App\Http\Controllers\TicketRequestController::class, 'store'])->name('ticket-requests.store');
+        Route::put('/ticket-requests/{ticketRequest}/process-reissue', [\App\Http\Controllers\TicketRequestController::class, 'processReIssue'])->name('ticket-requests.process-reissue');
+        Route::put('/ticket-requests/{ticketRequest}/process-refund', [\App\Http\Controllers\TicketRequestController::class, 'processRefund'])->name('ticket-requests.process-refund');
+        Route::put('/ticket-requests/{ticketRequest}/process-additional', [\App\Http\Controllers\TicketRequestController::class, 'processAdditional'])->name('ticket-requests.process-additional');
+        Route::put('/ticket-requests/{ticketRequest}/reject', [\App\Http\Controllers\TicketRequestController::class, 'reject'])->name('ticket-requests.reject');
+        Route::get('/bookings/{booking}/ticket-requests', [\App\Http\Controllers\TicketRequestController::class, 'byBooking'])->name('ticket-requests.by-booking');
+        Route::get('/ticket-requests/reasons', [\App\Http\Controllers\TicketRequestController::class, 'reasons'])->name('ticket-requests.reasons');
+    Route::get('/ticket-requests/agents', [\App\Http\Controllers\TicketRequestController::class, 'agents'])->name('ticket-requests.agents');
+    Route::get('/ticket-requests/payment-methods', [\App\Http\Controllers\TicketRequestController::class, 'paymentMethods'])->name('ticket-requests.payment-methods');
         Route::post('/bookings/{booking}/passengers/{passenger}/ticket-issue', [TicketIssueController::class, 'issue'])
             ->name('bookings.passengers.ticket-issue');
         Route::put('/bookings/{booking}/passengers/{passenger}/ticket-edit', [TicketIssueController::class, 'edit'])

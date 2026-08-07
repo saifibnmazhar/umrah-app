@@ -535,7 +535,7 @@
             <div class="border border-slate-200 rounded-lg p-4">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <input type="checkbox" id="reIssue_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('reIssue_{{ $index }}', 'reIssueTicketList_{{ $index }}')">
+                        <input type="checkbox" id="reIssue_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('reIssue_{{ $index }}', 'reIssueTicketList_{{ $index }}')">
                         <label for="reIssue_{{ $index }}" class="font-medium text-slate-800 whitespace-nowrap">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
                     </div>
                 </div>
@@ -561,7 +561,7 @@
                     @endphp
                     <div class="border border-slate-100 rounded-lg p-3 mb-2">
                         <label for="reIssueTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer">
-                            <input type="checkbox" id="reIssueTicket_{{ $index }}_{{ $tIndex }}" data-ticket-number="{{ $ticket->ticket_number ?? '' }}" data-pnr="{{ $ticket->pnr ?? '' }}" data-route="{{ $tRoute }}" data-route-type="{{ $tRouteType }}" data-issue-type="{{ $ticket->issue_type }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueTicketFields('{{ $index }}', '{{ $tIndex }}')">
+                            <input type="checkbox" id="reIssueTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $ticket->ticket_number ?? '' }}" data-pnr="{{ $ticket->pnr ?? '' }}" data-route="{{ $tRoute }}" data-route-type="{{ $tRouteType }}" data-issue-type="{{ $ticket->issue_type }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueTicketFields('{{ $index }}', '{{ $tIndex }}')">
                             <span class="text-sm text-slate-700">
                                 <span class="font-medium">#{{ $loop->iteration }}</span>
                                 <span class="mx-1">|</span>
@@ -645,7 +645,7 @@
             @endphp
             <div class="border border-slate-200 rounded-lg p-4">
                 <div class="flex items-center gap-3">
-                    <input type="checkbox" id="refund_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleRefundFields('refund_{{ $index }}', 'refundTicketList_{{ $index }}')">
+                    <input type="checkbox" id="refund_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleRefundFields('refund_{{ $index }}', 'refundTicketList_{{ $index }}')">
                     <label for="refund_{{ $index }}" class="font-medium text-slate-800">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
                 </div>
                 <div id="refundTicketList_{{ $index }}" class="hidden mt-3 pl-7">
@@ -670,7 +670,7 @@
                     @endphp
                     <div class="border border-slate-100 rounded-lg p-3 mb-2">
                         <label for="refundTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer">
-                            <input type="checkbox" id="refundTicket_{{ $index }}_{{ $tIndex }}" data-ticket-number="{{ $ticket->ticket_number ?? '' }}" data-pnr="{{ $ticket->pnr ?? '' }}" data-route="{{ $tRoute }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded">
+                            <input type="checkbox" id="refundTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $ticket->ticket_number ?? '' }}" data-pnr="{{ $ticket->pnr ?? '' }}" data-route="{{ $tRoute }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded">
                             <span class="text-sm text-slate-700">
                                 <span class="font-medium">#{{ $loop->iteration }}</span>
                                 <span class="mx-1">|</span>
@@ -734,7 +734,7 @@
             <div class="border border-slate-200 rounded-lg p-4">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <input type="checkbox" id="addTicket_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('addTicket_{{ $index }}', 'addTicketFields_{{ $index }}')">
+                        <input type="checkbox" id="addTicket_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('addTicket_{{ $index }}', 'addTicketFields_{{ $index }}')">
                         <label for="addTicket_{{ $index }}" class="font-medium text-slate-800 whitespace-nowrap">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
                     </div>
                     <div id="addTicketFields_{{ $index }}" class="hidden flex items-center gap-3">
@@ -1289,16 +1289,18 @@ function submitReIssueRequest() {
                 if (!tcb.checked) return;
                 const tIndex = tcb.id.replace('reIssueTicket_' + pIndex + '_', '');
                 tickets.push({
-                    ticketNumber: tcb.dataset.ticketNumber || '',
+                    issued_ticket_id: parseInt(tcb.dataset.issuedTicketId) || null,
+                    ticket_number: tcb.dataset.ticketNumber || '',
                     pnr: tcb.dataset.pnr || '',
                     route: tcb.dataset.route || '',
-                    routeType: tcb.dataset.routeType || '',
-                    probableDateUp: document.getElementById('probableDateUpInput_' + pIndex + '_' + tIndex)?.value || '',
-                    probableDateDown: document.getElementById('probableDateDownInput_' + pIndex + '_' + tIndex)?.value || '',
-                    visaExpiry: document.getElementById('visaExpiryInput_' + pIndex + '_' + tIndex)?.value || '',
+                    route_type: tcb.dataset.routeType || '',
+                    probable_date_up: document.getElementById('probableDateUpInput_' + pIndex + '_' + tIndex)?.value || '',
+                    probable_date_down: document.getElementById('probableDateDownInput_' + pIndex + '_' + tIndex)?.value || '',
+                    visa_expiry: document.getElementById('visaExpiryInput_' + pIndex + '_' + tIndex)?.value || '',
                 });
             });
             selectedPassengers.push({
+                passenger_id: parseInt(checkbox.dataset.passengerId),
                 name: checkbox.dataset.name,
                 passport: checkbox.dataset.passport,
                 tickets: tickets,
@@ -1311,21 +1313,32 @@ function submitReIssueRequest() {
         return;
     }
 
-    const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-    requests.push({
-        id: Date.now(),
-        invoiceId: {{ $booking->id }},
-        invoiceNo: @json($booking->invoice_id ?? ''),
-        customerName: @json($booking->customer->name ?? ''),
-        passengers: selectedPassengers,
-        status: 'Pending',
-        requestedAt: new Date().toISOString(),
+    fetch('{{ route("ticket-requests.store") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            request_type: 're_issue',
+            booking_id: {{ $booking->id }},
+            passengers: selectedPassengers,
+        }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Re-issue request submitted successfully!', 'success');
+            closeReIssueModal();
+            window.location.href = '/re-issues/' + data.booking_id + '/confirm';
+        } else {
+            showToast(data.message || 'Failed to submit request', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error submitting request', 'error');
     });
-    localStorage.setItem('reIssueRequests', JSON.stringify(requests));
-
-    showToast('Re-issue request submitted successfully!', 'success');
-    closeReIssueModal();
-    renderReissueHistory();
 }
 
 function openReissueDetails(requestId) {
@@ -1371,43 +1384,33 @@ function renderReissueHistory() {
     const emptyEl = document.getElementById('reissueHistoryEmpty');
     if (!tbody) return;
 
-    const allRequests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-    const bookingRequests = allRequests.filter(r => r.invoiceId === {{ $booking->id }});
-
-    if (bookingRequests.length === 0) {
+    fetch('/bookings/{{ $booking->id }}/ticket-requests?type=re_issue', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    })
+    .then(res => res.json())
+    .then(requests => {
+        if (!requests.length) {
+            tbody.innerHTML = '';
+            if (emptyEl) emptyEl.classList.remove('hidden');
+            return;
+        }
+        if (emptyEl) emptyEl.classList.add('hidden');
         tbody.innerHTML = '';
-        if (emptyEl) emptyEl.classList.remove('hidden');
-        return;
-    }
-
-    if (emptyEl) emptyEl.classList.add('hidden');
-    tbody.innerHTML = '';
-
-    bookingRequests.forEach((request) => {
-        request.passengers.forEach((p) => {
-            let statusBadge = '';
-            switch(request.status) {
-                case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
-                case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
-                case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
-                default: statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>';
-            }
-
+        requests.forEach(r => {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50';
+            const p = r.passenger || {};
+            const statusMap = { pending: 'Pending', processed: 'Processed', rejected: 'Rejected' };
+            const badgeClass = r.status === 'processed' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
             tr.innerHTML = `
-                <td class="px-3 py-2 text-slate-600">${new Date(request.requestedAt).toLocaleDateString('en-CA')}</td>
-                <td class="px-3 py-2 text-slate-800">${escapeHtml(p.name)}</td>
-                <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport)}</td>
-                <td class="px-3 py-2 text-slate-600">-</td>
-                <td class="px-3 py-2 text-slate-800">-</td>
-                <td class="px-3 py-2 text-slate-800 text-right font-medium">-</td>
-                <td class="px-3 py-2 text-slate-800 text-right font-medium">-</td>
-                <td class="px-3 py-2 text-green-600 text-right font-medium">-</td>
-                <td class="px-3 py-2 text-slate-600">-</td>
-                <td class="px-3 py-2">${statusBadge}</td>
+                <td class="px-3 py-2 text-slate-600">${r.requested_at ? new Date(r.requested_at).toLocaleDateString('en-CA') : '-'}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport_no || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.issued_ticket ? r.issued_ticket.ticket_number || '-' : '-')}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${escapeHtml(r.issued_ticket ? r.issued_ticket.pnr || '-' : '-')}</td>
+                <td class="px-3 py-2"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusMap[r.status] || r.status}</span></td>
                 <td class="px-3 py-2">
-                    <button onclick="openReissueDetails(${request.id})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
+                    <a href="/re-issues/${r.booking_id}/confirm" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</a>
                 </td>
             `;
             tbody.appendChild(tr);
@@ -1468,12 +1471,13 @@ function submitAddTicketRequest() {
         if (checkbox && checkbox.checked) {
             foundChecked = true;
             selectedPassengers.push({
+                passenger_id: parseInt(checkbox.dataset.passengerId),
                 name: checkbox.dataset.name,
                 passport: checkbox.dataset.passport,
-                ticketOption: document.getElementById('addTicketOption_' + pIndex)?.value || '',
-                probableDateUp: document.getElementById('addTicketProbableDateUpInput_' + pIndex)?.value || '',
-                probableDateDown: document.getElementById('addTicketProbableDateDownInput_' + pIndex)?.value || '',
-                visaExpiry: document.getElementById('addTicketVisaExpiryInput_' + pIndex)?.value || '',
+                ticket_option: document.getElementById('addTicketOption_' + pIndex)?.value || '',
+                probable_date_up: document.getElementById('addTicketProbableDateUpInput_' + pIndex)?.value || '',
+                probable_date_down: document.getElementById('addTicketProbableDateDownInput_' + pIndex)?.value || '',
+                visa_expiry: document.getElementById('addTicketVisaExpiryInput_' + pIndex)?.value || '',
             });
         }
     });
@@ -1483,27 +1487,32 @@ function submitAddTicketRequest() {
         return;
     }
 
-    const requests = JSON.parse(localStorage.getItem('addTicketRequests') || '[]');
-    requests.push({
-        id: Date.now(),
-        invoiceId: {{ $booking->id }},
-        invoiceNo: @json($booking->invoice_id ?? ''),
-        customerName: @json($booking->customer->name ?? ''),
-        passengers: selectedPassengers,
-        status: 'Pending',
-        paymentMethod: '-',
-        additionalTicketCost: 0,
-        customerPayment: 0,
-        profit: 0,
-        pnr: '-',
-        agent: '-',
-        requestedAt: new Date().toISOString(),
+    fetch('{{ route("ticket-requests.store") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            request_type: 'additional',
+            booking_id: {{ $booking->id }},
+            passengers: selectedPassengers,
+        }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Additional ticket request submitted successfully!', 'success');
+            closeAddTicketModal();
+            window.location.href = '/tickets/' + data.booking_id + '/add-confirm';
+        } else {
+            showToast(data.message || 'Failed to submit request', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error submitting request', 'error');
     });
-    localStorage.setItem('addTicketRequests', JSON.stringify(requests));
-
-    showToast('Additional ticket request submitted successfully!', 'success');
-    closeAddTicketModal();
-    renderAdditionalTicketHistory();
 }
 
 function toggleRefundFields(checkboxId, ticketListId) {
@@ -1547,12 +1556,14 @@ function submitRefundRequest() {
             row.querySelectorAll('input[type="checkbox"][id^="refundTicket_"]').forEach(tcb => {
                 if (!tcb.checked) return;
                 tickets.push({
-                    ticketNumber: tcb.dataset.ticketNumber || '',
+                    issued_ticket_id: parseInt(tcb.dataset.issuedTicketId) || null,
+                    ticket_number: tcb.dataset.ticketNumber || '',
                     pnr: tcb.dataset.pnr || '',
                     route: tcb.dataset.route || '',
                 });
             });
             selectedPassengers.push({
+                passenger_id: parseInt(checkbox.dataset.passengerId),
                 name: checkbox.dataset.name,
                 passport: checkbox.dataset.passport,
                 tickets: tickets,
@@ -1570,29 +1581,32 @@ function submitRefundRequest() {
         return;
     }
 
-    const firstTicket = selectedPassengers.find(p => p.tickets.length)?.tickets[0];
-
-    const requests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-    requests.push({
-        id: Date.now(),
-        invoiceId: {{ $booking->id }},
-        invoiceNo: @json($booking->invoice_id ?? ''),
-        customerName: @json($booking->customer->name ?? ''),
-        passengers: selectedPassengers,
-        status: 'Pending',
-        paymentMethod: '-',
-        agentRefund: 0,
-        customerRefund: 0,
-        profit: 0,
-        pnr: firstTicket?.pnr || '-',
-        agent: '-',
-        requestedAt: new Date().toISOString(),
+    fetch('{{ route("ticket-requests.store") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            request_type: 'refund',
+            booking_id: {{ $booking->id }},
+            passengers: selectedPassengers,
+        }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Refund request submitted successfully!', 'success');
+            closeRefundModal();
+            window.location.href = '/refunds/' + data.booking_id + '/confirm';
+        } else {
+            showToast(data.message || 'Failed to submit request', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error submitting request', 'error');
     });
-    localStorage.setItem('refundRequests', JSON.stringify(requests));
-
-    showToast('Refund request submitted successfully!', 'success');
-    closeRefundModal();
-    renderRefundHistory();
 }
 
 function renderRefundHistory() {
@@ -1600,64 +1614,40 @@ function renderRefundHistory() {
     const emptyEl = document.getElementById('refundHistoryEmpty');
     if (!tbody) return;
 
-    let allRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-
-    if (allRequests.length === 0) {
-        const seedData = [
-            { id: 'seed_1', date: '2026-03-22', passengerName: 'Rahim Uddin', passport: 'P3344556', pnr: 'STU901', agent: 'Al-Reem', agentRefund: 400, customerRefund: 450, profit: 50, paymentMethod: 'Bank', status: 'Approved' },
-            { id: 'seed_2', date: '2026-03-19', passengerName: 'Nadia Islam', passport: 'P7788990', pnr: 'VWX234', agent: 'Nasser', agentRefund: 550, customerRefund: 600, profit: 50, paymentMethod: 'Cash', status: 'Pending' },
-            { id: 'seed_3', date: '2026-03-16', passengerName: 'Karim Hussein', passport: 'P1122445', pnr: 'YZA567', agent: 'Al-Masria', agentRefund: 300, customerRefund: 300, profit: 0, paymentMethod: 'Bank', status: 'Rejected' },
-            { id: 'seed_4', date: '2026-03-12', passengerName: 'Laila Mohamed', passport: 'P6677889', pnr: 'BCD890', agent: 'Umrah Plus', agentRefund: 700, customerRefund: 800, profit: 100, paymentMethod: 'Bank', status: 'Approved' },
-            { id: 'seed_5', date: '2026-03-08', passengerName: 'Tariq Ahmed', passport: 'P9900112', pnr: 'EFG123', agent: 'Al-Reem', agentRefund: 500, customerRefund: 550, profit: 50, paymentMethod: 'Cash', status: 'Approved' },
-            { id: 'seed_6', date: '2026-03-01', passengerName: 'Sabrina Khan', passport: 'P2233445', pnr: 'HIJ456', agent: 'Nasser', agentRefund: 650, customerRefund: 650, profit: 0, paymentMethod: 'Bank', status: 'Pending' },
-        ];
-
-        const refundRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-        if (refundRequests.length === 0) {
-            allRequests = seedData;
-            localStorage.setItem('refundRequests_seed', JSON.stringify(seedData));
+    fetch('/bookings/{{ $booking->id }}/ticket-requests?type=refund', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    })
+    .then(res => res.json())
+    .then(requests => {
+        if (!requests.length) {
+            tbody.innerHTML = '';
+            if (emptyEl) emptyEl.classList.remove('hidden');
+            return;
         }
-    }
-
-    const bookingRequests = allRequests.filter(r => r.invoiceId === {{ $booking->id }} || !r.invoiceId);
-
-    if (bookingRequests.length === 0) {
+        if (emptyEl) emptyEl.classList.add('hidden');
         tbody.innerHTML = '';
-        if (emptyEl) emptyEl.classList.remove('hidden');
-        return;
-    }
-
-    if (emptyEl) emptyEl.classList.add('hidden');
-    const fmt = (val) => typeof Alpine !== 'undefined' ? Alpine.store('currency').format(val, 2, window.__bookingServerData?.currentCurrencyRate || 0) : (val || 0).toFixed(2);
-    tbody.innerHTML = '';
-
-    bookingRequests.forEach((item, index) => {
-        let statusBadge = '';
-        switch(item.status) {
-            case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
-            case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
-            case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
-            default: statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">' + item.status + '</span>';
-        }
-
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50';
-        tr.innerHTML = `
-            <td class="px-3 py-2 text-slate-600">${item.date || new Date(item.requestedAt).toLocaleDateString('en-CA')}</td>
-            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.passengerName || item.passengers?.[0]?.name || '-')}</td>
-            <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
-            <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
-            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.agentRefund || 0)}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.customerRefund || 0)}</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${fmt(item.profit || 0)}</td>
-            <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
-            <td class="px-3 py-2">${statusBadge}</td>
-            <td class="px-3 py-2">
-                <button onclick="openRefundDetails(${item.id || index})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
+        requests.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50';
+            const p = r.passenger || {};
+            const statusMap = { pending: 'Pending', processed: 'Processed', rejected: 'Rejected' };
+            const badgeClass = r.status === 'processed' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+            tr.innerHTML = `
+                <td class="px-3 py-2 text-slate-600">${r.requested_at ? new Date(r.requested_at).toLocaleDateString('en-CA') : '-'}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport_no || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.issued_ticket ? r.issued_ticket.pnr || '-' : '-')}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">-</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">-</td>
+                <td class="px-3 py-2 text-green-600 text-right font-medium">-</td>
+                <td class="px-3 py-2 text-slate-600">-</td>
+                <td class="px-3 py-2"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusMap[r.status] || r.status}</span></td>
+                <td class="px-3 py-2">
+                    <a href="/refunds/${r.booking_id}/confirm" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</a>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
     });
 }
 
@@ -1725,62 +1715,38 @@ function renderAdditionalTicketHistory() {
     const emptyEl = document.getElementById('additionalTicketHistoryEmpty');
     if (!tbody) return;
 
-    let allRequests = JSON.parse(localStorage.getItem('addTicketRequests') || '[]');
-
-    if (allRequests.length === 0) {
-        const seedData = [
-            { id: 'at_seed_1', date: '2026-03-25', passengerName: 'Ahmed Hassan', passport: 'P1234567', pnr: 'ABC123', agent: 'Al-Reem', additionalTicketCost: 450, customerPayment: 500, profit: 50, paymentMethod: 'Bank', status: 'Approved' },
-            { id: 'at_seed_2', date: '2026-03-22', passengerName: 'Fatima Rahman', passport: 'P7654321', pnr: 'DEF456', agent: 'Nasser', additionalTicketCost: 600, customerPayment: 650, profit: 50, paymentMethod: 'Cash', status: 'Pending' },
-            { id: 'at_seed_3', date: '2026-03-18', passengerName: 'Mohammed Ali', passport: 'P1122334', pnr: 'GHI789', agent: 'Al-Masria', additionalTicketCost: 350, customerPayment: 350, profit: 0, paymentMethod: 'Bank', status: 'Approved' },
-            { id: 'at_seed_4', date: '2026-03-14', passengerName: 'Sara Ahmed', passport: 'P9988776', pnr: 'JKL012', agent: 'Umrah Plus', additionalTicketCost: 800, customerPayment: 900, profit: 100, paymentMethod: 'Bank', status: 'Pending' },
-        ];
-
-        const addTicketRequests = JSON.parse(localStorage.getItem('addTicketRequests') || '[]');
-        if (addTicketRequests.length === 0) {
-            allRequests = seedData;
-            localStorage.setItem('addTicketRequests_seed', JSON.stringify(seedData));
+    fetch('/bookings/{{ $booking->id }}/ticket-requests?type=additional', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    })
+    .then(res => res.json())
+    .then(requests => {
+        if (!requests.length) {
+            tbody.innerHTML = '';
+            if (emptyEl) emptyEl.classList.remove('hidden');
+            return;
         }
-    }
-
-    const bookingRequests = allRequests.filter(r => r.invoiceId === {{ $booking->id }} || !r.invoiceId);
-
-    if (bookingRequests.length === 0) {
+        if (emptyEl) emptyEl.classList.add('hidden');
         tbody.innerHTML = '';
-        if (emptyEl) emptyEl.classList.remove('hidden');
-        return;
-    }
-
-    if (emptyEl) emptyEl.classList.add('hidden');
-    const fmt = (val) => typeof Alpine !== 'undefined' ? Alpine.store('currency').format(val, 2, window.__bookingServerData?.currentCurrencyRate || 0) : (val || 0).toFixed(2);
-    tbody.innerHTML = '';
-
-    bookingRequests.forEach((item, index) => {
-        let statusBadge = '';
-        switch(item.status) {
-            case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
-            case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
-            case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
-            default: statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">' + item.status + '</span>';
-        }
-
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50';
-        tr.innerHTML = `
-            <td class="px-3 py-2 text-slate-600">${item.date || new Date(item.requestedAt).toLocaleDateString('en-CA')}</td>
-            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.passengerName || item.passengers?.[0]?.name || '-')}</td>
-            <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
-            <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
-            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.additionalTicketCost || 0)}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.customerPayment || 0)}</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${fmt(item.profit || 0)}</td>
-            <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
-            <td class="px-3 py-2">${statusBadge}</td>
-            <td class="px-3 py-2">
-                <button onclick="openAddTicketDetails(${item.id || index})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
+        requests.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50';
+            const p = r.passenger || {};
+            const statusMap = { pending: 'Pending', processed: 'Processed', rejected: 'Rejected' };
+            const badgeClass = r.status === 'processed' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+            tr.innerHTML = `
+                <td class="px-3 py-2 text-slate-600">${r.requested_at ? new Date(r.requested_at).toLocaleDateString('en-CA') : '-'}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport_no || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.ticket_option || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${r.probable_date_up ? new Date(r.probable_date_up).toLocaleDateString('en-CA') : '-'}</td>
+                <td class="px-3 py-2 text-slate-600">${r.probable_date_down ? new Date(r.probable_date_down).toLocaleDateString('en-CA') : '-'}</td>
+                <td class="px-3 py-2"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusMap[r.status] || r.status}</span></td>
+                <td class="px-3 py-2">
+                    <a href="/tickets/${r.booking_id}/add-confirm" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</a>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
     });
 }
 

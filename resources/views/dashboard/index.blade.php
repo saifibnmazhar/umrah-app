@@ -33,11 +33,9 @@ $stats = [
     'departureDone' => 50,
     'departureStay' => 30,
 ];
-$reissueRequests = [
-    ['id' => 1, 'invoiceId' => 1001, 'invoiceNo' => 'INV-2024-001', 'branch' => 'Riyadh', 'passengers' => ['count' => 2]],
-];
-$addTicketRequests = [];
-$refundRequests = [];
+$reissueRequests = $pendingReIssueRequests ?? collect();
+$addTicketRequests = $pendingAdditionalRequests ?? collect();
+$refundRequests = $pendingRefundRequests ?? collect();
 @endphp
 <div class="max-w-7xl mx-auto pt-6">
     <section class="mb-8">
@@ -495,54 +493,51 @@ $refundRequests = [];
         </div>
 
         <div x-show="activeTab === 'reissue'" class="space-y-3">
-            {{-- @forelse($reissueRequests ?? [] as $request)  --}}
-            {{-- <a href="{{ route('re-issues.confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-blue-500">
+            @forelse($reissueRequests as $request)
+            <a href="{{ route('re-issues.confirmation', $request['booking_id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-blue-500">
                 <div class="flex justify-between items-center">
                     <div>
-                        <span class="font-medium text-slate-800">Invoice ID: {{ $request['invoiceId'] }}</span>
-                        <span class="text-slate-500 text-sm ml-2">({{ $request['invoiceNo'] }}{{ isset($request['branch']) ? ' • ' . $request['branch'] : '' }})</span>
+                        <span class="font-bold text-slate-800">{{ $request['invoice_no'] }}</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm text-slate-500">{{ $request['passengers']['count'] ?? 1 }} passenger(s)</span>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm text-slate-500">{{ $request['branch'] }}</span>
+                        <span class="text-sm text-slate-500">{{ $request['passenger_count'] }} passenger(s)</span>
                     </div>
                 </div>
-            </a> --}}
-            {{-- @empty --}}
+            </a>
+            @empty
             <div class="text-center py-8 text-slate-500">No pending re-issue requests</div>
-            {{-- @endforelse --}}
+            @endforelse
         </div>
 
-        <div x-show="activeTab === 'addticket'" class="space-y-3" style="display: none;">
-            @forelse($addTicketRequests ?? [] as $request)
-            <a href="{{ route('tickets.add-confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-purple-500">
+        <div x-show="activeTab === 'addticket'" class="space-y-3">
+            @forelse($addTicketRequests as $request)
+            <a href="{{ route('tickets.add-confirmation', $request['booking_id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-purple-500">
                 <div class="flex justify-between items-center">
                     <div>
-                        <span class="font-medium text-slate-800">Invoice ID: {{ $request['invoiceId'] }}</span>
-                        <span class="text-slate-500 text-sm ml-2">({{ $request['invoiceNo'] }}{{ isset($request['branch']) ? ' • ' . $request['branch'] : '' }})</span>
+                        <span class="font-bold text-slate-800">{{ $request['invoice_no'] }}</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm text-slate-500">{{ $request['passengers']['count'] ?? 1 }} passenger(s)</span>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm text-slate-500">{{ $request['branch'] }}</span>
+                        <span class="text-sm text-slate-500">{{ $request['passenger_count'] }} passenger(s)</span>
                     </div>
                 </div>
-            </a> 
+            </a>
             @empty
             <div class="text-center py-8 text-slate-500">No pending additional ticket requests</div>
             @endforelse
         </div>
 
-        <div x-show="activeTab === 'refund'" class="space-y-3" style="display: none;">
-            @forelse($refundRequests ?? [] as $request)
-            <a href="{{ route('refunds.confirmation', $request['id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-orange-500">
+        <div x-show="activeTab === 'refund'" class="space-y-3">
+            @forelse($refundRequests as $request)
+            <a href="{{ route('refunds.confirmation', $request['booking_id']) }}" class="block bg-white rounded-lg shadow p-4 hover:bg-slate-50 transition border-l-4 border-orange-500">
                 <div class="flex justify-between items-center">
                     <div>
-                        <span class="font-medium text-slate-800">Invoice ID: {{ $request['invoiceId'] }}</span>
-                        <span class="text-slate-500 text-sm ml-2">({{ $request['invoiceNo'] }}{{ isset($request['branch']) ? ' • ' . $request['branch'] : '' }})</span>
+                        <span class="font-bold text-slate-800">{{ $request['invoice_no'] }}</span>
                     </div>
-                    <div class="flex items-center gap-2">
-                        <span class="text-sm text-slate-500">{{ $request['passengers']['count'] ?? 1 }} passenger(s)</span>
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>
+                    <div class="flex items-center gap-4">
+                        <span class="text-sm text-slate-500">{{ $request['branch'] }}</span>
+                        <span class="text-sm text-slate-500">{{ $request['passenger_count'] }} passenger(s)</span>
                     </div>
                 </div>
             </a>
@@ -554,3 +549,14 @@ $refundRequests = [];
     @endif
 </div>
 @endsection
+
+@push('scripts')
+<script>
+function escapeHtml(str) {
+    if (!str) return '';
+    const div = document.createElement('div');
+    div.textContent = str;
+    return div.innerHTML;
+}
+</script>
+@endpush
