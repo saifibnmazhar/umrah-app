@@ -282,13 +282,30 @@
             <input type="hidden" name="discount_type" :value="bookingData.discount_type">
             <input type="hidden" name="discount_value" :value="bookingData.discount_value">
 
+            <div x-show="isSubmitting" x-cloak class="mb-4">
+                <div class="flex items-center justify-between mb-1">
+                    <span class="text-sm text-slate-600 font-medium">Submitting booking, please wait…</span>
+                    <span class="text-xs text-slate-500">This may take a few moments</span>
+                </div>
+                <div class="h-2 bg-slate-200 rounded-full overflow-hidden">
+                    <div class="h-full bg-slate-700 rounded-full animate-pulse" style="width: 100%"></div>
+                </div>
+            </div>
+
             <div class="flex justify-end gap-3 pt-6 border-t border-slate-200">
                 <button type="submit"
-                    class="w-64 px-8 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium"
-                    :disabled="(!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0)"
-                    :class="(!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0) ? 'opacity-50 cursor-not-allowed' : ''"
-                    :title="(!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0) ? 'Please save payment first' : ''"
-                >Submit</button>
+                    class="w-64 px-8 py-3 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium inline-flex items-center justify-center gap-2"
+                    :disabled="isSubmitting || (!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0)"
+                    :class="(isSubmitting || (!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0)) ? 'opacity-50 cursor-not-allowed' : ''"
+                    :title="isSubmitting ? 'Submitting...' : ((!paymentSaved || (parseFloat(paymentData.amount_sar) || 0) <= 0) ? 'Please save payment first' : '')"
+                >
+                    <svg x-show="isSubmitting" class="animate-spin h-5 w-5 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                        <circle class="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" stroke-width="4"></circle>
+                        <path class="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    <span x-show="isSubmitting" x-cloak>Submitting…</span>
+                    <span x-show="!isSubmitting">Submit</span>
+                </button>
                 <button type="button" @click="clearForm()" class="px-6 py-3 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Clear</button>
                 <a href="{{ route('bookings.index') }}" class="px-6 py-3 border border-slate-300 text-slate-600 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</a>
             </div>

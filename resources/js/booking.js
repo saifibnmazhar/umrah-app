@@ -838,6 +838,7 @@ Alpine.data('createBookingApp', () => ({
         amount_bdt: ''
     },
     paymentSaved: false,
+    isSubmitting: false,
     paymentMaxAmount: 0,
     exchangeRate: window.__bookingServerData?.currentCurrencyRate || 0,
     userBranchLocation: window.__bookingServerData?.userBranchLocation || null,
@@ -2285,6 +2286,8 @@ Alpine.data('createBookingApp', () => ({
             return;
         }
 
+        this.isSubmitting = true;
+
         const formData = new FormData(e.target);
 
         if (this.passengerFiles) {
@@ -2342,6 +2345,9 @@ Alpine.data('createBookingApp', () => ({
         .catch(err => {
             console.error('Submit error:', err);
             alert('An error occurred while submitting the form. Please check the console for details.');
+        })
+        .finally(() => {
+            this.isSubmitting = false;
         });
     },
 
