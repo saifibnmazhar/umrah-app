@@ -1,6 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Create Booking')
 @section('content')
+@php $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty(); @endphp
 <script>window.__bookingServerData = { 
     ticketFares: @json($ticketFares ?? []), 
     packages: @json($packages ?? []), 
@@ -241,7 +242,9 @@
                 <div class="flex justify-between items-center mb-4">
                     <h3 class="text-lg font-semibold text-slate-700">Summary Card</h3>
                     <div class="flex gap-2">
+                        @if($canApplyDiscount)
                         <button type="button" @click="openDiscountModal()" class="text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>
+                        @endif
                     </div>
                 </div>
                 <div class="flex justify-between text-sm text-slate-500 mb-2">
@@ -294,6 +297,7 @@
 
     @include('partials.passenger-form-modal')
 
+    @if($canApplyDiscount)
     <div x-show="discountModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
         <div class="fixed inset-0 bg-black/50" @click="closeDiscountModal()"></div>
         <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
@@ -341,6 +345,7 @@
             </div>
         </div>
     </div>
+    @endif
 
     <div x-show="paymentModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
         <div class="fixed inset-0 bg-black/50" @click="closePaymentModal()"></div>
