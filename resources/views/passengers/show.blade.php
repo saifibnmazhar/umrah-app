@@ -275,7 +275,7 @@
                     <div class="flex justify-between items-center mb-3 pb-2 border-b border-slate-200">
                         <h3 class="text-sm font-medium text-slate-500">Documents</h3>
                         <div class="flex gap-2">
-                            <button onclick="document.getElementById('passenger_doc_input').click()" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">Upload</button>
+                            <button id="passengerDocUploadBtn" onclick="document.getElementById('passenger_doc_input').click()" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">Upload</button>
                             @if($passenger->documents->count() > 0)
                             <button onclick="downloadAllDocuments()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
                             @endif
@@ -283,6 +283,14 @@
                     </div>
                     <input type="file" id="passenger_doc_input" class="hidden" accept=".pdf,.jpg,.jpeg,.png" multiple onchange="handleDocumentUpload(this)">
                     <p class="text-xs text-slate-400 mt-1">Max 5 MB per file, 20 MB total. Allowed: PDF, JPG, PNG</p>
+                    <div id="documents_upload_progress" class="mb-3" style="display:none;">
+                        <div class="flex items-center justify-between mb-1">
+                            <span class="text-xs text-slate-600 font-medium">Uploading documents…</span>
+                        </div>
+                        <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                            <div class="h-full bg-blue-600 rounded-full animate-pulse" style="width:100%"></div>
+                        </div>
+                    </div>
                     <div id="documents_list" class="space-y-2">
                         @forelse($passenger->documents as $doc)
                         <div class="flex items-center justify-between bg-white rounded px-3 py-2 border border-slate-200">
@@ -522,6 +530,14 @@ function handleDocumentUpload(input) {
     const files = input.files;
     if (!files || files.length === 0) return;
 
+    const uploadBtn = document.getElementById('passengerDocUploadBtn');
+    if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    const progressEl = document.getElementById('documents_upload_progress');
+    if (progressEl) progressEl.style.display = 'block';
+
     const formData = new FormData();
     Array.from(files).forEach(file => {
         formData.append('files[]', file);
@@ -572,6 +588,13 @@ function handleDocumentUpload(input) {
     .catch(error => {
         console.error('Error:', error);
         alert('Failed to upload documents');
+    })
+    .finally(() => {
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        if (progressEl) progressEl.style.display = 'none';
     });
 }
 

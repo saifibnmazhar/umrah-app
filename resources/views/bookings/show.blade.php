@@ -164,8 +164,16 @@
                     <div class="flex gap-2">
                         <input type="file" id="customerDocInput" class="hidden" accept=".pdf,image/*" multiple onchange="handleCustomerDocSelect(event)">
                         <p class="text-xs text-slate-400 mr-auto self-end">Max 5 MB per file, 20 MB total</p>
-                        <button onclick="document.getElementById('customerDocInput').click()" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">Upload</button>
+                        <button id="customerDocUploadBtn" onclick="document.getElementById('customerDocInput').click()" class="px-3 py-1 bg-blue-600 text-white rounded hover:bg-blue-700 text-xs font-medium">Upload</button>
                         <button onclick="downloadAllCustomerDocs()" class="px-3 py-1 bg-green-600 text-white rounded hover:bg-green-700 text-xs font-medium">Download All</button>
+                    </div>
+                </div>
+                <div id="customerDocProgress" class="mb-3" style="display:none;">
+                    <div class="flex items-center justify-between mb-1">
+                        <span class="text-xs text-slate-600 font-medium">Uploading documents…</span>
+                    </div>
+                    <div class="h-1.5 bg-slate-200 rounded-full overflow-hidden">
+                        <div class="h-full bg-blue-600 rounded-full animate-pulse" style="width:100%"></div>
                     </div>
                 </div>
                 <div id="customerDocumentsList" class="space-y-3 overflow-y-auto" style="max-height: 16rem;">
@@ -1693,6 +1701,14 @@ function handleCustomerDocSelect(event) {
     const files = input.files;
     if (files.length === 0) return;
 
+    const uploadBtn = document.getElementById('customerDocUploadBtn');
+    if (uploadBtn) {
+        uploadBtn.disabled = true;
+        uploadBtn.classList.add('opacity-50', 'cursor-not-allowed');
+    }
+    const progressEl = document.getElementById('customerDocProgress');
+    if (progressEl) progressEl.style.display = 'block';
+
     const formData = new FormData();
     for (let i = 0; i < files.length; i++) {
         formData.append('documents[]', files[i]);
@@ -1733,6 +1749,13 @@ function handleCustomerDocSelect(event) {
     })
     .catch(error => {
         showToast('Upload error: ' + error.message, 'error');
+    })
+    .finally(() => {
+        if (uploadBtn) {
+            uploadBtn.disabled = false;
+            uploadBtn.classList.remove('opacity-50', 'cursor-not-allowed');
+        }
+        if (progressEl) progressEl.style.display = 'none';
     });
 }
 
