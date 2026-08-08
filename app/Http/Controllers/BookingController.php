@@ -751,6 +751,8 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
+        \App\Support\DiagnosticLogger::arrival($request, 'bookings.store');
+
         $validator = \Validator::make($request->all(), [
             'customer_id' => 'required|exists:customers,id',
             'district_id' => 'required|exists:districts,id',

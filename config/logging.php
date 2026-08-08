@@ -73,6 +73,14 @@ return [
             'replace_placeholders' => true,
         ],
 
+        'diag' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/diag.log'),
+            'level' => 'debug',
+            'days' => env('DIAG_LOG_DAYS', 14),
+            'replace_placeholders' => true,
+        ],
+
         'slack' => [
             'driver' => 'slack',
             'url' => env('LOG_SLACK_WEBHOOK_URL'),

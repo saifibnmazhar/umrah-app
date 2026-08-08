@@ -538,14 +538,51 @@ function handleDocumentUpload(input) {
     const progressEl = document.getElementById('documents_upload_progress');
     if (progressEl) progressEl.style.display = 'block';
 
+    const diagId = (crypto.randomUUID && crypto.randomUUID()) || (Date.now().toString(36) + Math.random().toString(36).slice(2));
+
     const formData = new FormData();
+    let fileCount = 0, fileBytes = 0;
     Array.from(files).forEach(file => {
         formData.append('files[]', file);
+        fileCount++;
+        fileBytes += file.size;
     });
+
+    const startTime = Date.now();
+    const diag = (type, extra = {}) => {
+        try {
+            fetch('/diagnostics/upload-failure', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'Accept': 'application/json',
+                    'X-CSRF-TOKEN': csrfToken,
+                    'X-Requested-With': 'XMLHttpRequest',
+                    'X-Diag-Id': diagId,
+                },
+                body: JSON.stringify(Object.assign({
+                    type,
+                    diag_id: diagId,
+                    path: window.location.pathname,
+                    passenger_id: passengerId,
+                    elapsed_ms: Date.now() - startTime,
+                    bytes: fileBytes,
+                    file_count: fileCount,
+                    online: navigator.onLine,
+                    user_agent: navigator.userAgent,
+                }, extra)),
+                keepalive: true,
+            }).catch(() => {});
+        } catch (diagErr) {
+            console.error('Diagnostic beacon failed:', diagErr);
+        }
+    };
+
+    const watchdog = setTimeout(() => diag('watchdog', { note: 'hung not settled in 90s' }), 90_000);
 
     fetch(`/passengers/${passengerId}/documents`, {
         method: 'POST',
-        headers: { 'X-CSRF-TOKEN': csrfToken },
+        headers: { 'X-CSRF-TOKEN': csrfToken, 'X-Diag-Id': diagId },
         body: formData
     })
     .then(response => response.json())
@@ -580,16 +617,24 @@ function handleDocumentUpload(input) {
                 `;
                 list.appendChild(item);
             });
+            diag('uploaded');
             input.value = '';
         } else {
+            diag('http_error', { message: data.message });
             alert(data.message || 'Failed to upload documents');
         }
     })
     .catch(error => {
+        diag('network_error', {
+            error_name: error?.name || null,
+            error_message: error?.message || null,
+            error_cause: error?.cause ? String(error.cause) : null,
+        });
         console.error('Error:', error);
-        alert('Failed to upload documents');
+        alert('Document upload connection was lost before the server responded. Please try again.');
     })
     .finally(() => {
+        clearTimeout(watchdog);
         if (uploadBtn) {
             uploadBtn.disabled = false;
             uploadBtn.classList.remove('opacity-50', 'cursor-not-allowed');

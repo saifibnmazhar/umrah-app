@@ -1,0 +1,81 @@
+================================================================================
+ISSUE REPORT: Booking Submission Fails with "Submit error" on Production
+================================================================================
+Date            : 2026-08-08
+Environment     : Production (LiteSpeed shared hosting, cPanel)
+Reproduction    : Intermittent — affects end users submitting bookings with
+                  document uploads. Not reproducible on local/testing servers.
+Severity        : High (blocks booking creation for remote users)
+
+-------------------------------------------------------------------------------
+1. SYMPTOM
+-------------------------------------------------------------------------------
+End users report the booking submission fails with a JavaScript error:
+    "Submit error: TypeError: NetworkError when attempting to fetch resource."
+This appears only on the production server, only intermittently, and mainly
+when submitting bookings that include uploaded documents (customer docs and/or
+passenger documents).
+
+-------------------------------------------------------------------------------
+2. EVIDENCE (server log excerpts)
+-------------------------------------------------------------------------------
+Web server (LiteSpeed) error log, times matching the failures:
+
+    [ERROR] Ran out of swapping space while reading request body!
+    [ERROR] Failed to obtain or reinitialize VMemBuf.
+    [INFO]  Content len: 1654589, request line: 'POST /bookings HTTP/1.1'
+    [INFO]  Content len: 1164313, request line: 'POST /passengers/1064/documents HTTP/1.1'
+    [INFO]  Connection idle time too long: 301 while in state: 6 ... close!
+
+Laravel log shows no related exception because the failure occurs in the web
+server (LiteSpeed) BEFORE the request ever reaches PHP.
+
+-------------------------------------------------------------------------------
+3. ROOT CAUSE
+-------------------------------------------------------------------------------
+Disk space exhaustion in the hosting account, driven primarily by uploaded
+documents being stored inside the application's storage directory.
+
+    - Home directory disk usage       : 99.84%
+    - public_html (site) disk usage   : 81.11%
+
+The main consumer is the application's document storage folder
+(storage/app), which holds all uploaded booking / customer / passenger
+documents:
+
+    - storage/app/private/passenger-documents   : ~703 MB
+      (passenger documents, written to the private "local" disk)
+    - storage/app/public/booking-docs            : ~128 MB
+    - storage/app/public/customer-docs           : ~177 MB
+    - storage/app/public/documents               : ~28 MB
+
+(The application log laravel.log is small and is NOT the primary cause.)
+
+Mechanism of the failure:
+LiteSpeed buffers incoming upload request bodies (multipart form data with
+document files) into temporary space under the account, either in memory or
+spooled to disk. With the account nearly 100% full, there is no space left to
+buffer even a ~1-2 MB upload. The web server aborts the connection with no HTTP
+response, which the browser surfaces as "NetworkError when attempting to fetch
+resource."
+
+Why the problem appears intermittent:
+    - Fails only when an upload is large enough to force disk spooling AND
+      available free space is at its lowest at that instant.
+Why the test app works (same server):
+    - The test environment holds far less data, so its small requests fit in
+      memory and don't require disk space for buffering.
+Why previous cPanel PHP INI changes (post_max_size, upload_max_filesize, etc.)
+did not help:
+    - Those are PHP-side limits. The failure occurs in LiteSpeed before PHP runs.
+
+-------------------------------------------------------------------------------
+4. IMPACT
+-------------------------------------------------------------------------------
+    - End users (operating remotely) cannot submit bookings with documents.
+    - Uploaded documents accumulate in storage/app and continuously consume
+      disk quota, worsening the issue over time.
+    - Once disk fills completely, the site may also start showing errors on
+      ordinary pages, logins, and filesystem writes.
+
+===============================================================================
