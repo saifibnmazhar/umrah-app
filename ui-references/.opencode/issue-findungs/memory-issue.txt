@@ -2,7 +2,6 @@
 ISSUE REPORT: Booking Submission Fails with "Submit error" on Production
 ================================================================================
 Date            : 2026-08-08
-Reported by     : [Name]
 Environment     : Production (LiteSpeed shared hosting, cPanel)
 Reproduction    : Intermittent — affects end users submitting bookings with
                   document uploads. Not reproducible on local/testing servers.
@@ -79,42 +78,4 @@ did not help:
     - Once disk fills completely, the site may also start showing errors on
       ordinary pages, logins, and filesystem writes.
 
--------------------------------------------------------------------------------
-5. RECOMMENDED ACTION
--------------------------------------------------------------------------------
-5.1 Immediate (restores service)
-    - Free disk space in the hosting account. Prioritize the largest consumers
-      found via cPanel Metrics -> Disk Usage, expected to be the uploaded
-      documents under storage/app (passenger-documents, booking-docs,
-      customer-docs):
-        * Archive and/or remove obsolete or old documents (with owner approval,
-          as these may be legally required passenger records).
-        * Remove old backups, stale build artifacts, cached/compiled views, and
-          temporary files under storage/framework.
-        * Remove/truncate the application log laravel.log (minor but free).
-    - Re-test booking submission with document upload afterwards; success
-      confirms the cause.
-
-5.2 Preventative (code-level)
-    - Stop storing uploaded documents on the same account/disk as the web
-      server. Move document storage to an external service (e.g., S3 or another
-      mounted disk) so uploads no longer consume the account's quota.
-    - Alternatively, introduce a document retention/archival policy so old
-      documents are regularly moved off the live disk.
-    - Add daily log pruning so laravel.log and related files stay capped.
-
-5.3 Escalation (if disk continues to fill despite cleanups)
-    - Contact the hosting provider citing:
-        "Ran out of swapping space while reading request body!" (LiteSpeed)
-      and request additional disk space or swap/memory allocation.
-
--------------------------------------------------------------------------------
-6. STATUS / NEXT STEPS
--------------------------------------------------------------------------------
-Awaiting management decision on:
-    (a) run the immediate free-space cleanup (5.1), including whether old
-        documents may be archived/removed;
-    (b) approve moving document storage off the account or adding a retention
-        policy (5.2), and
-    (c) whether to escalate to the hosting provider (5.3).
-================================================================================
+===============================================================================

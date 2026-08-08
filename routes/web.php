@@ -13,6 +13,7 @@ use App\Http\Controllers\BranchController;
 use App\Http\Controllers\CityCodeController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
+use App\Http\Controllers\DiagnosticController;
 use App\Http\Controllers\DistrictController;
 use App\Http\Controllers\FlightDateGapController;
 use App\Http\Controllers\FingerprintChargeController;
@@ -122,6 +123,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/passengers/{passenger}/documents', [PassengerController::class, 'uploadDocument'])->name('passengers.documents.store');
     Route::get('/passengers/{passenger}/documents/{document}/download', [PassengerController::class, 'downloadDocument'])->name('passengers.documents.download');
     Route::delete('/passengers/{passenger}/documents/{document}', [PassengerController::class, 'destroyDocument'])->name('passengers.documents.destroy')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
+    Route::post('/diagnostics/upload-failure', [DiagnosticController::class, 'recordUploadFailure']);
     Route::get('/passengers/{passenger}/download-all-docs', [PassengerController::class, 'downloadAllDocuments'])->name('passengers.download-all-docs');
     Route::patch('/passengers/{passenger}/toggle-ticket-hold', [PassengerController::class, 'toggleTicketHold'])->name('passengers.toggle-ticket-hold')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::patch('/passengers/{passenger}/ticket-remarks', [PassengerController::class, 'updateTicketRemarks'])->name('passengers.ticket-remarks')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');

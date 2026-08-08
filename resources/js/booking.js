@@ -2288,6 +2288,8 @@ Alpine.data('createBookingApp', () => ({
 
         this.isSubmitting = true;
 
+        const diagId = (crypto.randomUUID && crypto.randomUUID()) || (Date.now().toString(36) + Math.random().toString(36).slice(2));
+
         const formData = new FormData(e.target);
 
         if (this.passengerFiles) {
@@ -2301,12 +2303,57 @@ Alpine.data('createBookingApp', () => ({
             });
         }
 
+        let fileCount = 0, fileBytes = 0;
+        formData.forEach(value => {
+            if (value instanceof File) {
+                fileCount++;
+                fileBytes += value.size;
+            }
+        });
+
+        const startTime = Date.now();
+        const diag = (type, extra = {}) => {
+            try {
+                fetch('/diagnostics/upload-failure', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'X-Diag-Id': diagId,
+                    },
+                    body: JSON.stringify(Object.assign({
+                        type,
+                        diag_id: diagId,
+                        path: window.location.pathname,
+                        elapsed_ms: Date.now() - startTime,
+                        bytes: fileBytes,
+                        file_count: fileCount,
+                        online: navigator.onLine,
+                        connection: navigator.connection ? {
+                            effectiveType: navigator.connection.effectiveType,
+                            downlink: navigator.connection.downlink,
+                            rtt: navigator.connection.rtt,
+                        } : null,
+                        user_agent: navigator.userAgent,
+                    }, extra)),
+                    keepalive: true,
+                }).catch(() => {});
+            } catch (diagErr) {
+                console.error('Diagnostic beacon failed:', diagErr);
+            }
+        };
+
+        const watchdog = setTimeout(() => diag('watchdog', { note: 'Request not settled in 90s' }), 90000);
+
         fetch(e.target.action, {
             method: 'POST',
             headers: {
                 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content || '',
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json',
+                'X-Diag-Id': diagId,
             },
             body: formData
         })
@@ -2321,6 +2368,7 @@ Alpine.data('createBookingApp', () => ({
                     try {
                         data = JSON.parse(text);
                     } catch (e) {
+                        diag('non_json', { status: resp.status, preview: text.slice(0, 200) });
                         console.error('Submit failed (non-JSON):', resp.status, text);
                         alert('An error occurred while submitting the form. Check console.');
                         return;
@@ -2331,22 +2379,31 @@ Alpine.data('createBookingApp', () => ({
                     } else {
                         alert(data.message || 'An error occurred');
                     }
+                    diag('http_error', { status: resp.status, message: data.message });
                     console.error('Submit failed:', resp.status, data);
                 });
             }
             return resp.json().then(data => {
                 if (data.success || resp.ok) {
+                    diag('success');
                     window.location.href = data.url || '/bookings';
                 } else {
+                    diag('rejected', { message: data.message });
                     alert(data.message || 'Failed to create booking');
                 }
             });
         })
         .catch(err => {
+            diag('network_error', {
+                error_name: err?.name || null,
+                error_message: err?.message || null,
+                error_cause: err?.cause ? String(err.cause) : null,
+            });
             console.error('Submit error:', err);
-            alert('An error occurred while submitting the form. Please check the console for details.');
+            alert('Booking was not submitted — the connection was lost before the server responded. Please try again.');
         })
         .finally(() => {
+            clearTimeout(watchdog);
             this.isSubmitting = false;
         });
     },

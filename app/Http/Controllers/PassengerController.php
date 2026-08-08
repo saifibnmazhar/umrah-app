@@ -349,7 +349,8 @@ class PassengerController extends Controller
 
     public function uploadDocument(Request $request, Passenger $passenger)
     {
-        
+        \App\Support\DiagnosticLogger::arrival($request, 'passengers.documents.store');
+
         $request->validate([
             'files' => 'required|array',
             'files.*' => 'file|mimes:pdf,jpg,jpeg,png|max:5120',
