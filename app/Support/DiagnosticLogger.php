@@ -9,9 +9,10 @@ class DiagnosticLogger
 {
     public static function arrival(Request $request, string $route): void
     {
+        $files = $request->allFiles();
         $fileCount = 0;
         $totalBytes = 0;
-        array_walk_recursive($request->allFiles(), function ($file) use (&$fileCount, &$totalBytes) {
+        array_walk_recursive($files, function ($file) use (&$fileCount, &$totalBytes) {
             if ($file instanceof \Illuminate\Http\UploadedFile) {
                 $fileCount++;
                 $totalBytes += $file->getSize();
