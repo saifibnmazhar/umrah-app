@@ -69,11 +69,20 @@
             </div>
 
             <div class="mb-6">
-                <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Additional Ticket Details</h4>
+                <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Ticket Details</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Route Type</label>
-                        <select id="inputRouteType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                        <select id="inputTicketType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="regular">Regular</option>
+                            <option value="offer">Offer</option>
+                            <option value="group">Group</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Route Type *</label>
+                        <select id="inputRouteType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
                             <option value="">Select</option>
                             <option value="oneway_inbound">One Way-Inbound</option>
                             <option value="oneway_outbound">One Way-Outbound</option>
@@ -82,107 +91,139 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
-                        <select id="inputTicketType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                            <option value="">All</option>
-                            <option value="regular">Regular</option>
-                            <option value="offer">Offer</option>
-                            <option value="group">Group</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type</label>
-                        <select id="inputFlightType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                            <option value="">All</option>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type *</label>
+                        <select id="inputFlightType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+                            <option value="">Select</option>
                             <option value="direct">Direct</option>
                             <option value="transit">Transit</option>
                         </select>
                     </div>
                     <div class="md:col-span-2">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket</label>
-                        <select id="inputTicketFare" onchange="handleTicketSelect()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
+                        <select id="inputTicketFare" onchange="handleTicketSelect()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
                             <option value="">Select Ticket</option>
                         </select>
                     </div>
                     <div id="fieldUpDate">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
-                        <input type="date" id="inputUpDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
+                        <input type="text" id="inputUpDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div id="fieldDownDate">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date</label>
-                        <input type="date" id="inputDownDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date *</label>
+                        <input type="text" id="inputDownDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date</label>
-                        <input type="date" id="inputTravelDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">PNR *</label>
+                        <input type="text" id="inputPnr" placeholder="Enter PNR" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
-                        <select id="inputAgent" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Number *</label>
+                        <input type="text" id="inputTicketNumber" placeholder="Enter Ticket Number" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Issue Date *</label>
+                        <input type="text" id="inputTravelDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Agent *</label>
+                        <select id="inputAgent" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
                             <option value="">Select Agent</option>
-                        </select>
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Additional Ticket Charge</label>
-                        <input type="number" id="inputAddTicketCharge" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference</label>
-                        <input type="number" id="inputFareDifference" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs</label>
-                        <input type="number" id="inputOtherCosts" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost</label>
-                        <input type="number" id="inputTotalCost" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge</label>
-                        <input type="number" id="inputServiceCharge" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment</label>
-                        <input type="number" id="inputTotalPayment" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
-                        <select id="inputPaymentMethod" onchange="handlePaymentMethodChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                            <option value="">Select Payment Method</option>
                         </select>
                     </div>
                 </div>
             </div>
 
-            <div id="bankMethodSection" class="hidden mb-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
-                <select id="inputBankMethod" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                    <option value="">Select Bank Method</option>
-                    <option value="Al Rajhi Bank">Al Rajhi Bank</option>
-                    <option value="National Commercial Bank">National Commercial Bank</option>
-                    <option value="Riyadh Bank">Riyadh Bank</option>
-                    <option value="Alinma Bank">Alinma Bank</option>
-                </select>
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
+                        <input type="text" id="inputTravelRoute" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Airline</label>
+                        <input type="text" id="inputTravelAirline" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Class</label>
+                        <input type="text" id="inputTravelClass" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Passenger Type</label>
+                        <input type="text" id="inputTravelPassengerType" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                    </div>
+                </div>
             </div>
 
-            <div id="branchSection" class="hidden mb-4">
-                <label class="block text-sm font-medium text-slate-700 mb-1">Select Branch</label>
-                <select id="inputBranch" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                    <option value="">Select Branch</option>
-                    <option value="Riyadh Branch">Riyadh Branch</option>
-                    <option value="Jeddah Branch">Jeddah Branch</option>
-                    <option value="Madinah Branch">Madinah Branch</option>
-                </select>
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div>
+                        <div x-show="$store.currency.mode === 'SAR' || !$store.currency.mode">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
+                            <input type="number" id="inputSellingFare" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div x-show="$store.currency.mode === 'BDT'">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) *</label>
+                            <input type="number" id="inputSellingFareBdt" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="number" id="inputSellingFare" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                        </div>
+                    </div>
+                    <div>
+                        <div x-show="$store.currency.mode === 'SAR' || !$store.currency.mode">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR) *</label>
+                            <input type="number" id="inputNetFare" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div x-show="$store.currency.mode === 'BDT'">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT) *</label>
+                            <input type="number" id="inputNetFareBdt" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="number" id="inputNetFare" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                        </div>
+                    </div>
+                    <div id="offerPriceSection" class="hidden">
+                        <div x-show="$store.currency.mode === 'SAR' || !$store.currency.mode">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
+                            <input type="number" id="inputOfferPrice" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        </div>
+                        <div x-show="$store.currency.mode === 'BDT'">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) *</label>
+                            <input type="number" id="inputOfferPriceBdt" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="number" id="inputOfferPrice" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                        </div>
+                    </div>
+                </div>
             </div>
 
-            <div class="flex gap-3" id="confirmButtons">
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Baggage Info</h4>
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div id="baggageInboundSection">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Baggage (KG)</label>
+                        <input type="text" id="inputBaggageInbound" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                    </div>
+                    <div id="baggageOutboundSection">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Baggage (KG)</label>
+                        <input type="text" id="inputBaggageOutbound" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                    </div>
+                </div>
+            </div>
+
+            <div class="mb-6">
+                <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Ticket Options</h4>
+                <div class="flex flex-wrap gap-6">
+                    <label class="flex items-center gap-2 text-sm text-slate-700">
+                        <input type="checkbox" id="inputNonRefundable" disabled class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                        Non-Refundable
+                    </label>
+                    <label class="flex items-center gap-2 text-sm text-slate-700">
+                        <input type="checkbox" id="inputNonExchangeable" disabled class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                        Non-Exchangeable
+                    </label>
+                </div>
+            </div>
+
+            <div class="flex gap-3">
                 <button onclick="confirmProcess()" id="btnConfirm" class="flex-1 px-6 py-2 bg-purple-600 text-white rounded-lg hover:bg-purple-700 transition font-medium">Confirm</button>
-                <button onclick="closeProcessConfirmationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
-            </div>
-
-            <div class="flex gap-3 hidden" id="holdButtons">
-                <button onclick="holdProcess()" id="btnHold" class="flex-1 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium">Hold</button>
                 <button onclick="closeProcessConfirmationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </div>
@@ -232,7 +273,6 @@ function loadConfirmation() {
 
         renderConfirmation(requests);
         loadAgents();
-        loadPaymentMethods();
     });
 }
 
@@ -315,20 +355,32 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
     document.getElementById('infoGender').textContent = ({ male: 'Male', female: 'Female' })[p.gender] || '-';
 
-    document.getElementById('inputUpDate').value = r.probable_date_up || '';
-    document.getElementById('inputDownDate').value = r.probable_date_down || '';
-    document.getElementById('inputTravelDate').value = '';
-    document.getElementById('inputPaymentMethod').value = '';
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
-    document.getElementById('confirmButtons').classList.remove('hidden');
-    document.getElementById('holdButtons').classList.add('hidden');
+    document.getElementById('inputUpDate').value = r.probable_date_up ? r.probable_date_up.split('T')[0] : '';
+    document.getElementById('inputDownDate').value = r.probable_date_down ? r.probable_date_down.split('T')[0] : '';
+    document.getElementById('inputTravelDate').value = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
+    document.getElementById('inputPnr').value = '';
+    document.getElementById('inputTicketNumber').value = '';
+    document.getElementById('inputTravelRoute').value = '';
+    document.getElementById('inputTravelAirline').value = '';
+    document.getElementById('inputTravelClass').value = '';
+    document.getElementById('inputTravelPassengerType').value = '';
+    document.getElementById('inputSellingFare').value = '';
+    document.getElementById('inputSellingFareBdt').value = '';
+    document.getElementById('inputNetFare').value = '';
+    document.getElementById('inputNetFareBdt').value = '';
+    document.getElementById('inputOfferPrice').value = '';
+    document.getElementById('inputOfferPriceBdt').value = '';
+    document.getElementById('inputBaggageInbound').value = '';
+    document.getElementById('inputBaggageOutbound').value = '';
+    document.getElementById('inputNonRefundable').checked = false;
+    document.getElementById('inputNonExchangeable').checked = false;
+    document.getElementById('offerPriceSection').classList.add('hidden');
 
     const agentSelect = document.getElementById('inputAgent');
     agentSelect.value = '';
     agentSelect.disabled = false;
 
-    const originalRt = p.ticket_fare?.route?.route_type || '';
+    const originalRt = ({ up: 'oneway_inbound', down: 'oneway_outbound', both: 'round' })[r.ticket_option] || p.ticket_fare?.route?.route_type || '';
     const originalTt = p.ticket_fare?.ticket_type || '';
     const originalFt = p.ticket_fare?.route?.flight_type || '';
 
@@ -342,7 +394,7 @@ function processConfirmation(ticketRequestId) {
     const ftSelect = document.getElementById('inputFlightType');
     ftSelect.value = originalFt;
 
-    selectedTicketFareId = p.ticket_fare_id || null;
+    selectedTicketFareId = null;
 
     loadTicketFares({
         route_type: originalRt,
@@ -369,18 +421,6 @@ function loadAgents() {
         const select = document.getElementById('inputAgent');
         select.innerHTML = '<option value="">Select Agent</option>' +
             agents.map(a => '<option value="' + a.id + '">' + escapeHtml(a.name) + '</option>').join('');
-    });
-}
-
-function loadPaymentMethods() {
-    fetch('/ticket-requests/payment-methods', {
-        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
-    })
-    .then(res => res.json())
-    .then(methods => {
-        const select = document.getElementById('inputPaymentMethod');
-        select.innerHTML = '<option value="">Select Payment Method</option>' +
-            methods.map(m => '<option value="' + m.value + '">' + escapeHtml(m.label) + '</option>').join('');
     });
 }
 
@@ -416,6 +456,7 @@ function loadTicketFares(filters = {}) {
 }
 
 function handleFilterChange() {
+    clearTicketFields();
     const filters = {
         route_type: document.getElementById('inputRouteType').value,
         ticket_type: document.getElementById('inputTicketType').value,
@@ -425,41 +466,89 @@ function handleFilterChange() {
     applyRouteType();
 }
 
+function clearTicketFields() {
+    selectedTicketFareId = null;
+    const select = document.getElementById('inputTicketFare');
+    if (select) select.value = '';
+    document.getElementById('inputTravelRoute').value = '';
+    document.getElementById('inputTravelAirline').value = '';
+    document.getElementById('inputTravelClass').value = '';
+    document.getElementById('inputTravelPassengerType').value = '';
+    document.getElementById('inputSellingFare').value = '';
+    document.getElementById('inputSellingFareBdt').value = '';
+    document.getElementById('inputNetFare').value = '';
+    document.getElementById('inputNetFareBdt').value = '';
+    document.getElementById('inputOfferPrice').value = '';
+    document.getElementById('inputOfferPriceBdt').value = '';
+    document.getElementById('inputBaggageInbound').value = '';
+    document.getElementById('inputBaggageOutbound').value = '';
+    document.getElementById('inputNonRefundable').checked = false;
+    document.getElementById('inputNonExchangeable').checked = false;
+    document.getElementById('offerPriceSection').classList.add('hidden');
+}
+
 function handleTicketSelect() {
     const fareId = document.getElementById('inputTicketFare').value;
     selectedTicketFareId = fareId || null;
+
+    if (!fareId) {
+        clearTicketFields();
+        return;
+    }
+
+    const fare = allTicketFares.find(f => f.id == fareId);
+    if (!fare) return;
+
+    const route = fare.route || {};
+    const airline = fare.airline || {};
+    const cls = fare.airline_class?.class || {};
+
+    document.getElementById('inputTravelRoute').value = formatRoute(route);
+    document.getElementById('inputTravelAirline').value = airline.name || '';
+    document.getElementById('inputTravelClass').value = cls.name || '';
+    document.getElementById('inputTravelPassengerType').value = fare.passenger_type || '';
+
+    document.getElementById('inputSellingFare').value = fare.selling_fare || 0;
+    document.getElementById('inputNetFare').value = fare.net_fare || 0;
+
+    const r1 = window.__currencyRate || 0;
+    if (r1 > 0) {
+        const sellingBdt = document.getElementById('inputSellingFareBdt');
+        const netBdt = document.getElementById('inputNetFareBdt');
+        if (sellingBdt) sellingBdt.value = Math.round(parseFloat(fare.selling_fare || 0) * r1);
+        if (netBdt) netBdt.value = Math.round(parseFloat(fare.net_fare || 0) * r1);
+    }
+
+    if (fare.ticket_type === 'offer' && fare.offer_price) {
+        document.getElementById('offerPriceSection').classList.remove('hidden');
+        document.getElementById('inputOfferPrice').value = fare.offer_price || 0;
+        if (r1 > 0) {
+            const offerBdt = document.getElementById('inputOfferPriceBdt');
+            if (offerBdt) offerBdt.value = Math.round(parseFloat(fare.offer_price || 0) * r1);
+        }
+    } else {
+        document.getElementById('offerPriceSection').classList.add('hidden');
+        document.getElementById('inputOfferPrice').value = '';
+    }
+
+    const baggageAllowances = fare.baggage_allowances || [];
+    const req = allRequests.find(x => x.id === currentTicketRequestId);
+    const passengerType = req?.passenger?.passenger_type || 'adult';
+    const inboundBaggage = baggageAllowances.find(b => b.travel_direction === 'inbound' && b.passenger_type === passengerType);
+    const outboundBaggage = baggageAllowances.find(b => b.travel_direction === 'outbound' && b.passenger_type === passengerType);
+    document.getElementById('inputBaggageInbound').value = inboundBaggage ? inboundBaggage.allowance : '';
+    document.getElementById('inputBaggageOutbound').value = outboundBaggage ? outboundBaggage.allowance : '';
+
+    document.getElementById('inputNonRefundable').checked = !fare.is_refundable;
+    document.getElementById('inputNonExchangeable').checked = !fare.is_exchangeable;
 }
 
 function applyRouteType() {
     const rt = document.getElementById('inputRouteType').value;
     document.getElementById('fieldUpDate').classList.toggle('hidden', rt === 'oneway_outbound');
     document.getElementById('fieldDownDate').classList.toggle('hidden', rt === 'oneway_inbound');
-}
-
-function handlePaymentMethodChange() {
-    const paymentMethod = document.getElementById('inputPaymentMethod').value;
-    const bankMethodSection = document.getElementById('bankMethodSection');
-    const branchSection = document.getElementById('branchSection');
-    const confirmButtons = document.getElementById('confirmButtons');
-    const holdButtons = document.getElementById('holdButtons');
-
-    bankMethodSection.classList.add('hidden');
-    branchSection.classList.add('hidden');
-    confirmButtons.classList.remove('hidden');
-    holdButtons.classList.add('hidden');
-
-    if (paymentMethod === 'Bank Transfer') {
-        bankMethodSection.classList.remove('hidden');
-    } else if (paymentMethod === 'Pay to Branch') {
-        branchSection.classList.remove('hidden');
-        confirmButtons.classList.add('hidden');
-        holdButtons.classList.remove('hidden');
-    }
-}
-
-function holdProcess() {
-    showToast('Process held successfully!', 'info');
-    closeProcessConfirmationModal();
+    document.getElementById('baggageInboundSection').classList.toggle('hidden', rt === 'oneway_outbound');
+    document.getElementById('baggageOutboundSection').classList.toggle('hidden', rt === 'oneway_inbound');
 }
 
 function confirmProcess() {
@@ -467,6 +556,8 @@ function confirmProcess() {
 
     const payload = {
         ticket_fare_id: document.getElementById('inputTicketFare').value || selectedTicketFareId,
+        pnr: document.getElementById('inputPnr').value || null,
+        ticket_number: document.getElementById('inputTicketNumber').value || null,
         inbound_date: document.getElementById('inputUpDate').value || null,
         outbound_date: document.getElementById('inputDownDate').value || null,
         issued_date: document.getElementById('inputTravelDate').value || null,

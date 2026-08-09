@@ -82,6 +82,15 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
+                        <select id="inputPaymentBy" onchange="handlePaymentByChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="customer">Customer</option>
+                            <option value="airline">Airline</option>
+                            <option value="employee">Employee</option>
+                        </select>
+                    </div>
+                    <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Route Type</label>
                         <select id="inputRouteType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select</option>
@@ -134,38 +143,44 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge</label>
-                        <input type="number" id="inputReIssueCharge" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" id="inputReIssueCharge" oninput="updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference</label>
-                        <input type="number" id="inputFareDifference" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" id="inputFareDifference" oninput="updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs</label>
-                        <input type="number" id="inputOtherCosts" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" id="inputOtherCosts" oninput="updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost</label>
-                        <input type="number" id="inputTotalCost" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" id="inputTotalCost" readonly class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" placeholder="0">
                     </div>
-                    <div>
+                    <div id="fieldServiceCharge">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge</label>
-                        <input type="number" id="inputServiceCharge" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" id="inputServiceCharge" oninput="updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                     </div>
-                    <div>
+                    <div id="fieldTotalPayment">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment</label>
-                        <input type="number" id="inputTotalPayment" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" id="inputTotalPayment" readonly class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" placeholder="0">
                     </div>
+                    {{--
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
                         <select id="inputPaymentMethod" onchange="handlePaymentMethodChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Payment Method</option>
                         </select>
                     </div>
+                    --}}
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                        <textarea id="inputRemarks" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none resize-none" placeholder="Enter remarks..."></textarea>
+                    </div>
                 </div>
             </div>
 
-            <div id="bankMethodSection" class="hidden mb-4">
+            {{--<div id="bankMethodSection" class="hidden mb-4">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
                 <select id="inputBankMethod" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                     <option value="">Select Bank Method</option>
@@ -184,15 +199,10 @@
                     <option value="Jeddah Branch">Jeddah Branch</option>
                     <option value="Madinah Branch">Madinah Branch</option>
                 </select>
-            </div>
+            </div>--}}
 
-            <div class="flex gap-3" id="confirmButtons">
+            <div class="flex gap-3">
                 <button onclick="confirmProcess()" id="btnConfirm" class="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Confirm</button>
-                <button onclick="closeProcessConfirmationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
-            </div>
-
-            <div class="flex gap-3 hidden" id="holdButtons">
-                <button onclick="holdProcess()" id="btnHold" class="flex-1 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium">Hold</button>
                 <button onclick="closeProcessConfirmationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </div>
@@ -243,7 +253,7 @@ function loadConfirmation() {
         renderConfirmation(requests);
         loadReasons();
         loadAgents();
-        loadPaymentMethods();
+        // loadPaymentMethods();
     });
 }
 
@@ -271,6 +281,7 @@ function loadAgents() {
     });
 }
 
+/*
 function loadPaymentMethods() {
     fetch('/ticket-requests/payment-methods', {
         headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
@@ -282,6 +293,7 @@ function loadPaymentMethods() {
             methods.map(m => '<option value="' + m.value + '">' + escapeHtml(m.label) + '</option>').join('');
     });
 }
+*/
 
 function loadTicketFares(filters = {}) {
     const params = new URLSearchParams();
@@ -419,17 +431,22 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('inputUpDate').value = r.probable_date_up || '';
     document.getElementById('inputDownDate').value = r.probable_date_down || '';
     document.getElementById('inputReason').value = '';
-    document.getElementById('inputTravelDate').value = '';
+    const today = new Date().toISOString().split('T')[0];
+    document.getElementById('inputTravelDate').value = today;
     document.getElementById('inputReIssueCharge').value = '';
     document.getElementById('inputFareDifference').value = '';
     document.getElementById('inputOtherCosts').value = '';
     document.getElementById('inputServiceCharge').value = '';
-    document.getElementById('inputPaymentMethod').value = '';
+    // document.getElementById('inputPaymentMethod').value = '';
     document.getElementById('inputAgent').value = t.ticket_agent_id || '';
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
-    document.getElementById('confirmButtons').classList.remove('hidden');
-    document.getElementById('holdButtons').classList.add('hidden');
+    // document.getElementById('bankMethodSection').classList.add('hidden');
+    // document.getElementById('branchSection').classList.add('hidden');
+    // document.getElementById('confirmButtons').classList.remove('hidden');
+    // document.getElementById('holdButtons').classList.add('hidden');
+    document.getElementById('inputRemarks').value = '';
+    document.getElementById('inputPaymentBy').value = '';
+    handlePaymentByChange();
+    updateTotals();
 
     const originalRt = t.ticket_fare?.route?.route_type || '';
     const originalTt = t.ticket_fare?.ticket_type || '';
@@ -469,6 +486,29 @@ function applyRouteType() {
     document.getElementById('fieldDownDate').classList.toggle('hidden', rt === 'oneway_inbound');
 }
 
+function updateTotals() {
+    const reIssue = parseFloat(document.getElementById('inputReIssueCharge').value) || 0;
+    const difference = parseFloat(document.getElementById('inputFareDifference').value) || 0;
+    const other = parseFloat(document.getElementById('inputOtherCosts').value) || 0;
+    const service = parseFloat(document.getElementById('inputServiceCharge').value) || 0;
+
+    const totalCost = reIssue + difference + other;
+    document.getElementById('inputTotalCost').value = totalCost;
+    document.getElementById('inputTotalPayment').value = totalCost + service;
+}
+
+function handlePaymentByChange() {
+    const isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
+    document.getElementById('fieldServiceCharge').classList.toggle('hidden', !isCustomer);
+    document.getElementById('fieldTotalPayment').classList.toggle('hidden', !isCustomer);
+
+    if (!isCustomer) {
+        document.getElementById('inputServiceCharge').value = '';
+        updateTotals();
+    }
+}
+
+/*
 function handlePaymentMethodChange() {
     const paymentMethod = document.getElementById('inputPaymentMethod').value;
     const bankMethodSection = document.getElementById('bankMethodSection');
@@ -494,6 +534,7 @@ function holdProcess() {
     showToast('Process held successfully!', 'info');
     closeProcessConfirmationModal();
 }
+*/
 
 function confirmProcess() {
     if (!currentTicketRequestId) return;
@@ -509,9 +550,8 @@ function confirmProcess() {
         inbound_date: document.getElementById('inputUpDate').value || null,
         outbound_date: document.getElementById('inputDownDate').value || null,
         ticket_agent_id: document.getElementById('inputAgent').value || null,
-        payment_method: document.getElementById('inputPaymentMethod').value || null,
-        bank_method: document.getElementById('inputBankMethod')?.value || null,
-        branch: document.getElementById('inputBranch')?.value || null,
+        remarks: document.getElementById('inputRemarks').value || null,
+        payment_by: document.getElementById('inputPaymentBy').value || null,
     };
 
     if (!payload.reason_id) {
