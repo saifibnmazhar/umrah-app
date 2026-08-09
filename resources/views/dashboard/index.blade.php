@@ -520,12 +520,17 @@ $refundRequests = $pendingRefundRequests ?? collect();
             @if($reissueChunks->count() > 1)
             <div class="flex items-center justify-end gap-3 mt-3">
                 <button @click="currentSlide = Math.max(0, currentSlide - 1)" :disabled="currentSlide === 0" :class="currentSlide === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:text-slate-800'" class="p-1.5 rounded-lg hover:bg-slate-100 transition disabled:hover:bg-transparent">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <span class="text-xs text-slate-500 tabular-nums" x-text="`${currentSlide + 1} / {{ $reissueChunks->count() }}`"></span>
+                <span class="text-sm text-slate-500 tabular-nums" x-text="`${currentSlide + 1} / {{ $reissueChunks->count() }}`"></span>
                 <button @click="currentSlide = Math.min({{ $reissueChunks->count() - 1 }}, currentSlide + 1)" :disabled="currentSlide === {{ $reissueChunks->count() - 1 }}" :class="currentSlide === {{ $reissueChunks->count() - 1 }} ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:text-slate-800'" class="p-1.5 rounded-lg hover:bg-slate-100 transition disabled:hover:bg-transparent">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </button>
+            </div>
+            <div class="flex justify-center mt-4 gap-2">
+                @foreach($reissueChunks as $dotIndex => $dotChunk)
+                <button @click="currentSlide = {{ $dotIndex }}" :class="currentSlide === {{ $dotIndex }} ? 'bg-blue-500' : 'bg-slate-300'" class="w-2 h-2 rounded-full transition-colors hover:bg-blue-400"></button>
+                @endforeach
             </div>
             @endif
         </div>
@@ -553,12 +558,17 @@ $refundRequests = $pendingRefundRequests ?? collect();
             @if($addChunks->count() > 1)
             <div class="flex items-center justify-end gap-3 mt-3">
                 <button @click="currentSlide = Math.max(0, currentSlide - 1)" :disabled="currentSlide === 0" :class="currentSlide === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:text-slate-800'" class="p-1.5 rounded-lg hover:bg-slate-100 transition disabled:hover:bg-transparent">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <span class="text-xs text-slate-500 tabular-nums" x-text="`${currentSlide + 1} / {{ $addChunks->count() }}`"></span>
+                <span class="text-sm text-slate-500 tabular-nums" x-text="`${currentSlide + 1} / {{ $addChunks->count() }}`"></span>
                 <button @click="currentSlide = Math.min({{ $addChunks->count() - 1 }}, currentSlide + 1)" :disabled="currentSlide === {{ $addChunks->count() - 1 }}" :class="currentSlide === {{ $addChunks->count() - 1 }} ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:text-slate-800'" class="p-1.5 rounded-lg hover:bg-slate-100 transition disabled:hover:bg-transparent">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </button>
+            </div>
+            <div class="flex justify-center mt-4 gap-2">
+                @foreach($addChunks as $dotIndex => $dotChunk)
+                <button @click="currentSlide = {{ $dotIndex }}" :class="currentSlide === {{ $dotIndex }} ? 'bg-purple-500' : 'bg-slate-300'" class="w-2 h-2 rounded-full transition-colors hover:bg-purple-400"></button>
+                @endforeach
             </div>
             @endif
         </div>
@@ -586,12 +596,17 @@ $refundRequests = $pendingRefundRequests ?? collect();
             @if($refundChunks->count() > 1)
             <div class="flex items-center justify-end gap-3 mt-3">
                 <button @click="currentSlide = Math.max(0, currentSlide - 1)" :disabled="currentSlide === 0" :class="currentSlide === 0 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:text-slate-800'" class="p-1.5 rounded-lg hover:bg-slate-100 transition disabled:hover:bg-transparent">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M15 19l-7-7 7-7"/></svg>
                 </button>
-                <span class="text-xs text-slate-500 tabular-nums" x-text="`${currentSlide + 1} / {{ $refundChunks->count() }}`"></span>
+                <span class="text-sm text-slate-500 tabular-nums" x-text="`${currentSlide + 1} / {{ $refundChunks->count() }}`"></span>
                 <button @click="currentSlide = Math.min({{ $refundChunks->count() - 1 }}, currentSlide + 1)" :disabled="currentSlide === {{ $refundChunks->count() - 1 }}" :class="currentSlide === {{ $refundChunks->count() - 1 }} ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:text-slate-800'" class="p-1.5 rounded-lg hover:bg-slate-100 transition disabled:hover:bg-transparent">
-                    <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+                    <svg class="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
                 </button>
+            </div>
+            <div class="flex justify-center mt-4 gap-2">
+                @foreach($refundChunks as $dotIndex => $dotChunk)
+                <button @click="currentSlide = {{ $dotIndex }}" :class="currentSlide === {{ $dotIndex }} ? 'bg-orange-500' : 'bg-slate-300'" class="w-2 h-2 rounded-full transition-colors hover:bg-orange-400"></button>
+                @endforeach
             </div>
             @endif
         </div>
