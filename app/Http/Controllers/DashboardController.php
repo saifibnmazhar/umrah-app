@@ -236,10 +236,11 @@ class DashboardController extends Controller
             ->pluck('branches.name', 'bookings.id')
             ->toArray();
 
-        $pendingReIssueRequests = TicketRequest::where('status', 'pending')
+        $pendingReIssueRequests = TicketRequest::whereIn('status', ['pending', 'processed', 'rejected'])
             ->where('request_type', 're_issue')
             ->when($branchId, fn($q) => $q->whereHas('booking', fn($b) => $b->where('booking_branch_id', $branchId)))
             ->with(['booking.customer', 'booking.bookingBranch', 'passenger', 'issuedTicket'])
+            ->orderByRaw("FIELD(status, 'pending', 'processed', 'rejected')")
             ->get()
             ->groupBy('booking_id')
             ->map(fn($rows, $bookingId) => [
@@ -249,13 +250,15 @@ class DashboardController extends Controller
                 'branch' => $rows->first()->booking?->bookingBranch?->name ?? '-',
                 'passenger_count' => $rows->pluck('passenger_id')->unique()->count(),
                 'requested_at' => $rows->min('requested_at'),
+                'status' => $rows->first()->status,
             ])
             ->values();
 
-        $pendingAdditionalRequests = TicketRequest::where('status', 'pending')
+        $pendingAdditionalRequests = TicketRequest::whereIn('status', ['pending', 'processed', 'rejected'])
             ->where('request_type', 'additional')
             ->when($branchId, fn($q) => $q->whereHas('booking', fn($b) => $b->where('booking_branch_id', $branchId)))
             ->with(['booking.customer', 'booking.bookingBranch', 'passenger'])
+            ->orderByRaw("FIELD(status, 'pending', 'processed', 'rejected')")
             ->get()
             ->groupBy('booking_id')
             ->map(fn($rows, $bookingId) => [
@@ -265,13 +268,15 @@ class DashboardController extends Controller
                 'branch' => $rows->first()->booking?->bookingBranch?->name ?? '-',
                 'passenger_count' => $rows->pluck('passenger_id')->unique()->count(),
                 'requested_at' => $rows->min('requested_at'),
+                'status' => $rows->first()->status,
             ])
             ->values();
 
-        $pendingRefundRequests = TicketRequest::where('status', 'pending')
+        $pendingRefundRequests = TicketRequest::whereIn('status', ['pending', 'processed', 'rejected'])
             ->where('request_type', 'refund')
             ->when($branchId, fn($q) => $q->whereHas('booking', fn($b) => $b->where('booking_branch_id', $branchId)))
             ->with(['booking.customer', 'booking.bookingBranch', 'passenger'])
+            ->orderByRaw("FIELD(status, 'pending', 'processed', 'rejected')")
             ->get()
             ->groupBy('booking_id')
             ->map(fn($rows, $bookingId) => [
@@ -281,6 +286,7 @@ class DashboardController extends Controller
                 'branch' => $rows->first()->booking?->bookingBranch?->name ?? '-',
                 'passenger_count' => $rows->pluck('passenger_id')->unique()->count(),
                 'requested_at' => $rows->min('requested_at'),
+                'status' => $rows->first()->status,
             ])
             ->values();
 

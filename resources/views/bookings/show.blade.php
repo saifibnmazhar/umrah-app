@@ -1331,7 +1331,6 @@ function submitReIssueRequest() {
         if (data.success) {
             showToast('Re-issue request submitted successfully!', 'success');
             closeReIssueModal();
-            location.reload();
         } else {
             showToast(data.message || 'Failed to submit request', 'error');
         }
@@ -1505,7 +1504,6 @@ function submitAddTicketRequest() {
         if (data.success) {
             showToast('Additional ticket request submitted successfully!', 'success');
             closeAddTicketModal();
-            location.reload();
         } else {
             showToast(data.message || 'Failed to submit request', 'error');
         }
@@ -1599,7 +1597,6 @@ function submitRefundRequest() {
         if (data.success) {
             showToast('Refund request submitted successfully!', 'success');
             closeRefundModal();
-            location.reload();
         } else {
             showToast(data.message || 'Failed to submit request', 'error');
         }
