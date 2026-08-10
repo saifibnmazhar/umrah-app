@@ -3,6 +3,9 @@
 > **For agents working in this repo.** This file documents conventions, tooling,
 > and workflows for the **umrah-app** Laravel project. Read it before making
 > changes.
+>
+> For the full development handbook (onboarding, architecture, domain reference,
+> CI/CD details), see [docs/README.md](docs/README.md).
 
 ---
 

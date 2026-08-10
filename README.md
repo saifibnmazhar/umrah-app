@@ -123,6 +123,14 @@ Custom slate colors (50-950) are defined in `resources/css/app.css` via `@theme`
 | Visa Admin | passport, name, mobile, agent_name, submission_date, status |
 | Settings | min_days, max_days, flight_gap_notice, default_airport, charge_*, package_* |
 
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [docs/README.md](docs/README.md) | **Development Handbook** — onboarding, architecture, conventions, testing, CI/CD |
+| [AGENTS.md](AGENTS.md) | Agent conventions and TDD workflow |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Production deployment guide (ISPConfig, Watchtower, rollback, backups) |
+
 ## Docker Development
 
 ### Development Environment
