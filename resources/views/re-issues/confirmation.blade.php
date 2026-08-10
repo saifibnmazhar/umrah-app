@@ -123,17 +123,50 @@
                             <option value="">Select Ticket</option>
                         </select>
                     </div>
+                    <div>
+                        <div id="fieldSellingFareSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
+                            <input type="number" id="inputSellingFare" oninput="handleFieldSarInput('inputSellingFare','inputSellingFareBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldSellingFareBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
+                            <input type="number" id="inputSellingFareBdt" oninput="handleFieldBdtInput('inputSellingFare','inputSellingFareBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputSellingFareBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
+                    </div>
+                    <div>
+                        <div id="fieldNetFareSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
+                            <input type="number" id="inputNetFare" oninput="handleFieldSarInput('inputNetFare','inputNetFareBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldNetFareBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
+                            <input type="number" id="inputNetFareBdt" oninput="handleFieldBdtInput('inputNetFare','inputNetFareBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputNetFareBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
+                    </div>
+                    <div id="fieldOfferPrice" class="hidden">
+                        <div id="fieldOfferPriceSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
+                            <input type="number" id="inputOfferPrice" oninput="handleFieldSarInput('inputOfferPrice','inputOfferPriceBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldOfferPriceBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
+                            <input type="number" id="inputOfferPriceBdt" oninput="handleFieldBdtInput('inputOfferPrice','inputOfferPriceBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputOfferPriceBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
+                    </div>
                     <div id="fieldUpDate">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
-                        <input type="date" id="inputUpDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <input type="text" id="inputUpDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div id="fieldDownDate">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date</label>
-                        <input type="date" id="inputDownDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <input type="text" id="inputDownDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Re-issue Date</label>
-                        <input type="date" id="inputTravelDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <input type="text" id="inputTravelDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
@@ -142,28 +175,70 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge</label>
-                        <input type="number" id="inputReIssueCharge" oninput="updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <div id="fieldReIssueChargeSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR)</label>
+                            <input type="number" id="inputReIssueCharge" oninput="handleFieldSarInput('inputReIssueCharge','inputReIssueChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldReIssueChargeBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT)</label>
+                            <input type="number" id="inputReIssueChargeBdt" oninput="handleFieldBdtInput('inputReIssueCharge','inputReIssueChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputReIssueChargeBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference</label>
-                        <input type="number" id="inputFareDifference" oninput="updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <div id="fieldFareDifferenceSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR)</label>
+                            <input type="number" id="inputFareDifference" oninput="handleFieldSarInput('inputFareDifference','inputFareDifferenceBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldFareDifferenceBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT)</label>
+                            <input type="number" id="inputFareDifferenceBdt" oninput="handleFieldBdtInput('inputFareDifference','inputFareDifferenceBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputFareDifferenceBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs</label>
-                        <input type="number" id="inputOtherCosts" oninput="updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <div id="fieldOtherCostsSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (SAR)</label>
+                            <input type="number" id="inputOtherCosts" oninput="handleFieldSarInput('inputOtherCosts','inputOtherCostsBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldOtherCostsBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (BDT)</label>
+                            <input type="number" id="inputOtherCostsBdt" oninput="handleFieldBdtInput('inputOtherCosts','inputOtherCostsBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputOtherCostsBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost</label>
-                        <input type="number" id="inputTotalCost" readonly class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" placeholder="0">
+                        <div id="fieldTotalCostSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
+                            <input type="number" id="inputTotalCost" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                        </div>
+                        <div id="fieldTotalCostBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (BDT)</label>
+                            <input type="number" id="inputTotalCostBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputTotalCostBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
                     <div id="fieldServiceCharge">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge</label>
-                        <input type="number" id="inputServiceCharge" oninput="updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <div id="fieldServiceChargeSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
+                            <input type="number" id="inputServiceCharge" oninput="handleFieldSarInput('inputServiceCharge','inputServiceChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldServiceChargeBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                            <input type="number" id="inputServiceChargeBdt" oninput="handleFieldBdtInput('inputServiceCharge','inputServiceChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputServiceChargeBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
                     <div id="fieldTotalPayment">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment</label>
-                        <input type="number" id="inputTotalPayment" readonly class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-slate-50" placeholder="0">
+                        <div id="fieldTotalPaymentSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR)</label>
+                            <input type="number" id="inputTotalPayment" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                        </div>
+                        <div id="fieldTotalPaymentBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (BDT)</label>
+                            <input type="number" id="inputTotalPaymentBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputTotalPaymentBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
                     {{--
                     <div>
@@ -222,6 +297,77 @@ let allRequests = [];
 let currentTicketRequestId = null;
 let allTicketFares = [];
 let selectedTicketFareId = null;
+let sourceFares = { selling_fare: 0, net_fare: 0, offer_price: 0 };
+
+function getCurrencyMode() {
+    return (typeof Alpine !== 'undefined' && Alpine.store('currency')) ? Alpine.store('currency').mode : 'SAR';
+}
+function sarToBdt(sar) {
+    var r = window.__currencyRate || 0;
+    return r > 0 ? Math.round(sar * r) : '';
+}
+function bdtToSar(bdt) {
+    var r = window.__currencyRate || 0;
+    return r > 0 ? (Math.round(bdt / r * 1e6) / 1e6) : '';
+}
+function handleFieldSarInput(sarId, bdtId) {
+    var sar = parseFloat(document.getElementById(sarId).value) || 0;
+    var bdtEl = document.getElementById(bdtId);
+    if (bdtEl) bdtEl.value = sarToBdt(sar);
+    var mirror = document.getElementById(bdtId + 'Sar');
+    if (mirror) mirror.value = sar || '';
+}
+function handleFieldBdtInput(sarId, bdtId) {
+    var bdt = parseFloat(document.getElementById(bdtId).value) || 0;
+    var sarEl = document.getElementById(sarId);
+    if (sarEl && sarEl.hasAttribute('readonly')) return;
+    var sarVal = bdt > 0 ? bdtToSar(bdt) : '';
+    if (sarEl) sarEl.value = sarVal;
+    var mirror = document.getElementById(bdtId + 'Sar');
+    if (mirror) mirror.value = sarVal;
+}
+function syncCurrencyFields() {
+    var mode = getCurrencyMode();
+    var isBdt = mode === 'BDT';
+    var wrappers = [
+        ['fieldSellingFareSar', 'fieldSellingFareBdt'],
+        ['fieldNetFareSar', 'fieldNetFareBdt'],
+        ['fieldOfferPriceSar', 'fieldOfferPriceBdt'],
+        ['fieldReIssueChargeSar', 'fieldReIssueChargeBdt'],
+        ['fieldFareDifferenceSar', 'fieldFareDifferenceBdt'],
+        ['fieldOtherCostsSar', 'fieldOtherCostsBdt'],
+        ['fieldTotalCostSar', 'fieldTotalCostBdt'],
+        ['fieldServiceChargeSar', 'fieldServiceChargeBdt'],
+        ['fieldTotalPaymentSar', 'fieldTotalPaymentBdt'],
+    ];
+    wrappers.forEach(function(w) {
+        var sarEl = document.getElementById(w[0]);
+        var bdtEl = document.getElementById(w[1]);
+        if (sarEl) sarEl.classList.toggle('hidden', isBdt);
+        if (bdtEl) bdtEl.classList.toggle('hidden', !isBdt);
+    });
+    updateTotals();
+    syncReadonlyMirrors();
+}
+function syncReadonlyMirrors() {
+    var rate = window.__currencyRate || 0;
+    var pairs = [
+        ['inputSellingFare', 'inputSellingFareBdtSar'],
+        ['inputNetFare', 'inputNetFareBdtSar'],
+        ['inputOfferPrice', 'inputOfferPriceBdtSar'],
+        ['inputReIssueCharge', 'inputReIssueChargeBdtSar'],
+        ['inputFareDifference', 'inputFareDifferenceBdtSar'],
+        ['inputOtherCosts', 'inputOtherCostsBdtSar'],
+        ['inputServiceCharge', 'inputServiceChargeBdtSar'],
+        ['inputTotalCost', 'inputTotalCostBdtSar'],
+        ['inputTotalPayment', 'inputTotalPaymentBdtSar'],
+    ];
+    pairs.forEach(function(p) {
+        var sarEl = document.getElementById(p[0]);
+        var mirrorEl = document.getElementById(p[1]);
+        if (sarEl && mirrorEl) mirrorEl.value = sarEl.value;
+    });
+}
 
 function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -334,11 +480,40 @@ function handleFilterChange() {
     };
     loadTicketFares(filters);
     applyRouteType();
+    applyFareType();
 }
 
 function handleTicketSelect() {
     const fareId = document.getElementById('inputTicketFare').value;
     selectedTicketFareId = fareId || null;
+    syncFareFields();
+}
+
+function syncFareFields() {
+    var fareId = document.getElementById('inputTicketFare').value;
+    var f = allTicketFares.find(function(x) { return String(x.id) === String(fareId); });
+    var sf = f ? (f.selling_fare ?? sourceFares.selling_fare) : sourceFares.selling_fare;
+    var nf = f ? (f.net_fare ?? sourceFares.net_fare) : sourceFares.net_fare;
+    var ofp = f ? (f.offer_price ?? sourceFares.offer_price) : sourceFares.offer_price;
+    document.getElementById('inputSellingFare').value = sf;
+    document.getElementById('inputNetFare').value = nf;
+    document.getElementById('inputOfferPrice').value = ofp;
+    var rate = window.__currencyRate || 0;
+    if (rate > 0) {
+        document.getElementById('inputSellingFareBdt').value = sarToBdt(parseFloat(sf) || 0);
+        document.getElementById('inputNetFareBdt').value = sarToBdt(parseFloat(nf) || 0);
+        document.getElementById('inputOfferPriceBdt').value = ofp ? sarToBdt(parseFloat(ofp) || 0) : '';
+    } else {
+        document.getElementById('inputSellingFareBdt').value = '';
+        document.getElementById('inputNetFareBdt').value = '';
+        document.getElementById('inputOfferPriceBdt').value = '';
+    }
+    syncReadonlyMirrors();
+}
+
+function applyFareType() {
+    const tt = document.getElementById('inputTicketType').value;
+    document.getElementById('fieldOfferPrice').classList.toggle('hidden', tt !== 'offer');
 }
 
 function renderConfirmation(requests) {
@@ -428,11 +603,11 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('infoClass').textContent = t.ticket_fare?.airline_class?.class?.name || '-';
     document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
 
-    document.getElementById('inputUpDate').value = r.probable_date_up || '';
-    document.getElementById('inputDownDate').value = r.probable_date_down || '';
+    document.getElementById('inputUpDate').value = formatToDDMMMYY(r.probable_date_up) || '';
+    document.getElementById('inputDownDate').value = formatToDDMMMYY(r.probable_date_down) || '';
     document.getElementById('inputReason').value = '';
-    const today = new Date().toISOString().split('T')[0];
-    document.getElementById('inputTravelDate').value = today;
+    const todayDD = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
+    document.getElementById('inputTravelDate').value = todayDD;
     document.getElementById('inputReIssueCharge').value = '';
     document.getElementById('inputFareDifference').value = '';
     document.getElementById('inputOtherCosts').value = '';
@@ -447,6 +622,19 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('inputPaymentBy').value = '';
     handlePaymentByChange();
     updateTotals();
+
+    sourceFares = {
+        selling_fare: t.selling_fare ?? 0,
+        net_fare: t.net_fare ?? 0,
+        offer_price: t.offer_price ?? 0,
+    };
+    document.getElementById('inputSellingFare').value = sourceFares.selling_fare;
+    document.getElementById('inputNetFare').value = sourceFares.net_fare;
+    document.getElementById('inputOfferPrice').value = sourceFares.offer_price;
+    var rate = window.__currencyRate || 0;
+    document.getElementById('inputSellingFareBdt').value = rate > 0 ? sarToBdt(sourceFares.selling_fare) : '';
+    document.getElementById('inputNetFareBdt').value = rate > 0 ? sarToBdt(sourceFares.net_fare) : '';
+    document.getElementById('inputOfferPriceBdt').value = rate > 0 ? sarToBdt(sourceFares.offer_price) : '';
 
     const originalRt = t.ticket_fare?.route?.route_type || '';
     const originalTt = t.ticket_fare?.ticket_type || '';
@@ -471,6 +659,8 @@ function processConfirmation(ticketRequestId) {
     });
 
     applyRouteType();
+    applyFareType();
+    syncCurrencyFields();
 
     document.getElementById('processConfirmationModal').classList.remove('hidden');
 }
@@ -487,23 +677,34 @@ function applyRouteType() {
 }
 
 function updateTotals() {
-    const reIssue = parseFloat(document.getElementById('inputReIssueCharge').value) || 0;
-    const difference = parseFloat(document.getElementById('inputFareDifference').value) || 0;
-    const other = parseFloat(document.getElementById('inputOtherCosts').value) || 0;
-    const service = parseFloat(document.getElementById('inputServiceCharge').value) || 0;
+    var reIssue = parseFloat(document.getElementById('inputReIssueCharge').value) || 0;
+    var difference = parseFloat(document.getElementById('inputFareDifference').value) || 0;
+    var other = parseFloat(document.getElementById('inputOtherCosts').value) || 0;
+    var service = parseFloat(document.getElementById('inputServiceCharge').value) || 0;
 
-    const totalCost = reIssue + difference + other;
+    var totalCost = reIssue + difference + other;
     document.getElementById('inputTotalCost').value = totalCost;
     document.getElementById('inputTotalPayment').value = totalCost + service;
+
+    var rate = window.__currencyRate || 0;
+    if (rate > 0) {
+        document.getElementById('inputTotalCostBdt').value = sarToBdt(totalCost);
+        document.getElementById('inputTotalPaymentBdt').value = sarToBdt(totalCost + service);
+    } else {
+        document.getElementById('inputTotalCostBdt').value = '';
+        document.getElementById('inputTotalPaymentBdt').value = '';
+    }
+    syncReadonlyMirrors();
 }
 
 function handlePaymentByChange() {
-    const isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
+    var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
     document.getElementById('fieldServiceCharge').classList.toggle('hidden', !isCustomer);
     document.getElementById('fieldTotalPayment').classList.toggle('hidden', !isCustomer);
 
     if (!isCustomer) {
         document.getElementById('inputServiceCharge').value = '';
+        document.getElementById('inputServiceChargeBdt').value = '';
         updateTotals();
     }
 }
@@ -546,12 +747,15 @@ function confirmProcess() {
         fare_difference: parseFloat(document.getElementById('inputFareDifference').value) || 0,
         other_costs: parseFloat(document.getElementById('inputOtherCosts').value) || 0,
         service_charge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
-        travel_date: document.getElementById('inputTravelDate').value || null,
-        inbound_date: document.getElementById('inputUpDate').value || null,
-        outbound_date: document.getElementById('inputDownDate').value || null,
+        travel_date: parseDDMMMYY(document.getElementById('inputTravelDate').value) || null,
+        inbound_date: parseDDMMMYY(document.getElementById('inputUpDate').value) || null,
+        outbound_date: parseDDMMMYY(document.getElementById('inputDownDate').value) || null,
         ticket_agent_id: document.getElementById('inputAgent').value || null,
         remarks: document.getElementById('inputRemarks').value || null,
         payment_by: document.getElementById('inputPaymentBy').value || null,
+        selling_fare: parseFloat(document.getElementById('inputSellingFare').value) || null,
+        net_fare: parseFloat(document.getElementById('inputNetFare').value) || null,
+        offer_price: parseFloat(document.getElementById('inputOfferPrice').value) || null,
     };
 
     if (!payload.reason_id) {
@@ -615,6 +819,30 @@ function showNotFound() {
     document.getElementById('notFound').classList.remove('hidden');
 }
 
+function formatToDDMMMYY(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length !== 3) return dateStr;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
+    if (isNaN(d) || isNaN(m) || m < 1 || m > 12) return dateStr;
+    return d + '-' + months[m - 1] + '-' + String(y).slice(-2);
+}
+
+function parseDDMMMYY(input) {
+    if (!input) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+    const parts = input.split('-');
+    if (parts.length !== 3) return null;
+    const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const d = parseInt(parts[0]), mmm = parts[1].toLowerCase().slice(0, 3), yy = parts[2];
+    const mi = months.indexOf(mmm);
+    if (isNaN(d) || mi === -1 || !/^\d{2}$/.test(yy)) return null;
+    const year = 2000 + parseInt(yy), month = mi + 1;
+    if (d < 1 || d > new Date(year, month, 0).getDate()) return null;
+    return year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+
 function formatDate(val) {
     if (!val) return '-';
     const parts = val.split('T')[0].split('-');
@@ -659,6 +887,13 @@ function showToast(message, type = 'info') {
     toast.textContent = message;
     container.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+window.addEventListener('currency-toggled', function() { syncCurrencyFields(); });
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { syncCurrencyFields(); });
+} else {
+    syncCurrencyFields();
 }
 
 loadConfirmation();
