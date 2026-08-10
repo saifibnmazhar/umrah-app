@@ -6,6 +6,7 @@ use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
 use App\Models\ReIssuedTicket;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -31,6 +32,9 @@ class ReIssueController extends Controller
             'is_exchangeable' => 'boolean',
             'baggage_inbound' => 'nullable|string|max:255',
             'baggage_outbound' => 'nullable|string|max:255',
+            'selling_fare' => 'nullable|numeric|min:0',
+            'net_fare' => 'nullable|numeric|min:0',
+            'offer_price' => 'nullable|numeric|min:0',
 
             'reason_id' => 'required|exists:re_issue_refund_reasons,id',
             're_issue_charge' => 'required|numeric|min:0',
@@ -60,9 +64,9 @@ class ReIssueController extends Controller
 
             $reIssueData = array_merge($validated, [
                 'user_id' => auth()->id(),
-                'selling_fare' => $issuedTicket->selling_fare ?? 0,
-                'net_fare' => $issuedTicket->net_fare ?? 0,
-                'offer_price' => $issuedTicket->offer_price ?? 0,
+                'selling_fare' => $validated['selling_fare'] ?? $issuedTicket->selling_fare ?? 0,
+                'net_fare' => $validated['net_fare'] ?? $issuedTicket->net_fare ?? 0,
+                'offer_price' => $validated['offer_price'] ?? $issuedTicket->offer_price ?? 0,
             ]);
 
             $reIssuedTicket = ReIssuedTicket::create($reIssueData);
@@ -70,6 +74,23 @@ class ReIssueController extends Controller
             $issuedTicket->update(['status' => 're-issued']);
 
             $issuedTicket->logAction('re-issued', $oldData, $issuedTicket->toArray());
+
+            if (($validated['payment_by'] ?? null) === 'customer') {
+                $totalCustomerPayment = (float) $validated['re_issue_charge']
+                    + (float) $validated['fare_difference']
+                    + (float) $validated['other_costs']
+                    + (float) $validated['service_charge'];
+
+                if ($totalCustomerPayment > 0) {
+                    $invoice = $booking->invoice;
+                    if ($invoice) {
+                        app(InvoiceService::class)->updateTotals(
+                            $invoice,
+                            (float) $invoice->total_amount + $totalCustomerPayment
+                        );
+                    }
+                }
+            }
 
             DB::commit();
 
