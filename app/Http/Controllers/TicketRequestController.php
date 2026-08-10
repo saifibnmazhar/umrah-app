@@ -13,6 +13,7 @@ use App\Models\TicketAgent;
 use App\Models\TicketFare;
 use App\Models\BaggageAllowance;
 use App\Enums\PaymentMethod;
+use App\Services\InvoiceService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -171,6 +172,23 @@ class TicketRequestController extends Controller
                 'processed_at' => now(),
                 'result_re_issued_ticket_id' => $reIssuedTicket->id,
             ]);
+
+            if (($validated['payment_by'] ?? null) === 'customer') {
+                $totalCustomerPayment = (float) $validated['re_issue_charge']
+                    + (float) $validated['fare_difference']
+                    + (float) $validated['other_costs']
+                    + (float) $validated['service_charge'];
+
+                if ($totalCustomerPayment > 0) {
+                    $invoice = $ticketRequest->booking->invoice;
+                    if ($invoice) {
+                        app(InvoiceService::class)->updateTotals(
+                            $invoice,
+                            (float) $invoice->total_amount + $totalCustomerPayment
+                        );
+                    }
+                }
+            }
 
             DB::commit();
 
@@ -449,6 +467,7 @@ class TicketRequestController extends Controller
             'route.fromCity', 'route.toCity', 'route.returnCity',
             'route.multiSegments.fromCity', 'route.multiSegments.toCity',
             'airline', 'airlineClass.class',
+            'baggageAllowances',
         ])->get();
 
         return response()->json($fares);

@@ -1331,7 +1331,6 @@ function submitReIssueRequest() {
         if (data.success) {
             showToast('Re-issue request submitted successfully!', 'success');
             closeReIssueModal();
-            window.location.href = '/re-issues/' + data.booking_id + '/confirm';
         } else {
             showToast(data.message || 'Failed to submit request', 'error');
         }
@@ -1505,7 +1504,6 @@ function submitAddTicketRequest() {
         if (data.success) {
             showToast('Additional ticket request submitted successfully!', 'success');
             closeAddTicketModal();
-            window.location.href = '/tickets/' + data.booking_id + '/add-confirm';
         } else {
             showToast(data.message || 'Failed to submit request', 'error');
         }
@@ -1599,7 +1597,6 @@ function submitRefundRequest() {
         if (data.success) {
             showToast('Refund request submitted successfully!', 'success');
             closeRefundModal();
-            window.location.href = '/refunds/' + data.booking_id + '/confirm';
         } else {
             showToast(data.message || 'Failed to submit request', 'error');
         }

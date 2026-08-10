@@ -408,11 +408,11 @@ Route::middleware('auth')->group(function () {
             ->pluck('branches.name', 'bookings.id')
             ->toArray();
         return view('re-issues.confirmation', compact('id', 'bookingBranches'));
-    })->name('re-issues.confirmation');
-    Route::get('/refunds/{id}/confirm', fn($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation');
+    })->name('re-issues.confirmation')->middleware('role:Super Admin,Ticket Admin');
+    Route::get('/refunds/{id}/confirm', fn($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation')->middleware('role:Super Admin,Ticket Admin');
     Route::get('/tickets', fn() => view('tickets.index'))->name('tickets.index')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/tickets/{id}/print', fn($id) => view('tickets.print', compact('id')))->name('tickets.print')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::get('/tickets/{id}/add-confirm', fn($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/tickets/{id}/add-confirm', fn($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation')->middleware('role:Super Admin,Ticket Admin');
 
     Route::middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff')->group(function () {
         Route::post('/ticket-requests', [\App\Http\Controllers\TicketRequestController::class, 'store'])->name('ticket-requests.store');
