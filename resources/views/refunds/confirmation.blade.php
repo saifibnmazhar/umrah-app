@@ -83,11 +83,11 @@
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund Amount</label>
-                        <input type="number" id="inputAgentRefundAmount" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" oninput="updateServiceCharge()" id="inputAgentRefundAmount" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund Amount</label>
-                        <input type="number" id="inputCustomerRefundAmount" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <input type="number" oninput="updateServiceCharge()" id="inputCustomerRefundAmount" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
@@ -96,6 +96,15 @@
                         </select>
                     </div>
                     <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
+                        <select id="inputPaymentBy" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="customer" selected>Customer</option>
+                            <option value="airline">Airline</option>
+                            <option value="employee">Employee</option>
+                        </select>
+                    </div>
+                    {{-- payment method field is not needed now --}}
+                    {{-- <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
                         <select id="inputPaymentMethod" onchange="handlePaymentMethodChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Payment Method</option>
@@ -119,10 +128,10 @@
                             <option value="Jeddah Branch">Jeddah Branch</option>
                             <option value="Madinah Branch">Madinah Branch</option>
                         </select>
-                    </div>
+                    </div> --}}
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge</label>
-                        <input type="number" id="inputServiceCharge" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (Auto: IATA Refund - Customer Refund)</label>
+                        <input type="number" id="inputServiceCharge" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0">
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
@@ -181,7 +190,7 @@ function loadConfirmation() {
         renderConfirmation(requests);
         loadReasons();
         loadAgents();
-        loadPaymentMethods();
+        // loadPaymentMethods();
     });
 }
 
@@ -209,17 +218,17 @@ function loadAgents() {
     });
 }
 
-function loadPaymentMethods() {
-    fetch('/ticket-requests/payment-methods', {
-        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
-    })
-    .then(res => res.json())
-    .then(methods => {
-        const select = document.getElementById('inputPaymentMethod');
-        select.innerHTML = '<option value="">Select Payment Method</option>' +
-            methods.map(m => '<option value="' + m.value + '">' + escapeHtml(m.label) + '</option>').join('');
-    });
-}
+// function loadPaymentMethods() {
+//     fetch('/ticket-requests/payment-methods', {
+//         headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+//     })
+//     .then(res => res.json())
+//     .then(methods => {
+//         const select = document.getElementById('inputPaymentMethod');
+//         select.innerHTML = '<option value="">Select Payment Method</option>' +
+//             methods.map(m => '<option value="' + m.value + '">' + escapeHtml(m.label) + '</option>').join('');
+//     });
+// }
 
 function renderConfirmation(requests) {
     const passengerListEl = document.getElementById('passengerList');
@@ -306,11 +315,14 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('inputAgentRefundAmount').value = '';
     document.getElementById('inputCustomerRefundAmount').value = '';
     document.getElementById('inputReason').value = '';
-    document.getElementById('inputPaymentMethod').value = '';
+    document.getElementById('inputPaymentBy').value = 'customer';
+    // document.getElementById('inputPaymentMethod').value = '';
     document.getElementById('inputServiceCharge').value = '';
     document.getElementById('inputRemarks').value = '';
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
+    // document.getElementById('bankMethodSection').classList.add('hidden');
+    // document.getElementById('branchSection').classList.add('hidden');
+
+    updateServiceCharge();
 
     const agentSelect = document.getElementById('inputAgent');
     agentSelect.value = t.ticket_agent_id || '';
@@ -323,16 +335,22 @@ function closeProcessConfirmationModal() {
     currentTicketRequestId = null;
 }
 
-function handlePaymentMethodChange() {
-    const paymentMethod = document.getElementById('inputPaymentMethod').value;
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
-    if (paymentMethod === 'Bank Transfer') {
-        document.getElementById('bankMethodSection').classList.remove('hidden');
-    } else if (paymentMethod === 'Pay from Branch') {
-        document.getElementById('branchSection').classList.remove('hidden');
-    }
+function updateServiceCharge() {
+    const iata = parseFloat(document.getElementById('inputAgentRefundAmount').value) || 0;
+    const customer = parseFloat(document.getElementById('inputCustomerRefundAmount').value) || 0;
+    document.getElementById('inputServiceCharge').value = iata - customer;
 }
+
+// function handlePaymentMethodChange() {
+//     const paymentMethod = document.getElementById('inputPaymentMethod').value;
+//     document.getElementById('bankMethodSection').classList.add('hidden');
+//     document.getElementById('branchSection').classList.add('hidden');
+//     if (paymentMethod === 'Bank Transfer') {
+//         document.getElementById('bankMethodSection').classList.remove('hidden');
+//     } else if (paymentMethod === 'Pay from Branch') {
+//         document.getElementById('branchSection').classList.remove('hidden');
+//     }
+// }
 
 function confirmProcess() {
     if (!currentTicketRequestId) return;
@@ -343,9 +361,10 @@ function confirmProcess() {
         customer_refund: parseFloat(document.getElementById('inputCustomerRefundAmount').value) || 0,
         service_charge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
         remarks: document.getElementById('inputRemarks').value || null,
-        payment_method: document.getElementById('inputPaymentMethod').value || null,
-        bank_method: document.getElementById('inputBankMethod')?.value || null,
-        branch: document.getElementById('inputBranch')?.value || null,
+        payment_by: document.getElementById('inputPaymentBy').value || null,
+        // payment_method: document.getElementById('inputPaymentMethod').value || null,
+        // bank_method: document.getElementById('inputBankMethod')?.value || null,
+        // branch: document.getElementById('inputBranch')?.value || null,
     };
 
     if (!payload.reason_id) {

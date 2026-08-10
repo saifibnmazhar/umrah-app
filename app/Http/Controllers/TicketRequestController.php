@@ -217,7 +217,7 @@ class TicketRequestController extends Controller
             'reason_id' => 'required|exists:re_issue_refund_reasons,id',
             'iata_refund' => 'required|numeric|min:0',
             'customer_refund' => 'required|numeric|min:0',
-            'service_charge' => 'required|numeric|min:0',
+            'service_charge' => 'required|numeric',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee',
             'payment_method' => 'nullable|string|max:255',
