@@ -82,12 +82,26 @@
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund Amount</label>
-                        <input type="number" oninput="updateServiceCharge()" id="inputAgentRefundAmount" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <div id="fieldAgentRefundSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (SAR) *</label>
+                            <input type="number" min="0" step="0.01" id="inputAgentRefundAmount" oninput="handleFieldSarInput('inputAgentRefundAmount','inputAgentRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                        </div>
+                        <div id="fieldAgentRefundBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (BDT) *</label>
+                            <input type="number" min="0" step="0.01" id="inputAgentRefundAmountBdt" oninput="handleFieldBdtInput('inputAgentRefundAmount','inputAgentRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                            <input type="number" id="inputAgentRefundAmountBdtSar" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund Amount</label>
-                        <input type="number" oninput="updateServiceCharge()" id="inputCustomerRefundAmount" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <div id="fieldCustomerRefundSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (SAR) *</label>
+                            <input type="number" min="0" step="0.01" id="inputCustomerRefundAmount" oninput="handleFieldSarInput('inputCustomerRefundAmount','inputCustomerRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                        </div>
+                        <div id="fieldCustomerRefundBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (BDT) *</label>
+                            <input type="number" min="0" step="0.01" id="inputCustomerRefundAmountBdt" oninput="handleFieldBdtInput('inputCustomerRefundAmount','inputCustomerRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                            <input type="number" id="inputCustomerRefundAmountBdtSar" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
@@ -130,8 +144,15 @@
                         </select>
                     </div> --}}
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (Auto: IATA Refund - Customer Refund)</label>
-                        <input type="number" id="inputServiceCharge" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0">
+                        <div id="fieldServiceChargeSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR) (Auto: IATA Refund - Customer Refund)</label>
+                            <input type="number" id="inputServiceCharge" step="0.01" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
+                        </div>
+                        <div id="fieldServiceChargeBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT) (Auto: IATA Refund - Customer Refund)</label>
+                            <input type="number" id="inputServiceChargeBdt" step="0.01" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
+                            <input type="number" id="inputServiceChargeBdtSar" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
+                        </div>
                     </div>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
@@ -159,6 +180,63 @@
 const bookingId = {{ $id }};
 let allRequests = [];
 let currentTicketRequestId = null;
+
+function getCurrencyMode() {
+    return (typeof Alpine !== 'undefined' && Alpine.store('currency')) ? Alpine.store('currency').mode : 'SAR';
+}
+function sarToBdt(sar) {
+    var r = window.__currencyRate || 0;
+    return r > 0 ? Math.round(sar * r) : '';
+}
+function bdtToSar(bdt) {
+    var r = window.__currencyRate || 0;
+    return r > 0 ? (Math.round(bdt / r * 1e6) / 1e6) : '';
+}
+function handleFieldSarInput(sarId, bdtId) {
+    var sar = parseFloat(document.getElementById(sarId).value) || 0;
+    var bdtEl = document.getElementById(bdtId);
+    if (bdtEl) bdtEl.value = sarToBdt(sar);
+    var mirror = document.getElementById(bdtId + 'Sar');
+    if (mirror) mirror.value = sar || '';
+}
+function handleFieldBdtInput(sarId, bdtId) {
+    var bdt = parseFloat(document.getElementById(bdtId).value) || 0;
+    var sarEl = document.getElementById(sarId);
+    if (sarEl && sarEl.hasAttribute('readonly')) return;
+    var sarVal = bdt > 0 ? bdtToSar(bdt) : '';
+    if (sarEl) sarEl.value = sarVal;
+    var mirror = document.getElementById(bdtId + 'Sar');
+    if (mirror) mirror.value = sarVal;
+}
+function syncCurrencyFields() {
+    var mode = getCurrencyMode();
+    var isBdt = mode === 'BDT';
+    var wrappers = [
+        ['fieldAgentRefundSar', 'fieldAgentRefundBdt'],
+        ['fieldCustomerRefundSar', 'fieldCustomerRefundBdt'],
+        ['fieldServiceChargeSar', 'fieldServiceChargeBdt'],
+    ];
+    wrappers.forEach(function(w) {
+        var sarEl = document.getElementById(w[0]);
+        var bdtEl = document.getElementById(w[1]);
+        if (sarEl) sarEl.classList.toggle('hidden', isBdt);
+        if (bdtEl) bdtEl.classList.toggle('hidden', !isBdt);
+    });
+    updateServiceCharge();
+    syncReadonlyMirrors();
+}
+function syncReadonlyMirrors() {
+    var pairs = [
+        ['inputAgentRefundAmount', 'inputAgentRefundAmountBdtSar'],
+        ['inputCustomerRefundAmount', 'inputCustomerRefundAmountBdtSar'],
+        ['inputServiceCharge', 'inputServiceChargeBdtSar'],
+    ];
+    pairs.forEach(function(p) {
+        var sarEl = document.getElementById(p[0]);
+        var mirrorEl = document.getElementById(p[1]);
+        if (sarEl && mirrorEl) mirrorEl.value = sarEl.value;
+    });
+}
 
 function getCsrfToken() {
     return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
@@ -313,16 +391,22 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
 
     document.getElementById('inputAgentRefundAmount').value = '';
+    document.getElementById('inputAgentRefundAmountBdt').value = '';
+    document.getElementById('inputAgentRefundAmountBdtSar').value = '';
     document.getElementById('inputCustomerRefundAmount').value = '';
+    document.getElementById('inputCustomerRefundAmountBdt').value = '';
+    document.getElementById('inputCustomerRefundAmountBdtSar').value = '';
     document.getElementById('inputReason').value = '';
     document.getElementById('inputPaymentBy').value = 'customer';
     // document.getElementById('inputPaymentMethod').value = '';
     document.getElementById('inputServiceCharge').value = '';
+    document.getElementById('inputServiceChargeBdt').value = '';
+    document.getElementById('inputServiceChargeBdtSar').value = '';
     document.getElementById('inputRemarks').value = '';
     // document.getElementById('bankMethodSection').classList.add('hidden');
     // document.getElementById('branchSection').classList.add('hidden');
 
-    updateServiceCharge();
+    syncCurrencyFields();
 
     const agentSelect = document.getElementById('inputAgent');
     agentSelect.value = t.ticket_agent_id || '';
@@ -339,6 +423,8 @@ function updateServiceCharge() {
     const iata = parseFloat(document.getElementById('inputAgentRefundAmount').value) || 0;
     const customer = parseFloat(document.getElementById('inputCustomerRefundAmount').value) || 0;
     document.getElementById('inputServiceCharge').value = iata - customer;
+    document.getElementById('inputServiceChargeBdt').value = sarToBdt(iata - customer);
+    syncReadonlyMirrors();
 }
 
 // function handlePaymentMethodChange() {
@@ -467,6 +553,13 @@ function showToast(message, type = 'info') {
     toast.textContent = message;
     container.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+window.addEventListener('currency-toggled', function() { syncCurrencyFields(); });
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { syncCurrencyFields(); });
+} else {
+    syncCurrencyFields();
 }
 
 loadConfirmation();

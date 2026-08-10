@@ -1745,16 +1745,16 @@ if ($passenger->ticket_fare_inbound_id) {
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR) *</label>
-                                <input type="number" min="0" step="0.01" x-model.number="refundForm.service_charge"
-                                       @input="handleRefundSarInput('service_charge')"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR) (Auto: IATA Refund - Customer Refund)</label>
+                                <input type="number" step="0.01" x-model.number="refundForm.service_charge"
+                                       readonly
+                                       class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
-                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT) *</label>
-                                <input type="number" min="0" step="0.01" x-model.number="refundForm.service_charge_bdt"
-                                       @input="handleRefundBdtInput('service_charge')"
-                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT) (Auto: IATA Refund - Customer Refund)</label>
+                                <input type="number" step="0.01" x-model.number="refundForm.service_charge_bdt"
+                                       readonly
+                                       class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
                                 <input type="number" x-model.number="refundForm.service_charge" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
                             </div>
                         </div>
@@ -4816,6 +4816,7 @@ function bookingIndexApp() {
 
             this.refundPassengerIndex = rowIndex;
             this.refundTicketIndex = ticketIndex;
+            this.recalcRefundServiceCharge();
             this.isRefundModalOpen = true;
         },
 
@@ -4832,6 +4833,7 @@ function bookingIndexApp() {
                 this.refundForm[field + '_bdt'] = Math.round(sar * rate);
             }
             this._converting = false;
+            this.recalcRefundServiceCharge();
         },
 
         handleRefundBdtInput(field) {
@@ -4843,6 +4845,14 @@ function bookingIndexApp() {
                 this.refundForm[field] = (Math.round(bdt / rate * 1e6) / 1e6).toFixed(6);
             }
             this._converting = false;
+            this.recalcRefundServiceCharge();
+        },
+
+        recalcRefundServiceCharge() {
+            const f = this.refundForm;
+            const rate = window.__currencyRate || 0;
+            f.service_charge = (parseFloat(f.iata_refund) || 0) - (parseFloat(f.customer_refund) || 0);
+            f.service_charge_bdt = rate > 0 ? Math.round(f.service_charge * rate) : 0;
         },
 
         handleRefundSubmit() {
