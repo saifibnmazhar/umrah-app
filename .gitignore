@@ -18,6 +18,7 @@
 /node_modules
 /public/hot
 /public/storage
+/public/build
 
 /storage/framework/*
 /storage/logs/*
