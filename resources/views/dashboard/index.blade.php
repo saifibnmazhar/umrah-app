@@ -101,7 +101,7 @@ $refundRequests = [];
                     </div>
                 </div>
                 <div class="text-3xl font-bold text-slate-800 mb-1">{{ $invoiceCount }}</div>
-                <div class="text-xs text-slate-500 mt-1">Total Invoice (This Month)</div>
+                <div class="text-xs text-slate-500 mt-1">Total Invoice (Last 30 Days)</div>
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -114,7 +114,7 @@ $refundRequests = [];
                     </div>
                 </div>
                 <div class="text-3xl font-bold text-emerald-600 mb-1">@currency(cascadeRound($invoiceTotalAmount), 0, null, cascadeRound($invoiceTotalAmountBdt))</div>
-                <div class="text-xs text-slate-500 mt-1">This Month</div>
+                <div class="text-xs text-slate-500 mt-1">Last 30 Days</div>
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -141,7 +141,7 @@ $refundRequests = [];
                         <div class="text-xs font-medium text-slate-500">Bank</div>
                     </div>
                 </div>
-                <div class="text-xs text-slate-500 mt-1">This Month</div>
+                <div class="text-xs text-slate-500 mt-1">Last 30 Days</div>
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -154,7 +154,7 @@ $refundRequests = [];
                     </div>
                 </div>
                 <div class="text-3xl font-bold text-orange-600 mb-1">@currency(cascadeRound($totalDue), 0, null, cascadeRound($totalDueBdt))</div>
-                <div class="text-xs text-slate-500 mt-1">Receivable (This Month)</div>
+                <div class="text-xs text-slate-500 mt-1">Receivable (Last 30 Days)</div>
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -181,7 +181,7 @@ $refundRequests = [];
                         <div class="text-xs font-medium text-slate-500">Bank</div>
                     </div>
                 </div>
-                <div class="text-xs text-slate-500 mt-1">Collection (This Month)</div>
+                <div class="text-xs text-slate-500 mt-1">Collection (Last 30 Days)</div>
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -208,7 +208,7 @@ $refundRequests = [];
                         <div class="text-xs font-medium text-slate-500">Bank</div>
                     </div>
                 </div>
-                <div class="text-xs text-slate-500 mt-1">Collection (This Month)</div>
+                <div class="text-xs text-slate-500 mt-1">Collection (Last 30 Days)</div>
             </div>
 
             @if($showProfitCards)
@@ -226,7 +226,7 @@ $refundRequests = [];
                 @else
                     <div class="text-3xl font-bold text-red-600 mb-1">-@currency(cascadeRound(abs($totalProfit)), 0, null, cascadeRound(abs($totalProfitBdt))) <span x-text="$store.currency.mode"></span></div>
                 @endif
-                <div class="text-xs text-slate-500 mt-1">This Month</div>
+                <div class="text-xs text-slate-500 mt-1">Last 30 Days</div>
             </div>
             @endif
 
@@ -253,7 +253,7 @@ $refundRequests = [];
                     <div class="text-xl font-bold text-slate-800">{{ $fingerprintProcessing }}</div>
                     <div class="text-xs font-medium text-amber-600">Processing</div>
                 </div>
-                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
+                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">Last 30 Days</div>
             </div>
 
             @if($showProfitCards)
@@ -273,7 +273,7 @@ $refundRequests = [];
                 @else
                     <div class="text-3xl font-bold text-teal-600 mb-1">@currency(cascadeRound($totalFingerprintProfit), 0, null, cascadeRound($totalFingerprintProfitBdt))</div>
                 @endif
-                <div class="text-xs text-slate-500 mt-1">This Month</div>
+                <div class="text-xs text-slate-500 mt-1">Last 30 Days</div>
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -286,7 +286,7 @@ $refundRequests = [];
                     </div>
                 </div>
                 <div class="text-3xl font-bold text-rose-600 mb-1">@currency(cascadeRound($totalServiceChargeDeduction), 0, null, cascadeRound($totalServiceChargeDeductionBdt))</div>
-                <div class="text-xs text-slate-500 mt-1">This Month</div>
+                <div class="text-xs text-slate-500 mt-1">Last 30 Days</div>
             </div>
             @endif
 
@@ -300,7 +300,7 @@ $refundRequests = [];
                     </div>
                 </div>
                 <div class="text-3xl font-bold text-orange-600 mb-1">@currency(cascadeRound($totalRefund), 0, null, cascadeRound($totalRefundBdt))</div>
-                <div class="text-xs text-slate-500 mt-1">This Month</div>
+                <div class="text-xs text-slate-500 mt-1">Last 30 Days</div>
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -326,7 +326,7 @@ $refundRequests = [];
                     <div class="text-xl font-bold text-slate-800">{{ $stats['visaPending'] }}</div>
                     <div class="text-xs font-medium text-amber-600">Pending</div>
                 </div>
-                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
+                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">Last 30 Days</div>
             </div>
 
             <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
@@ -352,7 +352,7 @@ $refundRequests = [];
                     <div class="text-xl font-bold text-slate-800">{{ $pendingTicket ?? 0 }}</div>
                     <div class="text-xs font-medium text-amber-600">Pending Ticket</div>
                 </div>
-                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
+                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">Last 30 Days</div>
             </div>
 
 
@@ -367,7 +367,7 @@ $refundRequests = [];
                 </div>
                 <div class="text-3xl font-bold text-emerald-600 mb-1">{{ $totalProfit ?? '89,750 SAR' }}</div>
                 <div class="text-sm font-semibold text-slate-700">Total Profit</div>
-                <div class="text-xs text-slate-500 mt-1">This Month</div>
+                <div class="text-xs text-slate-500 mt-1">Last 30 Days</div>
             </div>
             --}}
 
@@ -382,7 +382,7 @@ $refundRequests = [];
                 </div>
                 <div class="text-3xl font-bold text-slate-800 mb-1">{{ $totalPassengers ?? 'N/A' }}</div>
                 <div class="text-sm font-semibold text-slate-700">Total Passengers</div>
-                <div class="text-xs text-slate-500 mt-1">This Month</div>
+                <div class="text-xs text-slate-500 mt-1">Last 30 Days</div>
             </div>
 
             {{--
@@ -396,7 +396,7 @@ $refundRequests = [];
                 </div>
                 <div class="text-3xl font-bold text-slate-800 mb-1">{{ $totalReceived ?? 86 }}</div>
                 <div class="text-sm font-semibold text-slate-700">Total Received</div>
-                <div class="text-xs text-slate-500 mt-1">New Booking (This Month)</div>
+                <div class="text-xs text-slate-500 mt-1">New Booking (Last 30 Days)</div>
             </div>
             --}}
 
@@ -421,7 +421,7 @@ $refundRequests = [];
                         <div class="text-xs font-medium text-red-600">Stay</div>
                     </div>
                 </div>
-                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">This Month</div>
+                <div class="text-xs text-slate-500 mt-2 pt-2 border-t border-slate-100">Last 30 Days</div>
             </div>
             --}}
         </div>
