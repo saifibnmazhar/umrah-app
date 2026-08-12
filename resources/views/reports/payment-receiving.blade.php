@@ -136,6 +136,12 @@
                                 <option :value="b.id" x-text="b.name"></option>
                             </template>
                         </select>
+                        <label class="text-sm font-semibold text-gray-700">Method:</label>
+                        <select x-model="selectedMethod" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">All Methods</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Bank">Bank</option>
+                        </select>
                         <label class="text-sm font-semibold text-gray-700 ml-3">Bank:</label>
                         <select x-model="selectedBank" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                             <option value="">Select Bank</option>
@@ -165,7 +171,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <template x-for="(v, idx) in filteredVouchers" :key="idx">
+                                    <template x-for="(v, idx) in paginatedVouchers" :key="idx">
                                         <tr class="border-b border-gray-100 even:bg-[#fafafa]">
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.invoice_id"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.voucher_no"></td>
@@ -187,6 +193,18 @@
                         </div>
                     </template>
                 </div>
+                <div x-show="totalPages > 1" class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50 shrink-0">
+                    <span class="text-sm text-gray-500">
+                        Showing <span x-text="((currentPage - 1) * perPage) + 1"></span>-<span x-text="Math.min(currentPage * perPage, filteredVouchers.length)"></span> of <span x-text="filteredVouchers.length"></span>
+                    </span>
+                    <span class="inline-flex items-center gap-2">
+                        <span x-show="currentPage === 1" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Previous</span>
+                        <button x-show="currentPage > 1" @click="goToPage(currentPage - 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Previous</button>
+                        <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5" x-text="currentPage"></span>
+                        <button x-show="currentPage < totalPages" @click="goToPage(currentPage + 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Next</button>
+                        <span x-show="currentPage === totalPages" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Next</span>
+                    </span>
+                </div>
                 <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center shrink-0">
                     <div class="flex gap-6 text-sm">
                         <span class="font-medium text-green-700">
@@ -199,9 +217,17 @@
                             Total: <span x-text="formatAmount(totalAmount)"></span>
                         </span>
                     </div>
+                    <div class="flex items-center gap-2">
+                    <a :href="printUrl" target="_blank" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                        </svg>
+                        Print
+                    </a>
                     <button @click="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100">
                         Close
                     </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -218,9 +244,12 @@
             banks: options.banks || [],
             selectedBranch: 'all',
             selectedBank: '',
+            selectedMethod: '',
             modalOpen: false,
             selectedDate: '',
             selectedVouchers: [],
+            currentPage: 1,
+            perPage: 50,
 
             get selectedDateLabel() {
                 if (!this.selectedDate) return '';
@@ -232,8 +261,24 @@
                 return this.selectedVouchers.filter(v => {
                     const branchOk = this.selectedBranch === 'all' || (this.selectedBranch === 'central' ? !v.receive_branch_id : v.receive_branch_id == this.selectedBranch);
                     const bankOk = this.selectedBank === '' || (v.method === 'Bank' && (this.selectedBank === 'all' || v.bank_id == this.selectedBank));
-                    return branchOk && bankOk;
+                    const methodOk = this.selectedMethod === '' || v.method === this.selectedMethod;
+                    return branchOk && bankOk && methodOk;
                 });
+            },
+
+            get paginatedVouchers() {
+                const start = (this.currentPage - 1) * this.perPage;
+                return this.filteredVouchers.slice(start, start + this.perPage);
+            },
+
+            get totalPages() {
+                return Math.ceil(this.filteredVouchers.length / this.perPage);
+            },
+
+            goToPage(page) {
+                if (page >= 1 && page <= this.totalPages) {
+                    this.currentPage = page;
+                }
             },
 
             openModal(date) {
@@ -241,11 +286,23 @@
                 this.selectedVouchers = this.vouchersByDate[date] || [];
                 this.selectedBranch = 'all';
                 this.selectedBank = '';
+                this.selectedMethod = '';
+                this.currentPage = 1;
                 this.modalOpen = true;
             },
 
             closeModal() {
                 this.modalOpen = false;
+            },
+
+            get printUrl() {
+                const params = new URLSearchParams();
+                if (this.selectedDate) params.set('date', this.selectedDate);
+                if (this.selectedBranch) params.set('branch_id', this.selectedBranch);
+                if (this.selectedBank) params.set('bank_id', this.selectedBank);
+                if (this.selectedMethod) params.set('method', this.selectedMethod);
+                params.set('currency', Alpine.store('currency').mode);
+                return `/reports/payment-receiving/print?${params.toString()}`;
             },
 
             get totalCash() {
