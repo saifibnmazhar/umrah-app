@@ -349,6 +349,7 @@ Route::middleware('auth')->group(function () {
                 'vouchers.transactionType',
                 'vouchers.user.branch',
                 'vouchers.invoice.booking',
+                'vouchers.bank',
             ])
             ->get();
 
@@ -378,14 +379,84 @@ Route::middleware('auth')->group(function () {
                     'receive_at' => $v->user?->branch?->name ?? 'Central',
                     'amount' => (float) $v->amount,
                     'receive_branch_id' => $v->user?->branch_id,
+                    'bank' => $v->bank?->name ?? '-',
+                    'bank_id' => $v->bank_id,
                 ];
             }
         }
         $vouchersByDateJson = json_encode($vouchersByDate);
         $branchesJson = json_encode(\App\Models\Branch::orderBy('name')->get(['id', 'name']));
+        $banksJson = json_encode(\App\Models\Bank::orderBy('name')->get(['id', 'name']));
 
-        return view('reports.payment-receiving', compact('totalCashPayment', 'totalBankPayment', 'totalBdOfficeCollection', 'totalKsaOfficeCollection', 'dailyPayments', 'vouchersByDateJson', 'branchesJson'));
+        return view('reports.payment-receiving', compact('totalCashPayment', 'totalBankPayment', 'totalBdOfficeCollection', 'totalKsaOfficeCollection', 'dailyPayments', 'vouchersByDateJson', 'branchesJson', 'banksJson'));
     })->name('report.payment-receiving')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/payment-receiving/print', function () {
+        $date = request('date');
+        $branchSel = request('branch_id');
+        $bankSel = request('bank_id');
+        $method = request('method');
+        $currency = request('currency', 'SAR');
+        $branchId = auth()->user()->branch_id;
+        $dateLabel = $date ? Carbon::parse($date)->format('d-M-Y') : '';
+        $firstRate = (float) (\App\Models\CurrencyRate::orderBy('created_at')->first()?->rate ?? 0);
+
+        $payments = Payment::whereDate('created_at', $date)
+            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->with(['vouchers.transactionType', 'vouchers.user.branch', 'vouchers.invoice.booking', 'vouchers.currencyRate', 'vouchers.bank'])
+            ->get();
+
+        $vouchers = collect();
+        foreach ($payments as $payment) {
+            foreach ($payment->vouchers as $v) {
+                if (!in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
+                    continue;
+                }
+                $vouchers->push([
+                    'invoice_id' => $v->invoice?->booking?->invoice_id ?? 'N/A',
+                    'voucher_no' => $v->voucher_id ?? $v->id,
+                    'method' => ucfirst($v->payment_method?->value ?? ''),
+                    'transaction_type' => $v->transactionType?->name ?? '',
+                    'trx_id' => $v->transaction_id ?? '-',
+                    'receive_by' => $v->user?->name ?? '',
+                    'receive_at' => $v->user?->branch?->name ?? 'Central',
+                    'amount' => (float) $v->amount,
+                    'bdt_amount' => (float) $v->amount * $firstRate,
+                    'currency_rate' => (float) ($v->currencyRate?->rate ?? $firstRate),
+                    'receive_branch_id' => $v->user?->branch_id,
+                    'bank' => $v->bank?->name ?? '-',
+                    'bank_id' => $v->bank_id,
+                ]);
+            }
+        }
+
+        if ($method) {
+            $vouchers = $vouchers->where('method', ucfirst(strtolower($method)));
+        }
+        if ($bankSel === 'all') {
+            $vouchers = $vouchers->where('method', 'Bank');
+        } elseif ($bankSel) {
+            $vouchers = $vouchers->where('bank_id', (int) $bankSel);
+        }
+        if ($branchSel === 'central') {
+            $vouchers = $vouchers->where('receive_branch_id', null);
+        } elseif ($branchSel && $branchSel !== 'all') {
+            $vouchers = $vouchers->where('receive_branch_id', (int) $branchSel);
+        }
+
+        $totalCash = $vouchers->where('method', 'Cash')->sum('amount');
+        $totalCashBdt = $vouchers->where('method', 'Cash')->sum('bdt_amount');
+        $totalBank = $vouchers->where('method', 'Bank')->sum('amount');
+        $totalBankBdt = $vouchers->where('method', 'Bank')->sum('bdt_amount');
+        $totalAmount = $vouchers->sum('amount');
+        $totalAmountBdt = $vouchers->sum('bdt_amount');
+
+        $branchName = ($branchSel && $branchSel !== 'all') ? ($branchSel === 'central' ? 'Central' : \App\Models\Branch::find($branchSel)?->name) : null;
+        $bankName = $bankSel === 'all' ? 'All Banks' : ($bankSel ? \App\Models\Bank::find($bankSel)?->name : null);
+        $methodLabel = $method ? ucfirst(strtolower($method)) : null;
+
+        return view('reports.payment-receiving-print', compact('vouchers', 'totalCash', 'totalCashBdt', 'totalBank', 'totalBankBdt', 'totalAmount', 'totalAmountBdt', 'currency', 'dateLabel', 'branchName', 'bankName', 'methodLabel'));
+    })->name('report.payment-receiving-print')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-wise', [BranchWiseReportController::class, 'index'])->name('report.branch-wise');
     Route::get('/reports/branch-wise/payment-history/print', [BranchWiseReportController::class, 'paymentHistoryPrint'])->name('report.branch-wise.payment-history-print')->middleware('role:Super Admin,Co Admin,Auditor');
