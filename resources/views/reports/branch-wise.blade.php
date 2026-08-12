@@ -4,7 +4,7 @@
 
 @section('content')
 <style>[x-cloak] { display: none !important; }</style>
-<div class="max-w-7xl mx-auto pt-6" x-data="branchWiseReport({ vouchersByDate: {{ $vouchersByDateJson }}, dateFrom: '{{ $dateFrom->format('Y-m-d') }}', dateTo: '{{ $dateTo->format('Y-m-d') }}', branchId: '{{ $selectedBranch }}' })">
+<div class="max-w-7xl mx-auto pt-6" x-data="branchWiseReport({ vouchersByDate: {{ $vouchersByDateJson }}, dateFrom: '{{ $dateFrom->format('Y-m-d') }}', dateTo: '{{ $dateTo->format('Y-m-d') }}', branchId: '{{ $selectedBranch }}', banks: {{ $banksJson }} })">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Branch Wise Report</h1>
 
     <form method="GET" action="{{ route('report.branch-wise') }}" class="flex flex-wrap items-end gap-4 mb-6 bg-white rounded-lg border border-slate-200 shadow-sm p-4">
@@ -329,10 +329,19 @@
                     </button>
                 </div>
                 <div class="p-6 overflow-y-auto max-h-[calc(95vh-130px)]">
-                    <template x-if="selectedVouchers.length === 0">
+                    <div class="mb-4 flex items-center gap-2 flex-wrap">
+                        <label class="text-sm font-semibold text-gray-700">Bank:</label>
+                        <select x-model="selectedBank" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="all">All Banks</option>
+                            <template x-for="b in banks" :key="b.id">
+                                <option :value="b.id" x-text="b.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <template x-if="filteredVouchers.length === 0">
                         <p class="text-center text-gray-500 py-8">No records found.</p>
                     </template>
-                    <template x-if="selectedVouchers.length > 0">
+                    <template x-if="filteredVouchers.length > 0">
                         <div class="overflow-x-auto">
                             <table class="w-full min-w-[1100px]">
                                 <thead>
@@ -340,6 +349,7 @@
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Voucher No</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Method</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Bank Name</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Transaction Type</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Trx ID</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Receive By</th>
@@ -358,6 +368,7 @@
                                                       :class="v.method === 'Bank' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'"
                                                       x-text="v.method"></span>
                                             </td>
+                                            <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.bank || '-'"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.transaction_type"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.trx_id"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.receive_by"></td>
@@ -373,7 +384,7 @@
                 </div>
                 <div x-show="totalPages > 1" class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50">
                     <span class="text-sm text-gray-500">
-                        Showing <span x-text="((currentPage - 1) * perPage) + 1"></span>-<span x-text="Math.min(currentPage * perPage, selectedVouchers.length)"></span> of <span x-text="selectedVouchers.length"></span>
+                        Showing <span x-text="((currentPage - 1) * perPage) + 1"></span>-<span x-text="Math.min(currentPage * perPage, filteredVouchers.length)"></span> of <span x-text="filteredVouchers.length"></span>
                     </span>
                     <span class="inline-flex items-center gap-2">
                         <span x-show="currentPage === 1" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Previous</span>
@@ -419,18 +430,26 @@
             dateFrom: options.dateFrom || '',
             dateTo: options.dateTo || '',
             branchId: options.branchId || '',
+            banks: options.banks || [],
+            selectedBank: 'all',
             modalOpen: false,
             selectedVouchers: [],
             currentPage: 1,
             perPage: 50,
 
+            get filteredVouchers() {
+                return this.selectedVouchers.filter(v => {
+                    return this.selectedBank === 'all' || v.bank_id == this.selectedBank;
+                });
+            },
+
             get paginatedVouchers() {
                 const start = (this.currentPage - 1) * this.perPage;
-                return this.selectedVouchers.slice(start, start + this.perPage);
+                return this.filteredVouchers.slice(start, start + this.perPage);
             },
 
             get totalPages() {
-                return Math.ceil(this.selectedVouchers.length / this.perPage);
+                return Math.ceil(this.filteredVouchers.length / this.perPage);
             },
 
             goToPage(page) {
@@ -441,6 +460,7 @@
 
             openModal() {
                 this.selectedVouchers = Object.values(this.vouchersByDate).flat();
+                this.selectedBank = 'all';
                 this.currentPage = 1;
                 this.modalOpen = true;
             },
@@ -459,22 +479,22 @@
             },
 
             get totalCash() {
-                return this.selectedVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + v.amount, 0);
+                return this.filteredVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + v.amount, 0);
             },
             get totalCashBdt() {
-                return this.selectedVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
+                return this.filteredVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
             },
             get totalBank() {
-                return this.selectedVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + v.amount, 0);
+                return this.filteredVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + v.amount, 0);
             },
             get totalBankBdt() {
-                return this.selectedVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
+                return this.filteredVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
             },
             get totalAmount() {
-                return this.selectedVouchers.reduce((s, v) => s + v.amount, 0);
+                return this.filteredVouchers.reduce((s, v) => s + v.amount, 0);
             },
             get totalAmountBdt() {
-                return this.selectedVouchers.reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
+                return this.filteredVouchers.reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
             },
 
             formatAmount(amount, bdtAmount, currencyRate) {

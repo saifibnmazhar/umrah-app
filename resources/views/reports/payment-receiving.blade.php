@@ -4,7 +4,7 @@
 <style>
     [x-cloak] { display: none !important; }
 </style>
-<div class="max-w-[1600px] mx-auto" x-data="paymentReceivingReport({ vouchersByDate: {{ $vouchersByDateJson }}, branches: {{ $branchesJson }} })">
+<div class="max-w-[1600px] mx-auto" x-data="paymentReceivingReport({ vouchersByDate: {{ $vouchersByDateJson }}, branches: {{ $branchesJson }}, banks: {{ $banksJson }} })">
     <div class="mb-3">
         <span class="text-sm text-gray-500 font-medium">Reports</span>
         <span class="text-sm text-gray-400 mx-1">›</span>
@@ -127,12 +127,19 @@
                     </button>
                 </div>
                 <div class="p-6 overflow-y-auto max-h-[calc(90vh-130px)]">
-                    <div class="mb-4 flex items-center gap-2">
+                    <div class="mb-4 flex items-center gap-2 flex-wrap">
                         <label class="text-sm font-semibold text-gray-700">Branch:</label>
                         <select x-model="selectedBranch" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                             <option value="all">All Branches</option>
                             <option value="central">Central</option>
                             <template x-for="b in branches" :key="b.id">
+                                <option :value="b.id" x-text="b.name"></option>
+                            </template>
+                        </select>
+                        <label class="text-sm font-semibold text-gray-700 ml-3">Bank:</label>
+                        <select x-model="selectedBank" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="all">All Banks</option>
+                            <template x-for="b in banks" :key="b.id">
                                 <option :value="b.id" x-text="b.name"></option>
                             </template>
                         </select>
@@ -148,6 +155,7 @@
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Voucher No</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Method</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Bank Name</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Transaction Type</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Trx ID</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Receive By</th>
@@ -165,6 +173,7 @@
                                                       :class="v.method === 'Bank' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'"
                                                       x-text="v.method"></span>
                                             </td>
+                                            <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.bank || '-'"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.transaction_type"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.trx_id"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.receive_by"></td>
@@ -205,7 +214,9 @@
         return {
             vouchersByDate: options.vouchersByDate || {},
             branches: options.branches || [],
+            banks: options.banks || [],
             selectedBranch: 'all',
+            selectedBank: 'all',
             modalOpen: false,
             selectedDate: '',
             selectedVouchers: [],
@@ -217,15 +228,18 @@
             },
 
             get filteredVouchers() {
-                if (this.selectedBranch === 'all') return this.selectedVouchers;
-                if (this.selectedBranch === 'central') return this.selectedVouchers.filter(v => !v.receive_branch_id);
-                return this.selectedVouchers.filter(v => v.receive_branch_id == this.selectedBranch);
+                return this.selectedVouchers.filter(v => {
+                    const branchOk = this.selectedBranch === 'all' || (this.selectedBranch === 'central' ? !v.receive_branch_id : v.receive_branch_id == this.selectedBranch);
+                    const bankOk = this.selectedBank === 'all' || v.bank_id == this.selectedBank;
+                    return branchOk && bankOk;
+                });
             },
 
             openModal(date) {
                 this.selectedDate = date;
                 this.selectedVouchers = this.vouchersByDate[date] || [];
                 this.selectedBranch = 'all';
+                this.selectedBank = 'all';
                 this.modalOpen = true;
             },
 

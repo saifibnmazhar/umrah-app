@@ -79,6 +79,7 @@
                 <th>Invoice ID</th>
                 <th>Voucher No</th>
                 <th>Method</th>
+                <th>Bank Name</th>
                 <th>Transaction Type</th>
                 <th>Trx ID</th>
                 <th>Receive By</th>
@@ -90,13 +91,14 @@
         <tbody>
             @forelse($vouchersByDate as $date => $dateVouchers)
                 <tr class="date-group-header">
-                    <td colspan="9">{{ \Carbon\Carbon::parse($date)->format('d-M-Y') }}</td>
+                    <td colspan="10">{{ \Carbon\Carbon::parse($date)->format('d-M-Y') }}</td>
                 </tr>
                 @foreach($dateVouchers as $v)
                 <tr>
                     <td class="text-center">{{ $v['invoice_id'] }}</td>
                     <td class="text-center">{{ $v['voucher_no'] }}</td>
                     <td class="text-center {{ $v['method'] === 'Cash' ? 'method-cash' : 'method-bank' }}">{{ $v['method'] }}</td>
+                    <td class="text-left">{{ $v['bank'] ?? '-' }}</td>
                     <td class="text-left">{{ $v['transaction_type'] }}</td>
                     <td class="text-left">{{ $v['trx_id'] }}</td>
                     <td class="text-left">{{ $v['receive_by'] }}</td>
@@ -107,7 +109,7 @@
                 @endforeach
             @empty
             <tr>
-                <td colspan="9" class="text-center" style="padding: 20px;">No records found.</td>
+                <td colspan="10" class="text-center" style="padding: 20px;">No records found.</td>
             </tr>
             @endforelse
         </tbody>
