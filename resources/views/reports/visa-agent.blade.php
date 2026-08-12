@@ -49,7 +49,7 @@ select {
     date_to: '{{ request('date_to') }}',
     visa_agent_id: '{{ request('visa_agent_id') }}',
 })">
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm no-print">
+    <div class="sticky top-0 z-20 bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm no-print">
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700">SEARCH BOX</label>
@@ -92,10 +92,10 @@ select {
         <p class="sub"><span x-text="date_from || '...'"></span> – <span x-text="date_to || '...'"></span></p>
         <hr>
     </div>
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
-        <div class="overflow-x-auto">
+    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin flex flex-col" style="max-height: calc(100vh - 280px);">
+        <div class="overflow-auto flex-1 min-h-0">
             <table class="w-full min-w-[1400px] table-fixed">
-                <thead>
+                <thead class="sticky top-0 z-10">
                     <tr class="table-header">
                         <th class="w-56 px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Agent Name</th>
                         <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Submitted</th>

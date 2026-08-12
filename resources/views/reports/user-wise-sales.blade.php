@@ -111,13 +111,13 @@ select {
 
 <div x-data="userSalesReport()">
     <div class="max-w-[1600px] mx-auto p-4">
-        <div class="mb-3">
+        <div class="sticky top-0 z-30 bg-white py-2 mb-3">
             <span class="text-sm text-gray-500 font-medium">Report</span>
             <span class="text-sm text-gray-400 mx-1">></span>
             <span class="text-sm text-gray-700 font-semibold">User Wise Sales Report</span>
         </div>
 
-        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
+        <div class="sticky top-[40px] z-20 bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
             <div class="flex flex-wrap items-center gap-3">
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-semibold text-gray-700">Branch</label>
@@ -158,10 +158,10 @@ select {
             </div>
         </div>
 
-        <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
-            <div class="overflow-x-auto">
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin flex flex-col" style="max-height: calc(100vh - 280px);">
+            <div class="overflow-auto flex-1 min-h-0">
                 <table class="w-full min-w-[900px] table-fixed">
-                    <thead>
+                    <thead class="sticky top-0 z-10">
                         <tr class="table-header">
                             <th class="w-32 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Branch</th>
                             <th class="w-40 px-2 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">User</th>

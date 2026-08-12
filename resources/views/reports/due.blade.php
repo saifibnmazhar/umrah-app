@@ -175,13 +175,13 @@ select {
 
 <div x-data="dueReportApp()">
 <div class="max-w-[1600px] mx-auto p-4">
-    <div class="mb-3">
+    <div class="sticky top-0 z-30 bg-white py-2 mb-3">
         <span class="text-sm text-gray-500 font-medium">Reports</span>
         <span class="text-sm text-gray-400 mx-1">></span>
         <span class="text-sm text-gray-700 font-semibold">Due Report</span>
     </div>
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mb-4">
+    <div class="sticky top-[40px] z-20 bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mb-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Date From</label>
@@ -196,10 +196,10 @@ select {
 
 
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
-        <div class="overflow-x-auto">
+    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin flex flex-col" style="max-height: calc(100vh - 280px);">
+        <div class="overflow-auto flex-1 min-h-0">
             <table class="w-full min-w-[800px] table-fixed">
-                <thead>
+                <thead class="sticky top-0 z-10">
                     <tr class="table-header">
                         <th class="w-1/2 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Branch Name</th>
                         <th class="w-1/4 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Due</th>

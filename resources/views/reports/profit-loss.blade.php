@@ -124,13 +124,13 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
 <div x-data="profitLossReport()">
     <div class="max-w-[1600px] mx-auto p-4">
-        <div class="mb-3">
+        <div class="sticky top-0 z-30 bg-white py-2 mb-3">
             <span class="text-sm text-gray-500 font-medium">Reports</span>
             <span class="text-sm text-gray-400 mx-1">></span>
             <span class="text-sm text-gray-700 font-semibold">Profit/Loss Report</span>
         </div>
 
-        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-5 rounded-xl shadow-md mb-6">
+        <div class="sticky top-[40px] z-20 bg-white border-x-2 border-b-2 border-gray-400 p-5 rounded-xl shadow-md mb-6">
             <div class="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
                 <div>
                     <h2 class="text-2xl font-bold text-gray-800">Profit/Loss Report</h2>
@@ -154,8 +154,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             </div>
         </div>
 
-        <div class="bg-white border-x-2 border-b-2 border-gray-400 rounded-xl shadow-md overflow-hidden">
-            <div class="border-b border-gray-300 bg-gray-50 px-4 pt-3">
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 rounded-xl shadow-md overflow-hidden flex flex-col" style="max-height: calc(100vh - 280px);">
+            <div class="border-b border-gray-300 bg-gray-50 px-4 pt-3 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <div class="flex gap-0" id="tabButtons">
                         <button @click="activeTab = 'customer'" :class="activeTab === 'customer' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
@@ -172,11 +172,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                 </div>
             </div>
 
-            <div class="p-4">
-                <div x-show="activeTab === 'customer'" class="animate-fade">
-                    <div class="overflow-x-auto scrollbar-thin">
+            <div class="p-4 flex-1 min-h-0 flex flex-col">
+                <div x-show="activeTab === 'customer'" class="animate-fade flex flex-col flex-1 min-h-0">
+                    <div class="overflow-auto flex-1 min-h-0 scrollbar-thin">
                         <table class="w-full min-w-[900px] table-fixed">
-                            <thead>
+                            <thead class="sticky top-0 z-10">
                                 <tr class="table-header">
                                     <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
                                     <th class="w-40 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
@@ -222,10 +222,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     </div>
                 </div>
 
-                <div x-show="activeTab === 'passenger'" class="animate-fade">
-                    <div class="overflow-x-auto scrollbar-thin">
+                <div x-show="activeTab === 'passenger'" class="animate-fade flex flex-col flex-1 min-h-0">
+                    <div class="overflow-auto flex-1 min-h-0 scrollbar-thin">
                         <table class="w-full min-w-[1000px] table-fixed">
-                            <thead>
+                            <thead class="sticky top-0 z-10">
                                 <tr class="table-header">
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
                                     <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
