@@ -231,28 +231,21 @@ select {
         </div>
     </div>
 
-    <div x-show="lastPage > 1" class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
-        <div class="flex items-center justify-between">
-            <div class="text-sm text-gray-600">
-                Showing <span class="font-medium" x-text="((currentPage - 1) * perPage + 1)"></span>
-                to <span class="font-medium" x-text="Math.min(currentPage * perPage, totalRecords)"></span>
-                of <span class="font-medium" x-text="totalRecords"></span> results
-            </div>
-            <nav class="flex items-center gap-1">
-                <button @click="changePage(currentPage - 1)" :disabled="currentPage === 1"
-                        :class="currentPage === 1 ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'"
-                        class="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white transition-colors">Previous</button>
-                <template x-for="page in paginationPages" :key="page">
-                    <button @click="changePage(page)"
-                            :class="page === currentPage ? 'bg-slate-700 text-white border-slate-700' : 'text-slate-600 hover:bg-slate-100 border-slate-300'"
-                            class="px-3 py-1.5 text-sm font-medium rounded-lg border bg-white transition-colors" x-text="page"></button>
-                </template>
-                <button @click="changePage(currentPage + 1)" :disabled="currentPage === lastPage"
-                        :class="currentPage === lastPage ? 'text-slate-300 cursor-not-allowed' : 'text-slate-600 hover:bg-slate-100'"
-                        class="px-3 py-1.5 text-sm font-medium rounded-lg border border-slate-300 bg-white transition-colors">Next</button>
-            </nav>
-        </div>
-    </div>
+    <nav x-show="lastPage > 1" class="flex justify-end" aria-label="Pagination Navigation">
+        <span class="inline-flex items-center gap-2">
+            <button @click="changePage(currentPage - 1)" :disabled="currentPage <= 1"
+                    :class="currentPage <= 1 ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Prev
+            </button>
+            <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5">
+                <span x-text="currentPage"></span>/<span x-text="lastPage"></span>
+            </span>
+            <button @click="changePage(currentPage + 1)" :disabled="currentPage >= lastPage"
+                    :class="currentPage >= lastPage ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Next
+            </button>
+        </span>
+    </nav>
 
     <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mt-0">
         <div class="flex flex-wrap gap-6">

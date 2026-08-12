@@ -364,6 +364,14 @@ Route::middleware('auth')->group(function () {
             })
             ->sortKeys();
 
+        $dailyPayments = new \Illuminate\Pagination\LengthAwarePaginator(
+            $dailyPayments->forPage(\Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage(), 25)->values(),
+            $dailyPayments->count(),
+            25,
+            \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage(),
+            ['path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath(), 'query' => request()->query()]
+        );
+
         $vouchersByDate = [];
         foreach ($payments as $payment) {
             $dateKey = $payment->created_at->format('Y-m-d');

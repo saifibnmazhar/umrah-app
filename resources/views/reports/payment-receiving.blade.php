@@ -73,6 +73,8 @@
         </div>
     </div>
 
+    {{ $dailyPayments->links() }}
+
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div class="rounded-lg overflow-hidden border border-green-500 bg-gradient-to-b from-green-50 to-green-100">
             <div class="bg-gradient-to-b from-green-500 to-green-600 px-4 py-2">

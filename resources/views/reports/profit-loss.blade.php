@@ -146,7 +146,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <input type="date" x-model="date_to" @change="loadData()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div class="flex items-center gap-2">
-                        <input type="text" x-model="search" placeholder="Search by Invoice ID, Customer Name, Passenger Name, Passport, Iqama"
+                        <input type="text" x-model="search" @input="currentPage = 1" placeholder="Search by Invoice ID, Customer Name, Passenger Name, Passport, Iqama"
                                class="search-input w-72 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
 
@@ -158,10 +158,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <div class="border-b border-gray-300 bg-gray-50 px-4 pt-3 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <div class="flex gap-0" id="tabButtons">
-                        <button @click="activeTab = 'customer'" :class="activeTab === 'customer' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
+                        <button @click="activeTab = 'customer'; currentPage = 1" :class="activeTab === 'customer' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
                             Per Customer
                         </button>
-                        <button @click="activeTab = 'passenger'" :class="activeTab === 'passenger' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
+                        <button @click="activeTab = 'passenger'; currentPage = 1" :class="activeTab === 'passenger' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
                             Per Passenger
                         </button>
                     </div>
@@ -198,7 +198,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
                                     </tr>
                                 </template>
-                                <template x-for="(row, index) in filteredCustomers" :key="index">
+                                <template x-for="(row, index) in paginatedCustomers" :key="index">
                                     <tr class="table-row">
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 font-medium text-gray-800" x-text="row.invoice_id"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-gray-800" x-text="row.customer_name"></td>
@@ -220,6 +220,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                             </tbody>
                         </table>
                     </div>
+
+                    <nav x-show="customerTotalPages > 1" class="flex justify-end pt-3 flex-shrink-0" aria-label="Pagination Navigation">
+                        <span class="inline-flex items-center gap-2">
+                            <button @click="goToPage(currentPage - 1)" :disabled="currentPage <= 1"
+                                    :class="currentPage <= 1 ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                                Prev
+                            </button>
+                            <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5">
+                                <span x-text="currentPage"></span>/<span x-text="customerTotalPages"></span>
+                            </span>
+                            <button @click="goToPage(currentPage + 1)" :disabled="currentPage >= customerTotalPages"
+                                    :class="currentPage >= customerTotalPages ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                                Next
+                            </button>
+                        </span>
+                    </nav>
                 </div>
 
                 <div x-show="activeTab === 'passenger'" class="animate-fade flex flex-col flex-1 min-h-0">
@@ -247,7 +263,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
                                     </tr>
                                 </template>
-                                <template x-for="(row, index) in filteredPassengers" :key="index">
+                                <template x-for="(row, index) in paginatedPassengers" :key="index">
                                     <tr class="table-row">
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 font-medium text-gray-800" x-text="row.invoice_id"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-gray-800" x-text="row.customer_name"></td>
@@ -269,6 +285,22 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                             </tbody>
                         </table>
                     </div>
+
+                    <nav x-show="passengerTotalPages > 1" class="flex justify-end pt-3 flex-shrink-0" aria-label="Pagination Navigation">
+                        <span class="inline-flex items-center gap-2">
+                            <button @click="goToPage(currentPage - 1)" :disabled="currentPage <= 1"
+                                    :class="currentPage <= 1 ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                                Prev
+                            </button>
+                            <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5">
+                                <span x-text="currentPage"></span>/<span x-text="passengerTotalPages"></span>
+                            </span>
+                            <button @click="goToPage(currentPage + 1)" :disabled="currentPage >= passengerTotalPages"
+                                    :class="currentPage >= passengerTotalPages ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                                Next
+                            </button>
+                        </span>
+                    </nav>
                 </div>
             </div>
         </div>
@@ -287,6 +319,8 @@ function profitLossReport() {
         loading: false,
         customers: [],
         passengers: [],
+        currentPage: 1,
+        perPage: 25,
 
         init() {
             this.setDefaultDates();
@@ -307,6 +341,7 @@ function profitLossReport() {
 
         async loadData() {
             this.loading = true;
+            this.currentPage = 1;
             try {
                 const params = new URLSearchParams();
                 if (this.date_from) params.set('date_from', this.date_from);
@@ -346,6 +381,30 @@ function profitLossReport() {
                 (r.customer_passport && r.customer_passport.toLowerCase().includes(q)) ||
                 (r.customer_iqama && r.customer_iqama.toLowerCase().includes(q))
             );
+        },
+
+        get customerTotalPages() {
+            return Math.max(1, Math.ceil(this.filteredCustomers.length / this.perPage));
+        },
+
+        get paginatedCustomers() {
+            const start = (this.currentPage - 1) * this.perPage;
+            return this.filteredCustomers.slice(start, start + this.perPage);
+        },
+
+        get passengerTotalPages() {
+            return Math.max(1, Math.ceil(this.filteredPassengers.length / this.perPage));
+        },
+
+        get paginatedPassengers() {
+            const start = (this.currentPage - 1) * this.perPage;
+            return this.filteredPassengers.slice(start, start + this.perPage);
+        },
+
+        goToPage(page) {
+            const totalPages = this.activeTab === 'customer' ? this.customerTotalPages : this.passengerTotalPages;
+            if (page < 1 || page > totalPages) return;
+            this.currentPage = page;
         },
 
         get grandTotalCustomer() {
