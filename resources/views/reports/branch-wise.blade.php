@@ -319,8 +319,8 @@
     <div x-show="modalOpen" x-cloak class="fixed inset-0 z-50">
         <div class="fixed inset-0 bg-transparent" @click="closeModal()"></div>
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="relative bg-white rounded-lg shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden">
-                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
+            <div class="relative bg-white rounded-lg shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center shrink-0">
                     <h2 class="text-xl font-bold text-white">Payment History</h2>
                     <button @click="closeModal()" class="text-white hover:text-gray-300">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,8 +328,14 @@
                         </svg>
                     </button>
                 </div>
-                <div class="p-6 overflow-y-auto max-h-[calc(95vh-130px)]">
+                <div class="p-6 overflow-y-auto flex-1 min-h-0">
                     <div class="mb-4 flex items-center gap-2 flex-wrap">
+                        <label class="text-sm font-semibold text-gray-700">Method:</label>
+                        <select x-model="selectedMethod" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">All Methods</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Bank">Bank</option>
+                        </select>
                         <label class="text-sm font-semibold text-gray-700">Bank:</label>
                         <select x-model="selectedBank" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                             <option value="">Select Bank</option>
@@ -383,7 +389,7 @@
                         </div>
                     </template>
                 </div>
-                <div x-show="totalPages > 1" class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50">
+                <div x-show="totalPages > 1" class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50 shrink-0">
                     <span class="text-sm text-gray-500">
                         Showing <span x-text="((currentPage - 1) * perPage) + 1"></span>-<span x-text="Math.min(currentPage * perPage, filteredVouchers.length)"></span> of <span x-text="filteredVouchers.length"></span>
                     </span>
@@ -395,7 +401,7 @@
                         <span x-show="currentPage === totalPages" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Next</span>
                     </span>
                 </div>
-                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
+                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center shrink-0">
                     <div class="flex gap-6 text-sm">
                         <span class="font-medium text-green-700">
                             Cash: <span x-text="formatAmount(totalCash, totalCashBdt, null)"></span>
@@ -433,6 +439,7 @@
             branchId: options.branchId || '',
             banks: options.banks || [],
             selectedBank: '',
+            selectedMethod: '',
             modalOpen: false,
             selectedVouchers: [],
             currentPage: 1,
@@ -440,7 +447,9 @@
 
             get filteredVouchers() {
                 return this.selectedVouchers.filter(v => {
-                    return this.selectedBank === '' || (v.method === 'Bank' && (this.selectedBank === 'all' || v.bank_id == this.selectedBank));
+                    const methodOk = this.selectedMethod === '' || v.method === this.selectedMethod;
+                    const bankOk = this.selectedBank === '' || (v.method === 'Bank' && (this.selectedBank === 'all' || v.bank_id == this.selectedBank));
+                    return methodOk && bankOk;
                 });
             },
 
@@ -462,6 +471,7 @@
             openModal() {
                 this.selectedVouchers = Object.values(this.vouchersByDate).flat();
                 this.selectedBank = '';
+                this.selectedMethod = '';
                 this.currentPage = 1;
                 this.modalOpen = true;
             },
@@ -476,6 +486,7 @@
                 if (this.dateTo) params.set('date_to', this.dateTo);
                 if (this.branchId) params.set('branch_id', this.branchId);
                 if (this.selectedBank) params.set('bank_id', this.selectedBank);
+                if (this.selectedMethod) params.set('method', this.selectedMethod);
                 params.set('currency', Alpine.store('currency').mode);
                 return `/reports/branch-wise/payment-history/print?${params.toString()}`;
             },

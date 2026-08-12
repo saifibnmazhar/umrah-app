@@ -68,6 +68,7 @@
             Date Range: {{ $dateLabel }}
             @if($branch) | Branch: {{ $branch->name }}@endif
             @if($bankName) | Bank: {{ $bankName }}@endif
+            @if($methodLabel) | Method: {{ $methodLabel }}@endif
             | Currency: {{ $__currency }}
         </span>
     </div>

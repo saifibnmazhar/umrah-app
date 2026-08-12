@@ -207,8 +207,8 @@ select {
     <div id="detailModal" x-show="detailModalOpen" x-cloak class="fixed inset-0 z-50">
         <div class="modal-overlay fixed inset-0 bg-transparent" @click="closeModal()"></div>
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-4xl w-full max-w-6xl max-h-[90vh] overflow-hidden">
-                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
+            <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-4xl w-full max-w-6xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center shrink-0">
                     <h2 class="text-xl font-bold text-white">Agent Details</h2>
                     <button @click="closeModal()" class="text-white hover:text-gray-300 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -217,7 +217,7 @@ select {
                     </button>
                 </div>
 
-                <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)] scrollbar-thin">
+                <div class="p-6 overflow-y-auto flex-1 min-h-0 scrollbar-thin">
                     <div class="mb-6">
                         <div class="flex items-center justify-between mb-4">
                             <h3 class="text-2xl font-bold text-gray-800" x-text="modalAgent.name"></h3>
@@ -325,7 +325,7 @@ select {
                     </div>
                 </div>
 
-                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between no-print">
+                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-between no-print shrink-0">
                     <button @click="window.open(`/reports/visa-agent/${encodeURIComponent(modalAgent.id)}/print`, '_blank')" class="filter-btn px-6 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4 text-blue-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>

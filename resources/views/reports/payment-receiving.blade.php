@@ -115,8 +115,8 @@
     <div x-show="modalOpen" x-cloak class="fixed inset-0 z-50">
         <div class="fixed inset-0 bg-transparent" @click="closeModal()"></div>
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="relative bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden">
-                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
+            <div class="relative bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center shrink-0">
                     <h2 class="text-xl font-bold text-white">
                         Payment Details — <span x-text="selectedDateLabel"></span>
                     </h2>
@@ -126,7 +126,7 @@
                         </svg>
                     </button>
                 </div>
-                <div class="p-6 overflow-y-auto max-h-[calc(90vh-130px)]">
+                <div class="p-6 overflow-y-auto flex-1 min-h-0">
                     <div class="mb-4 flex items-center gap-2 flex-wrap">
                         <label class="text-sm font-semibold text-gray-700">Branch:</label>
                         <select x-model="selectedBranch" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
@@ -187,7 +187,7 @@
                         </div>
                     </template>
                 </div>
-                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
+                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center shrink-0">
                     <div class="flex gap-6 text-sm">
                         <span class="font-medium text-green-700">
                             Cash: <span x-text="formatAmount(totalCash)"></span>
