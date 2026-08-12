@@ -138,6 +138,7 @@
                         </select>
                         <label class="text-sm font-semibold text-gray-700 ml-3">Bank:</label>
                         <select x-model="selectedBank" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">Select Bank</option>
                             <option value="all">All Banks</option>
                             <template x-for="b in banks" :key="b.id">
                                 <option :value="b.id" x-text="b.name"></option>
@@ -216,7 +217,7 @@
             branches: options.branches || [],
             banks: options.banks || [],
             selectedBranch: 'all',
-            selectedBank: 'all',
+            selectedBank: '',
             modalOpen: false,
             selectedDate: '',
             selectedVouchers: [],
@@ -230,7 +231,7 @@
             get filteredVouchers() {
                 return this.selectedVouchers.filter(v => {
                     const branchOk = this.selectedBranch === 'all' || (this.selectedBranch === 'central' ? !v.receive_branch_id : v.receive_branch_id == this.selectedBranch);
-                    const bankOk = this.selectedBank === 'all' || v.bank_id == this.selectedBank;
+                    const bankOk = this.selectedBank === '' || (v.method === 'Bank' && (this.selectedBank === 'all' || v.bank_id == this.selectedBank));
                     return branchOk && bankOk;
                 });
             },
@@ -239,7 +240,7 @@
                 this.selectedDate = date;
                 this.selectedVouchers = this.vouchersByDate[date] || [];
                 this.selectedBranch = 'all';
-                this.selectedBank = 'all';
+                this.selectedBank = '';
                 this.modalOpen = true;
             },
 

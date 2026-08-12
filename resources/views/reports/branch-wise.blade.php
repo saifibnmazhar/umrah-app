@@ -332,6 +332,7 @@
                     <div class="mb-4 flex items-center gap-2 flex-wrap">
                         <label class="text-sm font-semibold text-gray-700">Bank:</label>
                         <select x-model="selectedBank" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">Select Bank</option>
                             <option value="all">All Banks</option>
                             <template x-for="b in banks" :key="b.id">
                                 <option :value="b.id" x-text="b.name"></option>
@@ -431,7 +432,7 @@
             dateTo: options.dateTo || '',
             branchId: options.branchId || '',
             banks: options.banks || [],
-            selectedBank: 'all',
+            selectedBank: '',
             modalOpen: false,
             selectedVouchers: [],
             currentPage: 1,
@@ -439,7 +440,7 @@
 
             get filteredVouchers() {
                 return this.selectedVouchers.filter(v => {
-                    return this.selectedBank === 'all' || v.bank_id == this.selectedBank;
+                    return this.selectedBank === '' || (v.method === 'Bank' && (this.selectedBank === 'all' || v.bank_id == this.selectedBank));
                 });
             },
 
@@ -460,7 +461,7 @@
 
             openModal() {
                 this.selectedVouchers = Object.values(this.vouchersByDate).flat();
-                this.selectedBank = 'all';
+                this.selectedBank = '';
                 this.currentPage = 1;
                 this.modalOpen = true;
             },
@@ -474,7 +475,7 @@
                 if (this.dateFrom) params.set('date_from', this.dateFrom);
                 if (this.dateTo) params.set('date_to', this.dateTo);
                 if (this.branchId) params.set('branch_id', this.branchId);
-                if (this.selectedBank !== 'all') params.set('bank_id', this.selectedBank);
+                if (this.selectedBank) params.set('bank_id', this.selectedBank);
                 params.set('currency', Alpine.store('currency').mode);
                 return `/reports/branch-wise/payment-history/print?${params.toString()}`;
             },
