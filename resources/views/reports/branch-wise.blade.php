@@ -474,6 +474,7 @@
                 if (this.dateFrom) params.set('date_from', this.dateFrom);
                 if (this.dateTo) params.set('date_to', this.dateTo);
                 if (this.branchId) params.set('branch_id', this.branchId);
+                if (this.selectedBank !== 'all') params.set('bank_id', this.selectedBank);
                 params.set('currency', Alpine.store('currency').mode);
                 return `/reports/branch-wise/payment-history/print?${params.toString()}`;
             },

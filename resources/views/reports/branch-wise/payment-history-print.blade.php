@@ -64,7 +64,12 @@
 
     <div class="filters-summary">
         <strong>Filters Applied:</strong>
-        <span>Date Range: {{ $dateLabel }}@if($branch) | Branch: {{ $branch->name }}@endif | Currency: {{ $__currency }}</span>
+        <span>
+            Date Range: {{ $dateLabel }}
+            @if($branch) | Branch: {{ $branch->name }}@endif
+            @if($bankName) | Bank: {{ $bankName }}@endif
+            | Currency: {{ $__currency }}
+        </span>
     </div>
 
     @php

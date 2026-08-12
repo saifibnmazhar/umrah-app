@@ -278,10 +278,12 @@ class BranchWiseReportController extends Controller
         $dateFrom = $request->date_from ? Carbon::parse($request->date_from) : now()->subDays(30);
         $dateTo = $request->date_to ? Carbon::parse($request->date_to) : now();
         $branchId = $request->branch_id;
+        $bankId = $request->bank_id;
         $currency = $request->get('currency', 'SAR');
         $branch = $branchId === 'central'
             ? (object) ['name' => 'Central']
             : ($branchId ? Branch::find($branchId) : null);
+        $bankName = $bankId ? Bank::find($bankId)?->name : null;
         $firstRate = (float) (CurrencyRate::orderBy('created_at')->first()?->rate ?? 0);
 
         $payments = Payment::whereDate('created_at', '>=', $dateFrom)
@@ -312,8 +314,13 @@ class BranchWiseReportController extends Controller
                     'currency_rate' => (float) ($v->currencyRate?->rate ?? $firstRate),
                     'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
                     'bank' => $v->bank?->name ?? '-',
+                    'bank_id' => $v->bank_id,
                 ]);
             }
+        }
+
+        if ($bankId) {
+            $vouchers = $vouchers->where('bank_id', (int) $bankId);
         }
 
         $totalCash = $vouchers->where('method', 'Cash')->sum('amount');
@@ -327,7 +334,7 @@ class BranchWiseReportController extends Controller
 
         return view('reports.branch-wise.payment-history-print', compact(
             'vouchers', 'totalCash', 'totalCashBdt', 'totalBank', 'totalBankBdt',
-            'totalAmount', 'totalAmountBdt', 'currency', 'branch', 'dateLabel', 'dateFrom', 'dateTo'
+            'totalAmount', 'totalAmountBdt', 'currency', 'branch', 'bankName', 'dateLabel', 'dateFrom', 'dateTo'
         ));
     }
 }
