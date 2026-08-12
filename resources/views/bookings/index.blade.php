@@ -801,38 +801,38 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                 </div>
             </div>
             <div class="overflow-auto flex-1 min-h-0">
-                <table class="w-full min-w-[1800px] text-sm">
+                <table class="w-full text-sm table-fixed">
                     <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
                         <tr>
-                            <th class="px-3 py-2 text-left font-medium">Booking Date</th>
-                            <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
-                            <th class="px-3 py-2 text-left font-medium">Customer</th>
-                            <th class="px-3 py-2 text-left font-medium">PAX QTY</th>
-                            <th class="px-3 py-2 text-left font-medium">Mobile</th>
-                            <th class="px-3 py-2 text-left font-medium">Name</th>
-                            <th class="px-3 py-2 text-left font-medium">Current status</th>
-                            <th class="px-3 py-2 text-left font-medium">Passport No</th>
-                            <th class="px-3 py-2 text-left font-medium">Route</th>
-                            <th class="px-3 py-2 text-left font-medium">Required Flight Date</th>
-                            <th class="px-3 py-2 text-left font-medium">Actual Flight Date</th>
-                            <th class="px-3 py-2 text-left font-medium">Return Date</th>
-                            <th class="px-3 py-2 text-left font-medium">Package</th>
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Package Value</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
-                            <th class="px-3 py-2 text-left font-medium">Due</th>
-                            <th class="px-3 py-2 text-left font-medium">Stay Duration</th>
-                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
-                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
-                            <th class="px-3 py-2 text-left font-medium">Visa Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Passenger Type</th>
-                            @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium">Ticket Panel</th>@endif
+                            <th class="px-3 py-2 text-left font-medium w-28">Booking Date</th>
+                            <th class="px-3 py-2 text-left font-medium w-32">Invoice ID</th>
+                            <th class="px-3 py-2 text-left font-medium w-28">Customer</th>
+                            <th class="px-3 py-2 text-left font-medium w-20">PAX QTY</th>
+                            <th class="px-3 py-2 text-left font-medium w-24">Mobile</th>
+                            <th class="px-3 py-2 text-left font-medium w-48">Name</th>
+                            <th class="px-3 py-2 text-left font-medium w-60">Current status</th>
+                            <th class="px-3 py-2 text-left font-medium w-28">Passport No</th>
+                            <th class="px-3 py-2 text-left font-medium w-56">Route</th>
+                            <th class="px-3 py-2 text-left font-medium w-56 whitespace-nowrap">Required Flight Date</th>
+                            <th class="px-3 py-2 text-left font-medium w-36 whitespace-nowrap">Actual Flight Date</th>
+                            <th class="px-3 py-2 text-left font-medium w-28">Return Date</th>
+                            <th class="px-3 py-2 text-left font-medium w-56">Package</th>
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium w-32">Package Value</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium w-32">Total Cost</th>@endif
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium w-32">Markup (Profit)</th>@endif
+                            <th class="px-3 py-2 text-left font-medium w-48">Due</th>
+                            <th class="px-3 py-2 text-left font-medium w-28">Stay Duration</th>
+                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium w-72">Visa</th>@endif
+                            @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium w-28">Visa Agent</th>@endif
+                            <th class="px-3 py-2 text-left font-medium w-28">Visa Status</th>
+                            <th class="px-3 py-2 text-left font-medium w-28">Passenger Type</th>
+                            @if($canViewTicketFareColumn)<th class="px-3 py-2 text-left font-medium w-64">Ticket Panel</th>@endif
                             {{-- @if($canViewTicketAgentColumn)<th class="px-3 py-2 text-left font-medium">Ticket Agent</th>@endif --}}
-                            <th class="px-3 py-2 text-left font-medium">Ticket Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Ticket Remarks</th>
-                            <th class="px-3 py-2 text-left font-medium">Fingerprint Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Remarks</th>
-                            <th class="px-3 py-2 text-left font-medium">Actions</th>
+                            <th class="px-3 py-2 text-left font-medium w-48">Ticket Status</th>
+                            <th class="px-3 py-2 text-left font-medium w-36">Ticket Remarks</th>
+                            <th class="px-3 py-2 text-left font-medium w-48">Fingerprint Status</th>
+                            <th class="px-3 py-2 text-left font-medium w-96">Remarks</th>
+                            <th class="px-3 py-2 text-left font-medium w-44">Actions</th>
                         </tr>
                     </thead>
                     <tbody class="divide-y divide-slate-200">
@@ -901,11 +901,11 @@ if ($passenger->ticket_fare_inbound_id) {
             <span>{{ $passenger->mobile_no ?? '—' }}</span>
         </div>
     </td>
-    <td class="px-3 py-2 text-slate-700">{{ trim($passenger->first_name . ' ' . $passenger->last_name) ?: '—' }}</td>
+    <td class="px-3 py-2 text-slate-700 w-48">{{ trim($passenger->first_name . ' ' . $passenger->last_name) ?: '—' }}</td>
     <td class="px-3 py-2">
         @if($canEditInline)
         <select
-            class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
+            class="w-full text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
             x-bind:value="getComputedStatusId({{ $loop->index }})"
             x-on:change="updatePassengerStatus({{ $passenger->id }}, $event.target.value)">
             <option value="">None</option>
@@ -918,8 +918,8 @@ if ($passenger->ticket_fare_inbound_id) {
         @endif
     </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
-    <td class="px-3 py-2 text-slate-600">{!! nl2br(e($routeDisplay)) !!}</td>
-    <td class="px-3 py-2 text-slate-700">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
+    <td class="px-3 py-2 text-slate-600 w-56">{!! nl2br(e($routeDisplay)) !!}</td>
+    <td class="px-3 py-2 text-slate-700 w-48 whitespace-nowrap">{{ $passenger->flight_date_from?->format('d M Y') . ' → ' . $passenger->flight_date_to?->format('d M Y') ?? '—' }}</td>
     @php
         $regularTicket = $passenger->allIssuedTickets
             ->first(fn($t) => in_array($t->issue_type, [null, 'regular'], true) && in_array($t->status, ['issued', 're-issued']));
@@ -928,7 +928,7 @@ if ($passenger->ticket_fare_inbound_id) {
             $actualFlightDate = $regularTicket->inbound_date?->format('d M Y') ?? 'N/A';
         }
     @endphp
-    <td class="px-3 py-2 text-slate-700">{{ $actualFlightDate }}</td>
+    <td class="px-3 py-2 text-slate-700 w-36 whitespace-nowrap">{{ $actualFlightDate }}</td>
     @php
         $returnDate = 'N/A';
         if ($regularTicket && $regularTicket->outbound_pending) {
@@ -943,7 +943,7 @@ if ($passenger->ticket_fare_inbound_id) {
         }
     @endphp
     <td class="px-3 py-2 text-slate-700">{{ $returnDate }}</td>
-    <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
+    <td class="px-3 py-2 text-slate-700 w-56">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)
     <td class="px-3 py-2 text-slate-700" x-text="(passengersTicketData[{{ $loop->index }}]?.total_cost || 0) > 0 ? $currency(passengersTicketData[{{ $loop->index }}].total_cost, 2, {{ $passBookingRate }}) : '—'"></td>
@@ -951,7 +951,7 @@ if ($passenger->ticket_fare_inbound_id) {
     @if($canViewFinancialColumns)
     <td class="px-3 py-2 text-slate-700" x-text="({{ $passenger->package_value ?? 0 }} > 0 || (passengersTicketData[{{ $loop->index }}]?.total_cost || 0) > 0) ? $currency({{ $passenger->package_value ?? 0 }} - passengersTicketData[{{ $loop->index }}].total_cost, 2, {{ $passBookingRate }}) : '—'"></td>
     @endif
-    <td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice)<div class="font-medium">Total: @currency($passenger->booking->invoice->total_amount, 2, $passBookingRate)</div><div class="font-medium">Due: @currency($passenger->booking->invoice->balance, 2, $passBookingRate)</div>@else—@endif @endif</td>
+    <td class="px-3 py-2 text-slate-700 w-48">@if($isFirstRow)@if($passenger->booking?->invoice)<div class="font-medium">Total: @currency($passenger->booking->invoice->total_amount, 2, $passBookingRate)</div><div class="font-medium">Due: @currency($passenger->booking->invoice->balance, 2, $passBookingRate)</div>@else—@endif @endif</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->stay_duration ?? '—' }}</td>
     @if($canViewVisaColumns)
     <td class="px-3 py-2" x-init="$nextTick(() => console.log('P'+{{ $loop->index }}+': visa='+((passengersVisaData[{{ $loop->index }}]?.visa?.status)||'null')+' fp='+((passengersTicketData[{{ $loop->index }}]?.fingerprint_status)||'null')+' canc='+passengersTicketData[{{ $loop->index }}]?.is_cancelled))">
@@ -1037,7 +1037,7 @@ if ($passenger->ticket_fare_inbound_id) {
         }[passengersTicketData[{{ $loop->index }}]?.passenger_type] || '—'">—</span>
     </td>
     @if($canViewTicketFareColumn)
-    <td class="px-3 py-2 text-slate-700">
+    <td class="px-3 py-2 text-slate-700 w-64">
         <div class="flex items-center gap-1 w-full">
             <span class="font-medium text-sm shrink-0">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && ['Hold', 'Cancel'].includes(passengersTicketData[{{ $loop->index }}]?.status)">
@@ -1164,7 +1164,7 @@ if ($passenger->ticket_fare_inbound_id) {
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">—</span>
         @endif
     </td>
-    <td class="px-3 py-2 text-slate-600 text-sm max-w-[250px] break-words whitespace-normal leading-snug">
+    <td class="px-3 py-2 text-slate-600 text-sm max-w-[400px] break-words whitespace-normal leading-snug">
         {{ $passenger->booking?->remarks ?? '—' }}
     </td>
     <td class="px-3 py-2">
