@@ -2,7 +2,7 @@ name: ${COMPOSE_PROJECT_NAME:-umrah-app}
 
 services:
   app:
-    image: ghcr.io/mostafiz-8bits/umrah-app:${IMAGE_TAG:-latest}
+    image: ghcr.io/saifibnmazhar/umrah-app:${IMAGE_TAG:-latest}
     env_file: .env.production
     volumes:
       - umrah_app_storage:/var/www/html/storage
