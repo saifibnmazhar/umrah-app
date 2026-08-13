@@ -64,6 +64,7 @@ class RefundController extends Controller
                 'offer_price' => $issuedTicket->offer_price ?? 0,
                 'iata_refunded_amount' => $validated['iata_refund'] ?? 0,
                 'refund_to_customer' => $validated['customer_refund'] ?? 0,
+                'refund_compensation' => (float) ($issuedTicket->net_fare ?? 0) - (float) $validated['iata_refund'],
             ]);
 
             $refundedTicket = RefundedTicket::create($refundData);
