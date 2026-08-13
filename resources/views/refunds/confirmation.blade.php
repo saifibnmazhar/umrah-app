@@ -161,6 +161,17 @@
                             <input type="number" id="inputServiceChargeBdtSar" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
                         </div>
                     </div>
+                    <div>
+                        <div id="fieldRefundCompensationSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refund Compensation (SAR) (Auto: Net Fare - IATA Refund)</label>
+                            <input type="number" id="inputRefundCompensation" step="0.01" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
+                        </div>
+                        <div id="fieldRefundCompensationBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refund Compensation (BDT) (Auto: Net Fare - IATA Refund)</label>
+                            <input type="number" id="inputRefundCompensationBdt" step="0.01" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
+                            <input type="number" id="inputRefundCompensationBdtSar" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
+                        </div>
+                    </div>
                     <div class="md:col-span-2">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
                         <textarea id="inputRemarks" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none resize-none" placeholder="Enter remarks..."></textarea>
@@ -187,6 +198,7 @@
 const bookingId = {{ $id }};
 let allRequests = [];
 let currentTicketRequestId = null;
+let currentRefundNetFare = 0;
 
 function getCurrencyMode() {
     return (typeof Alpine !== 'undefined' && Alpine.store('currency')) ? Alpine.store('currency').mode : 'SAR';
@@ -222,6 +234,7 @@ function syncCurrencyFields() {
         ['fieldAgentRefundSar', 'fieldAgentRefundBdt'],
         ['fieldCustomerRefundSar', 'fieldCustomerRefundBdt'],
         ['fieldServiceChargeSar', 'fieldServiceChargeBdt'],
+        ['fieldRefundCompensationSar', 'fieldRefundCompensationBdt'],
     ];
     wrappers.forEach(function(w) {
         var sarEl = document.getElementById(w[0]);
@@ -237,6 +250,7 @@ function syncReadonlyMirrors() {
         ['inputAgentRefundAmount', 'inputAgentRefundAmountBdtSar'],
         ['inputCustomerRefundAmount', 'inputCustomerRefundAmountBdtSar'],
         ['inputServiceCharge', 'inputServiceChargeBdtSar'],
+        ['inputRefundCompensation', 'inputRefundCompensationBdtSar'],
     ];
     pairs.forEach(function(p) {
         var sarEl = document.getElementById(p[0]);
@@ -399,6 +413,8 @@ function processConfirmation(ticketRequestId) {
 
     document.getElementById('infoRefundPayable').textContent = (parseFloat(p.refund_payable) || 0).toFixed(2);
 
+    currentRefundNetFare = parseFloat(t.net_fare) || 0;
+
     document.getElementById('inputAgentRefundAmount').value = '';
     document.getElementById('inputAgentRefundAmountBdt').value = '';
     document.getElementById('inputAgentRefundAmountBdtSar').value = '';
@@ -411,6 +427,9 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('inputServiceCharge').value = '';
     document.getElementById('inputServiceChargeBdt').value = '';
     document.getElementById('inputServiceChargeBdtSar').value = '';
+    document.getElementById('inputRefundCompensation').value = '';
+    document.getElementById('inputRefundCompensationBdt').value = '';
+    document.getElementById('inputRefundCompensationBdtSar').value = '';
     document.getElementById('inputRemarks').value = '';
     // document.getElementById('bankMethodSection').classList.add('hidden');
     // document.getElementById('branchSection').classList.add('hidden');
@@ -433,6 +452,9 @@ function updateServiceCharge() {
     const customer = parseFloat(document.getElementById('inputCustomerRefundAmount').value) || 0;
     document.getElementById('inputServiceCharge').value = iata - customer;
     document.getElementById('inputServiceChargeBdt').value = sarToBdt(iata - customer);
+    const compensation = currentRefundNetFare - iata;
+    document.getElementById('inputRefundCompensation').value = compensation;
+    document.getElementById('inputRefundCompensationBdt').value = sarToBdt(compensation);
     syncReadonlyMirrors();
 }
 

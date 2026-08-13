@@ -336,6 +336,7 @@ class TicketRequestController extends Controller
                 'iata_refunded_amount' => $validated['iata_refund'],
                 'refund_to_customer' => $validated['customer_refund'],
                 'service_charge' => $validated['service_charge'],
+                'refund_compensation' => (float) ($issuedTicket->net_fare ?? 0) - (float) $validated['iata_refund'],
                 'reason_id' => $validated['reason_id'],
                 'remarks' => $validated['remarks'] ?? null,
                 'payment_by' => $validated['payment_by'] ?? null,
