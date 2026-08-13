@@ -34,8 +34,8 @@ return new class extends Migration
             $table->decimal('net_fare', 12, 2)->default(0)->change();
         });
 
-        DB::statement('ALTER TABLE issued_tickets DROP CONSTRAINT IF EXISTS issued_tickets_selling_fare_check');
-        DB::statement('ALTER TABLE issued_tickets DROP CONSTRAINT IF EXISTS issued_tickets_net_fare_check');
-        DB::statement('ALTER TABLE issued_tickets DROP CONSTRAINT IF EXISTS issued_tickets_offer_price_check');
+        DB::statement('ALTER TABLE issued_tickets DROP CHECK IF EXISTS issued_tickets_selling_fare_check');
+        DB::statement('ALTER TABLE issued_tickets DROP CHECK IF EXISTS issued_tickets_net_fare_check');
+        DB::statement('ALTER TABLE issued_tickets DROP CHECK IF EXISTS issued_tickets_offer_price_check');
     }
 };
