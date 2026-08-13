@@ -14,25 +14,31 @@ Umrah App uses **GitHub Actions** for continuous integration and deployment.
 
 ### 1. `test-php`
 
-**Purpose:** Run the PHPUnit test suite against PostgreSQL.
+**Purpose:** Run the PHPUnit test suite against MySQL.
 
 ```yaml
 runs-on: ubuntu-latest
 services:
-  postgres:
-    image: postgres:16-alpine
+  mysql:
+    image: mysql:8.0
     env:
-      POSTGRES_PASSWORD: test
-      POSTGRES_USER: test
-      POSTGRES_DB: umrah_test
-    ports: ['5432:5432']
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: umrah_test
+      MYSQL_USER: test
+      MYSQL_PASSWORD: test
+    ports: ['3306:3306']
+    options: >-
+      --health-cmd "mysqladmin ping -h 127.0.0.1 -utest --password=test"
+      --health-interval 10s
+      --health-timeout 5s
+      --health-retries 10
 ```
 
 Steps:
 1. Checkout code
-2. Setup PHP 8.3 with extensions (pdo_pgsql, pgsql, intl, mbstring, zip)
+2. Setup PHP 8.3 with extensions (pdo_mysql, mysqli, intl, mbstring, zip)
 3. `composer install` (no interaction, prefer-dist)
-4. Setup `.env` (SQLite → PostgreSQL, pointing at the service container)
+4. Setup `.env` (SQLite → MySQL, pointing at the service container)
 5. `php artisan key:generate`
 6. `php artisan migrate --no-interaction`
 7. `vendor/bin/phpunit`
@@ -40,7 +46,7 @@ Steps:
 **When this fails:**
 - Check for SQL errors in migrations — the test DB mirrors production schema
 - Check for model attribute mismatches — casts, fillable, etc.
-- Ensure new migrations don't conflict with the test Postgres instance
+- Ensure new migrations don't conflict with the test MySQL instance
 
 ### 2. `test-js`
 
@@ -103,7 +109,7 @@ Deployment is **not** automated in CI/CD. The process is:
 This script:
 1. Pulls the latest image from ghcr.io
 2. Stops containers gracefully (keeps volumes)
-3. Starts PostgreSQL first, waits for health
+3. Starts MySQL first, waits for health
 4. Starts the app container
 5. Fixes storage permissions
 

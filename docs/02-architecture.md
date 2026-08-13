@@ -10,7 +10,7 @@ and how requests flow through the system.
 | Layer              | Technology                                  |
 |--------------------|---------------------------------------------|
 | Backend            | Laravel 12, PHP 8.3                         |
-| Database (prod)    | PostgreSQL 16                               |
+| Database (prod)    | MySQL 8.0                               |
 | Cache (prod)       | Redis 7                                     |
 | Database (test)    | SQLite (in-memory)                          |
 | Frontend           | Blade templates, Vite 7, Tailwind CSS v4, Alpine.js |

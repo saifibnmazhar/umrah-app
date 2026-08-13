@@ -19,7 +19,7 @@ docker compose up -d
 
 **Ports:**
 - App: `http://localhost:8080`
-- PostgreSQL: `127.0.0.1:5433`
+- MySQL: `127.0.0.1:3306`
 
 ### Stopping and cleaning
 
@@ -90,9 +90,8 @@ npm run build    # or: npm run dev (for hot-reload)
 php artisan serve
 ```
 
-For local development, the default `DB_CONNECTION=sqlite` works out of the box
-(no PostgreSQL needed). The SQLite database file is created at
-`database/database.sqlite`.
+For local development, the default `DB_CONNECTION=mysql` works out of the box
+(no MySQL needed).
 
 ## IDE Recommendations
 
