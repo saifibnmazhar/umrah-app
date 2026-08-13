@@ -818,6 +818,7 @@ function confirmProcess() {
         fare_difference: parseFloat(document.getElementById('inputFareDifference').value) || 0,
         other_costs: parseFloat(document.getElementById('inputOtherCosts').value) || 0,
         service_charge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
+        total_customer_payment: parseFloat(document.getElementById('inputTotalPayment').value) || 0,
         travel_date: parseDDMMMYY(document.getElementById('inputTravelDate').value) || null,
         inbound_date: parseDDMMMYY(document.getElementById('inputUpDate').value) || null,
         outbound_date: parseDDMMMYY(document.getElementById('inputDownDate').value) || null,

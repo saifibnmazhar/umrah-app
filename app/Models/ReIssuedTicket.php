@@ -21,6 +21,7 @@ class ReIssuedTicket extends Model
         'payment_by',
         'payment_option',
         'refund_adjustment_amount',
+        'total_customer_payment',
         'reason_id', 'remarks',
     ];
 
@@ -39,6 +40,7 @@ class ReIssuedTicket extends Model
         'is_exchangeable' => 'boolean',
         'payment_option' => \App\Enums\ReIssuePaymentOption::class,
         'refund_adjustment_amount' => 'decimal:6',
+        'total_customer_payment' => 'decimal:6',
     ];
 
     public function user(): BelongsTo

@@ -5063,6 +5063,7 @@ function bookingIndexApp() {
                 fare_difference: form.fare_difference || 0,
                 other_costs: form.other_costs || 0,
                 service_charge: form.service_charge || 0,
+                total_customer_payment: form.total_payment || 0,
                 remarks: form.remarks,
                 payment_by: form.payment_by,
                 payment_option: form.payment_by === 'customer' ? form.payment_option : null,

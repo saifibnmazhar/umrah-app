@@ -114,6 +114,7 @@ class TicketRequestController extends Controller
             'fare_difference' => 'required|numeric',
             'other_costs' => 'required|numeric|min:0',
             'service_charge' => 'required|numeric|min:0',
+            'total_customer_payment' => 'required_if:payment_by,customer|numeric|min:0',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee',
             'payment_option' => 'required_if:payment_by,customer|in:customer_payment,refund_adjustment',
@@ -183,6 +184,9 @@ class TicketRequestController extends Controller
                 'refund_adjustment_amount' => ($validated['payment_by'] ?? null) === 'customer'
                         && $validated['payment_option'] === 'refund_adjustment'
                     ? (float) $validated['refund_adjustment_amount']
+                    : 0,
+                'total_customer_payment' => ($validated['payment_by'] ?? null) === 'customer'
+                    ? (float) $validated['total_customer_payment']
                     : 0,
             ];
 
