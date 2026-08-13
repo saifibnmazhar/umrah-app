@@ -36,7 +36,7 @@ docker compose -f docker-compose.prod.yml up -d db
 
 # Wait for DB health
 echo "Waiting for database..."
-until docker compose -f docker-compose.prod.yml exec db pg_isready -U "${DB_USERNAME:-techcandle_umrah}" -d "${DB_DATABASE:-umrah_app_prod}" >/dev/null 2>&1; do
+until docker compose -f docker-compose.prod.yml exec db mysqladmin ping -h 127.0.0.1 -u"${DB_USERNAME:-techcandle_umrah}" --password="${DB_PASSWORD:-}" --silent; do
   echo "Still waiting..."
   sleep 3
 done
