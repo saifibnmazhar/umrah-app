@@ -14,25 +14,30 @@ RUN npm run build
 #################
 # PHP-FPM runtime stage
 #################
-FROM php:8.3-fpm-alpine3.24 AS app
+FROM php:8.4-fpm-alpine3.24 AS app
 
 RUN apk add --no-cache \
         libpq-dev \
         icu-dev \
         oniguruma-dev \
         libzip-dev \
+        freetype-dev \
+        libjpeg-turbo-dev \
+        libpng-dev \
         zip \
         unzip \
         curl \
         nginx \
         supervisor \
     && docker-php-ext-configure intl \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" \
         pdo_pgsql \
         pgsql \
         intl \
         mbstring \
         zip \
+        gd \
     && docker-php-ext-enable opcache
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
