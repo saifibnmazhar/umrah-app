@@ -10,7 +10,7 @@ set -e
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$SCRIPT_DIR")}"
 export APP_PORT="${APP_PORT:-8000}"
-export DB_EXPOSE_PORT="${DB_EXPOSE_PORT:-15432}"
+export DB_EXPOSE_PORT="${DB_EXPOSE_PORT:-3306}"
 export DB_CONTAINER_NAME="${DB_CONTAINER_NAME:-umrah_app_db}"
 export REDIS_CONTAINER_NAME="${REDIS_CONTAINER_NAME:-umrah_app_redis}"
 export DB_USERNAME="${DB_USERNAME:-techcandle_umrah}"
@@ -36,7 +36,7 @@ docker compose -f docker-compose.prod.yml up -d db
 
 # Wait for DB health
 echo "Waiting for database..."
-until docker compose -f docker-compose.prod.yml exec db pg_isready -U "${DB_USERNAME:-techcandle_umrah}" -d "${DB_DATABASE:-umrah_app_prod}" >/dev/null 2>&1; do
+until docker compose -f docker-compose.prod.yml exec db mysqladmin ping -h 127.0.0.1 -P 3306 -u"$${DB_USERNAME:-techcandle_umrah}" --password="$${DB_PASSWORD}" -d "$${DB_DATABASE:-umrah_app_prod}" >/dev/null 2>&1; do
   echo "Still waiting..."
   sleep 3
 done
