@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Edit Booking')
 @section('content')
-@php $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty(); @endphp
+@php $canApplyDiscount = auth()->user()?->roles?->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty(); @endphp
 <script>window.__bookingServerData = {
     ticketFares: @json($ticketFares ?? []),
     packages: @json($packages ?? []),
@@ -97,7 +97,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Booking Branch</label>
-                    @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin'))
+                    @if(auth()->user()?->hasRole('Super Admin') || auth()->user()?->hasRole('Co Admin'))
                         <select name="booking_branch_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                             <option value="">Select Booking Branch</option>
                             @foreach($bookingBranches as $branch)
@@ -123,7 +123,7 @@
                 </div>
                 <div>
                     <label class="block text-sm font-medium text-slate-700 mb-2">Package</label>
-                    @if(auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin'))
+                    @if(auth()->user()?->hasRole('Super Admin') || auth()->user()?->hasRole('Co Admin'))
                         <select x-model="bookingData.package_id" @change="onPackageChange(); $el.blur()" name="package_id" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white">
                             <option value="">Select Package</option>
                             @foreach($packages as $pkg)
