@@ -205,6 +205,19 @@
             </div>
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-600">Total Ticket Refunds</h3>
+                    <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-orange-600 mb-1">@currency(cascadeRound($totalTicketRefund), 0, null, cascadeRound($totalTicketRefundBdt)) <span x-text="$store.currency.mode"></span></div>
+                <div class="text-xs text-slate-500 mt-1">{{ $dateLabel }}</div>
+            </div>
+
+        <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
             <div class="flex justify-between items-center mb-2">
                 <h3 class="text-sm font-semibold text-slate-600">Fingerprint</h3>
                 <div class="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
