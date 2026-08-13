@@ -14,16 +14,16 @@ class RouteSeeder extends Seeder
      */
     public function run(): void
     {
-        $dubai = CityCode::where('city_code', 'DXB')->first();
-        $jeddah = CityCode::where('city_code', 'JED')->first();
-        $dhaka = CityCode::where('city_code', 'DAC')->first();
-        $chittagong = CityCode::where('city_code', 'CGP')->first();
-        $doha = CityCode::where('city_code', 'DOH')->first;
-        $abuDhabi = CityCode::where('city_code', 'AUH')->first;
+        $dubai = CityCode::where('code', 'DXB')->first();
+        $jeddah = CityCode::where('code', 'JED')->first();
+        $dhaka = CityCode::where('code', 'DAC')->first();
+        $chittagong = CityCode::where('code', 'CGP')->first();
+        $doha = CityCode::where('code', 'DOH')->first();
+        $abuDhabi = CityCode::where('code', 'AUH')->first();
 
         $emirates = Airline::where('code', 'EK')->first();
-        $qatar = Airline::where('code', 'QR')->first;
-        $saudi = Airline::where('code', 'SV')->first;
+        $qatar = Airline::where('code', 'QR')->first();
+        $saudi = Airline::where('code', 'SV')->first();
 
         Route::insert([
             [

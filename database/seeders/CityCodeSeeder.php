@@ -13,14 +13,14 @@ class CityCodeSeeder extends Seeder
     public function run(): void
     {
         CityCode::insert([
-            ['city_code' => 'DXB', 'city' => 'Dubai', 'country' => 'UAE', 'created_at' => now(), 'updated_at' => now()],
-            ['city_code' => 'RUH', 'city' => 'Riyadh', 'country' => 'Saudi Arabia', 'created_at' => now(), 'updated_at' => now()],
-            ['city_code' => 'JED', 'city' => 'Jeddah', 'country' => 'Saudi Arabia', 'created_at' => now(), 'updated_at' => now()],
-            ['city_code' => 'DHA', 'city' => 'Dhaka', 'country' => 'Bangladesh', 'created_at' => now(), 'updated_at' => now()],
-            ['city_code' => 'CGP', 'city' => 'Chittagong', 'country' => 'Bangladesh', 'created_at' => now(), 'updated_at' => now()],
-            ['city_code' => 'DAC', 'city' => 'Dhaka', 'country' => 'Bangladesh', 'created_at' => now(), 'updated_at' => now()],
-            ['city_code' => 'DOH', 'city' => 'Doha', 'country' => 'Qatar', 'created_at' => now(), 'updated_at' => now()],
-            ['city_code' => 'AUH', 'city' => 'Abu Dhabi', 'country' => 'UAE', 'created_at' => now(), 'updated_at' => now()],
+            ['city_name' => 'Dubai', 'code' => 'DXB', 'country' => 'UAE', 'created_at' => now(), 'updated_at' => now()],
+            ['city_name' => 'Riyadh', 'code' => 'RUH', 'country' => 'Saudi Arabia', 'created_at' => now(), 'updated_at' => now()],
+            ['city_name' => 'Jeddah', 'code' => 'JED', 'country' => 'Saudi Arabia', 'created_at' => now(), 'updated_at' => now()],
+            ['city_name' => 'Dhaka', 'code' => 'DHA', 'country' => 'Bangladesh', 'created_at' => now(), 'updated_at' => now()],
+            ['city_name' => 'Chittagong', 'code' => 'CGP', 'country' => 'Bangladesh', 'created_at' => now(), 'updated_at' => now()],
+            ['city_name' => 'Dhaka', 'code' => 'DAC', 'country' => 'Bangladesh', 'created_at' => now(), 'updated_at' => now()],
+            ['city_name' => 'Doha', 'code' => 'DOH', 'country' => 'Qatar', 'created_at' => now(), 'updated_at' => now()],
+            ['city_name' => 'Abu Dhabi', 'code' => 'AUH', 'country' => 'UAE', 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 }

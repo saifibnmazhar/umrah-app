@@ -26,6 +26,7 @@ class DatabaseSeeder extends Seeder
             // Users and authentication
             UserSeeder::class,
             CurrencyRateSeeder::class,
+            VisaSellingPriceSeeder::class,
 
             // Airline and route data
             AirlineSeeder::class,

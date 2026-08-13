@@ -13,14 +13,15 @@ class AirlineClassSeeder extends Seeder
      */
     public function run(): void
     {
-        $airlines = Airline::all();
-        $classes = TravelClass::all();
+        // Get the class IDs array
+        $classIds = TravelClass::pluck('id')->toArray();
 
-        foreach ($airlines as $airline) {
-            foreach ($classes as $class) {
-                // Attach all airlines with all classes
-                $airline->travelClasses()->attach($class->id);
-            }
+        foreach (Airline::all() as $airline) {
+            // Use sync which handles duplicates gracefully
+            $airline->travelClasses()->sync(
+                array_fill_keys($classIds, []),
+                false // Don't detach existing
+            );
         }
     }
 }

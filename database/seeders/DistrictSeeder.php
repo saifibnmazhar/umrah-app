@@ -13,16 +13,16 @@ class DistrictSeeder extends Seeder
     public function run(): void
     {
         District::insert([
-            ['name' => 'Dhaka', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Chittagong', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Khulna', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Rajshahi', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Sylhet', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Barisal', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Rangpur', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => '.Comilla', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Narayanganj', 'created_at' => now(), 'updated_at' => now()],
-            ['name' => 'Savar', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Dhaka', 'division' => 'Dhaka', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Chittagong', 'division' => 'Chittagong', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Khulna', 'division' => 'Khulna', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Rajshahi', 'division' => 'Rajshahi', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Sylhet', 'division' => 'Sylhet', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Barisal', 'division' => 'Barisal', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Rangpur', 'division' => 'Rangpur', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Comilla', 'division' => 'Chittagong', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Narayanganj', 'division' => 'Dhaka', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Savar', 'division' => 'Dhaka', 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 }
