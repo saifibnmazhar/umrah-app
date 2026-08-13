@@ -164,6 +164,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         ->first()?->status ?? null,
     'ticket_remarks' => $p->ticket_remarks ?? '',
     'due' => $p->booking?->invoice?->balance ?? 0,
+    'refund_payable' => (float) ($p->refund_payable ?? 0),
     'required_flight_date' => $p->flight_date_from?->format('Y-m-d') ?? '',
     'actual_flight_date' => $p->actual_flight_date?->format('Y-m-d') ?? '',
     'fingerprint_location' => $p->booking?->fingerprint_location?->value ?? 'None',
@@ -1700,6 +1701,12 @@ if ($passenger->ticket_fare_inbound_id) {
                 <div class="mb-4">
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Refund Details</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div class="md:col-span-2">
+                            <div class="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3">
+                                <span class="text-sm font-medium text-emerald-700">Refund Payable (SAR)</span>
+                                <span class="text-lg font-semibold text-emerald-700" x-text="refundPayable.toFixed(2)"></span>
+                            </div>
+                        </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Reason *</label>
                             <select x-model="refundForm.reason_id"
@@ -2351,6 +2358,37 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <option value="airline">Airline</option>
                                 <option value="employee">Employee</option>
                             </select>
+                        </div>
+                        <div x-show="reIssueForm.payment_by === 'customer'">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
+                            <select x-model="reIssueForm.payment_option" @change="handleReIssuePaymentOptionChange()"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="customer_payment">Customer Payment</option>
+                                <option value="refund_adjustment">Refund Adjustment</option>
+                            </select>
+                        </div>
+                        <div x-show="reIssueForm.payment_by === 'customer' && reIssueForm.payment_option === 'refund_adjustment'">
+                            <div class="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 mb-2">
+                                <span class="text-sm font-medium text-emerald-700">Refund Payable (SAR)</span>
+                                <span class="text-sm font-semibold text-emerald-700" x-text="$currency(reIssueForm.refund_payable, 2)"></span>
+                            </div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (SAR)</label>
+                                <input type="number" x-model="reIssueForm.refund_adjustment_amount" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('refund_adjustment_amount'); reIssueForm.errors.refund_adjustment_amount = ''"
+                                       :class="reIssueForm.errors.refund_adjustment_amount ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.refund_adjustment_amount" x-text="reIssueForm.errors.refund_adjustment_amount" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (BDT)</label>
+                                <input type="number" x-model="reIssueForm.refund_adjustment_amount_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('refund_adjustment_amount'); reIssueForm.errors.refund_adjustment_amount = ''"
+                                       :class="reIssueForm.errors.refund_adjustment_amount ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.refund_adjustment_amount" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.refund_adjustment_amount" x-text="reIssueForm.errors.refund_adjustment_amount" class="text-xs text-red-500 mt-1"></p>
+                            </div>
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
@@ -3728,6 +3766,7 @@ function bookingIndexApp() {
         refundPassengerIndex: null,
         refundTicketIndex: null,
         refundReasons: @json($refundReasons),
+        refundPayable: 0,
 
         refundForm: {
             booking_id: null,
@@ -3858,6 +3897,10 @@ function bookingIndexApp() {
             total_payment_bdt: '',
             remarks: '',
             payment_by: 'customer',
+            payment_option: 'customer_payment',
+            refund_adjustment_amount: 0,
+            refund_adjustment_amount_bdt: '',
+            refund_payable: 0,
             isRouteTypeLocked: false,
             errors: {
                 pnr: '',
@@ -3869,6 +3912,7 @@ function bookingIndexApp() {
                 fare_difference: '',
                 other_costs: '',
                 service_charge: '',
+                refund_adjustment_amount: '',
                 inbound_date: '',
                 outbound_date: '',
             },
@@ -4742,6 +4786,10 @@ function bookingIndexApp() {
             this.reIssueForm.total_payment_bdt = '';
             this.reIssueForm.remarks = '';
             this.reIssueForm.payment_by = 'customer';
+            this.reIssueForm.payment_option = 'customer_payment';
+            this.reIssueForm.refund_adjustment_amount = 0;
+            this.reIssueForm.refund_adjustment_amount_bdt = '';
+            this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0);
 
             const rate = window.__currencyRate || 0;
             if (rate > 0) {
@@ -4774,6 +4822,7 @@ function bookingIndexApp() {
             const f = this.refundForm;
             f.booking_id = row.booking_id;
             f.passenger_id = row.id;
+            this.refundPayable = parseFloat(row.refund_payable || 0);
             f.issued_ticket_id = ticket.id;
             f.ticket_number = ticket.ticket_number || '';
             f.pnr = ticket.pnr || '';
@@ -4952,12 +5001,36 @@ function bookingIndexApp() {
             const totalPayment = totalCost + (parseFloat(f.service_charge) || 0);
             f.total_payment = totalPayment;
             f.total_payment_bdt = rate > 0 ? Math.round(totalPayment * rate) : '';
+
+            const adj = parseFloat(f.refund_adjustment_amount) || 0;
+            if (f.payment_by === 'customer' && f.payment_option === 'refund_adjustment' && adj > 0) {
+                if (adj > totalPayment) {
+                    f.errors.refund_adjustment_amount = 'Refund adjustment amount exceeds the total customer payment.';
+                } else if (adj > f.refund_payable) {
+                    f.errors.refund_adjustment_amount = 'Refund adjustment amount exceeds the available refund payable.';
+                } else {
+                    f.errors.refund_adjustment_amount = '';
+                }
+            } else {
+                f.errors.refund_adjustment_amount = '';
+            }
         },
 
         handleReIssuePaymentByChange() {
             if (this.reIssueForm.payment_by !== 'customer') {
                 this.reIssueForm.service_charge = 0;
                 this.reIssueForm.service_charge_bdt = '';
+                this.reIssueForm.payment_option = 'customer_payment';
+                this.reIssueForm.refund_adjustment_amount = 0;
+                this.reIssueForm.refund_adjustment_amount_bdt = '';
+            }
+            this.recalcReIssueTotals();
+        },
+
+        handleReIssuePaymentOptionChange() {
+            if (this.reIssueForm.payment_option !== 'refund_adjustment') {
+                this.reIssueForm.refund_adjustment_amount = 0;
+                this.reIssueForm.refund_adjustment_amount_bdt = '';
             }
             this.recalcReIssueTotals();
         },
@@ -4992,7 +5065,22 @@ function bookingIndexApp() {
                 service_charge: form.service_charge || 0,
                 remarks: form.remarks,
                 payment_by: form.payment_by,
+                payment_option: form.payment_by === 'customer' ? form.payment_option : null,
+                refund_adjustment_amount: form.payment_by === 'customer' && form.payment_option === 'refund_adjustment' ? (parseFloat(form.refund_adjustment_amount) || 0) : 0,
             };
+
+            if (payload.payment_by === 'customer' && payload.payment_option === 'refund_adjustment') {
+                if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge) {
+                    this.showToast('Refund adjustment amount exceeds the total customer payment.', 'error');
+                    this.isSubmitting = false;
+                    return;
+                }
+                if (payload.refund_adjustment_amount > form.refund_payable) {
+                    this.showToast('Refund adjustment amount exceeds the available refund payable.', 'error');
+                    this.isSubmitting = false;
+                    return;
+                }
+            }
 
             fetch('/bookings/' + form.booking_id + '/passengers/' + form.passenger_id + '/re-issue', {
                 method: 'POST',

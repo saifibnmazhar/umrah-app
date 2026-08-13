@@ -73,6 +73,13 @@
             </div>
 
             <div class="mb-6">
+                <div class="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3">
+                    <span class="text-sm font-medium text-emerald-700">Refund Payable (SAR)</span>
+                    <span class="text-lg font-semibold text-emerald-700" id="infoRefundPayable">0.00</span>
+                </div>
+            </div>
+
+            <div class="mb-6">
                 <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Refund Details</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -389,6 +396,8 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('infoAirline').textContent = t.ticket_fare?.airline?.name || '-';
     document.getElementById('infoClass').textContent = t.ticket_fare?.airline_class?.class?.name || '-';
     document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
+
+    document.getElementById('infoRefundPayable').textContent = (parseFloat(p.refund_payable) || 0).toFixed(2);
 
     document.getElementById('inputAgentRefundAmount').value = '';
     document.getElementById('inputAgentRefundAmountBdt').value = '';

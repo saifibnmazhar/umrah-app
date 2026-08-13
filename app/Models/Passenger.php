@@ -125,12 +125,27 @@ class Passenger extends Model
         );
     }
 
-    public function ticketRefundPayments(): HasMany
+    public function reIssueSettlements(): HasMany
     {
         return $this->hasMany(Payment::class)
-                    ->whereIn('refunded_ticket_id', fn ($q) =>
-                        $q->select('id')->from('refunded_tickets')
-                    );
+                    ->whereHas('vouchers.transactionType', function ($q) {
+                        $q->where('name', 'Ticket Refund - Re-issue');
+                    });
+    }
+
+    public function verifyRefundPayable(): float
+    {
+        $refunds = (float) $this->refundedTickets()->sum('refund_to_customer');
+        $settlements = (float) $this->reIssueSettlements()->sum('amount');
+
+        return max(0, $refunds - $settlements);
+    }
+
+    public function assertRefundPayableInSync(?float &$computed = null): bool
+    {
+        $computed = $this->verifyRefundPayable();
+
+        return abs($computed - (float) $this->refund_payable) < 0.000001;
     }
 
     public function increaseRefundPayable(float $amount): void

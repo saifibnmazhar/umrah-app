@@ -68,6 +68,8 @@ class RefundController extends Controller
 
             $refundedTicket = RefundedTicket::create($refundData);
 
+            $passenger->increaseRefundPayable((float) $validated['customer_refund']);
+
             $issuedTicket->update(['status' => 'refunded']);
 
             $issuedTicket->logAction('refunded', $oldData, $issuedTicket->toArray());

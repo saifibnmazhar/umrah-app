@@ -73,6 +73,13 @@
             </div>
 
             <div class="mb-6">
+                <div class="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3">
+                    <span class="text-sm font-medium text-emerald-700">Refund Payable (SAR)</span>
+                    <span class="text-lg font-semibold text-emerald-700" id="infoRefundPayable">0.00</span>
+                </div>
+            </div>
+
+            <div class="mb-6">
                 <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Re-Issue Details</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
@@ -89,6 +96,24 @@
                             <option value="airline">Airline</option>
                             <option value="employee">Employee</option>
                         </select>
+                    </div>
+                    <div id="fieldPaymentOption" class="hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
+                        <select id="inputPaymentOption" onchange="handlePaymentOptionChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="customer_payment">Customer Payment</option>
+                            <option value="refund_adjustment">Refund Adjustment</option>
+                        </select>
+                    </div>
+                    <div id="fieldRefundAdjustment" class="hidden">
+                        <div id="fieldRefundAdjustmentSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (SAR)</label>
+                            <input type="number" min="0" step="0.000001" id="inputRefundAdjustment" oninput="updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldRefundAdjustmentBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (BDT)</label>
+                            <input type="number" min="0" step="0.000001" id="inputRefundAdjustmentBdt" oninput="handleFieldBdtInput('inputRefundAdjustment','inputRefundAdjustmentBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputRefundAdjustmentBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Route Type</label>
@@ -295,6 +320,7 @@
 const bookingId = {{ $id }};
 let allRequests = [];
 let currentTicketRequestId = null;
+let currentRefundPayable = 0;
 let allTicketFares = [];
 let selectedTicketFareId = null;
 let sourceFares = { selling_fare: 0, net_fare: 0, offer_price: 0 };
@@ -339,6 +365,7 @@ function syncCurrencyFields() {
         ['fieldTotalCostSar', 'fieldTotalCostBdt'],
         ['fieldServiceChargeSar', 'fieldServiceChargeBdt'],
         ['fieldTotalPaymentSar', 'fieldTotalPaymentBdt'],
+        ['fieldRefundAdjustmentSar', 'fieldRefundAdjustmentBdt'],
     ];
     wrappers.forEach(function(w) {
         var sarEl = document.getElementById(w[0]);
@@ -361,6 +388,7 @@ function syncReadonlyMirrors() {
         ['inputServiceCharge', 'inputServiceChargeBdtSar'],
         ['inputTotalCost', 'inputTotalCostBdtSar'],
         ['inputTotalPayment', 'inputTotalPaymentBdtSar'],
+        ['inputRefundAdjustment', 'inputRefundAdjustmentBdtSar'],
     ];
     pairs.forEach(function(p) {
         var sarEl = document.getElementById(p[0]);
@@ -603,6 +631,9 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('infoClass').textContent = t.ticket_fare?.airline_class?.class?.name || '-';
     document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
 
+    currentRefundPayable = parseFloat(p.refund_payable) || 0;
+    document.getElementById('infoRefundPayable').textContent = currentRefundPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
+
     document.getElementById('inputUpDate').value = formatToDDMMMYY(r.probable_date_up) || '';
     document.getElementById('inputDownDate').value = formatToDDMMMYY(r.probable_date_down) || '';
     document.getElementById('inputReason').value = '';
@@ -620,7 +651,12 @@ function processConfirmation(ticketRequestId) {
     // document.getElementById('holdButtons').classList.add('hidden');
     document.getElementById('inputRemarks').value = '';
     document.getElementById('inputPaymentBy').value = '';
+    document.getElementById('inputPaymentOption').value = 'customer_payment';
+    document.getElementById('inputRefundAdjustment').value = '';
+    document.getElementById('inputRefundAdjustmentBdt').value = '';
+    document.getElementById('inputRefundAdjustmentBdtSar').value = '';
     handlePaymentByChange();
+    handlePaymentOptionChange();
     updateTotals();
 
     sourceFares = {
@@ -694,6 +730,22 @@ function updateTotals() {
         document.getElementById('inputTotalCostBdt').value = '';
         document.getElementById('inputTotalPaymentBdt').value = '';
     }
+
+    var refundAdj = parseFloat(document.getElementById('inputRefundAdjustment').value) || 0;
+    var totalPayment = totalCost + service;
+    var refundAdjEl = document.getElementById('inputRefundAdjustment');
+    if (refundAdj > 0) {
+        if (refundAdj > totalPayment) {
+            refundAdjEl.setCustomValidity('Refund adjustment amount exceeds the total customer payment.');
+        } else if (refundAdj > currentRefundPayable) {
+            refundAdjEl.setCustomValidity('Refund adjustment amount exceeds the available refund payable.');
+        } else {
+            refundAdjEl.setCustomValidity('');
+        }
+    } else {
+        refundAdjEl.setCustomValidity('');
+    }
+
     syncReadonlyMirrors();
 }
 
@@ -701,10 +753,29 @@ function handlePaymentByChange() {
     var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
     document.getElementById('fieldServiceCharge').classList.toggle('hidden', !isCustomer);
     document.getElementById('fieldTotalPayment').classList.toggle('hidden', !isCustomer);
+    document.getElementById('fieldPaymentOption').classList.toggle('hidden', !isCustomer);
+    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !isCustomer);
 
     if (!isCustomer) {
         document.getElementById('inputServiceCharge').value = '';
         document.getElementById('inputServiceChargeBdt').value = '';
+        document.getElementById('inputPaymentOption').value = 'customer_payment';
+        document.getElementById('inputRefundAdjustment').value = '';
+        document.getElementById('inputRefundAdjustmentBdt').value = '';
+        document.getElementById('inputRefundAdjustmentBdtSar').value = '';
+        updateTotals();
+    }
+}
+
+function handlePaymentOptionChange() {
+    var isAdjustment = document.getElementById('inputPaymentOption').value === 'refund_adjustment';
+    var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
+    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !(isCustomer && isAdjustment));
+
+    if (!isAdjustment) {
+        document.getElementById('inputRefundAdjustment').value = '';
+        document.getElementById('inputRefundAdjustmentBdt').value = '';
+        document.getElementById('inputRefundAdjustmentBdtSar').value = '';
         updateTotals();
     }
 }
@@ -753,6 +824,8 @@ function confirmProcess() {
         ticket_agent_id: document.getElementById('inputAgent').value || null,
         remarks: document.getElementById('inputRemarks').value || null,
         payment_by: document.getElementById('inputPaymentBy').value || null,
+        payment_option: document.getElementById('inputPaymentBy').value === 'customer' ? document.getElementById('inputPaymentOption').value : null,
+        refund_adjustment_amount: document.getElementById('inputPaymentBy').value === 'customer' && document.getElementById('inputPaymentOption').value === 'refund_adjustment' ? (parseFloat(document.getElementById('inputRefundAdjustment').value) || 0) : 0,
         selling_fare: parseFloat(document.getElementById('inputSellingFare').value) || null,
         net_fare: parseFloat(document.getElementById('inputNetFare').value) || null,
         offer_price: parseFloat(document.getElementById('inputOfferPrice').value) || null,
@@ -766,6 +839,17 @@ function confirmProcess() {
     if (!payload.ticket_fare_id) {
         showToast('Please select a ticket', 'error');
         return;
+    }
+
+    if (payload.payment_by === 'customer' && payload.payment_option === 'refund_adjustment') {
+        if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge) {
+            showToast('Refund adjustment amount exceeds the total customer payment.', 'error');
+            return;
+        }
+        if (payload.refund_adjustment_amount > currentRefundPayable) {
+            showToast('Refund adjustment amount exceeds the available refund payable.', 'error');
+            return;
+        }
     }
 
     fetch('/ticket-requests/' + currentTicketRequestId + '/process-reissue', {

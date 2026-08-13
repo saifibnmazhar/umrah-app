@@ -5,10 +5,15 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
+use App\Models\Payment;
 use App\Models\ReIssuedTicket;
+use App\Models\TransactionType;
+use App\Enums\PaymentMethod;
 use App\Services\InvoiceService;
+use App\Services\VoucherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class ReIssueController extends Controller
 {
@@ -43,6 +48,15 @@ class ReIssueController extends Controller
             'service_charge' => 'required|numeric|min:0',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee',
+            'payment_option' => 'required_if:payment_by,customer|in:customer_payment,refund_adjustment',
+            'refund_adjustment_amount' => [
+                Rule::requiredIf(function () use ($request) {
+                    return $request->input('payment_by') === 'customer'
+                        && $request->input('payment_option') === 'refund_adjustment';
+                }),
+                'numeric',
+                'min:0',
+            ],
         ]);
 
         $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])
@@ -67,6 +81,13 @@ class ReIssueController extends Controller
                 'selling_fare' => $validated['selling_fare'] ?? $issuedTicket->selling_fare ?? 0,
                 'net_fare' => $validated['net_fare'] ?? $issuedTicket->net_fare ?? 0,
                 'offer_price' => $validated['offer_price'] ?? $issuedTicket->offer_price ?? 0,
+                'payment_option' => ($validated['payment_by'] ?? null) === 'customer'
+                    ? $validated['payment_option']
+                    : null,
+                'refund_adjustment_amount' => ($validated['payment_by'] ?? null) === 'customer'
+                        && $validated['payment_option'] === 'refund_adjustment'
+                    ? (float) $validated['refund_adjustment_amount']
+                    : 0,
             ]);
 
             $reIssuedTicket = ReIssuedTicket::create($reIssueData);
@@ -76,12 +97,58 @@ class ReIssueController extends Controller
             $issuedTicket->logAction('re-issued', $oldData, $issuedTicket->toArray());
 
             if (($validated['payment_by'] ?? null) === 'customer') {
-                $totalCustomerPayment = (float) $validated['re_issue_charge']
+                $totalCost = (float) $validated['re_issue_charge']
                     + (float) $validated['fare_difference']
-                    + (float) $validated['other_costs']
-                    + (float) $validated['service_charge'];
+                    + (float) $validated['other_costs'];
 
-                if ($totalCustomerPayment > 0) {
+                $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
+
+                if ($validated['payment_option'] === 'refund_adjustment') {
+                    $amount = (float) $validated['refund_adjustment_amount'];
+
+                    if ($amount > $totalCustomerPayment) {
+                        throw new \InvalidArgumentException('Refund adjustment amount exceeds the total customer payment.');
+                    }
+                    if ($amount > (float) $passenger->refund_payable) {
+                        throw new \InvalidArgumentException('Refund adjustment amount exceeds the available refund payable.');
+                    }
+
+                    if ($amount > 0) {
+                        $passenger->decreaseRefundPayable($amount);
+
+                        $transactionType = TransactionType::where('name', 'Ticket Refund - Re-issue')->first();
+
+                        $payment = Payment::create([
+                            'invoice_id'          => $booking->invoice?->id,
+                            'booking_id'          => $booking->id,
+                            'branch_id'           => $booking->booking_branch_id,
+                            'user_id'             => auth()->id(),
+                            'currency_rate_id'    => $booking->currency_rate_id,
+                            'payment_date'        => now(),
+                            'payment_method'      => PaymentMethod::CASH,
+                            'amount'              => $amount,
+                            'bdt_amount'          => 0,
+                            'passenger_id'        => $passenger->id,
+                            're_issued_ticket_id' => $reIssuedTicket->id,
+                            'remarks'             => $validated['remarks'] ?? null,
+                        ]);
+
+                        app(VoucherService::class)->createVoucher([
+                            'invoice_id'          => $booking->invoice?->id,
+                            'booking_id'          => $booking->id,
+                            'payment_id'          => $payment->id,
+                            'branch_id'           => $booking->booking_branch_id,
+                            'user_id'             => auth()->id(),
+                            'currency_rate_id'    => $booking->currency_rate_id,
+                            'transaction_type_id' => $transactionType?->id,
+                            'payment_date'        => now(),
+                            'payment_method'      => PaymentMethod::CASH,
+                            'amount'              => $amount,
+                            'bdt_amount'          => 0,
+                            'notes'               => $validated['remarks'] ?? null,
+                        ]);
+                    }
+                } elseif ($totalCustomerPayment > 0) {
                     $invoice = $booking->invoice;
                     if ($invoice) {
                         app(InvoiceService::class)->updateTotals(
@@ -99,6 +166,9 @@ class ReIssueController extends Controller
                 'message' => 'Ticket re-issued successfully.',
                 're_issued_ticket' => $reIssuedTicket,
             ]);
+        } catch (\InvalidArgumentException $e) {
+            DB::rollBack();
+            return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Ticket re-issue failed: '.$e->getMessage());
