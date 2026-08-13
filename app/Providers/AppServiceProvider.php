@@ -43,6 +43,7 @@ class AppServiceProvider extends ServiceProvider
             $decimals = is_numeric($decimals) ? (int) $decimals : 2;
             $rate = isset($parts[2]) ? trim($parts[2]) : 'null';
             $bdtAmount = isset($parts[3]) ? trim($parts[3]) : 'null';
+
             return "<?php
                 \$__val = {$amount} ?? 0;
                 \$__dec = {$decimals};

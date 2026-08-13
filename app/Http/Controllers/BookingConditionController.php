@@ -10,6 +10,7 @@ class BookingConditionController extends Controller
     public function index()
     {
         $bookingConditions = BookingCondition::orderBy('sort_order')->orderBy('title')->paginate(10)->withQueryString();
+
         return view('booking-conditions.index', compact('bookingConditions'));
     }
 
@@ -29,6 +30,7 @@ class BookingConditionController extends Controller
 
         try {
             BookingCondition::create($validated);
+
             return redirect()->route('booking-conditions.index')->with('success', 'Booking condition created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create booking condition.')->withInput();
@@ -51,6 +53,7 @@ class BookingConditionController extends Controller
 
         try {
             $bookingCondition->update($validated);
+
             return redirect()->route('booking-conditions.index')->with('success', 'Booking condition updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update booking condition.')->withInput();
@@ -59,10 +62,11 @@ class BookingConditionController extends Controller
 
     public function toggleActive(BookingCondition $bookingCondition)
     {
-        $bookingCondition->is_active = !$bookingCondition->is_active;
+        $bookingCondition->is_active = ! $bookingCondition->is_active;
         $bookingCondition->save();
 
         $status = $bookingCondition->is_active ? 'activated' : 'deactivated';
+
         return back()->with('success', "Booking condition {$status} successfully.");
     }
 
@@ -70,6 +74,7 @@ class BookingConditionController extends Controller
     {
         try {
             $bookingCondition->delete();
+
             return redirect()->route('booking-conditions.index')->with('success', 'Booking condition deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete booking condition.');

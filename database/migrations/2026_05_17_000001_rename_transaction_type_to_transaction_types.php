@@ -12,7 +12,7 @@ return new class extends Migration
             Schema::rename('transaction_type', 'transaction_types');
         }
 
-        if (!Schema::hasTable('transaction_types')) {
+        if (! Schema::hasTable('transaction_types')) {
             Schema::create('transaction_types', function (Blueprint $table) {
                 $table->id();
                 $table->string('name')->unique();

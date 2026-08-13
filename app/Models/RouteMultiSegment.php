@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\SegmentDirection;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Enums\SegmentDirection;
 
 class RouteMultiSegment extends Model
 {

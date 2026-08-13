@@ -7,7 +7,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        try { DB::statement('ALTER TABLE invoices DROP CHECK invoices_balance_check'); } catch (\Exception $e) { try { DB::statement('ALTER TABLE invoices DROP CONSTRAINT invoices_balance_check'); } catch (\Exception $e) {} }
+        try {
+            DB::statement('ALTER TABLE invoices DROP CHECK invoices_balance_check');
+        } catch (Exception $e) {
+            try {
+                DB::statement('ALTER TABLE invoices DROP CONSTRAINT invoices_balance_check');
+            } catch (Exception $e) {
+            }
+        }
 
         DB::statement('ALTER TABLE invoices MODIFY COLUMN `balance` DECIMAL(14,6) DEFAULT 0');
     }

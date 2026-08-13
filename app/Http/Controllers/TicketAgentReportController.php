@@ -2,16 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use Illuminate\Http\Request;
-use App\Models\TicketAgent;
 use App\Models\IssuedTicket;
 use App\Models\Payment;
+use App\Models\TicketAgent;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
 
 class TicketAgentReportController extends Controller
 {
     public function index()
     {
         $agents = TicketAgent::orderBy('name')->get();
+
         return view('reports.ticket-agent', compact('agents'));
     }
 
@@ -22,7 +24,7 @@ class TicketAgentReportController extends Controller
         $agentId = $request->agent_id;
 
         $agentsQuery = TicketAgent::query()
-            ->when($agentId, fn($q) => $q->where('id', $agentId));
+            ->when($agentId, fn ($q) => $q->where('id', $agentId));
 
         $agents = $agentsQuery->get();
         $agentIds = $agents->pluck('id');
@@ -95,7 +97,7 @@ class TicketAgentReportController extends Controller
 
             $transactions = $allDates->map(function ($date) use ($dailyTickets, $dailyPayments) {
                 return [
-                    'date' => \Carbon\Carbon::parse($date)->format('d-M-Y'),
+                    'date' => Carbon::parse($date)->format('d-M-Y'),
                     'payable' => (float) ($dailyTickets[$date] ?? 0),
                     'paid' => (float) ($dailyPayments[$date] ?? 0),
                 ];
@@ -118,7 +120,7 @@ class TicketAgentReportController extends Controller
         });
 
         $summaryQuery = TicketAgent::query()
-            ->when($agentId, fn($q) => $q->where('id', $agentId));
+            ->when($agentId, fn ($q) => $q->where('id', $agentId));
 
         $summaryAgentIds = $summaryQuery->pluck('id');
 
@@ -141,7 +143,7 @@ class TicketAgentReportController extends Controller
             ->where('status', 're-issued')
             ->count();
 
-        $agentsWithDue = $data->filter(fn($a) => $a['due'] < 0)->count();
+        $agentsWithDue = $data->filter(fn ($a) => $a['due'] < 0)->count();
 
         return response()->json([
             'data' => $data,

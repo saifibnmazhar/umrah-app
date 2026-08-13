@@ -2,11 +2,13 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TicketAgent;
-use App\Models\TicketFare;
+use App\Exceptions\DatabaseErrorHumanizer;
 use App\Models\Airline;
 use App\Models\AirlineClass;
 use App\Models\Route;
+use App\Models\TicketAgent;
+use App\Models\TicketFare;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class FareAdminController extends Controller
@@ -49,23 +51,23 @@ class FareAdminController extends Controller
         }
 
         $ticketFares = $ticketFaresQuery->orderBy('id', 'desc')->paginate(15)->withQueryString();
-        
+
         $routesQuery = Route::with(['airline', 'fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity']);
-        
+
         if ($request->has('route_airline_id') && $request->route_airline_id) {
             $routesQuery->where('airline_id', $request->route_airline_id);
         }
-        
+
         if ($request->has('route_type') && $request->route_type) {
             $routesQuery->where('route_type', $request->route_type);
         }
-        
+
         if ($request->has('flight_type') && $request->flight_type) {
             $routesQuery->where('flight_type', $request->flight_type);
         }
-        
+
         $routes = $routesQuery->orderBy('id', 'desc')->paginate(10)->withQueryString();
-        
+
         $airlines = Airline::orderBy('name')->get();
         $airlineClasses = AirlineClass::with('travelClass')->get();
 
@@ -83,6 +85,7 @@ class FareAdminController extends Controller
         try {
             $validated['user_id'] = auth()->id() ?? 1;
             TicketAgent::create($validated);
+
             return redirect()->route('fare.admin')->with('success', 'Ticket agent created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create ticket agent.')->withInput();
@@ -99,6 +102,7 @@ class FareAdminController extends Controller
 
         try {
             $ticketAgent->update($validated);
+
             return redirect()->route('fare.admin')->with('success', 'Ticket agent updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update ticket agent.')->withInput();
@@ -109,6 +113,7 @@ class FareAdminController extends Controller
     {
         try {
             $ticketAgent->delete();
+
             return redirect()->route('fare.admin')->with('success', 'Ticket agent deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete ticket agent.');
@@ -157,16 +162,17 @@ class FareAdminController extends Controller
 
             return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare created successfully.');
         } catch (\Exception $e) {
-            $message = $e instanceof \Illuminate\Database\QueryException
-                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+            $message = $e instanceof QueryException
+                ? DatabaseErrorHumanizer::humanize($e)
                 : 'Failed to create ticket fare.';
+
             return redirect()->back()->with('error', $message)->withInput();
         }
     }
 
     public function updateFare(Request $request, TicketFare $ticketFare)
     {
-        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Ticket Admin')) {
+        if (! auth()->user()->hasRole('Super Admin') && ! auth()->user()->hasRole('Ticket Admin')) {
             abort(403);
         }
 
@@ -197,16 +203,17 @@ class FareAdminController extends Controller
 
             return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare updated successfully.');
         } catch (\Exception $e) {
-            $message = $e instanceof \Illuminate\Database\QueryException
-                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+            $message = $e instanceof QueryException
+                ? DatabaseErrorHumanizer::humanize($e)
                 : 'Failed to update ticket fare.';
+
             return redirect()->back()->with('error', $message)->withInput();
         }
     }
 
     public function destroyFare(TicketFare $ticketFare)
     {
-        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Ticket Admin')) {
+        if (! auth()->user()->hasRole('Super Admin') && ! auth()->user()->hasRole('Ticket Admin')) {
             abort(403);
         }
 
@@ -216,10 +223,10 @@ class FareAdminController extends Controller
 
         try {
             $ticketFare->delete();
+
             return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete ticket fare.');
         }
     }
-
 }

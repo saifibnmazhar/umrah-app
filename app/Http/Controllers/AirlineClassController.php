@@ -16,6 +16,7 @@ class AirlineClassController extends Controller
             ->orderBy('id')
             ->paginate(10)
             ->withQueryString();
+
         return view('airline-classes.index', compact('airlineClasses'));
     }
 
@@ -23,6 +24,7 @@ class AirlineClassController extends Controller
     {
         $airlines = Airline::orderBy('name')->get();
         $travelClasses = TravelClass::orderBy('name')->get();
+
         return view('airline-classes.create', compact('airlines', 'travelClasses'));
     }
 
@@ -45,13 +47,16 @@ class AirlineClassController extends Controller
             $airlineClass = AirlineClass::create($validated);
             if ($request->wantsJson()) {
                 $airlineClass->load(['airline', 'class']);
+
                 return response()->json(['success' => true, 'airline_class' => $airlineClass], 201);
             }
+
             return redirect()->route('airline-classes.index')->with('success', 'Airline class created successfully.');
         } catch (\Exception $e) {
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Failed to create airline class.'], 500);
             }
+
             return redirect()->back()->with('error', 'Failed to create airline class.')->withInput();
         }
     }
@@ -60,6 +65,7 @@ class AirlineClassController extends Controller
     {
         $airlines = Airline::orderBy('name')->get();
         $travelClasses = TravelClass::orderBy('name')->get();
+
         return view('airline-classes.edit', compact('airlineClass', 'airlines', 'travelClasses'));
     }
 
@@ -80,6 +86,7 @@ class AirlineClassController extends Controller
 
         try {
             $airlineClass->update($validated);
+
             return redirect()->route('airline-classes.index')->with('success', 'Airline class updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update airline class.')->withInput();
@@ -90,6 +97,7 @@ class AirlineClassController extends Controller
     {
         try {
             $airlineClass->delete();
+
             return redirect()->route('airline-classes.index')->with('success', 'Airline class deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete airline class.');

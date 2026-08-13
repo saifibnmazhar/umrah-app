@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\DatabaseErrorHumanizer;
 use App\Models\VisaAgent;
 use App\Models\VisaAgentCost;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class VisaAgentCostController extends Controller
@@ -15,12 +17,14 @@ class VisaAgentCostController extends Controller
             ->paginate(10)
             ->withQueryString();
         $visaAgents = VisaAgent::orderBy('name')->get();
+
         return view('visa-agent-costs.index', compact('visaAgentCosts', 'visaAgents'));
     }
 
     public function create()
     {
         $visaAgents = VisaAgent::orderBy('name')->get();
+
         return view('visa-agent-costs.create', compact('visaAgents'));
     }
 
@@ -40,12 +44,14 @@ class VisaAgentCostController extends Controller
         try {
             $validated['user_id'] = auth()->id() ?? 1;
             VisaAgentCost::create($validated);
+
             return redirect()->route('visa.admin', ['tab' => 'visa-agent-costs'])->with('success', 'Visa agent cost created successfully.');
         } catch (\Exception $e) {
-            \Log::error('VisaAgentCost Create Error: ' . $e->getMessage());
-            $message = $e instanceof \Illuminate\Database\QueryException
-                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+            \Log::error('VisaAgentCost Create Error: '.$e->getMessage());
+            $message = $e instanceof QueryException
+                ? DatabaseErrorHumanizer::humanize($e)
                 : 'Failed to create visa agent cost.';
+
             return redirect()->back()->with('error', $message)->withInput();
         }
     }
@@ -53,6 +59,7 @@ class VisaAgentCostController extends Controller
     public function edit(VisaAgentCost $visaAgentCost)
     {
         $visaAgents = VisaAgent::orderBy('name')->get();
+
         return view('visa-agent-costs.edit', compact('visaAgentCost', 'visaAgents'));
     }
 
@@ -73,6 +80,7 @@ class VisaAgentCostController extends Controller
 
         try {
             $visaAgentCost->update($validated);
+
             return redirect()->route('visa.admin', ['tab' => 'visa-agent-costs'])->with('success', 'Visa agent cost updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update visa agent cost.')->withInput();
@@ -83,6 +91,7 @@ class VisaAgentCostController extends Controller
     {
         try {
             $visaAgentCost->delete();
+
             return redirect()->route('visa.admin', ['tab' => 'visa-agent-costs'])->with('success', 'Visa agent cost deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete visa agent cost.');

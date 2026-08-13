@@ -24,7 +24,7 @@ class BookingEditPackagePreloadTest extends TestCase
 
     private function makeBooking(?int $packageId): Booking
     {
-        $booking = new Booking();
+        $booking = new Booking;
         $booking->id = 1;
         $booking->fill([
             'package_id' => $packageId,

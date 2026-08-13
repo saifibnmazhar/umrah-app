@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\Booking;
 use App\Models\CancelledSubmission;
 use App\Models\Passenger;
-use App\Models\VisaSubmission;
 use App\Models\VisaAgent;
 use Illuminate\Http\Request;
 
@@ -30,7 +29,7 @@ class VisaSubmissionController extends Controller
 
         $visaSubmission = $passenger->visaSubmission;
 
-        if (!$visaSubmission) {
+        if (! $visaSubmission) {
             return response()->json(['success' => false, 'message' => 'No visa submission found for this passenger'], 404);
         }
 
@@ -72,7 +71,7 @@ class VisaSubmissionController extends Controller
 
         $visaSubmission = $passenger->visaSubmission;
 
-        if (!$visaSubmission) {
+        if (! $visaSubmission) {
             return response()->json(['success' => false, 'message' => 'No visa submission found for this passenger'], 404);
         }
 
@@ -120,7 +119,7 @@ class VisaSubmissionController extends Controller
 
         $visaSubmission = $passenger->visaSubmission;
 
-        if (!$visaSubmission) {
+        if (! $visaSubmission) {
             return response()->json(['success' => false, 'message' => 'No visa submission found for this passenger'], 404);
         }
 
@@ -164,7 +163,7 @@ class VisaSubmissionController extends Controller
 
         $visaSubmission = $passenger->visaSubmission;
 
-        if (!$visaSubmission) {
+        if (! $visaSubmission) {
             return response()->json(['success' => false, 'message' => 'No visa submission found for this passenger'], 404);
         }
 
@@ -218,7 +217,7 @@ class VisaSubmissionController extends Controller
 
         $visaSubmission = $passenger->visaSubmission;
 
-        if (!$visaSubmission) {
+        if (! $visaSubmission) {
             return response()->json(['success' => false, 'message' => 'No visa submission found for this passenger'], 404);
         }
 

@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PaymentMethod;
 use App\Models\Booking;
 use App\Models\CancelledBooking;
 use App\Services\CancellationService;
-use App\Enums\PaymentMethod;
 use Illuminate\Http\Request;
 
 class BookingCancellationActionController extends Controller
@@ -59,7 +59,7 @@ class BookingCancellationActionController extends Controller
         $this->ensureBranchAccess($cancelledBooking);
 
         $validated = $request->validate([
-            'payment_method' => 'required|in:' . implode(',', array_column(PaymentMethod::cases(), 'value')),
+            'payment_method' => 'required|in:'.implode(',', array_column(PaymentMethod::cases(), 'value')),
             'refund_amount' => 'required|numeric|min:0',
             'remarks' => 'nullable|string|max:500',
         ]);
@@ -89,23 +89,23 @@ class BookingCancellationActionController extends Controller
         $query = CancelledBooking::with(['booking.customer', 'cancellationBranch', 'refundPayment', 'refundVoucher.user'])
             ->orderBy('cancelled_bookings.created_at', 'desc');
 
-        if (!empty($validated['date_from'])) {
+        if (! empty($validated['date_from'])) {
             $query->where('cancelled_bookings.created_at', '>=', $validated['date_from']);
         }
-        if (!empty($validated['date_to'])) {
-            $query->where('cancelled_bookings.created_at', '<=', $validated['date_to'] . ' 23:59:59');
+        if (! empty($validated['date_to'])) {
+            $query->where('cancelled_bookings.created_at', '<=', $validated['date_to'].' 23:59:59');
         }
-        if (!empty($validated['branch_id'])) {
+        if (! empty($validated['branch_id'])) {
             $query->where('cancellation_branch_id', $validated['branch_id']);
         }
-        if (!empty($validated['status'])) {
+        if (! empty($validated['status'])) {
             $query->where('status', $validated['status']);
         }
 
         $perPage = $validated['per_page'] ?? 15;
         $paginated = $query->paginate($perPage);
 
-        $data = $paginated->getCollection()->map(fn($cb) => [
+        $data = $paginated->getCollection()->map(fn ($cb) => [
             'id' => $cb->id,
             'booking_id' => $cb->booking_id,
             'invoice_id' => $cb->invoice_id,
@@ -163,7 +163,7 @@ class BookingCancellationActionController extends Controller
     private function ensureBranchAccess(CancelledBooking $cancelledBooking): void
     {
         if (auth()->user()->roles->pluck('name')->intersect(['Fingerprint Admin'])->isNotEmpty()
-            && !auth()->user()->branch_id) {
+            && ! auth()->user()->branch_id) {
             abort(403);
         }
 

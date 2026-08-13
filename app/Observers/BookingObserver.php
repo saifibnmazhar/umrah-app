@@ -11,10 +11,14 @@ class BookingObserver
     public function updated(Booking $booking): void
     {
         $user = Auth::user();
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         $dirty = $booking->getDirty();
-        if (empty($dirty)) return;
+        if (empty($dirty)) {
+            return;
+        }
 
         $original = $booking->getOriginal();
         $oldValues = [];
@@ -36,7 +40,9 @@ class BookingObserver
     public function deleting(Booking $booking): void
     {
         $user = Auth::user();
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         $oldValues = collect($booking->attributesToArray())->except(['created_at', 'updated_at'])->toArray();
 

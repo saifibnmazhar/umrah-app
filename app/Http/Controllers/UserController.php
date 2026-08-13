@@ -2,9 +2,9 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\Branch;
 use App\Models\Role;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Support\Str;
 
@@ -12,7 +12,7 @@ class UserController extends Controller
 {
     private function ensureSuperAdmin(): void
     {
-        if (!auth()->user()->hasRole('Super Admin')) {
+        if (! auth()->user()->hasRole('Super Admin')) {
             abort(403, 'Unauthorized action.');
         }
     }
@@ -25,12 +25,13 @@ class UserController extends Controller
                 $q->where(function ($query) use ($search) {
                     $query->where('name', 'like', "%{$search}%")
                         ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhereHas('branch', fn($q) => $q->where('name', 'like', "%{$search}%"));
+                        ->orWhereHas('branch', fn ($q) => $q->where('name', 'like', "%{$search}%"));
                 });
             })
             ->orderBy('id')
             ->paginate(10)
             ->withQueryString();
+
         return view('users.index', compact('users'));
     }
 
@@ -40,6 +41,7 @@ class UserController extends Controller
         $allBranches = Branch::orderBy('name')->get();
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get();
         $roles = Role::orderBy('name')->get();
+
         return view('users.create', compact('allBranches', 'fingerprintBranches', 'roles'));
     }
 
@@ -60,7 +62,7 @@ class UserController extends Controller
         if (Str::contains($roleName, 'fingerprint')) {
             $request->validate(['branch_id' => 'required|exists:branches,id']);
             $branch = Branch::find($request->branch_id);
-            if (!$branch || !$branch->fingerprint_operation) {
+            if (! $branch || ! $branch->fingerprint_operation) {
                 return back()->withErrors(['branch_id' => 'Fingerprint roles require a branch with fingerprint operations enabled.'])->withInput();
             }
         }
@@ -80,6 +82,7 @@ class UserController extends Controller
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get();
         $roles = Role::orderBy('name')->get();
         $user->load('roles');
+
         return view('users.edit', compact('user', 'allBranches', 'fingerprintBranches', 'roles'));
     }
 
@@ -88,7 +91,7 @@ class UserController extends Controller
         $this->ensureSuperAdmin();
         $validated = $request->validate([
             'name' => 'required|string|max:255',
-            'email' => 'required|email|unique:users,email,' . $user->id,
+            'email' => 'required|email|unique:users,email,'.$user->id,
             'password' => 'nullable|min:8|confirmed',
             'branch_id' => 'nullable|exists:branches,id',
             'role_id' => 'required|exists:roles,id',
@@ -100,12 +103,12 @@ class UserController extends Controller
         if (Str::contains($roleName, 'fingerprint')) {
             $request->validate(['branch_id' => 'required|exists:branches,id']);
             $branch = Branch::find($request->branch_id);
-            if (!$branch || !$branch->fingerprint_operation) {
+            if (! $branch || ! $branch->fingerprint_operation) {
                 return back()->withErrors(['branch_id' => 'Fingerprint roles require a branch with fingerprint operations enabled.'])->withInput();
             }
         }
 
-        if (!empty($validated['password'])) {
+        if (! empty($validated['password'])) {
             $validated['password'] = bcrypt($validated['password']);
         } else {
             unset($validated['password']);
@@ -122,6 +125,7 @@ class UserController extends Controller
     {
         $this->ensureSuperAdmin();
         $user->delete();
+
         return redirect()->route('users.index')
             ->with('success', 'User deleted successfully.');
     }
@@ -132,10 +136,11 @@ class UserController extends Controller
             return back()->with('error', 'Super Admin cannot be deactivated.');
         }
 
-        $user->is_active = !$user->is_active;
+        $user->is_active = ! $user->is_active;
         $user->save();
 
         $status = $user->is_active ? 'activated' : 'deactivated';
+
         return back()->with('success', "User {$status} successfully.");
     }
 }
