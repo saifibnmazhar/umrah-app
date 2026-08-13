@@ -1,9 +1,8 @@
 <?php
 
 use Illuminate\Database\Migrations\Migration;
-use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -14,19 +13,19 @@ return new class extends Migration
 
             try {
                 DB::statement('ALTER TABLE flight_date_gaps DROP CONSTRAINT flight_date_gap_gap_check');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
             }
 
             DB::statement('ALTER TABLE flight_date_gaps ADD CONSTRAINT flight_date_gaps_gap_check CHECK (gap >= 1)');
         } elseif (Schema::hasTable('flight_date_gaps')) {
             try {
                 DB::statement('ALTER TABLE flight_date_gaps DROP CONSTRAINT flight_date_gap_gap_check');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
             }
 
             try {
                 DB::statement('ALTER TABLE flight_date_gaps DROP CONSTRAINT flight_date_gaps_gap_check');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
             }
 
             DB::statement('ALTER TABLE flight_date_gaps ADD CONSTRAINT flight_date_gaps_gap_check CHECK (gap >= 1)');
@@ -38,7 +37,7 @@ return new class extends Migration
         if (Schema::hasTable('flight_date_gaps')) {
             try {
                 DB::statement('ALTER TABLE flight_date_gaps DROP CONSTRAINT flight_date_gaps_gap_check');
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
             }
 
             DB::statement('ALTER TABLE flight_date_gaps ADD CONSTRAINT flight_date_gap_gap_check CHECK (gap >= 1)');

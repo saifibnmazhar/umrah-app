@@ -13,7 +13,7 @@ class UserWiseSalesReportController extends Controller
     {
         return response()->json([
             'branches' => Branch::orderBy('name')->get(['id', 'name']),
-            'users'    => User::orderBy('name')->get(['id', 'name']),
+            'users' => User::orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -48,25 +48,25 @@ class UserWiseSalesReportController extends Controller
 
         $rows = $grouped->map(function ($userBookings) use (&$grandTotalValue) {
             $user = $userBookings->first()->user;
-            $totalValue = (float) $userBookings->sum(fn($b) => $b->invoice?->total_amount ?? 0);
+            $totalValue = (float) $userBookings->sum(fn ($b) => $b->invoice?->total_amount ?? 0);
             $grandTotalValue += $totalValue;
 
             return [
-                'user_id'             => (int) $user->id,
-                'user'                => $user->name,
-                'branch'              => $user->branch?->name ?? 'Central',
-                'total_invoices'      => $userBookings->count(),
-                'total_passengers'    => $userBookings->sum('pax_qty'),
+                'user_id' => (int) $user->id,
+                'user' => $user->name,
+                'branch' => $user->branch?->name ?? 'Central',
+                'total_invoices' => $userBookings->count(),
+                'total_passengers' => $userBookings->sum('pax_qty'),
                 'total_package_value' => $totalValue,
             ];
         })->values();
 
         $rawPercents = $rows->map(
-            fn($r) => $grandTotalValue > 0 ? ($r['total_package_value'] / $grandTotalValue) * 100 : 0
+            fn ($r) => $grandTotalValue > 0 ? ($r['total_package_value'] / $grandTotalValue) * 100 : 0
         );
 
-        $roundedPercents = $rawPercents->map(fn($p) => round($p, 2));
-        $remainders = $rawPercents->map(fn($raw, $i) => $raw - $roundedPercents[$i]);
+        $roundedPercents = $rawPercents->map(fn ($p) => round($p, 2));
+        $remainders = $rawPercents->map(fn ($raw, $i) => $raw - $roundedPercents[$i]);
         $diff = round(100 - $roundedPercents->sum(), 2);
 
         if ($diff != 0) {
@@ -74,20 +74,20 @@ class UserWiseSalesReportController extends Controller
             $roundedPercents[$largestIndex] = round($roundedPercents[$largestIndex] + $diff, 2);
         }
 
-        $rows = $rows->map(fn($row, $i) => array_merge($row, [
+        $rows = $rows->map(fn ($row, $i) => array_merge($row, [
             'sales_percent' => (float) $roundedPercents[$i],
         ]));
 
         $summary = [
-            'total_users'         => $rows->count(),
-            'total_branches'      => $rows->pluck('branch')->unique()->count(),
-            'total_invoices'      => $rows->sum('total_invoices'),
-            'total_passengers'    => $rows->sum('total_passengers'),
+            'total_users' => $rows->count(),
+            'total_branches' => $rows->pluck('branch')->unique()->count(),
+            'total_invoices' => $rows->sum('total_invoices'),
+            'total_passengers' => $rows->sum('total_passengers'),
             'total_package_value' => $grandTotalValue,
         ];
 
         return response()->json([
-            'rows'    => $rows,
+            'rows' => $rows,
             'summary' => $summary,
         ]);
     }

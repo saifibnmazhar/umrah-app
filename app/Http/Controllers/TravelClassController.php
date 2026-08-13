@@ -10,6 +10,7 @@ class TravelClassController extends Controller
     public function index()
     {
         $travelClasses = TravelClass::orderBy('name')->paginate(10)->withQueryString();
+
         return view('classes.index', compact('travelClasses'));
     }
 
@@ -26,6 +27,7 @@ class TravelClassController extends Controller
 
         try {
             TravelClass::create($validated);
+
             return redirect()->route('classes.index')->with('success', 'Travel class created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create travel class.')->withInput();
@@ -40,11 +42,12 @@ class TravelClassController extends Controller
     public function update(Request $request, TravelClass $class)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:classes,name,' . $class->id,
+            'name' => 'required|string|max:255|unique:classes,name,'.$class->id,
         ]);
 
         try {
             $class->update($validated);
+
             return redirect()->route('classes.index')->with('success', 'Travel class updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update travel class.')->withInput();
@@ -55,6 +58,7 @@ class TravelClassController extends Controller
     {
         try {
             $class->delete();
+
             return redirect()->route('classes.index')->with('success', 'Travel class deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete travel class.');

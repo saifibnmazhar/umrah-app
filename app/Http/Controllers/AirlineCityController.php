@@ -16,6 +16,7 @@ class AirlineCityController extends Controller
             ->orderBy('id')
             ->paginate(10)
             ->withQueryString();
+
         return view('airline-cities.index', compact('airlineCities'));
     }
 
@@ -23,6 +24,7 @@ class AirlineCityController extends Controller
     {
         $airlines = Airline::orderBy('name')->get();
         $cityCodes = CityCode::orderBy('code')->get();
+
         return view('airline-cities.create', compact('airlines', 'cityCodes'));
     }
 
@@ -43,6 +45,7 @@ class AirlineCityController extends Controller
 
         try {
             AirlineCity::create($validated);
+
             return redirect()->route('airline-cities.index')->with('success', 'Airline city created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create airline city.')->withInput();
@@ -53,6 +56,7 @@ class AirlineCityController extends Controller
     {
         $airlines = Airline::orderBy('name')->get();
         $cityCodes = CityCode::orderBy('code')->get();
+
         return view('airline-cities.edit', compact('airlineCity', 'airlines', 'cityCodes'));
     }
 
@@ -73,6 +77,7 @@ class AirlineCityController extends Controller
 
         try {
             $airlineCity->update($validated);
+
             return redirect()->route('airline-cities.index')->with('success', 'Airline city updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update airline city.')->withInput();
@@ -83,6 +88,7 @@ class AirlineCityController extends Controller
     {
         try {
             $airlineCity->delete();
+
             return redirect()->route('airline-cities.index')->with('success', 'Airline city deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete airline city.');

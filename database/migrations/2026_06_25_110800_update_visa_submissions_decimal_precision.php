@@ -7,10 +7,38 @@ return new class extends Migration
 {
     public function up(): void
     {
-        try { DB::statement('ALTER TABLE visa_submissions DROP CHECK visa_submissions_agent_commission_check'); } catch (\Exception $e) { try { DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT visa_submissions_agent_commission_check'); } catch (\Exception $e) {} }
-        try { DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_net_cost_check'); } catch (\Exception $e) { try { DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_net_cost_check'); } catch (\Exception $e) {} }
-        try { DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_add_cost_check'); } catch (\Exception $e) { try { DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_add_cost_check'); } catch (\Exception $e) {} }
-        try { DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_final_cost_check'); } catch (\Exception $e) { try { DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_final_cost_check'); } catch (\Exception $e) {} }
+        try {
+            DB::statement('ALTER TABLE visa_submissions DROP CHECK visa_submissions_agent_commission_check');
+        } catch (Exception $e) {
+            try {
+                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT visa_submissions_agent_commission_check');
+            } catch (Exception $e) {
+            }
+        }
+        try {
+            DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_net_cost_check');
+        } catch (Exception $e) {
+            try {
+                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_net_cost_check');
+            } catch (Exception $e) {
+            }
+        }
+        try {
+            DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_add_cost_check');
+        } catch (Exception $e) {
+            try {
+                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_add_cost_check');
+            } catch (Exception $e) {
+            }
+        }
+        try {
+            DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_final_cost_check');
+        } catch (Exception $e) {
+            try {
+                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_final_cost_check');
+            } catch (Exception $e) {
+            }
+        }
 
         DB::statement('ALTER TABLE visa_submissions MODIFY agent_commission DECIMAL(14,6) NULL');
         DB::statement('ALTER TABLE visa_submissions MODIFY net_visa_cost DECIMAL(14,6) NULL');
@@ -25,10 +53,38 @@ return new class extends Migration
 
     public function down(): void
     {
-        try { DB::statement('ALTER TABLE visa_submissions DROP CHECK visa_submissions_agent_commission_check'); } catch (\Exception $e) { try { DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT visa_submissions_agent_commission_check'); } catch (\Exception $e) {} }
-        try { DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_net_cost_check'); } catch (\Exception $e) { try { DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_net_cost_check'); } catch (\Exception $e) {} }
-        try { DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_add_cost_check'); } catch (\Exception $e) { try { DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_add_cost_check'); } catch (\Exception $e) {} }
-        try { DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_final_cost_check'); } catch (\Exception $e) { try { DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_final_cost_check'); } catch (\Exception $e) {} }
+        try {
+            DB::statement('ALTER TABLE visa_submissions DROP CHECK visa_submissions_agent_commission_check');
+        } catch (Exception $e) {
+            try {
+                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT visa_submissions_agent_commission_check');
+            } catch (Exception $e) {
+            }
+        }
+        try {
+            DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_net_cost_check');
+        } catch (Exception $e) {
+            try {
+                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_net_cost_check');
+            } catch (Exception $e) {
+            }
+        }
+        try {
+            DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_add_cost_check');
+        } catch (Exception $e) {
+            try {
+                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_add_cost_check');
+            } catch (Exception $e) {
+            }
+        }
+        try {
+            DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_final_cost_check');
+        } catch (Exception $e) {
+            try {
+                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_final_cost_check');
+            } catch (Exception $e) {
+            }
+        }
 
         DB::statement('ALTER TABLE visa_submissions MODIFY agent_commission DECIMAL(10,2) NULL');
         DB::statement('ALTER TABLE visa_submissions MODIFY net_visa_cost DECIMAL(10,2) NULL');

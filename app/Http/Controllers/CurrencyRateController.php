@@ -2,8 +2,8 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\User;
 use App\Models\CurrencyRate;
+use App\Models\User;
 use Illuminate\Http\Request;
 
 class CurrencyRateController extends Controller
@@ -14,6 +14,7 @@ class CurrencyRateController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
+
         return view('currency-rates.index', compact('currencyRates'));
     }
 
@@ -31,12 +32,13 @@ class CurrencyRateController extends Controller
         try {
             $userId = auth()->id() ?? User::first()?->id;
 
-            if (!$userId) {
+            if (! $userId) {
                 return redirect()->back()->with('error', 'No users found. Please create a user first.')->withInput();
             }
 
             $validated['user_id'] = $userId;
             CurrencyRate::create($validated);
+
             return redirect()->route('currency-rates.index')->with('success', 'Currency rate created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create currency rate.')->withInput();
@@ -57,12 +59,13 @@ class CurrencyRateController extends Controller
         try {
             $userId = auth()->id() ?? User::first()?->id;
 
-            if (!$userId) {
+            if (! $userId) {
                 return redirect()->back()->with('error', 'No users found. Please create a user first.')->withInput();
             }
 
             $validated['user_id'] = $userId;
             $currencyRate->update($validated);
+
             return redirect()->route('currency-rates.index')->with('success', 'Currency rate updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update currency rate.')->withInput();
@@ -73,6 +76,7 @@ class CurrencyRateController extends Controller
     {
         try {
             $currencyRate->delete();
+
             return redirect()->route('currency-rates.index')->with('success', 'Currency rate deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete currency rate.');

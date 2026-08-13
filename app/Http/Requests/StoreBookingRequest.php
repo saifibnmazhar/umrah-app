@@ -2,8 +2,8 @@
 
 namespace App\Http\Requests;
 
-use Illuminate\Foundation\Http\FormRequest;
 use App\Models\StayDurationLimit;
+use Illuminate\Foundation\Http\FormRequest;
 
 class StoreBookingRequest extends FormRequest
 {
@@ -35,7 +35,7 @@ class StoreBookingRequest extends FormRequest
             'passengers.*.mobile_no' => 'nullable|string|max:20',
             'passengers.*.passport_expiry' => 'nullable|date',
             'passengers.*.service_required' => 'nullable|in:All,Visa Only,Ticket Only',
-            'passengers.*.stay_duration' => 'nullable|integer|min:' . $limits->min_days . '|max:' . $limits->max_days,
+            'passengers.*.stay_duration' => 'nullable|integer|min:'.$limits->min_days.'|max:'.$limits->max_days,
             'passengers.*.flight_date_from' => 'nullable|date',
             'passengers.*.flight_date_to' => 'nullable|date|after:passengers.*.flight_date_from',
             'passengers.*.address' => 'nullable|string|max:500',

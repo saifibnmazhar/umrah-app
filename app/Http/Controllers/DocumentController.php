@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\Booking;
 use App\Models\Document;
 use App\Traits\ConvertsDocumentsToPdf;
 use Illuminate\Http\Request;
@@ -22,7 +23,7 @@ class DocumentController extends Controller
             'documents.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
 
-        $totalSize = collect($request->file('documents'))->sum(fn($f) => $f->getSize());
+        $totalSize = collect($request->file('documents'))->sum(fn ($f) => $f->getSize());
         if ($totalSize > 20 * 1024 * 1024) {
             return response()->json([
                 'success' => false,
@@ -30,7 +31,7 @@ class DocumentController extends Controller
             ], 422);
         }
 
-        $booking = \App\Models\Booking::with('customer')->findOrFail($request->booking_id);
+        $booking = Booking::with('customer')->findOrFail($request->booking_id);
         $invoiceId = $booking->invoice_id ?? 'INV';
         $customerName = $booking->customer->name ?? 'Customer';
 
@@ -46,7 +47,7 @@ class DocumentController extends Controller
                     'owner_type' => 'App\Models\Booking',
                     'owner_id' => $request->booking_id,
                     'file_path' => $path,
-                    'display_name' => "{$invoiceId} {$customerName} " . ($customerDocCount + $bookingDocCount + $index + 1),
+                    'display_name' => "{$invoiceId} {$customerName} ".($customerDocCount + $bookingDocCount + $index + 1),
                 ]);
 
                 $uploadedDocs[] = $doc;
@@ -63,12 +64,12 @@ class DocumentController extends Controller
     public function download(Document $document)
     {
         $fullPath = $this->resolveDocumentPath($document);
-        if (!$fullPath || !file_exists($fullPath)) {
+        if (! $fullPath || ! file_exists($fullPath)) {
             abort(404, 'File not found');
         }
 
-        $tmpFile = storage_path('app/tmp/doc_' . uniqid() . '.pdf');
-        $fileName = $document->display_name . '.pdf';
+        $tmpFile = storage_path('app/tmp/doc_'.uniqid().'.pdf');
+        $fileName = $document->display_name.'.pdf';
 
         try {
             $this->convertToPdf($fullPath, $tmpFile);
@@ -95,7 +96,7 @@ class DocumentController extends Controller
             'documents.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
 
-        $totalSize = collect($request->file('documents'))->sum(fn($f) => $f->getSize());
+        $totalSize = collect($request->file('documents'))->sum(fn ($f) => $f->getSize());
         if ($totalSize > 20 * 1024 * 1024) {
             return response()->json([
                 'success' => false,
@@ -108,7 +109,7 @@ class DocumentController extends Controller
         if ($request->hasFile('documents')) {
             foreach ($request->file('documents') as $file) {
                 $path = $file->store('documents', 'public');
-                
+
                 $doc = Document::create([
                     'owner_type' => 'App\Models\Passenger',
                     'owner_id' => $request->passenger_id,
@@ -134,7 +135,7 @@ class DocumentController extends Controller
         $isFingerprintAdmin = $user->hasRole('Fingerprint Admin');
         $isPassengerDoc = $document->owner_type === 'App\Models\Passenger';
 
-        if (!$isSuperOrCoAdmin && !($isFingerprintAdmin && $isPassengerDoc)) {
+        if (! $isSuperOrCoAdmin && ! ($isFingerprintAdmin && $isPassengerDoc)) {
             abort(403, 'Unauthorized action.');
         }
 

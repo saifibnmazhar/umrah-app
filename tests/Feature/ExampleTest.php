@@ -14,6 +14,8 @@ class ExampleTest extends TestCase
     {
         $response = $this->get('/');
 
-        $response->assertStatus(200);
+        // Root route is behind auth middleware; unauthenticated
+        // users are redirected to the login page.
+        $response->assertStatus(302);
     }
 }

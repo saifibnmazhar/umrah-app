@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -29,7 +29,7 @@ return new class extends Migration
     {
         try {
             DB::statement('ALTER TABLE cancelled_submissions DROP CHECK IF EXISTS cancelled_submissions_cancellation_fee_check');
-        } catch (\Exception $e) {
+        } catch (Exception $e) {
             // MariaDB compatibility: ignore if constraint doesn't exist
         }
 
