@@ -122,3 +122,50 @@ Custom slate colors (50-950) are defined in `resources/css/app.css` via `@theme`
 | Fare Admin | airline, route, selling_fare, tax, pax_type, effective_from, effective_to |
 | Visa Admin | passport, name, mobile, agent_name, submission_date, status |
 | Settings | min_days, max_days, flight_gap_notice, default_airport, charge_*, package_* |
+
+## Documentation
+
+| Document | Purpose |
+|----------|---------|
+| [docs/README.md](docs/README.md) | **Development Handbook** — onboarding, architecture, conventions, testing, CI/CD |
+| [AGENTS.md](AGENTS.md) | Agent conventions and TDD workflow |
+| [DEPLOYMENT.md](DEPLOYMENT.md) | Production deployment guide (ISPConfig, Watchtower, rollback, backups) |
+
+## Docker Development
+
+### Development Environment
+
+```bash
+# Start containers (app + PostgreSQL)
+docker compose up -d
+
+# App runs on http://localhost:8080
+# PostgreSQL runs on 127.0.0.1:5433
+```
+
+### Production Environment
+
+```bash
+# 1. Configure environment
+bash docker/scripts/setup-env.sh
+
+# 2. Generate APP_KEY (paste into .env.production)
+php artisan key:generate
+
+# 3. Deploy
+./deploy-prod.sh
+```
+
+The app runs on port 8000 on localhost. See [DEPLOYMENT.md](DEPLOYMENT.md) for full production deployment instructions including ISPConfig reverse proxy setup and Watchtower auto-deploy configuration.
+
+### Docker Configuration Files
+
+- `Dockerfile` — Multi-stage build (Node 22 build stage + PHP 8.3-fpm-alpine runtime)
+- `docker-compose.yml` — Dev environment (app + PostgreSQL)
+- `docker-compose.prod.yml` — Prod environment (app + PostgreSQL + Redis)
+- `docker/entrypoint.sh` — Container entrypoint (cache, migrate, permissions)
+- `docker/nginx/conf.d/default.conf` — Nginx site config
+- `docker/php/conf.d/zz-app.ini` — PHP runtime overrides (512M memory, 300s timeout)
+- `docker/supervisord.conf` — Process manager for PHP-FPM + Nginx
+- `docker/scripts/setup-env.sh` — Production environment setup/validation
+- `.github/workflows/build-push.yml` — CI/CD pipeline (PHP tests, JS tests, Docker build/push)

@@ -1,7 +1,10 @@
 *.log
 .DS_Store
 .env
-.env.*
+.env.local
+.env.backup
+.env.deploy
+!.env.production.sample
 .phpactor.json
 .phpunit.result.cache
 
@@ -15,6 +18,7 @@
 /node_modules
 /public/hot
 /public/storage
+/public/build
 
 /storage/framework/*
 /storage/logs/*

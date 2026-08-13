@@ -1,0 +1,135 @@
+# CI/CD
+
+> Part of the [Development Handbook](README.md) · **Mode:** Explanation
+
+Umrah App uses **GitHub Actions** for continuous integration and deployment.
+
+## Workflow
+
+**File:** `.github/workflows/build-push.yml`
+
+**Trigger:** Push to `main` or open a PR targeting `main`.
+
+## Jobs
+
+### 1. `test-php`
+
+**Purpose:** Run the PHPUnit test suite against PostgreSQL.
+
+```yaml
+runs-on: ubuntu-latest
+services:
+  postgres:
+    image: postgres:16-alpine
+    env:
+      POSTGRES_PASSWORD: test
+      POSTGRES_USER: test
+      POSTGRES_DB: umrah_test
+    ports: ['5432:5432']
+```
+
+Steps:
+1. Checkout code
+2. Setup PHP 8.3 with extensions (pdo_pgsql, pgsql, intl, mbstring, zip)
+3. `composer install` (no interaction, prefer-dist)
+4. Setup `.env` (SQLite → PostgreSQL, pointing at the service container)
+5. `php artisan key:generate`
+6. `php artisan migrate --no-interaction`
+7. `vendor/bin/phpunit`
+
+**When this fails:**
+- Check for SQL errors in migrations — the test DB mirrors production schema
+- Check for model attribute mismatches — casts, fillable, etc.
+- Ensure new migrations don't conflict with the test Postgres instance
+
+### 2. `test-js`
+
+**Purpose:** Verify frontend builds correctly.
+
+Steps:
+1. Checkout code
+2. Setup Node.js 22
+3. `npm ci` (uses `package-lock.json`)
+4. `npm run build` (Vite production build)
+
+**When this fails:**
+- Check Vite/Tailwind config in `vite.config.js` and `tailwind.config.js`
+- Ensure all imports in `resources/js/` resolve
+- Check for CSS errors in `resources/css/app.css`
+
+### 3. `build`
+
+**Purpose:** Build and push Docker image to ghcr.io.
+
+**Depends on:** `test-php` and `test-js` (runs only after both pass)
+
+Steps:
+1. Checkout code
+2. Setup Docker Buildx (for multi-platform caching)
+3. Login to GitHub Container Registry:
+   ```
+   registry: ghcr.io
+   username: ${{ github.actor }}
+   password: ${{ secrets.GITHUB_TOKEN }}
+   ```
+4. Extract metadata (tags):
+   - `latest`
+   - `sha-<short-sha>` (e.g., `sha-a1b2c3d`)
+5. Build and push Docker image
+6. **Build cache** stored at `ghcr.io/${{ github.repository }}/buildx-cache:latest`
+
+**Image:** `ghcr.io/mostafiz-8bits/umrah-app`
+
+**When this fails:**
+- Check Dockerfile syntax
+- Check `composer install` fails (missing extensions, version conflicts)
+- Check `npm run build` fails (frontend errors)
+- Check layer caching issues (clear cache manually if needed)
+
+## Continuous Deployment (Production)
+
+Deployment is **not** automated in CI/CD. The process is:
+
+1. CI builds and pushes the Docker image to `ghcr.io`
+2. **Watchtower** (running on the ISPConfig server) detects the new image
+3. Watchtower auto-updates the production container within ~5 minutes
+
+**To deploy manually** (instead of relying on Watchtower):
+
+```bash
+./deploy-prod.sh
+```
+
+This script:
+1. Pulls the latest image from ghcr.io
+2. Stops containers gracefully (keeps volumes)
+3. Starts PostgreSQL first, waits for health
+4. Starts the app container
+5. Fixes storage permissions
+
+**To pin a specific image version** (e.g., for rollback):
+
+```bash
+IMAGE_TAG=sha-abc123def ./deploy-prod.sh
+```
+
+## Debugging CI Failures
+
+```bash
+# Re-run the same commands locally:
+composer install --no-interaction --prefer-dist --no-dev
+php artisan key:generate
+php artisan migrate --force
+vendor/bin/phpunit
+
+# Check Docker build:
+docker build -t test .
+```
+
+---
+
+## Navigation
+
+Previous: [Git Workflow](06-git-workflow.md) ·
+Next: [Domain Reference](08-domain-reference.md) ·
+Full index: [README](README.md)
