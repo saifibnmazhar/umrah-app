@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Payment History - BM Umrah</title>
+    <title>Payment Details - BM Umrah</title>
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
         body { font-family: 'Courier New', monospace; font-size: 14px; padding: 10px; color: #000; }
@@ -26,8 +26,6 @@
         .summary-row .label { font-weight: bold; }
         .summary-row .value { font-weight: bold; }
         .footer { text-align: center; font-size: 11px; color: #888; margin-top: 15px; border-top: 1px solid #ccc; padding-top: 6px; }
-        .date-group-header { background: #f0f0f0; font-weight: bold; font-size: 11px; }
-        .date-group-header td { padding: 4px 6px; border-bottom: 2px solid #999; }
         @media print {
             body { padding: 5px; }
             .no-print { display: none; }
@@ -37,7 +35,7 @@
 </head>
 <body>
     <div class="header">
-        <h1>Payment History</h1>
+        <h1>Payment Details</h1>
         <p>BM Umrah Booking System</p>
     </div>
 
@@ -65,19 +63,13 @@
     <div class="filters-summary">
         <strong>Filters Applied:</strong>
         <span>
-            Date Range: {{ $dateLabel }}
-            @if($branch) | Branch: {{ $branch->name }}@endif
+            @if($dateLabel) Date: {{ $dateLabel }}@endif
+            @if($branchName) | Branch: {{ $branchName }}@endif
             @if($bankName) | Bank: {{ $bankName }}@endif
             @if($methodLabel) | Method: {{ $methodLabel }}@endif
             | Currency: {{ $__currency }}
         </span>
     </div>
-
-    @php
-        $vouchersByDate = $vouchers->groupBy(function($v) {
-            return \Carbon\Carbon::parse($v['payment_date'] ?? now())->format('Y-m-d');
-        })->sortKeys();
-    @endphp
 
     <table>
         <thead>
@@ -90,32 +82,25 @@
                 <th>Trx ID</th>
                 <th>Receive By</th>
                 <th>Receive At</th>
-                <th>Payment Date</th>
                 <th style="text-align: right">Amount</th>
             </tr>
         </thead>
         <tbody>
-            @forelse($vouchersByDate as $date => $dateVouchers)
-                <tr class="date-group-header">
-                    <td colspan="10">{{ \Carbon\Carbon::parse($date)->format('d-M-Y') }}</td>
-                </tr>
-                @foreach($dateVouchers as $v)
-                <tr>
-                    <td class="text-center">{{ $v['invoice_id'] }}</td>
-                    <td class="text-center">{{ $v['voucher_no'] }}</td>
-                    <td class="text-center {{ $v['method'] === 'Cash' ? 'method-cash' : 'method-bank' }}">{{ $v['method'] }}</td>
-                    <td class="text-left">{{ $v['bank'] ?? '-' }}</td>
-                    <td class="text-left">{{ $v['transaction_type'] }}</td>
-                    <td class="text-left">{{ $v['trx_id'] }}</td>
-                    <td class="text-left">{{ $v['receive_by'] }}</td>
-                    <td class="text-left">{{ $v['receive_at'] }}</td>
-                    <td class="text-center">{{ $v['payment_date'] }}</td>
-                     <td class="text-right" style="font-weight: bold">{{ $fmtNum($v['amount'], $v['bdt_amount'] ?? 0) }}</td>
-                </tr>
-                @endforeach
+            @forelse($vouchers as $v)
+            <tr>
+                <td class="text-center">{{ $v['invoice_id'] }}</td>
+                <td class="text-center">{{ $v['voucher_no'] }}</td>
+                <td class="text-center {{ $v['method'] === 'Cash' ? 'method-cash' : 'method-bank' }}">{{ $v['method'] }}</td>
+                <td class="text-left">{{ $v['bank'] ?? '-' }}</td>
+                <td class="text-left">{{ $v['transaction_type'] }}</td>
+                <td class="text-left">{{ $v['trx_id'] }}</td>
+                <td class="text-left">{{ $v['receive_by'] }}</td>
+                <td class="text-left">{{ $v['receive_at'] }}</td>
+                <td class="text-right" style="font-weight: bold">{{ $fmtNum($v['amount'], $v['bdt_amount'] ?? 0) }}</td>
+            </tr>
             @empty
             <tr>
-                <td colspan="10" class="text-center" style="padding: 20px;">No records found.</td>
+                <td colspan="9" class="text-center" style="padding: 20px;">No records found.</td>
             </tr>
             @endforelse
         </tbody>

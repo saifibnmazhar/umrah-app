@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Models\VisaAgent;
 use App\Models\VisaAgentCost;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 
 class VisaAgentCostController extends Controller
 {
@@ -28,16 +27,15 @@ class VisaAgentCostController extends Controller
     public function store(Request $request)
     {
         $validated = $request->validate([
-            'visa_agent_id' => [
-                'required',
-                'integer',
-                'exists:visa_agents,id',
-                Rule::unique('visa_agent_costs')->where(function ($query) use ($request) {
-                    return $query->where('visa_agent_id', $request->visa_agent_id);
-                }),
-            ],
+            'visa_agent_id' => 'required|integer|exists:visa_agents,id',
             'visa_agent_cost' => 'required|numeric|min:0',
         ]);
+
+        if (VisaAgentCost::where('visa_agent_id', $request->visa_agent_id)->exists()) {
+            return redirect()->route('visa.admin', ['tab' => 'visa-agent-costs'])
+                ->with('toast', ['message' => 'Visa agent cost already exists for that agent. Please update that cost.', 'type' => 'error'])
+                ->withInput();
+        }
 
         try {
             $validated['user_id'] = auth()->id() ?? 1;
@@ -61,16 +59,17 @@ class VisaAgentCostController extends Controller
     public function update(Request $request, VisaAgentCost $visaAgentCost)
     {
         $validated = $request->validate([
-            'visa_agent_id' => [
-                'required',
-                'integer',
-                'exists:visa_agents,id',
-                Rule::unique('visa_agent_costs')->where(function ($query) use ($request) {
-                    return $query->where('visa_agent_id', $request->visa_agent_id);
-                })->ignore($visaAgentCost->id),
-            ],
+            'visa_agent_id' => 'required|integer|exists:visa_agents,id',
             'visa_agent_cost' => 'required|numeric|min:0',
         ]);
+
+        if (VisaAgentCost::where('visa_agent_id', $request->visa_agent_id)
+            ->where('id', '!=', $visaAgentCost->id)
+            ->exists()) {
+            return redirect()->route('visa.admin', ['tab' => 'visa-agent-costs'])
+                ->with('toast', ['message' => 'Visa agent cost already exists for that agent. Please update that cost.', 'type' => 'error'])
+                ->withInput();
+        }
 
         try {
             $visaAgentCost->update($validated);
