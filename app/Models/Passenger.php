@@ -7,6 +7,7 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use App\Enums\FingerprintStatus;
 use App\Enums\Gender;
 use App\Enums\PassengerType;
@@ -42,6 +43,7 @@ class Passenger extends Model
         'ticket_remarks',
         'ticket_fare_inbound_id',
         'ticket_fare_outbound_id',
+        'refund_payable',
     ];
 
     protected $casts = [
@@ -58,6 +60,7 @@ class Passenger extends Model
         'package_value' => 'decimal:6',
         'is_ticket_held' => 'boolean',
         'ticket_held_at' => 'datetime',
+        'refund_payable' => 'decimal:6',
     ];
 
     public function booking(): BelongsTo
@@ -108,6 +111,37 @@ class Passenger extends Model
     public function allIssuedTickets(): HasMany
     {
         return $this->hasMany(IssuedTicket::class);
+    }
+
+    public function refundedTickets(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            RefundedTicket::class,
+            IssuedTicket::class,
+            'passenger_id',
+            'issued_ticket_id',
+            'id',
+            'id'
+        );
+    }
+
+    public function ticketRefundPayments(): HasMany
+    {
+        return $this->hasMany(Payment::class)
+                    ->whereIn('refunded_ticket_id', fn ($q) =>
+                        $q->select('id')->from('refunded_tickets')
+                    );
+    }
+
+    public function increaseRefundPayable(float $amount): void
+    {
+        $this->increment('refund_payable', $amount);
+    }
+
+    public function decreaseRefundPayable(float $amount): void
+    {
+        $this->refund_payable = max(0, $this->refund_payable - $amount);
+        $this->save();
     }
 
     public function latestIssuedTicket(): HasOne

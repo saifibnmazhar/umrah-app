@@ -19,6 +19,8 @@ class ReIssuedTicket extends Model
         'baggage_inbound', 'baggage_outbound',
         're_issue_charge', 'fare_difference', 'other_costs', 'service_charge',
         'payment_by',
+        'payment_option',
+        'refund_adjustment_amount',
         'reason_id', 'remarks',
     ];
 
@@ -35,7 +37,8 @@ class ReIssuedTicket extends Model
         'service_charge' => 'decimal:6',
         'is_refundable' => 'boolean',
         'is_exchangeable' => 'boolean',
-
+        'payment_option' => \App\Enums\ReIssuePaymentOption::class,
+        'refund_adjustment_amount' => 'decimal:6',
     ];
 
     public function user(): BelongsTo
