@@ -1,5 +1,4 @@
 name: Build & Push
-
 on:
   push:
     branches: [ main ]
@@ -52,6 +51,10 @@ jobs:
           echo "DB_USERNAME=test" >> .env
           echo "DB_PASSWORD=test" >> .env
           php artisan key:generate
+
+      - name: Fix MySQL authentication for Laravel
+        run: |
+          mysql -h 127.0.0.1 -P 3306 -u root -proot -e "ALTER USER 'test'@'localhost' IDENTIFIED WITH mysql_native_password BY 'test'; FLUSH PRIVILEGES;" || true
 
       - name: Run migrations and tests
         run: |
