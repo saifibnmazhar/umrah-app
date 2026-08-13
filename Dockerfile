@@ -17,7 +17,7 @@ RUN npm run build
 FROM php:8.3-fpm-alpine3.24 AS app
 
 RUN apk add --no-cache \
-        libpq-dev \
+        mariadb-dev \
         icu-dev \
         oniguruma-dev \
         libzip-dev \
@@ -28,8 +28,8 @@ RUN apk add --no-cache \
         supervisor \
     && docker-php-ext-configure intl \
     && docker-php-ext-install -j"$(nproc)" \
-        pdo_pgsql \
-        pgsql \
+        pdo_mysql \
+        mysqli \
         intl \
         mbstring \
         zip \
@@ -70,7 +70,7 @@ RUN set -eux \
 EXPOSE 80
 
 LABEL org.opencontainers.image.source="https://github.com/mostafiz-8bits/umrah-app" \
-      org.opencontainers.image.description="Umrah App — Laravel 12 + PostgreSQL application"
+      org.opencontainers.image.description="Umrah App — Laravel 12 + MySQL application"
 
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
