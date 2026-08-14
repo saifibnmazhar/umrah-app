@@ -18,6 +18,7 @@ FROM php:8.4-fpm-alpine3.24 AS app
 
 RUN apk add --no-cache \
         libpq-dev \
+        default-mysql-dev \
         icu-dev \
         oniguruma-dev \
         libzip-dev \
@@ -34,6 +35,8 @@ RUN apk add --no-cache \
     && docker-php-ext-install -j"$(nproc)" \
         pdo_pgsql \
         pgsql \
+        pdo_mysql \
+        mysqli \
         intl \
         mbstring \
         zip \
