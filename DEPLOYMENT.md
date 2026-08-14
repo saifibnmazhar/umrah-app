@@ -69,6 +69,7 @@ location / {
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
     proxy_set_header X-Forwarded-Proto https;
+    client_max_body_size 100M;
 }
 ```
 
@@ -228,6 +229,17 @@ docker compose -f docker-compose.prod.yml exec app php artisan optimize:clear
 docker compose -f docker-compose.prod.yml exec app php artisan config:cache
 docker compose -f docker-compose.prod.yml exec app php artisan route:cache
 ```
+
+### 413 Request Entity Too Large (file uploads)
+
+**Cause:** Uploading passenger documents (passport scans, visa copies) exceeds the body size limits at any of three layers: ISPConfig reverse proxy, container nginx, or PHP.
+
+**Fix:**
+1. ISPConfig Nginx proxy — add `client_max_body_size 100M;` to the Nginx directives in ISPConfig Panel (see Section 5 above).
+2. Container nginx — `client_max_body_size 100M;` in `docker/nginx/conf.d/default.conf`.
+3. PHP — `upload_max_filesize = 50M` and `post_max_size = 50M` in `docker/php/conf.d/zz-app.ini`.
+
+After these changes, rebuild the Docker image (push to `main` triggers CI automatically).
 
 ## Backup Strategy
 
