@@ -52,4 +52,16 @@ docker compose -f docker-compose.prod.yml exec app chown -R www-data:www-data st
 echo "Running migrations..."
 docker compose -f docker-compose.prod.yml exec app php artisan migrate --force
 
+# Verify application health
+echo "Verifying application health..."
+sleep 10
+APP_PORT="${APP_PORT:-8000}"
+if curl -sf "http://127.0.0.1:${APP_PORT}/" >/dev/null 2>&1; then
+    echo "✅ Application is healthy"
+else
+    echo "❌ Application health check failed"
+    echo "Check logs: docker compose -f docker-compose.prod.yml logs app"
+    exit 1
+fi
+
 echo "Deployment completed safely!"
