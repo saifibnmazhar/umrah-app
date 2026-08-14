@@ -157,7 +157,8 @@ class ReIssueController extends Controller
                     if ($invoice) {
                         app(InvoiceService::class)->updateTotals(
                             $invoice,
-                            (float) $invoice->total_amount + $totalCustomerPayment
+                            (float) $invoice->total_amount + $totalCustomerPayment,
+                            're_issue_cost_added'
                         );
                     }
                 }

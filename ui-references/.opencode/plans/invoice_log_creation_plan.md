@@ -4,8 +4,8 @@
 Make every change (create, update, delete) to `bookings` and `invoices` tables persist in log tables, with a human-readable `reason` for `invoice.total_amount` changes (passenger add/remove/update, package change, re-issue customer payment).
 
 ## Files to create
-1. `database/migrations/2026_08_13_000005_create_invoice_update_logs_table.php`
-2. `database/migrations/2026_08_13_000006_fix_update_log_cascades_table.php`
+1. `database/migrations/2026_08_13_000006_create_invoice_update_logs_table.php` *(renamed from 000005 — taken)*
+2. `database/migrations/2026_08_13_000007_fix_update_log_cascades_table.php` *(renamed from 000006 — taken by #1)*
 3. `app/Models/InvoiceUpdateLog.php`
 4. `app/Observers/InvoiceObserver.php`
 
@@ -20,14 +20,13 @@ Make every change (create, update, delete) to `bookings` and `invoices` tables p
 - `app/Http/Controllers/TicketRequestController.php`
 - `app/Observers/BookingObserver.php`
 - `app/Observers/PassengerObserver.php`
-- `app/Services/CancellationService.php` (optional reason context)
+- `app/Services/CancellationService.php`
 
 ---
 
 ## Change 1 — Migration: `invoice_update_logs` table
 
 ```php
-// database/migrations/2026_08_13_000005_create_invoice_update_logs_table.php
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -42,8 +41,9 @@ return new class extends Migration
             $table->id();
             $table->foreignId('invoice_id')->nullable()->constrained('invoices')->nullOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->nullOnDelete();
-            $table->string('action');                 // created | updated | deleted
-            $table->string('reason')->nullable();     // why total_amount changed
+            $table->string('booking_invoice_id')->nullable();  // snapshot of bookings.invoice_id (e.g. INV-2026-0001)
+            $table->string('action');                          // created | updated | deleted
+            $table->string('reason')->nullable();              // why total_amount changed
             $table->json('old_values')->nullable();
             $table->json('new_values')->nullable();
             $table->timestamp('created_at');
@@ -58,14 +58,13 @@ return new class extends Migration
 };
 ```
 
-Key points: `invoice_id` FK is `nullable` + `nullOnDelete` so a `deleted` log survives invoice deletion. `user_id` nullable so finance/queued flows log even without auth.
+## Change 2 — Migration: fix cascade bug + snapshot columns
 
-## Change 2 — Migration: fix cascade bug on existing log tables
-
-Current FKs use `cascadeOnDelete`, which destroys the just-written `deleted` log rows when the parent row is removed. Convert to `nullOnDelete`:
+Preserves `deleted` log rows (`nullOnDelete`) AND keeps deleted records queryable via snapshot columns:
+- `booking_update_logs.booking_invoice_id` (from `bookings.invoice_id`)
+- `passenger_update_logs.passport_no` (from `passengers.passport_no`)
 
 ```php
-// database/migrations/2026_08_13_000006_fix_update_log_cascades_table.php
 <?php
 
 use Illuminate\Database\Migrations\Migration;
@@ -80,24 +79,30 @@ return new class extends Migration
             $table->dropForeign(['booking_id']);
             $table->unsignedBigInteger('booking_id')->nullable()->change();
             $table->foreign('booking_id')->references('id')->on('bookings')->nullOnDelete();
+
+            $table->string('booking_invoice_id')->nullable()->after('booking_id');
         });
 
         Schema::table('passenger_update_logs', function (Blueprint $table) {
             $table->dropForeign(['passenger_id']);
             $table->unsignedBigInteger('passenger_id')->nullable()->change();
             $table->foreign('passenger_id')->references('id')->on('passengers')->nullOnDelete();
+
+            $table->string('passport_no')->nullable()->after('passenger_id');
         });
     }
 
     public function down(): void
     {
         Schema::table('booking_update_logs', function (Blueprint $table) {
+            $table->dropColumn('booking_invoice_id');
             $table->dropForeign(['booking_id']);
             $table->unsignedBigInteger('booking_id')->nullable(false)->change();
             $table->foreign('booking_id')->references('id')->on('bookings')->cascadeOnDelete();
         });
 
         Schema::table('passenger_update_logs', function (Blueprint $table) {
+            $table->dropColumn('passport_no');
             $table->dropForeign(['passenger_id']);
             $table->unsignedBigInteger('passenger_id')->nullable(false)->change();
             $table->foreign('passenger_id')->references('id')->on('passengers')->cascadeOnDelete();
@@ -106,10 +111,11 @@ return new class extends Migration
 };
 ```
 
-## Change 3 — Model `InvoiceUpdateLog`
+## Change 3 — Models: `InvoiceUpdateLog` (new) + fillable updates (existing)
+
+New model also matches existing log models. Change 2 added snapshot columns, so update `$fillable` on existing models too (prevents silent mass-assignment discard):
 
 ```php
-// app/Models/InvoiceUpdateLog.php
 <?php
 
 namespace App\Models;
@@ -121,7 +127,9 @@ class InvoiceUpdateLog extends Model
 {
     const UPDATED_AT = null;
 
-    protected $fillable = ['invoice_id', 'user_id', 'action', 'reason', 'old_values', 'new_values'];
+    protected $fillable = [
+        'invoice_id', 'user_id', 'booking_invoice_id', 'action', 'reason', 'old_values', 'new_values',
+    ];
 
     protected $casts = ['old_values' => 'array', 'new_values' => 'array'];
 
@@ -131,9 +139,12 @@ class InvoiceUpdateLog extends Model
 }
 ```
 
+- `app/Models/BookingUpdateLog.php`: add `'booking_invoice_id'` to `$fillable`
+- `app/Models/PassengerUpdateLog.php`: add `'passport_no'` to `$fillable`
+
 ## Change 4 — `Invoice` model: transient reason property
 
-Add to the class body (not fillable, not a DB column):
+Add to class body (not fillable, not a DB column):
 
 ```php
 public ?string $audit_reason = null;
@@ -142,7 +153,6 @@ public ?string $audit_reason = null;
 ## Change 5 — `InvoiceObserver`
 
 ```php
-// app/Observers/InvoiceObserver.php
 <?php
 
 namespace App\Observers;
@@ -156,12 +166,13 @@ class InvoiceObserver
     public function created(Invoice $invoice): void
     {
         InvoiceUpdateLog::create([
-            'invoice_id' => $invoice->id,
-            'user_id'    => Auth::id(),
-            'action'     => 'created',
-            'reason'     => $invoice->audit_reason ?? 'created',
-            'old_values' => null,
-            'new_values' => $invoice->attributesToArray(),
+            'invoice_id'         => $invoice->id,
+            'user_id'            => Auth::id(),
+            'booking_invoice_id' => $invoice->booking?->invoice_id,
+            'action'             => 'created',
+            'reason'             => $invoice->audit_reason ?? 'created',
+            'old_values'         => null,
+            'new_values'         => $invoice->attributesToArray(),
         ]);
     }
 
@@ -178,24 +189,26 @@ class InvoiceObserver
         }
 
         InvoiceUpdateLog::create([
-            'invoice_id' => $invoice->id,
-            'user_id'    => Auth::id(),
-            'action'     => 'updated',
-            'reason'     => $invoice->audit_reason ?? 'updated',
-            'old_values' => $old,
-            'new_values' => $new,
+            'invoice_id'         => $invoice->id,
+            'user_id'            => Auth::id(),
+            'booking_invoice_id' => $invoice->booking?->invoice_id,
+            'action'             => 'updated',
+            'reason'             => $invoice->audit_reason ?? 'updated',
+            'old_values'         => $old,
+            'new_values'         => $new,
         ]);
     }
 
     public function deleting(Invoice $invoice): void
     {
         InvoiceUpdateLog::create([
-            'invoice_id' => $invoice->id,
-            'user_id'    => Auth::id(),
-            'action'     => 'deleted',
-            'reason'     => 'deleted',
-            'old_values' => collect($invoice->attributesToArray())->except(['created_at', 'updated_at'])->toArray(),
-            'new_values' => null,
+            'invoice_id'         => $invoice->id,
+            'user_id'            => Auth::id(),
+            'booking_invoice_id' => $invoice->booking?->invoice_id,
+            'action'             => 'deleted',
+            'reason'             => 'deleted',
+            'old_values'         => collect($invoice->attributesToArray())->except(['created_at', 'updated_at'])->toArray(),
+            'new_values'         => null,
         ]);
     }
 }
@@ -210,8 +223,7 @@ Unlike Booking/Passenger observers, this one **always logs** (nullable user) to 
 ```php
 use App\Models\Invoice;
 use App\Observers\InvoiceObserver;
-// in boot():
-Invoice::observe(InvoiceObserver::class);
+// in boot(): Invoice::observe(InvoiceObserver::class);
 ```
 
 ## Change 7 — Carry reason through `updateTotals`
@@ -237,19 +249,15 @@ public function updateTotals(Invoice $invoice, float $newTotal, ?string $reason 
 
 ## Change 8 — `BookingService` updates
 
-`app/Services/BookingService.php`:
-
 - `syncFinancials(Booking $booking, ?string $reason = null)` — pass `$reason` into `updateTotals($invoice, $discountedTotal, $reason)`.
 - Replace `saveQuietly()` with `save()` so observers fire:
-  - `recalculateBookingTotal()`: `$passenger->saveQuietly();` → `save()`, and `$booking->saveQuietly();` → `save()`
+  - `recalculateBookingTotal()`: `$passenger->saveQuietly()` → `save()`; `$booking->saveQuietly()` → `save()`
   - `syncFinancials()`: `$booking->discount_amount` save → `save()`
 
 ## Change 9 — `BookingController` call sites
 
-`app/Http/Controllers/BookingController.php`:
-
 - `syncBookingFinancials(Booking $booking, ?string $reason = null)` → pass through `syncFinancials($booking, $reason)`.
-- `store()`: `$booking->saveQuietly();` → `save()`; set `$invoice->audit_reason = 'booking_created';` before the `$invoice->save()` for the discounted total.
+- `store()`: `$booking->saveQuietly()` → `save()`; set `$invoice->audit_reason = 'booking_created'` before `$invoice->save()`.
 - `addPassenger()` → `syncBookingFinancials($booking, 'passenger_added')`
 - `removePassenger()` → `syncBookingFinancials($booking, 'passenger_removed')`
 - `update()` → `syncBookingFinancials($booking, 'booking_updated')`
@@ -263,17 +271,21 @@ public function updateTotals(Invoice $invoice, float $newTotal, ?string $reason 
 
 ## Change 11 — Re-issue customer payment paths
 
-Both `app/Http/Controllers/ReIssueController.php` (line ~158) and `app/Http/Controllers/TicketRequestController.php` (line ~261):
+`ReIssueController.php` (~line 158) and `TicketRequestController.php` (~line 261):
 
 ```php
 app(InvoiceService::class)->updateTotals(
     $invoice,
     (float) $invoice->total_amount + $totalCustomerPayment,
-    're_issued_ticket_customer_payment'
+    're_issue_cost_added'
 );
 ```
 
-## Change 12 — `BookingObserver` / `PassengerObserver`: add `created` event
+## Change 12 — `BookingObserver` / `PassengerObserver`: `created` event + snapshot columns
+
+`created()` handlers (below). Also populate new snapshot columns in **all** handlers:
+- `BookingObserver` `updated()`/`deleting()`/`created()`: add `'booking_invoice_id' => $booking->invoice_id`
+- `PassengerObserver` `updated()`/`deleting()`/`created()`: add `'passport_no' => $passenger->passport_no`
 
 ```php
 public function created(Booking $booking): void
@@ -282,21 +294,22 @@ public function created(Booking $booking): void
     if (!$user) return;
 
     BookingUpdateLog::create([
-        'booking_id' => $booking->id,
-        'user_id'    => $user->id,
-        'action'     => 'created',
-        'old_values' => null,
-        'new_values' => $booking->attributesToArray(),
+        'booking_id'         => $booking->id,
+        'user_id'            => $user->id,
+        'booking_invoice_id' => $booking->invoice_id,
+        'action'             => 'created',
+        'old_values'         => null,
+        'new_values'         => $booking->attributesToArray(),
     ]);
 }
 ```
 
-Same pattern for `PassengerObserver` (`passenger_id`, `PassengerUpdateLog`, `Booking` → `Passenger`).
+Same pattern for `PassengerObserver` (`passenger_id`, `PassengerUpdateLog`, `passport_no`).
 
-## Change 13 — CancellationService reason context (optional)
+## Change 13 — CancellationService reason context
 
-- `cancel()`: `$invoice->audit_reason = 'booking_cancelled';` before `$invoice->update(['status' => CANCELLED])`
-- refund block (line ~173): `$invoice->audit_reason = 'refund';` before the `$invoice->update([...])`
+- `initiateCancellation()`: `$invoice->audit_reason = 'booking_cancelled';` before `$invoice->update(['status' => CANCELLED])`
+- refund block (`confirmCancellation()`, ~line 173): `$invoice->audit_reason = 'refund';` before the `$invoice->update([...])`
 
 ---
 
