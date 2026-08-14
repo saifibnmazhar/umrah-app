@@ -557,6 +557,8 @@ class BookingController extends Controller
                 'allIssuedTickets.ticketFare.route.returnCity',
                 'allIssuedTickets.ticketFare.route.multiSegments.fromCity',
                 'allIssuedTickets.ticketFare.route.multiSegments.toCity',
+                'allIssuedTickets.reIssuedTickets.reason',
+                'allIssuedTickets.refundedTickets.reason',
                 'latestIssuedTicket.ticketAgent',
                 'latestIssuedTicket.ticketFare.airline',
                 'latestIssuedTicket.ticketFare.airlineClass.class',

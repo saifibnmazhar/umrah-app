@@ -360,6 +360,16 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'route_type' => $t->ticketFare?->route?->route_type?->value,
         'ticket_agent_name' => $t->ticketAgent?->name ?? '',
         'issuer_name' => $t->issuer?->name ?? '',
+        'reason' => match ($t->status) {
+            're-issued' => $t->reIssuedTickets->sortByDesc('id')->first()?->reason?->name ?? null,
+            'refunded'  => $t->refundedTickets->sortByDesc('id')->first()?->reason?->name ?? null,
+            default     => null,
+        },
+        'remarks' => match ($t->status) {
+            're-issued' => $t->reIssuedTickets->sortByDesc('id')->first()?->remarks ?? null,
+            'refunded'  => $t->refundedTickets->sortByDesc('id')->first()?->remarks ?? null,
+            default     => null,
+        },
     ])->values(),
     'pending_outbound_issued_ticket' => ($poit = $p->allIssuedTickets
         ->first(fn($t) => $t->issue_type === 'pending_outbound')) ? [
@@ -1600,6 +1610,8 @@ if ($passenger->ticket_fare_inbound_id) {
                                     <th class="px-3 py-2">Issue Type</th>
                                     <th class="px-3 py-2">Airline</th>
                                     <th class="px-3 py-2">Class</th>
+                                    <th class="px-3 py-2">Reason</th>
+                                    <th class="px-3 py-2">Remarks</th>
                                     <th class="px-3 py-2">Status</th>
                                     <th class="px-3 py-2">Actions</th>
                                 </tr>
@@ -1626,6 +1638,8 @@ if ($passenger->ticket_fare_inbound_id) {
                                         </td>
                                         <td class="px-3 py-2 text-slate-700" x-text="ticket.airline || '—'"></td>
                                         <td class="px-3 py-2 text-slate-700" x-text="ticket.travel_class || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.reason || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.remarks || '—'"></td>
                                         <td class="px-3 py-2">
                                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                                                 :class="{
