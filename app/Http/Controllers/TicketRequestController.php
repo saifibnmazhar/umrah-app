@@ -425,6 +425,15 @@ class TicketRequestController extends Controller
                 'result_issued_ticket_id' => $issuedTicket->id,
             ]);
 
+            $invoice = $ticketRequest->booking->invoice;
+            if ($invoice) {
+                app(InvoiceService::class)->updateTotals(
+                    $invoice,
+                    (float) $invoice->total_amount + (float) ($issuedTicket->selling_fare ?? 0),
+                    'additional_ticket_added'
+                );
+            }
+
             DB::commit();
 
             return response()->json([
