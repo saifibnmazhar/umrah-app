@@ -76,7 +76,7 @@ RUN set -eux \
 
 EXPOSE 80
 
-LABEL org.opencontainers.image.source="https://github.com/mostafiz-8bits/umrah-app" \
+LABEL org.opencontainers.image.source="https://github.com/saifibnmazhar/umrah-app" \
       org.opencontainers.image.description="Umrah App — Laravel 12 + MySQL 8.0 application"
 
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
