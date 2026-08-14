@@ -84,7 +84,7 @@
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Reason</label>
-                        <select id="inputReason" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <select id="inputReason" onchange="handleReasonChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Reason</option>
                         </select>
                     </div>
@@ -119,7 +119,8 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
                         <select id="inputPaymentBy" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                            <option value="customer" selected>Customer</option>
+                            <option value="">Select</option>
+                            <option value="customer">Customer</option>
                             <option value="airline">Airline</option>
                             <option value="employee">Employee</option>
                         </select>
@@ -301,8 +302,14 @@ function loadReasons() {
     .then(reasons => {
         const select = document.getElementById('inputReason');
         select.innerHTML = '<option value="">Select Reason</option>' +
-            reasons.map(r => '<option value="' + r.id + '">' + escapeHtml(r.name) + '</option>').join('');
+            reasons.map(r => '<option value="' + r.id + '" data-default-payment-by="' + (r.default_payment_by || '') + '">' + escapeHtml(r.name) + '</option>').join('');
     });
+}
+
+function handleReasonChange() {
+    var opt = document.getElementById('inputReason').selectedOptions[0];
+    var val = opt ? opt.getAttribute('data-default-payment-by') || '' : '';
+    document.getElementById('inputPaymentBy').value = val;
 }
 
 function loadAgents() {
@@ -422,7 +429,7 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('inputCustomerRefundAmountBdt').value = '';
     document.getElementById('inputCustomerRefundAmountBdtSar').value = '';
     document.getElementById('inputReason').value = '';
-    document.getElementById('inputPaymentBy').value = 'customer';
+    document.getElementById('inputPaymentBy').value = '';
     // document.getElementById('inputPaymentMethod').value = '';
     document.getElementById('inputServiceCharge').value = '';
     document.getElementById('inputServiceChargeBdt').value = '';

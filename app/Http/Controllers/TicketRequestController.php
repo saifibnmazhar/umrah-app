@@ -516,7 +516,7 @@ class TicketRequestController extends Controller
             $query->where('reason_of', 'refund');
         }
 
-        return response()->json($query->get(['id', 'name']));
+        return response()->json($query->get(['id', 'name', 'default_payment_by']));
     }
 
     public function agents()
