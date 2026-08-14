@@ -14,10 +14,10 @@ under 10 minutes.
 | Node.js | 22.x |
 | npm | 10.x+ |
 | Docker | 24.x+ |
-| PostgreSQL | 16 (prod only — Docker provides this) |
+| MySQL | 8.0 (prod only — Docker provides this) |
 | Redis | 7 (prod only — Docker provides this) |
 
-> **No local PostgreSQL or Redis needed for development.** The Docker setup
+> **No local MySQL or Redis needed for development.** The Docker setup
 > includes them.
 
 ## Option A: One-Command Setup (Recommended)
@@ -54,13 +54,13 @@ If you prefer containers (recommended for consistency with production):
 git clone https://github.com/mostafiz-8bits/umrah-app.git
 cd umrah-app
 
-# One command starts app + PostgreSQL
+# One command starts app + MySQL
 docker compose up -d --build
 ```
 
 Visit:
 - App: `http://localhost:8080`
-- PostgreSQL: `127.0.0.1:5433`
+- MySQL: `127.0.0.1:3306`
 
 > **Note:** The Docker build compiles frontend assets during image build.
 > Local asset changes require `docker compose up --build` to rebuild.

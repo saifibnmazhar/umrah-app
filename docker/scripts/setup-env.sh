@@ -26,7 +26,7 @@ chmod +x deploy-prod.sh
 echo "✅ Made deploy-prod.sh executable"
 
 # Validate required variables
-REQUIRED_VARS=("DB_PASSWORD" "APP_KEY" "APP_URL")
+REQUIRED_VARS=("DB_PASSWORD" "APP_KEY")
 for var in "${REQUIRED_VARS[@]}"; do
     if grep -q "^${var}=" .env.production 2>/dev/null; then
         VALUE=$(grep "^${var}=" .env.production | cut -d'=' -f2-)
@@ -36,6 +36,17 @@ for var in "${REQUIRED_VARS[@]}"; do
         fi
     fi
 done
+
+# Validate APP_URL is set and uses HTTPS (required for correct URL generation
+# behind the ISPConfig reverse proxy that terminates TLS)
+APP_URL_VALUE=$(grep "^APP_URL=" .env.production 2>/dev/null | cut -d'=' -f2-)
+if [ -z "$APP_URL_VALUE" ] || [ "$APP_URL_VALUE" = "***" ]; then
+    echo "❌ APP_URL is not set in .env.production"
+    MISSING=true
+elif ! echo "$APP_URL_VALUE" | grep -qE "^https://"; then
+    echo "❌ APP_URL must be an HTTPS URL (got: $APP_URL_VALUE)"
+    MISSING=true
+fi
 
 if [ -n "${MISSING:-}" ]; then
     echo ""

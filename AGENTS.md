@@ -25,7 +25,7 @@ vouchers, reports, branches, banks, airlines, routes, and currency rates.
 | Frontend           | Blade templates, Vite 7, Tailwind CSS v4, Alpine.js |
 | Testing            | PHPUnit 11                                  |
 | Code Style         | Laravel Pint (PSR-12 + Laravel preset)      |
-| Containerization   | Docker (multi-stage: Node 22 + PHP 8.3-fpm-alpine) |
+| Containerization   | Docker (multi-stage: Node 22 + PHP 8.4-fpm-alpine) |
 | CI/CD              | GitHub Actions → ghcr.io + Watchtower       |
 | Deployment         | ISPConfig server, `deploy-prod.sh`          |
 
@@ -51,7 +51,7 @@ actual Blade templates live in `resources/views/`.
 
 ### Prerequisites
 
-- PHP 8.3+
+- PHP 8.4+
 - Composer 2.x
 - Node.js 22+
 - MySQL 8.0 (for production parity)
