@@ -68,7 +68,7 @@ location / {
     proxy_set_header Host $host;
     proxy_set_header X-Real-IP $remote_addr;
     proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
-    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_set_header X-Forwarded-Proto https;
 }
 ```
 
@@ -76,8 +76,8 @@ location / {
 
 The application runs behind the ISPConfig reverse proxy above, which
 terminates TLS (HTTPS) and forwards to the app container over HTTP.
-The proxy sets `X-Forwarded-Proto`, `X-Forwarded-For`, `X-Real-IP`,
-and `Host` headers.
+The proxy sets `X-Forwarded-Proto` (hardcoded to `https`), `X-Forwarded-For`,
+`X-Real-IP`, and `Host` headers.
 
 Laravel trusts all proxy IPs and the full set of `X-Forwarded-*`
 headers (configured in `bootstrap/app.php`). In production,
@@ -85,9 +85,15 @@ headers (configured in `bootstrap/app.php`). In production,
 `URL::forceScheme('https')`, so that redirects, asset URLs, and API
 callbacks use the correct public HTTPS scheme.
 
-**Required:** `APP_URL` in `.env.production` must be set to your HTTPS URL.
-The setup script (`docker/scripts/setup-env.sh`) validates this and will
-refuse to proceed if `APP_URL` is empty or not an HTTPS URL.
+**Required environment variables in `.env.production`:**
+- `APP_URL` — must be set to your HTTPS URL (validated by `setup-env.sh`)
+- `SESSION_SECURE_COOKIE=true` — marks the session cookie as `Secure`
+  so the browser only sends it over HTTPS. Without this, the session
+  is lost across redirects behind the TLS-terminating proxy, causing
+  "the page isn't redirecting properly" loops.
+
+The setup script (`docker/scripts/setup-env.sh`) validates both and
+will refuse to proceed if either is missing or incorrect.
 
 ### 6. Set File Permissions
 

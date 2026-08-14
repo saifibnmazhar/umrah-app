@@ -48,6 +48,20 @@ elif ! echo "$APP_URL_VALUE" | grep -qE "^https://"; then
     MISSING=true
 fi
 
+# Validate SESSION_SECURE_COOKIE is set to true.
+# The ISPConfig reverse proxy terminates TLS (HTTPS) and forwards to the container
+# over HTTP. Without SESSION_SECURE_COOKIE=true, the session cookie is not marked
+# Secure, and combined with URL::forceScheme('https') the browser drops the cookie
+# on redirect → auth middleware loses the session → redirect loop.
+SESSION_SECURE_VALUE=$(grep "^SESSION_SECURE_COOKIE=" .env.production 2>/dev/null | cut -d'=' -f2- | tr -d '\r' || true)
+if [ -z "$SESSION_SECURE_VALUE" ]; then
+    echo "❌ SESSION_SECURE_COOKIE is not set in .env.production"
+    MISSING=true
+elif [ "$SESSION_SECURE_VALUE" != "true" ]; then
+    echo "❌ SESSION_SECURE_COOKIE must be 'true' in production (got: $SESSION_SECURE_VALUE)"
+    MISSING=true
+fi
+
 if [ -n "${MISSING:-}" ]; then
     echo ""
     echo "⚠️  Missing required environment variables"
