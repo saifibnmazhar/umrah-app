@@ -1,67 +1,343 @@
 #!/bin/bash
-set -e
 
-# ---- Site identity (multi-site on one host) ----
-# COMPOSE_PROJECT_NAME defaults to THIS script's directory name (the site
-# folder), which is already unique per site. Override it explicitly only for
-# a NEW site before first deploy. NEVER change it (or the data volume name it
-# prefixes) for an existing site after first deploy - the app would start
-# against an empty DB.
+set -Eeuo pipefail
+
+# ============================================================
+# Generic Laravel Docker deployment script
+#
+# Expected structure:
+#
+# /var/www/<domain>/web/
+# ├── deploy.sh
+# ├── docker-compose.prod.yml
+# └── .env.production
+#
+# The same script can be used for every Laravel project.
+# ============================================================
+
+# ------------------------------------------------------------
+# Paths
+# ------------------------------------------------------------
+
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
-export COMPOSE_PROJECT_NAME="${COMPOSE_PROJECT_NAME:-$(basename "$SCRIPT_DIR")}"
-export APP_PORT="${APP_PORT:-8000}"
-export DB_EXPOSE_PORT="${DB_EXPOSE_PORT:-3306}"
-export DB_CONTAINER_NAME="${DB_CONTAINER_NAME:-umrah_app_db}"
-export REDIS_CONTAINER_NAME="${REDIS_CONTAINER_NAME:-umrah_app_redis}"
-export DB_USERNAME="${DB_USERNAME:-techcandle_umrah}"
-export DB_DATABASE="${DB_DATABASE:-umrah_app_prod}"
 
-echo "Starting safe deployment..."
+COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.prod.yml"
+ENV_FILE="${SCRIPT_DIR}/.env.production"
 
-# Pull new image first
-echo "Pulling latest image..."
-docker compose -f docker-compose.prod.yml pull app
+# ------------------------------------------------------------
+# Validate required files
+# ------------------------------------------------------------
 
-# Stop containers gracefully (keeps volumes)
-echo "Stopping containers..."
-docker compose -f docker-compose.prod.yml stop db
-docker compose -f docker-compose.prod.yml stop app || true
-
-# Wait for clean shutdown
-sleep 5
-
-# Start database first
-echo "Starting database..."
-docker compose -f docker-compose.prod.yml up -d db
-
-# Wait for DB health
-echo "Waiting for database..."
-until docker compose -f docker-compose.prod.yml exec db mysqladmin ping -h 127.0.0.1 -P 3306 -u"$${DB_USERNAME:-techcandle_umrah}" --password="$${DB_PASSWORD}" -d "$${DB_DATABASE:-umrah_app_prod}" >/dev/null 2>&1; do
-  echo "Still waiting..."
-  sleep 3
-done
-
-# Start/Recreate app (reuses existing volumes)
-echo "Starting application..."
-docker compose -f docker-compose.prod.yml up -d app
-
-# Run post-deploy fixes
-echo "Setting storage permissions..."
-docker compose -f docker-compose.prod.yml exec app chown -R www-data:www-data storage bootstrap/cache || true
-
-echo "Running migrations..."
-docker compose -f docker-compose.prod.yml exec app php artisan migrate --force
-
-# Verify application health
-echo "Verifying application health..."
-sleep 10
-APP_PORT="${APP_PORT:-8000}"
-if curl -sf "http://127.0.0.1:${APP_PORT}/" >/dev/null 2>&1; then
-    echo "✅ Application is healthy"
-else
-    echo "❌ Application health check failed"
-    echo "Check logs: docker compose -f docker-compose.prod.yml logs app"
-    exit 1
+if [[ ! -f "$COMPOSE_FILE" ]]; then
+  echo "ERROR: docker-compose.prod.yml not found:"
+  echo "$COMPOSE_FILE"
+  exit 1
 fi
 
-echo "Deployment completed safely!"
+if [[ ! -f "$ENV_FILE" ]]; then
+  echo "ERROR: .env.production not found:"
+  echo "$ENV_FILE"
+  exit 1
+fi
+
+# ------------------------------------------------------------
+# Docker Compose helper
+#
+# IMPORTANT:
+# Do NOT use:
+#
+#   source .env.production
+#
+# Laravel .env files are not Bash scripts.
+# ------------------------------------------------------------
+
+compose() {
+  docker compose \
+    --env-file "$ENV_FILE" \
+    -f "$COMPOSE_FILE" \
+    "$@"
+}
+
+# ------------------------------------------------------------
+# Deployment information
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Laravel Docker Deployment"
+echo "========================================"
+echo "Directory : $SCRIPT_DIR"
+echo "Compose   : $COMPOSE_FILE"
+echo "Env file  : $ENV_FILE"
+echo "========================================"
+echo ""
+
+# ------------------------------------------------------------
+# Validate Compose configuration
+# ------------------------------------------------------------
+
+echo "Validating Docker Compose configuration..."
+
+compose config --quiet
+
+echo "Compose configuration is valid."
+
+# ------------------------------------------------------------
+# Show project name
+# ------------------------------------------------------------
+
+PROJECT_NAME="$(
+  compose config --format json |
+    python3 -c '
+import json
+import sys
+
+data = json.load(sys.stdin)
+print(data.get("name", "unknown"))
+'
+)"
+
+echo ""
+echo "Docker project: $PROJECT_NAME"
+echo ""
+
+# ------------------------------------------------------------
+# Pull latest application image
+# ------------------------------------------------------------
+
+echo "========================================"
+echo " Pulling application image"
+echo "========================================"
+
+compose pull app
+
+# ------------------------------------------------------------
+# Stop application
+#
+# We intentionally use `stop` instead of `down`.
+#
+# This preserves:
+# - volumes
+# - networks
+# - containers
+#
+# Most importantly, it only affects THIS Compose project.
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Stopping application"
+echo "========================================"
+
+compose stop app || true
+
+# ------------------------------------------------------------
+# Start database
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Starting database"
+echo "========================================"
+
+compose up -d db
+
+# ------------------------------------------------------------
+# Wait for database health
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Waiting for database"
+echo "========================================"
+
+DB_WAIT_TIMEOUT="${DB_WAIT_TIMEOUT:-120}"
+DB_WAIT_INTERVAL="${DB_WAIT_INTERVAL:-3}"
+
+ELAPSED=0
+
+while true; do
+
+  DB_CONTAINER="$(compose ps -q db)"
+
+  if [[ -z "$DB_CONTAINER" ]]; then
+    echo "Database container has not been created yet."
+  else
+
+    DB_STATUS="$(
+      docker inspect \
+        --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \
+        "$DB_CONTAINER" \
+        2>/dev/null || true
+    )"
+
+    if [[ "$DB_STATUS" == "healthy" ]]; then
+      echo "Database is healthy."
+      break
+    fi
+
+    if [[ "$DB_STATUS" == "no-healthcheck" ]]; then
+      echo "WARNING: Database has no healthcheck."
+      break
+    fi
+
+    echo "Database status: ${DB_STATUS:-starting}"
+  fi
+
+  if ((ELAPSED >= DB_WAIT_TIMEOUT)); then
+    echo ""
+    echo "ERROR: Database did not become healthy within ${DB_WAIT_TIMEOUT} seconds."
+    echo ""
+
+    compose ps
+
+    exit 1
+  fi
+
+  sleep "$DB_WAIT_INTERVAL"
+
+  ELAPSED=$((ELAPSED + DB_WAIT_INTERVAL))
+done
+
+# ------------------------------------------------------------
+# Start Redis
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Starting Redis"
+echo "========================================"
+
+compose up -d redis
+
+# ------------------------------------------------------------
+# Start application
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Starting application"
+echo "========================================"
+
+compose up -d app
+
+# ------------------------------------------------------------
+# Fix Laravel permissions
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Setting Laravel permissions"
+echo "========================================"
+
+compose exec -T app \
+  chown -R www-data:www-data \
+  storage \
+  bootstrap/cache ||
+  true
+
+# ------------------------------------------------------------
+# Run migrations if enabled
+#
+# In .env.production:
+#
+# MIGRATE=true
+#
+# Otherwise migrations are skipped.
+# ------------------------------------------------------------
+
+MIGRATE_VALUE="$(
+  grep -E '^MIGRATE=' "$ENV_FILE" |\
+    tail -1 |\
+    cut -d '=' -f2- |\
+    tr -d '\r' |\
+    tr '[:upper:]' '[:lower:]' ||\
+    true
+)"
+
+if [[ "$MIGRATE_VALUE" == "true" ]]; then
+
+  echo "Running Laravel migrations"
+  compose exec -T app \
+    php artisan migrate --force
+
+else
+
+  echo "Skipping Laravel migrations."
+  echo "Set MIGRATE=true in .env.production to enable."
+
+fi
+
+# ------------------------------------------------------------
+# Wait for application health
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Checking application health"
+echo "========================================"
+
+APP_WAIT_TIMEOUT="${APP_WAIT_TIMEOUT:-120}"
+APP_WAIT_INTERVAL="${APP_WAIT_INTERVAL:-5}"
+
+ELAPSED=0
+
+while true; do
+
+  APP_CONTAINER="$(compose ps -q app)"
+
+  if [[ -z "$APP_CONTAINER" ]]; then
+    echo "ERROR: Application container was not created."
+    compose ps
+    exit 1
+  fi
+
+  APP_STATUS="$(
+    docker inspect \
+      --format '{{if .State.Health}}{{.State.Health.Status}}{{else}}no-healthcheck{{end}}' \
+      "$APP_CONTAINER" \
+      2>/dev/null || true
+  )"
+
+  if [[ "$APP_STATUS" == "healthy" ]]; then
+    echo "Application is healthy."
+    break
+  fi
+
+  if [[ "$APP_STATUS" == "no-healthcheck" ]]; then
+    echo "WARNING: Application has no healthcheck."
+    break
+  fi
+
+  echo "Application status: ${APP_STATUS:-starting}"
+
+  if ((ELAPSED >= APP_WAIT_TIMEOUT)); then
+    echo ""
+    echo "ERROR: Application did not become healthy within ${APP_WAIT_TIMEOUT} seconds."
+    echo ""
+
+    compose ps
+
+    exit 1
+  fi
+
+  sleep "$APP_WAIT_INTERVAL"
+
+  ELAPSED=$((ELAPSED + APP_WAIT_INTERVAL))
+done
+
+# ------------------------------------------------------------
+# Final status
+# ------------------------------------------------------------
+
+echo ""
+echo "========================================"
+echo " Deployment completed successfully"
+echo "========================================"
+echo ""
+
+compose ps
+
+echo ""
+echo "Docker project: $PROJECT_NAME"
+echo ""
