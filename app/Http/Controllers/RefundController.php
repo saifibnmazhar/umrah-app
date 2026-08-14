@@ -55,7 +55,16 @@ class RefundController extends Controller
         try {
             DB::beginTransaction();
 
-            $oldData = $issuedTicket->toArray();
+            if ($issuedTicket->status === 're-issued') {
+                $latestRe = $issuedTicket->latestReIssuedTicket;
+                $oldData = $latestRe ? $latestRe->toArray() : $issuedTicket->toArray();
+                $oldData['log_source'] = 're_issued_tickets';
+                $oldData['re_issued_ticket_id'] = $latestRe?->id;
+            } else {
+                $oldData = $issuedTicket->toArray();
+                $oldData['log_source'] = 'issued_tickets';
+                $oldData['issued_ticket_id'] = $issuedTicket->id;
+            }
 
             $refundData = array_merge($validated, [
                 'user_id' => auth()->id(),
@@ -73,7 +82,11 @@ class RefundController extends Controller
 
             $issuedTicket->update(['status' => 'refunded']);
 
-            $issuedTicket->logAction('refunded', $oldData, $issuedTicket->toArray());
+            $newData = $refundedTicket->toArray();
+            $newData['log_source'] = 'refunded_tickets';
+            $newData['refunded_ticket_id'] = $refundedTicket->id;
+
+            $issuedTicket->logAction('refunded', $oldData, $newData);
 
             DB::commit();
 
