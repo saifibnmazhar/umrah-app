@@ -18,7 +18,7 @@ RUN npm run build
 FROM php:8.4-fpm-alpine3.24 AS app
 
 RUN apk add --no-cache \
-        default-mysql-dev \
+        mariadb-dev \
         icu-dev \
         oniguruma-dev \
         libzip-dev \
