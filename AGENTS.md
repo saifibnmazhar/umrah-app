@@ -19,7 +19,7 @@ vouchers, reports, branches, banks, airlines, routes, and currency rates.
 
 | Layer              | Technology                                  |
 |--------------------|---------------------------------------------|
-| Backend            | Laravel 12, PHP 8.3                         |
+| Backend            | Laravel 12, PHP 8.4                         |
 | Database (prod)    | PostgreSQL 16 + Redis 7                     |
 | Database (local)   | SQLite (in-memory for tests)                |
 | Frontend           | Blade templates, Vite 7, Tailwind CSS v4, Alpine.js |
