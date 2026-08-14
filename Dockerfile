@@ -7,7 +7,8 @@ FROM node:22-alpine AS assets
 
 WORKDIR /build
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 COPY . .
 RUN npm run build
 
@@ -49,7 +50,8 @@ WORKDIR /var/www/html
 
 # Install dependencies first (better layer caching)
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader
+RUN --mount=type=cache,uid=0,target=/tmp/composer \
+    composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader
 
 # Copy application code
 COPY . .
