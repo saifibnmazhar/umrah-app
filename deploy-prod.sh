@@ -49,7 +49,7 @@ docker compose -f docker-compose.prod.yml up -d app
 echo "Setting storage permissions..."
 docker compose -f docker-compose.prod.yml exec app chown -R www-data:www-data storage bootstrap/cache || true
 
-# echo "Running migrations..."
-# docker compose -f docker-compose.prod.yml exec app php artisan migrate --force
+echo "Running migrations..."
+docker compose -f docker-compose.prod.yml exec app php artisan migrate --force
 
 echo "Deployment completed safely!"
