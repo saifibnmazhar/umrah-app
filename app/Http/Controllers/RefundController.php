@@ -17,6 +17,14 @@ class RefundController extends Controller
             abort(403, 'Passenger does not belong to this booking.');
         }
 
+        $issuedTicket = IssuedTicket::where('id', $request->input('issued_ticket_id'))
+            ->where('passenger_id', $passenger->id)
+            ->first();
+
+        if (! $issuedTicket) {
+            return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
+        }
+
         $validated = $request->validate([
             'issued_ticket_id' => 'required|exists:issued_tickets,id',
             'ticket_number' => 'nullable|string|max:100',
@@ -33,20 +41,12 @@ class RefundController extends Controller
             'baggage_outbound' => 'nullable|string|max:255',
 
             'reason_id' => 'required|exists:re_issue_refund_reasons,id',
-            'iata_refund' => 'required|numeric|min:0',
-            'customer_refund' => 'required|numeric|min:0',
+            'iata_refund' => 'required|numeric|min:0|max:'.(float) $issuedTicket->net_fare,
+            'customer_refund' => 'required|numeric|min:0|max:'.(float) $issuedTicket->net_fare,
             'service_charge' => 'required|numeric',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee',
         ]);
-
-        $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])
-            ->where('passenger_id', $passenger->id)
-            ->first();
-
-        if (! $issuedTicket) {
-            return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
-        }
 
         if (! in_array($issuedTicket->status, ['issued', 're-issued'])) {
             return response()->json(['message' => 'This ticket cannot be refunded.'], 400);

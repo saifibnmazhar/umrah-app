@@ -289,10 +289,15 @@ class TicketRequestController extends Controller
             return response()->json(['message' => 'This request has already been processed.'], 400);
         }
 
+        $issuedTicket = $ticketRequest->issuedTicket;
+        if (! $issuedTicket) {
+            return response()->json(['message' => 'Issued ticket not found.'], 404);
+        }
+
         $validated = $request->validate([
             'reason_id' => 'required|exists:re_issue_refund_reasons,id',
-            'iata_refund' => 'required|numeric|min:0',
-            'customer_refund' => 'required|numeric|min:0',
+            'iata_refund' => 'required|numeric|min:0|max:'.(float) $issuedTicket->net_fare,
+            'customer_refund' => 'required|numeric|min:0|max:'.(float) $issuedTicket->net_fare,
             'service_charge' => 'required|numeric',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee',
@@ -300,11 +305,6 @@ class TicketRequestController extends Controller
             'bank_method' => 'nullable|string|max:255',
             'branch' => 'nullable|string|max:255',
         ]);
-
-        $issuedTicket = $ticketRequest->issuedTicket;
-        if (! $issuedTicket) {
-            return response()->json(['message' => 'Issued ticket not found.'], 404);
-        }
 
         if (! in_array($issuedTicket->status, ['issued', 're-issued'])) {
             return response()->json(['message' => 'This ticket cannot be refunded.'], 400);

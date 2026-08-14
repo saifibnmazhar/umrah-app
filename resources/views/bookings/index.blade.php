@@ -1723,13 +1723,13 @@ if ($passenger->ticket_fare_inbound_id) {
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (SAR) *</label>
-                                <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund"
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund" :max="refundForm.net_fare"
                                        @input="handleRefundSarInput('iata_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (BDT) *</label>
-                                <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund_bdt"
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund_bdt" :max="refundForm.net_fare_bdt"
                                        @input="handleRefundBdtInput('iata_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                                 <input type="number" x-model.number="refundForm.iata_refund" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
@@ -1738,13 +1738,13 @@ if ($passenger->ticket_fare_inbound_id) {
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (SAR) *</label>
-                                <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund"
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund" :max="refundForm.net_fare"
                                        @input="handleRefundSarInput('customer_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (BDT) *</label>
-                                <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund_bdt"
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund_bdt" :max="refundForm.net_fare_bdt"
                                        @input="handleRefundBdtInput('customer_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                                 <input type="number" x-model.number="refundForm.customer_refund" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
@@ -4932,6 +4932,12 @@ function bookingIndexApp() {
 
             if (!f.reason_id) {
                 f.errors.reason_id = 'Please select a reason.';
+                return;
+            }
+
+            if ((parseFloat(f.iata_refund) || 0) > (parseFloat(f.net_fare) || 0)
+                || (parseFloat(f.customer_refund) || 0) > (parseFloat(f.net_fare) || 0)) {
+                this.showToast('Refund amounts cannot exceed the net fare.', 'error');
                 return;
             }
 

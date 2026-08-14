@@ -415,6 +415,11 @@ function processConfirmation(ticketRequestId) {
 
     currentRefundNetFare = parseFloat(t.net_fare) || 0;
 
+    document.getElementById('inputAgentRefundAmount').max = currentRefundNetFare || '';
+    document.getElementById('inputAgentRefundAmountBdt').max = sarToBdt(currentRefundNetFare) || '';
+    document.getElementById('inputCustomerRefundAmount').max = currentRefundNetFare || '';
+    document.getElementById('inputCustomerRefundAmountBdt').max = sarToBdt(currentRefundNetFare) || '';
+
     document.getElementById('inputAgentRefundAmount').value = '';
     document.getElementById('inputAgentRefundAmountBdt').value = '';
     document.getElementById('inputAgentRefundAmountBdtSar').value = '';
@@ -486,6 +491,11 @@ function confirmProcess() {
 
     if (!payload.reason_id) {
         showToast('Please select a reason', 'error');
+        return;
+    }
+
+    if (payload.iata_refund > currentRefundNetFare || payload.customer_refund > currentRefundNetFare) {
+        showToast('Refund amounts cannot exceed the net fare.', 'error');
         return;
     }
 
