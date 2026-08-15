@@ -81,6 +81,16 @@ class IssuedTicket extends Model
         return $this->hasOne(ReIssuedTicket::class, 'issued_ticket_id')->latestOfMany('id');
     }
 
+    public function refundedTickets(): HasMany
+    {
+        return $this->hasMany(RefundedTicket::class, 'issued_ticket_id');
+    }
+
+    public function latestRefundedTicket(): HasOne
+    {
+        return $this->hasOne(RefundedTicket::class, 'issued_ticket_id')->latestOfMany('id');
+    }
+
     public function logAction(string $action, ?array $oldData, ?array $newData): void
     {
         $this->logs()->create([
@@ -89,15 +99,5 @@ class IssuedTicket extends Model
             'old_data' => $oldData,
             'new_data' => $newData,
         ]);
-    }
-
-    public function reIssuedTickets(): HasMany
-    {
-        return $this->hasMany(ReIssuedTicket::class);
-    }
-
-    public function refundedTickets(): HasMany
-    {
-        return $this->hasMany(RefundedTicket::class);
     }
 }

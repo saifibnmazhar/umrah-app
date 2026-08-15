@@ -9,6 +9,7 @@ use App\Models\Payment;
 use App\Models\ReIssuedTicket;
 use App\Models\TransactionType;
 use App\Enums\PaymentMethod;
+use App\Enums\TicketStatus;
 use App\Services\InvoiceService;
 use App\Services\VoucherService;
 use Illuminate\Http\Request;
@@ -80,6 +81,22 @@ class ReIssueController extends Controller
                 $oldData = $latestRe ? $latestRe->toArray() : $issuedTicket->toArray();
                 $oldData['log_source'] = 're_issued_tickets';
                 $oldData['re_issued_ticket_id'] = $latestRe?->id;
+            } elseif ($issuedTicket->status === 'refunded') {
+                $oldData = [];
+                $latestRefund = $issuedTicket->latestRefundedTicket;
+                $latestRe = $issuedTicket->latestReIssuedTicket;
+                if ($latestRefund) {
+                    $refundSnap = $latestRefund->toArray();
+                    $refundSnap['log_source'] = 'refunded_tickets';
+                    $refundSnap['refunded_ticket_id'] = $latestRefund->id;
+                    $oldData[] = $refundSnap;
+                }
+                if ($latestRe) {
+                    $reSnap = $latestRe->toArray();
+                    $reSnap['log_source'] = 're_issued_tickets';
+                    $reSnap['re_issued_ticket_id'] = $latestRe->id;
+                    $oldData[] = $reSnap;
+                }
             } else {
                 $oldData = $issuedTicket->toArray();
                 $oldData['log_source'] = 'issued_tickets';
@@ -108,6 +125,7 @@ class ReIssueController extends Controller
             $issuedTicket->update(['status' => 're-issued']);
 
             $newData = $reIssuedTicket->toArray();
+            $newData['status'] = TicketStatus::RE_ISSUED->value;
             $newData['log_source'] = 're_issued_tickets';
             $newData['re_issued_ticket_id'] = $reIssuedTicket->id;
 
