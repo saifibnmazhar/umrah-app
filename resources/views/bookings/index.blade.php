@@ -4984,6 +4984,17 @@ function bookingIndexApp() {
 
             if (!re) {
                 this.reIssueForm.ticket_type = ticket.ticket_type || '';
+                this.reIssueForm.route_type = ticket.route_type ? (
+                    ticket.route_type === 'oneway_inbound' ? 'One Way-Inbound' :
+                    ticket.route_type === 'oneway_outbound' ? 'One Way-Outbound' :
+                    ticket.route_type === 'round' ? 'Round' :
+                    ticket.route_type === 'multi_city' ? 'Multi City' : ''
+                ) : this.reIssueForm.route_type;
+                this.reIssueForm.route = ticket.route || '';
+                this.reIssueForm.airline = ticket.airline || '';
+                this.reIssueForm.travel_class = ticket.travel_class || '';
+                this.reIssueForm.baggage_inbound = ticket.baggage_inbound || '';
+                this.reIssueForm.baggage_outbound = ticket.baggage_outbound || '';
             }
 
             const rate = window.__currencyRate || 0;
