@@ -44,12 +44,16 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE passengers ADD CONSTRAINT passengers_stay_duration_check CHECK (stay_duration >= 1)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE passengers ADD CONSTRAINT passengers_stay_duration_check CHECK (stay_duration >= 1)');
+        }
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE passengers DROP CHECK IF EXISTS passengers_stay_duration_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE passengers DROP CHECK IF EXISTS passengers_stay_duration_check');
+        }
 
         if (Schema::hasTable('passengers')) {
             Schema::table('passengers', function (Blueprint $table) {

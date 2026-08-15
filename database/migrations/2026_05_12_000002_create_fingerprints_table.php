@@ -28,13 +28,17 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE fingerprints ADD CONSTRAINT fingerprints_cost_check CHECK (cost >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE fingerprints ADD CONSTRAINT fingerprints_cost_check CHECK (cost >= 0)');
+        }
     }
 
     public function down(): void
     {
         try {
-            DB::statement('ALTER TABLE fingerprints DROP CHECK IF EXISTS fingerprints_cost_check');
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE fingerprints DROP CHECK IF EXISTS fingerprints_cost_check');
+            }
         } catch (Exception $e) {
             // MariaDB compatibility: ignore if constraint doesn't exist
         }
