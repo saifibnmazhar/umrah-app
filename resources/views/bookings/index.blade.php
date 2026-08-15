@@ -309,6 +309,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'outbound_pending' => $lit->outbound_pending ?? false,
         'issue_type' => $lit->issue_type,
         'status' => $lit->status,
+        'ticket_type' => $lit->ticketFare?->ticket_type?->value ?? '',
         'airline' => $lit->ticketFare?->airline?->name ?? '',
         'travel_class' => $lit->ticketFare?->airlineClass?->class?->name ?? '',
         'route' => $lit->ticketFare?->route ? (function() use ($lit) {
@@ -403,6 +404,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
         })() : '',
         'route_type' => $t->ticketFare?->route?->route_type?->value,
+        'ticket_type' => $t->ticketFare?->ticket_type?->value ?? '',
         'ticket_agent_name' => $t->ticketAgent?->name ?? '',
         'issuer_name' => $t->issuer?->name ?? '',
         'latest_re_issued_ticket' => ($lrt = $t->latestReIssuedTicket) ? [
@@ -4702,6 +4704,18 @@ function bookingIndexApp() {
                 if (opt) {
                     this.ticketFareForm.ticket_option = opt.value;
                     this.handleTicketOptionChange();
+                }
+            }
+
+            if (isAlreadyIssued && src) {
+                this.ticketFareForm.selling_fare = src.selling_fare || 0;
+                this.ticketFareForm.net_fare = src.net_fare || 0;
+                this.ticketFareForm.offer_price = src.offer_price || 0;
+                const r = window.__currencyRate || 0;
+                if (r > 0) {
+                    this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * r);
+                    this.ticketFareForm.net_fare_bdt = Math.round(parseFloat(this.ticketFareForm.net_fare) * r);
+                    this.ticketFareForm.offer_price_bdt = Math.round(parseFloat(this.ticketFareForm.offer_price) * r);
                 }
             }
 
