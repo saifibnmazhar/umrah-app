@@ -18,7 +18,9 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_service_charge_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_service_charge_check');
+        }
 
         Schema::table('packages', function (Blueprint $table) {
             $table->dropColumn('service_charge');

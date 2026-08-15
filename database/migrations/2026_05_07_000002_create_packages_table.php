@@ -40,8 +40,12 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_regular_price_check');
-        DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_offer_price_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_regular_price_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_offer_price_check');
+        }
 
         if (Schema::hasTable('packages')) {
             Schema::table('packages', function (Blueprint $table) {

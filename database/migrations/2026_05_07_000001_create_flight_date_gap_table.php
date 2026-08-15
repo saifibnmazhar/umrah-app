@@ -21,7 +21,9 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE flight_date_gap DROP CHECK IF EXISTS flight_date_gap_gap_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE flight_date_gap DROP CHECK IF EXISTS flight_date_gap_gap_check');
+        }
 
         Schema::dropIfExists('flight_date_gap');
     }

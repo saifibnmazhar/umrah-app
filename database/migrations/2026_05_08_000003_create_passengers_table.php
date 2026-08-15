@@ -49,7 +49,9 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE passengers DROP CHECK IF EXISTS passengers_stay_duration_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE passengers DROP CHECK IF EXISTS passengers_stay_duration_check');
+        }
 
         if (Schema::hasTable('passengers')) {
             Schema::table('passengers', function (Blueprint $table) {

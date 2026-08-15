@@ -30,7 +30,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE visa_selling_prices DROP CHECK IF EXISTS visa_selling_prices_selling_price_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE visa_selling_prices DROP CHECK IF EXISTS visa_selling_prices_selling_price_check');
+        }
 
         if (Schema::hasTable('visa_selling_prices')) {
             Schema::table('visa_selling_prices', function (Blueprint $table) {

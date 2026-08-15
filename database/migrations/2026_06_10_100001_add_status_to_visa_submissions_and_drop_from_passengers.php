@@ -51,9 +51,15 @@ return new class extends Migration
         });
 
         try {
-            DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS vs_net_cost_check');
-            DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS vs_add_cost_check');
-            DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS vs_final_cost_check');
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS vs_net_cost_check');
+            }
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS vs_add_cost_check');
+            }
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS vs_final_cost_check');
+            }
         } catch (Exception $e) {
             // MariaDB compatibility
         }

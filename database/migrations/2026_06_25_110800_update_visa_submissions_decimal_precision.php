@@ -11,7 +11,9 @@ return new class extends Migration
             DB::statement('ALTER TABLE visa_submissions DROP CHECK visa_submissions_agent_commission_check');
         } catch (Exception $e) {
             try {
-                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT visa_submissions_agent_commission_check');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT visa_submissions_agent_commission_check');
+                }
             } catch (Exception $e) {
             }
         }
@@ -19,7 +21,9 @@ return new class extends Migration
             DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_net_cost_check');
         } catch (Exception $e) {
             try {
-                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_net_cost_check');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_net_cost_check');
+                }
             } catch (Exception $e) {
             }
         }
@@ -27,7 +31,9 @@ return new class extends Migration
             DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_add_cost_check');
         } catch (Exception $e) {
             try {
-                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_add_cost_check');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_add_cost_check');
+                }
             } catch (Exception $e) {
             }
         }
@@ -35,7 +41,9 @@ return new class extends Migration
             DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_final_cost_check');
         } catch (Exception $e) {
             try {
-                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_final_cost_check');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_final_cost_check');
+                }
             } catch (Exception $e) {
             }
         }
@@ -57,7 +65,9 @@ return new class extends Migration
             DB::statement('ALTER TABLE visa_submissions DROP CHECK visa_submissions_agent_commission_check');
         } catch (Exception $e) {
             try {
-                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT visa_submissions_agent_commission_check');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT visa_submissions_agent_commission_check');
+                }
             } catch (Exception $e) {
             }
         }
@@ -65,7 +75,9 @@ return new class extends Migration
             DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_net_cost_check');
         } catch (Exception $e) {
             try {
-                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_net_cost_check');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_net_cost_check');
+                }
             } catch (Exception $e) {
             }
         }
@@ -73,7 +85,9 @@ return new class extends Migration
             DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_add_cost_check');
         } catch (Exception $e) {
             try {
-                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_add_cost_check');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_add_cost_check');
+                }
             } catch (Exception $e) {
             }
         }
@@ -81,7 +95,9 @@ return new class extends Migration
             DB::statement('ALTER TABLE visa_submissions DROP CHECK vs_final_cost_check');
         } catch (Exception $e) {
             try {
-                DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_final_cost_check');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE visa_submissions DROP CONSTRAINT vs_final_cost_check');
+                }
             } catch (Exception $e) {
             }
         }

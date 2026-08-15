@@ -11,7 +11,9 @@ return new class extends Migration
             DB::statement('ALTER TABLE fingerprints DROP CHECK fingerprints_cost_check');
         } catch (Exception $e) {
             try {
-                DB::statement('ALTER TABLE fingerprints DROP CONSTRAINT fingerprints_cost_check');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE fingerprints DROP CONSTRAINT fingerprints_cost_check');
+                }
             } catch (Exception $e) {
             }
         }
@@ -27,7 +29,9 @@ return new class extends Migration
             DB::statement('ALTER TABLE fingerprints DROP CHECK fingerprints_cost_check');
         } catch (Exception $e) {
             try {
-                DB::statement('ALTER TABLE fingerprints DROP CONSTRAINT fingerprints_cost_check');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE fingerprints DROP CONSTRAINT fingerprints_cost_check');
+                }
             } catch (Exception $e) {
             }
         }

@@ -41,7 +41,9 @@ return new class extends Migration
     public function down(): void
     {
         try {
-            DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS visa_submissions_agent_commission_check');
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS visa_submissions_agent_commission_check');
+            }
         } catch (Exception $e) {
             // MariaDB compatibility: ignore if constraint doesn't exist
         }

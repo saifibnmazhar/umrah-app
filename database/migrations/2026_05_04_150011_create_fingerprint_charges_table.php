@@ -35,7 +35,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE fingerprint_charges DROP CHECK IF EXISTS fingerprint_charges_fingerprint_charge_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE fingerprint_charges DROP CHECK IF EXISTS fingerprint_charges_fingerprint_charge_check');
+        }
 
         if (Schema::hasTable('fingerprint_charges')) {
             Schema::table('fingerprint_charges', function (Blueprint $table) {

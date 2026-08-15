@@ -63,11 +63,21 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE ticket_fares DROP CHECK IF EXISTS ticket_fares_net_fare_check');
-        DB::statement('ALTER TABLE ticket_fares DROP CHECK IF EXISTS ticket_fares_selling_fare_check');
-        DB::statement('ALTER TABLE ticket_fares DROP CHECK IF EXISTS ticket_fares_offer_price_check');
-        DB::statement('ALTER TABLE ticket_fares DROP CHECK IF EXISTS ticket_fares_child_fare_percentage_check');
-        DB::statement('ALTER TABLE ticket_fares DROP CHECK IF EXISTS ticket_fares_infant_fare_percentage_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ticket_fares DROP CHECK IF EXISTS ticket_fares_net_fare_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ticket_fares DROP CHECK IF EXISTS ticket_fares_selling_fare_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ticket_fares DROP CHECK IF EXISTS ticket_fares_offer_price_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ticket_fares DROP CHECK IF EXISTS ticket_fares_child_fare_percentage_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ticket_fares DROP CHECK IF EXISTS ticket_fares_infant_fare_percentage_check');
+        }
 
         if (Schema::hasTable('ticket_fares')) {
             Schema::table('ticket_fares', function (Blueprint $table) {

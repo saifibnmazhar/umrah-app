@@ -85,9 +85,15 @@ return new class extends Migration
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_pax_qty_check');
-        DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_discount_value_check');
-        DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_discount_amount_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_pax_qty_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_discount_value_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_discount_amount_check');
+        }
 
         if (Schema::hasTable('bookings')) {
             Schema::table('bookings', function (Blueprint $table) {

@@ -11,7 +11,9 @@ return new class extends Migration
             DB::statement('ALTER TABLE invoices DROP CHECK invoices_balance_check');
         } catch (Exception $e) {
             try {
-                DB::statement('ALTER TABLE invoices DROP CONSTRAINT invoices_balance_check');
+                if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                    DB::statement('ALTER TABLE invoices DROP CONSTRAINT invoices_balance_check');
+                }
             } catch (Exception $e) {
             }
         }
