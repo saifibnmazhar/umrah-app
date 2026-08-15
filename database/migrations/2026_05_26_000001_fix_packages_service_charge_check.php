@@ -10,11 +10,15 @@ return new class extends Migration
         if (Schema::getConnection()->getDriverName() !== 'sqlite') {
             DB::statement('ALTER TABLE packages DROP CONSTRAINT packages_service_charge_check');
         }
-        DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_service_charge_check CHECK (service_charge >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_service_charge_check CHECK (service_charge >= 0)');
+        }
 
         if (Schema::getConnection()->getDriverName() !== 'sqlite') {
             DB::statement('ALTER TABLE packages DROP CONSTRAINT packages_service_charge_check');
         }
-        DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_service_charge_check CHECK (service_charge > 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_service_charge_check CHECK (service_charge > 0)');
+        }
     }
 };

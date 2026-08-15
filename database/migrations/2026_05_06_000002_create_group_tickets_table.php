@@ -28,7 +28,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE group_tickets ADD CONSTRAINT group_tickets_ticket_qty_check CHECK (ticket_qty >= 1)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE group_tickets ADD CONSTRAINT group_tickets_ticket_qty_check CHECK (ticket_qty >= 1)');
+        }
     }
 
     public function down(): void

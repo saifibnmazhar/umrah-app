@@ -25,6 +25,8 @@ return new class extends Migration
     {
         DB::statement('ALTER TABLE invoices MODIFY COLUMN `balance` DECIMAL(14,2) UNSIGNED DEFAULT 0');
 
-        DB::statement('ALTER TABLE invoices ADD CONSTRAINT invoices_balance_check CHECK (balance >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE invoices ADD CONSTRAINT invoices_balance_check CHECK (balance >= 0)');
+        }
     }
 };

@@ -27,7 +27,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE fingerprint_charges ADD CONSTRAINT fingerprint_charges_fingerprint_charge_check CHECK (fingerprint_charge >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE fingerprint_charges ADD CONSTRAINT fingerprint_charges_fingerprint_charge_check CHECK (fingerprint_charge >= 0)');
+        }
     }
 
     /**

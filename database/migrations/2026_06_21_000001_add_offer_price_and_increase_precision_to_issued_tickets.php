@@ -18,9 +18,15 @@ return new class extends Migration
             $table->decimal('offer_price', 14, 6)->nullable()->after('net_fare');
         });
 
-        DB::statement('ALTER TABLE issued_tickets ADD CONSTRAINT issued_tickets_selling_fare_check CHECK (selling_fare >= 0)');
-        DB::statement('ALTER TABLE issued_tickets ADD CONSTRAINT issued_tickets_net_fare_check CHECK (net_fare >= 0)');
-        DB::statement('ALTER TABLE issued_tickets ADD CONSTRAINT issued_tickets_offer_price_check CHECK (offer_price IS NULL OR offer_price >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE issued_tickets ADD CONSTRAINT issued_tickets_selling_fare_check CHECK (selling_fare >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE issued_tickets ADD CONSTRAINT issued_tickets_net_fare_check CHECK (net_fare >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE issued_tickets ADD CONSTRAINT issued_tickets_offer_price_check CHECK (offer_price IS NULL OR offer_price >= 0)');
+        }
     }
 
     public function down(): void

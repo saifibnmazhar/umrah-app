@@ -91,8 +91,12 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE vouchers ADD CONSTRAINT vouchers_amount_check CHECK (amount >= 0)');
-        DB::statement('ALTER TABLE vouchers ADD CONSTRAINT vouchers_bdt_amount_check CHECK (bdt_amount >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE vouchers ADD CONSTRAINT vouchers_amount_check CHECK (amount >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE vouchers ADD CONSTRAINT vouchers_bdt_amount_check CHECK (bdt_amount >= 0)');
+        }
     }
 
     public function down(): void

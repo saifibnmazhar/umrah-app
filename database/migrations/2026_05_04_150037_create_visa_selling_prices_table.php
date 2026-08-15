@@ -22,7 +22,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE visa_selling_prices ADD CONSTRAINT visa_selling_prices_selling_price_check CHECK (selling_price >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE visa_selling_prices ADD CONSTRAINT visa_selling_prices_selling_price_check CHECK (selling_price >= 0)');
+        }
     }
 
     /**

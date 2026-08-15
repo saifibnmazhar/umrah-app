@@ -27,7 +27,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE visa_agent_costs ADD CONSTRAINT visa_agent_costs_visa_agent_cost_check CHECK (visa_agent_cost >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE visa_agent_costs ADD CONSTRAINT visa_agent_costs_visa_agent_cost_check CHECK (visa_agent_cost >= 0)');
+        }
     }
 
     /**

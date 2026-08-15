@@ -22,7 +22,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE cancelled_submissions ADD CONSTRAINT cancelled_submissions_cancellation_fee_check CHECK (cancellation_fee IS NULL OR cancellation_fee >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE cancelled_submissions ADD CONSTRAINT cancelled_submissions_cancellation_fee_check CHECK (cancellation_fee IS NULL OR cancellation_fee >= 0)');
+        }
     }
 
     public function down(): void

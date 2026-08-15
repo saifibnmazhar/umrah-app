@@ -54,11 +54,21 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT ticket_fares_net_fare_check CHECK (net_fare >= 0)');
-        DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT ticket_fares_selling_fare_check CHECK (selling_fare >= 0)');
-        DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT ticket_fares_offer_price_check CHECK (offer_price >= 0)');
-        DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT ticket_fares_child_fare_percentage_check CHECK (child_fare_percentage >= 0)');
-        DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT ticket_fares_infant_fare_percentage_check CHECK (infant_fare_percentage >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT ticket_fares_net_fare_check CHECK (net_fare >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT ticket_fares_selling_fare_check CHECK (selling_fare >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT ticket_fares_offer_price_check CHECK (offer_price >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT ticket_fares_child_fare_percentage_check CHECK (child_fare_percentage >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE ticket_fares ADD CONSTRAINT ticket_fares_infant_fare_percentage_check CHECK (infant_fare_percentage >= 0)');
+        }
     }
 
     public function down(): void

@@ -18,7 +18,9 @@ return new class extends Migration
             } catch (Exception $e) {
             }
 
-            DB::statement('ALTER TABLE flight_date_gaps ADD CONSTRAINT flight_date_gaps_gap_check CHECK (gap >= 1)');
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE flight_date_gaps ADD CONSTRAINT flight_date_gaps_gap_check CHECK (gap >= 1)');
+            }
         } elseif (Schema::hasTable('flight_date_gaps')) {
             try {
                 if (Schema::getConnection()->getDriverName() !== 'sqlite') {
@@ -34,7 +36,9 @@ return new class extends Migration
             } catch (Exception $e) {
             }
 
-            DB::statement('ALTER TABLE flight_date_gaps ADD CONSTRAINT flight_date_gaps_gap_check CHECK (gap >= 1)');
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE flight_date_gaps ADD CONSTRAINT flight_date_gaps_gap_check CHECK (gap >= 1)');
+            }
         }
     }
 
@@ -48,7 +52,9 @@ return new class extends Migration
             } catch (Exception $e) {
             }
 
-            DB::statement('ALTER TABLE flight_date_gaps ADD CONSTRAINT flight_date_gap_gap_check CHECK (gap >= 1)');
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE flight_date_gaps ADD CONSTRAINT flight_date_gap_gap_check CHECK (gap >= 1)');
+            }
 
             Schema::rename('flight_date_gaps', 'flight_date_gap');
         }

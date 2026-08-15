@@ -13,7 +13,9 @@ return new class extends Migration
             $table->decimal('service_charge', 10, 2)->nullable();
         });
 
-        DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_service_charge_check CHECK (service_charge > 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_service_charge_check CHECK (service_charge > 0)');
+        }
     }
 
     public function down(): void

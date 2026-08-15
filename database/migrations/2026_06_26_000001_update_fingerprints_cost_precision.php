@@ -20,7 +20,9 @@ return new class extends Migration
 
         DB::statement('ALTER TABLE fingerprints MODIFY cost DECIMAL(14,6) NOT NULL');
 
-        DB::statement('ALTER TABLE fingerprints ADD CONSTRAINT fingerprints_cost_check CHECK (cost >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE fingerprints ADD CONSTRAINT fingerprints_cost_check CHECK (cost >= 0)');
+        }
     }
 
     public function down(): void
@@ -38,6 +40,8 @@ return new class extends Migration
 
         DB::statement('ALTER TABLE fingerprints MODIFY cost DECIMAL(10,2) NOT NULL');
 
-        DB::statement('ALTER TABLE fingerprints ADD CONSTRAINT fingerprints_cost_check CHECK (cost >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE fingerprints ADD CONSTRAINT fingerprints_cost_check CHECK (cost >= 0)');
+        }
     }
 };

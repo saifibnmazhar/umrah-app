@@ -78,9 +78,15 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_pax_qty_check CHECK (pax_qty >= 1)');
-        DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_discount_value_check CHECK (discount_value >= 0)');
-        DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_discount_amount_check CHECK (discount_amount >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_pax_qty_check CHECK (pax_qty >= 1)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_discount_value_check CHECK (discount_value >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_discount_amount_check CHECK (discount_amount >= 0)');
+        }
     }
 
     public function down(): void

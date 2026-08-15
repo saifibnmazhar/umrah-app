@@ -23,7 +23,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE rescheduled_fingerprints ADD CONSTRAINT rescheduled_fingerprints_occurrence_check CHECK (occurrence >= 1)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE rescheduled_fingerprints ADD CONSTRAINT rescheduled_fingerprints_occurrence_check CHECK (occurrence >= 1)');
+        }
     }
 
     public function down(): void
