@@ -3322,13 +3322,15 @@ function bookingIndexApp() {
             const visaStatus = visa?.status;
             const ticketStatus = row.ticket_status;
             const issuedTicketStatus = row.latest_issued_ticket?.status;
+            const outboundTicketStatus = row.pending_outbound_issued_ticket?.status;
 
             const isFingerprintApproved = fpStatus === 'approved';
             const isVisaSubmitted = visaStatus === 'submitted';
             const isVisaIssued = visaStatus === 'issued';
             const isVisaCancelled = visaStatus === 'cancelled';
             const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
-                || ['issued', 're-issued'].includes(issuedTicketStatus);
+                || ['issued', 're-issued'].includes(issuedTicketStatus)
+                || ['issued', 're-issued'].includes(outboundTicketStatus);
 
             let statusName = null;
             if (isTicketIssued && isVisaIssued) statusName = 'Ticket Issued';
@@ -3355,13 +3357,15 @@ function bookingIndexApp() {
             const visaStatus = visa?.status;
             const ticketStatus = row.ticket_status;
             const issuedTicketStatus = row.latest_issued_ticket?.status;
+            const outboundTicketStatus = row.pending_outbound_issued_ticket?.status;
 
             const isFingerprintApproved = fpStatus === 'approved';
             const isVisaSubmitted = visaStatus === 'submitted';
             const isVisaIssued = visaStatus === 'issued';
             const isVisaCancelled = visaStatus === 'cancelled';
             const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
-                || ['issued', 're-issued'].includes(issuedTicketStatus);
+                || ['issued', 're-issued'].includes(issuedTicketStatus)
+                || ['issued', 're-issued'].includes(outboundTicketStatus);
 
             if (isTicketIssued && isVisaIssued) return 'Ticket Issued';
             if (isVisaCancelled) return 'Processing';

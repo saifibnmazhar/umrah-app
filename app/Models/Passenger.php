@@ -325,13 +325,16 @@ class Passenger extends Model
         $visaStatus = $this->visaSubmission?->status?->value;
         $ticketStatus = $this->ticket_status?->value;
         $issuedTicketStatus = $this->latestIssuedTicket?->status;
+        $pendingOutboundStatus = $this->allIssuedTickets
+            ->first(fn ($t) => $t->issue_type === 'pending_outbound')?->status;
 
         $isFingerprintApproved = $fpStatus === FingerprintStatus::APPROVED->value;
         $isVisaSubmitted = $visaStatus === VisaStatus::SUBMITTED->value;
         $isVisaIssued = $visaStatus === VisaStatus::ISSUED->value;
         $isVisaCancelled = $visaStatus === VisaStatus::CANCELLED->value;
         $isTicketIssued = in_array($ticketStatus, ['issued', 're-issued'])
-            || in_array($issuedTicketStatus, ['issued', 're-issued']);
+            || in_array($issuedTicketStatus, ['issued', 're-issued'])
+            || in_array($pendingOutboundStatus, ['issued', 're-issued']);
 
         if ($isTicketIssued && $isVisaIssued) return 'Ticket Issued';
         if ($isVisaCancelled) return 'Processing';
