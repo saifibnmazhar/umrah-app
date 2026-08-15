@@ -5130,6 +5130,32 @@ function bookingIndexApp() {
                 this.reIssueForm.travel_class = ticket.travel_class || '';
                 this.reIssueForm.baggage_inbound = ticket.baggage_inbound || '';
                 this.reIssueForm.baggage_outbound = ticket.baggage_outbound || '';
+                this.reIssueForm.ticket_option = ticket.ticket_fare_id ? String(ticket.ticket_fare_id) : '';
+                const origFare = ticket.ticket_fare_id ? this.ticketFaresList.find(f => f.id == ticket.ticket_fare_id) : null;
+                if (origFare) {
+                    this.reIssueForm.route_id = origFare.route_id || '';
+                }
+            }
+
+            if (re && !re.ticket_fare_id) {
+                this.reIssueForm.ticket_option = ticket.ticket_fare_id ? String(ticket.ticket_fare_id) : '';
+                this.reIssueForm.ticket_type = ticket.ticket_type || '';
+                this.reIssueForm.route_type = ticket.route_type ? (
+                    ticket.route_type === 'oneway_inbound' ? 'One Way-Inbound' :
+                    ticket.route_type === 'oneway_outbound' ? 'One Way-Outbound' :
+                    ticket.route_type === 'round' ? 'Round' :
+                    ticket.route_type === 'multi_city' ? 'Multi City' : ''
+                ) : this.reIssueForm.route_type;
+                this.reIssueForm.flight_type = ticket.flight_type ? (ticket.flight_type === 'direct' ? 'Direct' : 'Transit') : '';
+                this.reIssueForm.route = ticket.route || '';
+                this.reIssueForm.airline = ticket.airline || '';
+                this.reIssueForm.travel_class = ticket.travel_class || '';
+                this.reIssueForm.baggage_inbound = ticket.baggage_inbound || '';
+                this.reIssueForm.baggage_outbound = ticket.baggage_outbound || '';
+                const fallbackFare = ticket.ticket_fare_id ? this.ticketFaresList.find(f => f.id == ticket.ticket_fare_id) : null;
+                if (fallbackFare) {
+                    this.reIssueForm.route_id = fallbackFare.route_id || '';
+                }
             }
 
             const rate = window.__currencyRate || 0;
