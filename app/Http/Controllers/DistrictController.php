@@ -15,6 +15,7 @@ class DistrictController extends Controller
     public function index()
     {
         $districts = District::orderBy('name')->paginate(10)->withQueryString();
+
         return view('districts.index', compact('districts'));
     }
 
@@ -29,6 +30,7 @@ class DistrictController extends Controller
 
         try {
             District::create($validated);
+
             return redirect()->route('districts.index')->with('success', 'District created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create district.')->withInput();
@@ -46,6 +48,7 @@ class DistrictController extends Controller
 
         try {
             $district->update($validated);
+
             return redirect()->route('districts.index')->with('success', 'District updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update district.')->withInput();
@@ -56,6 +59,7 @@ class DistrictController extends Controller
     {
         try {
             $district->delete();
+
             return redirect()->route('districts.index')->with('success', 'District deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete district.');
@@ -80,7 +84,7 @@ class DistrictController extends Controller
             $rule = $this->mapColumnTypeToRule($columnType);
 
             if (in_array($column, $uniqueColumns)) {
-                $rule .= '|unique:' . $table . ',' . $column . ($id ? ',' . $id : '');
+                $rule .= '|unique:'.$table.','.$column.($id ? ','.$id : '');
             }
 
             if (in_array($column, $nullableColumns)) {

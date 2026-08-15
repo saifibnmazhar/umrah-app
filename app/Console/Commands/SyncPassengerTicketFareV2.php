@@ -21,7 +21,7 @@ class SyncPassengerTicketFareV2 extends Command
         Passenger::query()
             ->where(function ($q) {
                 $q->where('service_required', '!=', ServiceRequired::VISA_ONLY)
-                  ->orWhereNull('service_required');
+                    ->orWhereNull('service_required');
             })
             ->whereHas('booking.package')
             ->with('booking.package')

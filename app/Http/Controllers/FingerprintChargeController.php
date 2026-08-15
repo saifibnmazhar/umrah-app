@@ -15,7 +15,7 @@ class FingerprintChargeController extends Controller
         $query = FingerprintCharge::with(['district', 'user']);
 
         if (request()->has('division') && request('division')) {
-            $query->whereHas('district', fn($q) => $q->where('division', request('division')));
+            $query->whereHas('district', fn ($q) => $q->where('division', request('division')));
         }
 
         if (request()->has('district') && request('district')) {
@@ -25,19 +25,21 @@ class FingerprintChargeController extends Controller
         $fingerprintCharges = $query->orderBy('id')->paginate(10)->withQueryString();
         $districts = District::orderBy('division')->orderBy('name')->get();
         $divisions = District::distinct()->pluck('division')->sort();
+
         return view('fingerprint-charges.index', compact('fingerprintCharges', 'districts', 'divisions'));
     }
 
     public function create()
     {
-        abort_if(!auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
+        abort_if(! auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
         $districts = District::orderBy('name')->get();
+
         return view('fingerprint-charges.create', compact('districts'));
     }
 
     public function store(Request $request)
     {
-        abort_if(!auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
+        abort_if(! auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
         $validated = $request->validate([
             'district_id' => [
                 'required',
@@ -57,6 +59,7 @@ class FingerprintChargeController extends Controller
             $division = $request->query('division');
             FingerprintCharge::create($validated);
             $tab = $request->input('tab', 'fingerprint-charge');
+
             return redirect()->route('settings', ['tab' => $tab])->with('success', 'Fingerprint charge created successfully.')->with('division', $division);
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create fingerprint charge.')->withInput();
@@ -65,14 +68,15 @@ class FingerprintChargeController extends Controller
 
     public function edit(FingerprintCharge $fingerprintCharge)
     {
-        abort_if(!auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
+        abort_if(! auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
         $districts = District::orderBy('name')->get();
+
         return view('fingerprint-charges.edit', compact('fingerprintCharge', 'districts'));
     }
 
     public function update(Request $request, FingerprintCharge $fingerprintCharge)
     {
-        abort_if(!auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
+        abort_if(! auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
         $validated = $request->validate([
             'district_id' => [
                 'required',
@@ -88,6 +92,7 @@ class FingerprintChargeController extends Controller
         try {
             $fingerprintCharge->update($validated);
             $tab = $request->input('tab', 'fingerprint-charge');
+
             return redirect()->route('settings', ['tab' => $tab])->with('success', 'Fingerprint charge updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update fingerprint charge.')->withInput();
@@ -96,10 +101,11 @@ class FingerprintChargeController extends Controller
 
     public function destroy(Request $request, FingerprintCharge $fingerprintCharge)
     {
-        abort_if(!auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
+        abort_if(! auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin'])->isNotEmpty(), 403);
         try {
             $fingerprintCharge->delete();
             $tab = $request->input('tab', 'fingerprint-charge');
+
             return redirect()->route('settings', ['tab' => $tab])->with('success', 'Fingerprint charge deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete fingerprint charge.');

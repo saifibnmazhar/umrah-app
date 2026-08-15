@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class BackfillBranchCodeInvoiceIds extends Command
 {
     protected $signature = 'umrah:backfill-branch-code-invoice-ids';
+
     protected $description = 'Replace INV+branch_id prefix with branch_code in existing invoice IDs';
 
     public function handle(): void
@@ -24,12 +25,12 @@ class BackfillBranchCodeInvoiceIds extends Command
                     $branch = $booking->bookingBranch;
                     $code = $branch?->branch_code ?? '(###)';
 
-                    $newId = $code . $suffix;
+                    $newId = $code.$suffix;
 
                     $attempt = 0;
                     while (Booking::where('invoice_id', $newId)->where('id', '!=', $booking->id)->exists()) {
                         $attempt++;
-                        $newId = $code . $suffix . '-' . $attempt;
+                        $newId = $code.$suffix.'-'.$attempt;
                     }
 
                     if ($newId !== $oldId) {

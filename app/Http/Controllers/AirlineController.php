@@ -10,6 +10,7 @@ class AirlineController extends Controller
     public function index()
     {
         $airlines = Airline::orderBy('id')->get();
+
         return view('airlines.index', compact('airlines'));
     }
 
@@ -30,11 +31,13 @@ class AirlineController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => true, 'airline' => $airline], 201);
             }
+
             return redirect()->route('airlines.index')->with('success', 'Airline created successfully.');
         } catch (\Exception $e) {
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Failed to create airline.'], 500);
             }
+
             return redirect()->back()->with('error', 'Failed to create airline.')->withInput();
         }
     }
@@ -47,12 +50,13 @@ class AirlineController extends Controller
     public function update(Request $request, Airline $airline)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:airlines,name,' . $airline->id,
-            'code' => 'required|string|max:50|unique:airlines,code,' . $airline->id,
+            'name' => 'required|string|max:255|unique:airlines,name,'.$airline->id,
+            'code' => 'required|string|max:50|unique:airlines,code,'.$airline->id,
         ]);
 
         try {
             $airline->update($validated);
+
             return redirect()->route('airlines.index')->with('success', 'Airline updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update airline.')->withInput();
@@ -63,6 +67,7 @@ class AirlineController extends Controller
     {
         try {
             $airline->delete();
+
             return redirect()->route('airlines.index')->with('success', 'Airline deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete airline.');

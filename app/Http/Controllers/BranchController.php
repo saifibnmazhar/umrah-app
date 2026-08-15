@@ -10,6 +10,7 @@ class BranchController extends Controller
     public function index()
     {
         $branches = Branch::orderBy('name')->paginate(10)->withQueryString();
+
         return view('branches.index', compact('branches'));
     }
 
@@ -32,6 +33,7 @@ class BranchController extends Controller
 
         try {
             Branch::create($validated);
+
             return redirect()->route('branches.index')->with('success', 'Branch created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create branch.')->withInput();
@@ -50,13 +52,14 @@ class BranchController extends Controller
             'address' => 'required|string|max:255',
             'contacts' => 'required|string|max:255',
             'location' => 'required|in:KSA,BD',
-            'branch_code' => 'nullable|string|max:255|unique:branches,branch_code,' . $branch->id,
+            'branch_code' => 'nullable|string|max:255|unique:branches,branch_code,'.$branch->id,
         ]);
 
         $validated['fingerprint_operation'] = $validated['location'] === 'BD';
 
         try {
             $branch->update($validated);
+
             return redirect()->route('branches.index')->with('success', 'Branch updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update branch.')->withInput();
@@ -67,6 +70,7 @@ class BranchController extends Controller
     {
         try {
             $branch->delete();
+
             return redirect()->route('branches.index')->with('success', 'Branch deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete branch.');

@@ -25,7 +25,7 @@ bash docker/scripts/setup-env.sh
 
 This script will:
 1. Create `.env.production` from `.env.production.sample` if it doesn't exist
-2. Validate required variables (`DB_PASSWORD`, `APP_KEY`, `APP_URL`)
+2. Validate required variables (`DB_PASSWORD`, `APP_KEY`, `APP_URL` is HTTPS)
 3. Regenerate `.env.production.sample` from your configured `.env.production` (values blanked to `***`)
 
 ### 3. Generate Laravel APP_KEY
@@ -72,6 +72,29 @@ location / {
     client_max_body_size 100M;
 }
 ```
+
+### Trust Proxies & HTTPS
+
+The application runs behind the ISPConfig reverse proxy above, which
+terminates TLS (HTTPS) and forwards to the app container over HTTP.
+The proxy sets `X-Forwarded-Proto` (hardcoded to `https`), `X-Forwarded-For`,
+`X-Real-IP`, and `Host` headers.
+
+Laravel trusts all proxy IPs and the full set of `X-Forwarded-*`
+headers (configured in `bootstrap/app.php`). In production,
+`AppServiceProvider` forces `https://` URL generation via
+`URL::forceScheme('https')`, so that redirects, asset URLs, and API
+callbacks use the correct public HTTPS scheme.
+
+**Required environment variables in `.env.production`:**
+- `APP_URL` — must be set to your HTTPS URL (validated by `setup-env.sh`)
+- `SESSION_SECURE_COOKIE=true` — marks the session cookie as `Secure`
+  so the browser only sends it over HTTPS. Without this, the session
+  is lost across redirects behind the TLS-terminating proxy, causing
+  "the page isn't redirecting properly" loops.
+
+The setup script (`docker/scripts/setup-env.sh`) validates both and
+will refuse to proceed if either is missing or incorrect.
 
 ### 6. Set File Permissions
 
@@ -133,7 +156,7 @@ Per-site checklist:
 4. Deploy: `./deploy-prod.sh`.
 
 > **WARNING:** never change `COMPOSE_PROJECT_NAME` for an existing site after its
-> first deploy — the Postgres data volume name is derived from it, and changing it
+> first deploy — the MySQL data volume name is derived from it, and changing it
 > makes the app start against a fresh, empty database (the old data stays in the
 > old volume, now orphaned).
 
@@ -156,15 +179,15 @@ docker compose -f docker-compose.prod.yml logs app
 docker compose -f docker-compose.prod.yml logs db
 ```
 
-### FATAL: password authentication failed for user techcandle_umrah
+### FATAL: password authentication failed for user
 
 **Cause:** the app container authenticates with a credential that differs from the one the
-Postgres role actually has. Two compounding mechanics: (1) Compose's `environment:` block
+MySQL role actually has. Two compounding mechanics: (1) Compose's `environment:` block
 takes precedence over `env_file:` values, and `${VAR:-default}` interpolation reads only
 the shell / project `.env` — never the `env_file` contents — so the app's `DB_PASSWORD`
-was the interpolation result, not the `.env.production` value; (2) the official postgres
-image applies `POSTGRES_PASSWORD` only when the data volume is first initialized, so the
-role's real password is fixed in `umrah_app_pg_data` and ignores later compose changes.
+was the interpolation result, not the `.env.production` value; (2) the MySQL image applies
+`MYSQL_ROOT_PASSWORD` / `MYSQL_PASSWORD` only when the data volume is first initialized,
+so the role's real password is fixed in the named data volume and ignores later compose changes.
 
 **Fix (data-preserving — the volume is never touched):**
 1. Pull the fixed compose (it no longer has the shadowing `environment:` blocks):
@@ -172,11 +195,10 @@ role's real password is fixed in `umrah_app_pg_data` and ignores later compose c
    git pull
    ```
 2. Make sure `.env.production` holds the `DB_PASSWORD` you want (and that the three
-   `POSTGRES_*` keys mirror the `DB_*` values).
-3. Align the DB role to it (runs via container-local trust; no password prompt):
+   `MYSQL_*` keys mirror the `DB_*` values).
+3. Align the DB role to it (runs via container-local; no password prompt needed):
    ```bash
-   docker compose -f docker-compose.prod.yml exec db psql -U techcandle_umrah -d umrah_app_prod \
-     -c "ALTER USER techcandle_umrah WITH PASSWORD '<DB_PASSWORD>';"
+   docker compose -f docker-compose.prod.yml exec db mysql -u root -p"${DB_ROOT_PASSWORD}" -e "ALTER USER '${DB_USERNAME}'@'%' IDENTIFIED BY '${DB_PASSWORD}';"
    ```
 4. Recreate the app container so it picks up the credential from `env_file`:
    ```bash
@@ -223,7 +245,7 @@ After these changes, rebuild the Docker image (push to `main` triggers CI automa
 
 Database backup:
 ```bash
-docker compose -f docker-compose.prod.yml exec db pg_dump -U techcandle_umrah umrah_app_prod > backup_$(date +%F).sql
+docker compose -f docker-compose.prod.yml exec db mysqldump -u root -p"${MYSQL_ROOT_PASSWORD}" ${DB_DATABASE} > backup_$(date +%F).sql
 ```
 
 File backup:

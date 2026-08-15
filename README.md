@@ -136,11 +136,11 @@ Custom slate colors (50-950) are defined in `resources/css/app.css` via `@theme`
 ### Development Environment
 
 ```bash
-# Start containers (app + PostgreSQL)
+# Start containers (app + MySQL)
 docker compose up -d
 
 # App runs on http://localhost:8080
-# PostgreSQL runs on 127.0.0.1:5433
+# MySQL runs on 127.0.0.1:3306
 ```
 
 ### Production Environment
@@ -160,9 +160,9 @@ The app runs on port 8000 on localhost. See [DEPLOYMENT.md](DEPLOYMENT.md) for f
 
 ### Docker Configuration Files
 
-- `Dockerfile` — Multi-stage build (Node 22 build stage + PHP 8.3-fpm-alpine runtime)
-- `docker-compose.yml` — Dev environment (app + PostgreSQL)
-- `docker-compose.prod.yml` — Prod environment (app + PostgreSQL + Redis)
+- `Dockerfile` — Multi-stage build (Node 22 build stage + PHP 8.4-fpm-alpine runtime)
+- `docker-compose.yml` — Dev environment (app + MySQL)
+- `docker-compose.prod.yml` — Prod environment (app + MySQL + Redis)
 - `docker/entrypoint.sh` — Container entrypoint (cache, migrate, permissions)
 - `docker/nginx/conf.d/default.conf` — Nginx site config
 - `docker/php/conf.d/zz-app.ini` — PHP runtime overrides (512M memory, 300s timeout)

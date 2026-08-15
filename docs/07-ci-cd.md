@@ -12,35 +12,38 @@ Umrah App uses **GitHub Actions** for continuous integration and deployment.
 
 ## Jobs
 
-### 1. `test-php`
+### 1. `test-php-unit` and `test-php-feature`
 
-**Purpose:** Run the PHPUnit test suite against PostgreSQL.
+**Purpose:** Run the PHPUnit test suite against MySQL 8.0.
 
 ```yaml
 runs-on: ubuntu-latest
 services:
-  postgres:
-    image: postgres:16-alpine
+  mysql:
+    image: mysql:8.0
     env:
-      POSTGRES_PASSWORD: test
-      POSTGRES_USER: test
-      POSTGRES_DB: umrah_test
-    ports: ['5432:5432']
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: umrah_test
+      MYSQL_USER: test
+      MYSQL_PASSWORD: test
+    ports: ['3306:3306']
 ```
 
 Steps:
 1. Checkout code
-2. Setup PHP 8.3 with extensions (pdo_pgsql, pgsql, intl, mbstring, zip)
-3. `composer install` (no interaction, prefer-dist)
-4. Setup `.env` (SQLite → PostgreSQL, pointing at the service container)
-5. `php artisan key:generate`
-6. `php artisan migrate --no-interaction`
-7. `vendor/bin/phpunit`
+2. Setup PHP 8.4 with extensions (pdo_mysql, mysqli, intl, mbstring, zip, gd)
+3. Setup Node.js 22
+4. `composer install` (no interaction, prefer-dist)
+5. `npm ci` + `npm run build` (Vite production build)
+6. Setup `.env` (SQLite → MySQL, pointing at the MySQL service container)
+7. `php artisan key:generate`
+8. Run migrations (`php artisan migrate`)
+9. `vendor/bin/phpunit`
 
 **When this fails:**
 - Check for SQL errors in migrations — the test DB mirrors production schema
 - Check for model attribute mismatches — casts, fillable, etc.
-- Ensure new migrations don't conflict with the test Postgres instance
+- Ensure new migrations don't conflict with the test MySQL instance
 
 ### 2. `test-js`
 
@@ -53,7 +56,7 @@ Steps:
 4. `npm run build` (Vite production build)
 
 **When this fails:**
-- Check Vite/Tailwind config in `vite.config.js` and `tailwind.config.js`
+- Check Vite/Tailwind config in `vite.config.js`
 - Ensure all imports in `resources/js/` resolve
 - Check for CSS errors in `resources/css/app.css`
 
@@ -61,7 +64,7 @@ Steps:
 
 **Purpose:** Build and push Docker image to ghcr.io.
 
-**Depends on:** `test-php` and `test-js` (runs only after both pass)
+**Depends on:** `test-php-unit`, `test-php-feature`, and `test-js` (runs only after all pass)
 
 Steps:
 1. Checkout code
@@ -102,10 +105,9 @@ Deployment is **not** automated in CI/CD. The process is:
 
 This script:
 1. Pulls the latest image from ghcr.io
-2. Stops containers gracefully (keeps volumes)
-3. Starts PostgreSQL first, waits for health
-4. Starts the app container
-5. Fixes storage permissions
+2. Starts MySQL 8.0 and Redis 7 first, waits for health
+3. Starts the app container
+4. Fixes storage permissions
 
 **To pin a specific image version** (e.g., for rollback):
 
@@ -117,7 +119,9 @@ IMAGE_TAG=sha-abc123def ./deploy-prod.sh
 
 ```bash
 # Re-run the same commands locally:
-composer install --no-interaction --prefer-dist --no-dev
+composer install --no-interaction --prefer-dist
+npm ci
+npm run build
 php artisan key:generate
 php artisan migrate --force
 vendor/bin/phpunit

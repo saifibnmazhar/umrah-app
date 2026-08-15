@@ -19,13 +19,13 @@ vouchers, reports, branches, banks, airlines, routes, and currency rates.
 
 | Layer              | Technology                                  |
 |--------------------|---------------------------------------------|
-| Backend            | Laravel 12, PHP 8.3                         |
-| Database (prod)    | PostgreSQL 16 + Redis 7                     |
+| Backend            | Laravel 12, PHP 8.4                         |
+| Database (prod)    | MySQL 8.0 + Redis 7                         |
 | Database (local)   | SQLite (in-memory for tests)                |
 | Frontend           | Blade templates, Vite 7, Tailwind CSS v4, Alpine.js |
 | Testing            | PHPUnit 11                                  |
 | Code Style         | Laravel Pint (PSR-12 + Laravel preset)      |
-| Containerization   | Docker (multi-stage: Node 22 + PHP 8.3-fpm-alpine) |
+| Containerization   | Docker (multi-stage: Node 22 + PHP 8.4-fpm-alpine) |
 | CI/CD              | GitHub Actions → ghcr.io + Watchtower       |
 | Deployment         | ISPConfig server, `deploy-prod.sh`          |
 
@@ -51,10 +51,10 @@ actual Blade templates live in `resources/views/`.
 
 ### Prerequisites
 
-- PHP 8.3+
+- PHP 8.4+
 - Composer 2.x
 - Node.js 22+
-- PostgreSQL 16 (for production parity)
+- MySQL 8.0 (for production parity)
 - Redis 7 (for production caching/queues)
 
 ### Local Environment
@@ -62,11 +62,11 @@ actual Blade templates live in `resources/views/`.
 #### Option A: Docker (recommended)
 
 ```bash
-docker compose up -d       # Start app + PostgreSQL (port 8080)
+docker compose up -d       # Start app + MySQL 8.0 (port 8080)
 ```
 
 App: `http://localhost:8080`
-PostgreSQL: `127.0.0.1:5433`
+MySQL: `127.0.0.1:3306`
 
 #### Option B: Local
 
@@ -361,7 +361,7 @@ Push to `main` (or open a PR to `main`) to trigger CI
 
 Jobs (run in parallel where possible):
 
-1. **test-php** — Sets up PHP 8.3, starts PostgreSQL 16 service, runs migrations + PHPUnit
+1. **test-php** — Sets up PHP 8.4, starts MySQL 8.0 service, runs migrations + PHPUnit
 2. **test-js** — Node 22, `npm ci`, `npm run build`
 3. **build** — After tests pass: Docker Buildx, login to ghcr.io, build + push image
 
@@ -383,7 +383,7 @@ Jobs (run in parallel where possible):
 docker compose -f docker-compose.prod.yml up -d
 ```
 
-Services: app (ghcr.io image), PostgreSQL 16, Redis 7
+Services: app (ghcr.io image), MySQL 8.0, Redis 7
 
 ---
 
@@ -392,7 +392,7 @@ Services: app (ghcr.io image), PostgreSQL 16, Redis 7
 ### Development
 
 ```bash
-docker compose up -d          # Build + start app + PostgreSQL
+docker compose up -d          # Build + start app + MySQL 8.0
 docker compose down           # Stop and remove containers
 docker compose logs -f app    # Follow app logs
 docker compose exec app bash  # Shell into app container
@@ -400,7 +400,7 @@ docker compose exec app bash  # Shell into app container
 
 Ports:
 - App: `8080` → nginx (port 80 in container)
-- PostgreSQL: `5433` → 5432
+- MySQL: `3306` → 3306
 
 ### Production
 
@@ -419,7 +419,7 @@ The `docker/entrypoint.sh` runs on container start:
 
 Multi-stage build:
 1. **Node 22 (alpine)** — builds Vite assets (`npm ci`, `npm run build`)
-2. **PHP 8.3-fpm-alpine** — installs PHP extensions (pdo_pgsql, intl, mbstring, zip, redis), Composer deps, Nginx, Supervisord
+2. **PHP 8.4-fpm-alpine** — installs PHP extensions (pdo_mysql, mysqli, intl, mbstring, zip, redis), Composer deps, Nginx, Supervisord
 
 ---
 
@@ -529,7 +529,7 @@ Start the database container:
 docker compose up -d db
 ```
 
-Or check that local PostgreSQL is running:
+Or check that local MySQL is running:
 ```bash
-pg_isready
+mysqladmin ping -h 127.0.0.1 --password=$DB_PASSWORD
 ```

@@ -27,6 +27,7 @@ public/storage
 # Cache / logs
 .phpunit.result.cache
 .phpunit.cache
+bootstrap/cache/*
 /storage/*.key
 /storage/pail
 /storage/framework/cache/data/*

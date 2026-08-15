@@ -2,14 +2,16 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\District;
 use App\Enums\TicketType;
+use App\Exceptions\DatabaseErrorHumanizer;
+use App\Models\District;
 use App\Models\FingerprintCharge;
 use App\Models\FlightDateGap;
 use App\Models\Package;
 use App\Models\StayDurationLimit;
 use App\Models\TicketFare;
 use App\Models\VisaSellingPrice;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 
 class SettingsController extends Controller
@@ -19,7 +21,7 @@ class SettingsController extends Controller
         $fingerprintChargesQuery = FingerprintCharge::with(['district', 'user']);
 
         if (request()->has('division') && request('division')) {
-            $fingerprintChargesQuery->whereHas('district', fn($q) => $q->where('division', request('division')));
+            $fingerprintChargesQuery->whereHas('district', fn ($q) => $q->where('division', request('division')));
         }
 
         $fingerprintCharges = $fingerprintChargesQuery->orderBy('id')->paginate(10)->withQueryString();
@@ -58,14 +60,14 @@ class SettingsController extends Controller
         $packages = $packagesQuery->orderBy('id', 'desc')->paginate(10)->withQueryString();
 
         $ticketFares = TicketFare::with([
-                'airline',
-                'route.fromCity',
-                'route.toCity',
-                'route.returnCity',
-                'route.multiSegments.fromCity',
-                'route.multiSegments.toCity',
-                'airlineClass.travelClass',
-            ])
+            'airline',
+            'route.fromCity',
+            'route.toCity',
+            'route.returnCity',
+            'route.multiSegments.fromCity',
+            'route.multiSegments.toCity',
+            'airlineClass.travelClass',
+        ])
             ->where('is_active', true)
             ->orderBy('id', 'desc')
             ->get()
@@ -74,20 +76,20 @@ class SettingsController extends Controller
                 if ($fare->route) {
                     $route = $fare->route;
                     if ($route->route_type->value === 'multi_city' && $route->multiSegments && $route->multiSegments->count() > 0) {
-                        $segments = $route->multiSegments->map(fn($s) =>
-                            ($s->fromCity?->code ?? '?') . ' - ' . ($s->toCity?->code ?? '?')
+                        $segments = $route->multiSegments->map(fn ($s) => ($s->fromCity?->code ?? '?').' - '.($s->toCity?->code ?? '?')
                         );
                         $routeDisplay = $segments->implode(', ');
                     } elseif ($route->route_type->value === 'round') {
                         $routeDisplay = ($route->fromCity?->code ?? '?')
-                            . ' - ' . ($route->toCity?->code ?? '?')
-                            . ' - ' . ($route->returnCity?->code ?? '?');
+                            .' - '.($route->toCity?->code ?? '?')
+                            .' - '.($route->returnCity?->code ?? '?');
                     } else {
                         $routeDisplay = ($route->fromCity?->code ?? '?')
-                            . ' - ' . ($route->toCity?->code ?? '?');
+                            .' - '.($route->toCity?->code ?? '?');
                     }
                 }
                 $type = $fare->ticket_type->value ?? 'regular';
+
                 return [
                     'id' => $fare->id,
                     'route' => $routeDisplay,
@@ -103,12 +105,12 @@ class SettingsController extends Controller
             'route.fromCity',
             'route.toCity',
         ])->where('is_active', true)
-            ->whereHas('route', fn($q) => $q->where('route_type', 'oneway_inbound'))
+            ->whereHas('route', fn ($q) => $q->where('route_type', 'oneway_inbound'))
             ->orderBy('id', 'desc')
             ->get()
-            ->map(fn($fare) => [
+            ->map(fn ($fare) => [
                 'id' => $fare->id,
-                'route' => ($fare->route->fromCity?->code ?? '?') . ' - ' . ($fare->route->toCity?->code ?? '?'),
+                'route' => ($fare->route->fromCity?->code ?? '?').' - '.($fare->route->toCity?->code ?? '?'),
                 'selling_fare' => $fare->selling_fare,
                 'offer_price' => $fare->offer_price,
                 'airline' => $fare->airline->name ?? '-',
@@ -120,12 +122,12 @@ class SettingsController extends Controller
             'route.fromCity',
             'route.toCity',
         ])->where('is_active', true)
-            ->whereHas('route', fn($q) => $q->where('route_type', 'oneway_outbound'))
+            ->whereHas('route', fn ($q) => $q->where('route_type', 'oneway_outbound'))
             ->orderBy('id', 'desc')
             ->get()
-            ->map(fn($fare) => [
+            ->map(fn ($fare) => [
                 'id' => $fare->id,
-                'route' => ($fare->route->fromCity?->code ?? '?') . ' - ' . ($fare->route->toCity?->code ?? '?'),
+                'route' => ($fare->route->fromCity?->code ?? '?').' - '.($fare->route->toCity?->code ?? '?'),
                 'selling_fare' => $fare->selling_fare,
                 'offer_price' => $fare->offer_price,
                 'airline' => $fare->airline->name ?? '-',
@@ -139,9 +141,9 @@ class SettingsController extends Controller
         $stayDurationLimit = StayDurationLimit::getOrCreate();
 
         return view('settings.index', compact(
-            'fingerprintCharges', 
-            'districts', 
-            'divisions', 
+            'fingerprintCharges',
+            'districts',
+            'divisions',
             'flightDateGap',
             'packages',
             'ticketFares',
@@ -156,11 +158,11 @@ class SettingsController extends Controller
     public function updateFlightDateGap(Request $request)
     {
         $validated = $request->validate([
-            'gap' => 'required|integer|min:1'
+            'gap' => 'required|integer|min:1',
         ]);
 
         $flightDateGap = FlightDateGap::first();
-        
+
         if ($flightDateGap) {
             $flightDateGap->update(['gap' => $validated['gap']]);
         } else {
@@ -168,12 +170,14 @@ class SettingsController extends Controller
         }
 
         $tab = $request->input('tab', 'flight-date-gap');
+
         return redirect()->route('settings', ['tab' => $tab])->with('success', 'Flight date gap updated successfully');
     }
 
     public function updateFingerprintCharge(Request $request)
     {
         $tab = $request->input('tab', 'fingerprint-charge');
+
         return redirect()->route('settings', ['tab' => $tab])->with('success', 'Fingerprint charge settings updated');
     }
 
@@ -203,7 +207,7 @@ class SettingsController extends Controller
 
         $validated['is_double_ticket'] = $isDoubleTicket;
 
-        if (!$isDoubleTicket) {
+        if (! $isDoubleTicket) {
             $validated['ticket_fare_inbound_id'] = null;
             $validated['ticket_fare_outbound_id'] = null;
         } else {
@@ -214,7 +218,7 @@ class SettingsController extends Controller
             $validated['offer_price'] = null;
         }
 
-        if (!$isDoubleTicket) {
+        if (! $isDoubleTicket) {
             $ticketFare = TicketFare::find($validated['ticket_fare_id']);
             if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {
                 $validated['offer_price'] = $validated['regular_price'];
@@ -226,11 +230,13 @@ class SettingsController extends Controller
             $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;
             Package::create($validated);
             $tab = $request->input('tab', 'package-configuration');
+
             return redirect()->route('settings', ['tab' => $tab])->with('success', 'Package created successfully.');
         } catch (\Exception $e) {
-            $message = $e instanceof \Illuminate\Database\QueryException
-                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+            $message = $e instanceof QueryException
+                ? DatabaseErrorHumanizer::humanize($e)
                 : 'Failed to create package.';
+
             return redirect()->back()->with('error', $message)->withInput();
         }
     }
@@ -265,7 +271,7 @@ class SettingsController extends Controller
 
         $validated['is_double_ticket'] = $isDoubleTicket;
 
-        if (!$isDoubleTicket) {
+        if (! $isDoubleTicket) {
             $validated['ticket_fare_inbound_id'] = null;
             $validated['ticket_fare_outbound_id'] = null;
         } else {
@@ -276,7 +282,7 @@ class SettingsController extends Controller
             $validated['offer_price'] = null;
         }
 
-        if (!$isDoubleTicket) {
+        if (! $isDoubleTicket) {
             $ticketFare = TicketFare::find($validated['ticket_fare_id']);
             if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {
                 $validated['offer_price'] = $validated['regular_price'];
@@ -287,11 +293,13 @@ class SettingsController extends Controller
             $validated['visa_selling_price_id'] = VisaSellingPrice::latest()->first()?->id;
             $package->update($validated);
             $tab = $request->input('tab', 'package-configuration');
+
             return redirect()->route('settings', ['tab' => $tab])->with('success', 'Package updated successfully.');
         } catch (\Exception $e) {
-            $message = $e instanceof \Illuminate\Database\QueryException
-                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+            $message = $e instanceof QueryException
+                ? DatabaseErrorHumanizer::humanize($e)
                 : 'Failed to update package.';
+
             return redirect()->back()->with('error', $message)->withInput();
         }
     }
@@ -336,6 +344,7 @@ class SettingsController extends Controller
         $stayDurationLimit->update($validated);
 
         $tab = $request->input('tab', 'stay-duration-limit');
+
         return redirect()->route('settings', ['tab' => $tab])->with('success', 'Stay duration limit updated successfully');
     }
 
@@ -348,6 +357,7 @@ class SettingsController extends Controller
         try {
             $package->delete();
             $tab = $request->input('tab', 'package-configuration');
+
             return redirect()->route('settings', ['tab' => $tab])->with('success', 'Package deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete package.');

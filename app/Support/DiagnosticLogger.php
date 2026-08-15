@@ -3,6 +3,7 @@
 namespace App\Support;
 
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
 
 class DiagnosticLogger
@@ -13,7 +14,7 @@ class DiagnosticLogger
         $fileCount = 0;
         $totalBytes = 0;
         array_walk_recursive($files, function ($file) use (&$fileCount, &$totalBytes) {
-            if ($file instanceof \Illuminate\Http\UploadedFile) {
+            if ($file instanceof UploadedFile) {
                 $fileCount++;
                 $totalBytes += $file->getSize();
             }
