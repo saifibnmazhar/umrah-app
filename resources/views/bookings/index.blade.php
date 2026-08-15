@@ -1057,8 +1057,8 @@ if ($passenger->ticket_fare_inbound_id) {
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
                     <button x-show="!hasRegularIssued({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
                 </template>
-                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && rowHasPendingOutbound({{ $loop->index }}) && hasRegularIssued({{ $loop->index }}) && !regularTicketCoversOutbound({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                    <button @click="openOutboundTicketFareModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
+                <template x-if="canShowInlineIssueOut({{ $loop->index }})">
+                    <button @click="handleIssueOutFromMenu({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                     <div class="flex items-center gap-1">
@@ -4034,9 +4034,22 @@ function bookingIndexApp() {
                 t => t.issue_type === 'pending_outbound' && ['issued', 're-issued'].includes(t.status)
             );
             if (hasIssuedOutbound) return false;
-            if (this.rowHasPendingOutbound(index) && this.hasRegularIssued(index) && row.fingerprint_status === 'approved') {
-                return false;
-            }
+            if (this.hasRegularIssued(index)) return false;
+            return true;
+        },
+
+        canShowInlineIssueOut(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            if (row.fingerprint_status !== 'approved') return false;
+            if (!this.hasRegularIssued(index)) return false;
+            if (this.regularTicketCoversOutbound(index)) return false;
+            if (!row.package_is_double_ticket && !row.is_double_ticket) return false;
+            if (!row.outbound_ticket_fare) return false;
+            const hasIssuedOutbound = (row.all_issued_tickets || []).some(
+                t => t.issue_type === 'pending_outbound' && ['issued', 're-issued'].includes(t.status)
+            );
+            if (hasIssuedOutbound) return false;
             return true;
         },
 
