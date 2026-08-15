@@ -17,6 +17,7 @@ use App\Models\Branch;
 use App\Models\CurrencyRate;
 use App\Models\Customer;
 use App\Models\District;
+use App\Models\Document;
 use App\Models\Fingerprint;
 use App\Models\FingerprintCharge;
 use App\Models\FingerprintDetail;
@@ -427,6 +428,55 @@ class BookingSeeder extends Seeder
 
         // No issued ticket for child (visa-only service)
 
-        $this->command?->info('Created 2 bookings with 3 passengers, invoices, payments, visa submissions, fingerprints, and issued tickets.');
+        // ─────────────────────────────────────────────────────────────
+        // Documents — booking customer docs, customer docs, passenger docs
+        // ─────────────────────────────────────────────────────────────
+        // Booking #1 — 2 booking customer documents
+        $booking1->documents()->create([
+            'file_path' => 'booking-docs/inv-0001-cust-doc-1.pdf',
+            'display_name' => "{$invoiceNumber1} Abdullah Rahman 1",
+        ]);
+        $booking1->documents()->create([
+            'file_path' => 'booking-docs/inv-0001-cust-doc-2.pdf',
+            'display_name' => "{$invoiceNumber1} Abdullah Rahman 2",
+        ]);
+
+        // Customer docs (linked to customer)
+        $customer->documents()->create([
+            'file_path' => 'customer-docs/pa1234567-passport.pdf',
+            'display_name' => 'Passport Copy',
+        ]);
+        $customer->documents()->create([
+            'file_path' => 'customer-docs/pa1234567-iqama.pdf',
+            'display_name' => 'Iqama Copy',
+        ]);
+
+        // Passenger docs (linked to each passenger)
+        $passenger1->documents()->create([
+            'file_path' => 'passenger-docs/pb1234567-passport.pdf',
+            'display_name' => 'Mohammed Passport Copy',
+        ]);
+        $passenger1->documents()->create([
+            'file_path' => 'passenger-docs/pb1234567-iqama.pdf',
+            'display_name' => 'Mohammed Iqama Copy',
+        ]);
+        $passenger2->documents()->create([
+            'file_path' => 'passenger-docs/pb7654321-passport.pdf',
+            'display_name' => 'Fatima Passport Copy',
+        ]);
+
+        // Booking #2 — 1 booking customer document
+        $booking2->documents()->create([
+            'file_path' => 'booking-docs/inv-0002-cust-doc-1.pdf',
+            'display_name' => "{$invoiceNumber2} Abdullah Rahman 1",
+        ]);
+
+        // Passenger doc for Booking #2
+        $passenger3->documents()->create([
+            'file_path' => 'passenger-docs/pb9988776-passport.pdf',
+            'display_name' => 'Yusuf Passport Copy',
+        ]);
+
+        $this->command?->info('Created 2 bookings with 3 passengers, invoices, payments, visa submissions, fingerprints, issued tickets, and 8 documents.');
     }
 }

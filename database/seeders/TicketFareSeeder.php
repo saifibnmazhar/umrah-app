@@ -3,6 +3,7 @@
 namespace Database\Seeders;
 
 use App\Enums\TicketType;
+use App\Models\User;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
 
@@ -50,7 +51,7 @@ class TicketFareSeeder extends Seeder
                 'child_fare_percentage' => 75.00,
                 'infant_fare_percentage' => 10.00,
                 'with_meal' => true,
-                'user_id' => 1,
+                'user_id' => User::first()?->id ?? 1,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -68,7 +69,7 @@ class TicketFareSeeder extends Seeder
                 'child_fare_percentage' => 75.00,
                 'infant_fare_percentage' => 10.00,
                 'with_meal' => true,
-                'user_id' => 1,
+                'user_id' => User::first()?->id ?? 1,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
@@ -86,7 +87,7 @@ class TicketFareSeeder extends Seeder
                 'child_fare_percentage' => 75.00,
                 'infant_fare_percentage' => 10.00,
                 'with_meal' => true,
-                'user_id' => 1,
+                'user_id' => User::first()?->id ?? 1,
                 'is_active' => true,
                 'created_at' => now(),
                 'updated_at' => now(),
