@@ -44,7 +44,7 @@
             <input type="hidden" name="payment[transaction_id]" :value="paymentSaved ? (paymentData.trx_id || '') : ''">
             <input type="hidden" name="payment[bank_id]" :value="paymentSaved ? (paymentData.bank_id || '') : ''">
             <div class="mb-6">
-                <label class="block text-sm font-medium text-slate-700 mb-2">Customer <span class="text-slate-400">(Passport No.)</span></label>
+                <label class="block text-sm font-medium text-slate-700 mb-2">Customer <span class="text-slate-400">(Passport No.)</span> *</label>
                 <div class="relative">
                     <input type="text" x-model="customerSearch" @input="searchCustomers()" @focus="customerInputFocused = true; searchCustomers()" @blur="setTimeout(() => { customerInputFocused = false; customerSuggestions = []; }, 200)" :disabled="selectedCustomer" class="w-full px-4 py-3 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition disabled:bg-slate-100 disabled:cursor-not-allowed" placeholder="Enter Passport Number">
                     <div x-show="customerSuggestions.length > 0" class="absolute z-10 w-full mt-1 bg-white border border-slate-200 rounded-lg shadow-lg max-h-60 overflow-y-auto">
@@ -470,7 +470,7 @@
                         <input type="text" x-model="newCustomer.address" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama Type</label>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Iqama Type *</label>
                         <select x-model="newCustomer.iqama_type" required class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select</option>
                             <option value="none">None</option>
@@ -485,7 +485,7 @@
                     <div>
                         <label class="block text-sm font-medium text-slate-600 mb-1">Customer Docs (Self)</label>
                         <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('customer_docs').click()">
-                            <input type="file" id="customer_docs" name="customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple onchange="handleCustomerDocUpload(this)">
+                            <input type="file" id="customer_docs" name="customer_docs[]" class="hidden" accept=".jpg,.jpeg,.png,.pdf" multiple @change="handleCustomerDocUpload($event.target)">
                             <div class="text-slate-500">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
@@ -507,7 +507,7 @@
                     <div x-show="newCustomer.iqama_type === 'referral'">
                         <label class="block text-sm font-medium text-slate-600 mb-1">Upload Ref. Iqama *</label>
                         <div class="border-2 border-dashed border-slate-300 rounded-lg p-4 text-center hover:bg-slate-50 transition cursor-pointer" onclick="document.getElementById('ref_iqama_doc').click()">
-                            <input type="file" id="ref_iqama_doc" name="ref_iqama_doc" class="hidden" accept=".jpg,.jpeg,.png,.pdf" onchange="handleRefIqamaFileUpload(this)">
+                            <input type="file" id="ref_iqama_doc" name="ref_iqama_doc" class="hidden" accept=".jpg,.jpeg,.png,.pdf" @change="handleRefIqamaFileUpload($event.target)">
                             <div class="text-slate-500">
                                 <svg xmlns="http://www.w3.org/2000/svg" class="h-8 w-8 mx-auto mb-2 text-slate-400" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                                     <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M7 16a4 4 0 01-.88-7.903A5 5 0 1115.9 6L16 6a5 5 0 011 9.9M15 13l-3-3m0 0l-3 3m3-3v12" />
