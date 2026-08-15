@@ -368,6 +368,48 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                 return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
             })() : '',
         ] : null,
+        'latest_refunded_ticket' => ($frt = $lit->latestRefundedTicket) ? [
+            'id' => $frt->id,
+            'ticket_number' => $frt->ticket_number ?? '',
+            'pnr' => $frt->pnr ?? '',
+            'refund_date' => $frt->refund_date?->format('Y-m-d') ?? '',
+            'inbound_date' => $frt->inbound_date?->format('Y-m-d') ?? '',
+            'outbound_date' => $frt->outbound_date?->format('Y-m-d') ?? '',
+            'selling_fare' => (float)($frt->selling_fare ?? 0),
+            'net_fare' => (float)($frt->net_fare ?? 0),
+            'offer_price' => (float)($frt->offer_price ?? 0),
+            'is_refundable' => $frt->is_refundable ?? false,
+            'is_exchangeable' => $frt->is_exchangeable ?? false,
+            'baggage_inbound' => $frt->baggage_inbound ?? '',
+            'baggage_outbound' => $frt->baggage_outbound ?? '',
+            'ticket_agent_id' => $frt->ticket_agent_id,
+            'ticket_agent_name' => $frt->ticketAgent?->name ?? '',
+            'ticket_fare_id' => $frt->ticket_fare_id,
+            'group_ticket_id' => $frt->group_ticket_id,
+            'reason_id' => $frt->reason_id,
+            'iata_refunded_amount' => (float)($frt->iata_refunded_amount ?? 0),
+            'refund_to_customer' => (float)($frt->refund_to_customer ?? 0),
+            'service_charge' => (float)($frt->service_charge ?? 0),
+            'refund_compensation' => (float)($frt->refund_compensation ?? 0),
+            'payment_by' => $frt->payment_by,
+            'remarks' => $frt->remarks ?? '',
+            'ticket_type' => $frt->ticketFare?->ticket_type?->value ?? '',
+            'route_type' => $frt->ticketFare?->route?->route_type?->value ?? '',
+            'flight_type' => $frt->ticketFare?->route?->flight_type?->value ?? '',
+            'airline' => $frt->ticketFare?->airline?->name ?? '',
+            'travel_class' => $frt->ticketFare?->airlineClass?->class?->name ?? '',
+            'route' => $frt->ticketFare?->route ? (function() use ($frt) {
+                $r = $frt->ticketFare->route;
+                $rt = $r->route_type?->value;
+                if ($rt === 'multi_city') {
+                    return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                }
+                $from = $r->fromCity?->code ?? '?';
+                $to = $r->toCity?->code ?? '?';
+                $return = $r->returnCity?->code ?? '';
+                return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+            })() : '',
+        ] : null,
     ] : null,
 
     'all_issued_tickets' => $p->allIssuedTickets->map(fn($t) => [
@@ -440,6 +482,48 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'travel_class' => $lrt->ticketFare?->airlineClass?->class?->name ?? '',
             'route' => $lrt->ticketFare?->route ? (function() use ($lrt) {
                 $r = $lrt->ticketFare->route;
+                $rt = $r->route_type?->value;
+                if ($rt === 'multi_city') {
+                    return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                }
+                $from = $r->fromCity?->code ?? '?';
+                $to = $r->toCity?->code ?? '?';
+                $return = $r->returnCity?->code ?? '';
+                return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+            })() : '',
+        ] : null,
+        'latest_refunded_ticket' => ($frt = $t->latestRefundedTicket) ? [
+            'id' => $frt->id,
+            'ticket_number' => $frt->ticket_number ?? '',
+            'pnr' => $frt->pnr ?? '',
+            'refund_date' => $frt->refund_date?->format('Y-m-d') ?? '',
+            'inbound_date' => $frt->inbound_date?->format('Y-m-d') ?? '',
+            'outbound_date' => $frt->outbound_date?->format('Y-m-d') ?? '',
+            'selling_fare' => (float)($frt->selling_fare ?? 0),
+            'net_fare' => (float)($frt->net_fare ?? 0),
+            'offer_price' => (float)($frt->offer_price ?? 0),
+            'is_refundable' => $frt->is_refundable ?? false,
+            'is_exchangeable' => $frt->is_exchangeable ?? false,
+            'baggage_inbound' => $frt->baggage_inbound ?? '',
+            'baggage_outbound' => $frt->baggage_outbound ?? '',
+            'ticket_agent_id' => $frt->ticket_agent_id,
+            'ticket_agent_name' => $frt->ticketAgent?->name ?? '',
+            'ticket_fare_id' => $frt->ticket_fare_id,
+            'group_ticket_id' => $frt->group_ticket_id,
+            'reason_id' => $frt->reason_id,
+            'iata_refunded_amount' => (float)($frt->iata_refunded_amount ?? 0),
+            'refund_to_customer' => (float)($frt->refund_to_customer ?? 0),
+            'service_charge' => (float)($frt->service_charge ?? 0),
+            'refund_compensation' => (float)($frt->refund_compensation ?? 0),
+            'payment_by' => $frt->payment_by,
+            'remarks' => $frt->remarks ?? '',
+            'ticket_type' => $frt->ticketFare?->ticket_type?->value ?? '',
+            'route_type' => $frt->ticketFare?->route?->route_type?->value ?? '',
+            'flight_type' => $frt->ticketFare?->route?->flight_type?->value ?? '',
+            'airline' => $frt->ticketFare?->airline?->name ?? '',
+            'travel_class' => $frt->ticketFare?->airlineClass?->class?->name ?? '',
+            'route' => $frt->ticketFare?->route ? (function() use ($frt) {
+                $r = $frt->ticketFare->route;
                 $rt = $r->route_type?->value;
                 if ($rt === 'multi_city') {
                     return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
@@ -1211,7 +1295,7 @@ if ($passenger->ticket_fare_inbound_id) {
                 </div>
                 <template x-for="ticket in passengersTicketData[{{ $loop->index }}]?.all_issued_tickets || []">
                     <template x-if="ticket.pnr && (ticket.status === 'issued' || ticket.status === 're-issued')">
-                        <div class="text-xs leading-tight text-slate-500" x-text="ticket.pnr + (ticket.issue_type ? ' (' + ticket.issue_type + ')' : '')"></div>
+                        <div class="text-xs leading-tight text-slate-500" x-text="ticketInfoSrc(ticket).pnr + (ticket.issue_type ? ' (' + ticket.issue_type + ')' : '')"></div>
                     </template>
                 </template>
             </div>
@@ -1708,16 +1792,16 @@ if ($passenger->ticket_fare_inbound_id) {
                             </thead>
                             <tbody>
                                 <template x-for="(ticket, idx) in viewableTickets(ticketInfoPassengerIndex)" :key="ticket.id">
-                                    <tr class="border-b border-slate-100 hover:bg-slate-50">
+                                    <tr class="border-b border-slate-100 hover:bg-slate-50" x-data="{ tsrc: ticketInfoSrc(ticket) }">
                                         <td class="px-3 py-2 text-slate-500" x-text="idx + 1"></td>
-                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.issued_date || '—'"></td>
-                                        <td class="px-3 py-2 text-slate-700 font-mono" x-text="ticket.ticket_number || '—'"></td>
-                                        <td class="px-3 py-2 text-slate-700 font-mono" x-text="ticket.pnr || '—'"></td>
-                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.route || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="tsrc.re_issue_date || tsrc.refund_date || tsrc.issued_date || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700 font-mono" x-text="tsrc.ticket_number || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700 font-mono" x-text="tsrc.pnr || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="tsrc.route || '—'"></td>
                                         <td class="px-3 py-2">
                                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
-                                                :class="routeTypeClass(ticket.route_type)"
-                                                x-text="routeTypeLabel(ticket.route_type)">
+                                                :class="routeTypeClass(tsrc.route_type)"
+                                                x-text="routeTypeLabel(tsrc.route_type)">
                                             </span>
                                         </td>
                                         <td class="px-3 py-2">
@@ -1726,8 +1810,8 @@ if ($passenger->ticket_fare_inbound_id) {
                                                 x-text="issueTypeLabel(ticket.issue_type)">
                                             </span>
                                         </td>
-                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.airline || '—'"></td>
-                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.travel_class || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="tsrc.airline || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="tsrc.travel_class || '—'"></td>
                                         <td class="px-3 py-2 text-slate-700" x-text="ticket.reason || '—'"></td>
                                         <td class="px-3 py-2 text-slate-700" x-text="ticket.remarks || '—'"></td>
                                         <td class="px-3 py-2">
@@ -4734,6 +4818,12 @@ function bookingIndexApp() {
             const row = this.passengersTicketData[rowIndex];
             if (!row) return [];
             return (row.all_issued_tickets || []).filter(t => ['issued', 're-issued', 'refunded'].includes(t.status));
+        },
+
+        ticketInfoSrc(ticket) {
+            if (ticket.status === 're-issued' && ticket.latest_re_issued_ticket) return ticket.latest_re_issued_ticket;
+            if (ticket.status === 'refunded' && ticket.latest_refunded_ticket) return ticket.latest_refunded_ticket;
+            return ticket;
         },
 
         hasViewableTickets(rowIndex) {

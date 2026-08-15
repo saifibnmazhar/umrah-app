@@ -543,8 +543,14 @@
                     @forelse($viewableTickets as $ticket)
                     @php
                         $tIndex = $loop->index;
+                        $src = $ticket;
+                        if ($ticket->status === 're-issued' && $ticket->latestReIssuedTicket) {
+                            $src = $ticket->latestReIssuedTicket;
+                        } elseif ($ticket->status === 'refunded' && $ticket->latestRefundedTicket) {
+                            $src = $ticket->latestRefundedTicket;
+                        }
                         $tRoute = '';
-                        $tRouteRaw = $ticket->ticketFare?->route;
+                        $tRouteRaw = $src->ticketFare?->route;
                         $tRouteType = $tRouteRaw?->route_type?->value ?? '';
                         if ($tRouteRaw) {
                             if ($tRouteType === 'multi_city') {
@@ -561,15 +567,15 @@
                     @endphp
                     <div class="border border-slate-100 rounded-lg p-3 mb-2">
                         <label for="reIssueTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer">
-                            <input type="checkbox" id="reIssueTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $ticket->ticket_number ?? '' }}" data-pnr="{{ $ticket->pnr ?? '' }}" data-route="{{ $tRoute }}" data-route-type="{{ $tRouteType }}" data-issue-type="{{ $ticket->issue_type }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueTicketFields('{{ $index }}', '{{ $tIndex }}')">
+                            <input type="checkbox" id="reIssueTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $src->ticket_number ?? '' }}" data-pnr="{{ $src->pnr ?? '' }}" data-route="{{ $tRoute }}" data-route-type="{{ $tRouteType }}" data-issue-type="{{ $ticket->issue_type }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueTicketFields('{{ $index }}', '{{ $tIndex }}')">
                             <span class="text-sm text-slate-700">
                                 <span class="font-medium">#{{ $loop->iteration }}</span>
                                 <span class="mx-1">|</span>
-                                <span class="font-mono text-slate-800">{{ $ticket->ticket_number }}</span>
+                                <span class="font-mono text-slate-800">{{ $src->ticket_number }}</span>
                                 <span class="mx-1">|</span>
-                                <span class="font-mono">{{ $ticket->pnr }}</span>
+                                <span class="font-mono">{{ $src->pnr }}</span>
                                 <span class="block mt-1 text-xs text-slate-500">
-                                    {{ $tRoute }} | {{ $ticket->ticketFare?->airline?->name ?? '-' }} | {{ $ticket->ticketFare?->airlineClass?->class?->name ?? '-' }} | {{ $ticket->issued_date?->format('d-m-Y') ?? '-' }}
+                                    {{ $tRoute }} | {{ $src->ticketFare?->airline?->name ?? '-' }} | {{ $src->ticketFare?->airlineClass?->class?->name ?? '-' }} | {{ $src->re_issue_date?->format('d-m-Y') ?? $src->refund_date?->format('d-m-Y') ?? $src->issued_date?->format('d-m-Y') ?? '-' }}
                                 </span>
                             </span>
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $statusClass }} ml-auto">{{ $tStatus }}</span>
@@ -652,8 +658,14 @@
                     @forelse($viewableTickets as $ticket)
                     @php
                         $tIndex = $loop->index;
+                        $src = $ticket;
+                        if ($ticket->status === 're-issued' && $ticket->latestReIssuedTicket) {
+                            $src = $ticket->latestReIssuedTicket;
+                        } elseif ($ticket->status === 'refunded' && $ticket->latestRefundedTicket) {
+                            $src = $ticket->latestRefundedTicket;
+                        }
                         $tRoute = '';
-                        $tRouteRaw = $ticket->ticketFare?->route;
+                        $tRouteRaw = $src->ticketFare?->route;
                         $tRouteType = $tRouteRaw?->route_type?->value ?? '';
                         if ($tRouteRaw) {
                             if ($tRouteType === 'multi_city') {
@@ -670,15 +682,15 @@
                     @endphp
                     <div class="border border-slate-100 rounded-lg p-3 mb-2">
                         <label for="refundTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer">
-                            <input type="checkbox" id="refundTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $ticket->ticket_number ?? '' }}" data-pnr="{{ $ticket->pnr ?? '' }}" data-route="{{ $tRoute }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded">
+                            <input type="checkbox" id="refundTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $src->ticket_number ?? '' }}" data-pnr="{{ $src->pnr ?? '' }}" data-route="{{ $tRoute }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded">
                             <span class="text-sm text-slate-700">
                                 <span class="font-medium">#{{ $loop->iteration }}</span>
                                 <span class="mx-1">|</span>
-                                <span class="font-mono text-slate-800">{{ $ticket->ticket_number }}</span>
+                                <span class="font-mono text-slate-800">{{ $src->ticket_number }}</span>
                                 <span class="mx-1">|</span>
-                                <span class="font-mono">{{ $ticket->pnr }}</span>
+                                <span class="font-mono">{{ $src->pnr }}</span>
                                 <span class="block mt-1 text-xs text-slate-500">
-                                    {{ $tRoute }} | {{ $ticket->ticketFare?->airline?->name ?? '-' }} | {{ $ticket->ticketFare?->airlineClass?->class?->name ?? '-' }} | {{ $ticket->issued_date?->format('d-m-Y') ?? '-' }}
+                                    {{ $tRoute }} | {{ $src->ticketFare?->airline?->name ?? '-' }} | {{ $src->ticketFare?->airlineClass?->class?->name ?? '-' }} | {{ $src->re_issue_date?->format('d-m-Y') ?? $src->refund_date?->format('d-m-Y') ?? $src->issued_date?->format('d-m-Y') ?? '-' }}
                                 </span>
                             </span>
                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $statusClass }} ml-auto">{{ $tStatus }}</span>
