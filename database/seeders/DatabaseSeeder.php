@@ -9,9 +9,6 @@ class DatabaseSeeder extends Seeder
 {
     use WithoutModelEvents;
 
-    /**
-     * Seed the application's database.
-     */
     public function run(): void
     {
         $this->call([
@@ -19,6 +16,28 @@ class DatabaseSeeder extends Seeder
             TransactionTypeSeeder::class,
             UserSeeder::class,
             PassengerStatusSeeder::class,
+
+            // Reference data (no FK dependencies)
+            DistrictSeeder::class,
+            BranchSeeder::class,
+            CurrencyRateSeeder::class,
+            CityCodeSeeder::class,
+            AirlineSeeder::class,
+            AirlineClassSeeder::class,
+            VisaSellingPriceSeeder::class,
+            FlightDateGapSeeder::class,
+            FingerprintChargeSeeder::class,
+
+            // Dependent data (requires airlines, classes, routes, etc.)
+            RouteSeeder::class,
+            TicketFareSeeder::class,
+            PackageSeeder::class,
+            CustomerSeeder::class,
+
+            // Sample bookings with passengers, invoices, payments, etc.
+            BookingSeeder::class,
+            VisaSubmissionSeeder::class,
+            PaymentSeeder::class,
         ]);
     }
 }

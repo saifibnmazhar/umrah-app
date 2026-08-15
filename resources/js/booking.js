@@ -16,8 +16,13 @@ Alpine.data('bookingApp', () => ({
     passengerModalVisible: false,
     customerModalVisible: false,
     discountModalVisible: false,
+    discountValueBdt: '',
     paymentModalVisible: false,
     customDurationModalVisible: false,
+    customerDocs: [],
+    refIqamaDoc: null,
+    bookingCustomerDocs: [],
+    passengerDocFiles: [],
     paymentData: {
         currency: 'SAR',
         method: 'cash',
@@ -55,7 +60,6 @@ Alpine.data('bookingApp', () => ({
         package_id: '',
         discount_type: 'fixed',
         discount_value: 0,
-        discountValueBdt: '',
         remarks: ''
     },
     passengerData: {
@@ -826,8 +830,13 @@ Alpine.data('createBookingApp', () => ({
     passengerModalVisible: false,
     customerModalVisible: false,
     discountModalVisible: false,
+    discountValueBdt: '',
     paymentModalVisible: false,
     customDurationModalVisible: false,
+    customerDocs: [],
+    refIqamaDoc: null,
+    bookingCustomerDocs: [],
+    passengerDocFiles: [],
     paymentData: {
         currency: 'SAR',
         method: 'cash',
@@ -886,7 +895,6 @@ Alpine.data('createBookingApp', () => ({
         package_id: '',
         discount_type: 'fixed',
         discount_value: 0,
-        discountValueBdt: '',
         remarks: ''
     },
     passengerData: {
@@ -1005,9 +1013,9 @@ Alpine.data('createBookingApp', () => ({
                 const mode = Alpine.store('currency').mode;
                 const rate = Alpine.store('currency').rate;
                 if (mode === 'BDT' && rate > 0) {
-                    this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+                    this.bookingData.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
                 } else {
-                    this.discountValueBdt = '';
+                    this.bookingData.discountValueBdt = '';
                 }
             }
         });
@@ -1037,6 +1045,10 @@ Alpine.data('createBookingApp', () => ({
         this.passengers = [];
         this.passengerCount = 0;
         this.passengerFiles = {};
+        this.customerDocs = [];
+        this.refIqamaDoc = null;
+        this.bookingCustomerDocs = [];
+        this.passengerDocFiles = [];
         window.__pendingPassengerDocs = [];
         let pendingList = document.getElementById('passenger_doc_list');
         if (pendingList) pendingList.innerHTML = '';
@@ -1663,6 +1675,14 @@ Alpine.data('createBookingApp', () => ({
             window.__pendingPassengerDocs = [];
             const list = document.getElementById('passenger_doc_list');
             if (list) list.innerHTML = '';
+            this.renderPassengerDocList();
+        }
+
+        if (this.passengerDocFiles && this.passengerDocFiles.length > 0) {
+            if (!this.passengerFiles) this.passengerFiles = {};
+            this.passengerFiles[passengerIndex] = this.passengerDocFiles.slice();
+            this.passengerDocFiles = [];
+            this.renderPassengerDocList();
         }
 
         this.closePassengerModal();
@@ -2058,16 +2078,12 @@ Alpine.data('createBookingApp', () => ({
                     formData.append(key, this.newCustomer[key]);
                 }
             });
-            const fileInput = document.getElementById('ref_iqama_doc');
-            if (fileInput && fileInput.files[0]) {
-                formData.append('ref_iqama_doc', fileInput.files[0]);
+            if (this.refIqamaDoc) {
+                formData.append('ref_iqama_doc', this.refIqamaDoc);
             }
-            const docsInput = document.getElementById('customer_docs');
-            if (docsInput) {
-                Array.from(docsInput.files).forEach(file => {
-                    formData.append('customer_docs[]', file);
-                });
-            }
+            this.customerDocs.forEach(file => {
+                formData.append('customer_docs[]', file);
+            });
             const response = await fetch('/customers', {
                 method: 'POST',
                 headers: {
@@ -2100,6 +2116,8 @@ Alpine.data('createBookingApp', () => ({
                     ref_mobile_no: '',
                     address: ''
                 };
+                this.refIqamaDoc = null;
+                this.customerDocs = [];
                 alert('Customer added successfully');
             } else {
                 alert(data.message || 'Failed to add customer');
@@ -2247,9 +2265,9 @@ Alpine.data('createBookingApp', () => ({
         const mode = Alpine.store('currency').mode;
         const rate = Alpine.store('currency').rate;
         if (mode === 'BDT' && rate > 0) {
-            this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+            this.bookingData.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
         } else {
-            this.discountValueBdt = '';
+            this.bookingData.discountValueBdt = '';
         }
         this.discountModalVisible = true;
     },
@@ -2291,6 +2309,19 @@ Alpine.data('createBookingApp', () => ({
         const diagId = (crypto.randomUUID && crypto.randomUUID()) || (Date.now().toString(36) + Math.random().toString(36).slice(2));
 
         const formData = new FormData(e.target);
+
+        // Remove file inputs that are tracked separately
+        formData.delete('booking_customer_docs');
+        formData.delete('customer_docs');
+        formData.delete('ref_iqama_doc');
+        formData.delete('passenger_doc_input');
+
+        // Append tracked booking customer docs (accumulated across multiple selections)
+        if (this.bookingCustomerDocs && this.bookingCustomerDocs.length > 0) {
+            this.bookingCustomerDocs.forEach(file => {
+                formData.append('booking_customer_docs[]', file);
+            });
+        }
 
         if (this.passengerFiles) {
             Object.keys(this.passengerFiles).forEach(index => {
@@ -2444,13 +2475,25 @@ Alpine.data('createBookingApp', () => ({
     },
 
     handleBookingCustomerDocsUpload(input) {
+        Array.from(input.files).forEach(file => {
+            this.bookingCustomerDocs.push(file);
+        });
+        input.value = '';
+        this.renderBookingCustomerDocsList();
+    },
+
+    renderBookingCustomerDocsList() {
         const list = document.getElementById('booking_customer_docs_list');
         if (!list) return;
         list.innerHTML = '';
-        Array.from(input.files).forEach(file => {
+        this.bookingCustomerDocs.forEach((file, index) => {
             const item = document.createElement('div');
             item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
-            item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeBookingCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+            item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+            item.querySelector('button').addEventListener('click', () => {
+                this.bookingCustomerDocs.splice(index, 1);
+                this.renderBookingCustomerDocsList();
+            });
             list.appendChild(item);
         });
     },
@@ -2460,13 +2503,25 @@ Alpine.data('createBookingApp', () => ({
     },
 
     handlePassengerDocUpload(input) {
+        Array.from(input.files).forEach(file => {
+            this.passengerDocFiles.push(file);
+        });
+        input.value = '';
+        this.renderPassengerDocList();
+    },
+
+    renderPassengerDocList() {
         const list = document.getElementById('passenger_doc_list');
         if (!list) return;
         list.innerHTML = '';
-        Array.from(input.files).forEach(file => {
+        this.passengerDocFiles.forEach((file, index) => {
             const item = document.createElement('div');
             item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
-            item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removePassengerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+            item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+            item.querySelector('button').addEventListener('click', () => {
+                this.passengerDocFiles.splice(index, 1);
+                this.renderPassengerDocList();
+            });
             list.appendChild(item);
         });
     },
@@ -2476,19 +2531,33 @@ Alpine.data('createBookingApp', () => ({
     },
 
     handleRefIqamaFileUpload(input) {
-        const file = input.files[0];
-        const display = document.getElementById('ref_iqama_doc_filename');
-        if (file && display) display.textContent = file.name;
+        if (input.files[0]) {
+            this.refIqamaDoc = input.files[0];
+            const display = document.getElementById('ref_iqama_doc_filename');
+            if (display) display.textContent = input.files[0].name;
+        }
     },
 
     handleCustomerDocUpload(input) {
+        Array.from(input.files).forEach(file => {
+            this.customerDocs.push(file);
+        });
+        input.value = '';
+        this.renderCustomerDocsList();
+    },
+
+    renderCustomerDocsList() {
         const list = document.getElementById('customer_docs_list');
         if (!list) return;
         list.innerHTML = '';
-        Array.from(input.files).forEach(file => {
+        this.customerDocs.forEach((file, index) => {
             const item = document.createElement('div');
             item.className = 'flex items-center justify-between text-sm text-slate-600 bg-slate-50 px-3 py-2 rounded';
-            item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" onclick="removeCustomerDoc(this)" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+            item.innerHTML = '<span class="truncate">' + file.name + '</span><button type="button" class="text-red-500 hover:text-red-700 ml-2 flex-shrink-0">×</button>';
+            item.querySelector('button').addEventListener('click', () => {
+                this.customerDocs.splice(index, 1);
+                this.renderCustomerDocsList();
+            });
             list.appendChild(item);
         });
     },
@@ -2513,8 +2582,13 @@ Alpine.data('editBookingApp', () => ({
     passengerModalVisible: false,
     customerModalVisible: false,
     discountModalVisible: false,
+    discountValueBdt: '',
     paymentModalVisible: false,
     customDurationModalVisible: false,
+    customerDocs: [],
+    refIqamaDoc: null,
+    bookingCustomerDocs: [],
+    passengerDocFiles: [],
     paymentData: {
         currency: 'SAR',
         method: 'cash',
@@ -2552,7 +2626,6 @@ Alpine.data('editBookingApp', () => ({
         package_id: '',
         discount_type: 'fixed',
         discount_value: 0,
-        discountValueBdt: '',
         remarks: ''
     },
     passengerData: {
@@ -2664,9 +2737,9 @@ Alpine.data('editBookingApp', () => ({
                 const mode = Alpine.store('currency').mode;
                 const rate = Alpine.store('currency').rate;
                 if (mode === 'BDT' && rate > 0) {
-                    this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+                    this.bookingData.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
                 } else {
-                    this.discountValueBdt = '';
+                    this.bookingData.discountValueBdt = '';
                 }
             }
         });
@@ -2821,6 +2894,10 @@ Alpine.data('editBookingApp', () => ({
         this.customerSuggestions = [];
         this.passengers = [];
         this.passengerCount = 0;
+        this.customerDocs = [];
+        this.refIqamaDoc = null;
+        this.bookingCustomerDocs = [];
+        this.passengerDocFiles = [];
         this.newCustomer = {
             name: '',
             iqama_type: '',
@@ -3388,9 +3465,9 @@ Alpine.data('editBookingApp', () => ({
         const mode = Alpine.store('currency').mode;
         const rate = Alpine.store('currency').rate;
         if (mode === 'BDT' && rate > 0) {
-            this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+            this.bookingData.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
         } else {
-            this.discountValueBdt = '';
+            this.bookingData.discountValueBdt = '';
         }
         this.discountModalVisible = true;
     },
@@ -3777,16 +3854,12 @@ Alpine.data('editBookingApp', () => ({
                     formData.append(key, this.newCustomer[key]);
                 }
             });
-            const fileInput = document.getElementById('ref_iqama_doc');
-            if (fileInput && fileInput.files[0]) {
-                formData.append('ref_iqama_doc', fileInput.files[0]);
+            if (this.refIqamaDoc) {
+                formData.append('ref_iqama_doc', this.refIqamaDoc);
             }
-            const docsInput = document.getElementById('customer_docs');
-            if (docsInput) {
-                Array.from(docsInput.files).forEach(file => {
-                    formData.append('customer_docs[]', file);
-                });
-            }
+            this.customerDocs.forEach(file => {
+                formData.append('customer_docs[]', file);
+            });
             const response = await fetch('/customers', {
                 method: 'POST',
                 headers: {
@@ -3819,6 +3892,8 @@ Alpine.data('editBookingApp', () => ({
                     ref_mobile_no: '',
                     address: ''
                 };
+                this.refIqamaDoc = null;
+                this.customerDocs = [];
                 alert('Customer added successfully');
             } else {
                 alert(data.message || 'Failed to add customer');
@@ -3835,6 +3910,10 @@ Alpine.data('showBookingApp', () => ({
     passengerModalVisible: false,
     editingPassengerIndex: null,
     customDurationModalVisible: false,
+    customerDocs: [],
+    refIqamaDoc: null,
+    bookingCustomerDocs: [],
+    passengerDocFiles: [],
     paymentModalVisible: false,
     editingPaymentId: null,
     paymentData: {
