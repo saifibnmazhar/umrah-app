@@ -9,6 +9,9 @@ class FlightDateGapSeeder extends Seeder
 {
     public function run(): void
     {
-        FlightDateGap::firstOrCreate(['gap' => 30]);
+        $gaps = [7, 10, 14, 30];
+        foreach ($gaps as $gap) {
+            FlightDateGap::firstOrCreate(['gap' => $gap]);
+        }
     }
 }
