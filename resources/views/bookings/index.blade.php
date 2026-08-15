@@ -342,6 +342,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'ticket_agent_name' => $lrt->ticketAgent?->name ?? '',
             'ticket_fare_id' => $lrt->ticket_fare_id,
             'group_ticket_id' => $lrt->group_ticket_id,
+            'route_id' => $lrt->route_id,
             'reason_id' => $lrt->reason_id,
             're_issue_charge' => (float)($lrt->re_issue_charge ?? 0),
             'fare_difference' => (float)($lrt->fare_difference ?? 0),
@@ -404,6 +405,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
         })() : '',
         'route_type' => $t->ticketFare?->route?->route_type?->value,
+        'flight_type' => $t->ticketFare?->route?->flight_type?->value ?? '',
         'ticket_type' => $t->ticketFare?->ticket_type?->value ?? '',
         'ticket_agent_name' => $t->ticketAgent?->name ?? '',
         'issuer_name' => $t->issuer?->name ?? '',
@@ -425,6 +427,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'ticket_agent_name' => $lrt->ticketAgent?->name ?? '',
             'ticket_fare_id' => $lrt->ticket_fare_id,
             'group_ticket_id' => $lrt->group_ticket_id,
+            'route_id' => $lrt->route_id,
             'reason_id' => $lrt->reason_id,
             're_issue_charge' => (float)($lrt->re_issue_charge ?? 0),
             'fare_difference' => (float)($lrt->fare_difference ?? 0),
@@ -2383,9 +2386,19 @@ if ($passenger->ticket_fare_inbound_id) {
                 <div class="mb-4">
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Travel Details</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div>
+                        <div :class="isSectorChangeReason ? 'md:col-span-2' : ''">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
-                            <input type="text" x-model="reIssueForm.route" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                            <template x-if="isSectorChangeReason">
+                                <select x-model="reIssueForm.route_id" @change="handleReIssueRouteChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                    <option value="">Select Route</option>
+                                    <template x-for="opt in filteredReIssueRoutes" :key="opt.id">
+                                        <option :value="opt.id" x-text="opt.display"></option>
+                                    </template>
+                                </select>
+                            </template>
+                            <template x-if="!isSectorChangeReason">
+                                <input type="text" x-model="reIssueForm.route" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600">
+                            </template>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Airline</label>
@@ -4012,6 +4025,7 @@ function bookingIndexApp() {
             date: (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })(),
             ticket_agent_id: '',
             route: '',
+            route_id: '',
             airline: '',
             travel_class: '',
             passenger_type: '',
@@ -4949,6 +4963,7 @@ function bookingIndexApp() {
             this.reIssueForm.inbound_date = '';
             this.reIssueForm.outbound_date = '';
             this.reIssueForm.route = '';
+            this.reIssueForm.route_id = '';
             this.reIssueForm.airline = '';
             this.reIssueForm.travel_class = '';
             this.reIssueForm.passenger_type = row.passenger_type || '';
@@ -5002,6 +5017,7 @@ function bookingIndexApp() {
                 this.reIssueForm.inbound_date = this.formatToDDMMMYY(re.inbound_date) || '';
                 this.reIssueForm.outbound_date = this.formatToDDMMMYY(re.outbound_date) || '';
                 this.reIssueForm.route = re.route || '';
+                this.reIssueForm.route_id = re.route_id || '';
                 this.reIssueForm.airline = re.airline || '';
                 this.reIssueForm.travel_class = re.travel_class || '';
                 this.reIssueForm.baggage_inbound = re.baggage_inbound || '';
@@ -5018,6 +5034,7 @@ function bookingIndexApp() {
                     ticket.route_type === 'round' ? 'Round' :
                     ticket.route_type === 'multi_city' ? 'Multi City' : ''
                 ) : this.reIssueForm.route_type;
+                this.reIssueForm.flight_type = ticket.flight_type ? (ticket.flight_type === 'direct' ? 'Direct' : 'Transit') : '';
                 this.reIssueForm.route = ticket.route || '';
                 this.reIssueForm.airline = ticket.airline || '';
                 this.reIssueForm.travel_class = ticket.travel_class || '';
@@ -5287,6 +5304,11 @@ function bookingIndexApp() {
             const reason = this.reIssueReasons.find(r => String(r.id) === String(this.reIssueForm.reason_id));
             this.reIssueForm.payment_by = (reason && reason.default_payment_by) ? reason.default_payment_by : '';
             this.handleReIssuePaymentByChange();
+            if (this.isSectorChangeReason) {
+                this.handleReIssueRouteChange();
+            } else {
+                this.reIssueForm.route_id = '';
+            }
         },
 
         handleReIssuePaymentOptionChange() {
@@ -5310,6 +5332,7 @@ function bookingIndexApp() {
                 pnr: form.pnr,
                 ticket_agent_id: form.ticket_agent_id,
                 ticket_fare_id: form.ticket_option || null,
+                route_id: form.route_id || null,
                 selling_fare: form.selling_fare || 0,
                 net_fare: form.net_fare || 0,
                 offer_price: form.offer_price || 0,
@@ -5865,6 +5888,42 @@ function bookingIndexApp() {
             this.suggestBaggage(fare?.baggage_allowances);
         },
 
+        get isSectorChangeReason() {
+            const reason = this.reIssueReasons.find(r => String(r.id) === String(this.reIssueForm.reason_id));
+            return !!(reason && (reason.name || '').toLowerCase().includes('sector'));
+        },
+
+        get reIssueAirlineId() {
+            const name = (this.reIssueForm.airline || '').trim();
+            if (!name) return null;
+            const airline = (Array.isArray(this.airlinesList) ? this.airlinesList : []).find(a => String(a.name) === String(name));
+            return airline ? airline.id : null;
+        },
+
+        get filteredReIssueRoutes() {
+            const rt = this.reIssueForm.route_type;
+            const ft = this.reIssueForm.flight_type;
+            const rtMap = {'One Way-Inbound':'oneway_inbound','One Way-Outbound':'oneway_outbound','Round':'round','Multi City':'multi_city'};
+            const ftMap = {'Transit':'transit','Direct':'direct'};
+            let routes = Array.isArray(this.routesList) ? this.routesList : [];
+            if (rt) {
+                routes = routes.filter(r => r.route_type === (rtMap[rt]||rt));
+            }
+            if (ft) {
+                routes = routes.filter(r => r.flight_type === (ftMap[ft]||ft));
+            }
+            const airlineId = this.reIssueAirlineId;
+            if (airlineId !== null) {
+                routes = routes.filter(r => r.airline_id === airlineId);
+            }
+            return routes;
+        },
+
+        handleReIssueRouteChange() {
+            const sel = this.filteredReIssueRoutes.find(r => String(r.id) === String(this.reIssueForm.route_id));
+            this.reIssueForm.route = sel ? sel.display : '';
+        },
+
         get filteredReIssueTicketOptions() {
             const tt = this.reIssueForm.ticket_type;
             const rt = this.reIssueForm.route_type;
@@ -5875,8 +5934,11 @@ function bookingIndexApp() {
             if (tt) {
                 fares = fares.filter(f => f.ticket_type === tt);
             }
-            if (rt && ft) {
-                fares = fares.filter(f => f.route_type === (rtMap[rt]||rt) && f.flight_type === (ftMap[ft]||ft));
+            if (rt) {
+                fares = fares.filter(f => f.route_type === (rtMap[rt]||rt));
+            }
+            if (ft) {
+                fares = fares.filter(f => f.flight_type === (ftMap[ft]||ft));
             }
             return fares.map(f => {
                 let display = f.route + ' | ' + f.airline + ' | ' + f.airline_class + ' | ' + f.ticket_type;
@@ -5913,6 +5975,7 @@ function bookingIndexApp() {
                 this.reIssueForm.route = fare.route || '';
                 this.reIssueForm.airline = fare.airline || '';
                 this.reIssueForm.travel_class = fare.airline_class || '';
+                this.reIssueForm.flight_type = fare.flight_type ? (fare.flight_type === 'direct' ? 'Direct' : 'Transit') : '';
                 if (fare.inbound_date && this.reIssueForm.route_type !== 'One Way-Outbound') {
                     this.reIssueForm.inbound_date = this.formatToDDMMMYY(fare.inbound_date) || '';
                 }
