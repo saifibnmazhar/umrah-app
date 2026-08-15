@@ -78,16 +78,28 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_pax_qty_check CHECK (pax_qty >= 1)');
-        DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_discount_value_check CHECK (discount_value >= 0)');
-        DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_discount_amount_check CHECK (discount_amount >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_pax_qty_check CHECK (pax_qty >= 1)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_discount_value_check CHECK (discount_value >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings ADD CONSTRAINT bookings_discount_amount_check CHECK (discount_amount >= 0)');
+        }
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_pax_qty_check');
-        DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_discount_value_check');
-        DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_discount_amount_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_pax_qty_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_discount_value_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE bookings DROP CHECK IF EXISTS bookings_discount_amount_check');
+        }
 
         if (Schema::hasTable('bookings')) {
             Schema::table('bookings', function (Blueprint $table) {

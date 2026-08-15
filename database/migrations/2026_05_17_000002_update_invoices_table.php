@@ -46,17 +46,23 @@ return new class extends Migration
     public function down(): void
     {
         try {
-            DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_total_amount_check');
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_total_amount_check');
+            }
         } catch (Exception $e) {
         }
 
         try {
-            DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_paid_amount_check');
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_paid_amount_check');
+            }
         } catch (Exception $e) {
         }
 
         try {
-            DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_balance_check');
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_balance_check');
+            }
         } catch (Exception $e) {
         }
 

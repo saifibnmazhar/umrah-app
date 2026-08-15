@@ -23,12 +23,16 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE currency_rates ADD CONSTRAINT currency_rates_rate_check CHECK (rate >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE currency_rates ADD CONSTRAINT currency_rates_rate_check CHECK (rate >= 0)');
+        }
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE currency_rates DROP CHECK IF EXISTS currency_rates_rate_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE currency_rates DROP CHECK IF EXISTS currency_rates_rate_check');
+        }
 
         if (Schema::hasTable('currency_rates')) {
             Schema::table('currency_rates', function (Blueprint $table) {

@@ -22,13 +22,17 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE cancelled_submissions ADD CONSTRAINT cancelled_submissions_cancellation_fee_check CHECK (cancellation_fee IS NULL OR cancellation_fee >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE cancelled_submissions ADD CONSTRAINT cancelled_submissions_cancellation_fee_check CHECK (cancellation_fee IS NULL OR cancellation_fee >= 0)');
+        }
     }
 
     public function down(): void
     {
         try {
-            DB::statement('ALTER TABLE cancelled_submissions DROP CHECK IF EXISTS cancelled_submissions_cancellation_fee_check');
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE cancelled_submissions DROP CHECK IF EXISTS cancelled_submissions_cancellation_fee_check');
+            }
         } catch (Exception $e) {
             // MariaDB compatibility: ignore if constraint doesn't exist
         }
