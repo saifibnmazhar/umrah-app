@@ -26,6 +26,7 @@ class CurrencyRateService
     public function getCurrentRateValue(): float
     {
         $rate = $this->getCurrentRate();
+
         return $rate ? (float) $rate->rate : 0;
     }
 
@@ -34,6 +35,7 @@ class CurrencyRateService
         $rate = $date
             ? ((float) ($this->getRateForDate($date)?->rate ?? 0))
             : $this->getCurrentRateValue();
+
         return $sarAmount * $rate;
     }
 
@@ -45,6 +47,7 @@ class CurrencyRateService
         if ($rate <= 0) {
             return 0;
         }
+
         return $bdtAmount / $rate;
     }
 

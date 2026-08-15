@@ -2,11 +2,11 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\VisaSubmission;
 use App\Models\VisaAgent;
+use App\Models\VisaSubmission;
 use App\Services\CurrencyRateService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class VisaReportController extends Controller
@@ -36,9 +36,9 @@ class VisaReportController extends Controller
             'summary' => $summary,
             'pagination' => [
                 'current_page' => $submissions->currentPage(),
-                'last_page'    => $submissions->lastPage(),
-                'per_page'     => $submissions->perPage(),
-                'total'        => $submissions->total(),
+                'last_page' => $submissions->lastPage(),
+                'per_page' => $submissions->perPage(),
+                'total' => $submissions->total(),
             ],
         ]);
     }
@@ -56,9 +56,9 @@ class VisaReportController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->whereHas('passenger', function ($pq) use ($search) {
                     $pq->where('first_name', 'like', "%{$search}%")
-                       ->orWhere('last_name', 'like', "%{$search}%")
-                       ->orWhere('mobile_no', 'like', "%{$search}%")
-                       ->orWhere('passport_no', 'like', "%{$search}%");
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('mobile_no', 'like', "%{$search}%")
+                        ->orWhere('passport_no', 'like', "%{$search}%");
                 })->orWhereHas('passenger.booking', function ($bq) use ($search) {
                     $bq->where('invoice_id', 'like', "%{$search}%");
                 })->orWhereHas('passenger.booking.customer', function ($cq) use ($search) {
@@ -75,10 +75,10 @@ class VisaReportController extends Controller
         }
 
         if ($request->flight_date_from) {
-            $query->whereHas('passenger', fn($q) => $q->whereDate('flight_date_from', '>=', $request->flight_date_from));
+            $query->whereHas('passenger', fn ($q) => $q->whereDate('flight_date_from', '>=', $request->flight_date_from));
         }
         if ($request->flight_date_to) {
-            $query->whereHas('passenger', fn($q) => $q->whereDate('flight_date_to', '<=', $request->flight_date_to));
+            $query->whereHas('passenger', fn ($q) => $q->whereDate('flight_date_to', '<=', $request->flight_date_to));
         }
 
         if ($request->status && $request->status !== 'all') {
@@ -110,7 +110,7 @@ class VisaReportController extends Controller
                 'invoice_no' => $booking?->invoice_id ?? '-',
                 'customer_name' => $customer?->name ?? '-',
                 'customer_iqama' => $iqama ? "IQAMA: {$iqama}" : 'N/A',
-                'pax_name' => $passenger ? trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')) : '-',
+                'pax_name' => $passenger ? trim(($passenger->first_name ?? '').' '.($passenger->last_name ?? '')) : '-',
                 'pax_passport' => $passport ? "Passport: {$passport}" : 'N/A',
                 'mobile' => $passenger?->mobile_no ?? '-',
                 'customer_mobile' => $customer?->mobile_no ?? '-',
@@ -119,10 +119,11 @@ class VisaReportController extends Controller
                 'flight_date' => $passenger?->flight_date_display ?? '-',
                 'visa_number' => $submission->visa_number ?? '-',
                 'visa_agent' => $submission->visaAgent?->name ?? '-',
-                'agent_cost' => (float)($submission->final_cost ?? 0),
+                'agent_cost' => (float) ($submission->final_cost ?? 0),
                 'rate' => $rate,
             ];
         }
+
         return $result;
     }
 

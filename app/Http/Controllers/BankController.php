@@ -10,6 +10,7 @@ class BankController extends Controller
     public function index()
     {
         $banks = Bank::orderBy('name')->paginate(10)->withQueryString();
+
         return view('banks.index', compact('banks'));
     }
 
@@ -29,6 +30,7 @@ class BankController extends Controller
 
         try {
             Bank::create($validated);
+
             return redirect()->route('banks.index')->with('success', 'Bank created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create bank.')->withInput();
@@ -43,7 +45,7 @@ class BankController extends Controller
     public function update(Request $request, Bank $bank)
     {
         $validated = $request->validate([
-            'name' => 'required|string|max:255|unique:banks,name,' . $bank->id,
+            'name' => 'required|string|max:255|unique:banks,name,'.$bank->id,
             'description' => 'nullable|string|max:255',
             'currency' => 'nullable|in:SAR,BDT',
             'location' => 'nullable|in:KSA,BD',
@@ -51,6 +53,7 @@ class BankController extends Controller
 
         try {
             $bank->update($validated);
+
             return redirect()->route('banks.index')->with('success', 'Bank updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update bank.')->withInput();
@@ -61,6 +64,7 @@ class BankController extends Controller
     {
         try {
             $bank->delete();
+
             return redirect()->route('banks.index')->with('success', 'Bank deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete bank.');
@@ -86,6 +90,7 @@ class BankController extends Controller
 
         try {
             $bank = Bank::create($validated);
+
             return response()->json(['success' => true, 'bank' => $bank]);
         } catch (\Exception $e) {
             return response()->json(['success' => false, 'message' => 'Failed to create bank.'], 500);

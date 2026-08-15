@@ -1,8 +1,8 @@
 <?php
 
-use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\BookingCancellationActionController;
 use App\Http\Controllers\BookingCancellationViewController;
+use Illuminate\Support\Facades\Route;
 
 // ─── View Routes (Track B) ───
 Route::get('/bookings/{booking}/cancellation/initiate', [BookingCancellationViewController::class, 'initiate'])

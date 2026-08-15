@@ -13,6 +13,7 @@ use App\Observers\IssuedTicketObserver;
 use App\Observers\PassengerObserver;
 use App\Observers\VisaSubmissionObserver;
 use Illuminate\Support\Facades\Blade;
+use Illuminate\Support\Facades\URL;
 use Illuminate\Support\ServiceProvider;
 
 class AppServiceProvider extends ServiceProvider
@@ -30,6 +31,13 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // The app runs behind an ISPConfig reverse proxy that terminates TLS.
+        // Without this, Laravel generates http:// URLs (the internal Docker
+        // network scheme), causing CORS errors and broken redirects.
+        if ($this->app->environment('production')) {
+            URL::forceScheme('https');
+        }
+
         Booking::observe(BookingObserver::class);
         Passenger::observe(PassengerObserver::class);
         FingerprintDetail::observe(FingerprintDetailObserver::class);
@@ -43,6 +51,7 @@ class AppServiceProvider extends ServiceProvider
             $decimals = is_numeric($decimals) ? (int) $decimals : 2;
             $rate = isset($parts[2]) ? trim($parts[2]) : 'null';
             $bdtAmount = isset($parts[3]) ? trim($parts[3]) : 'null';
+
             return "<?php
                 \$__val = {$amount} ?? 0;
                 \$__dec = {$decimals};

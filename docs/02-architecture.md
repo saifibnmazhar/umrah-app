@@ -9,13 +9,13 @@ and how requests flow through the system.
 
 | Layer              | Technology                                  |
 |--------------------|---------------------------------------------|
-| Backend            | Laravel 12, PHP 8.3                         |
-| Database (prod)    | PostgreSQL 16                               |
+| Backend            | Laravel 12, PHP 8.4                         |
+| Database (prod)    | MySQL 8.0                                   |
 | Cache (prod)       | Redis 7                                     |
 | Database (test)    | SQLite (in-memory)                          |
 | Frontend           | Blade templates, Vite 7, Tailwind CSS v4, Alpine.js |
 | Testing            | PHPUnit 11                                  |
-| Container          | Docker (multi-stage: Node 22 + PHP 8.3-fpm-alpine) |
+| Container          | Docker (multi-stage: Node 22 + PHP 8.4-fpm-alpine) |
 | CI/CD              | GitHub Actions → ghcr.io + Watchtower       |
 | PDF Generation     | setasign/FPDF + setasign/FPDI               |
 

@@ -9,6 +9,7 @@ use Illuminate\Console\Command;
 class MigrateReceiverBankData extends Command
 {
     protected $signature = 'migrate:receiver-bank';
+
     protected $description = 'Backfill receiver_bank from receiver_bank_id via banks.name';
 
     public function handle()

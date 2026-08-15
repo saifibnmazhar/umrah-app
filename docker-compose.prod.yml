@@ -1,64 +1,93 @@
-name: ${COMPOSE_PROJECT_NAME:-umrah-app}
+name: ${COMPOSE_PROJECT_NAME}
 
 services:
   app:
-    image: ghcr.io/mostafiz-8bits/umrah-app:${IMAGE_TAG:-latest}
-    env_file: .env.production
+    image: ${APP_IMAGE}:${IMAGE_TAG:-latest}
+
+    env_file:
+      - .env.production
+
     volumes:
-      - umrah_app_storage:/var/www/html/storage
+      - app_storage:/var/www/html/storage
+
     ports:
       - "127.0.0.1:${APP_PORT:-8000}:80"
-    labels:
-      - com.centurylinklabs.watchtower=true
+
     depends_on:
       db:
         condition: service_healthy
       redis:
         condition: service_healthy
+
+    labels:
+      - com.centurylinklabs.watchtower=true
+
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost || exit 1"]
       interval: 10s
       timeout: 5s
       retries: 10
       start_period: 30s
+
     restart: unless-stopped
+
     networks:
       - backend
 
   db:
-    image: postgres:16-alpine
-    container_name: ${DB_CONTAINER_NAME:-umrah_app_db}
-    env_file: .env.production
+    image: ${DB_IMAGE:-mysql:8.0}
+
+    env_file:
+      - .env.production
+
     volumes:
-      - umrah_app_pg_data:/var/lib/postgresql/data
-    ports:
-      - "127.0.0.1:${DB_EXPOSE_PORT:-15433}:5432"
+      - db_data:/var/lib/mysql
+
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U \"$$POSTGRES_USER\" -d \"$$POSTGRES_DB\""]
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -P 3306 -uroot --password=$${MYSQL_ROOT_PASSWORD}",
+        ]
       interval: 10s
       timeout: 5s
-      retries: 5
+      retries: 10
+      start_period: 20s
+
     restart: unless-stopped
+
     networks:
       - backend
 
   redis:
-    image: redis:7-alpine
-    container_name: ${REDIS_CONTAINER_NAME:-umrah_app_redis}
-    env_file: .env.production
-    command: ["sh", "-c", "exec redis-server --requirepass \"$$REDIS_PASSWORD\" --maxmemory 128mb --maxmemory-policy allkeys-lru"]
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+
+    env_file:
+      - .env.production
+
+    command:
+      [
+        "sh",
+        "-c",
+        'exec redis-server --requirepass "$${REDIS_PASSWORD}" --maxmemory ${REDIS_MAX_MEMORY:-128mb} --maxmemory-policy allkeys-lru',
+      ]
+
     healthcheck:
-      test: ["CMD-SHELL", "redis-cli --pass \"$$REDIS_PASSWORD\" ping | grep PONG"]
+      test:
+        ["CMD-SHELL", 'redis-cli --pass "$${REDIS_PASSWORD}" ping | grep PONG']
       interval: 5s
       timeout: 3s
       retries: 10
+      start_period: 5s
+
     restart: unless-stopped
+
     networks:
       - backend
 
 volumes:
-  umrah_app_storage:
-  umrah_app_pg_data:
+  app_storage:
+  db_data:
 
 networks:
   backend:

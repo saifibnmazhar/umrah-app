@@ -33,6 +33,7 @@ class FillBookingFingerprints extends Command
 
         if ($total === 0) {
             $this->info('All bookings already have fingerprint records.');
+
             return Command::SUCCESS;
         }
 
@@ -76,6 +77,7 @@ class FillBookingFingerprints extends Command
 
         if ($errors > 0) {
             $this->warn("Failed for {$errors} booking(s). Check logs for details.");
+
             return Command::FAILURE;
         }
 

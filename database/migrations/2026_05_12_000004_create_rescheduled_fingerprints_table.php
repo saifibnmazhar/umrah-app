@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -23,14 +23,18 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE rescheduled_fingerprints ADD CONSTRAINT rescheduled_fingerprints_occurrence_check CHECK (occurrence >= 1)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE rescheduled_fingerprints ADD CONSTRAINT rescheduled_fingerprints_occurrence_check CHECK (occurrence >= 1)');
+        }
     }
 
     public function down(): void
     {
         try {
-            DB::statement('ALTER TABLE rescheduled_fingerprints DROP CHECK IF EXISTS rescheduled_fingerprints_occurrence_check');
-        } catch (\Exception $e) {
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE rescheduled_fingerprints DROP CHECK IF EXISTS rescheduled_fingerprints_occurrence_check');
+            }
+        } catch (Exception $e) {
             // MariaDB compatibility: ignore if constraint doesn't exist
         }
 

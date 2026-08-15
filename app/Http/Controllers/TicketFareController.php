@@ -2,19 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\TicketFare;
-use App\Models\GroupTicket;
-use App\Models\BaggageAllowance;
+use App\Exceptions\DatabaseErrorHumanizer;
 use App\Models\Airline;
 use App\Models\AirlineClass;
-use App\Models\TravelClass;
-use App\Models\Route;
+use App\Models\BaggageAllowance;
 use App\Models\FlightDateGap;
+use App\Models\GroupTicket;
+use App\Models\Route;
+use App\Models\TicketFare;
+use App\Models\TravelClass;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use App\Enums\TicketType;
-use App\Enums\PassengerType;
-use App\Enums\TravelDirection;
 
 class TicketFareController extends Controller
 {
@@ -122,9 +121,9 @@ class TicketFareController extends Controller
             ]);
 
             if ($request->ticket_type === 'group') {
-                $inboundDate = in_array($validated['route_type'], ['oneway_inbound', 'round', 'multi_city']) 
+                $inboundDate = in_array($validated['route_type'], ['oneway_inbound', 'round', 'multi_city'])
                     ? ($validated['inbound_date'] ?? null) : null;
-                $outboundDate = in_array($validated['route_type'], ['oneway_outbound', 'round', 'multi_city']) 
+                $outboundDate = in_array($validated['route_type'], ['oneway_outbound', 'round', 'multi_city'])
                     ? ($validated['outbound_date'] ?? null) : null;
 
                 GroupTicket::create([
@@ -133,8 +132,8 @@ class TicketFareController extends Controller
                     'outbound_date' => $outboundDate,
                     'pnr' => $validated['pnr'],
                     'ticket_qty' => $validated['ticket_qty'],
-                    'is_refundable' => !$request->has('is_non_refundable'),
-                    'is_exchangable' => !$request->has('is_non_exchangable'),
+                    'is_refundable' => ! $request->has('is_non_refundable'),
+                    'is_exchangable' => ! $request->has('is_non_exchangable'),
                 ]);
             }
 
@@ -142,9 +141,10 @@ class TicketFareController extends Controller
 
             return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare created successfully.');
         } catch (\Exception $e) {
-            $message = $e instanceof \Illuminate\Database\QueryException
-                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+            $message = $e instanceof QueryException
+                ? DatabaseErrorHumanizer::humanize($e)
                 : 'Failed to create ticket fare.';
+
             return redirect()->back()->with('error', $message)->withInput();
         }
     }
@@ -158,7 +158,7 @@ class TicketFareController extends Controller
 
     public function edit(TicketFare $ticketFare)
     {
-        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Ticket Admin')) {
+        if (! auth()->user()->hasRole('Super Admin') && ! auth()->user()->hasRole('Ticket Admin')) {
             abort(403);
         }
 
@@ -175,7 +175,7 @@ class TicketFareController extends Controller
 
     public function update(Request $request, TicketFare $ticketFare)
     {
-        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Ticket Admin')) {
+        if (! auth()->user()->hasRole('Super Admin') && ! auth()->user()->hasRole('Ticket Admin')) {
             abort(403);
         }
 
@@ -187,6 +187,7 @@ class TicketFareController extends Controller
                     'effective_to' => 'required|date|after_or_equal:effective_from',
                 ]);
                 $ticketFare->update(['effective_to' => $validated['effective_to']]);
+
                 return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('success', 'Effective to date updated successfully.');
             }
 
@@ -254,8 +255,8 @@ class TicketFareController extends Controller
                         'outbound_date' => $outboundDate,
                         'pnr' => $validated['pnr'],
                         'ticket_qty' => $validated['ticket_qty'],
-                        'is_refundable' => !$request->has('is_non_refundable'),
-                        'is_exchangable' => !$request->has('is_non_exchangable'),
+                        'is_refundable' => ! $request->has('is_non_refundable'),
+                        'is_exchangable' => ! $request->has('is_non_exchangable'),
                     ]
                 );
             } else {
@@ -266,27 +267,29 @@ class TicketFareController extends Controller
 
             return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('success', 'Ticket fare updated successfully.');
         } catch (\Exception $e) {
-            $message = $e instanceof \Illuminate\Database\QueryException
-                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+            $message = $e instanceof QueryException
+                ? DatabaseErrorHumanizer::humanize($e)
                 : 'Failed to update ticket fare.';
+
             return redirect()->route('fare.admin', ['tab' => 'fares', 'page' => $request->page])->with('error', $message);
         }
     }
 
     public function toggleActive(TicketFare $ticketFare)
     {
-        $ticketFare->is_active = !$ticketFare->is_active;
+        $ticketFare->is_active = ! $ticketFare->is_active;
         $ticketFare->save();
 
         $ticketFare->packages()->update(['is_active' => $ticketFare->is_active]);
 
         $status = $ticketFare->is_active ? 'activated' : 'deactivated';
+
         return back()->with('success', "Ticket fare {$status} successfully. Associated packages have also been {$status}.");
     }
 
     public function destroy(TicketFare $ticketFare)
     {
-        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Ticket Admin')) {
+        if (! auth()->user()->hasRole('Super Admin') && ! auth()->user()->hasRole('Ticket Admin')) {
             abort(403);
         }
 
@@ -296,6 +299,7 @@ class TicketFareController extends Controller
 
         try {
             $ticketFare->delete();
+
             return redirect()->route('fare.admin', ['tab' => 'fares'])->with('success', 'Ticket fare deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete ticket fare.');
@@ -327,7 +331,7 @@ class TicketFareController extends Controller
         $fares = TicketFare::where('is_active', true)
             ->whereHas('route', function ($query) use ($dbRouteType, $dbFlightType) {
                 $query->where('route_type', $dbRouteType)
-                      ->where('flight_type', $dbFlightType);
+                    ->where('flight_type', $dbFlightType);
             })
             ->with(['route.fromCity', 'route.toCity', 'route.returnCity', 'airline', 'airlineClass.class'])
             ->get()
@@ -406,19 +410,19 @@ class TicketFareController extends Controller
             $passengerType = $request->input('passenger_type');
             $direction = $request->input('direction');
 
-            if (!$ticketFareId) {
+            if (! $ticketFareId) {
                 return response()->json([
                     'allowances' => [],
-                    'message' => 'Missing required parameter: ticket_fare_id'
+                    'message' => 'Missing required parameter: ticket_fare_id',
                 ]);
             }
 
             $ticketFare = TicketFare::with('baggageAllowances')->find($ticketFareId);
 
-            if (!$ticketFare) {
+            if (! $ticketFare) {
                 return response()->json([
                     'allowances' => [],
-                    'message' => 'No ticket fare found'
+                    'message' => 'No ticket fare found',
                 ]);
             }
 
@@ -426,19 +430,20 @@ class TicketFareController extends Controller
                 return [
                     'passenger_type' => $ba->passenger_type,
                     'travel_direction' => $ba->travel_direction,
-                    'allowance' => $ba->allowance
+                    'allowance' => $ba->allowance,
                 ];
             });
 
             return response()->json([
                 'allowances' => $allowances,
-                'message' => $allowances->isNotEmpty() ? 'Baggage allowances found' : 'No baggage allowances defined'
+                'message' => $allowances->isNotEmpty() ? 'Baggage allowances found' : 'No baggage allowances defined',
             ]);
         } catch (\Exception $e) {
-            \Log::error('Baggage allowance error: ' . $e->getMessage());
-            $message = $e instanceof \Illuminate\Database\QueryException
-                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+            \Log::error('Baggage allowance error: '.$e->getMessage());
+            $message = $e instanceof QueryException
+                ? DatabaseErrorHumanizer::humanize($e)
                 : 'An unexpected error occurred.';
+
             return response()->json(['allowances' => [], 'message' => $message], 500);
         }
     }
@@ -456,8 +461,8 @@ class TicketFareController extends Controller
 
         if ($route && $airline) {
             $ticketFare = TicketFare::whereHas('airline', function ($query) use ($airline) {
-                    $query->where('name', $airline);
-                })
+                $query->where('name', $airline);
+            })
                 ->whereHas('route', function ($query) use ($route) {
                     $query->whereRaw("CONCAT(
                         (SELECT code FROM city_codes WHERE city_codes.id = routes.from_city_id),
@@ -476,7 +481,7 @@ class TicketFareController extends Controller
         return response()->json([
             'default_gap' => $defaultGap,
             'additional_gap' => $additionalGap,
-            'final_gap' => $defaultGap + $additionalGap
+            'final_gap' => $defaultGap + $additionalGap,
         ]);
     }
 
@@ -538,8 +543,8 @@ class TicketFareController extends Controller
                     'ticket_qty' => $validated['ticket_qty'] ?? 1,
                     'inbound_date' => $validated['inbound_date'] ?? null,
                     'outbound_date' => $validated['outbound_date'] ?? null,
-                    'is_refundable' => !($validated['is_non_refundable'] ?? false),
-                    'is_exchangable' => !($validated['is_non_exchangable'] ?? false),
+                    'is_refundable' => ! ($validated['is_non_refundable'] ?? false),
+                    'is_exchangable' => ! ($validated['is_non_exchangable'] ?? false),
                 ]);
             }
 
@@ -571,7 +576,8 @@ class TicketFareController extends Controller
             ]);
         } catch (\Exception $e) {
             DB::rollBack();
-            \Log::error('Quick ticket fare creation failed: ' . $e->getMessage());
+            \Log::error('Quick ticket fare creation failed: '.$e->getMessage());
+
             return response()->json(['message' => 'Failed to create ticket fare.'], 500);
         }
     }

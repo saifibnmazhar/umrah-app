@@ -7,32 +7,38 @@ FROM node:22-alpine AS assets
 
 WORKDIR /build
 COPY package.json package-lock.json ./
-RUN npm ci
+RUN --mount=type=cache,target=/root/.npm \
+    npm ci
 COPY . .
 RUN npm run build
 
 #################
 # PHP-FPM runtime stage
 #################
-FROM php:8.3-fpm-alpine3.24 AS app
+FROM php:8.4-fpm-alpine3.24 AS app
 
 RUN apk add --no-cache \
-        libpq-dev \
+        mariadb-dev \
         icu-dev \
         oniguruma-dev \
         libzip-dev \
+        freetype-dev \
+        libjpeg-turbo-dev \
+        libpng-dev \
         zip \
         unzip \
         curl \
         nginx \
         supervisor \
     && docker-php-ext-configure intl \
+    && docker-php-ext-configure gd --with-freetype --with-jpeg \
     && docker-php-ext-install -j"$(nproc)" \
-        pdo_pgsql \
-        pgsql \
+        pdo_mysql \
+        mysqli \
         intl \
         mbstring \
         zip \
+        gd \
     && docker-php-ext-enable opcache
 
 COPY --from=composer:2 /usr/bin/composer /usr/bin/composer
@@ -41,7 +47,8 @@ WORKDIR /var/www/html
 
 # Install dependencies first (better layer caching)
 COPY composer.json composer.lock ./
-RUN composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader
+RUN --mount=type=cache,uid=0,target=/tmp/composer \
+    composer install --no-dev --no-interaction --prefer-dist --no-scripts --optimize-autoloader
 
 # Copy application code
 COPY . .
@@ -69,8 +76,8 @@ RUN set -eux \
 
 EXPOSE 80
 
-LABEL org.opencontainers.image.source="https://github.com/mostafiz-8bits/umrah-app" \
-      org.opencontainers.image.description="Umrah App — Laravel 12 + PostgreSQL application"
+LABEL org.opencontainers.image.source="https://github.com/saifibnmazhar/umrah-app" \
+      org.opencontainers.image.description="Umrah App — Laravel 12 + MySQL 8.0 application"
 
 ENTRYPOINT ["/usr/local/bin/entrypoint"]
 CMD ["/usr/bin/supervisord", "-c", "/etc/supervisord.conf"]
