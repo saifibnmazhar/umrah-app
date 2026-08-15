@@ -16,6 +16,7 @@ Alpine.data('bookingApp', () => ({
     passengerModalVisible: false,
     customerModalVisible: false,
     discountModalVisible: false,
+    discountValueBdt: '',
     paymentModalVisible: false,
     customDurationModalVisible: false,
     customerDocs: [],
@@ -59,7 +60,6 @@ Alpine.data('bookingApp', () => ({
         package_id: '',
         discount_type: 'fixed',
         discount_value: 0,
-        discountValueBdt: '',
         remarks: ''
     },
     passengerData: {
@@ -830,6 +830,7 @@ Alpine.data('createBookingApp', () => ({
     passengerModalVisible: false,
     customerModalVisible: false,
     discountModalVisible: false,
+    discountValueBdt: '',
     paymentModalVisible: false,
     customDurationModalVisible: false,
     customerDocs: [],
@@ -894,7 +895,6 @@ Alpine.data('createBookingApp', () => ({
         package_id: '',
         discount_type: 'fixed',
         discount_value: 0,
-        discountValueBdt: '',
         remarks: ''
     },
     passengerData: {
@@ -2582,6 +2582,7 @@ Alpine.data('editBookingApp', () => ({
     passengerModalVisible: false,
     customerModalVisible: false,
     discountModalVisible: false,
+    discountValueBdt: '',
     paymentModalVisible: false,
     customDurationModalVisible: false,
     customerDocs: [],
@@ -2625,7 +2626,6 @@ Alpine.data('editBookingApp', () => ({
         package_id: '',
         discount_type: 'fixed',
         discount_value: 0,
-        discountValueBdt: '',
         remarks: ''
     },
     passengerData: {
