@@ -1145,9 +1145,9 @@ if ($passenger->ticket_fare_inbound_id) {
         <div class="flex items-center gap-1 w-full">
             <span class="font-medium text-sm shrink-0">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
             <div class="flex items-center gap-1 flex-1"
-                 :class="(!hasRegularIssued({{ $loop->index }}) || rowHasPendingOutbound({{ $loop->index }})) ? 'justify-start' : 'justify-center'">
+                 :class="(rowHasPendingRegular({{ $loop->index }}) || rowHasPendingOutbound({{ $loop->index }})) ? 'justify-start' : 'justify-center'">
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
-                    <button x-show="!hasRegularIssued({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
+                    <button x-show="rowHasPendingRegular({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
                 </template>
                 <template x-if="canShowInlineIssueOut({{ $loop->index }})">
                     <button @click="handleIssueOutFromMenu({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
@@ -4111,6 +4111,12 @@ function bookingIndexApp() {
             return (row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound' && ['pending', 'awaiting-group'].includes(t.status));
         },
 
+        rowHasPendingRegular(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            return (row.all_issued_tickets || []).some(t => (!t.issue_type || t.issue_type === 'regular') && ['pending', 'awaiting-group'].includes(t.status));
+        },
+
         regularTicketCoversOutbound(index) {
             const row = this.passengersTicketData[index];
             if (!row || row.is_cancelled) return false;
@@ -5027,6 +5033,8 @@ function bookingIndexApp() {
             const ticket = this.viewableTickets(rowIndex)[ticketIndex];
             if (!ticket) return;
 
+            const src = (ticket.status === 're-issued' && ticket.latest_re_issued_ticket) ? ticket.latest_re_issued_ticket : ticket;
+
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
 
             const f = this.refundForm;
@@ -5034,24 +5042,24 @@ function bookingIndexApp() {
             f.passenger_id = row.id;
             this.refundPayable = parseFloat(row.refund_payable || 0);
             f.issued_ticket_id = ticket.id;
-            f.ticket_number = ticket.ticket_number || '';
-            f.pnr = ticket.pnr || '';
+            f.ticket_number = src.ticket_number || '';
+            f.pnr = src.pnr || '';
             f.refund_date = today;
-            f.inbound_date = ticket.inbound_date || '';
-            f.outbound_date = ticket.outbound_date || '';
-            f.selling_fare = ticket.selling_fare || 0;
-            f.net_fare = ticket.net_fare || 0;
-            f.offer_price = ticket.offer_price || 0;
-            f.is_refundable = ticket.is_refundable || false;
-            f.is_exchangeable = ticket.is_exchangeable || false;
-            f.baggage_inbound = ticket.baggage_inbound || '';
-            f.baggage_outbound = ticket.baggage_outbound || '';
-            f.ticket_agent_id = ticket.ticket_agent_id ?? null;
-            f.ticket_fare_id = ticket.ticket_fare_id ?? null;
-            f.group_ticket_id = ticket.group_ticket_id ?? null;
-            f.route = ticket.route || '';
-            f.airline = ticket.airline || '';
-            f.travel_class = ticket.travel_class || '';
+            f.inbound_date = src.inbound_date || '';
+            f.outbound_date = src.outbound_date || '';
+            f.selling_fare = src.selling_fare || 0;
+            f.net_fare = src.net_fare || 0;
+            f.offer_price = src.offer_price || 0;
+            f.is_refundable = src.is_refundable || false;
+            f.is_exchangeable = src.is_exchangeable || false;
+            f.baggage_inbound = src.baggage_inbound || '';
+            f.baggage_outbound = src.baggage_outbound || '';
+            f.ticket_agent_id = src.ticket_agent_id ?? null;
+            f.ticket_fare_id = src.ticket_fare_id ?? null;
+            f.group_ticket_id = src.group_ticket_id ?? null;
+            f.route = src.route || '';
+            f.airline = src.airline || '';
+            f.travel_class = src.travel_class || '';
             f.reason_id = '';
             f.iata_refund = 0;
             f.customer_refund = 0;

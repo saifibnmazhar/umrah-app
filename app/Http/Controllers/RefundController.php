@@ -25,6 +25,11 @@ class RefundController extends Controller
             return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
         }
 
+        $refundSource = ($issuedTicket->status === 're-issued' && $issuedTicket->latestReIssuedTicket)
+            ? $issuedTicket->latestReIssuedTicket
+            : $issuedTicket;
+        $refundNetFare = (float) ($refundSource->net_fare ?? 0);
+
         $validated = $request->validate([
             'issued_ticket_id' => 'required|exists:issued_tickets,id',
             'ticket_number' => 'nullable|string|max:100',
@@ -41,8 +46,8 @@ class RefundController extends Controller
             'baggage_outbound' => 'nullable|string|max:255',
 
             'reason_id' => 'required|exists:re_issue_refund_reasons,id',
-            'iata_refund' => 'required|numeric|min:0|max:'.(float) $issuedTicket->net_fare,
-            'customer_refund' => 'required|numeric|min:0|max:'.(float) $issuedTicket->net_fare,
+            'iata_refund' => 'required|numeric|min:0|max:'.$refundNetFare,
+            'customer_refund' => 'required|numeric|min:0|max:'.$refundNetFare,
             'service_charge' => 'required|numeric',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee',
@@ -68,12 +73,12 @@ class RefundController extends Controller
 
             $refundData = array_merge($validated, [
                 'user_id' => auth()->id(),
-                'selling_fare' => $issuedTicket->selling_fare ?? 0,
-                'net_fare' => $issuedTicket->net_fare ?? 0,
-                'offer_price' => $issuedTicket->offer_price ?? 0,
+                'selling_fare' => $refundSource->selling_fare ?? 0,
+                'net_fare' => $refundSource->net_fare ?? 0,
+                'offer_price' => $refundSource->offer_price ?? 0,
                 'iata_refunded_amount' => $validated['iata_refund'] ?? 0,
                 'refund_to_customer' => $validated['customer_refund'] ?? 0,
-                'refund_compensation' => (float) ($issuedTicket->net_fare ?? 0) - (float) $validated['iata_refund'],
+                'refund_compensation' => $refundNetFare - (float) $validated['iata_refund'],
             ]);
 
             $refundedTicket = RefundedTicket::create($refundData);
