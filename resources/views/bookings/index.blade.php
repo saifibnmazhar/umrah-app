@@ -4981,6 +4981,8 @@ function bookingIndexApp() {
             const ticket = this.viewableTickets(rowIndex)[ticketIndex];
             if (!ticket) return;
 
+            const src = (ticket.status === 're-issued' && ticket.latest_re_issued_ticket) ? ticket.latest_re_issued_ticket : ticket;
+
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
 
             const f = this.refundForm;
@@ -4988,24 +4990,24 @@ function bookingIndexApp() {
             f.passenger_id = row.id;
             this.refundPayable = parseFloat(row.refund_payable || 0);
             f.issued_ticket_id = ticket.id;
-            f.ticket_number = ticket.ticket_number || '';
-            f.pnr = ticket.pnr || '';
+            f.ticket_number = src.ticket_number || '';
+            f.pnr = src.pnr || '';
             f.refund_date = today;
-            f.inbound_date = ticket.inbound_date || '';
-            f.outbound_date = ticket.outbound_date || '';
-            f.selling_fare = ticket.selling_fare || 0;
-            f.net_fare = ticket.net_fare || 0;
-            f.offer_price = ticket.offer_price || 0;
-            f.is_refundable = ticket.is_refundable || false;
-            f.is_exchangeable = ticket.is_exchangeable || false;
-            f.baggage_inbound = ticket.baggage_inbound || '';
-            f.baggage_outbound = ticket.baggage_outbound || '';
-            f.ticket_agent_id = ticket.ticket_agent_id ?? null;
-            f.ticket_fare_id = ticket.ticket_fare_id ?? null;
-            f.group_ticket_id = ticket.group_ticket_id ?? null;
-            f.route = ticket.route || '';
-            f.airline = ticket.airline || '';
-            f.travel_class = ticket.travel_class || '';
+            f.inbound_date = src.inbound_date || '';
+            f.outbound_date = src.outbound_date || '';
+            f.selling_fare = src.selling_fare || 0;
+            f.net_fare = src.net_fare || 0;
+            f.offer_price = src.offer_price || 0;
+            f.is_refundable = src.is_refundable || false;
+            f.is_exchangeable = src.is_exchangeable || false;
+            f.baggage_inbound = src.baggage_inbound || '';
+            f.baggage_outbound = src.baggage_outbound || '';
+            f.ticket_agent_id = src.ticket_agent_id ?? null;
+            f.ticket_fare_id = src.ticket_fare_id ?? null;
+            f.group_ticket_id = src.group_ticket_id ?? null;
+            f.route = src.route || '';
+            f.airline = src.airline || '';
+            f.travel_class = src.travel_class || '';
             f.reason_id = '';
             f.iata_refund = 0;
             f.customer_refund = 0;

@@ -327,10 +327,15 @@ class TicketRequestController extends Controller
             return response()->json(['message' => 'Issued ticket not found.'], 404);
         }
 
+        $refundSource = ($issuedTicket->status === 're-issued' && $issuedTicket->latestReIssuedTicket)
+            ? $issuedTicket->latestReIssuedTicket
+            : $issuedTicket;
+        $refundNetFare = (float) ($refundSource->net_fare ?? 0);
+
         $validated = $request->validate([
             'reason_id' => 'required|exists:re_issue_refund_reasons,id',
-            'iata_refund' => 'required|numeric|min:0|max:'.(float) $issuedTicket->net_fare,
-            'customer_refund' => 'required|numeric|min:0|max:'.(float) $issuedTicket->net_fare,
+            'iata_refund' => 'required|numeric|min:0|max:'.$refundNetFare,
+            'customer_refund' => 'required|numeric|min:0|max:'.$refundNetFare,
             'service_charge' => 'required|numeric',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee',
@@ -360,25 +365,25 @@ class TicketRequestController extends Controller
             $refundData = [
                 'user_id' => auth()->id(),
                 'issued_ticket_id' => $issuedTicket->id,
-                'ticket_number' => $issuedTicket->ticket_number,
-                'pnr' => $issuedTicket->pnr,
-                'ticket_agent_id' => $issuedTicket->ticket_agent_id,
-                'ticket_fare_id' => $issuedTicket->ticket_fare_id,
-                'group_ticket_id' => $issuedTicket->group_ticket_id,
+                'ticket_number' => $refundSource->ticket_number,
+                'pnr' => $refundSource->pnr,
+                'ticket_agent_id' => $refundSource->ticket_agent_id,
+                'ticket_fare_id' => $refundSource->ticket_fare_id,
+                'group_ticket_id' => $refundSource->group_ticket_id,
                 'refund_date' => now(),
-                'inbound_date' => $issuedTicket->inbound_date,
-                'outbound_date' => $issuedTicket->outbound_date,
-                'selling_fare' => $issuedTicket->selling_fare ?? 0,
-                'net_fare' => $issuedTicket->net_fare ?? 0,
-                'offer_price' => $issuedTicket->offer_price ?? 0,
-                'is_refundable' => $issuedTicket->is_refundable,
-                'is_exchangeable' => $issuedTicket->is_exchangeable,
-                'baggage_inbound' => $issuedTicket->baggage_inbound,
-                'baggage_outbound' => $issuedTicket->baggage_outbound,
+                'inbound_date' => $refundSource->inbound_date,
+                'outbound_date' => $refundSource->outbound_date,
+                'selling_fare' => $refundSource->selling_fare ?? 0,
+                'net_fare' => $refundSource->net_fare ?? 0,
+                'offer_price' => $refundSource->offer_price ?? 0,
+                'is_refundable' => $refundSource->is_refundable,
+                'is_exchangeable' => $refundSource->is_exchangeable,
+                'baggage_inbound' => $refundSource->baggage_inbound,
+                'baggage_outbound' => $refundSource->baggage_outbound,
                 'iata_refunded_amount' => $validated['iata_refund'],
                 'refund_to_customer' => $validated['customer_refund'],
                 'service_charge' => $validated['service_charge'],
-                'refund_compensation' => (float) ($issuedTicket->net_fare ?? 0) - (float) $validated['iata_refund'],
+                'refund_compensation' => $refundNetFare - (float) $validated['iata_refund'],
                 'reason_id' => $validated['reason_id'],
                 'remarks' => $validated['remarks'] ?? null,
                 'payment_by' => $validated['payment_by'] ?? null,
@@ -542,6 +547,15 @@ class TicketRequestController extends Controller
             'issuedTicket.ticketFare.route.multiSegments.toCity',
             'issuedTicket.ticketFare.airline',
             'issuedTicket.ticketFare.airlineClass.class',
+            'issuedTicket.latestReIssuedTicket',
+            'issuedTicket.latestReIssuedTicket.ticketAgent',
+            'issuedTicket.latestReIssuedTicket.ticketFare.airline',
+            'issuedTicket.latestReIssuedTicket.ticketFare.airlineClass.class',
+            'issuedTicket.latestReIssuedTicket.ticketFare.route.fromCity',
+            'issuedTicket.latestReIssuedTicket.ticketFare.route.toCity',
+            'issuedTicket.latestReIssuedTicket.ticketFare.route.returnCity',
+            'issuedTicket.latestReIssuedTicket.ticketFare.route.multiSegments.fromCity',
+            'issuedTicket.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
         ])->get();
 
         $requests->each(fn($r) => $r->passenger?->append([

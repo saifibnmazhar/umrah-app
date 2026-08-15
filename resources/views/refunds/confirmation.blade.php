@@ -407,20 +407,21 @@ function processConfirmation(ticketRequestId) {
     if (!r) return;
     const p = r.passenger || {};
     const t = r.issued_ticket || {};
+    const src = (t.status === 're-issued' && t.latest_re_issued_ticket) ? t.latest_re_issued_ticket : t;
 
     document.getElementById('modalPassengerName').textContent = (p.first_name || '') + ' ' + (p.last_name || '') + ' (' + (p.passport_no || '-') + ')';
     document.getElementById('infoPassport').textContent = p.passport_no || '-';
     document.getElementById('infoMobile').textContent = p.mobile_no || '-';
-    document.getElementById('infoPnr').textContent = t.pnr || '-';
-    document.getElementById('infoFlightDate').textContent = formatDate(t.outbound_date || t.inbound_date) || '-';
-    document.getElementById('infoRoute').textContent = formatRoute(t.ticket_fare?.route) || '-';
-    document.getElementById('infoAirline').textContent = t.ticket_fare?.airline?.name || '-';
-    document.getElementById('infoClass').textContent = t.ticket_fare?.airline_class?.class?.name || '-';
+    document.getElementById('infoPnr').textContent = src.pnr || '-';
+    document.getElementById('infoFlightDate').textContent = formatDate(src.outbound_date || src.inbound_date) || '-';
+    document.getElementById('infoRoute').textContent = formatRoute(src.ticket_fare?.route) || '-';
+    document.getElementById('infoAirline').textContent = src.ticket_fare?.airline?.name || '-';
+    document.getElementById('infoClass').textContent = src.ticket_fare?.airline_class?.class?.name || '-';
     document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
 
     document.getElementById('infoRefundPayable').textContent = (parseFloat(p.refund_payable) || 0).toFixed(2);
 
-    currentRefundNetFare = parseFloat(t.net_fare) || 0;
+    currentRefundNetFare = parseFloat(src.net_fare) || 0;
 
     document.getElementById('inputAgentRefundAmount').max = currentRefundNetFare || '';
     document.getElementById('inputAgentRefundAmountBdt').max = sarToBdt(currentRefundNetFare) || '';
@@ -449,7 +450,7 @@ function processConfirmation(ticketRequestId) {
     syncCurrencyFields();
 
     const agentSelect = document.getElementById('inputAgent');
-    agentSelect.value = t.ticket_agent_id || '';
+    agentSelect.value = src.ticket_agent_id || '';
 
     document.getElementById('processConfirmationModal').classList.remove('hidden');
 }

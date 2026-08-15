@@ -627,15 +627,16 @@ function processConfirmation(ticketRequestId) {
 
     const p = r.passenger || {};
     const t = r.issued_ticket || {};
+    const src = (t.status === 're-issued' && t.latest_re_issued_ticket) ? t.latest_re_issued_ticket : t;
 
     document.getElementById('modalPassengerName').textContent = (p.first_name || '') + ' ' + (p.last_name || '') + ' (' + (p.passport_no || '-') + ')';
     document.getElementById('infoPassport').textContent = p.passport_no || '-';
     document.getElementById('infoMobile').textContent = p.mobile_no || '-';
-    document.getElementById('infoPnr').textContent = t.pnr || '-';
-    document.getElementById('infoFlightDate').textContent = formatDate(t.outbound_date || t.inbound_date) || '-';
-    document.getElementById('infoRoute').textContent = formatRoute(t.ticket_fare?.route) || '-';
-    document.getElementById('infoAirline').textContent = t.ticket_fare?.airline?.name || '-';
-    document.getElementById('infoClass').textContent = t.ticket_fare?.airline_class?.class?.name || '-';
+    document.getElementById('infoPnr').textContent = src.pnr || '-';
+    document.getElementById('infoFlightDate').textContent = formatDate(src.outbound_date || src.inbound_date) || '-';
+    document.getElementById('infoRoute').textContent = formatRoute(src.ticket_fare?.route) || '-';
+    document.getElementById('infoAirline').textContent = src.ticket_fare?.airline?.name || '-';
+    document.getElementById('infoClass').textContent = src.ticket_fare?.airline_class?.class?.name || '-';
     document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
 
     currentRefundPayable = parseFloat(p.refund_payable) || 0;
@@ -651,7 +652,7 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('inputOtherCosts').value = '';
     document.getElementById('inputServiceCharge').value = '';
     // document.getElementById('inputPaymentMethod').value = '';
-    document.getElementById('inputAgent').value = t.ticket_agent_id || '';
+    document.getElementById('inputAgent').value = src.ticket_agent_id || '';
     // document.getElementById('bankMethodSection').classList.add('hidden');
     // document.getElementById('branchSection').classList.add('hidden');
     // document.getElementById('confirmButtons').classList.remove('hidden');
@@ -667,9 +668,9 @@ function processConfirmation(ticketRequestId) {
     updateTotals();
 
     sourceFares = {
-        selling_fare: t.selling_fare ?? 0,
-        net_fare: t.net_fare ?? 0,
-        offer_price: t.offer_price ?? 0,
+        selling_fare: src.selling_fare ?? 0,
+        net_fare: src.net_fare ?? 0,
+        offer_price: src.offer_price ?? 0,
     };
     document.getElementById('inputSellingFare').value = sourceFares.selling_fare;
     document.getElementById('inputNetFare').value = sourceFares.net_fare;
@@ -679,9 +680,9 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('inputNetFareBdt').value = rate > 0 ? sarToBdt(sourceFares.net_fare) : '';
     document.getElementById('inputOfferPriceBdt').value = rate > 0 ? sarToBdt(sourceFares.offer_price) : '';
 
-    const originalRt = t.ticket_fare?.route?.route_type || '';
-    const originalTt = t.ticket_fare?.ticket_type || '';
-    const originalFt = t.ticket_fare?.route?.flight_type || '';
+    const originalRt = src.ticket_fare?.route?.route_type || '';
+    const originalTt = src.ticket_fare?.ticket_type || '';
+    const originalFt = src.ticket_fare?.route?.flight_type || '';
 
     const rtSelect = document.getElementById('inputRouteType');
     rtSelect.value = originalRt;
@@ -693,7 +694,7 @@ function processConfirmation(ticketRequestId) {
     const ftSelect = document.getElementById('inputFlightType');
     ftSelect.value = originalFt;
 
-    selectedTicketFareId = t.ticket_fare_id || null;
+    selectedTicketFareId = src.ticket_fare_id || null;
 
     loadTicketFares({
         route_type: originalRt,
