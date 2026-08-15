@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Http\Middleware\TrustProxies;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\URL;
@@ -34,5 +35,22 @@ class TrustProxiesTest extends TestCase
         // This test verifies the app can read its environment,
         // which AppServiceProvider uses to decide whether to force HTTPS.
         $this->assertContains($this->app->environment(), ['testing', 'local', 'production']);
+    }
+
+    public function test_trust_proxies_middleware_exists(): void
+    {
+        $this->assertTrue(
+            class_exists(TrustProxies::class),
+            'TrustProxies middleware must exist for Cloudflare proxy compatibility'
+        );
+    }
+
+    public function test_trust_proxies_uses_cloudflare_service(): void
+    {
+        $middleware = new TrustProxies;
+        $this->assertInstanceOf(
+            \MonicaHQ\Cloudflare\Http\Middleware\TrustProxies::class,
+            $middleware
+        );
     }
 }

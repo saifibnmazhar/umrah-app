@@ -3,6 +3,7 @@
 use App\Exceptions\DatabaseErrorHumanizer;
 use App\Http\Middleware\CheckActive;
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\TrustProxies;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
 use Illuminate\Database\QueryException;
@@ -23,13 +24,9 @@ return Application::configure(basePath: dirname(__DIR__))
         },
     )
     ->withMiddleware(function (Middleware $middleware): void {
-        $middleware->trustProxies(
-            at: '*',
-            headers: Request::HEADER_X_FORWARDED_FOR
-                | Request::HEADER_X_FORWARDED_HOST
-                | Request::HEADER_X_FORWARDED_PORT
-                | Request::HEADER_X_FORWARDED_PROTO
-        );
+        // Use custom TrustProxies that extends monicahq/laravel-cloudflare
+        // to automatically trust Cloudflare IP ranges (auto-refreshing).
+        $middleware->prepend(TrustProxies::class);
 
         $middleware->redirectGuestsTo(fn () => route('login'));
 
@@ -41,6 +38,7 @@ return Application::configure(basePath: dirname(__DIR__))
     })
     ->withSchedule(function (Schedule $schedule): void {
         $schedule->command('ticket-fares:expire')->daily();
+        $schedule->command('cloudflare:reload')->daily();
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->render(function (QueryException $e, Request $request) {
