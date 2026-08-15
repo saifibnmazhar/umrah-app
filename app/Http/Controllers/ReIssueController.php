@@ -50,7 +50,7 @@ class ReIssueController extends Controller
             'total_customer_payment' => 'required_if:payment_by,customer|numeric|min:0',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee',
-            'payment_option' => 'required_if:payment_by,customer|in:customer_payment,refund_adjustment',
+            'payment_option' => 'nullable|required_if:payment_by,customer|in:customer_payment,refund_adjustment',
             'refund_adjustment_amount' => [
                 Rule::requiredIf(function () use ($request) {
                     return $request->input('payment_by') === 'customer'
@@ -72,6 +72,8 @@ class ReIssueController extends Controller
         if (! in_array($issuedTicket->status, ['issued', 'refunded', 're-issued'])) {
             return response()->json(['message' => 'This ticket cannot be re-issued.'], 400);
         }
+
+        $wasRefunded = $issuedTicket->status === 'refunded';
 
         try {
             DB::beginTransaction();
@@ -132,9 +134,14 @@ class ReIssueController extends Controller
             $issuedTicket->logAction('re-issued', $oldData, $newData);
 
             if (($validated['payment_by'] ?? null) === 'customer') {
+                $refundedNetFare = $wasRefunded
+                    ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
+                    : 0;
+
                 $totalCost = (float) $validated['re_issue_charge']
                     + (float) $validated['fare_difference']
-                    + (float) $validated['other_costs'];
+                    + (float) $validated['other_costs']
+                    + $refundedNetFare;
 
                 $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
 

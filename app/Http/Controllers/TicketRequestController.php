@@ -118,7 +118,7 @@ class TicketRequestController extends Controller
             'total_customer_payment' => 'required_if:payment_by,customer|numeric|min:0',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee',
-            'payment_option' => 'required_if:payment_by,customer|in:customer_payment,refund_adjustment',
+            'payment_option' => 'nullable|required_if:payment_by,customer|in:customer_payment,refund_adjustment',
             'refund_adjustment_amount' => [
                 Rule::requiredIf(function () use ($request) {
                     return $request->input('payment_by') === 'customer'
@@ -146,6 +146,8 @@ class TicketRequestController extends Controller
         if (! $issuedTicket) {
             return response()->json(['message' => 'Issued ticket not found.'], 404);
         }
+
+        $wasRefunded = $issuedTicket->status === 'refunded';
 
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
 
@@ -233,9 +235,14 @@ class TicketRequestController extends Controller
             ]);
 
             if (($validated['payment_by'] ?? null) === 'customer') {
+                $refundedNetFare = $wasRefunded
+                    ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
+                    : 0;
+
                 $totalCost = (float) $validated['re_issue_charge']
                     + (float) $validated['fare_difference']
-                    + (float) $validated['other_costs'];
+                    + (float) $validated['other_costs']
+                    + $refundedNetFare;
 
                 $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
 
@@ -476,6 +483,15 @@ class TicketRequestController extends Controller
                 'result_issued_ticket_id' => $issuedTicket->id,
             ]);
 
+            $invoice = $ticketRequest->booking->invoice;
+            if ($invoice) {
+                app(InvoiceService::class)->updateTotals(
+                    $invoice,
+                    (float) $invoice->total_amount + (float) ($issuedTicket->selling_fare ?? 0),
+                    'additional_ticket_added'
+                );
+            }
+
             DB::commit();
 
             return response()->json([
@@ -548,6 +564,7 @@ class TicketRequestController extends Controller
             'issuedTicket.ticketFare.airline',
             'issuedTicket.ticketFare.airlineClass.class',
             'issuedTicket.latestReIssuedTicket',
+            'issuedTicket.latestRefundedTicket',
             'issuedTicket.latestReIssuedTicket.ticketAgent',
             'issuedTicket.latestReIssuedTicket.ticketFare.airline',
             'issuedTicket.latestReIssuedTicket.ticketFare.airlineClass.class',

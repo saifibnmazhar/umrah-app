@@ -309,6 +309,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'outbound_pending' => $lit->outbound_pending ?? false,
         'issue_type' => $lit->issue_type,
         'status' => $lit->status,
+        'ticket_type' => $lit->ticketFare?->ticket_type?->value ?? '',
         'airline' => $lit->ticketFare?->airline?->name ?? '',
         'travel_class' => $lit->ticketFare?->airlineClass?->class?->name ?? '',
         'route' => $lit->ticketFare?->route ? (function() use ($lit) {
@@ -445,6 +446,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
         })() : '',
         'route_type' => $t->ticketFare?->route?->route_type?->value,
+        'ticket_type' => $t->ticketFare?->ticket_type?->value ?? '',
         'ticket_agent_name' => $t->ticketAgent?->name ?? '',
         'issuer_name' => $t->issuer?->name ?? '',
         'latest_re_issued_ticket' => ($lrt = $t->latestReIssuedTicket) ? [
@@ -544,6 +546,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'refunded'  => $t->refundedTickets->sortByDesc('id')->first()?->remarks ?? null,
             default     => null,
         },
+        'refunded_net_fare' => $t->status === 'refunded'
+            ? (float) ($t->latestRefundedTicket?->net_fare ?? $t->net_fare ?? 0)
+            : 0,
     ])->values(),
     'pending_outbound_issued_ticket' => ($poit = $p->allIssuedTickets
         ->first(fn($t) => $t->issue_type === 'pending_outbound')) ? [
@@ -1231,8 +1236,8 @@ if ($passenger->ticket_fare_inbound_id) {
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
                     <button x-show="rowHasPendingRegular({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
                 </template>
-                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && rowHasPendingOutbound({{ $loop->index }}) && hasRegularIssued({{ $loop->index }}) && !regularTicketCoversOutbound({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
-                    <button @click="openOutboundTicketFareModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
+                <template x-if="canShowInlineIssueOut({{ $loop->index }})">
+                    <button @click="handleIssueOutFromMenu({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                     <div class="flex items-center gap-1">
@@ -2671,6 +2676,17 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
                             </div>
                         </div>
+                        <div x-show="reIssueForm.refunded_net_fare > 0">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (SAR)</label>
+                                <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (BDT)</label>
+                                <input type="number" x-model="reIssueForm.refunded_net_fare_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
+                        </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
@@ -3404,13 +3420,15 @@ function bookingIndexApp() {
             const visaStatus = visa?.status;
             const ticketStatus = row.ticket_status;
             const issuedTicketStatus = row.latest_issued_ticket?.status;
+            const outboundTicketStatus = row.pending_outbound_issued_ticket?.status;
 
             const isFingerprintApproved = fpStatus === 'approved';
             const isVisaSubmitted = visaStatus === 'submitted';
             const isVisaIssued = visaStatus === 'issued';
             const isVisaCancelled = visaStatus === 'cancelled';
             const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
-                || ['issued', 're-issued'].includes(issuedTicketStatus);
+                || ['issued', 're-issued'].includes(issuedTicketStatus)
+                || ['issued', 're-issued'].includes(outboundTicketStatus);
 
             let statusName = null;
             if (isTicketIssued && isVisaIssued) statusName = 'Ticket Issued';
@@ -3437,13 +3455,15 @@ function bookingIndexApp() {
             const visaStatus = visa?.status;
             const ticketStatus = row.ticket_status;
             const issuedTicketStatus = row.latest_issued_ticket?.status;
+            const outboundTicketStatus = row.pending_outbound_issued_ticket?.status;
 
             const isFingerprintApproved = fpStatus === 'approved';
             const isVisaSubmitted = visaStatus === 'submitted';
             const isVisaIssued = visaStatus === 'issued';
             const isVisaCancelled = visaStatus === 'cancelled';
             const isTicketIssued = ['issued', 're-issued'].includes(ticketStatus)
-                || ['issued', 're-issued'].includes(issuedTicketStatus);
+                || ['issued', 're-issued'].includes(issuedTicketStatus)
+                || ['issued', 're-issued'].includes(outboundTicketStatus);
 
             if (isTicketIssued && isVisaIssued) return 'Ticket Issued';
             if (isVisaCancelled) return 'Processing';
@@ -4100,6 +4120,8 @@ function bookingIndexApp() {
             service_charge_bdt: '',
             total_cost: 0,
             total_cost_bdt: '',
+            refunded_net_fare: 0,
+            refunded_net_fare_bdt: '',
             total_payment: 0,
             total_payment_bdt: '',
             remarks: '',
@@ -4214,9 +4236,22 @@ function bookingIndexApp() {
                 t => t.issue_type === 'pending_outbound' && ['issued', 're-issued'].includes(t.status)
             );
             if (hasIssuedOutbound) return false;
-            if (this.rowHasPendingOutbound(index) && this.hasRegularIssued(index) && row.fingerprint_status === 'approved') {
-                return false;
-            }
+            if (this.hasRegularIssued(index)) return false;
+            return true;
+        },
+
+        canShowInlineIssueOut(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            if (row.fingerprint_status !== 'approved') return false;
+            if (!this.hasRegularIssued(index)) return false;
+            if (this.regularTicketCoversOutbound(index)) return false;
+            if (!row.package_is_double_ticket && !row.is_double_ticket) return false;
+            if (!row.outbound_ticket_fare) return false;
+            const hasIssuedOutbound = (row.all_issued_tickets || []).some(
+                t => t.issue_type === 'pending_outbound' && ['issued', 're-issued'].includes(t.status)
+            );
+            if (hasIssuedOutbound) return false;
             return true;
         },
 
@@ -4782,6 +4817,18 @@ function bookingIndexApp() {
                 }
             }
 
+            if (isAlreadyIssued && src) {
+                this.ticketFareForm.selling_fare = src.selling_fare || 0;
+                this.ticketFareForm.net_fare = src.net_fare || 0;
+                this.ticketFareForm.offer_price = src.offer_price || 0;
+                const r = window.__currencyRate || 0;
+                if (r > 0) {
+                    this.ticketFareForm.selling_fare_bdt = Math.round(parseFloat(this.ticketFareForm.selling_fare) * r);
+                    this.ticketFareForm.net_fare_bdt = Math.round(parseFloat(this.ticketFareForm.net_fare) * r);
+                    this.ticketFareForm.offer_price_bdt = Math.round(parseFloat(this.ticketFareForm.offer_price) * r);
+                }
+            }
+
             if (row.is_double_ticket && row.ticket_fare_inbound_id) {
                 if (isAlreadyIssued && this.ticketFareForm.outbound_pending) {
                     this.ticketFareForm.double_ticket_active = true;
@@ -5014,6 +5061,8 @@ function bookingIndexApp() {
             this.reIssueForm.refund_adjustment_amount = 0;
             this.reIssueForm.refund_adjustment_amount_bdt = '';
             this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0);
+            this.reIssueForm.refunded_net_fare = (ticket.status === 'refunded') ? ((ticket.refunded_net_fare ?? 0) || 0) : 0;
+            this.reIssueForm.refunded_net_fare_bdt = '';
 
             if (re) {
                 this.reIssueForm.selling_fare = re.selling_fare || 0;
@@ -5051,6 +5100,21 @@ function bookingIndexApp() {
                 this.reIssueForm.non_exchangeable = !re.is_exchangeable;
             }
 
+            if (!re) {
+                this.reIssueForm.ticket_type = ticket.ticket_type || '';
+                this.reIssueForm.route_type = ticket.route_type ? (
+                    ticket.route_type === 'oneway_inbound' ? 'One Way-Inbound' :
+                    ticket.route_type === 'oneway_outbound' ? 'One Way-Outbound' :
+                    ticket.route_type === 'round' ? 'Round' :
+                    ticket.route_type === 'multi_city' ? 'Multi City' : ''
+                ) : this.reIssueForm.route_type;
+                this.reIssueForm.route = ticket.route || '';
+                this.reIssueForm.airline = ticket.airline || '';
+                this.reIssueForm.travel_class = ticket.travel_class || '';
+                this.reIssueForm.baggage_inbound = ticket.baggage_inbound || '';
+                this.reIssueForm.baggage_outbound = ticket.baggage_outbound || '';
+            }
+
             const rate = window.__currencyRate || 0;
             if (rate > 0) {
                 this.reIssueForm.selling_fare_bdt = Math.round(fareSrc.selling_fare * rate);
@@ -5060,6 +5124,10 @@ function bookingIndexApp() {
                 this.reIssueOriginalFares.net_fare_bdt = Math.round(fareSrc.net_fare * rate);
                 this.reIssueOriginalFares.offer_price_bdt = Math.round(fareSrc.offer_price * rate);
             }
+
+            this.reIssueForm.refunded_net_fare_bdt = this.reIssueForm.refunded_net_fare > 0 && rate > 0
+                ? Math.round(this.reIssueForm.refunded_net_fare * rate)
+                : '';
 
             this.recalcReIssueTotals();
             this.reIssueModalIsOutbound = isOutbound;
@@ -5267,7 +5335,8 @@ function bookingIndexApp() {
             const rate = window.__currencyRate || 0;
             const totalCost = (parseFloat(f.re_issue_charge) || 0)
                             + (parseFloat(f.fare_difference) || 0)
-                            + (parseFloat(f.other_costs) || 0);
+                            + (parseFloat(f.other_costs) || 0)
+                            + (parseFloat(f.refunded_net_fare) || 0);
             f.total_cost = totalCost;
             f.total_cost_bdt = rate > 0 ? Math.round(totalCost * rate) : '';
             const totalPayment = totalCost + (parseFloat(f.service_charge) || 0);
@@ -5349,12 +5418,12 @@ function bookingIndexApp() {
                 total_customer_payment: form.total_payment || 0,
                 remarks: form.remarks,
                 payment_by: form.payment_by,
-                payment_option: form.payment_by === 'customer' ? form.payment_option : null,
+                payment_option: form.payment_by === 'customer' ? form.payment_option : undefined,
                 refund_adjustment_amount: form.payment_by === 'customer' && form.payment_option === 'refund_adjustment' ? (parseFloat(form.refund_adjustment_amount) || 0) : 0,
             };
 
             if (payload.payment_by === 'customer' && payload.payment_option === 'refund_adjustment') {
-                if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge) {
+                if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge + (parseFloat(form.refunded_net_fare) || 0)) {
                     this.showToast('Refund adjustment amount exceeds the total customer payment.', 'error');
                     this.isSubmitting = false;
                     return;
