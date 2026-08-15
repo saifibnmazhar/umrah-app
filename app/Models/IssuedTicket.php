@@ -90,4 +90,14 @@ class IssuedTicket extends Model
             'new_data' => $newData,
         ]);
     }
+
+    public function reIssuedTickets(): HasMany
+    {
+        return $this->hasMany(ReIssuedTicket::class);
+    }
+
+    public function refundedTickets(): HasMany
+    {
+        return $this->hasMany(RefundedTicket::class);
+    }
 }

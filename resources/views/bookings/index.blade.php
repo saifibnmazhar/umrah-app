@@ -450,6 +450,16 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                 return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
             })() : '',
         ] : null,
+        'reason' => match ($t->status) {
+            're-issued' => $t->reIssuedTickets->sortByDesc('id')->first()?->reason?->name ?? null,
+            'refunded'  => $t->refundedTickets->sortByDesc('id')->first()?->reason?->name ?? null,
+            default     => null,
+        },
+        'remarks' => match ($t->status) {
+            're-issued' => $t->reIssuedTickets->sortByDesc('id')->first()?->remarks ?? null,
+            'refunded'  => $t->refundedTickets->sortByDesc('id')->first()?->remarks ?? null,
+            default     => null,
+        },
     ])->values(),
     'pending_outbound_issued_ticket' => ($poit = $p->allIssuedTickets
         ->first(fn($t) => $t->issue_type === 'pending_outbound')) ? [
@@ -1690,6 +1700,8 @@ if ($passenger->ticket_fare_inbound_id) {
                                     <th class="px-3 py-2">Issue Type</th>
                                     <th class="px-3 py-2">Airline</th>
                                     <th class="px-3 py-2">Class</th>
+                                    <th class="px-3 py-2">Reason</th>
+                                    <th class="px-3 py-2">Remarks</th>
                                     <th class="px-3 py-2">Status</th>
                                     <th class="px-3 py-2">Actions</th>
                                 </tr>
@@ -1716,6 +1728,8 @@ if ($passenger->ticket_fare_inbound_id) {
                                         </td>
                                         <td class="px-3 py-2 text-slate-700" x-text="ticket.airline || '—'"></td>
                                         <td class="px-3 py-2 text-slate-700" x-text="ticket.travel_class || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.reason || '—'"></td>
+                                        <td class="px-3 py-2 text-slate-700" x-text="ticket.remarks || '—'"></td>
                                         <td class="px-3 py-2">
                                             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                                                 :class="{
@@ -1799,10 +1813,11 @@ if ($passenger->ticket_fare_inbound_id) {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Reason *</label>
-                            <select x-model="refundForm.reason_id"
-                                    @input="refundForm.errors.reason_id = ''"
-                                    :class="refundForm.errors.reason_id ? 'border-red-500' : ''"
-                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+<select x-model="refundForm.reason_id"
+                                        @input="refundForm.errors.reason_id = ''"
+                                        @change="handleRefundReasonChange()"
+                                        :class="refundForm.errors.reason_id ? 'border-red-500' : ''"
+                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Reason</option>
                                 <template x-for="reason in refundReasons" :key="reason.id">
                                     <option :value="reason.id" x-text="reason.name"></option>
@@ -1872,11 +1887,12 @@ if ($passenger->ticket_fare_inbound_id) {
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
-                            <select x-model="refundForm.payment_by" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="customer">Customer</option>
-                                <option value="airline">Airline</option>
-                                <option value="employee">Employee</option>
-                            </select>
+<select x-model="refundForm.payment_by" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                    <option value="">Select Payment</option>
+                                    <option value="customer">Customer</option>
+                                    <option value="airline">Airline</option>
+                                    <option value="employee">Employee</option>
+                                </select>
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
@@ -2443,10 +2459,10 @@ if ($passenger->ticket_fare_inbound_id) {
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Reason *</label>
-                            <select x-model="reIssueForm.reason_id"
-                                    @change="reIssueForm.errors.reason_id = ''"
-                                    :class="reIssueForm.errors.reason_id ? 'border-red-500' : ''"
-                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+<select x-model="reIssueForm.reason_id"
+                                        @change="reIssueForm.errors.reason_id = ''; handleReIssueReasonChange()"
+                                        :class="reIssueForm.errors.reason_id ? 'border-red-500' : ''"
+                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
                                 <option value="">Select Reason</option>
                                 <template x-for="reason in reIssueReasons" :key="reason.id">
                                     <option :value="reason.id" x-text="reason.name"></option>
@@ -3907,7 +3923,7 @@ function bookingIndexApp() {
             service_charge_bdt: 0,
             refund_compensation: 0,
             refund_compensation_bdt: 0,
-            payment_by: 'customer',
+            payment_by: '',
             remarks: '',
             errors: {
                 reason_id: '',
@@ -4003,7 +4019,7 @@ function bookingIndexApp() {
             total_payment: 0,
             total_payment_bdt: '',
             remarks: '',
-            payment_by: 'customer',
+            payment_by: '',
             payment_option: 'customer_payment',
             refund_adjustment_amount: 0,
             refund_adjustment_amount_bdt: '',
@@ -4897,7 +4913,7 @@ function bookingIndexApp() {
             this.reIssueForm.total_payment = 0;
             this.reIssueForm.total_payment_bdt = '';
             this.reIssueForm.remarks = '';
-            this.reIssueForm.payment_by = 'customer';
+            this.reIssueForm.payment_by = '';
             this.reIssueForm.payment_option = 'customer_payment';
             this.reIssueForm.refund_adjustment_amount = 0;
             this.reIssueForm.refund_adjustment_amount_bdt = '';
@@ -4995,7 +5011,7 @@ function bookingIndexApp() {
             f.customer_refund = 0;
             f.service_charge = 0;
             f.refund_compensation = 0;
-            f.payment_by = 'customer';
+            f.payment_by = '';
             f.remarks = '';
             f.errors.reason_id = '';
 
@@ -5183,6 +5199,17 @@ function bookingIndexApp() {
                 this.reIssueForm.refund_adjustment_amount_bdt = '';
             }
             this.recalcReIssueTotals();
+        },
+
+        handleRefundReasonChange() {
+            const reason = this.refundReasons.find(r => String(r.id) === String(this.refundForm.reason_id));
+            this.refundForm.payment_by = (reason && reason.default_payment_by) ? reason.default_payment_by : '';
+        },
+
+        handleReIssueReasonChange() {
+            const reason = this.reIssueReasons.find(r => String(r.id) === String(this.reIssueForm.reason_id));
+            this.reIssueForm.payment_by = (reason && reason.default_payment_by) ? reason.default_payment_by : '';
+            this.handleReIssuePaymentByChange();
         },
 
         handleReIssuePaymentOptionChange() {

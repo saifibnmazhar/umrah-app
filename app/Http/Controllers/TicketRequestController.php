@@ -274,7 +274,8 @@ class TicketRequestController extends Controller
                     if ($invoice) {
                         app(InvoiceService::class)->updateTotals(
                             $invoice,
-                            (float) $invoice->total_amount + $totalCustomerPayment
+                            (float) $invoice->total_amount + $totalCustomerPayment,
+                            're_issue_cost_added'
                         );
                     }
                 }
@@ -543,7 +544,7 @@ class TicketRequestController extends Controller
             $query->where('reason_of', 'refund');
         }
 
-        return response()->json($query->get(['id', 'name']));
+        return response()->json($query->get(['id', 'name', 'default_payment_by']));
     }
 
     public function agents()

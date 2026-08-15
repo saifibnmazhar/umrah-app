@@ -109,9 +109,9 @@ class BookingController extends Controller
         }
     }
 
-    private function syncBookingFinancials(Booking $booking): array
+    private function syncBookingFinancials(Booking $booking, ?string $reason = null): array
     {
-        $this->bookingService->syncFinancials($booking);
+        $this->bookingService->syncFinancials($booking, $reason);
 
         $invoice = $booking->invoice;
         if ($invoice) {
@@ -566,6 +566,8 @@ class BookingController extends Controller
                 'allIssuedTickets.latestReIssuedTicket.ticketFare.route.returnCity',
                 'allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.fromCity',
                 'allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
+                'allIssuedTickets.reIssuedTickets.reason',
+                'allIssuedTickets.refundedTickets.reason',
                 'latestIssuedTicket.ticketAgent',
                 'latestIssuedTicket.ticketFare.airline',
                 'latestIssuedTicket.ticketFare.airlineClass.class',
@@ -1008,11 +1010,12 @@ class BookingController extends Controller
                 $validated['discount_value'] ?? 0
             );
             $booking->discount_amount = $discountAmount;
-            $booking->saveQuietly();
+            $booking->save();
 
             $discountedTotal = max(0, $booking->total_value - $discountAmount);
             $invoice->total_amount = $discountedTotal;
             $invoice->balance = $discountedTotal;
+            $invoice->audit_reason = 'booking_created';
             $invoice->save();
 
             $paymentAmount = (float) ($validated['payment']['amount'] ?? 0);
@@ -1412,7 +1415,7 @@ class BookingController extends Controller
             }
 
             $booking = $booking->fresh();
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'booking_updated');
 
             $discountType = $booking->discount_type;
             if ($discountType instanceof \BackedEnum) {
@@ -1499,7 +1502,7 @@ class BookingController extends Controller
             }
 
             $booking = $booking->fresh();
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'fingerprint_location_updated');
 
             return response()->json([
                 'success' => true,
@@ -1630,7 +1633,7 @@ class BookingController extends Controller
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();
 
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'passenger_added');
 
             $passenger = $passenger->fresh()->load('ticketFare');
 
@@ -1664,7 +1667,7 @@ class BookingController extends Controller
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();
 
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'passenger_removed');
 
             return response()->json([
                 'success' => true,
@@ -2013,7 +2016,7 @@ class BookingController extends Controller
         $passenger->update(['package_value' => $packageValue]);
         $booking = $passenger->booking->fresh();
 
-        $invoiceData = $this->syncBookingFinancials($booking);
+        $invoiceData = $this->syncBookingFinancials($booking, 'passenger_value_recalculated');
 
         return response()->json([
             'package_value' => $packageValue,

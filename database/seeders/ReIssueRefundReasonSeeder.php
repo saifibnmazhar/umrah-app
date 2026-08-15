@@ -10,16 +10,16 @@ class ReIssueRefundReasonSeeder extends Seeder
     public function run(): void
     {
         $reasons = [
-            ['name' => 'Voluntary Reissue', 'reason_of' => 're-issue'],
-            ['name' => 'Involuntary Reissue', 'reason_of' => 're-issue'],
-            ['name' => 'Voluntary Refund', 'reason_of' => 'refund'],
-            ['name' => 'Involuntary Refund', 'reason_of' => 'refund'],
-            ['name' => 'Schedule Change', 'reason_of' => 're-issue'],
-            ['name' => 'Mistake Reissue', 'reason_of' => 're-issue'],
-            ['name' => 'Mistake Refund', 'reason_of' => 'refund'],
-            ['name' => 'Sector Change Re-Issue', 'reason_of' => 're-issue'],
-            ['name' => 'Agent Change', 'reason_of' => 're-issue'],
-            ['name' => 'Additional Net Fare', 'reason_of' => 're-issue'],
+            ['name' => 'Voluntary Reissue', 'reason_of' => 're-issue', 'default_payment_by' => 'customer'],
+            ['name' => 'Involuntary Reissue', 'reason_of' => 're-issue', 'default_payment_by' => 'airline'],
+            ['name' => 'Voluntary Refund', 'reason_of' => 'refund', 'default_payment_by' => 'customer'],
+            ['name' => 'Involuntary Refund', 'reason_of' => 'refund', 'default_payment_by' => 'airline'],
+            ['name' => 'Schedule Change', 'reason_of' => 're-issue', 'default_payment_by' => 'airline'],
+            ['name' => 'Mistake Reissue', 'reason_of' => 're-issue', 'default_payment_by' => 'employee'],
+            ['name' => 'Mistake Refund', 'reason_of' => 'refund', 'default_payment_by' => 'employee'],
+            ['name' => 'Sector Change Re-Issue', 'reason_of' => 're-issue', 'default_payment_by' => null],
+            ['name' => 'Agent Change', 'reason_of' => 're-issue', 'default_payment_by' => null],
+            ['name' => 'Additional Net Fare', 'reason_of' => 're-issue', 'default_payment_by' => 'customer'],
         ];
 
         foreach ($reasons as $reason) {

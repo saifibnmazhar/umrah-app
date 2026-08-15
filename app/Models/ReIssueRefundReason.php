@@ -11,6 +11,7 @@ class ReIssueRefundReason extends Model
     protected $fillable = [
         'reason_of',
         'name',
+        'default_payment_by',
     ];
 
     protected $casts = [

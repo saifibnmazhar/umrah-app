@@ -55,8 +55,9 @@ class InvoiceService
         return $invoice->total_amount - $invoice->paid_amount;
     }
 
-    public function updateTotals(Invoice $invoice, float $newTotal): void
+    public function updateTotals(Invoice $invoice, float $newTotal, ?string $reason = null): void
     {
+        $invoice->audit_reason = $reason;
         $invoice->total_amount = $newTotal;
         $invoice->balance = max(0, $newTotal - $invoice->paid_amount);
 
