@@ -13,7 +13,7 @@ class FingerprintChargeSeeder extends Seeder
         $userId = DB::table('users')->value('id');
 
         foreach ($districts as $districtId) {
-            DB::table('fingerprint_charges')->insert([
+            DB::table('fingerprint_charges')->insertOrIgnore([
                 'district_id' => $districtId,
                 'user_id' => $userId,
                 'fingerprint_charge' => 1500.000000,

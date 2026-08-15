@@ -13,8 +13,8 @@ class CurrencyRateSeeder extends Seeder
         $admin = User::where('email', 'admin@example.com')->first();
 
         $rates = [
-            ['currency' => 'SAR', 'rate' => 1.0, 'user_id' => $admin?->id],
-            ['currency' => 'BDT', 'rate' => 31.50, 'user_id' => $admin?->id],
+            ['currency' => 'SAR', 'rate' => 1.00, 'user_id' => $admin?->id],
+            ['currency' => 'BDT', 'rate' => 1.00, 'user_id' => $admin?->id],
             ['currency' => 'USD', 'rate' => 0.85, 'user_id' => $admin?->id],
         ];
 

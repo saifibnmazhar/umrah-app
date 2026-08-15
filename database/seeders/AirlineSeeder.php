@@ -9,25 +9,10 @@ class AirlineSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('airlines')->insert([
-            [
-                'name' => 'Saudi Arabian Airlines',
-                'code' => 'SV',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Biman Bangladesh Airlines',
-                'code' => 'BG',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
-            [
-                'name' => 'Emirates',
-                'code' => 'EK',
-                'created_at' => now(),
-                'updated_at' => now(),
-            ],
+        DB::table('airlines')->insertOrIgnore([
+            ['name' => 'Saudi Arabian Airlines', 'code' => 'SV', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Biman Bangladesh Airlines', 'code' => 'BG', 'created_at' => now(), 'updated_at' => now()],
+            ['name' => 'Emirates', 'code' => 'EK', 'created_at' => now(), 'updated_at' => now()],
         ]);
     }
 }

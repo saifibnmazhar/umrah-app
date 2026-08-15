@@ -9,7 +9,7 @@ class DistrictSeeder extends Seeder
 {
     public function run(): void
     {
-        DB::table('districts')->insert([
+        DB::table('districts')->insertOrIgnore([
             [
                 'name' => 'Dhaka',
                 'division' => 'Dhaka',

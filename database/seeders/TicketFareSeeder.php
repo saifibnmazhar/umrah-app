@@ -10,31 +10,37 @@ class TicketFareSeeder extends Seeder
 {
     public function run(): void
     {
-        $routes = DB::table('routes')->pluck('id', 'airline_id')->toArray();
+        // Get the 3 most recently inserted routes for airlines SV, BG, EK
+        $svAirline = DB::table('airlines')->where('code', 'SV')->latest('id')->value('id');
+        $bgAirline = DB::table('airlines')->where('code', 'BG')->latest('id')->value('id');
 
-        $airlineClasses = DB::table('airline_classes')
-            ->select('airline_classes.id', 'classes.name')
-            ->join('classes', 'classes.id', '=', 'airline_classes.class_id')
-            ->whereIn('airline_classes.airline_id', [1, 2, 3])
-            ->whereIn('classes.name', ['Economy', 'Business'])
-            ->get();
+        $routes = DB::table('routes')
+            ->whereIn('airline_id', [$svAirline, $bgAirline])
+            ->orderBy('created_at', 'desc')
+            ->take(3)
+            ->pluck('id')
+            ->toArray();
 
-        $airlineClassMap = [];
-        foreach ($airlineClasses as $ac) {
-            if (! isset($airlineClassMap[$ac->name])) {
-                $airlineClassMap[$ac->name] = $ac->id;
-            }
+        if (count($routes) < 3) {
+            // Fallback: use any 3 existing routes
+            $routes = DB::table('routes')->orderBy('id')->take(3)->pluck('id')->toArray();
         }
 
-        $economyClassId = $airlineClassMap['Economy'] ?? $airlineClasses->first()?->id;
+        // Get an airline_classes_id for the airlines we'll use
+        $airlineClassIds = DB::table('airline_classes')
+            ->join('classes', 'classes.id', '=', 'airline_classes.class_id')
+            ->where('classes.name', 'Economy')
+            ->pluck('airline_classes.id')
+            ->toArray();
 
-        $routeIds = array_values($routes);
+        $economyClassId = $airlineClassIds[0] ?? null;
 
-        DB::table('ticket_fares')->insert([
+        // Use insertOrIgnore to avoid duplicate route_id conflicts
+        $fares = [
             [
-                'airline_id' => 1, // Saudi Arabian Airlines
+                'airline_id' => $svAirline,
                 'airline_classes_id' => $economyClassId,
-                'route_id' => $routeIds[0],
+                'route_id' => $routes[0],
                 'ticket_type' => TicketType::REGULAR->value,
                 'effective_from' => now()->subDays(30),
                 'effective_to' => now()->addDays(30),
@@ -50,9 +56,9 @@ class TicketFareSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'airline_id' => 2, // Biman Bangladesh Airlines
+                'airline_id' => $bgAirline,
                 'airline_classes_id' => $economyClassId,
-                'route_id' => $routeIds[1],
+                'route_id' => $routes[1],
                 'ticket_type' => TicketType::OFFER->value,
                 'effective_from' => now()->subDays(15),
                 'effective_to' => now()->addDays(15),
@@ -68,9 +74,9 @@ class TicketFareSeeder extends Seeder
                 'updated_at' => now(),
             ],
             [
-                'airline_id' => 3, // Emirates
+                'airline_id' => $svAirline,
                 'airline_classes_id' => $economyClassId,
-                'route_id' => $routeIds[2],
+                'route_id' => $routes[2],
                 'ticket_type' => TicketType::GROUP->value,
                 'effective_from' => now()->subDays(5),
                 'effective_to' => now()->addDays(60),
@@ -85,6 +91,14 @@ class TicketFareSeeder extends Seeder
                 'created_at' => now(),
                 'updated_at' => now(),
             ],
-        ]);
+        ];
+
+        foreach ($fares as $fare) {
+            // Avoid duplicates: check if a fare already exists for this route_id
+            $exists = DB::table('ticket_fares')->where('route_id', $fare['route_id'])->exists();
+            if (! $exists) {
+                DB::table('ticket_fares')->insert($fare);
+            }
+        }
     }
 }

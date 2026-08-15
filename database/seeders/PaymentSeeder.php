@@ -39,7 +39,6 @@ class PaymentSeeder extends Seeder
                     'payment_method' => PaymentMethod::CASH,
                     'amount' => $amount,
                     'bdt_amount' => $amount * 25, // approximate SAR to BDT conversion
-                    'currency' => 'BDT',
                     'currency_rate_id' => $booking->currency_rate_id,
                     'payment_date' => now(),
                     'notes' => 'Sample balance payment for booking #'.$booking->id,

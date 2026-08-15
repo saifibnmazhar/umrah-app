@@ -11,7 +11,7 @@ class VisaAgentSeeder extends Seeder
     {
         $userId = DB::table('users')->value('id');
 
-        DB::table('visa_agents')->insert([
+        DB::table('visa_agents')->insertOrIgnore([
             [
                 'name' => 'Global Visa Services',
                 'address' => 'House 15, Road 7, Dhaka, Bangladesh',
@@ -28,16 +28,20 @@ class VisaAgentSeeder extends Seeder
             ],
         ]);
 
-        $visaAgentIds = DB::table('visa_agents')->pluck('id')->toArray();
+        // Create visa agent costs only for agents that don't have one yet
+        $agentIds = DB::table('visa_agents')->pluck('id')->toArray();
+        $existingCostAgentIds = DB::table('visa_agent_costs')->pluck('visa_agent_id')->toArray();
 
-        foreach ($visaAgentIds as $agentId) {
-            DB::table('visa_agent_costs')->insert([
-                'visa_agent_id' => $agentId,
-                'user_id' => $userId,
-                'visa_agent_cost' => 1200.000000,
-                'created_at' => now(),
-                'updated_at' => now(),
-            ]);
+        foreach ($agentIds as $agentId) {
+            if (! in_array($agentId, $existingCostAgentIds)) {
+                DB::table('visa_agent_costs')->insert([
+                    'visa_agent_id' => $agentId,
+                    'user_id' => $userId,
+                    'visa_agent_cost' => 1200.000000,
+                    'created_at' => now(),
+                    'updated_at' => now(),
+                ]);
+            }
         }
     }
 }
