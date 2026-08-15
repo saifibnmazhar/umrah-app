@@ -151,7 +151,16 @@ class TicketRequestController extends Controller
         try {
             DB::beginTransaction();
 
-            $oldData = $issuedTicket->toArray();
+            if ($issuedTicket->status === 're-issued') {
+                $latestRe = $issuedTicket->latestReIssuedTicket;
+                $oldData = $latestRe ? $latestRe->toArray() : $issuedTicket->toArray();
+                $oldData['log_source'] = 're_issued_tickets';
+                $oldData['re_issued_ticket_id'] = $latestRe?->id;
+            } else {
+                $oldData = $issuedTicket->toArray();
+                $oldData['log_source'] = 'issued_tickets';
+                $oldData['issued_ticket_id'] = $issuedTicket->id;
+            }
 
             $reIssueData = [
                 'user_id' => auth()->id(),
@@ -192,7 +201,12 @@ class TicketRequestController extends Controller
 
             $reIssuedTicket = ReIssuedTicket::create($reIssueData);
             $issuedTicket->update(['status' => 're-issued']);
-            $issuedTicket->logAction('re-issued', $oldData, $issuedTicket->toArray());
+
+            $newData = $reIssuedTicket->toArray();
+            $newData['log_source'] = 're_issued_tickets';
+            $newData['re_issued_ticket_id'] = $reIssuedTicket->id;
+
+            $issuedTicket->logAction('re-issued', $oldData, $newData);
 
             $ticketRequest->update([
                 'status' => 'processed',
@@ -290,10 +304,15 @@ class TicketRequestController extends Controller
             return response()->json(['message' => 'This request has already been processed.'], 400);
         }
 
+        $issuedTicket = $ticketRequest->issuedTicket;
+        if (! $issuedTicket) {
+            return response()->json(['message' => 'Issued ticket not found.'], 404);
+        }
+
         $validated = $request->validate([
             'reason_id' => 'required|exists:re_issue_refund_reasons,id',
-            'iata_refund' => 'required|numeric|min:0',
-            'customer_refund' => 'required|numeric|min:0',
+            'iata_refund' => 'required|numeric|min:0|max:'.(float) $issuedTicket->net_fare,
+            'customer_refund' => 'required|numeric|min:0|max:'.(float) $issuedTicket->net_fare,
             'service_charge' => 'required|numeric',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee',
@@ -302,11 +321,6 @@ class TicketRequestController extends Controller
             'branch' => 'nullable|string|max:255',
         ]);
 
-        $issuedTicket = $ticketRequest->issuedTicket;
-        if (! $issuedTicket) {
-            return response()->json(['message' => 'Issued ticket not found.'], 404);
-        }
-
         if (! in_array($issuedTicket->status, ['issued', 're-issued'])) {
             return response()->json(['message' => 'This ticket cannot be refunded.'], 400);
         }
@@ -314,7 +328,16 @@ class TicketRequestController extends Controller
         try {
             DB::beginTransaction();
 
-            $oldData = $issuedTicket->toArray();
+            if ($issuedTicket->status === 're-issued') {
+                $latestRe = $issuedTicket->latestReIssuedTicket;
+                $oldData = $latestRe ? $latestRe->toArray() : $issuedTicket->toArray();
+                $oldData['log_source'] = 're_issued_tickets';
+                $oldData['re_issued_ticket_id'] = $latestRe?->id;
+            } else {
+                $oldData = $issuedTicket->toArray();
+                $oldData['log_source'] = 'issued_tickets';
+                $oldData['issued_ticket_id'] = $issuedTicket->id;
+            }
 
             $refundData = [
                 'user_id' => auth()->id(),
@@ -346,7 +369,12 @@ class TicketRequestController extends Controller
             $refundedTicket = RefundedTicket::create($refundData);
             $ticketRequest->passenger?->increaseRefundPayable((float) $validated['customer_refund']);
             $issuedTicket->update(['status' => 'refunded']);
-            $issuedTicket->logAction('refunded', $oldData, $issuedTicket->toArray());
+
+            $newData = $refundedTicket->toArray();
+            $newData['log_source'] = 'refunded_tickets';
+            $newData['refunded_ticket_id'] = $refundedTicket->id;
+
+            $issuedTicket->logAction('refunded', $oldData, $newData);
 
             $ticketRequest->update([
                 'status' => 'processed',

@@ -323,6 +323,51 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
         })() : '',
         'route_type' => $lit->ticketFare?->route?->route_type?->value,
+        'latest_re_issued_ticket' => ($lrt = $lit->latestReIssuedTicket) ? [
+            'id' => $lrt->id,
+            'ticket_number' => $lrt->ticket_number ?? '',
+            'pnr' => $lrt->pnr ?? '',
+            're_issue_date' => $lrt->re_issue_date?->format('Y-m-d') ?? '',
+            'inbound_date' => $lrt->inbound_date?->format('Y-m-d') ?? '',
+            'outbound_date' => $lrt->outbound_date?->format('Y-m-d') ?? '',
+            'selling_fare' => (float)($lrt->selling_fare ?? 0),
+            'net_fare' => (float)($lrt->net_fare ?? 0),
+            'offer_price' => (float)($lrt->offer_price ?? 0),
+            'is_refundable' => $lrt->is_refundable ?? false,
+            'is_exchangeable' => $lrt->is_exchangeable ?? false,
+            'baggage_inbound' => $lrt->baggage_inbound ?? '',
+            'baggage_outbound' => $lrt->baggage_outbound ?? '',
+            'ticket_agent_id' => $lrt->ticket_agent_id,
+            'ticket_agent_name' => $lrt->ticketAgent?->name ?? '',
+            'ticket_fare_id' => $lrt->ticket_fare_id,
+            'group_ticket_id' => $lrt->group_ticket_id,
+            'reason_id' => $lrt->reason_id,
+            're_issue_charge' => (float)($lrt->re_issue_charge ?? 0),
+            'fare_difference' => (float)($lrt->fare_difference ?? 0),
+            'other_costs' => (float)($lrt->other_costs ?? 0),
+            'service_charge' => (float)($lrt->service_charge ?? 0),
+            'payment_by' => $lrt->payment_by,
+            'payment_option' => $lrt->payment_option?->value,
+            'refund_adjustment_amount' => (float)($lrt->refund_adjustment_amount ?? 0),
+            'total_customer_payment' => (float)($lrt->total_customer_payment ?? 0),
+            'remarks' => $lrt->remarks ?? '',
+            'ticket_type' => $lrt->ticketFare?->ticket_type?->value ?? '',
+            'route_type' => $lrt->ticketFare?->route?->route_type?->value ?? '',
+            'flight_type' => $lrt->ticketFare?->route?->flight_type?->value ?? '',
+            'airline' => $lrt->ticketFare?->airline?->name ?? '',
+            'travel_class' => $lrt->ticketFare?->airlineClass?->class?->name ?? '',
+            'route' => $lrt->ticketFare?->route ? (function() use ($lrt) {
+                $r = $lrt->ticketFare->route;
+                $rt = $r->route_type?->value;
+                if ($rt === 'multi_city') {
+                    return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                }
+                $from = $r->fromCity?->code ?? '?';
+                $to = $r->toCity?->code ?? '?';
+                $return = $r->returnCity?->code ?? '';
+                return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+            })() : '',
+        ] : null,
     ] : null,
 
     'all_issued_tickets' => $p->allIssuedTickets->map(fn($t) => [
@@ -360,6 +405,51 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'route_type' => $t->ticketFare?->route?->route_type?->value,
         'ticket_agent_name' => $t->ticketAgent?->name ?? '',
         'issuer_name' => $t->issuer?->name ?? '',
+        'latest_re_issued_ticket' => ($lrt = $t->latestReIssuedTicket) ? [
+            'id' => $lrt->id,
+            'ticket_number' => $lrt->ticket_number ?? '',
+            'pnr' => $lrt->pnr ?? '',
+            're_issue_date' => $lrt->re_issue_date?->format('Y-m-d') ?? '',
+            'inbound_date' => $lrt->inbound_date?->format('Y-m-d') ?? '',
+            'outbound_date' => $lrt->outbound_date?->format('Y-m-d') ?? '',
+            'selling_fare' => (float)($lrt->selling_fare ?? 0),
+            'net_fare' => (float)($lrt->net_fare ?? 0),
+            'offer_price' => (float)($lrt->offer_price ?? 0),
+            'is_refundable' => $lrt->is_refundable ?? false,
+            'is_exchangeable' => $lrt->is_exchangeable ?? false,
+            'baggage_inbound' => $lrt->baggage_inbound ?? '',
+            'baggage_outbound' => $lrt->baggage_outbound ?? '',
+            'ticket_agent_id' => $lrt->ticket_agent_id,
+            'ticket_agent_name' => $lrt->ticketAgent?->name ?? '',
+            'ticket_fare_id' => $lrt->ticket_fare_id,
+            'group_ticket_id' => $lrt->group_ticket_id,
+            'reason_id' => $lrt->reason_id,
+            're_issue_charge' => (float)($lrt->re_issue_charge ?? 0),
+            'fare_difference' => (float)($lrt->fare_difference ?? 0),
+            'other_costs' => (float)($lrt->other_costs ?? 0),
+            'service_charge' => (float)($lrt->service_charge ?? 0),
+            'payment_by' => $lrt->payment_by,
+            'payment_option' => $lrt->payment_option?->value,
+            'refund_adjustment_amount' => (float)($lrt->refund_adjustment_amount ?? 0),
+            'total_customer_payment' => (float)($lrt->total_customer_payment ?? 0),
+            'remarks' => $lrt->remarks ?? '',
+            'ticket_type' => $lrt->ticketFare?->ticket_type?->value ?? '',
+            'route_type' => $lrt->ticketFare?->route?->route_type?->value ?? '',
+            'flight_type' => $lrt->ticketFare?->route?->flight_type?->value ?? '',
+            'airline' => $lrt->ticketFare?->airline?->name ?? '',
+            'travel_class' => $lrt->ticketFare?->airlineClass?->class?->name ?? '',
+            'route' => $lrt->ticketFare?->route ? (function() use ($lrt) {
+                $r = $lrt->ticketFare->route;
+                $rt = $r->route_type?->value;
+                if ($rt === 'multi_city') {
+                    return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                }
+                $from = $r->fromCity?->code ?? '?';
+                $to = $r->toCity?->code ?? '?';
+                $return = $r->returnCity?->code ?? '';
+                return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+            })() : '',
+        ] : null,
         'reason' => match ($t->status) {
             're-issued' => $t->reIssuedTickets->sortByDesc('id')->first()?->reason?->name ?? null,
             'refunded'  => $t->refundedTickets->sortByDesc('id')->first()?->reason?->name ?? null,
@@ -1655,7 +1745,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                                 <template x-if="ticket.status === 'issued' || ticket.status === 're-issued'">
                                                     <button type="button" @click="ticket.issue_type === 'pending_outbound' ? openOutboundEditTicketFareModal(ticketInfoPassengerIndex) : openTicketFareModal(ticketInfoPassengerIndex, ticket)" class="px-3 py-1 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition">Edit</button>
                                                 </template>
-                                                <template x-if="ticket.status === 'issued' || ticket.status === 'refunded'">
+                                                <template x-if="ticket.status === 'issued' || ticket.status === 'refunded' || ticket.status === 're-issued'">
                                                     <button type="button" @click="openReIssueModal(ticketInfoPassengerIndex, ticket)" class="px-3 py-1 text-xs font-medium text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition">Re-Issue</button>
                                                 </template>
                                                 <template x-if="ticket.status === 'issued' || ticket.status === 're-issued'">
@@ -1738,13 +1828,13 @@ if ($passenger->ticket_fare_inbound_id) {
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (SAR) *</label>
-                                <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund"
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund" :max="refundForm.net_fare"
                                        @input="handleRefundSarInput('iata_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (BDT) *</label>
-                                <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund_bdt"
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund_bdt" :max="refundForm.net_fare_bdt"
                                        @input="handleRefundBdtInput('iata_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                                 <input type="number" x-model.number="refundForm.iata_refund" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
@@ -1753,13 +1843,13 @@ if ($passenger->ticket_fare_inbound_id) {
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (SAR) *</label>
-                                <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund"
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund" :max="refundForm.net_fare"
                                        @input="handleRefundSarInput('customer_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (BDT) *</label>
-                                <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund_bdt"
+                                <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund_bdt" :max="refundForm.net_fare_bdt"
                                        @input="handleRefundBdtInput('customer_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                                 <input type="number" x-model.number="refundForm.customer_refund" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
@@ -4504,6 +4594,7 @@ function bookingIndexApp() {
 
             const lit = ticket || row.latest_issued_ticket;
             const isAlreadyIssued = lit && (lit.status === 'issued' || lit.status === 're-issued');
+            const src = (lit && lit.status === 're-issued' && lit.latest_re_issued_ticket) ? lit.latest_re_issued_ticket : lit;
             this.ticketFareModalTitle = isAlreadyIssued ? 'Edit Ticket' : 'Issue Ticket';
 
             this.ticketFareForm.isOutboundMode = false;
@@ -4519,28 +4610,30 @@ function bookingIndexApp() {
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
 
             if (lit) {
-                this.ticketFareForm.ticket_number = lit.ticket_number || '';
-                this.ticketFareForm.pnr = lit.pnr || '';
-                this.ticketFareForm.ticket_agent = lit.ticket_agent_name || '';
-                this.ticketFareForm.date = this.formatToDDMMMYY(lit.issued_date) || today;
-                this.ticketFareForm.inbound_date = this.formatToDDMMMYY(lit.inbound_date) || '';
-                this.ticketFareForm.outbound_date = this.formatToDDMMMYY(lit.outbound_date) || '';
-                this.ticketFareForm.selling_fare = lit.selling_fare || 0;
-                this.ticketFareForm.net_fare = lit.net_fare || 0;
-                this.ticketFareForm.offer_price = lit.offer_price || 0;
-                this.ticketFareForm.non_refundable = !lit.is_refundable;
-                this.ticketFareForm.non_exchangeable = !lit.is_exchangeable;
-                this.ticketFareForm.baggage_inbound = lit.baggage_inbound || '';
-                this.ticketFareForm.baggage_outbound = lit.baggage_outbound || '';
-                this.ticketFareForm.outbound_pending = lit.outbound_pending || false;
-                this.ticketFareForm.ticket_type = row.ticket_fare?.ticket_type || '';
-                this.ticketFareForm.route_type = lit.route_type ? (
-                    lit.route_type === 'oneway_inbound' ? 'One Way-Inbound' :
-                    lit.route_type === 'oneway_outbound' ? 'One Way-Outbound' :
-                    lit.route_type === 'round' ? 'Round' :
-                    lit.route_type === 'multi_city' ? 'Multi City' : ''
+                this.ticketFareForm.ticket_number = src.ticket_number || '';
+                this.ticketFareForm.pnr = src.pnr || '';
+                this.ticketFareForm.ticket_agent = src.ticket_agent_name || '';
+                this.ticketFareForm.date = this.formatToDDMMMYY(src.re_issue_date || src.issued_date) || today;
+                this.ticketFareForm.inbound_date = this.formatToDDMMMYY(src.inbound_date) || '';
+                this.ticketFareForm.outbound_date = this.formatToDDMMMYY(src.outbound_date) || '';
+                this.ticketFareForm.selling_fare = src.selling_fare || 0;
+                this.ticketFareForm.net_fare = src.net_fare || 0;
+                this.ticketFareForm.offer_price = src.offer_price || 0;
+                this.ticketFareForm.non_refundable = !src.is_refundable;
+                this.ticketFareForm.non_exchangeable = !src.is_exchangeable;
+                this.ticketFareForm.baggage_inbound = src.baggage_inbound || '';
+                this.ticketFareForm.baggage_outbound = src.baggage_outbound || '';
+                this.ticketFareForm.outbound_pending = src.outbound_pending || false;
+                this.ticketFareForm.ticket_type = src.ticket_type || row.ticket_fare?.ticket_type || '';
+                this.ticketFareForm.route_type = src.route_type ? (
+                    src.route_type === 'oneway_inbound' ? 'One Way-Inbound' :
+                    src.route_type === 'oneway_outbound' ? 'One Way-Outbound' :
+                    src.route_type === 'round' ? 'Round' :
+                    src.route_type === 'multi_city' ? 'Multi City' : ''
                 ) : (row.ticket_fare?.route_type || '');
-                this.ticketFareForm.flight_type = row.ticket_fare?.flight_type || '';
+                this.ticketFareForm.flight_type = src.flight_type ? (
+                    src.flight_type === 'direct' ? 'Direct' : 'Transit'
+                ) : (row.ticket_fare?.flight_type || '');
                 this.ticketFareForm.route_id = row.ticket_fare?.route_id || '';
                 this.ticketFareForm.airline_id = row.ticket_fare?.airline_id || '';
                 const r1 = window.__currencyRate || 0;
@@ -4602,7 +4695,7 @@ function bookingIndexApp() {
             this.handleTicketTypeChange();
 
             const fareId = isAlreadyIssued
-                ? (ticket || row.latest_issued_ticket)?.ticket_fare_id
+                ? (src?.ticket_fare_id)
                 : row.ticket_fare?.ticket_fare_id;
             if (fareId) {
                 const opt = this.filteredTicketOptions.find(o => o.value == fareId);
@@ -4776,6 +4869,8 @@ function bookingIndexApp() {
             if (!row || !ticket) return;
 
             const isOutbound = ticket.issue_type === 'pending_outbound';
+            const re = (ticket.status === 're-issued' && ticket.latest_re_issued_ticket) ? ticket.latest_re_issued_ticket : null;
+            const fareSrc = re || ticket;
 
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
 
@@ -4784,13 +4879,13 @@ function bookingIndexApp() {
             this.reIssueForm.passenger_id = row.id;
             this.reIssueForm.booking_id = row.booking_id;
 
-            this.reIssueForm.selling_fare = ticket.selling_fare || 0;
-            this.reIssueForm.net_fare = ticket.net_fare || 0;
-            this.reIssueForm.offer_price = ticket.offer_price || 0;
+            this.reIssueForm.selling_fare = fareSrc.selling_fare || 0;
+            this.reIssueForm.net_fare = fareSrc.net_fare || 0;
+            this.reIssueForm.offer_price = fareSrc.offer_price || 0;
             this.reIssueOriginalFares = {
-                selling_fare: ticket.selling_fare || 0,
-                net_fare: ticket.net_fare || 0,
-                offer_price: ticket.offer_price || 0,
+                selling_fare: fareSrc.selling_fare || 0,
+                net_fare: fareSrc.net_fare || 0,
+                offer_price: fareSrc.offer_price || 0,
             };
 
             this.reIssueForm.ticket_type = '';
@@ -4837,14 +4932,50 @@ function bookingIndexApp() {
             this.reIssueForm.refund_adjustment_amount_bdt = '';
             this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0);
 
+            if (re) {
+                this.reIssueForm.selling_fare = re.selling_fare || 0;
+                this.reIssueForm.net_fare = re.net_fare || 0;
+                this.reIssueForm.offer_price = re.offer_price || 0;
+                this.reIssueOriginalFares = {
+                    selling_fare: re.selling_fare || 0,
+                    net_fare: re.net_fare || 0,
+                    offer_price: re.offer_price || 0,
+                };
+                this.reIssueForm.ticket_type = re.ticket_type || '';
+                this.reIssueForm.route_type = re.route_type ? (
+                    re.route_type === 'oneway_inbound' ? 'One Way-Inbound' :
+                    re.route_type === 'oneway_outbound' ? 'One Way-Outbound' :
+                    re.route_type === 'round' ? 'Round' :
+                    re.route_type === 'multi_city' ? 'Multi City' : ''
+                ) : this.reIssueForm.route_type;
+                this.reIssueForm.flight_type = re.flight_type ? (
+                    re.flight_type === 'direct' ? 'Direct' : 'Transit'
+                ) : '';
+                this.reIssueForm.ticket_option = re.ticket_fare_id ? String(re.ticket_fare_id) : '';
+                this.reIssueForm.group_ticket_id = re.group_ticket_id || '';
+                this.reIssueForm.ticket_number = re.ticket_number || '';
+                this.reIssueForm.pnr = re.pnr || '';
+                this.reIssueForm.date = this.formatToDDMMMYY(re.re_issue_date) || today;
+                this.reIssueForm.ticket_agent_id = re.ticket_agent_id || '';
+                this.reIssueForm.inbound_date = this.formatToDDMMMYY(re.inbound_date) || '';
+                this.reIssueForm.outbound_date = this.formatToDDMMMYY(re.outbound_date) || '';
+                this.reIssueForm.route = re.route || '';
+                this.reIssueForm.airline = re.airline || '';
+                this.reIssueForm.travel_class = re.travel_class || '';
+                this.reIssueForm.baggage_inbound = re.baggage_inbound || '';
+                this.reIssueForm.baggage_outbound = re.baggage_outbound || '';
+                this.reIssueForm.non_refundable = !re.is_refundable;
+                this.reIssueForm.non_exchangeable = !re.is_exchangeable;
+            }
+
             const rate = window.__currencyRate || 0;
             if (rate > 0) {
-                this.reIssueForm.selling_fare_bdt = Math.round(ticket.selling_fare * rate);
-                this.reIssueForm.net_fare_bdt = Math.round(ticket.net_fare * rate);
-                this.reIssueForm.offer_price_bdt = Math.round(ticket.offer_price * rate);
-                this.reIssueOriginalFares.selling_fare_bdt = Math.round(ticket.selling_fare * rate);
-                this.reIssueOriginalFares.net_fare_bdt = Math.round(ticket.net_fare * rate);
-                this.reIssueOriginalFares.offer_price_bdt = Math.round(ticket.offer_price * rate);
+                this.reIssueForm.selling_fare_bdt = Math.round(fareSrc.selling_fare * rate);
+                this.reIssueForm.net_fare_bdt = Math.round(fareSrc.net_fare * rate);
+                this.reIssueForm.offer_price_bdt = Math.round(fareSrc.offer_price * rate);
+                this.reIssueOriginalFares.selling_fare_bdt = Math.round(fareSrc.selling_fare * rate);
+                this.reIssueOriginalFares.net_fare_bdt = Math.round(fareSrc.net_fare * rate);
+                this.reIssueOriginalFares.offer_price_bdt = Math.round(fareSrc.offer_price * rate);
             }
 
             this.recalcReIssueTotals();
@@ -4961,6 +5092,12 @@ function bookingIndexApp() {
 
             if (!f.reason_id) {
                 f.errors.reason_id = 'Please select a reason.';
+                return;
+            }
+
+            if ((parseFloat(f.iata_refund) || 0) > (parseFloat(f.net_fare) || 0)
+                || (parseFloat(f.customer_refund) || 0) > (parseFloat(f.net_fare) || 0)) {
+                this.showToast('Refund amounts cannot exceed the net fare.', 'error');
                 return;
             }
 
@@ -5359,6 +5496,12 @@ function bookingIndexApp() {
             .then(res => res.json())
             .then(data => {
                 if (data.success) {
+                    if (data.re_issued_ticket) {
+                        this.showToast('Ticket updated successfully.');
+                        this.closeTicketFareModal();
+                        setTimeout(() => location.reload(), 600);
+                        return;
+                    }
                     if (!this.ticketFareForm.isOutboundMode) {
                         row.ticket_status = 'issued';
                     }

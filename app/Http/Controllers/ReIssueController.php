@@ -68,14 +68,23 @@ class ReIssueController extends Controller
             return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
         }
 
-        if (! in_array($issuedTicket->status, ['issued', 'refunded'])) {
+        if (! in_array($issuedTicket->status, ['issued', 'refunded', 're-issued'])) {
             return response()->json(['message' => 'This ticket cannot be re-issued.'], 400);
         }
 
         try {
             DB::beginTransaction();
 
-            $oldData = $issuedTicket->toArray();
+            if ($issuedTicket->status === 're-issued') {
+                $latestRe = $issuedTicket->latestReIssuedTicket;
+                $oldData = $latestRe ? $latestRe->toArray() : $issuedTicket->toArray();
+                $oldData['log_source'] = 're_issued_tickets';
+                $oldData['re_issued_ticket_id'] = $latestRe?->id;
+            } else {
+                $oldData = $issuedTicket->toArray();
+                $oldData['log_source'] = 'issued_tickets';
+                $oldData['issued_ticket_id'] = $issuedTicket->id;
+            }
 
             $reIssueData = array_merge($validated, [
                 'user_id' => auth()->id(),
@@ -98,7 +107,11 @@ class ReIssueController extends Controller
 
             $issuedTicket->update(['status' => 're-issued']);
 
-            $issuedTicket->logAction('re-issued', $oldData, $issuedTicket->toArray());
+            $newData = $reIssuedTicket->toArray();
+            $newData['log_source'] = 're_issued_tickets';
+            $newData['re_issued_ticket_id'] = $reIssuedTicket->id;
+
+            $issuedTicket->logAction('re-issued', $oldData, $newData);
 
             if (($validated['payment_by'] ?? null) === 'customer') {
                 $totalCost = (float) $validated['re_issue_charge']
