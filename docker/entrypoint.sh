@@ -8,7 +8,9 @@ mkdir -p \
     storage/framework/cache/data \
     storage/framework/sessions \
     storage/framework/views \
-    storage/app/public
+    storage/app/public \
+    storage/app/tmp \
+    storage/app/private
 chown -R www-data:www-data storage bootstrap/cache
 
 php artisan config:cache --no-interaction || true

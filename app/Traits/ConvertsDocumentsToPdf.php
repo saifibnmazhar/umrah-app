@@ -10,6 +10,10 @@ trait ConvertsDocumentsToPdf
 {
     private function convertToPdf(string $filePath, string $outputPath): string
     {
+        $outputDir = dirname($outputPath);
+        if (! is_dir($outputDir)) {
+            mkdir($outputDir, 0755, true);
+        }
         $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         if ($ext === 'pdf') {
@@ -50,6 +54,10 @@ trait ConvertsDocumentsToPdf
 
     private function mergePdfs(array $pdfFiles, string $outputPath): void
     {
+        $outputDir = dirname($outputPath);
+        if (! is_dir($outputDir)) {
+            mkdir($outputDir, 0755, true);
+        }
         $pdf = new Fpdi;
 
         foreach ($pdfFiles as $file) {
