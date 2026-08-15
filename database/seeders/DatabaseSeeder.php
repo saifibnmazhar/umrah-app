@@ -19,6 +19,19 @@ class DatabaseSeeder extends Seeder
             TransactionTypeSeeder::class,
             UserSeeder::class,
             PassengerStatusSeeder::class,
+
+            BranchSeeder::class,
+            DistrictSeeder::class,
+            CurrencyRateSeeder::class,
+            CustomerSeeder::class,
+
+            AirlineSeeder::class,
+            RouteSeeder::class,
+            TicketFareSeeder::class,
+
+            PackageSeeder::class,
+            FingerprintChargeSeeder::class,
+            VisaAgentSeeder::class,
         ]);
     }
 }
