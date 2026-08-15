@@ -649,6 +649,14 @@ class BookingController extends Controller
         $preSelectedPackageId = null;
 
         $user = auth()->user();
+
+        // Safety: if the authenticated user's session was lost behind the
+        // Cloudflare proxy (auth middleware passed but user() is null),
+        // redirect to login instead of crashing on $user->branch.
+        if (! $user) {
+            return redirect()->route('login');
+        }
+
         $userBranch = $user->branch;
         $bookingBranches = ! $userBranch ? Branch::orderBy('name')->get(['id', 'name']) : collect();
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get(['id', 'name']);
