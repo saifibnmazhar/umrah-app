@@ -832,7 +832,7 @@ function confirmProcess() {
         ticket_agent_id: document.getElementById('inputAgent').value || null,
         remarks: document.getElementById('inputRemarks').value || null,
         payment_by: document.getElementById('inputPaymentBy').value || null,
-        payment_option: document.getElementById('inputPaymentBy').value === 'customer' ? document.getElementById('inputPaymentOption').value : null,
+        payment_option: document.getElementById('inputPaymentBy').value === 'customer' ? document.getElementById('inputPaymentOption').value : undefined,
         refund_adjustment_amount: document.getElementById('inputPaymentBy').value === 'customer' && document.getElementById('inputPaymentOption').value === 'refund_adjustment' ? (parseFloat(document.getElementById('inputRefundAdjustment').value) || 0) : 0,
         selling_fare: parseFloat(document.getElementById('inputSellingFare').value) || null,
         net_fare: parseFloat(document.getElementById('inputNetFare').value) || null,

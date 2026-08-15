@@ -50,7 +50,7 @@ class ReIssueController extends Controller
             'total_customer_payment' => 'required_if:payment_by,customer|numeric|min:0',
             'remarks' => 'nullable|string',
             'payment_by' => 'nullable|in:customer,airline,employee',
-            'payment_option' => 'required_if:payment_by,customer|in:customer_payment,refund_adjustment',
+            'payment_option' => 'nullable|required_if:payment_by,customer|in:customer_payment,refund_adjustment',
             'refund_adjustment_amount' => [
                 Rule::requiredIf(function () use ($request) {
                     return $request->input('payment_by') === 'customer'

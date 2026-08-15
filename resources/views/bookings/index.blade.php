@@ -5293,7 +5293,7 @@ function bookingIndexApp() {
                 total_customer_payment: form.total_payment || 0,
                 remarks: form.remarks,
                 payment_by: form.payment_by,
-                payment_option: form.payment_by === 'customer' ? form.payment_option : null,
+                payment_option: form.payment_by === 'customer' ? form.payment_option : undefined,
                 refund_adjustment_amount: form.payment_by === 'customer' && form.payment_option === 'refund_adjustment' ? (parseFloat(form.refund_adjustment_amount) || 0) : 0,
             };
 
