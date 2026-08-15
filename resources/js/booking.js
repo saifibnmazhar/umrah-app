@@ -1013,9 +1013,9 @@ Alpine.data('createBookingApp', () => ({
                 const mode = Alpine.store('currency').mode;
                 const rate = Alpine.store('currency').rate;
                 if (mode === 'BDT' && rate > 0) {
-                    this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+                    this.bookingData.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
                 } else {
-                    this.discountValueBdt = '';
+                    this.bookingData.discountValueBdt = '';
                 }
             }
         });
@@ -2265,9 +2265,9 @@ Alpine.data('createBookingApp', () => ({
         const mode = Alpine.store('currency').mode;
         const rate = Alpine.store('currency').rate;
         if (mode === 'BDT' && rate > 0) {
-            this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+            this.bookingData.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
         } else {
-            this.discountValueBdt = '';
+            this.bookingData.discountValueBdt = '';
         }
         this.discountModalVisible = true;
     },
@@ -2737,9 +2737,9 @@ Alpine.data('editBookingApp', () => ({
                 const mode = Alpine.store('currency').mode;
                 const rate = Alpine.store('currency').rate;
                 if (mode === 'BDT' && rate > 0) {
-                    this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+                    this.bookingData.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
                 } else {
-                    this.discountValueBdt = '';
+                    this.bookingData.discountValueBdt = '';
                 }
             }
         });
@@ -3465,9 +3465,9 @@ Alpine.data('editBookingApp', () => ({
         const mode = Alpine.store('currency').mode;
         const rate = Alpine.store('currency').rate;
         if (mode === 'BDT' && rate > 0) {
-            this.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
+            this.bookingData.discountValueBdt = Math.round(this.bookingData.discount_value * rate * 100) / 100;
         } else {
-            this.discountValueBdt = '';
+            this.bookingData.discountValueBdt = '';
         }
         this.discountModalVisible = true;
     },

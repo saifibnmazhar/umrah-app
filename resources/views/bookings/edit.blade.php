@@ -252,7 +252,7 @@
             <div class="mb-4">
                 <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
                 <select x-model="bookingData.discount_type" id="discountType" name="discount_type"
-                    @change="discountValueBdt = ''; bookingData.discount_value = 0"
+                    @change="bookingData.discountValueBdt = ''; bookingData.discount_value = 0"
                     class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                     <option value="fixed">Fixed</option>
                     <option value="percentage">Percentage (%)</option>
@@ -262,9 +262,9 @@
             <div x-show="bookingData.discount_type === 'fixed'" class="mb-4">
                 <div x-show="$store.currency.mode === 'BDT'" class="mb-3">
                     <label class="block text-sm font-medium text-slate-600 mb-1">Fixed (BDT)</label>
-                    <input type="number" x-model="discountValueBdt"
+                    <input type="number" x-model="bookingData.discountValueBdt"
                         min="0" step="0.01"
-                        @input="bookingData.discount_value = parseFloat(((parseFloat(discountValueBdt) || 0) / ($store.currency.rate || 1)).toFixed(6))"
+                        @input="bookingData.discount_value = parseFloat(((parseFloat(bookingData.discountValueBdt) || 0) / ($store.currency.rate || 1)).toFixed(6))"
                         class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                 </div>
                 <div>
@@ -273,7 +273,7 @@
                         min="0" step="any"
                         :readonly="$store.currency.mode === 'BDT'"
                         :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}"
-                        @input="if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { discountValueBdt = Math.round((parseFloat($event.target.value) || 0) * $store.currency.rate * 100) / 100; }"
+                        @input="if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { bookingData.discountValueBdt = Math.round((parseFloat($event.target.value) || 0) * $store.currency.rate * 100) / 100; }"
                         class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                 </div>
             </div>
@@ -288,7 +288,7 @@
 
             <div class="flex gap-3 pt-4 border-t border-slate-200">
                 <button type="button" @click="closeDiscountModal()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Apply</button>
-                <button type="button" @click="discountValueBdt = ''; closeDiscountModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+                <button type="button" @click="bookingData.discountValueBdt = ''; closeDiscountModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </div>
     </div>
