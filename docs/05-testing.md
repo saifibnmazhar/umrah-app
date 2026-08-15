@@ -158,15 +158,45 @@ $user = User::factory()->create();
 $this->actingAs($user)->get('/protected-route');
 ```
 
+**Note:** Always use `actingAs($user)` instead of `withoutMiddleware()` for tests that exercise
+controller logic. `withoutMiddleware()` bypasses auth, but `auth()->user()` still returns `null`
+inside controllers, causing null pointer errors to be caught by try/catch and returned as non-422
+redirects — producing false positives.
+
+### File Upload Testing
+
+For testing file uploads, fake the storage disks and use `UploadedFile::fake()`:
+
+```php
+protected function setUp(): void
+{
+    parent::setUp();
+    Storage::fake('public');  // for files stored with ->store(..., 'public')
+    Storage::fake('local');   // for files stored with ->store() (default disk)
+}
+
+$file = UploadedFile::fake()->create('doc.pdf', 100, 'application/pdf');
+$payload['booking_customer_docs'] = [$file];
+```
+
+Validation `max:5120` means files must be ≤ 5120 KB. To test rejection, create a file
+200 KB over the limit (e.g., `5120 + 200`). To test acceptance, use a file under the limit
+(e.g., `4000` KB).
+
 ## Existing Test Patterns
 
 - **`BookingEditPackagePreloadTest`** — Tests that Blade views render correctly
   with preloaded package IDs. Uses `RefreshDatabase`, manual `Schema::create()`,
   and `view()->render()` to check HTML output.
-- **`ExampleTest`** — Basic smoke test that the homepage loads.
-
-When writing new tests, follow the style of `BookingEditPackagePreloadTest`
-for view tests, or `ExampleTest` for simple HTTP smoke tests.
+- **`SeedDocumentDataTest`** — Tests that seeders create documents linked to
+  bookings, customers, and passengers via morphMany. Checks file_path length limits
+  and owner validity.
+- **`BookingMultiUploadTest`** — Tests multi-file upload validation (accept multiple
+  files, reject oversized files, accept at-limit files). Sets up full prerequisites
+  (branch, customer, package, ticket fare, route chain) for booking creation.
+- **`FlightDateGapSeedTest`** — Tests seed data creates flight date gap options
+  (7, 10, 14, 30 days) for passenger creation forms.
+- **`BookingFormSubmissionWorkflowTest`** — Full booking form submission workflow tests.
 
 ## Creating New Tests
 

@@ -93,6 +93,46 @@ php artisan tinker
 >>> \App\Models\User::count()
 ```
 
+## Seeding Sample Data
+
+The project includes seeders that populate the database with sample data
+for bookings, passengers, documents, invoices, payments, visa submissions,
+fingerprints, and flight date gaps.
+
+```bash
+# Run all seeders
+php artisan db:seed
+
+# Run a specific seeder
+php artisan db:seed --class=BookingSeeder
+
+# Truncate + re-seed (when encountering duplicate entry errors)
+php artisan tinker
+>>> DB::statement('SET FOREIGN_KEY_CHECKS=0');
+>>> DB::table('bookings')->truncate();  // + other tables
+>>> DB::statement('SET FOREIGN_KEY_CHECKS=1');
+```
+
+### Seed Data Overview
+
+| Table | Records | Description |
+|-------|---------|-------------|
+| `flight_date_gaps` | 4 | 7, 10, 14, 30-day stay options for passenger forms |
+| `documents` | 9 | Booking docs (3), customer docs (2), passenger docs (4) |
+| `bookings` | 2 | Full pipeline: 2 adult + 1 child passengers |
+| `invoices` | 2 | Linked to bookings |
+| `payments` | 3 | Partial + full payment scenarios |
+| `visa_submissions` | 3 | One per passenger |
+
+### Storage Disks
+
+- **Public disk** (`storage/app/public/`) — booking customer documents
+- **Local disk** (`storage/app/`) — passenger documents
+
+Document records store file paths as strings (e.g. `booking-docs/inv-0001-cust-doc-1.pdf`)
+without actual file content. The morphMany relationship links documents to
+their owners (Booking, Customer, Passenger).
+
 ## Next Steps
 
 1. Read [Architecture](02-architecture.md) to understand the codebase
