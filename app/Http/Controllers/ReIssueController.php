@@ -73,6 +73,8 @@ class ReIssueController extends Controller
             return response()->json(['message' => 'This ticket cannot be re-issued.'], 400);
         }
 
+        $wasRefunded = $issuedTicket->status === 'refunded';
+
         try {
             DB::beginTransaction();
 
@@ -132,9 +134,14 @@ class ReIssueController extends Controller
             $issuedTicket->logAction('re-issued', $oldData, $newData);
 
             if (($validated['payment_by'] ?? null) === 'customer') {
+                $refundedNetFare = $wasRefunded
+                    ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
+                    : 0;
+
                 $totalCost = (float) $validated['re_issue_charge']
                     + (float) $validated['fare_difference']
-                    + (float) $validated['other_costs'];
+                    + (float) $validated['other_costs']
+                    + $refundedNetFare;
 
                 $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
 

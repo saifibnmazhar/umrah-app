@@ -147,6 +147,8 @@ class TicketRequestController extends Controller
             return response()->json(['message' => 'Issued ticket not found.'], 404);
         }
 
+        $wasRefunded = $issuedTicket->status === 'refunded';
+
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
 
         try {
@@ -233,9 +235,14 @@ class TicketRequestController extends Controller
             ]);
 
             if (($validated['payment_by'] ?? null) === 'customer') {
+                $refundedNetFare = $wasRefunded
+                    ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
+                    : 0;
+
                 $totalCost = (float) $validated['re_issue_charge']
                     + (float) $validated['fare_difference']
-                    + (float) $validated['other_costs'];
+                    + (float) $validated['other_costs']
+                    + $refundedNetFare;
 
                 $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
 
@@ -557,6 +564,7 @@ class TicketRequestController extends Controller
             'issuedTicket.ticketFare.airline',
             'issuedTicket.ticketFare.airlineClass.class',
             'issuedTicket.latestReIssuedTicket',
+            'issuedTicket.latestRefundedTicket',
             'issuedTicket.latestReIssuedTicket.ticketAgent',
             'issuedTicket.latestReIssuedTicket.ticketFare.airline',
             'issuedTicket.latestReIssuedTicket.ticketFare.airlineClass.class',

@@ -232,6 +232,17 @@
                             <input type="number" id="inputOtherCostsBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
                         </div>
                     </div>
+                    <div id="fieldRefundedTicketFare" class="hidden">
+                        <div id="fieldRefundedTicketFareSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (SAR)</label>
+                            <input type="number" id="inputRefundedTicketFare" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                        </div>
+                        <div id="fieldRefundedTicketFareBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (BDT)</label>
+                            <input type="number" id="inputRefundedTicketFareBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputRefundedTicketFareBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
+                    </div>
                     <div>
                         <div id="fieldTotalCostSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
@@ -321,6 +332,7 @@ const bookingId = {{ $id }};
 let allRequests = [];
 let currentTicketRequestId = null;
 let currentRefundPayable = 0;
+let currentRefundedNetFare = 0;
 let allTicketFares = [];
 let selectedTicketFareId = null;
 let sourceFares = { selling_fare: 0, net_fare: 0, offer_price: 0 };
@@ -362,6 +374,7 @@ function syncCurrencyFields() {
         ['fieldReIssueChargeSar', 'fieldReIssueChargeBdt'],
         ['fieldFareDifferenceSar', 'fieldFareDifferenceBdt'],
         ['fieldOtherCostsSar', 'fieldOtherCostsBdt'],
+        ['fieldRefundedTicketFareSar', 'fieldRefundedTicketFareBdt'],
         ['fieldTotalCostSar', 'fieldTotalCostBdt'],
         ['fieldServiceChargeSar', 'fieldServiceChargeBdt'],
         ['fieldTotalPaymentSar', 'fieldTotalPaymentBdt'],
@@ -385,6 +398,7 @@ function syncReadonlyMirrors() {
         ['inputReIssueCharge', 'inputReIssueChargeBdtSar'],
         ['inputFareDifference', 'inputFareDifferenceBdtSar'],
         ['inputOtherCosts', 'inputOtherCostsBdtSar'],
+        ['inputRefundedTicketFare', 'inputRefundedTicketFareBdtSar'],
         ['inputServiceCharge', 'inputServiceChargeBdtSar'],
         ['inputTotalCost', 'inputTotalCostBdtSar'],
         ['inputTotalPayment', 'inputTotalPaymentBdtSar'],
@@ -642,6 +656,14 @@ function processConfirmation(ticketRequestId) {
     currentRefundPayable = parseFloat(p.refund_payable) || 0;
     document.getElementById('infoRefundPayable').textContent = currentRefundPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
 
+    currentRefundedNetFare = (t.status === 'refunded')
+        ? ((t.latest_refunded_ticket && t.latest_refunded_ticket.net_fare) || src.net_fare || 0)
+        : 0;
+    document.getElementById('fieldRefundedTicketFare').classList.toggle('hidden', currentRefundedNetFare <= 0);
+    document.getElementById('inputRefundedTicketFare').value = currentRefundedNetFare;
+    document.getElementById('inputRefundedTicketFareBdt').value = sarToBdt(currentRefundedNetFare);
+    document.getElementById('inputRefundedTicketFareBdtSar').value = currentRefundedNetFare || '';
+
     document.getElementById('inputUpDate').value = formatToDDMMMYY(r.probable_date_up) || '';
     document.getElementById('inputDownDate').value = formatToDDMMMYY(r.probable_date_down) || '';
     document.getElementById('inputReason').value = '';
@@ -726,7 +748,7 @@ function updateTotals() {
     var other = parseFloat(document.getElementById('inputOtherCosts').value) || 0;
     var service = parseFloat(document.getElementById('inputServiceCharge').value) || 0;
 
-    var totalCost = reIssue + difference + other;
+    var totalCost = reIssue + difference + other + currentRefundedNetFare;
     document.getElementById('inputTotalCost').value = totalCost;
     document.getElementById('inputTotalPayment').value = totalCost + service;
 

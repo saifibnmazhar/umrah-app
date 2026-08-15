@@ -462,6 +462,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'refunded'  => $t->refundedTickets->sortByDesc('id')->first()?->remarks ?? null,
             default     => null,
         },
+        'refunded_net_fare' => $t->status === 'refunded'
+            ? (float) ($t->latestRefundedTicket?->net_fare ?? $t->net_fare ?? 0)
+            : 0,
     ])->values(),
     'pending_outbound_issued_ticket' => ($poit = $p->allIssuedTickets
         ->first(fn($t) => $t->issue_type === 'pending_outbound')) ? [
@@ -2589,6 +2592,17 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
                             </div>
                         </div>
+                        <div x-show="reIssueForm.refunded_net_fare > 0">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (SAR)</label>
+                                <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'">
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (BDT)</label>
+                                <input type="number" x-model="reIssueForm.refunded_net_fare_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
+                        </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
@@ -4022,6 +4036,8 @@ function bookingIndexApp() {
             service_charge_bdt: '',
             total_cost: 0,
             total_cost_bdt: '',
+            refunded_net_fare: 0,
+            refunded_net_fare_bdt: '',
             total_payment: 0,
             total_payment_bdt: '',
             remarks: '',
@@ -4955,6 +4971,8 @@ function bookingIndexApp() {
             this.reIssueForm.refund_adjustment_amount = 0;
             this.reIssueForm.refund_adjustment_amount_bdt = '';
             this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0);
+            this.reIssueForm.refunded_net_fare = (ticket.status === 'refunded') ? ((ticket.refunded_net_fare ?? 0) || 0) : 0;
+            this.reIssueForm.refunded_net_fare_bdt = '';
 
             if (re) {
                 this.reIssueForm.selling_fare = re.selling_fare || 0;
@@ -5016,6 +5034,10 @@ function bookingIndexApp() {
                 this.reIssueOriginalFares.net_fare_bdt = Math.round(fareSrc.net_fare * rate);
                 this.reIssueOriginalFares.offer_price_bdt = Math.round(fareSrc.offer_price * rate);
             }
+
+            this.reIssueForm.refunded_net_fare_bdt = this.reIssueForm.refunded_net_fare > 0 && rate > 0
+                ? Math.round(this.reIssueForm.refunded_net_fare * rate)
+                : '';
 
             this.recalcReIssueTotals();
             this.reIssueModalIsOutbound = isOutbound;
@@ -5223,7 +5245,8 @@ function bookingIndexApp() {
             const rate = window.__currencyRate || 0;
             const totalCost = (parseFloat(f.re_issue_charge) || 0)
                             + (parseFloat(f.fare_difference) || 0)
-                            + (parseFloat(f.other_costs) || 0);
+                            + (parseFloat(f.other_costs) || 0)
+                            + (parseFloat(f.refunded_net_fare) || 0);
             f.total_cost = totalCost;
             f.total_cost_bdt = rate > 0 ? Math.round(totalCost * rate) : '';
             const totalPayment = totalCost + (parseFloat(f.service_charge) || 0);
@@ -5310,7 +5333,7 @@ function bookingIndexApp() {
             };
 
             if (payload.payment_by === 'customer' && payload.payment_option === 'refund_adjustment') {
-                if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge) {
+                if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge + (parseFloat(form.refunded_net_fare) || 0)) {
                     this.showToast('Refund adjustment amount exceeds the total customer payment.', 'error');
                     this.isSubmitting = false;
                     return;
