@@ -4982,6 +4982,10 @@ function bookingIndexApp() {
                 this.reIssueForm.non_exchangeable = !re.is_exchangeable;
             }
 
+            if (!re) {
+                this.reIssueForm.ticket_type = ticket.ticket_type || '';
+            }
+
             const rate = window.__currencyRate || 0;
             if (rate > 0) {
                 this.reIssueForm.selling_fare_bdt = Math.round(fareSrc.selling_fare * rate);
