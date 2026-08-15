@@ -309,6 +309,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'outbound_pending' => $lit->outbound_pending ?? false,
         'issue_type' => $lit->issue_type,
         'status' => $lit->status,
+        'has_pending_request' => $lit->pendingRequests->isNotEmpty(),
         'ticket_type' => $lit->ticketFare?->ticket_type?->value ?? '',
         'airline' => $lit->ticketFare?->airline?->name ?? '',
         'travel_class' => $lit->ticketFare?->airlineClass?->class?->name ?? '',
@@ -425,6 +426,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'pnr' => $t->pnr ?? '',
         'status' => $t->status,
         'issue_type' => $t->issue_type,
+        'has_pending_request' => $t->pendingRequests->isNotEmpty(),
         'is_refundable' => $t->is_refundable ?? false,
         'is_exchangeable' => $t->is_exchangeable ?? false,
         'baggage_inbound' => $t->baggage_inbound ?? '',
@@ -657,6 +659,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 ])->values();
 @endphp
 <div class="w-full mx-auto" x-data="bookingIndexApp()">
+    <div x-show="requestPendingTooltip.visible" x-cloak class="fixed z-[100] px-2 py-1 text-xs whitespace-nowrap rounded bg-slate-900 text-white pointer-events-none" :style="'top:' + requestPendingTooltip.top + 'px; left:' + requestPendingTooltip.left + 'px;'">Request Pending</div>
     <div class="flex justify-between items-center mb-6">
         @php
             $canCreateBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Branch Staff', 'Auditor', 'Visa Admin', 'Visa Staff', 'Ticket Admin', 'Ticket Staff', 'Fingerprint Admin', 'Fingerprint Staff', 'Delivery Staff'])->isNotEmpty();
@@ -1825,8 +1828,8 @@ if ($passenger->ticket_fare_inbound_id) {
                                                     'bg-green-100 text-green-700': ticket.status === 'issued',
                                                     'bg-purple-100 text-purple-700': ticket.status === 're-issued',
                                                     'bg-red-100 text-red-700': ticket.status === 'refunded',
-                                                }"
-                                                x-text="ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)">
+                                                }">
+                                                <span x-text="ticket.status.charAt(0).toUpperCase() + ticket.status.slice(1)"></span>
                                             </span>
                                         </td>
                                         <td class="px-3 py-2">
@@ -1835,10 +1838,10 @@ if ($passenger->ticket_fare_inbound_id) {
                                                     <button type="button" @click="ticket.issue_type === 'pending_outbound' ? openOutboundEditTicketFareModal(ticketInfoPassengerIndex) : openTicketFareModal(ticketInfoPassengerIndex, ticket)" class="px-3 py-1 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition">Edit</button>
                                                 </template>
                                                 <template x-if="ticket.status === 'issued' || ticket.status === 'refunded' || ticket.status === 're-issued'">
-                                                    <button type="button" @click="openReIssueModal(ticketInfoPassengerIndex, ticket)" class="px-3 py-1 text-xs font-medium text-indigo-600 border border-indigo-200 rounded-lg hover:bg-indigo-50 transition">Re-Issue</button>
+                                                    <button type="button" @click="openReIssueModal(ticketInfoPassengerIndex, ticket)" :disabled="ticket.has_pending_request" @mouseenter="ticket.has_pending_request && showRequestPendingTooltip($event)" @mouseleave="hideRequestPendingTooltip()" :class="ticket.has_pending_request ? 'opacity-40 cursor-not-allowed' : 'hover:bg-indigo-50'" class="px-3 py-1 text-xs font-medium text-indigo-600 border border-indigo-200 rounded-lg transition">Re-Issue</button>
                                                 </template>
                                                 <template x-if="ticket.status === 'issued' || ticket.status === 're-issued'">
-                                                    <button type="button" @click="openRefundModal(ticketInfoPassengerIndex, idx)" class="px-3 py-1 text-xs font-medium text-red-600 border border-red-200 rounded-lg hover:bg-red-50 transition">Refund</button>
+                                                    <button type="button" @click="openRefundModal(ticketInfoPassengerIndex, idx)" :disabled="ticket.has_pending_request" @mouseenter="ticket.has_pending_request && showRequestPendingTooltip($event)" @mouseleave="hideRequestPendingTooltip()" :class="ticket.has_pending_request ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-50'" class="px-3 py-1 text-xs font-medium text-red-600 border border-red-200 rounded-lg transition">Refund</button>
                                                 </template>
                                                 <template x-if="ticket.status === 'refunded'">
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-400">Refunded</span>
@@ -2911,6 +2914,7 @@ function bookingIndexApp() {
         activeTab: '{{ $tab ?? 'booking' }}',
         searchTerm: new URL(window.location).searchParams.get('search') || '',
         searchTimeout: null,
+        requestPendingTooltip: { visible: false, top: 0, left: 0 },
         selectedBranchId: '{{ $selectedBranchId }}',
         totalBookingCount: {{ $totalBookingCount }},
         totalBookingPassengerCount: {{ $totalBookingPassengerCount }},
@@ -4871,6 +4875,19 @@ function bookingIndexApp() {
             if (ticket.status === 're-issued' && ticket.latest_re_issued_ticket) return ticket.latest_re_issued_ticket;
             if (ticket.status === 'refunded' && ticket.latest_refunded_ticket) return ticket.latest_refunded_ticket;
             return ticket;
+        },
+
+        showRequestPendingTooltip(event) {
+            const rect = event.currentTarget.getBoundingClientRect();
+            this.requestPendingTooltip = {
+                visible: true,
+                top: rect.bottom + 6,
+                left: rect.left,
+            };
+        },
+
+        hideRequestPendingTooltip() {
+            this.requestPendingTooltip.visible = false;
         },
 
         hasViewableTickets(rowIndex) {
