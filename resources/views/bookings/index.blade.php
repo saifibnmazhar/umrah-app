@@ -1143,9 +1143,9 @@ if ($passenger->ticket_fare_inbound_id) {
         <div class="flex items-center gap-1 w-full">
             <span class="font-medium text-sm shrink-0">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
             <div class="flex items-center gap-1 flex-1"
-                 :class="(!hasRegularIssued({{ $loop->index }}) || rowHasPendingOutbound({{ $loop->index }})) ? 'justify-start' : 'justify-center'">
+                 :class="(rowHasPendingRegular({{ $loop->index }}) || rowHasPendingOutbound({{ $loop->index }})) ? 'justify-start' : 'justify-center'">
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
-                    <button x-show="!hasRegularIssued({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
+                    <button x-show="rowHasPendingRegular({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
                 </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && rowHasPendingOutbound({{ $loop->index }}) && hasRegularIssued({{ $loop->index }}) && !regularTicketCoversOutbound({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'">
                     <button @click="openOutboundTicketFareModal({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
@@ -4103,6 +4103,12 @@ function bookingIndexApp() {
             const row = this.passengersTicketData[index];
             if (!row || row.is_cancelled) return false;
             return (row.all_issued_tickets || []).some(t => t.issue_type === 'pending_outbound' && ['pending', 'awaiting-group'].includes(t.status));
+        },
+
+        rowHasPendingRegular(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            return (row.all_issued_tickets || []).some(t => (!t.issue_type || t.issue_type === 'regular') && ['pending', 'awaiting-group'].includes(t.status));
         },
 
         regularTicketCoversOutbound(index) {
