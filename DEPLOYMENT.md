@@ -237,7 +237,7 @@ docker compose -f docker-compose.prod.yml exec app php artisan route:cache
 **Fix:**
 1. ISPConfig Nginx proxy — add `client_max_body_size 100M;` to the Nginx directives in ISPConfig Panel (see Section 5 above).
 2. Container nginx — `client_max_body_size 100M;` in `docker/nginx/conf.d/default.conf`.
-3. PHP — `upload_max_filesize = 50M` and `post_max_size = 50M` in `docker/php/conf.d/zz-app.ini`.
+3. PHP — `upload_max_filesize = 100M`, `post_max_size = 100M`, and `max_file_uploads = 20` in `docker/php/conf.d/zz-app.ini`.
 
 After these changes, rebuild the Docker image (push to `main` triggers CI automatically).
 
