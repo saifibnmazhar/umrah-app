@@ -45,13 +45,6 @@ fi
 
 # ------------------------------------------------------------
 # Docker Compose helper
-#
-# IMPORTANT:
-# Do NOT use:
-#
-#   source .env.staging
-#
-# Laravel .env files are not Bash scripts.
 # ------------------------------------------------------------
 
 compose() {
@@ -60,6 +53,17 @@ compose() {
     -f "$COMPOSE_FILE" \
     "$@"
 }
+
+# ------------------------------------------------------------
+# Load staging environment variables
+# ------------------------------------------------------------
+# Source the env file so bash can access variables like MIGRATE
+# .env.staging with quoted values (APP_NAME="Umrah App Staging")
+# is safe to source.
+set -a
+# shellcheck source=/dev/null
+source "$ENV_FILE"
+set +a
 
 # ------------------------------------------------------------
 # Deployment information
@@ -247,16 +251,7 @@ compose exec -T app \
 # Otherwise migrations are skipped.
 # ------------------------------------------------------------
 
-MIGRATE_VALUE="$(
-  grep -E '^MIGRATE=' "$ENV_FILE" | \
-    tail -1 | \
-    cut -d '=' -f2- | \
-    tr -d '\r' | \
-    tr '[:upper:]' '[:lower:]' || \
-    true
-)"
-
-if [[ "$MIGRATE_VALUE" == "true" ]]; then
+if [[ "$MIGRATE" == "true" ]]; then
 
   echo ""
   echo "========================================"
