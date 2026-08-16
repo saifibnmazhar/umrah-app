@@ -1,6 +1,7 @@
 name: ${COMPOSE_PROJECT_NAME}
-# Staging environment — deploys to staging.umrah.binmishaltravels.com
-# Uses staging-<sha> image tags and a separate staging database (umrah_staging).
+# Staging environment — auto-deploys via Watchtower
+# CI builds and pushes staging + staging-<sha> tags to ghcr.io
+# Watchtower on staging server auto-updates every 5 minutes.
 
 services:
   app:
@@ -21,9 +22,9 @@ services:
       redis:
         condition: service_healthy
 
-    # NOTE: No Watchtower label — staging is deployed
-    # manually via deploy-staging.sh or the GitHub Actions
-    # deploy-staging job over SSH.
+    # Auto-deploy via Watchtower (same as production)
+    labels:
+      - com.centurylinklabs.watchtower=true
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost || exit 1"]
       interval: 10s

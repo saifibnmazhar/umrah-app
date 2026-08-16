@@ -126,10 +126,8 @@ IMAGE_TAG=sha-abc123def ./deploy-prod.sh
 | Job | Purpose |
 |-----|---------|
 | `test-php-unit` | PHPUnit unit tests against MySQL 8.0 |
-| `test-php-feature` | PHPUnit feature tests against MySQL 8.0 |
 | `test-js` | npm build verification |
-| `build-and-push` | Build Docker image tagged `staging-<sha>`, push to ghcr.io |
-| `deploy-staging` | SSH deploy to staging server, migrate, health check |
+| `build-and-push` | Build Docker image tagged `staging` + `staging-<sha>`, push to ghcr.io |
 
 ### Required GitHub Secrets for Staging
 
@@ -145,12 +143,12 @@ No SSH secrets are required.
 The staging workflow automatically deploys when a commit is pushed to `staging`:
 
 1. CI runs tests (unit + feature) and npm build
-2. Docker image is built and tagged `staging-<sha>`
+2. Docker image is built and tagged `staging` + `staging-<sha>`
 3. Image is pushed to `ghcr.io`
-4. `deploy-staging` job SSHes into the staging server
-5. Runs `docker compose -f docker-compose.staging.yml pull && docker compose up -d`
-6. Runs migrations and seeders
-7. Performs a health check on `/up` endpoint
+4. **Watchtower** (running on the staging server) detects the new `staging` tag and auto-updates within ~5 minutes
+5. The staging entrypoint runs migrations if `MIGRATE=true` in `.env.staging`
+
+No SSH secrets are required — staging deploys the same way as production via Watchtower.
 
 **To deploy staging manually:**
 
@@ -171,7 +169,8 @@ The staging deploy script mirrors `deploy-prod.sh` and:
 9. Waits for app health (120s timeout)
 10. Prints final container status
 
-Uses `--env-file` (not `source`) for safe env loading, and `docker compose` health checks (not public HTTP) for health verification.
+Uses `source .env.staging` for env var access, and `docker compose`
+health checks (not public HTTP) for health verification.
 
 ### Staging Configuration Files
 
@@ -185,15 +184,15 @@ Uses `--env-file` (not `source`) for safe env loading, and `docker compose` heal
 
 | Aspect | Production | Staging |
 |--------|-----------|---------|
-| Image tag | `latest` + `sha-<short-sha>` | `staging-<sha>` |
-| Deploy method | Watchtower (auto) | GitHub Actions SSH |
+| Image tag | `latest` + `sha-<short-sha>` | `staging` + `staging-<sha>` |
+| Deploy method | Watchtower (auto) | Watchtower (auto) |
 | DB name | `binmishal_umrah_live` | `umrah_staging` |
 | Port | 8000 | 8001 |
 | APP_ENV | `production` | `staging` |
 | APP_DEBUG | `false` | `true` |
-| Auto-deploy | Watchtower (5 min delay) | On push to `staging` |
-| Seeders | Not run | Run on each deploy |
-| `MIGRATE` | `false` (entrypoint) | `false` (CI runs migrations explicitly) |
+| Auto-deploy | Watchtower (5 min delay) | Watchtower (5 min delay) |
+| Seeders | Not run | Not run (MIGRATE=false) |
+| `MIGRATE` | `false` (entrypoint) | `false` (entrypoint) |
 
 ---
 
