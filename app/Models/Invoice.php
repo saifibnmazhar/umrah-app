@@ -27,6 +27,8 @@ class Invoice extends Model
         'status' => InvoiceStatus::class,
     ];
 
+    public ?string $audit_reason = null;
+
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
