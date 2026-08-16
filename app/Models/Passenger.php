@@ -2,17 +2,17 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\MorphMany;
-use Illuminate\Database\Eloquent\Relations\HasOne;
-use Illuminate\Database\Eloquent\Relations\HasMany;
 use App\Enums\FingerprintStatus;
 use App\Enums\Gender;
 use App\Enums\PassengerType;
 use App\Enums\ServiceRequired;
 use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
+use Illuminate\Database\Eloquent\Model;
+use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Passenger extends Model
 {
@@ -42,6 +42,7 @@ class Passenger extends Model
         'ticket_remarks',
         'ticket_fare_inbound_id',
         'ticket_fare_outbound_id',
+        'refund_payable',
     ];
 
     protected $casts = [
@@ -58,6 +59,7 @@ class Passenger extends Model
         'package_value' => 'decimal:6',
         'is_ticket_held' => 'boolean',
         'ticket_held_at' => 'datetime',
+        'refund_payable' => 'decimal:6',
     ];
 
     public function booking(): BelongsTo
@@ -110,6 +112,52 @@ class Passenger extends Model
         return $this->hasMany(IssuedTicket::class);
     }
 
+    public function refundedTickets(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            RefundedTicket::class,
+            IssuedTicket::class,
+            'passenger_id',
+            'issued_ticket_id',
+            'id',
+            'id'
+        );
+    }
+
+    public function reIssueSettlements(): HasMany
+    {
+        return $this->hasMany(Payment::class)
+            ->whereHas('vouchers.transactionType', function ($q) {
+                $q->where('name', 'Ticket Refund - Re-issue');
+            });
+    }
+
+    public function verifyRefundPayable(): float
+    {
+        $refunds = (float) $this->refundedTickets()->sum('refund_to_customer');
+        $settlements = (float) $this->reIssueSettlements()->sum('amount');
+
+        return max(0, $refunds - $settlements);
+    }
+
+    public function assertRefundPayableInSync(?float &$computed = null): bool
+    {
+        $computed = $this->verifyRefundPayable();
+
+        return abs($computed - (float) $this->refund_payable) < 0.000001;
+    }
+
+    public function increaseRefundPayable(float $amount): void
+    {
+        $this->increment('refund_payable', $amount);
+    }
+
+    public function decreaseRefundPayable(float $amount): void
+    {
+        $this->refund_payable = max(0, $this->refund_payable - $amount);
+        $this->save();
+    }
+
     public function latestIssuedTicket(): HasOne
     {
         return $this->hasOne(IssuedTicket::class)
@@ -117,7 +165,7 @@ class Passenger extends Model
                 $query
                     ->where(function ($q) {
                         $q->whereNull('issue_type')
-                          ->orWhere('issue_type', 'regular');
+                            ->orWhere('issue_type', 'regular');
                     });
             });
     }
@@ -127,7 +175,8 @@ class Passenger extends Model
         if ($this->ticket_fare_inbound_id) {
             $inboundRoute = $this->formatRouteDisplay($this->ticketFareInbound?->route);
             $outboundRoute = $this->formatRouteDisplay($this->ticketFareOutbound?->route);
-            return ($inboundRoute ?: '?') . "\n" . ($outboundRoute ?: '?');
+
+            return ($inboundRoute ?: '?')."\n".($outboundRoute ?: '?');
         }
 
         return $this->formatRouteDisplay($this->ticketFare?->route);
@@ -135,16 +184,19 @@ class Passenger extends Model
 
     private function formatRouteDisplay($route): string
     {
-        if (!$route) return '-';
+        if (! $route) {
+            return '-';
+        }
 
         $routeType = $route->route_type?->value;
 
         if ($routeType === 'multi_city') {
             if ($route->multiSegments && $route->multiSegments->count() > 0) {
                 return $route->multiSegments
-                    ->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))
+                    ->map(fn ($s) => ($s->fromCity?->code ?? '?').'-'.($s->toCity?->code ?? '?'))
                     ->implode(', ');
             }
+
             return '-';
         }
 
@@ -164,8 +216,12 @@ class Passenger extends Model
         $from = $this->flight_date_from?->format('d M Y') ?? '-';
         $to = $this->flight_date_to?->format('d M Y') ?? '-';
 
-        if ($from === '-' && $to === '-') return '-';
-        if ($from === $to) return $from;
+        if ($from === '-' && $to === '-') {
+            return '-';
+        }
+        if ($from === $to) {
+            return $from;
+        }
 
         return "{$from} → {$to}";
     }
@@ -178,35 +234,42 @@ class Passenger extends Model
             $outboundAllowances = $this->ticketFareOutbound?->baggageAllowances ?? collect();
 
             $inboundBag = $inboundAllowances
-                ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+                ->filter(fn ($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
                 ->first()?->allowance;
 
             $outboundBag = $outboundAllowances
-                ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+                ->filter(fn ($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
                 ->first()?->allowance;
 
             $parts = [];
-            if ($inboundBag !== null) $parts[] = "In: {$inboundBag}";
-            if ($outboundBag !== null) $parts[] = "Out: {$outboundBag}";
+            if ($inboundBag !== null) {
+                $parts[] = "In: {$inboundBag}";
+            }
+            if ($outboundBag !== null) {
+                $parts[] = "Out: {$outboundBag}";
+            }
+
             return empty($parts) ? '-' : implode("\n", $parts);
         }
 
         $ticketFare = $this->ticketFare;
-        if (!$ticketFare) return '-';
+        if (! $ticketFare) {
+            return '-';
+        }
 
         $routeType = $ticketFare->route?->route_type?->value;
         $passengerType = $this->passenger_type?->value;
         $allowances = $ticketFare->baggageAllowances;
 
-        $inboundAllowances = $allowances->filter(fn($a) => $a->travel_direction?->value === 'inbound');
-        $outboundAllowances = $allowances->filter(fn($a) => $a->travel_direction?->value === 'outbound');
+        $inboundAllowances = $allowances->filter(fn ($a) => $a->travel_direction?->value === 'inbound');
+        $outboundAllowances = $allowances->filter(fn ($a) => $a->travel_direction?->value === 'outbound');
 
         $inboundBag = $inboundAllowances
-            ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+            ->filter(fn ($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
             ->first()?->allowance;
 
         $outboundBag = $outboundAllowances
-            ->filter(fn($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
+            ->filter(fn ($a) => ($a->passenger_type?->value ?? $a->passenger_type) === $passengerType)
             ->first()?->allowance;
 
         if ($routeType === 'oneway_inbound') {
@@ -215,8 +278,13 @@ class Passenger extends Model
             return $outboundBag !== null ? "Out: {$outboundBag}" : '-';
         } elseif (in_array($routeType, ['round', 'multi_city'])) {
             $parts = [];
-            if ($inboundBag !== null) $parts[] = "In: {$inboundBag}";
-            if ($outboundBag !== null) $parts[] = "Out: {$outboundBag}";
+            if ($inboundBag !== null) {
+                $parts[] = "In: {$inboundBag}";
+            }
+            if ($outboundBag !== null) {
+                $parts[] = "Out: {$outboundBag}";
+            }
+
             return empty($parts) ? '-' : implode("\n", $parts);
         }
 
@@ -228,8 +296,10 @@ class Passenger extends Model
         if ($this->ticket_fare_inbound_id) {
             $inbound = $this->ticketFareInbound?->with_meal === true ? 'Yes' : 'No';
             $outbound = $this->ticketFareOutbound?->with_meal === true ? 'Yes' : 'No';
+
             return "In: {$inbound}\nOut: {$outbound}";
         }
+
         return $this->ticketFare?->with_meal === true ? 'Yes' : 'No';
     }
 
@@ -238,9 +308,34 @@ class Passenger extends Model
         return $this->ticketFare?->route?->flight_type?->value ?? '-';
     }
 
+    public function getAirlineDisplayAttribute(): string
+    {
+        if ($this->ticket_fare_inbound_id) {
+            $inbound = $this->ticketFareInbound?->airline?->name ?? '-';
+            $outbound = $this->ticketFareOutbound?->airline?->name ?? '-';
+
+            return "In: {$inbound}\nOut: {$outbound}";
+        }
+
+        return $this->ticketFare?->airline?->name ?? '-';
+    }
+
+    public function getClassDisplayAttribute(): string
+    {
+        if ($this->ticket_fare_inbound_id) {
+            $inbound = $this->ticketFareInbound?->airlineClass?->class?->name ?? '-';
+            $outbound = $this->ticketFareOutbound?->airlineClass?->class?->name ?? '-';
+
+            return "In: {$inbound}\nOut: {$outbound}";
+        }
+
+        return $this->ticketFare?->airlineClass?->class?->name ?? '-';
+    }
+
     public function getTripDisplayAttribute(): string
     {
         $routeType = $this->ticketFare?->route?->route_type?->value;
+
         return match ($routeType) {
             'oneway_outbound' => 'Out Bound',
             'oneway_inbound' => 'In Bound',
@@ -256,20 +351,35 @@ class Passenger extends Model
         $visaStatus = $this->visaSubmission?->status?->value;
         $ticketStatus = $this->ticket_status?->value;
         $issuedTicketStatus = $this->latestIssuedTicket?->status;
+        $pendingOutboundStatus = $this->allIssuedTickets
+            ->first(fn ($t) => $t->issue_type === 'pending_outbound')?->status;
 
         $isFingerprintApproved = $fpStatus === FingerprintStatus::APPROVED->value;
         $isVisaSubmitted = $visaStatus === VisaStatus::SUBMITTED->value;
         $isVisaIssued = $visaStatus === VisaStatus::ISSUED->value;
         $isVisaCancelled = $visaStatus === VisaStatus::CANCELLED->value;
         $isTicketIssued = in_array($ticketStatus, ['issued', 're-issued'])
-            || in_array($issuedTicketStatus, ['issued', 're-issued']);
+            || in_array($issuedTicketStatus, ['issued', 're-issued'])
+            || in_array($pendingOutboundStatus, ['issued', 're-issued']);
 
-        if ($isTicketIssued && $isVisaIssued) return 'Ticket Issued';
-        if ($isVisaCancelled) return 'Processing';
-        if ($isTicketIssued && !$isVisaIssued) return 'Ticket Issued before Visa';
-        if ($isVisaIssued) return 'Visa Issued';
-        if ($isVisaSubmitted) return 'Visa Submitted';
-        if ($isFingerprintApproved) return 'Fingerprint Done';
+        if ($isTicketIssued && $isVisaIssued) {
+            return 'Ticket Issued';
+        }
+        if ($isVisaCancelled) {
+            return 'Processing';
+        }
+        if ($isTicketIssued && ! $isVisaIssued) {
+            return 'Ticket Issued before Visa';
+        }
+        if ($isVisaIssued) {
+            return 'Visa Issued';
+        }
+        if ($isVisaSubmitted) {
+            return 'Visa Submitted';
+        }
+        if ($isFingerprintApproved) {
+            return 'Fingerprint Done';
+        }
 
         return null;
     }

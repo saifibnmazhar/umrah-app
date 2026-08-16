@@ -553,7 +553,7 @@ class PassengerController extends Controller
             $booking = $passenger->booking;
             if ($booking) {
                 $booking = $booking->fresh();
-                $this->bookingService->syncFinancials($booking);
+                $this->bookingService->syncFinancials($booking, 'passenger_updated');
 
                 $invoice = $booking->invoice;
                 if ($invoice) {
@@ -604,7 +604,7 @@ class PassengerController extends Controller
             if ($booking) {
                 $booking->update(['pax_qty' => $booking->passengers()->count()]);
                 $booking = $booking->fresh();
-                $this->bookingService->syncFinancials($booking);
+                $this->bookingService->syncFinancials($booking, 'passenger_removed');
 
                 $invoice = $booking->invoice;
                 if ($invoice) {

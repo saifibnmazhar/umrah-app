@@ -31,6 +31,9 @@ class Payment extends Model
         'remarks',
         'payment_referral',
         'cancelled_booking_id',
+        'passenger_id',
+        'refunded_ticket_id',
+        're_issued_ticket_id',
     ];
 
     protected $casts = [
@@ -103,5 +106,20 @@ class Payment extends Model
     public function cancelledBooking(): BelongsTo
     {
         return $this->belongsTo(CancelledBooking::class);
+    }
+
+    public function passenger(): BelongsTo
+    {
+        return $this->belongsTo(Passenger::class);
+    }
+
+    public function refundedTicket(): BelongsTo
+    {
+        return $this->belongsTo(RefundedTicket::class);
+    }
+
+    public function reIssuedTicket(): BelongsTo
+    {
+        return $this->belongsTo(ReIssuedTicket::class);
     }
 }

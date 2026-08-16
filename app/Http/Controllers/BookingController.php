@@ -2,54 +2,57 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\FingerprintLocation;
+use App\Enums\FingerprintStatus;
+use App\Enums\VisaStatus;
+use App\Exceptions\DatabaseErrorHumanizer;
+use App\Models\Bank;
 use App\Models\Booking;
+use App\Models\BookingCondition;
 use App\Models\Branch;
-use App\Models\Passenger;
+use App\Models\CancelledSubmission;
+use App\Models\CurrencyRate;
 use App\Models\Customer;
 use App\Models\District;
 use App\Models\Document;
-use App\Models\Package;
-use App\Models\FingerprintCharge;
 use App\Models\Fingerprint;
-use App\Models\BookingCondition;
+use App\Models\FingerprintCharge;
 use App\Models\FingerprintDetail;
-use App\Models\Route;
-use App\Models\Airline;
-use App\Models\TravelClass;
-use App\Models\TicketFare;
-use App\Models\VisaSellingPrice;
-use App\Models\PassengerStatus;
+use App\Models\FlightDateGap;
 use App\Models\Invoice;
-use App\Models\Payment;
-use App\Models\Bank;
-use App\Models\Voucher;
-use App\Models\TransactionType;
-use App\Models\CurrencyRate;
-use App\Models\StayDurationLimit;
-use App\Services\CurrencyRateService;
-use App\Models\VisaAgent;
-use App\Models\VisaSubmission;
 use App\Models\IssuedTicket;
+use App\Models\Package;
+use App\Models\Passenger;
+use App\Models\PassengerStatus;
+use App\Models\Payment;
+use App\Models\ReIssueRefundReason;
+use App\Models\RescheduledFingerprint;
+use App\Models\Route;
+use App\Models\StayDurationLimit;
 use App\Models\TicketAgent;
-use App\Enums\FingerprintStatus;
-use App\Enums\PassengerType;
-use App\Enums\ServiceRequired;
-use App\Enums\FingerprintLocation;
-use App\Enums\DiscountType;
-use App\Enums\VisaStatus;
-use App\Enums\TicketStatus;
-use App\Traits\ConvertsDocumentsToPdf;
+use App\Models\TicketFare;
+use App\Models\TransactionType;
+use App\Models\VisaAgent;
+use App\Models\VisaSellingPrice;
+use App\Models\VisaSubmission;
+use App\Models\Voucher;
 use App\Services\BookingService;
-use App\Services\PaymentService;
+use App\Services\CostTrackingService;
+use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
+use App\Services\PaymentService;
+use App\Support\DiagnosticLogger;
+use App\Traits\ConvertsDocumentsToPdf;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
+use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
-use Carbon\Carbon;
 
 class BookingController extends Controller
 {
     use ConvertsDocumentsToPdf;
+
     public function __construct(
         private BookingService $bookingService,
         private InvoiceService $invoiceService,
@@ -58,26 +61,28 @@ class BookingController extends Controller
     private function isAdminRole(): bool
     {
         $user = auth()->user();
+
         return $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
     }
 
     private function isBranchScoped(): bool
     {
         $user = auth()->user();
+
         return ! $this->isAdminRole()
             && ($user->hasRole('Branch Manager') || $user->hasRole('Branch Staff'));
     }
 
     private function isGlobalNonAdmin(): bool
     {
-        return !auth()->user()->branch_id && !$this->isAdminRole();
+        return ! auth()->user()->branch_id && ! $this->isAdminRole();
     }
 
     private function resolveBookingBranch(Request $request, bool $forUpdate): int
     {
         $user = auth()->user();
 
-        if (!$user->branch_id && $request->filled('booking_branch_id')) {
+        if (! $user->branch_id && $request->filled('booking_branch_id')) {
             return (int) $request->input('booking_branch_id');
         }
 
@@ -108,13 +113,14 @@ class BookingController extends Controller
         }
     }
 
-    private function syncBookingFinancials(Booking $booking): array
+    private function syncBookingFinancials(Booking $booking, ?string $reason = null): array
     {
-        $this->bookingService->syncFinancials($booking);
+        $this->bookingService->syncFinancials($booking, $reason);
 
         $invoice = $booking->invoice;
         if ($invoice) {
             $invoice = $invoice->fresh();
+
             return [
                 'total_amount' => (float) $invoice->total_amount,
                 'paid_amount' => (float) $invoice->paid_amount,
@@ -167,14 +173,14 @@ class BookingController extends Controller
         $selectedStatusChangeTo = $request->get('status_change_to');
         $selectedPaymentWise = $request->get('payment_wise');
 
-        $allRouteMaps = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])
+        $allRouteMaps = Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])
             ->get()
-            ->map(fn($r) => [
+            ->map(fn ($r) => [
                 'id' => $r->id,
-                'display' => match($r->route_type?->value) {
-                    'multi_city' => $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', '),
-                    'round' => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?') . '-' . ($r->returnCity?->code ?? '?'),
-                    default => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?'),
+                'display' => match ($r->route_type?->value) {
+                    'multi_city' => $r->multiSegments->map(fn ($s) => ($s->fromCity?->code ?? '?').'-'.($s->toCity?->code ?? '?'))->implode(', '),
+                    'round' => ($r->fromCity?->code ?? '?').'-'.($r->toCity?->code ?? '?').'-'.($r->returnCity?->code ?? '?'),
+                    default => ($r->fromCity?->code ?? '?').'-'.($r->toCity?->code ?? '?'),
                 },
                 'route_type' => $r->route_type?->value,
                 'flight_type' => $r->flight_type?->value,
@@ -182,32 +188,30 @@ class BookingController extends Controller
             ]);
 
         $routesList = $allRouteMaps->unique('display')->values();
-        $routeDisplayMap = $allRouteMaps->groupBy('display')->map(fn($g) => $g->pluck('id')->toArray());
+        $routeDisplayMap = $allRouteMaps->groupBy('display')->map(fn ($g) => $g->pluck('id')->toArray());
 
         $selectedRouteDisplay = $request->input('route_display');
-        if (!$selectedRouteDisplay && $request->filled('route_id')) {
+        if (! $selectedRouteDisplay && $request->filled('route_id')) {
             $oldRoute = $allRouteMaps->firstWhere('id', (int) $request->input('route_id'));
             $selectedRouteDisplay = $oldRoute['display'] ?? null;
         }
 
-        $branchCounts = !$userBranchId
+        $branchCounts = ! $userBranchId
             ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
                 ->whereNotNull('booking_branch_id')
                 ->groupBy('booking_branch_id')
                 ->pluck('total', 'booking_branch_id')
                 ->toArray()
             : [];
-        $allBookingCount = !$userBranchId ? Booking::count() : 0;
+        $allBookingCount = ! $userBranchId ? Booking::count() : 0;
 
         $bookingQuery = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'bookingBranch', 'invoice', 'district', 'package'])
-            ->when($userBranchId, fn ($q) =>
-                $q->where(function ($q) {
-                    $q->where('booking_branch_id', auth()->user()->branch_id)
-                      ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
-                })
+            ->when($userBranchId, fn ($q) => $q->where(function ($q) {
+                $q->where('booking_branch_id', auth()->user()->branch_id)
+                    ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+            })
             )
-            ->when($selectedBranchId, fn ($q) =>
-                $q->where('booking_branch_id', $selectedBranchId)
+            ->when($selectedBranchId, fn ($q) => $q->where('booking_branch_id', $selectedBranchId)
             )
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->input('search');
@@ -217,14 +221,11 @@ class BookingController extends Controller
                         ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
                 });
             })
-            ->when($request->filled('booking_date_from'), fn ($q) =>
-                $q->whereDate('created_at', '>=', $request->input('booking_date_from'))
+            ->when($request->filled('booking_date_from'), fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from'))
             )
-            ->when($request->filled('booking_date_to'), fn ($q) =>
-                $q->whereDate('created_at', '<=', $request->input('booking_date_to'))
+            ->when($request->filled('booking_date_to'), fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to'))
             )
-            ->when($request->filled('fingerprint_location'), fn ($q) =>
-                $q->where('fingerprint_location', $request->input('fingerprint_location'))
+            ->when($request->filled('fingerprint_location'), fn ($q) => $q->where('fingerprint_location', $request->input('fingerprint_location'))
             )
             ->when($request->filled('booking_status'), function ($q) use ($request) {
                 $status = $request->input('booking_status');
@@ -232,13 +233,13 @@ class BookingController extends Controller
                     $q->where('is_cancelled', false);
                 } elseif ($status === 'cancellation_processing') {
                     $q->where('is_cancelled', true)
-                      ->whereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancellation processing'));
+                        ->whereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancellation processing'));
                 } elseif ($status === 'cancelled') {
                     $q->where('is_cancelled', true)
-                      ->where(function ($q) {
-                          $q->whereDoesntHave('cancelledBooking')
-                            ->orWhereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancelled'));
-                      });
+                        ->where(function ($q) {
+                            $q->whereDoesntHave('cancelledBooking')
+                                ->orWhereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancelled'));
+                        });
                 }
             })
             ->orderBy('created_at', 'desc');
@@ -256,13 +257,11 @@ class BookingController extends Controller
             ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
 
         $passengers = Passenger::query()
-            ->when(auth()->user()->branch_id, fn ($q) =>
-                $q->whereHas('booking', fn ($q) =>
-                    $q->where(function ($q) {
-                        $q->where('booking_branch_id', auth()->user()->branch_id)
-                          ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
-                    })
-                )
+            ->when(auth()->user()->branch_id, fn ($q) => $q->whereHas('booking', fn ($q) => $q->where(function ($q) {
+                $q->where('booking_branch_id', auth()->user()->branch_id)
+                    ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+            })
+            )
             )
             ->when($request->filled('booking_status'), function ($q) use ($request) {
                 $status = $request->input('booking_status');
@@ -277,11 +276,9 @@ class BookingController extends Controller
                             ->orWhereHas('cancelledBooking', fn ($cq) => $cq->where('status', 'cancelled'))));
                 }
             })
-            ->when($request->filled('fingerprint_status'), fn ($q) =>
-                $q->whereHas('fingerprintDetail', fn ($q) => $q->where('status', $request->input('fingerprint_status')))
+            ->when($request->filled('fingerprint_status'), fn ($q) => $q->whereHas('fingerprintDetail', fn ($q) => $q->where('status', $request->input('fingerprint_status')))
             )
-            ->when($request->filled('visa_status'), fn ($q) =>
-                $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status')))
+            ->when($request->filled('visa_status'), fn ($q) => $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status')))
             )
             ->when($request->filled('ticket_status'), function ($q) use ($request) {
                 $val = $request->input('ticket_status');
@@ -397,38 +394,27 @@ class BookingController extends Controller
                         ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular')));
                 }
             })
-            ->when($request->filled('visa_agent_id') && $canFilterByVisaAgent, fn ($q) =>
-                $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
+            ->when($request->filled('visa_agent_id') && $canFilterByVisaAgent, fn ($q) => $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
             )
-            ->when($request->filled('booking_branch_id'), fn ($q) =>
-                $q->whereHas('booking', fn ($q) => $q->where('booking_branch_id', $request->input('booking_branch_id')))
+            ->when($request->filled('booking_branch_id'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->where('booking_branch_id', $request->input('booking_branch_id')))
             )
-            ->when($request->filled('booking_date_from'), fn ($q) =>
-                $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from')))
+            ->when($request->filled('booking_date_from'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from')))
             )
-            ->when($request->filled('booking_date_to'), fn ($q) =>
-                $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to')))
+            ->when($request->filled('booking_date_to'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to')))
             )
-            ->when($request->filled('flight_date_from'), fn ($q) =>
-                $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'))
+            ->when($request->filled('flight_date_from'), fn ($q) => $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'))
             )
-            ->when($request->filled('flight_date_to'), fn ($q) =>
-                $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'))
+            ->when($request->filled('flight_date_to'), fn ($q) => $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'))
             )
-            ->when($request->filled('actual_flight_from'), fn ($q) =>
-                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '>=', $request->input('actual_flight_from')))
+            ->when($request->filled('actual_flight_from'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '>=', $request->input('actual_flight_from')))
             )
-            ->when($request->filled('actual_flight_to'), fn ($q) =>
-                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '<=', $request->input('actual_flight_to')))
+            ->when($request->filled('actual_flight_to'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '<=', $request->input('actual_flight_to')))
             )
-            ->when($request->filled('return_date_from'), fn ($q) =>
-                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '>=', $request->input('return_date_from')))
+            ->when($request->filled('return_date_from'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '>=', $request->input('return_date_from')))
             )
-            ->when($request->filled('return_date_to'), fn ($q) =>
-                $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '<=', $request->input('return_date_to')))
+            ->when($request->filled('return_date_to'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '<=', $request->input('return_date_to')))
             )
-            ->when($request->filled('passenger_status'), fn ($q) =>
-                $q->where('passenger_status_id', $request->input('passenger_status'))
+            ->when($request->filled('passenger_status'), fn ($q) => $q->where('passenger_status_id', $request->input('passenger_status'))
             )
             ->when($request->filled('status_change_action'), function ($q) use ($request) {
                 $action = $request->input('status_change_action');
@@ -442,38 +428,43 @@ class BookingController extends Controller
                         $query->where(function ($q) use ($action, $dateFrom, $dateTo) {
                             $q->whereHas('updateLogs', function ($logQ) use ($action, $dateFrom, $dateTo) {
                                 $logQ->where('action', 'updated')
-                                     ->where('new_values->passenger_status_id', $action);
-                                if ($dateFrom) $logQ->whereDate('created_at', '>=', $dateFrom);
-                                if ($dateTo)   $logQ->whereDate('created_at', '<=', $dateTo);
+                                    ->where('new_values->passenger_status_id', $action);
+                                if ($dateFrom) {
+                                    $logQ->whereDate('created_at', '>=', $dateFrom);
+                                }
+                                if ($dateTo) {
+                                    $logQ->whereDate('created_at', '<=', $dateTo);
+                                }
                             });
                         })->orWhere(function ($q) use ($action, $dateFrom, $dateTo) {
                             $q->whereDoesntHave('updateLogs', function ($logQ) use ($action) {
                                 $logQ->where('action', 'updated')
-                                     ->where('new_values->passenger_status_id', $action);
+                                    ->where('new_values->passenger_status_id', $action);
                             });
-                            if ($dateFrom) $q->whereDate('updated_at', '>=', $dateFrom);
-                            if ($dateTo)   $q->whereDate('updated_at', '<=', $dateTo);
+                            if ($dateFrom) {
+                                $q->whereDate('updated_at', '>=', $dateFrom);
+                            }
+                            if ($dateTo) {
+                                $q->whereDate('updated_at', '<=', $dateTo);
+                            }
                         });
                     });
                 }
             })
             ->when($selectedRouteDisplay, function ($q) use ($routeDisplayMap, $selectedRouteDisplay) {
                 $routeIds = $routeDisplayMap[$selectedRouteDisplay] ?? [];
-                if (!empty($routeIds)) {
+                if (! empty($routeIds)) {
                     $q->where(function ($q) use ($routeIds) {
                         $q->whereHas('ticketFare', fn ($q) => $q->whereIn('route_id', $routeIds))
-                          ->orWhereHas('ticketFareInbound', fn ($q) => $q->whereIn('route_id', $routeIds))
-                          ->orWhereHas('ticketFareOutbound', fn ($q) => $q->whereIn('route_id', $routeIds));
+                            ->orWhereHas('ticketFareInbound', fn ($q) => $q->whereIn('route_id', $routeIds))
+                            ->orWhereHas('ticketFareOutbound', fn ($q) => $q->whereIn('route_id', $routeIds));
                     });
                 }
             })
-            ->when($request->filled('package_id'), fn ($q) =>
-                $q->whereHas('booking', fn ($q) => $q->where('package_id', $request->input('package_id')))
+            ->when($request->filled('package_id'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->where('package_id', $request->input('package_id')))
             )
-            ->when($request->filled('ticket_agent_id') && $canFilterByTicketAgent, fn ($q) =>
-                $q->whereHas('latestIssuedTicket.ticketAgent', fn ($q) =>
-                    $q->where('id', $request->input('ticket_agent_id'))
-                )
+            ->when($request->filled('ticket_agent_id') && $canFilterByTicketAgent, fn ($q) => $q->whereHas('latestIssuedTicket.ticketAgent', fn ($q) => $q->where('id', $request->input('ticket_agent_id'))
+            )
             )
             ->when($request->filled('search'), function ($q) use ($request) {
                 $search = $request->input('search');
@@ -483,9 +474,8 @@ class BookingController extends Controller
                         ->orWhere('first_name', 'like', "%{$search}%")
                         ->orWhere('last_name', 'like', "%{$search}%")
                         ->orWhereHas('booking', fn ($q) => $q->where('invoice_id', 'like', "%{$search}%"))
-                        ->orWhereHas('issuedTickets', fn ($q) =>
-                            $q->where('ticket_number', 'like', "%{$search}%")
-                              ->orWhere('pnr', 'like', "%{$search}%")
+                        ->orWhereHas('issuedTickets', fn ($q) => $q->where('ticket_number', 'like', "%{$search}%")
+                            ->orWhere('pnr', 'like', "%{$search}%")
                         );
                 });
             })
@@ -517,7 +507,9 @@ class BookingController extends Controller
 
         foreach ($invoiceBookings as $booking) {
             $invoice = $booking->invoice;
-            if (!$invoice) continue;
+            if (! $invoice) {
+                continue;
+            }
 
             $totalPackageValue += $invoice->total_amount;
             $totalDue += $invoice->balance;
@@ -569,10 +561,50 @@ class BookingController extends Controller
                 'allIssuedTickets.ticketFare.route.returnCity',
                 'allIssuedTickets.ticketFare.route.multiSegments.fromCity',
                 'allIssuedTickets.ticketFare.route.multiSegments.toCity',
+                'allIssuedTickets.latestReIssuedTicket',
+                'allIssuedTickets.latestReIssuedTicket.ticketAgent',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.airline',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.airlineClass.class',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.fromCity',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.toCity',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.returnCity',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.fromCity',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
+                'allIssuedTickets.latestRefundedTicket',
+                'allIssuedTickets.latestRefundedTicket.ticketAgent',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.airline',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.airlineClass.class',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.route.fromCity',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.route.toCity',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.route.returnCity',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.route.multiSegments.fromCity',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.route.multiSegments.toCity',
+                'allIssuedTickets.reIssuedTickets.reason',
+                'allIssuedTickets.refundedTickets.reason',
+                'allIssuedTickets.pendingRequests',
                 'latestIssuedTicket.ticketAgent',
                 'latestIssuedTicket.ticketFare.airline',
                 'latestIssuedTicket.ticketFare.airlineClass.class',
                 'latestIssuedTicket.ticketFare.route',
+                'latestIssuedTicket.latestReIssuedTicket',
+                'latestIssuedTicket.latestReIssuedTicket.ticketAgent',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.airline',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.airlineClass.class',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.fromCity',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.toCity',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.returnCity',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.multiSegments.fromCity',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
+                'latestIssuedTicket.latestRefundedTicket',
+                'latestIssuedTicket.latestRefundedTicket.ticketAgent',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.airline',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.airlineClass.class',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.fromCity',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.toCity',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.returnCity',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.multiSegments.fromCity',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.multiSegments.toCity',
+                'latestIssuedTicket.pendingRequests',
                 'ticketFareInbound.airline',
                 'ticketFareInbound.airlineClass.class',
                 'ticketFareInbound.route',
@@ -589,8 +621,7 @@ class BookingController extends Controller
             ->withQueryString();
 
         $passengerStatuses = PassengerStatus::all();
-        $statusChangeOptions = $passengerStatuses->filter(fn ($s) =>
-            in_array($s->name, ['Cancel', 'Delivered', 'Hold'])
+        $statusChangeOptions = $passengerStatuses->filter(fn ($s) => in_array($s->name, ['Cancel', 'Delivered', 'Hold'])
         )->values();
 
         $visaAgents = collect();
@@ -598,11 +629,11 @@ class BookingController extends Controller
             $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
                 ->orderBy('name')
                 ->get()
-                ->map(fn($a) => [
+                ->map(fn ($a) => [
                     'id' => $a->id,
                     'name' => $a->name,
-                    'cost' => (float)($a->visaAgentCost?->visa_agent_cost ?? 0),
-                    'commission_agents' => $a->commissionAgents->map(fn($ca) => [
+                    'cost' => (float) ($a->visaAgentCost?->visa_agent_cost ?? 0),
+                    'commission_agents' => $a->commissionAgents->map(fn ($ca) => [
                         'id' => $ca->id,
                         'name' => $ca->name,
                     ]),
@@ -634,6 +665,8 @@ class BookingController extends Controller
         ];
         $fingerprintLocations = FingerprintLocation::cases();
 
+        $reIssueReasons = ReIssueRefundReason::where('reason_of', 're-issue')->get();
+
         return view('bookings.index', compact(
             'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'ticketAgents', 'canEditVisa',
             'canFilterByVisaAgent', 'canFilterByTicketAgent',
@@ -649,7 +682,8 @@ class BookingController extends Controller
             'selectedPaymentWise',
             'statusChangeOptions',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
-            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt'
+            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt',
+            'reIssueReasons'
         ));
     }
 
@@ -660,11 +694,11 @@ class BookingController extends Controller
 
         $user = auth()->user();
         $userBranch = $user->branch;
-        $bookingBranches = !$userBranch ? Branch::orderBy('name')->get(['id', 'name']) : collect();
+        $bookingBranches = ! $userBranch ? Branch::orderBy('name')->get(['id', 'name']) : collect();
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get(['id', 'name']);
 
-        $showBookingBranch = !$userBranch;
-        $showFingerprintBranch = !$userBranch || !$userBranch->fingerprint_operation;
+        $showBookingBranch = ! $userBranch;
+        $showFingerprintBranch = ! $userBranch || ! $userBranch->fingerprint_operation;
 
         if ($packageId) {
             $package = Package::find($packageId);
@@ -701,15 +735,15 @@ class BookingController extends Controller
 
             if ($routeType === 'multi_city') {
                 $segments = $fare->route->multiSegments->map(function ($seg) {
-                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                    return $seg->fromCity?->code.'-'.$seg->toCity?->code;
                 })->toArray();
                 $routeCode = implode(', ', $segments);
             } elseif ($routeType === 'round') {
-                $routeCode = $fare->route->fromCity?->code . '-' .
-                    $fare->route->toCity?->code . '-' .
+                $routeCode = $fare->route->fromCity?->code.'-'.
+                    $fare->route->toCity?->code.'-'.
                     $fare->route->returnCity?->code;
             } else {
-                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+                $routeCode = $fare->route->fromCity?->code.'-'.$fare->route->toCity?->code;
             }
 
             return [
@@ -729,17 +763,17 @@ class BookingController extends Controller
                     return [
                         'passenger_type' => $ba->passenger_type,
                         'travel_direction' => $ba->travel_direction,
-                        'allowance' => $ba->allowance
+                        'allowance' => $ba->allowance,
                     ];
                 })->toArray(),
             ];
         });
 
-        $currencyRates = \App\Models\CurrencyRate::orderBy('created_at', 'desc')->get();
+        $currencyRates = CurrencyRate::orderBy('created_at', 'desc')->get();
         $currentCurrencyRate = app(CurrencyRateService::class)->getRateForDate(now());
 
         $userBranchLocation = $userBranch?->location?->value;
-        $banks = \App\Models\Bank::orderBy('name')->get(['id', 'name', 'currency', 'location']);
+        $banks = Bank::orderBy('name')->get(['id', 'name', 'currency', 'location']);
 
         return view('bookings.create', compact(
             'districts', 'packages', 'preSelectedPackageId', 'ticketFares',
@@ -751,7 +785,7 @@ class BookingController extends Controller
 
     public function store(Request $request)
     {
-        \App\Support\DiagnosticLogger::arrival($request, 'bookings.store');
+        DiagnosticLogger::arrival($request, 'bookings.store');
 
         $validator = \Validator::make($request->all(), [
             'customer_id' => 'required|exists:customers,id',
@@ -773,7 +807,7 @@ class BookingController extends Controller
             'passengers.*.mobile_no' => 'nullable|string|max:20',
             'passengers.*.passport_expiry' => 'nullable|date',
             'passengers.*.service_required' => 'nullable|in:all,visa_only,ticket_only',
-            'passengers.*.stay_duration' => 'nullable|integer|min:' . ($limits = StayDurationLimit::getOrCreate())->min_days . '|max:' . $limits->max_days,
+            'passengers.*.stay_duration' => 'nullable|integer|min:'.($limits = StayDurationLimit::getOrCreate())->min_days.'|max:'.$limits->max_days,
             'passengers.*.flight_date_from' => 'nullable|date',
             'passengers.*.flight_date_to' => 'nullable|date|after:passengers.*.flight_date_from',
             'passengers.*.address' => 'nullable|string|max:500',
@@ -804,12 +838,12 @@ class BookingController extends Controller
         $validator->after(function ($validator) use ($request) {
             $totalSize = 0;
             if ($request->hasFile('booking_customer_docs')) {
-                $totalSize += collect($request->file('booking_customer_docs'))->sum(fn($f) => $f->getSize());
+                $totalSize += collect($request->file('booking_customer_docs'))->sum(fn ($f) => $f->getSize());
             }
             if ($request->hasFile('passenger_docs')) {
                 foreach ($request->file('passenger_docs') as $passengerFiles) {
                     if (is_array($passengerFiles)) {
-                        $totalSize += collect($passengerFiles)->sum(fn($f) => $f instanceof \Illuminate\Http\UploadedFile ? $f->getSize() : 0);
+                        $totalSize += collect($passengerFiles)->sum(fn ($f) => $f instanceof UploadedFile ? $f->getSize() : 0);
                     }
                 }
             }
@@ -827,6 +861,7 @@ class BookingController extends Controller
             if ($request->ajax() || $request->wantsJson()) {
                 return response()->json(['errors' => $validator->errors()], 422);
             }
+
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
@@ -857,7 +892,7 @@ class BookingController extends Controller
                 'user_id' => auth()->id(),
                 'booking_branch_id' => $bookingBranchId,
                 'invoice_id' => $this->bookingService->generateInvoiceId($bookingBranchId),
-                'date_gap_id' => \App\Models\FlightDateGap::getOrCreate()->id,
+                'date_gap_id' => FlightDateGap::getOrCreate()->id,
                 'customer_id' => $validated['customer_id'],
                 'district_id' => $validated['district_id'] ?? null,
                 'fingerprint_branch_id' => $fingerprintBranchId,
@@ -881,7 +916,7 @@ class BookingController extends Controller
             if ($booking->customer) {
                 $customerDocCount = $booking->customer->documents->count();
                 foreach ($booking->customer->documents as $idx => $doc) {
-                    $doc->update(['display_name' => "{$invoiceId} {$customerName} " . ($idx + 1)]);
+                    $doc->update(['display_name' => "{$invoiceId} {$customerName} ".($idx + 1)]);
                 }
             }
 
@@ -890,12 +925,12 @@ class BookingController extends Controller
                 $bookingDocCount = $booking->documents()->count();
 
                 foreach ($customerDocs as $index => $file) {
-                    if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+                    if ($file instanceof UploadedFile && $file->isValid()) {
                         $booking->documents()->create([
                             'owner_type' => 'booking',
                             'owner_id' => $booking->id,
                             'file_path' => $file->store('booking-docs', 'public'),
-                            'display_name' => "{$invoiceId} {$customerName} " . ($customerDocCount + $bookingDocCount + $index + 1),
+                            'display_name' => "{$invoiceId} {$customerName} ".($customerDocCount + $bookingDocCount + $index + 1),
                         ]);
                     }
                 }
@@ -961,13 +996,15 @@ class BookingController extends Controller
             $passengerDocs = $request->file('passenger_docs', []);
             if (is_array($passengerDocs) && count($passengerDocs) > 0) {
                 foreach ($passengerDocs as $passengerIndex => $files) {
-                    if (!isset($createdPassengers[$passengerIndex])) continue;
+                    if (! isset($createdPassengers[$passengerIndex])) {
+                        continue;
+                    }
                     $passenger = $createdPassengers[$passengerIndex];
                     foreach ($files as $fileIdx => $file) {
-                        if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+                        if ($file instanceof UploadedFile && $file->isValid()) {
                             $passenger->documents()->create([
                                 'file_path' => $file->store('passenger-documents'),
-                                'display_name' => "{$invoiceId} {$passenger->first_name} {$passenger->last_name} {$passenger->passport_no} " . ($fileIdx + 1),
+                                'display_name' => "{$invoiceId} {$passenger->first_name} {$passenger->last_name} {$passenger->passport_no} ".($fileIdx + 1),
                             ]);
                         }
                     }
@@ -1001,24 +1038,25 @@ class BookingController extends Controller
                 $validated['discount_value'] ?? 0
             );
             $booking->discount_amount = $discountAmount;
-            $booking->saveQuietly();
+            $booking->save();
 
             $discountedTotal = max(0, $booking->total_value - $discountAmount);
             $invoice->total_amount = $discountedTotal;
             $invoice->balance = $discountedTotal;
+            $invoice->audit_reason = 'booking_created';
             $invoice->save();
 
             $paymentAmount = (float) ($validated['payment']['amount'] ?? 0);
             $paymentBdtAmount = (float) ($validated['payment']['bdt_amount'] ?? 0);
 
-            \Log::info('Payment debug - amount: ' . $paymentAmount . ', bdt_amount: ' . $paymentBdtAmount . ', payment array: ', $validated['payment'] ?? []);
+            \Log::info('Payment debug - amount: '.$paymentAmount.', bdt_amount: '.$paymentBdtAmount.', payment array: ', $validated['payment'] ?? []);
 
             if ($paymentAmount > 0 || $paymentBdtAmount > 0) {
                 \Log::info('Processing payment...');
                 try {
                     $initialPaymentTransactionType = TransactionType::where('name', 'Initial Payment')->first();
 
-                    if (!$initialPaymentTransactionType) {
+                    if (! $initialPaymentTransactionType) {
                         throw new \Exception('Initial Payment transaction type not found. Please seed transaction types.');
                     }
 
@@ -1037,7 +1075,7 @@ class BookingController extends Controller
 
                     app(PaymentService::class)->createCustomerPaymentAndUpdateInvoice($invoice, $paymentData);
                 } catch (\Exception $e) {
-                    \Log::error('Payment creation failed: ' . $e->getMessage());
+                    \Log::error('Payment creation failed: '.$e->getMessage());
                     throw $e;
                 }
             }
@@ -1051,8 +1089,8 @@ class BookingController extends Controller
 
                 return response()->json([
                     'success' => true,
-                    'message' => 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage,
-                    'url' => route('bookings.print', $booking->id)
+                    'message' => 'Booking created successfully with '.count($validated['passengers']).' passenger(s)'.$paymentMessage,
+                    'url' => route('bookings.print', $booking->id),
                 ]);
             }
 
@@ -1061,14 +1099,14 @@ class BookingController extends Controller
                 : '';
 
             return redirect()->route('bookings.print', $booking->id)
-                ->with('success', 'Booking created successfully with ' . count($validated['passengers']) . ' passenger(s)' . $paymentMessage);
+                ->with('success', 'Booking created successfully with '.count($validated['passengers']).' passenger(s)'.$paymentMessage);
 
         } catch (\Exception $e) {
             if (DB::transactionLevel() > 0) {
                 DB::rollBack();
             }
-            $dbMessage = $e instanceof \Illuminate\Database\QueryException
-                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+            $dbMessage = $e instanceof QueryException
+                ? DatabaseErrorHumanizer::humanize($e)
                 : 'An unexpected error occurred. Please try again.';
 
             if ($request->ajax() || $request->wantsJson()) {
@@ -1077,6 +1115,7 @@ class BookingController extends Controller
                     'message' => $dbMessage,
                 ], 500);
             }
+
             return redirect()->back()->with('error', $dbMessage)->withInput();
         }
     }
@@ -1095,6 +1134,34 @@ class BookingController extends Controller
             'passengers.ticketFare',
             'passengers.ticketFareInbound.route',
             'passengers.ticketFareOutbound.route',
+            'passengers.allIssuedTickets',
+            'passengers.allIssuedTickets.ticketAgent',
+            'passengers.allIssuedTickets.ticketFare.airline',
+            'passengers.allIssuedTickets.ticketFare.airlineClass.class',
+            'passengers.allIssuedTickets.ticketFare.route.fromCity',
+            'passengers.allIssuedTickets.ticketFare.route.toCity',
+            'passengers.allIssuedTickets.ticketFare.route.returnCity',
+            'passengers.allIssuedTickets.ticketFare.route.multiSegments.fromCity',
+            'passengers.allIssuedTickets.ticketFare.route.multiSegments.toCity',
+            'passengers.allIssuedTickets.latestReIssuedTicket',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketAgent',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.airline',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.airlineClass.class',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.route.fromCity',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.route.toCity',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.route.returnCity',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.fromCity',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
+            'passengers.allIssuedTickets.latestRefundedTicket',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketAgent',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.airline',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.airlineClass.class',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.route.fromCity',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.route.toCity',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.route.returnCity',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.route.multiSegments.fromCity',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.route.multiSegments.toCity',
+            'passengers.allIssuedTickets.pendingRequests',
             'user',
             'district',
             'package',
@@ -1135,15 +1202,15 @@ class BookingController extends Controller
 
             if ($routeType === 'multi_city') {
                 $segments = $fare->route->multiSegments->map(function ($seg) {
-                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                    return $seg->fromCity?->code.'-'.$seg->toCity?->code;
                 })->toArray();
                 $routeCode = implode(', ', $segments);
             } elseif ($routeType === 'round') {
-                $routeCode = $fare->route->fromCity?->code . '-' .
-                    $fare->route->toCity?->code . '-' .
+                $routeCode = $fare->route->fromCity?->code.'-'.
+                    $fare->route->toCity?->code.'-'.
                     $fare->route->returnCity?->code;
             } else {
-                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+                $routeCode = $fare->route->fromCity?->code.'-'.$fare->route->toCity?->code;
             }
 
             return [
@@ -1170,7 +1237,7 @@ class BookingController extends Controller
         });
 
         $currencyRate = $booking->currencyRate;
-        if (!$currencyRate) {
+        if (! $currencyRate) {
             $currencyRate = app(CurrencyRateService::class)->getRateForDate($booking->created_at);
         }
         $currentCurrencyRate = $currencyRate;
@@ -1188,7 +1255,7 @@ class BookingController extends Controller
         $discountedTotalBdt = $totalAmountBdt;
 
         $userBranchLocation = auth()->user()?->branch?->location?->value;
-        $banks = \App\Models\Bank::orderBy('name')->get(['id', 'name', 'currency', 'location']);
+        $banks = Bank::orderBy('name')->get(['id', 'name', 'currency', 'location']);
 
         return view('bookings.show', compact(
             'booking', 'ticketFares', 'packages', 'currentCurrencyRate',
@@ -1232,7 +1299,7 @@ class BookingController extends Controller
 
         if ($booking->package_id) {
             $currentPackage = Package::with(['ticketFare', 'visaSellingPrice', 'ticketFareInbound', 'ticketFareOutbound'])->find($booking->package_id);
-            if ($currentPackage && !$currentPackage->is_active) {
+            if ($currentPackage && ! $currentPackage->is_active) {
                 $packages->push([
                     'id' => $currentPackage->id,
                     'package_name' => $currentPackage->package_name,
@@ -1266,15 +1333,15 @@ class BookingController extends Controller
 
             if ($routeType === 'multi_city') {
                 $segments = $fare->route->multiSegments->map(function ($seg) {
-                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                    return $seg->fromCity?->code.'-'.$seg->toCity?->code;
                 })->toArray();
                 $routeCode = implode(', ', $segments);
             } elseif ($routeType === 'round') {
-                $routeCode = $fare->route->fromCity?->code . '-' .
-                    $fare->route->toCity?->code . '-' .
+                $routeCode = $fare->route->fromCity?->code.'-'.
+                    $fare->route->toCity?->code.'-'.
                     $fare->route->returnCity?->code;
             } else {
-                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+                $routeCode = $fare->route->fromCity?->code.'-'.$fare->route->toCity?->code;
             }
 
             return [
@@ -1300,9 +1367,9 @@ class BookingController extends Controller
             ];
         });
 
-        $customers = \App\Models\Customer::orderBy('name')->get(['id', 'name', 'passport_no', 'iqama_no', 'mobile_no']);
+        $customers = Customer::orderBy('name')->get(['id', 'name', 'passport_no', 'iqama_no', 'mobile_no']);
         $currencyRate = $booking->currencyRate;
-        if (!$currencyRate) {
+        if (! $currencyRate) {
             $currencyRate = app(CurrencyRateService::class)->getRateForDate($booking->created_at);
         }
         $currentCurrencyRate = $currencyRate;
@@ -1340,7 +1407,7 @@ class BookingController extends Controller
         ]);
 
         if ($request->hasFile('booking_customer_docs')) {
-            $totalSize = collect($request->file('booking_customer_docs'))->sum(fn($f) => $f->getSize());
+            $totalSize = collect($request->file('booking_customer_docs'))->sum(fn ($f) => $f->getSize());
             if ($totalSize > 20 * 1024 * 1024) {
                 if ($request->expectsJson()) {
                     return response()->json([
@@ -1348,6 +1415,7 @@ class BookingController extends Controller
                         'message' => 'The total size of all uploaded files must not exceed 20 MB.',
                     ], 422);
                 }
+
                 return redirect()->back()->withErrors(['files' => 'The total size of all uploaded files must not exceed 20 MB.'])->withInput();
             }
         }
@@ -1371,7 +1439,7 @@ class BookingController extends Controller
                         $booking->passengers()
                             ->where(function ($q) {
                                 $q->where('service_required', '!=', 'visa_only')
-                                  ->orWhereNull('service_required');
+                                    ->orWhereNull('service_required');
                             })
                             ->update([
                                 'ticket_fare_id' => null,
@@ -1382,7 +1450,7 @@ class BookingController extends Controller
                         $booking->passengers()
                             ->where(function ($q) {
                                 $q->where('service_required', '!=', 'visa_only')
-                                  ->orWhereNull('service_required');
+                                    ->orWhereNull('service_required');
                             })
                             ->update([
                                 'ticket_fare_id' => $package->ticket_fare_id,
@@ -1398,7 +1466,7 @@ class BookingController extends Controller
             }
 
             $booking = $booking->fresh();
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'booking_updated');
 
             $discountType = $booking->discount_type;
             if ($discountType instanceof \BackedEnum) {
@@ -1414,12 +1482,12 @@ class BookingController extends Controller
                 $bookingDocCount = $booking->documents()->count();
 
                 foreach ($customerDocs as $index => $file) {
-                    if ($file instanceof \Illuminate\Http\UploadedFile && $file->isValid()) {
+                    if ($file instanceof UploadedFile && $file->isValid()) {
                         $booking->documents()->create([
                             'owner_type' => 'booking',
                             'owner_id' => $booking->id,
                             'file_path' => $file->store('booking-docs', 'public'),
-                            'display_name' => "{$invoiceId} {$customerName} " . ($customerDocCount + $bookingDocCount + $index + 1),
+                            'display_name' => "{$invoiceId} {$customerName} ".($customerDocCount + $bookingDocCount + $index + 1),
                         ]);
                     }
                 }
@@ -1465,7 +1533,7 @@ class BookingController extends Controller
         ]);
 
         $user = auth()->user();
-        if (!$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+        if (! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin')) {
             $currentLocation = $booking->fingerprint_location?->value;
             $newLocation = $validated['fingerprint_location'];
 
@@ -1485,7 +1553,7 @@ class BookingController extends Controller
             }
 
             $booking = $booking->fresh();
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'fingerprint_location_updated');
 
             return response()->json([
                 'success' => true,
@@ -1509,18 +1577,18 @@ class BookingController extends Controller
             DB::transaction(function () use ($booking) {
                 $passengerIds = $booking->passengers()->pluck('id');
 
-                $fingerprintDetailIds = \App\Models\FingerprintDetail::whereIn('passenger_id', $passengerIds)->pluck('id');
+                $fingerprintDetailIds = FingerprintDetail::whereIn('passenger_id', $passengerIds)->pluck('id');
 
-                \App\Models\IssuedTicket::whereIn('passenger_id', $passengerIds)->forceDelete();
-                \App\Models\RescheduledFingerprint::whereIn('fingerprint_detail_id', $fingerprintDetailIds)->delete();
-                \App\Models\CancelledSubmission::whereIn('visa_submission_id', \App\Models\VisaSubmission::whereIn('passenger_id', $passengerIds)->pluck('id'))->delete();
-                \App\Models\VisaSubmission::whereIn('passenger_id', $passengerIds)->delete();
-                \App\Models\FingerprintDetail::whereIn('passenger_id', $passengerIds)->delete();
-                \App\Models\Voucher::where('booking_id', $booking->id)->delete();
+                IssuedTicket::whereIn('passenger_id', $passengerIds)->forceDelete();
+                RescheduledFingerprint::whereIn('fingerprint_detail_id', $fingerprintDetailIds)->delete();
+                CancelledSubmission::whereIn('visa_submission_id', VisaSubmission::whereIn('passenger_id', $passengerIds)->pluck('id'))->delete();
+                VisaSubmission::whereIn('passenger_id', $passengerIds)->delete();
+                FingerprintDetail::whereIn('passenger_id', $passengerIds)->delete();
+                Voucher::where('booking_id', $booking->id)->delete();
                 $booking->payments()->delete();
                 $booking->invoice()->delete();
                 $booking->fingerprint()->delete();
-                \App\Models\IssuedTicket::where('booking_id', $booking->id)->forceDelete();
+                IssuedTicket::where('booking_id', $booking->id)->forceDelete();
                 $booking->passengers()->delete();
                 $booking->documents()->delete();
                 $booking->delete();
@@ -1529,7 +1597,8 @@ class BookingController extends Controller
             return redirect()->route('bookings.index')
                 ->with('success', 'Booking deleted successfully');
         } catch (\Exception $e) {
-            \Log::error('Failed to delete booking: ' . $e->getMessage());
+            \Log::error('Failed to delete booking: '.$e->getMessage());
+
             return redirect()->back()->with('error', 'Failed to delete booking.');
         }
     }
@@ -1550,7 +1619,7 @@ class BookingController extends Controller
             'mobile_no' => 'nullable|string|max:20',
             'passport_expiry' => 'nullable|date',
             'service_required' => 'nullable|in:all,visa_only,ticket_only',
-            'stay_duration' => 'nullable|integer|min:' . ($limits = StayDurationLimit::getOrCreate())->min_days . '|max:' . $limits->max_days,
+            'stay_duration' => 'nullable|integer|min:'.($limits = StayDurationLimit::getOrCreate())->min_days.'|max:'.$limits->max_days,
             'flight_date_from' => 'nullable|date',
             'flight_date_to' => 'nullable|date',
             'address' => 'nullable|string|max:500',
@@ -1583,7 +1652,7 @@ class BookingController extends Controller
             ? ($validated['ticket_fare_outbound_id'] ?? $booking->package?->ticket_fare_outbound_id)
             : null;
 
-        return DB::transaction(function () use ($booking, $validated, $passengerType) {
+        return DB::transaction(function () use ($booking, $validated) {
             $passenger = Passenger::create($validated);
 
             if (($validated['service_required'] ?? 'all') !== 'ticket_only') {
@@ -1616,7 +1685,7 @@ class BookingController extends Controller
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();
 
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'passenger_added');
 
             $passenger = $passenger->fresh()->load('ticketFare');
 
@@ -1650,7 +1719,7 @@ class BookingController extends Controller
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();
 
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'passenger_removed');
 
             return response()->json([
                 'success' => true,
@@ -1666,12 +1735,12 @@ class BookingController extends Controller
     {
         $dateOfBirth = $request->input('date_of_birth');
         // $stayDuration = $request->input('stay_duration');
-        
-        if (!$dateOfBirth) {
+
+        if (! $dateOfBirth) {
             return response()->json(['passenger_type' => null]);
         }
 
-        $passengerType = $this->bookingService->calculatePassengerType($dateOfBirth /*, $stayDuration*/);
+        $passengerType = $this->bookingService->calculatePassengerType($dateOfBirth /* , $stayDuration */);
 
         return response()->json([
             'passenger_type' => $passengerType,
@@ -1683,13 +1752,13 @@ class BookingController extends Controller
         $districtId = $request->input('district_id');
         $location = $request->input('location', 'Office');
 
-        if (!$districtId) {
+        if (! $districtId) {
             return response()->json(['error' => 'District is required'], 422);
         }
 
         $fingerprintCharge = FingerprintCharge::where('district_id', $districtId)->first();
 
-        if (!$fingerprintCharge) {
+        if (! $fingerprintCharge) {
             return response()->json(['error' => 'No fingerprint charge found for selected district. Please contact admin to set up fingerprint charges.'], 422);
         }
 
@@ -1697,7 +1766,7 @@ class BookingController extends Controller
 
         return response()->json([
             'charge' => $charge,
-            'fingerprint_charge_id' => $fingerprintCharge->id
+            'fingerprint_charge_id' => $fingerprintCharge->id,
         ]);
     }
 
@@ -1720,7 +1789,7 @@ class BookingController extends Controller
             'passengers.ticketFare.route.multiSegments.toCity',
             'passengers.ticketFare.baggageAllowances',
             'payments',
-            'invoice'
+            'invoice',
         ])->findOrFail($booking->id);
 
         $subTotal = (float) $booking->passengers->sum('package_value');
@@ -1753,7 +1822,7 @@ class BookingController extends Controller
 
         // Currency rate resolution
         $currencyRate = $booking->currencyRate;
-        if (!$currencyRate) {
+        if (! $currencyRate) {
             $currencyRate = CurrencyRate::where('created_at', '<=', $booking->created_at)
                 ->orderBy('created_at', 'desc')
                 ->first();
@@ -1824,7 +1893,7 @@ class BookingController extends Controller
         if ($booking->is_cancelled && $booking->cancelledBooking?->status?->value === 'cancelled') {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot process payment for a cancelled booking.'
+                'message' => 'Cannot process payment for a cancelled booking.',
             ], 422);
         }
 
@@ -1843,13 +1912,13 @@ class BookingController extends Controller
         if ($amount == 0 && $bdtAmount == 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Please enter payment amount'
+                'message' => 'Please enter payment amount',
             ], 422);
         }
 
         try {
             $invoice = $booking->invoice;
-            if (!$invoice) {
+            if (! $invoice) {
                 $invoice = Invoice::create([
                     'booking_id' => $booking->id,
                     'total_amount' => $booking->total_value ?? 0,
@@ -1859,12 +1928,12 @@ class BookingController extends Controller
             }
 
             $dueCollectionTransactionType = TransactionType::where('name', 'Due Collection')->first();
-            if (!$dueCollectionTransactionType) {
+            if (! $dueCollectionTransactionType) {
                 throw new \Exception('Due Collection transaction type not found. Please seed transaction types.');
             }
 
             $bankId = null;
-            if (($validated['payment_method'] ?? '') === 'bank' && !empty($validated['bank_method'])) {
+            if (($validated['payment_method'] ?? '') === 'bank' && ! empty($validated['bank_method'])) {
                 $bank = Bank::where('name', $validated['bank_method'])->first();
                 $bankId = $bank?->id;
             }
@@ -1887,7 +1956,7 @@ class BookingController extends Controller
             $invoice->refresh();
             if ($booking->is_cancelled
                 && $booking->cancelledBooking?->status?->value === 'cancellation processing') {
-                $costSummary = app(\App\Services\CostTrackingService::class)->getBookingCostSummary($booking);
+                $costSummary = app(CostTrackingService::class)->getBookingCostSummary($booking);
                 $totalCost = $costSummary['total_cost'];
                 $serviceCharge = $booking->cancelledBooking->service_charge_deduction ?? 0;
                 $refundAmount = $invoice->paid_amount - $totalCost - $serviceCharge;
@@ -1906,9 +1975,9 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e instanceof \Illuminate\Database\QueryException
-                    ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
-                    : 'Failed to save payment.'
+                'message' => $e instanceof QueryException
+                    ? DatabaseErrorHumanizer::humanize($e)
+                    : 'Failed to save payment.',
             ], 500);
         }
     }
@@ -1918,7 +1987,7 @@ class BookingController extends Controller
         if ($booking->is_cancelled && $booking->cancelledBooking?->status?->value === 'cancelled') {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot update payment for a cancelled booking.'
+                'message' => 'Cannot update payment for a cancelled booking.',
             ], 422);
         }
 
@@ -1937,13 +2006,13 @@ class BookingController extends Controller
         if ($amount == 0 && $bdtAmount == 0) {
             return response()->json([
                 'success' => false,
-                'message' => 'Please enter payment amount'
+                'message' => 'Please enter payment amount',
             ], 422);
         }
 
         try {
             $bankId = null;
-            if (($validated['payment_method'] ?? '') === 'bank' && !empty($validated['bank_method'])) {
+            if (($validated['payment_method'] ?? '') === 'bank' && ! empty($validated['bank_method'])) {
                 $bank = Bank::where('name', $validated['bank_method'])->first();
                 $bankId = $bank?->id;
             }
@@ -1984,9 +2053,9 @@ class BookingController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e instanceof \Illuminate\Database\QueryException
-                    ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
-                    : 'Failed to update payment.'
+                'message' => $e instanceof QueryException
+                    ? DatabaseErrorHumanizer::humanize($e)
+                    : 'Failed to update payment.',
             ], 500);
         }
     }
@@ -1999,7 +2068,7 @@ class BookingController extends Controller
         $passenger->update(['package_value' => $packageValue]);
         $booking = $passenger->booking->fresh();
 
-        $invoiceData = $this->syncBookingFinancials($booking);
+        $invoiceData = $this->syncBookingFinancials($booking, 'passenger_value_recalculated');
 
         return response()->json([
             'package_value' => $packageValue,
@@ -2020,38 +2089,37 @@ class BookingController extends Controller
             if ($scope === 'customer') {
                 $q->where(function ($q) use ($booking) {
                     $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
-                      ->where('owner_id', $booking->id);
+                        ->where('owner_id', $booking->id);
                 });
                 if ($booking->customer) {
                     $q->orWhere(function ($q) use ($booking) {
                         $q->where('owner_type', 'App\Models\Customer')
-                          ->where('owner_id', $booking->customer_id);
+                            ->where('owner_id', $booking->customer_id);
                     });
                 }
             } elseif ($scope === 'passenger') {
                 $q->where('owner_type', 'App\Models\Passenger')
-                  ->whereIn('owner_id', $passengerIds);
+                    ->whereIn('owner_id', $passengerIds);
             } else {
                 $q->where(function ($q) use ($booking) {
                     $q->whereIn('owner_type', ['App\Models\Booking', 'booking'])
-                      ->where('owner_id', $booking->id);
+                        ->where('owner_id', $booking->id);
                 });
                 if ($booking->customer) {
                     $q->orWhere(function ($q) use ($booking) {
                         $q->where('owner_type', 'App\Models\Customer')
-                          ->where('owner_id', $booking->customer_id);
+                            ->where('owner_id', $booking->customer_id);
                     });
                 }
             }
-        })->when(!$scope || $scope === 'all', function ($q) use ($passengerIds, $booking) {
+        })->when(! $scope || $scope === 'all', function ($q) use ($passengerIds) {
             $passengerId = request()->query('passenger_id');
             $targetIds = $passengerId ? [$passengerId] : $passengerIds;
             $q->orWhere(function ($q) use ($targetIds) {
                 $q->where('owner_type', 'App\Models\Passenger')
-                  ->whereIn('owner_id', $targetIds);
+                    ->whereIn('owner_id', $targetIds);
             });
         })->get();
-
 
         abort_if($allDocs->isEmpty(), 404, 'No documents found');
 
@@ -2060,7 +2128,7 @@ class BookingController extends Controller
         $suffix = $scope === 'customer' ? 'Customer Docs' : ($scope === 'passenger' ? 'Passenger Docs' : 'All Docs');
         $fileName = "{$invoiceId} {$customerName} {$suffix}.pdf";
 
-        $tmpDir = storage_path('app/tmp/merge_' . uniqid());
+        $tmpDir = storage_path('app/tmp/merge_'.uniqid());
         mkdir($tmpDir, 0755, true);
 
         $pdfFiles = [];
@@ -2068,15 +2136,17 @@ class BookingController extends Controller
         try {
             foreach ($allDocs as $doc) {
                 $fullPath = $this->resolveDocumentPath($doc);
-                if (!$fullPath || !file_exists($fullPath)) continue;
+                if (! $fullPath || ! file_exists($fullPath)) {
+                    continue;
+                }
 
                 $ext = strtolower(pathinfo($doc->file_path, PATHINFO_EXTENSION));
-                $tmpFile = $tmpDir . '/doc_' . $doc->id . '.pdf';
+                $tmpFile = $tmpDir.'/doc_'.$doc->id.'.pdf';
 
                 if (in_array($ext, ['jpg', 'jpeg', 'png'])) {
-                    $pdf = new \FPDF();
+                    $pdf = new \FPDF;
                     $pdf->AddPage();
-                    list($imgW, $imgH) = getimagesize($fullPath);
+                    [$imgW, $imgH] = getimagesize($fullPath);
                     $scale = min($pdf->GetPageWidth() / $imgW, $pdf->GetPageHeight() / $imgH);
                     $w = $imgW * $scale;
                     $h = $imgH * $scale;
@@ -2093,12 +2163,12 @@ class BookingController extends Controller
 
             abort_if(empty($pdfFiles), 404, 'No processable documents found');
 
-            $outputPdf = $tmpDir . '/merged.pdf';
+            $outputPdf = $tmpDir.'/merged.pdf';
             $this->mergePdfs($pdfFiles, $outputPdf);
 
             $mergedContent = file_get_contents($outputPdf);
         } finally {
-            array_map('unlink', glob($tmpDir . '/*'));
+            array_map('unlink', glob($tmpDir.'/*'));
             rmdir($tmpDir);
         }
 
@@ -2130,6 +2200,7 @@ class BookingController extends Controller
         if (Storage::exists($doc->file_path)) {
             return Storage::path($doc->file_path);
         }
+
         return null;
     }
 }

@@ -69,6 +69,9 @@ class TicketIssueController extends Controller
 
             if ($issuedTicket->issue_type === 'pending_outbound') {
                 unset($updateData['issue_type']);
+                if (isset($validated['ticket_fare_id'])) {
+                    $passenger->update(['ticket_fare_outbound_id' => $validated['ticket_fare_id']]);
+                }
             } else {
                 $updateData['issue_type'] = 'regular';
             }
@@ -90,6 +93,7 @@ class TicketIssueController extends Controller
                     ->exists();
 
                 if (! $existingPendingOutbound) {
+                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -101,6 +105,9 @@ class TicketIssueController extends Controller
                         'outbound_pending' => false,
                         'ticket_fare_id' => null,
                     ]);
+                    if ($pendingOutboundFareId) {
+                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
+                    }
                 }
             }
 
@@ -194,6 +201,64 @@ class TicketIssueController extends Controller
         try {
             DB::beginTransaction();
 
+            if ($issuedTicket->status === 're-issued') {
+                $latestRe = $issuedTicket->latestReIssuedTicket;
+
+                if (! $latestRe) {
+                    DB::rollBack();
+
+                    return response()->json(['message' => 'Re-issued ticket record not found.'], 404);
+                }
+
+                $oldData = $latestRe->toArray();
+                $oldData['log_source'] = 're_issued_tickets';
+                $oldData['re_issued_ticket_id'] = $latestRe->id;
+
+                $latestRe->update([
+                    'ticket_number' => $validated['ticket_number'] ?? $latestRe->ticket_number,
+                    'pnr' => $validated['pnr'] ?? $latestRe->pnr,
+                    'ticket_agent_id' => $validated['ticket_agent_id'] ?? $latestRe->ticket_agent_id,
+                    'ticket_fare_id' => $validated['ticket_fare_id'] ?? $latestRe->ticket_fare_id,
+                    'group_ticket_id' => $validated['group_ticket_id'] ?? $latestRe->group_ticket_id,
+                    're_issue_date' => $validated['issued_date'] ?? $latestRe->re_issue_date,
+                    'inbound_date' => $validated['inbound_date'] ?? $latestRe->inbound_date,
+                    'outbound_date' => $validated['outbound_date'] ?? $latestRe->outbound_date,
+                    'selling_fare' => $validated['selling_fare'] ?? $latestRe->selling_fare,
+                    'net_fare' => $validated['net_fare'] ?? $latestRe->net_fare,
+                    'offer_price' => $validated['offer_price'] ?? $latestRe->offer_price,
+                    'is_refundable' => $validated['is_refundable'] ?? $latestRe->is_refundable,
+                    'is_exchangeable' => $validated['is_exchangeable'] ?? $latestRe->is_exchangeable,
+                    'baggage_inbound' => $validated['baggage_inbound'] ?? $latestRe->baggage_inbound,
+                    'baggage_outbound' => $validated['baggage_outbound'] ?? $latestRe->baggage_outbound,
+                ]);
+
+                $newData = $latestRe->toArray();
+                $newData['log_source'] = 're_issued_tickets';
+                $newData['re_issued_ticket_id'] = $latestRe->id;
+
+                $issuedTicket->logAction('edited', $oldData, $newData);
+
+                DB::commit();
+
+                $latestRe->load([
+                    'ticketAgent',
+                    'ticketFare.airline',
+                    'ticketFare.airlineClass.class',
+                    'ticketFare.route.fromCity',
+                    'ticketFare.route.toCity',
+                    'ticketFare.route.returnCity',
+                    'ticketFare.route.multiSegments.fromCity',
+                    'ticketFare.route.multiSegments.toCity',
+                ]);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => 'Ticket updated successfully.',
+                    'issued_ticket' => $issuedTicket,
+                    're_issued_ticket' => $latestRe,
+                ]);
+            }
+
             $oldData = $issuedTicket->toArray();
 
             $issuedTicket->update($validated);
@@ -213,6 +278,7 @@ class TicketIssueController extends Controller
                     ->exists();
 
                 if (! $existingPendingOutbound) {
+                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -224,6 +290,9 @@ class TicketIssueController extends Controller
                         'outbound_pending' => false,
                         'ticket_fare_id' => null,
                     ]);
+                    if ($pendingOutboundFareId) {
+                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
+                    }
                 }
             }
 
