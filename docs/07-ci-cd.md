@@ -178,6 +178,7 @@ IMAGE_TAG=staging-<sha> ./deploy-staging.sh
 | APP_DEBUG | `false` | `true` |
 | Auto-deploy | Watchtower (5 min delay) | On push to `staging` |
 | Seeders | Not run | Run on each deploy |
+| `MIGRATE` | `false` (entrypoint) | `false` (CI runs migrations explicitly) |
 
 ---
 
