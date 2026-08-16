@@ -168,11 +168,11 @@
                     <div>
                         <div id="fieldNetFareSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
-                            <input type="number" id="inputNetFare" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputNetFare" readonly oninput="handleFieldSarInput('inputNetFare','inputNetFareBdt')" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                         </div>
                         <div id="fieldNetFareBdt" class="hidden">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
-                            <input type="number" id="inputNetFareBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputNetFareBdt" readonly oninput="handleFieldBdtInput('inputNetFare','inputNetFareBdt')" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                             <input type="number" id="inputNetFareBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
                         </div>
                     </div>
@@ -343,6 +343,7 @@ let currentRefundedNetFare = 0;
 let currentTicketAirlineId = null;
 let allTicketFares = [];
 let selectedTicketFareId = null;
+let originalTicketFareId = null;
 let sourceFares = { selling_fare: 0, net_fare: 0, offer_price: 0 };
 
 function getCurrencyMode() {
@@ -573,6 +574,24 @@ function handleTicketSelect() {
     syncFareFields();
 }
 
+function updateNetFareEditable() {
+    var selected = document.getElementById('inputTicketFare').value;
+    var editable = selected && originalTicketFareId && String(selected) !== String(originalTicketFareId);
+    ['inputNetFare', 'inputNetFareBdt'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (editable) {
+            el.removeAttribute('readonly');
+            el.classList.remove('border-slate-200', 'bg-slate-50', 'text-slate-500');
+            el.classList.add('border-slate-300', 'focus:ring-2', 'focus:ring-slate-400', 'focus:border-slate-400', 'outline-none');
+        } else {
+            el.setAttribute('readonly', 'readonly');
+            el.classList.remove('border-slate-300', 'focus:ring-2', 'focus:ring-slate-400', 'focus:border-slate-400', 'outline-none');
+            el.classList.add('border-slate-200', 'bg-slate-50', 'text-slate-500');
+        }
+    });
+}
+
 function syncFareFields() {
     var fareId = document.getElementById('inputTicketFare').value;
     var f = allTicketFares.find(function(x) { return String(x.id) === String(fareId); });
@@ -593,6 +612,7 @@ function syncFareFields() {
         document.getElementById('inputOfferPriceBdt').value = '';
     }
     syncReadonlyMirrors();
+    updateNetFareEditable();
 }
 
 function applyFareType() {
@@ -755,6 +775,7 @@ function processConfirmation(ticketRequestId) {
     ftSelect.value = originalFt;
 
     selectedTicketFareId = src.ticket_fare_id || null;
+    originalTicketFareId = src.ticket_fare_id || null;
 
     loadTicketFares({
         route_type: originalRt,
