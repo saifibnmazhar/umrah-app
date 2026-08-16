@@ -89,7 +89,7 @@
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-200">
                 <div>
-                    <span class="text-slate-500 text-sm">Original Total</span>
+                    <span class="text-slate-500 text-sm">Booking Total</span>
                     <p id="financialOriginalTotal" class="text-xl font-bold text-slate-800">@currency($originalTotal, 2, $rateVal)</p>
                     <p id="financialDiscountIndicator" class="text-xs text-orange-600 mt-1 {{ ($booking->discount_amount ?? 0) > 0 ? '' : 'hidden' }}">
                         −@currency($booking->discount_amount ?? 0, 2, $rateVal) discount
@@ -99,7 +99,7 @@
                     </p>
                 </div>
                 <div>
-                    <span class="text-slate-500 text-sm">Discounted Total</span>
+                    <span class="text-slate-500 text-sm">Invoice Total</span>
                     <p id="financialTotalValue" class="text-xl font-bold text-slate-800">@currency($booking->invoice?->total_amount ?? 0, 2, $rateVal)</p>
                 </div>
                 <div>
