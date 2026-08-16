@@ -14,7 +14,6 @@ permissions:
 env:
   REGISTRY: ghcr.io
   IMAGE_NAME: ${{ github.repository }}
-  TAG: staging-${{ github.sha }}
 
 jobs:
   test-php-unit:
@@ -116,7 +115,9 @@ jobs:
         uses: docker/metadata-action@v5
         with:
           images: ${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}
-          tags: ${{ env.TAG }}
+          tags: |
+            type=sha,format=short,prefix=staging-
+            type=raw,value=staging
       - name: Build and push
         uses: docker/build-push-action@v6
         with:
@@ -128,33 +129,4 @@ jobs:
           cache-to: type=registry,ref=${{ env.REGISTRY }}/${{ env.IMAGE_NAME }}/buildx-cache:latest,mode=max
           provenance: false
 
-  deploy-staging:
-    needs: build-and-push
-    runs-on: ubuntu-latest
-    if: github.ref == 'refs/heads/staging'
-    steps:
-      - uses: actions/checkout@v4
-      - name: Deploy to staging server
-        uses: appleboy/ssh-action@v1.2.0
-        with:
-          host: ${{ secrets.STAGING_HOST }}
-          username: ${{ secrets.STAGING_USER }}
-          key: ${{ secrets.STAGING_SSH_KEY }}
-          port: ${{ secrets.STAGING_SSH_PORT || '22' }}
-          script: |
-            set -e
-            cd /var/www/staging
-            # Pull the staging-tagged image
-            docker compose -f docker-compose.staging.yml pull
-            # Stop existing containers
-            docker compose -f docker-compose.staging.yml down
-            # Start new containers
-            docker compose -f docker-compose.staging.yml up -d
-            # Run migrations
-            docker compose -f docker-compose.staging.yml exec -T app php artisan migrate --force
-            # Run seeders for fresh staging environments
-            docker compose -f docker-compose.staging.yml exec -T app php artisan db:seed --force 2>/dev/null || true
-            # Health check
-            sleep 10
-            curl -sf https://staging.umrah.binmishaltravels.com/up || exit 1
-            echo "✅ Staging deployment complete"
+
