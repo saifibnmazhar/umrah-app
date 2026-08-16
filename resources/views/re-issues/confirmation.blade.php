@@ -820,10 +820,11 @@ function updateTotals() {
 
 function handlePaymentByChange() {
     var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
+    var isAdjustment = document.getElementById('inputPaymentOption').value === 'refund_adjustment';
     document.getElementById('fieldServiceCharge').classList.toggle('hidden', !isCustomer);
     document.getElementById('fieldTotalPayment').classList.toggle('hidden', !isCustomer);
     document.getElementById('fieldPaymentOption').classList.toggle('hidden', !isCustomer);
-    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !isCustomer);
+    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !(isCustomer && isAdjustment));
 
     if (!isCustomer) {
         document.getElementById('inputServiceCharge').value = '';
