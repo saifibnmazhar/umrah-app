@@ -155,8 +155,23 @@ The staging workflow automatically deploys when a commit is pushed to `staging`:
 **To deploy staging manually:**
 
 ```bash
+chmod +x deploy-staging.sh
 IMAGE_TAG=staging-<sha> ./deploy-staging.sh
 ```
+
+The staging deploy script mirrors `deploy-prod.sh` and:
+1. Validates `.env.staging` and `docker-compose.staging.yml` exist
+2. Validates Docker Compose configuration
+3. Pulls the staging image from ghcr.io
+4. Stops the app container (preserving volumes)
+5. Starts DB, Redis, and app containers in order
+6. Waits for DB health (120s timeout)
+7. Fixes Laravel storage permissions
+8. Runs migrations if `MIGRATE=true` in `.env.staging`
+9. Waits for app health (120s timeout)
+10. Prints final container status
+
+Uses `--env-file` (not `source`) for safe env loading, and `docker compose` health checks (not public HTTP) for health verification.
 
 ### Staging Configuration Files
 
