@@ -115,6 +115,72 @@ This script:
 IMAGE_TAG=sha-abc123def ./deploy-prod.sh
 ```
 
+## Staging Environment
+
+**Workflow file:** `.github/workflows/staging.yml`
+
+**Trigger:** Push to `staging` branch, PR to `staging`, or manual dispatch.
+
+### Staging Workflow Jobs
+
+| Job | Purpose |
+|-----|---------|
+| `test-php-unit` | PHPUnit unit tests against MySQL 8.0 |
+| `test-php-feature` | PHPUnit feature tests against MySQL 8.0 |
+| `test-js` | npm build verification |
+| `build-and-push` | Build Docker image tagged `staging-<sha>`, push to ghcr.io |
+| `deploy-staging` | SSH deploy to staging server, migrate, health check |
+
+### Required GitHub Secrets for Staging
+
+| Secret | Description |
+|--------|-------------|
+| `STAGING_HOST` | Staging server IP address |
+| `STAGING_USER` | SSH username for staging server |
+| `STAGING_SSH_KEY` | SSH private key for staging server access |
+| `STAGING_SSH_PORT` | SSH port (defaults to 22 if not set) |
+
+### Staging Deployment
+
+The staging workflow automatically deploys when a commit is pushed to `staging`:
+
+1. CI runs tests (unit + feature) and npm build
+2. Docker image is built and tagged `staging-<sha>`
+3. Image is pushed to `ghcr.io`
+4. `deploy-staging` job SSHes into the staging server
+5. Runs `docker compose -f docker-compose.staging.yml pull && docker compose up -d`
+6. Runs migrations and seeders
+7. Performs a health check on `/up` endpoint
+
+**To deploy staging manually:**
+
+```bash
+IMAGE_TAG=staging-<sha> ./deploy-staging.sh
+```
+
+### Staging Configuration Files
+
+| File | Purpose |
+|------|---------|
+| `.env.staging.sample` | Template for staging environment variables |
+| `docker-compose.staging.yml` | Staging Docker Compose config (ports on 8001, staging DB) |
+| `deploy-staging.sh` | Local staging deployment script |
+
+### Staging vs Production Differences
+
+| Aspect | Production | Staging |
+|--------|-----------|---------|
+| Image tag | `latest` + `sha-<short-sha>` | `staging-<sha>` |
+| Deploy method | Watchtower (auto) | GitHub Actions SSH |
+| DB name | `binmishal_umrah_live` | `umrah_staging` |
+| Port | 8000 | 8001 |
+| APP_ENV | `production` | `staging` |
+| APP_DEBUG | `false` | `true` |
+| Auto-deploy | Watchtower (5 min delay) | On push to `staging` |
+| Seeders | Not run | Run on each deploy |
+
+---
+
 ## Debugging CI Failures
 
 ```bash

@@ -1,4 +1,6 @@
 name: ${COMPOSE_PROJECT_NAME}
+# Staging environment — deploys to staging.umrah.binmishaltravels.com
+# Uses staging-<sha> image tags and a separate staging database (umrah_staging).
 
 services:
   app:

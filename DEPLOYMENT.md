@@ -241,6 +241,29 @@ docker compose -f docker-compose.prod.yml exec app php artisan route:cache
 
 After these changes, rebuild the Docker image (push to `main` triggers CI automatically).
 
+## Staging Deployment
+
+The staging workflow (`.github/workflows/staging.yml`) automatically builds and deploys
+when you push to the `staging` branch:
+
+```bash
+git checkout -b staging
+git push origin staging
+```
+
+**Manual staging deploy:**
+
+```bash
+# On the staging server
+IMAGE_TAG=staging-<sha> ./deploy-staging.sh
+```
+
+**Required secrets in GitHub repository settings:**
+- `STAGING_HOST` — staging server IP
+- `STAGING_USER` — SSH username
+- `STAGING_SSH_KEY` — SSH private key
+- `STAGING_SSH_PORT` — SSH port (optional, defaults to 22)
+
 ## Backup Strategy
 
 Database backup:
