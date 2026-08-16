@@ -647,7 +647,7 @@
             @foreach($booking->passengers as $index => $passenger)
             @php
                 $viewableTickets = collect($passenger->allIssuedTickets)
-                    ->filter(fn($t) => in_array($t->status, ['issued', 're-issued', 'refunded']))
+                    ->filter(fn($t) => in_array($t->status, ['issued', 're-issued']))
                     ->values();
             @endphp
             <div class="border border-slate-200 rounded-lg p-4">

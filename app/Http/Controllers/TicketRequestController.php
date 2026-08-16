@@ -64,6 +64,17 @@ class TicketRequestController extends Controller
             }
         }
 
+        if ($validated['request_type'] === 'refund' && $ticketIds->isNotEmpty()) {
+            $notRefundableIds = IssuedTicket::whereIn('id', $ticketIds)
+                ->whereNotIn('status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+                ->pluck('id')
+                ->all();
+
+            if ($notRefundableIds) {
+                return response()->json(['message' => 'One of the selected tickets is not eligible for refund.'], 422);
+            }
+        }
+
         $booking = Booking::findOrFail($validated['booking_id']);
         $userId = auth()->id();
         $branchId = auth()->user()->branch_id;
