@@ -25,6 +25,10 @@ class RefundController extends Controller
             return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
         }
 
+        if ($issuedTicket->pendingRequests()->exists()) {
+            return response()->json(['message' => 'A re-issue/refund request is pending for this ticket; process it first.'], 422);
+        }
+
         $refundSource = ($issuedTicket->status === 're-issued' && $issuedTicket->latestReIssuedTicket)
             ? $issuedTicket->latestReIssuedTicket
             : $issuedTicket;

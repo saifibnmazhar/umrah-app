@@ -91,6 +91,13 @@ class IssuedTicket extends Model
         return $this->hasOne(RefundedTicket::class, 'issued_ticket_id')->latestOfMany('id');
     }
 
+    public function pendingRequests(): HasMany
+    {
+        return $this->hasMany(TicketRequest::class)
+            ->where('status', 'pending')
+            ->whereIn('request_type', ['re_issue', 'refund']);
+    }
+
     public function logAction(string $action, ?array $oldData, ?array $newData): void
     {
         $this->logs()->create([

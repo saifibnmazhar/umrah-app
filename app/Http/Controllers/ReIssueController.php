@@ -70,6 +70,10 @@ class ReIssueController extends Controller
             return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
         }
 
+        if ($issuedTicket->pendingRequests()->exists()) {
+            return response()->json(['message' => 'A re-issue/refund request is pending for this ticket; process it first.'], 422);
+        }
+
         if (! in_array($issuedTicket->status, ['issued', 'refunded', 're-issued'])) {
             return response()->json(['message' => 'This ticket cannot be re-issued.'], 400);
         }

@@ -549,6 +549,7 @@
                         } elseif ($ticket->status === 'refunded' && $ticket->latestRefundedTicket) {
                             $src = $ticket->latestRefundedTicket;
                         }
+                        $hasPendingRequest = $ticket->pendingRequests->isNotEmpty();
                         $tRoute = '';
                         $tRouteRaw = $src->ticketFare?->route;
                         $tRouteType = $tRouteRaw?->route_type?->value ?? '';
@@ -566,8 +567,8 @@
                         $statusClass = $tStatus === 'issued' ? 'bg-green-100 text-green-700' : ($tStatus === 're-issued' ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700');
                     @endphp
                     <div class="border border-slate-100 rounded-lg p-3 mb-2">
-                        <label for="reIssueTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer">
-                            <input type="checkbox" id="reIssueTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $src->ticket_number ?? '' }}" data-pnr="{{ $src->pnr ?? '' }}" data-route="{{ $tRoute }}" data-route-type="{{ $tRouteType }}" data-issue-type="{{ $ticket->issue_type }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueTicketFields('{{ $index }}', '{{ $tIndex }}')">
+                        <label for="reIssueTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer" @if($hasPendingRequest) onmouseenter="showRequestPendingTooltip(this)" onmouseleave="hideRequestPendingTooltip()" @endif>
+                            <input type="checkbox" id="reIssueTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $src->ticket_number ?? '' }}" data-pnr="{{ $src->pnr ?? '' }}" data-route="{{ $tRoute }}" data-route-type="{{ $tRouteType }}" data-issue-type="{{ $ticket->issue_type }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded {{ $hasPendingRequest ? 'opacity-40' : '' }}" onchange="toggleReIssueTicketFields('{{ $index }}', '{{ $tIndex }}')" {{ $hasPendingRequest ? 'disabled' : '' }}>
                             <span class="text-sm text-slate-700">
                                 <span class="font-medium">#{{ $loop->iteration }}</span>
                                 <span class="mx-1">|</span>
@@ -664,6 +665,7 @@
                         } elseif ($ticket->status === 'refunded' && $ticket->latestRefundedTicket) {
                             $src = $ticket->latestRefundedTicket;
                         }
+                        $hasPendingRequest = $ticket->pendingRequests->isNotEmpty();
                         $tRoute = '';
                         $tRouteRaw = $src->ticketFare?->route;
                         $tRouteType = $tRouteRaw?->route_type?->value ?? '';
@@ -681,8 +683,8 @@
                         $statusClass = $tStatus === 'issued' ? 'bg-green-100 text-green-700' : ($tStatus === 're-issued' ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700');
                     @endphp
                     <div class="border border-slate-100 rounded-lg p-3 mb-2">
-                        <label for="refundTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer">
-                            <input type="checkbox" id="refundTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $src->ticket_number ?? '' }}" data-pnr="{{ $src->pnr ?? '' }}" data-route="{{ $tRoute }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded">
+                        <label for="refundTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer" @if($hasPendingRequest) onmouseenter="showRequestPendingTooltip(this)" onmouseleave="hideRequestPendingTooltip()" @endif>
+                            <input type="checkbox" id="refundTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $src->ticket_number ?? '' }}" data-pnr="{{ $src->pnr ?? '' }}" data-route="{{ $tRoute }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded {{ $hasPendingRequest ? 'opacity-40' : '' }}" {{ $hasPendingRequest ? 'disabled' : '' }}>
                             <span class="text-sm text-slate-700">
                                 <span class="font-medium">#{{ $loop->iteration }}</span>
                                 <span class="mx-1">|</span>
@@ -876,6 +878,8 @@
 .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
 .toast { transition: transform 0.3s ease, opacity 0.3s ease; }
 </style>
+
+<div id="requestPendingTooltip" class="hidden fixed z-[100] px-2 py-1 text-xs whitespace-nowrap rounded bg-slate-900 text-white pointer-events-none">Request Pending</div>
 
 @push('scripts')
 <script>
@@ -1910,6 +1914,18 @@ function deleteDocument(docId) {
 
 function downloadDoc(docId) {
     window.open('/documents/' + docId + '/download', '_blank');
+}
+
+function showRequestPendingTooltip(el) {
+    const tip = document.getElementById('requestPendingTooltip');
+    const rect = el.getBoundingClientRect();
+    tip.style.top = (rect.bottom + 6) + 'px';
+    tip.style.left = rect.left + 'px';
+    tip.classList.remove('hidden');
+}
+
+function hideRequestPendingTooltip() {
+    document.getElementById('requestPendingTooltip').classList.add('hidden');
 }
 </script>
 @endpush

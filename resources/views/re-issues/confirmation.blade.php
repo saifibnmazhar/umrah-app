@@ -157,33 +157,33 @@
                     <div>
                         <div id="fieldSellingFareSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
-                            <input type="number" id="inputSellingFare" oninput="handleFieldSarInput('inputSellingFare','inputSellingFareBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputSellingFare" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                         </div>
                         <div id="fieldSellingFareBdt" class="hidden">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
-                            <input type="number" id="inputSellingFareBdt" oninput="handleFieldBdtInput('inputSellingFare','inputSellingFareBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputSellingFareBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                             <input type="number" id="inputSellingFareBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
                         </div>
                     </div>
                     <div>
                         <div id="fieldNetFareSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
-                            <input type="number" id="inputNetFare" oninput="handleFieldSarInput('inputNetFare','inputNetFareBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputNetFare" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                         </div>
                         <div id="fieldNetFareBdt" class="hidden">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
-                            <input type="number" id="inputNetFareBdt" oninput="handleFieldBdtInput('inputNetFare','inputNetFareBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputNetFareBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                             <input type="number" id="inputNetFareBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
                         </div>
                     </div>
                     <div id="fieldOfferPrice" class="hidden">
                         <div id="fieldOfferPriceSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
-                            <input type="number" id="inputOfferPrice" oninput="handleFieldSarInput('inputOfferPrice','inputOfferPriceBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputOfferPrice" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                         </div>
                         <div id="fieldOfferPriceBdt" class="hidden">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
-                            <input type="number" id="inputOfferPriceBdt" oninput="handleFieldBdtInput('inputOfferPrice','inputOfferPriceBdt')" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputOfferPriceBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                             <input type="number" id="inputOfferPriceBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
                         </div>
                     </div>

@@ -48,6 +48,22 @@ class TicketRequestController extends Controller
             'passengers.*.visa_expiry' => 'nullable|date',
         ]);
 
+        if (in_array($validated['request_type'], ['re_issue', 'refund'])) {
+            $ticketIds = collect($validated['passengers'])
+                ->flatMap(fn($p) => collect($p['tickets'] ?? []))
+                ->pluck('issued_ticket_id')
+                ->filter()
+                ->unique()
+                ->values();
+
+            if ($ticketIds->isNotEmpty() && TicketRequest::whereIn('issued_ticket_id', $ticketIds)
+                ->where('status', 'pending')
+                ->whereIn('request_type', ['re_issue', 'refund'])
+                ->exists()) {
+                return response()->json(['message' => 'A re-issue or refund request is already pending for one of the selected tickets.'], 422);
+            }
+        }
+
         $booking = Booking::findOrFail($validated['booking_id']);
         $userId = auth()->id();
         $branchId = auth()->user()->branch_id;
