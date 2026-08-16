@@ -71,7 +71,7 @@ fi
 # Health check
 echo "🏥 Health check..."
 STAGING_URL="${APP_URL:-http://localhost:${APP_PORT:-8001}}"
-curl -sf "${STAGING_URL}/up" && echo "" || {
+curl -fs "${STAGING_URL}/" && echo "" || {
     echo "❌ Health check failed"
     docker compose -f docker-compose.staging.yml logs --tail=50 app
     exit 1
