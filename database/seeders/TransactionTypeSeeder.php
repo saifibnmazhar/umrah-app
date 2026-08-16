@@ -23,6 +23,14 @@ class TransactionTypeSeeder extends Seeder
                 'type' => 'debit',
             ],
             [
+                'name' => 'Ticket Refund - Payment',
+                'type' => 'debit',
+            ],
+            [
+                'name' => 'Ticket Refund - Re-issue',
+                'type' => 'debit',
+            ],
+            [
                 'name' => 'Ticket Agent Payment',
                 'type' => 'debit',
             ],

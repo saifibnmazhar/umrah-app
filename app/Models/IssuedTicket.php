@@ -6,6 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class IssuedTicket extends Model
 {
@@ -68,6 +69,33 @@ class IssuedTicket extends Model
     public function logs(): HasMany
     {
         return $this->hasMany(IssuedTicketLog::class);
+    }
+
+    public function reIssuedTickets(): HasMany
+    {
+        return $this->hasMany(ReIssuedTicket::class, 'issued_ticket_id');
+    }
+
+    public function latestReIssuedTicket(): HasOne
+    {
+        return $this->hasOne(ReIssuedTicket::class, 'issued_ticket_id')->latestOfMany('id');
+    }
+
+    public function refundedTickets(): HasMany
+    {
+        return $this->hasMany(RefundedTicket::class, 'issued_ticket_id');
+    }
+
+    public function latestRefundedTicket(): HasOne
+    {
+        return $this->hasOne(RefundedTicket::class, 'issued_ticket_id')->latestOfMany('id');
+    }
+
+    public function pendingRequests(): HasMany
+    {
+        return $this->hasMany(TicketRequest::class)
+            ->where('status', 'pending')
+            ->whereIn('request_type', ['re_issue', 'refund']);
     }
 
     public function logAction(string $action, ?array $oldData, ?array $newData): void

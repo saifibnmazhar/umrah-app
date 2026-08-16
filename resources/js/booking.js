@@ -2513,13 +2513,14 @@ Alpine.data('editBookingApp', () => ({
     passengerModalVisible: false,
     customerModalVisible: false,
     discountModalVisible: false,
-    discountValueBdt: '',
+discountValueBdt: '',
     paymentModalVisible: false,
     customDurationModalVisible: false,
     paymentData: {
         currency: 'SAR',
         method: 'cash',
         bank_method: '',
+        bank_id: '',
         trx_id: '',
         amount_sar: '',
         amount_bdt: ''
