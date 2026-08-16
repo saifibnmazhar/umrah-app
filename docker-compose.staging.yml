@@ -4,7 +4,7 @@ name: ${COMPOSE_PROJECT_NAME}
 
 services:
   app:
-    image: ${APP_IMAGE}:${IMAGE_TAG:-latest}
+    image: ${APP_IMAGE}:${IMAGE_TAG:-staging}
 
     env_file:
       - .env.staging
