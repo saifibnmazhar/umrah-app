@@ -68,14 +68,14 @@ if [ "${MIGRATE:-true}" != "false" ]; then
     docker compose -f docker-compose.staging.yml exec -T app php artisan db:seed --force 2>/dev/null || true
 fi
 
-# Health check
+# Health check — run curl inside the app container using localhost
+# (matches the Docker healthcheck pattern; avoids Cloudflare/public DNS issues)
 echo "🏥 Health check..."
-STAGING_URL="${APP_URL:-http://localhost:${APP_PORT:-8001}}"
-curl -fs "${STAGING_URL}/" && echo "" || {
+docker compose -f docker-compose.staging.yml exec -T app curl -fs http://localhost && echo "" || {
     echo "❌ Health check failed"
     docker compose -f docker-compose.staging.yml logs --tail=50 app
     exit 1
 }
 
 echo "✅ Staging deployment complete"
-echo "   URL: ${STAGING_URL}"
+echo "   URL: ${APP_URL:-http://localhost:${APP_PORT:-8001}}"
