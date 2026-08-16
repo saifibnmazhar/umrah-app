@@ -151,6 +151,9 @@ class BookingService
 
     public function syncFinancials(Booking $booking, ?string $reason = null): void
     {
+        $oldTotal = (float) $booking->total_value;
+        $oldDiscount = (float) $booking->discount_amount;
+
         $this->recalculateBookingTotal($booking);
 
         $discountType = $booking->discount_type;
@@ -171,8 +174,15 @@ class BookingService
 
         $invoice = $booking->invoice;
         if ($invoice) {
-            $discountedTotal = max(0, $booking->total_value - $discountAmount);
-            $this->invoiceService->updateTotals($invoice, $discountedTotal, $reason);
+            $oldDiscounted = max(0, $oldTotal - $oldDiscount);
+            $newDiscounted = max(0, $booking->total_value - $discountAmount);
+            $delta = $newDiscounted - $oldDiscounted;
+
+            $this->invoiceService->updateTotals(
+                $invoice,
+                (float) $invoice->total_amount + $delta,
+                $reason
+            );
         }
     }
 
