@@ -133,12 +133,12 @@ IMAGE_TAG=sha-abc123def ./deploy-prod.sh
 
 ### Required GitHub Secrets for Staging
 
-| Secret | Description |
-|--------|-------------|
-| `STAGING_HOST` | Staging server IP address |
-| `STAGING_USER` | SSH username for staging server |
-| `STAGING_SSH_KEY` | SSH private key for staging server access |
-| `STAGING_SSH_PORT` | SSH port (defaults to 22 if not set) |
+None — staging deploys the same way as production:
+
+1. CI builds and pushes the Docker image to `ghcr.io` (tagged `staging` + `staging-<sha>`)
+2. **Watchtower** (running on the staging server) detects the new image and auto-updates
+
+No SSH secrets are required.
 
 ### Staging Deployment
 
