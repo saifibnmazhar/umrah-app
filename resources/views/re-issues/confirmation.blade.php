@@ -168,11 +168,11 @@
                     <div>
                         <div id="fieldNetFareSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
-                            <input type="number" id="inputNetFare" readonly oninput="handleFieldSarInput('inputNetFare','inputNetFareBdt')" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputNetFare" readonly oninput="handleFieldSarInput('inputNetFare','inputNetFareBdt'); recalcFareDifference()" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                         </div>
                         <div id="fieldNetFareBdt" class="hidden">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
-                            <input type="number" id="inputNetFareBdt" readonly oninput="handleFieldBdtInput('inputNetFare','inputNetFareBdt')" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputNetFareBdt" readonly oninput="handleFieldBdtInput('inputNetFare','inputNetFareBdt'); recalcFareDifference()" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                             <input type="number" id="inputNetFareBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
                         </div>
                     </div>
@@ -344,6 +344,7 @@ let currentTicketAirlineId = null;
 let allTicketFares = [];
 let selectedTicketFareId = null;
 let originalTicketFareId = null;
+let originalTicketNetFare = 0;
 let sourceFares = { selling_fare: 0, net_fare: 0, offer_price: 0 };
 
 function getCurrencyMode() {
@@ -613,6 +614,15 @@ function syncFareFields() {
     }
     syncReadonlyMirrors();
     updateNetFareEditable();
+    recalcFareDifference();
+}
+
+function recalcFareDifference() {
+    var newNetFare = parseFloat(document.getElementById('inputNetFare').value) || 0;
+    var diff = Math.round((newNetFare - originalTicketNetFare) * 1e6) / 1e6;
+    document.getElementById('inputFareDifference').value = diff || '';
+    handleFieldSarInput('inputFareDifference', 'inputFareDifferenceBdt');
+    updateTotals();
 }
 
 function applyFareType() {
@@ -776,6 +786,7 @@ function processConfirmation(ticketRequestId) {
 
     selectedTicketFareId = src.ticket_fare_id || null;
     originalTicketFareId = src.ticket_fare_id || null;
+    originalTicketNetFare = parseFloat(src.net_fare) || 0;
 
     loadTicketFares({
         route_type: originalRt,

@@ -2515,51 +2515,52 @@ if ($passenger->ticket_fare_inbound_id) {
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
                                 <input type="number" x-model="reIssueForm.selling_fare" step="0.000001"
-                                       :readonly="!reIssueForm.ticket_option"
-                                       :class="reIssueForm.ticket_option ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
+                                       :readonly="!isReIssueDifferentTicket()"
+                                       :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
                                 <input type="number" x-model="reIssueForm.selling_fare_bdt" step="0.000001"
-                                       :readonly="!reIssueForm.ticket_option"
-                                       :class="reIssueForm.ticket_option ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
+                                       :readonly="!isReIssueDifferentTicket()"
+                                       :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                                 <input type="number" x-model="reIssueForm.selling_fare" step="0.000001"
-                                       :readonly="!reIssueForm.ticket_option"
-                                       :class="reIssueForm.ticket_option ? 'w-full mt-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none text-sm' : 'w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm'">
+                                       :readonly="!isReIssueDifferentTicket()"
+                                       :class="isReIssueDifferentTicket() ? 'w-full mt-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none text-sm' : 'w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm'">
                             </div>
                         </div>
                         <div>
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
                                 <input type="number" x-model="reIssueForm.net_fare" step="0.000001"
-                                       :readonly="!reIssueForm.ticket_option"
-                                       :class="reIssueForm.ticket_option ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
+                                       :readonly="!isReIssueDifferentTicket()"
+                                       @input="recalcReIssueFareDifference()"
+                                       :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
                                 <input type="number" x-model="reIssueForm.net_fare_bdt" step="0.000001"
-                                       :readonly="!reIssueForm.ticket_option"
-                                       :class="reIssueForm.ticket_option ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
+                                       :readonly="!isReIssueDifferentTicket()"
+                                       :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                                 <input type="number" x-model="reIssueForm.net_fare" step="0.000001"
-                                       :readonly="!reIssueForm.ticket_option"
-                                       :class="reIssueForm.ticket_option ? 'w-full mt-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none text-sm' : 'w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm'">
+                                       :readonly="!isReIssueDifferentTicket()"
+                                       :class="isReIssueDifferentTicket() ? 'w-full mt-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none text-sm' : 'w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm'">
                             </div>
                         </div>
                         <div x-show="reIssueForm.ticket_type === 'offer'">
                             <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
                                 <input type="number" x-model="reIssueForm.offer_price" step="0.000001"
-                                       :readonly="!reIssueForm.ticket_option"
-                                       :class="reIssueForm.ticket_option ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
+                                       :readonly="!isReIssueDifferentTicket()"
+                                       :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
                             <div x-show="$store.currency.mode === 'BDT'">
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
                                 <input type="number" x-model="reIssueForm.offer_price_bdt" step="0.000001"
-                                       :readonly="!reIssueForm.ticket_option"
-                                       :class="reIssueForm.ticket_option ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
+                                       :readonly="!isReIssueDifferentTicket()"
+                                       :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                                 <input type="number" x-model="reIssueForm.offer_price" step="0.000001"
-                                       :readonly="!reIssueForm.ticket_option"
-                                       :class="reIssueForm.ticket_option ? 'w-full mt-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none text-sm' : 'w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm'">
+                                       :readonly="!isReIssueDifferentTicket()"
+                                       :class="isReIssueDifferentTicket() ? 'w-full mt-1 px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none text-sm' : 'w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm'">
                             </div>
                         </div>
                     </div>
@@ -4010,6 +4011,7 @@ function bookingIndexApp() {
         ticketInfoPassengerIndex: null,
         isReIssueModalOpen: false,
         reIssueModalIsOutbound: false,
+        reIssueOriginalTicketFareId: null,
         isRefundModalOpen: false,
         refundPassengerIndex: null,
         refundTicketIndex: null,
@@ -5038,6 +5040,7 @@ function bookingIndexApp() {
             const isOutbound = ticket.issue_type === 'pending_outbound';
             const re = (ticket.status === 're-issued' && ticket.latest_re_issued_ticket) ? ticket.latest_re_issued_ticket : null;
             const fareSrc = re || ticket;
+            this.reIssueOriginalTicketFareId = fareSrc.ticket_fare_id != null ? String(fareSrc.ticket_fare_id) : null;
 
             const today = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
 
@@ -5421,6 +5424,21 @@ function bookingIndexApp() {
             } else {
                 f.errors.refund_adjustment_amount = '';
             }
+        },
+
+        recalcReIssueFareDifference() {
+            const origNet = parseFloat(this.reIssueOriginalFares?.net_fare) || 0;
+            const newNet = parseFloat(this.reIssueForm.net_fare) || 0;
+            const diff = Math.round((newNet - origNet) * 1e6) / 1e6;
+            this.reIssueForm.fare_difference = diff;
+            const rate = window.__currencyRate || 0;
+            this.reIssueForm.fare_difference_bdt = rate > 0 ? Math.round(diff * rate) : '';
+            this.recalcReIssueTotals();
+        },
+
+        isReIssueDifferentTicket() {
+            return !!this.reIssueForm.ticket_option && !!this.reIssueOriginalTicketFareId
+                && String(this.reIssueForm.ticket_option) !== String(this.reIssueOriginalTicketFareId);
         },
 
         handleReIssuePaymentByChange() {
@@ -6107,6 +6125,7 @@ function bookingIndexApp() {
                     this.reIssueForm.net_fare_bdt = this.reIssueOriginalFares.net_fare_bdt || '';
                     this.reIssueForm.offer_price_bdt = this.reIssueOriginalFares.offer_price_bdt || '';
                 }
+                this.recalcReIssueFareDifference();
                 return;
             }
             const fare = this.ticketFaresList.find(f => f.id == val);
@@ -6145,6 +6164,7 @@ function bookingIndexApp() {
                         this.reIssueForm.baggage_outbound = outboundAllowance.allowance;
                     }
                 }
+                this.recalcReIssueFareDifference();
             }
         },
 
