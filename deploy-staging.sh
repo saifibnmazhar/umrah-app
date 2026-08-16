@@ -14,7 +14,7 @@ set -euo pipefail
 
 IMAGE_TAG=${IMAGE_TAG:-staging}
 
-echo "🚀 Deploying to staging (image: ghcr.io/saifibnmazhar/umrah-app:${IMAGE_TAG})"
+echo "🚀 Deploying Umrah App Staging (image: ghcr.io/saifibnmazhar/umrah-app:${IMAGE_TAG})"
 
 # Ensure .env.staging exists
 if [ ! -f .env.staging ]; then
