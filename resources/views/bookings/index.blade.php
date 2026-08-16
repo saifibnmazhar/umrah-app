@@ -353,13 +353,13 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'refund_adjustment_amount' => (float)($lrt->refund_adjustment_amount ?? 0),
             'total_customer_payment' => (float)($lrt->total_customer_payment ?? 0),
             'remarks' => $lrt->remarks ?? '',
-            'ticket_type' => $lrt->ticketFare?->ticket_type?->value ?? '',
-            'route_type' => $lrt->ticketFare?->route?->route_type?->value ?? '',
-            'flight_type' => $lrt->ticketFare?->route?->flight_type?->value ?? '',
-            'airline' => $lrt->ticketFare?->airline?->name ?? '',
-            'travel_class' => $lrt->ticketFare?->airlineClass?->class?->name ?? '',
-            'route' => $lrt->ticketFare?->route ? (function() use ($lrt) {
-                $r = $lrt->ticketFare->route;
+            'ticket_type' => $lrt->ticketFare?->ticket_type?->value ?? $lit->ticketFare?->ticket_type?->value ?? '',
+            'route_type' => $lrt->ticketFare?->route?->route_type?->value ?? $lit->ticketFare?->route?->route_type?->value ?? '',
+            'flight_type' => $lrt->ticketFare?->route?->flight_type?->value ?? $lit->ticketFare?->route?->flight_type?->value ?? '',
+            'airline' => $lrt->ticketFare?->airline?->name ?? $lit->ticketFare?->airline?->name ?? '',
+            'travel_class' => $lrt->ticketFare?->airlineClass?->class?->name ?? $lit->ticketFare?->airlineClass?->class?->name ?? '',
+            'route' => ($lrt->ticketFare?->route ?? $lit->ticketFare?->route) ? (function() use ($lrt, $lit) {
+                $r = $lrt->ticketFare?->route ?? $lit->ticketFare?->route;
                 $rt = $r->route_type?->value;
                 if ($rt === 'multi_city') {
                     return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
@@ -480,13 +480,13 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'refund_adjustment_amount' => (float)($lrt->refund_adjustment_amount ?? 0),
             'total_customer_payment' => (float)($lrt->total_customer_payment ?? 0),
             'remarks' => $lrt->remarks ?? '',
-            'ticket_type' => $lrt->ticketFare?->ticket_type?->value ?? '',
-            'route_type' => $lrt->ticketFare?->route?->route_type?->value ?? '',
-            'flight_type' => $lrt->ticketFare?->route?->flight_type?->value ?? '',
-            'airline' => $lrt->ticketFare?->airline?->name ?? '',
-            'travel_class' => $lrt->ticketFare?->airlineClass?->class?->name ?? '',
-            'route' => $lrt->ticketFare?->route ? (function() use ($lrt) {
-                $r = $lrt->ticketFare->route;
+            'ticket_type' => $lrt->ticketFare?->ticket_type?->value ?? $t->ticketFare?->ticket_type?->value ?? '',
+            'route_type' => $lrt->ticketFare?->route?->route_type?->value ?? $t->ticketFare?->route?->route_type?->value ?? '',
+            'flight_type' => $lrt->ticketFare?->route?->flight_type?->value ?? $t->ticketFare?->route?->flight_type?->value ?? '',
+            'airline' => $lrt->ticketFare?->airline?->name ?? $t->ticketFare?->airline?->name ?? '',
+            'travel_class' => $lrt->ticketFare?->airlineClass?->class?->name ?? $t->ticketFare?->airlineClass?->class?->name ?? '',
+            'route' => ($lrt->ticketFare?->route ?? $t->ticketFare?->route) ? (function() use ($lrt, $t) {
+                $r = $lrt->ticketFare?->route ?? $t->ticketFare?->route;
                 $rt = $r->route_type?->value;
                 if ($rt === 'multi_city') {
                     return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
