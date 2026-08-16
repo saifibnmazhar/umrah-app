@@ -4,7 +4,7 @@ set -euo pipefail
 # ============================================================
 # Staging deployment script
 # Run this on the staging server after GitHub Actions has
-# built and pushed the staging-<sha> image to ghcr.io.
+# built and pushed the staging image to ghcr.io.
 #
 # Usage:
 #   IMAGE_TAG=staging-<sha> ./deploy-staging.sh
@@ -23,31 +23,31 @@ if [ ! -f .env.staging ]; then
     exit 1
 fi
 
-# Load staging env vars for docker compose
-# Use --env-file flag instead of source to avoid shell interpretation issues
-# (empty APP_KEY, special chars in passwords, etc.)
-ENV_FILE=".env.staging"
-
 # Update IMAGE_TAG in env file
 sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env.staging
 
+# Load staging env vars
+set -a
+source .env.staging
+set +a
+
 # Set default project name for compose isolation
-export COMPOSE_PROJECT_NAME=$(grep '^COMPOSE_PROJECT_NAME=' .env.staging | cut -d'=' -f2- | tr -d '"')
+export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-umrah-app-staging}
 
 # Pull the new image
 echo "📥 Pulling image..."
-docker compose -f docker-compose.staging.yml --env-file "$ENV_FILE" pull
+docker compose -f docker-compose.staging.yml pull
 
 # Stop existing containers
 echo "🛑 Stopping existing containers..."
-docker compose -f docker-compose.staging.yml --env-file "$ENV_FILE" down
+docker compose -f docker-compose.staging.yml down
 
 # Remove old images to free disk space (keep latest)
 docker image prune -f --filter "until=24h" || true
 
 # Start new containers
 echo "▶️  Starting containers..."
-docker compose -f docker-compose.staging.yml --env-file "$ENV_FILE" up -d
+docker compose -f docker-compose.staging.yml up -d
 
 # Wait for app to be healthy
 echo "⏳ Waiting for containers to start..."
@@ -55,21 +55,18 @@ sleep 15
 
 # Run migrations
 echo "📦 Running migrations..."
-docker compose -f docker-compose.staging.yml --env-file "$ENV_FILE" exec -T app php artisan migrate --force
+docker compose -f docker-compose.staging.yml exec -T app php artisan migrate --force
 
 # Run seeders (for fresh staging DBs — ignores duplicates)
 echo "🌱 Running seeders..."
-docker compose -f docker-compose.staging.yml --env-file "$ENV_FILE" exec -T app php artisan db:seed --force 2>/dev/null || true
+docker compose -f docker-compose.staging.yml exec -T app php artisan db:seed --force 2>/dev/null || true
 
 # Health check
 echo "🏥 Health check..."
-STAGING_URL=$(grep '^APP_URL=' .env.staging | cut -d'=' -f2-)
-if [ -z "$STAGING_URL" ]; then
-    STAGING_URL="http://localhost:${APP_PORT:-8001}"
-fi
+STAGING_URL="${APP_URL:-http://localhost:${APP_PORT:-8001}}"
 curl -sf "${STAGING_URL}/up" && echo "" || {
     echo "❌ Health check failed"
-    docker compose -f docker-compose.staging.yml --env-file "$ENV_FILE" logs --tail=50 app
+    docker compose -f docker-compose.staging.yml logs --tail=50 app
     exit 1
 }
 
