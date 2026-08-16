@@ -554,38 +554,44 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             : 0,
     ])->values(),
     'pending_outbound_issued_ticket' => ($poit = $p->allIssuedTickets
-        ->first(fn($t) => $t->issue_type === 'pending_outbound')) ? [
-        'id' => $poit->id,
-        'ticket_number' => $poit->ticket_number ?? '',
-        'pnr' => $poit->pnr ?? '',
-        'ticket_agent_id' => $poit->ticket_agent_id,
-        'ticket_agent_name' => $poit->ticketAgent?->name ?? '',
-        'ticket_fare_id' => $poit->ticket_fare_id,
-        'ticket_type' => $poit->ticketFare?->ticket_type?->value ?? '',
-        'flight_type' => $poit->ticketFare?->route?->flight_type?->value ?? '',
-        'route_display' => $poit->ticketFare?->route ? (function() use ($poit) {
-            $r = $poit->ticketFare->route;
-            $rt = $r->route_type?->value;
-            if ($rt === 'multi_city') {
-                return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
-            }
-            $from = $r->fromCity?->code ?? '?';
-            $to = $r->toCity?->code ?? '?';
-            $return = $r->returnCity?->code ?? '';
-            return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
-        })() : '',
-        'airline' => $poit->ticketFare?->airline?->name ?? '',
-        'travel_class' => $poit->ticketFare?->airlineClass?->class?->name ?? '',
-        'issued_date' => $poit->issued_date?->format('Y-m-d') ?? '',
-        'outbound_date' => $poit->outbound_date?->format('Y-m-d') ?? '',
-        'selling_fare' => (float)($poit->selling_fare ?? 0),
-        'net_fare' => (float)($poit->net_fare ?? 0),
-        'offer_price' => (float)($poit->offer_price ?? 0),
-        'is_refundable' => $poit->is_refundable ?? false,
-        'is_exchangeable' => $poit->is_exchangeable ?? false,
-        'baggage_outbound' => $poit->baggage_outbound ?? '',
-        'status' => $poit->status,
-    ] : null,
+        ->first(fn($t) => $t->issue_type === 'pending_outbound')) ? (function() use ($poit) {
+        $src = $poit->status === 're-issued' ? ($poit->latestReIssuedTicket ?? $poit) : $poit;
+        $fare = $src->ticketFare ?? $poit->ticketFare;
+        return [
+            'id' => $poit->id,
+            'ticket_number' => $src->ticket_number ?? $poit->ticket_number ?? '',
+            'pnr' => $src->pnr ?? $poit->pnr ?? '',
+            'ticket_agent_id' => $src->ticket_agent_id ?? $poit->ticket_agent_id,
+            'ticket_agent_name' => $src->ticketAgent?->name ?? $poit->ticketAgent?->name ?? '',
+            'ticket_fare_id' => $src->ticket_fare_id ?? $poit->ticket_fare_id,
+            'ticket_type' => $fare?->ticket_type?->value ?? '',
+            'flight_type' => $fare?->route?->flight_type?->value ?? '',
+            'route_display' => $fare?->route ? (function() use ($fare) {
+                $r = $fare->route;
+                $rt = $r->route_type?->value;
+                if ($rt === 'multi_city') {
+                    return $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                }
+                $from = $r->fromCity?->code ?? '?';
+                $to = $r->toCity?->code ?? '?';
+                $return = $r->returnCity?->code ?? '';
+                return ($rt === 'round' && $return) ? "{$from}-{$to}-{$return}" : "{$from}-{$to}";
+            })() : '',
+            'airline' => $fare?->airline?->name ?? '',
+            'travel_class' => $fare?->airlineClass?->class?->name ?? '',
+            'issued_date' => $src !== $poit
+                ? ($src->re_issue_date?->format('Y-m-d') ?? $poit->issued_date?->format('Y-m-d') ?? '')
+                : ($poit->issued_date?->format('Y-m-d') ?? ''),
+            'outbound_date' => $src->outbound_date?->format('Y-m-d') ?? $poit->outbound_date?->format('Y-m-d') ?? '',
+            'selling_fare' => (float)($src->selling_fare ?? $poit->selling_fare ?? 0),
+            'net_fare' => (float)($src->net_fare ?? $poit->net_fare ?? 0),
+            'offer_price' => (float)($src->offer_price ?? $poit->offer_price ?? 0),
+            'is_refundable' => $src->is_refundable ?? $poit->is_refundable ?? false,
+            'is_exchangeable' => $src->is_exchangeable ?? $poit->is_exchangeable ?? false,
+            'baggage_outbound' => $src->baggage_outbound ?? $poit->baggage_outbound ?? '',
+            'status' => $poit->status,
+        ];
+    })() : null,
     'inbound_ticket_fare' => ($inFare = $p->ticketFareInbound) ? (function() use ($inFare, $p) {
         $inRoute = $inFare->route;
         $inRouteDisplay = '—';
@@ -4726,9 +4732,9 @@ function bookingIndexApp() {
             this.ticketFareForm.isOutboundMode = false;
             this.ticketFareForm.issued_ticket_id = ticket?.id || null;
 
-            this.ticketFareForm.route = row.route || '';
-            this.ticketFareForm.airline = row.airline || '';
-            this.ticketFareForm.travel_class = row.travel_class || '';
+            this.ticketFareForm.route = (src?.route || row.route) || '';
+            this.ticketFareForm.airline = (src?.airline || row.airline) || '';
+            this.ticketFareForm.travel_class = (src?.travel_class || row.travel_class) || '';
             this.ticketFareForm.passenger_type = row.passenger_type || '';
 
             this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
