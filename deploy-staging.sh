@@ -53,13 +53,20 @@ docker compose -f docker-compose.staging.yml up -d
 echo "⏳ Waiting for containers to start..."
 sleep 15
 
-# Run migrations
-echo "📦 Running migrations..."
-docker compose -f docker-compose.staging.yml exec -T app php artisan migrate --force
+# Run migrations (respects MIGRATE=false in .env.staging)
+if [ "${MIGRATE:-true}" != "false" ]; then
+    echo "📦 Running migrations..."
+    docker compose -f docker-compose.staging.yml exec -T app php artisan migrate --force
+else
+    echo "⏭️  Skipping migrations (MIGRATE=false)"
+fi
 
 # Run seeders (for fresh staging DBs — ignores duplicates)
-echo "🌱 Running seeders..."
-docker compose -f docker-compose.staging.yml exec -T app php artisan db:seed --force 2>/dev/null || true
+# Only run if migrations were run (MIGRATE=true)
+if [ "${MIGRATE:-true}" != "false" ]; then
+    echo "🌱 Running seeders..."
+    docker compose -f docker-compose.staging.yml exec -T app php artisan db:seed --force 2>/dev/null || true
+fi
 
 # Health check
 echo "🏥 Health check..."
