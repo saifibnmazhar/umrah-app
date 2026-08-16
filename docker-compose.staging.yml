@@ -1,0 +1,94 @@
+name: ${COMPOSE_PROJECT_NAME}
+
+services:
+  app:
+    image: ${APP_IMAGE}:${IMAGE_TAG:-latest}
+
+    env_file:
+      - .env.staging
+
+    volumes:
+      - app_storage:/var/www/html/storage
+
+    ports:
+      - "127.0.0.1:${APP_PORT:-8001}:80"
+
+    depends_on:
+      db:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+
+    # NOTE: No Watchtower label — staging is deployed
+    # manually via deploy-staging.sh or the GitHub Actions
+    # deploy-staging job over SSH.
+    healthcheck:
+      test: ["CMD-SHELL", "curl -fs http://localhost || exit 1"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 30s
+
+    restart: unless-stopped
+
+    networks:
+      - backend
+
+  db:
+    image: ${DB_IMAGE:-mysql:8.0}
+
+    env_file:
+      - .env.staging
+
+    volumes:
+      - db_data:/var/lib/mysql
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "mysqladmin ping -h 127.0.0.1 -P 3306 -uroot --password=$${MYSQL_ROOT_PASSWORD}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    restart: unless-stopped
+
+    networks:
+      - backend
+
+  redis:
+    image: ${REDIS_IMAGE:-redis:7-alpine}
+
+    env_file:
+      - .env.staging
+
+    command:
+      [
+        "sh",
+        "-c",
+        'exec redis-server --requirepass "${REDIS_PASSWORD}" --maxmemory ${REDIS_MAX_MEMORY:-128mb} --maxmemory-policy allkeys-lru',
+      ]
+
+    healthcheck:
+      test:
+        ["CMD-SHELL", 'redis-cli --pass "${REDIS_PASSWORD}" ping | grep PONG']
+      interval: 5s
+      timeout: 3s
+      retries: 10
+      start_period: 5s
+
+    restart: unless-stopped
+
+    networks:
+      - backend
+
+volumes:
+  app_storage:
+  db_data:
+
+networks:
+  backend:
+    driver: bridge
