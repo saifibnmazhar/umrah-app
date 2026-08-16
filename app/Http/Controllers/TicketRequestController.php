@@ -64,6 +64,17 @@ class TicketRequestController extends Controller
             }
         }
 
+        if ($validated['request_type'] === 'refund' && $ticketIds->isNotEmpty()) {
+            $notRefundableIds = IssuedTicket::whereIn('id', $ticketIds)
+                ->whereNotIn('status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
+                ->pluck('id')
+                ->all();
+
+            if ($notRefundableIds) {
+                return response()->json(['message' => 'One of the selected tickets is not eligible for refund.'], 422);
+            }
+        }
+
         $booking = Booking::findOrFail($validated['booking_id']);
         $userId = auth()->id();
         $branchId = auth()->user()->branch_id;
@@ -148,6 +159,7 @@ class TicketRequestController extends Controller
             'outbound_date' => 'nullable|date',
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'ticket_fare_id' => 'required|exists:ticket_fares,id',
+            'route_id' => 'nullable|exists:routes,id',
             'selling_fare' => 'nullable|numeric|min:0',
             'net_fare' => 'nullable|numeric|min:0',
             'offer_price' => 'nullable|numeric|min:0',
@@ -204,6 +216,7 @@ class TicketRequestController extends Controller
                 'pnr' => $issuedTicket->pnr,
                 'ticket_agent_id' => $validated['ticket_agent_id'] ?? $issuedTicket->ticket_agent_id,
                 'ticket_fare_id' => $selectedFare->id,
+                'route_id' => $validated['route_id'] ?? null,
                 'group_ticket_id' => $selectedFare->groupTicket?->id ?? $issuedTicket->group_ticket_id,
                 're_issue_date' => $validated['travel_date'] ?? now(),
                 'inbound_date' => $validated['inbound_date'] ?? $issuedTicket->inbound_date,

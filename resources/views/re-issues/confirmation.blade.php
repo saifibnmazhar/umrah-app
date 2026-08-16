@@ -88,6 +88,12 @@
                             <option value="">Select Reason</option>
                         </select>
                     </div>
+                    <div id="fieldRoute" class="hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
+                        <select id="inputRoute" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Route</option>
+                        </select>
+                    </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
                         <select id="inputPaymentBy" onchange="handlePaymentByChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
@@ -162,11 +168,11 @@
                     <div>
                         <div id="fieldNetFareSar">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
-                            <input type="number" id="inputNetFare" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputNetFare" readonly oninput="handleFieldSarInput('inputNetFare','inputNetFareBdt'); recalcFareDifference()" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                         </div>
                         <div id="fieldNetFareBdt" class="hidden">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
-                            <input type="number" id="inputNetFareBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputNetFareBdt" readonly oninput="handleFieldBdtInput('inputNetFare','inputNetFareBdt'); recalcFareDifference()" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
                             <input type="number" id="inputNetFareBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
                         </div>
                     </div>
@@ -329,12 +335,16 @@
 @push('scripts')
 <script>
 const bookingId = {{ $id }};
+const allRoutes = @json($allRoutes);
 let allRequests = [];
 let currentTicketRequestId = null;
 let currentRefundPayable = 0;
 let currentRefundedNetFare = 0;
+let currentTicketAirlineId = null;
 let allTicketFares = [];
 let selectedTicketFareId = null;
+let originalTicketFareId = null;
+let originalTicketNetFare = 0;
 let sourceFares = { selling_fare: 0, net_fare: 0, offer_price: 0 };
 
 function getCurrencyMode() {
@@ -461,6 +471,13 @@ function handleReasonChange() {
     var opt = document.getElementById('inputReason').selectedOptions[0];
     var val = opt ? opt.getAttribute('data-default-payment-by') || '' : '';
     document.getElementById('inputPaymentBy').value = val;
+    var isSector = opt && (opt.text || '').toLowerCase().indexOf('sector') !== -1;
+    document.getElementById('fieldRoute').classList.toggle('hidden', !isSector);
+    if (!isSector) {
+        document.getElementById('inputRoute').value = '';
+    } else {
+        populateRouteOptions();
+    }
     handlePaymentByChange();
 }
 
@@ -521,6 +538,25 @@ function loadTicketFares(filters = {}) {
     });
 }
 
+function populateRouteOptions() {
+    const select = document.getElementById('inputRoute');
+    if (!select) return;
+    const rt = document.getElementById('inputRouteType').value;
+    const ft = document.getElementById('inputFlightType').value;
+    let routes = allRoutes;
+    if (rt) {
+        routes = routes.filter(r => r.route_type === rt);
+    }
+    if (ft) {
+        routes = routes.filter(r => r.flight_type === ft);
+    }
+    if (currentTicketAirlineId) {
+        routes = routes.filter(r => r.airline_id === currentTicketAirlineId);
+    }
+    select.innerHTML = '<option value="">Select Route</option>' +
+        routes.map(r => '<option value="' + r.id + '">' + escapeHtml(r.display) + '</option>').join('');
+}
+
 function handleFilterChange() {
     const filters = {
         route_type: document.getElementById('inputRouteType').value,
@@ -528,6 +564,7 @@ function handleFilterChange() {
         flight_type: document.getElementById('inputFlightType').value,
     };
     loadTicketFares(filters);
+    populateRouteOptions();
     applyRouteType();
     applyFareType();
 }
@@ -536,6 +573,24 @@ function handleTicketSelect() {
     const fareId = document.getElementById('inputTicketFare').value;
     selectedTicketFareId = fareId || null;
     syncFareFields();
+}
+
+function updateNetFareEditable() {
+    var selected = document.getElementById('inputTicketFare').value;
+    var editable = selected && originalTicketFareId && String(selected) !== String(originalTicketFareId);
+    ['inputNetFare', 'inputNetFareBdt'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (editable) {
+            el.removeAttribute('readonly');
+            el.classList.remove('border-slate-200', 'bg-slate-50', 'text-slate-500');
+            el.classList.add('border-slate-300', 'focus:ring-2', 'focus:ring-slate-400', 'focus:border-slate-400', 'outline-none');
+        } else {
+            el.setAttribute('readonly', 'readonly');
+            el.classList.remove('border-slate-300', 'focus:ring-2', 'focus:ring-slate-400', 'focus:border-slate-400', 'outline-none');
+            el.classList.add('border-slate-200', 'bg-slate-50', 'text-slate-500');
+        }
+    });
 }
 
 function syncFareFields() {
@@ -558,6 +613,16 @@ function syncFareFields() {
         document.getElementById('inputOfferPriceBdt').value = '';
     }
     syncReadonlyMirrors();
+    updateNetFareEditable();
+    recalcFareDifference();
+}
+
+function recalcFareDifference() {
+    var newNetFare = parseFloat(document.getElementById('inputNetFare').value) || 0;
+    var diff = Math.round((newNetFare - originalTicketNetFare) * 1e6) / 1e6;
+    document.getElementById('inputFareDifference').value = diff || '';
+    handleFieldSarInput('inputFareDifference', 'inputFareDifferenceBdt');
+    updateTotals();
 }
 
 function applyFareType() {
@@ -656,9 +721,9 @@ function processConfirmation(ticketRequestId) {
     currentRefundPayable = parseFloat(p.refund_payable) || 0;
     document.getElementById('infoRefundPayable').textContent = currentRefundPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
 
-    currentRefundedNetFare = (t.status === 'refunded')
+    currentRefundedNetFare = parseFloat((t.status === 'refunded')
         ? ((t.latest_refunded_ticket && t.latest_refunded_ticket.net_fare) || src.net_fare || 0)
-        : 0;
+        : 0) || 0;
     document.getElementById('fieldRefundedTicketFare').classList.toggle('hidden', currentRefundedNetFare <= 0);
     document.getElementById('inputRefundedTicketFare').value = currentRefundedNetFare;
     document.getElementById('inputRefundedTicketFareBdt').value = sarToBdt(currentRefundedNetFare);
@@ -667,6 +732,8 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('inputUpDate').value = formatToDDMMMYY(r.probable_date_up) || '';
     document.getElementById('inputDownDate').value = formatToDDMMMYY(r.probable_date_down) || '';
     document.getElementById('inputReason').value = '';
+    document.getElementById('fieldRoute').classList.add('hidden');
+    document.getElementById('inputRoute').value = '';
     const todayDD = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
     document.getElementById('inputTravelDate').value = todayDD;
     document.getElementById('inputReIssueCharge').value = '';
@@ -705,6 +772,7 @@ function processConfirmation(ticketRequestId) {
     const originalRt = src.ticket_fare?.route?.route_type || '';
     const originalTt = src.ticket_fare?.ticket_type || '';
     const originalFt = src.ticket_fare?.route?.flight_type || '';
+    currentTicketAirlineId = src.ticket_fare?.airline?.id || null;
 
     const rtSelect = document.getElementById('inputRouteType');
     rtSelect.value = originalRt;
@@ -717,6 +785,8 @@ function processConfirmation(ticketRequestId) {
     ftSelect.value = originalFt;
 
     selectedTicketFareId = src.ticket_fare_id || null;
+    originalTicketFareId = src.ticket_fare_id || null;
+    originalTicketNetFare = parseFloat(src.net_fare) || 0;
 
     loadTicketFares({
         route_type: originalRt,
@@ -734,6 +804,7 @@ function processConfirmation(ticketRequestId) {
 function closeProcessConfirmationModal() {
     document.getElementById('processConfirmationModal').classList.add('hidden');
     currentTicketRequestId = null;
+    currentTicketAirlineId = null;
 }
 
 function applyRouteType() {
@@ -748,7 +819,7 @@ function updateTotals() {
     var other = parseFloat(document.getElementById('inputOtherCosts').value) || 0;
     var service = parseFloat(document.getElementById('inputServiceCharge').value) || 0;
 
-    var totalCost = reIssue + difference + other + currentRefundedNetFare;
+    var totalCost = reIssue + difference + other + (parseFloat(currentRefundedNetFare) || 0);
     document.getElementById('inputTotalCost').value = totalCost;
     document.getElementById('inputTotalPayment').value = totalCost + service;
 
@@ -781,10 +852,11 @@ function updateTotals() {
 
 function handlePaymentByChange() {
     var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
+    var isAdjustment = document.getElementById('inputPaymentOption').value === 'refund_adjustment';
     document.getElementById('fieldServiceCharge').classList.toggle('hidden', !isCustomer);
     document.getElementById('fieldTotalPayment').classList.toggle('hidden', !isCustomer);
     document.getElementById('fieldPaymentOption').classList.toggle('hidden', !isCustomer);
-    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !isCustomer);
+    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !(isCustomer && isAdjustment));
 
     if (!isCustomer) {
         document.getElementById('inputServiceCharge').value = '';
@@ -843,6 +915,7 @@ function confirmProcess() {
 
     const payload = {
         reason_id: document.getElementById('inputReason').value,
+        route_id: document.getElementById('inputRoute').value || null,
         ticket_fare_id: document.getElementById('inputTicketFare').value || selectedTicketFareId,
         re_issue_charge: parseFloat(document.getElementById('inputReIssueCharge').value) || 0,
         fare_difference: parseFloat(document.getElementById('inputFareDifference').value) || 0,

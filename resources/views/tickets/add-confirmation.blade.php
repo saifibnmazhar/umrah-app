@@ -1,7 +1,7 @@
 @extends('layouts.app')
 @section('title', 'Additional Ticket Confirmation')
 @section('content')
-<div class="max-w-4xl mx-auto py-6">
+<div class="max-w-4xl mx-auto py-6" x-data="{}">
     <div id="confirmationContent" class="space-y-6">
         <div class="bg-white rounded-xl shadow-lg p-6">
             <div class="mb-6 pb-4 border-b border-slate-200">
@@ -159,36 +159,36 @@
                 <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <div x-show="$store.currency.mode === 'SAR' || !$store.currency.mode">
+                        <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
-                            <input type="number" id="inputSellingFare" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="number" id="inputSellingFare" min="0" step="0.000001" oninput="syncSellingFareFromSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div x-show="$store.currency.mode === 'BDT'">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) *</label>
-                            <input type="number" id="inputSellingFareBdt" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                            <input type="number" id="inputSellingFare" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            <input type="number" id="inputSellingFareBdt" min="0" step="0.000001" oninput="syncSellingFareFromBdt()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="number" id="inputSellingFareReadonly" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                         </div>
                     </div>
                     <div>
-                        <div x-show="$store.currency.mode === 'SAR' || !$store.currency.mode">
+                        <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR) *</label>
-                            <input type="number" id="inputNetFare" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="number" id="inputNetFare" min="0" step="0.000001" oninput="syncNetFareFromSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div x-show="$store.currency.mode === 'BDT'">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT) *</label>
-                            <input type="number" id="inputNetFareBdt" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                            <input type="number" id="inputNetFare" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            <input type="number" id="inputNetFareBdt" min="0" step="0.000001" oninput="syncNetFareFromBdt()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="number" id="inputNetFareReadonly" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                         </div>
                     </div>
                     <div id="offerPriceSection" class="hidden">
-                        <div x-show="$store.currency.mode === 'SAR' || !$store.currency.mode">
+                        <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
-                            <input type="number" id="inputOfferPrice" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="number" id="inputOfferPrice" min="0" step="0.000001" oninput="syncOfferPriceFromSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div x-show="$store.currency.mode === 'BDT'">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) *</label>
-                            <input type="number" id="inputOfferPriceBdt" min="0" step="0.000001" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                            <input type="number" id="inputOfferPrice" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            <input type="number" id="inputOfferPriceBdt" min="0" step="0.000001" oninput="syncOfferPriceFromBdt()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="number" id="inputOfferPriceReadonly" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                         </div>
                     </div>
                 </div>
@@ -366,10 +366,13 @@ function processConfirmation(ticketRequestId) {
     document.getElementById('inputTravelPassengerType').value = '';
     document.getElementById('inputSellingFare').value = '';
     document.getElementById('inputSellingFareBdt').value = '';
+    document.getElementById('inputSellingFareReadonly').value = '';
     document.getElementById('inputNetFare').value = '';
     document.getElementById('inputNetFareBdt').value = '';
+    document.getElementById('inputNetFareReadonly').value = '';
     document.getElementById('inputOfferPrice').value = '';
     document.getElementById('inputOfferPriceBdt').value = '';
+    document.getElementById('inputOfferPriceReadonly').value = '';
     document.getElementById('inputBaggageInbound').value = '';
     document.getElementById('inputBaggageOutbound').value = '';
     document.getElementById('inputNonRefundable').checked = false;
@@ -476,10 +479,13 @@ function clearTicketFields() {
     document.getElementById('inputTravelPassengerType').value = '';
     document.getElementById('inputSellingFare').value = '';
     document.getElementById('inputSellingFareBdt').value = '';
+    document.getElementById('inputSellingFareReadonly').value = '';
     document.getElementById('inputNetFare').value = '';
     document.getElementById('inputNetFareBdt').value = '';
+    document.getElementById('inputNetFareReadonly').value = '';
     document.getElementById('inputOfferPrice').value = '';
     document.getElementById('inputOfferPriceBdt').value = '';
+    document.getElementById('inputOfferPriceReadonly').value = '';
     document.getElementById('inputBaggageInbound').value = '';
     document.getElementById('inputBaggageOutbound').value = '';
     document.getElementById('inputNonRefundable').checked = false;
@@ -510,6 +516,8 @@ function handleTicketSelect() {
 
     document.getElementById('inputSellingFare').value = fare.selling_fare || 0;
     document.getElementById('inputNetFare').value = fare.net_fare || 0;
+    document.getElementById('inputSellingFareReadonly').value = fare.selling_fare || 0;
+    document.getElementById('inputNetFareReadonly').value = fare.net_fare || 0;
 
     const r1 = window.__currencyRate || 0;
     if (r1 > 0) {
@@ -522,6 +530,7 @@ function handleTicketSelect() {
     if (fare.ticket_type === 'offer' && fare.offer_price) {
         document.getElementById('offerPriceSection').classList.remove('hidden');
         document.getElementById('inputOfferPrice').value = fare.offer_price || 0;
+        document.getElementById('inputOfferPriceReadonly').value = fare.offer_price || 0;
         if (r1 > 0) {
             const offerBdt = document.getElementById('inputOfferPriceBdt');
             if (offerBdt) offerBdt.value = Math.round(parseFloat(fare.offer_price || 0) * r1);
@@ -529,6 +538,7 @@ function handleTicketSelect() {
     } else {
         document.getElementById('offerPriceSection').classList.add('hidden');
         document.getElementById('inputOfferPrice').value = '';
+        document.getElementById('inputOfferPriceReadonly').value = '';
     }
 
     const baggageAllowances = fare.baggage_allowances || [];
@@ -541,6 +551,64 @@ function handleTicketSelect() {
 
     document.getElementById('inputNonRefundable').checked = !fare.is_refundable;
     document.getElementById('inputNonExchangeable').checked = !fare.is_exchangeable;
+}
+
+function currencyRate() {
+    return parseFloat(window.__currencyRate) || 0;
+}
+
+function syncSellingFareFromSar() {
+    const rate = currencyRate();
+    if (rate <= 0) return;
+    const sar = parseFloat(document.getElementById('inputSellingFare').value) || 0;
+    const bdt = Math.round(sar * rate);
+    document.getElementById('inputSellingFareBdt').value = bdt;
+    document.getElementById('inputSellingFareReadonly').value = sar;
+}
+
+function syncSellingFareFromBdt() {
+    const rate = currencyRate();
+    if (rate <= 0) return;
+    const bdt = parseFloat(document.getElementById('inputSellingFareBdt').value) || 0;
+    const sar = (Math.round(bdt / rate * 1e6) / 1e6).toFixed(6);
+    document.getElementById('inputSellingFare').value = sar;
+    document.getElementById('inputSellingFareReadonly').value = sar;
+}
+
+function syncNetFareFromSar() {
+    const rate = currencyRate();
+    if (rate <= 0) return;
+    const sar = parseFloat(document.getElementById('inputNetFare').value) || 0;
+    const bdt = Math.round(sar * rate);
+    document.getElementById('inputNetFareBdt').value = bdt;
+    document.getElementById('inputNetFareReadonly').value = sar;
+}
+
+function syncNetFareFromBdt() {
+    const rate = currencyRate();
+    if (rate <= 0) return;
+    const bdt = parseFloat(document.getElementById('inputNetFareBdt').value) || 0;
+    const sar = (Math.round(bdt / rate * 1e6) / 1e6).toFixed(6);
+    document.getElementById('inputNetFare').value = sar;
+    document.getElementById('inputNetFareReadonly').value = sar;
+}
+
+function syncOfferPriceFromSar() {
+    const rate = currencyRate();
+    if (rate <= 0) return;
+    const sar = parseFloat(document.getElementById('inputOfferPrice').value) || 0;
+    const bdt = Math.round(sar * rate);
+    document.getElementById('inputOfferPriceBdt').value = bdt;
+    document.getElementById('inputOfferPriceReadonly').value = sar;
+}
+
+function syncOfferPriceFromBdt() {
+    const rate = currencyRate();
+    if (rate <= 0) return;
+    const bdt = parseFloat(document.getElementById('inputOfferPriceBdt').value) || 0;
+    const sar = (Math.round(bdt / rate * 1e6) / 1e6).toFixed(6);
+    document.getElementById('inputOfferPrice').value = sar;
+    document.getElementById('inputOfferPriceReadonly').value = sar;
 }
 
 function applyRouteType() {

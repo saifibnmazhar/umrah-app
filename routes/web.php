@@ -407,7 +407,22 @@ Route::middleware('auth')->group(function () {
             ->join('branches', 'branches.id', '=', 'bookings.booking_branch_id')
             ->pluck('branches.name', 'bookings.id')
             ->toArray();
-        return view('re-issues.confirmation', compact('id', 'bookingBranches'));
+        $allRoutes = \App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])
+            ->get()
+            ->map(fn($r) => [
+                'id' => $r->id,
+                'display' => match ($r->route_type?->value) {
+                    'multi_city' => $r->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', '),
+                    'round' => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?') . '-' . ($r->returnCity?->code ?? '?'),
+                    default => ($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?'),
+                },
+                'route_type' => $r->route_type?->value,
+                'flight_type' => $r->flight_type?->value,
+                'airline_id' => $r->airline_id,
+            ])
+            ->unique('display')
+            ->values();
+        return view('re-issues.confirmation', compact('id', 'bookingBranches', 'allRoutes'));
     })->name('re-issues.confirmation')->middleware('role:Super Admin,Ticket Admin');
     Route::get('/refunds/{id}/confirm', fn($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation')->middleware('role:Super Admin,Ticket Admin');
     Route::get('/tickets', fn() => view('tickets.index'))->name('tickets.index')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');

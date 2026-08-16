@@ -31,6 +31,7 @@ class ReIssueController extends Controller
             'ticket_agent_id' => 'nullable|exists:ticket_agents,id',
             'ticket_fare_id' => 'nullable|exists:ticket_fares,id',
             'group_ticket_id' => 'nullable|exists:group_tickets,id',
+            'route_id' => 'nullable|exists:routes,id',
             're_issue_date' => 'nullable|date',
             'inbound_date' => 'nullable|date',
             'outbound_date' => 'nullable|date',
