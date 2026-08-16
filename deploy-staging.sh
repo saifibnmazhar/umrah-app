@@ -9,10 +9,10 @@ set -euo pipefail
 # Usage:
 #   IMAGE_TAG=staging-<sha> ./deploy-staging.sh
 # Or:
-#   ./deploy-staging.sh  (uses IMAGE_TAG env or 'staging-latest')
+#   ./deploy-staging.sh  (uses IMAGE_TAG env or 'staging')
 # ============================================================
 
-IMAGE_TAG=${IMAGE_TAG:-staging-latest}
+IMAGE_TAG=${IMAGE_TAG:-staging}
 
 echo "🚀 Deploying to staging (image: ghcr.io/saifibnmazhar/umrah-app:${IMAGE_TAG})"
 
