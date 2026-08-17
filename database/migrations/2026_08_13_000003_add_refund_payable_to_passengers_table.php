@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::table('passengers', function (Blueprint $table) {
             $table->decimal('refund_payable', 14, 6)
-                  ->default(0)
-                  ->after('package_value');
+                ->default(0)
+                ->after('package_value');
         });
     }
 

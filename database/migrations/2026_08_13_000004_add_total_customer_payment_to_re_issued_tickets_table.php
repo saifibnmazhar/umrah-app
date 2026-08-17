@@ -10,8 +10,8 @@ return new class extends Migration
     {
         Schema::table('re_issued_tickets', function (Blueprint $table) {
             $table->decimal('total_customer_payment', 14, 6)
-                  ->default(0)
-                  ->after('refund_adjustment_amount');
+                ->default(0)
+                ->after('refund_adjustment_amount');
         });
     }
 

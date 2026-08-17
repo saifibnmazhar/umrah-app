@@ -11,15 +11,17 @@ class PassengerObserver
     public function created(Passenger $passenger): void
     {
         $user = Auth::user();
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         PassengerUpdateLog::create([
             'passenger_id' => $passenger->id,
-            'user_id'      => $user->id,
-            'passport_no'  => $passenger->passport_no,
-            'action'       => 'created',
-            'old_values'   => null,
-            'new_values'   => $passenger->attributesToArray(),
+            'user_id' => $user->id,
+            'passport_no' => $passenger->passport_no,
+            'action' => 'created',
+            'old_values' => null,
+            'new_values' => $passenger->attributesToArray(),
         ]);
     }
 
@@ -45,11 +47,11 @@ class PassengerObserver
 
         PassengerUpdateLog::create([
             'passenger_id' => $passenger->id,
-            'user_id'      => $user->id,
-            'passport_no'  => $passenger->passport_no,
-            'action'       => 'updated',
-            'old_values'   => $oldValues,
-            'new_values'   => $newValues,
+            'user_id' => $user->id,
+            'passport_no' => $passenger->passport_no,
+            'action' => 'updated',
+            'old_values' => $oldValues,
+            'new_values' => $newValues,
         ]);
     }
 
@@ -64,11 +66,11 @@ class PassengerObserver
 
         PassengerUpdateLog::create([
             'passenger_id' => $passenger->id,
-            'user_id'      => $user->id,
-            'passport_no'  => $passenger->passport_no,
-            'action'       => 'deleted',
-            'old_values'   => $oldValues,
-            'new_values'   => null,
+            'user_id' => $user->id,
+            'passport_no' => $passenger->passport_no,
+            'action' => 'deleted',
+            'old_values' => $oldValues,
+            'new_values' => null,
         ]);
     }
 }

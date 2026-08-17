@@ -10,12 +10,12 @@ return new class extends Migration
     {
         Schema::table('re_issued_tickets', function (Blueprint $table) {
             $table->enum('payment_option', ['customer_payment', 'refund_adjustment'])
-                  ->nullable()
-                  ->after('payment_by');
+                ->nullable()
+                ->after('payment_by');
 
             $table->decimal('refund_adjustment_amount', 14, 6)
-                  ->default(0)
-                  ->after('payment_option');
+                ->default(0)
+                ->after('payment_option');
         });
     }
 

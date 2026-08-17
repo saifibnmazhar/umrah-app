@@ -10,22 +10,22 @@ return new class extends Migration
     {
         Schema::table('payments', function (Blueprint $table) {
             $table->foreignId('passenger_id')
-                  ->nullable()
-                  ->after('cancelled_booking_id')
-                  ->constrained('passengers')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('cancelled_booking_id')
+                ->constrained('passengers')
+                ->nullOnDelete();
 
             $table->foreignId('refunded_ticket_id')
-                  ->nullable()
-                  ->after('passenger_id')
-                  ->constrained('refunded_tickets')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('passenger_id')
+                ->constrained('refunded_tickets')
+                ->nullOnDelete();
 
             $table->foreignId('re_issued_ticket_id')
-                  ->nullable()
-                  ->after('refunded_ticket_id')
-                  ->constrained('re_issued_tickets')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('refunded_ticket_id')
+                ->constrained('re_issued_tickets')
+                ->nullOnDelete();
         });
     }
 
