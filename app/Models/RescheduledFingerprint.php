@@ -2,9 +2,9 @@
 
 namespace App\Models;
 
+use App\Enums\RescheduleReason;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use App\Enums\RescheduleReason;
 
 class RescheduledFingerprint extends Model
 {

@@ -693,6 +693,14 @@ class BookingController extends Controller
         $preSelectedPackageId = null;
 
         $user = auth()->user();
+
+        // Safety: if the authenticated user's session was lost behind the
+        // Cloudflare proxy (auth middleware passed but user() is null),
+        // redirect to login instead of crashing on $user->branch.
+        if (! $user) {
+            return redirect()->route('login');
+        }
+
         $userBranch = $user->branch;
         $bookingBranches = ! $userBranch ? Branch::orderBy('name')->get(['id', 'name']) : collect();
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get(['id', 'name']);
@@ -953,13 +961,13 @@ class BookingController extends Controller
                     'date_of_birth' => $passengerData['date_of_birth'],
                     'gender' => $passengerData['gender'] ?? null,
                     'passenger_type' => $passengerType,
-                    'passport_expiry' => $passengerData['passport_expiry'] ?? null,
-                    'mobile_no' => $passengerData['mobile_no'] ?? null,
-                    'service_required' => $passengerData['service_required'] ?? 'All',
+                    'passport_expiry' => $passengerData['passport_expiry'] ?? now()->addYears(5)->toDateString(),
+                    'mobile_no' => $passengerData['mobile_no'] ?? '',
+                    'service_required' => $passengerData['service_required'] ?? 'all',
                     'stay_duration' => $passengerData['stay_duration'] ?? 14,
-                    'flight_date_from' => $passengerData['flight_date_from'] ?? null,
-                    'flight_date_to' => $passengerData['flight_date_to'] ?? null,
-                    'address' => $passengerData['address'] ?? null,
+                    'flight_date_from' => $passengerData['flight_date_from'] ?? now()->toDateString(),
+                    'flight_date_to' => $passengerData['flight_date_to'] ?? now()->addDays(14)->toDateString(),
+                    'address' => $passengerData['address'] ?? '',
                     'ticket_fare_id' => $isDoubleTicket
                         ? null
                         : (($passengerData['service_required'] ?? '') === 'visa_only'

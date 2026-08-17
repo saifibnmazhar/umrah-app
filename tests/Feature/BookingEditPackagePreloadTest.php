@@ -9,6 +9,8 @@ use Tests\TestCase;
 
 class BookingEditPackagePreloadTest extends TestCase
 {
+    use RefreshDatabase;
+
     protected function setUp(): void
     {
         parent::setUp();
@@ -22,7 +24,7 @@ class BookingEditPackagePreloadTest extends TestCase
 
     private function makeBooking(?int $packageId): Booking
     {
-        $booking = new Booking();
+        $booking = new Booking;
         $booking->id = 1;
         $booking->fill([
             'package_id' => $packageId,

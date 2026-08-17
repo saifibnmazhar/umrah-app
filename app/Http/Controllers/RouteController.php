@@ -24,7 +24,7 @@ class RouteController extends Controller
         return view('routes.create');
     }
 
-public function store(Request $request)
+    public function store(Request $request)
     {
         $routeType = $request->route_type;
 
@@ -50,9 +50,10 @@ public function store(Request $request)
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'errors'  => $validator->errors(),
+                    'errors' => $validator->errors(),
                 ], 422);
             }
+
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
@@ -78,7 +79,7 @@ public function store(Request $request)
                         $transit['transit_time'] = ($hours * 60) + $minutes;
                         unset($transit['transit_hours'], $transit['transit_minutes']);
 
-                        if (!isset($transit['route_direction'])) {
+                        if (! isset($transit['route_direction'])) {
                             $transit['route_direction'] = ($index === 0) ? 'inbound' : 'outbound';
                         }
 
@@ -91,9 +92,10 @@ public function store(Request $request)
 
             if ($request->wantsJson()) {
                 $route->load(['airline', 'fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity', 'transits.transitCity']);
+
                 return response()->json([
                     'success' => true,
-                    'route'   => $route,
+                    'route' => $route,
                 ], 201);
             }
 
@@ -105,6 +107,7 @@ public function store(Request $request)
                     'message' => 'Failed to create route.',
                 ], 500);
             }
+
             return redirect()->back()->with('error', 'Failed to create route.')->withInput();
         }
     }
@@ -149,9 +152,10 @@ public function store(Request $request)
             if ($request->wantsJson()) {
                 return response()->json([
                     'success' => false,
-                    'errors'  => $validator->errors(),
+                    'errors' => $validator->errors(),
                 ], 422);
             }
+
             return redirect()->back()->withErrors($validator)->withInput();
         }
 
@@ -180,7 +184,7 @@ public function store(Request $request)
                         $transit['transit_time'] = ($hours * 60) + $minutes;
                         unset($transit['transit_hours'], $transit['transit_minutes']);
 
-                        if (!isset($transit['route_direction'])) {
+                        if (! isset($transit['route_direction'])) {
                             $transit['route_direction'] = ($index === 0) ? 'inbound' : 'outbound';
                         }
 
@@ -193,9 +197,10 @@ public function store(Request $request)
 
             if ($request->wantsJson()) {
                 $updatedRoute->load(['airline', 'fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity', 'transits.transitCity']);
+
                 return response()->json([
                     'success' => true,
-                    'route'   => $updatedRoute,
+                    'route' => $updatedRoute,
                 ], 200);
             }
 
@@ -207,6 +212,7 @@ public function store(Request $request)
                     'message' => 'Failed to update route.',
                 ], 500);
             }
+
             return redirect()->back()->with('error', 'Failed to update route.')->withInput();
         }
     }
@@ -215,6 +221,7 @@ public function store(Request $request)
     {
         try {
             $route->delete();
+
             return redirect()->route('routes.index')->with('success', 'Route deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete route.');

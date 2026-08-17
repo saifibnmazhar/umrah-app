@@ -2,11 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\FlightType;
+use App\Enums\RouteType;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
-use App\Enums\RouteType;
-use App\Enums\FlightType;
 
 class Route extends Model
 {

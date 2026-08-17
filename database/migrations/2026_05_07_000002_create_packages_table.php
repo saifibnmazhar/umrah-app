@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -34,14 +34,22 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_regular_price_check CHECK (regular_price >= 0)');
-        DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_offer_price_check CHECK (offer_price >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_regular_price_check CHECK (regular_price >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE packages ADD CONSTRAINT packages_offer_price_check CHECK (offer_price >= 0)');
+        }
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_regular_price_check');
-        DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_offer_price_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_regular_price_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE packages DROP CHECK IF EXISTS packages_offer_price_check');
+        }
 
         if (Schema::hasTable('packages')) {
             Schema::table('packages', function (Blueprint $table) {

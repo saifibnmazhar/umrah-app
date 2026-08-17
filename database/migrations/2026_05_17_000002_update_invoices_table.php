@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -46,23 +46,32 @@ return new class extends Migration
     public function down(): void
     {
         try {
-            DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_total_amount_check');
-        } catch (\Exception $e) {}
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_total_amount_check');
+            }
+        } catch (Exception $e) {
+        }
 
         try {
-            DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_paid_amount_check');
-        } catch (\Exception $e) {}
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_paid_amount_check');
+            }
+        } catch (Exception $e) {
+        }
 
         try {
-            DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_balance_check');
-        } catch (\Exception $e) {}
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE invoices DROP CHECK IF EXISTS invoices_balance_check');
+            }
+        } catch (Exception $e) {
+        }
 
         if (Schema::hasTable('invoices')) {
             Schema::table('invoices', function (Blueprint $table) {
                 $columnsToDrop = ['total_amount', 'paid_amount', 'balance', 'status', 'notes'];
                 $existingColumns = array_intersect($columnsToDrop, Schema::getColumnListing('invoices'));
 
-                if (!empty($existingColumns)) {
+                if (! empty($existingColumns)) {
                     $table->dropColumn($existingColumns);
                 }
             });

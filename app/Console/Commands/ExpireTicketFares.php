@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class ExpireTicketFares extends Command
 {
     protected $signature = 'ticket-fares:expire';
+
     protected $description = 'Deactivate ticket fares whose effective_to date has passed, along with their associated packages';
 
     public function handle(): void

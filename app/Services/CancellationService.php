@@ -2,13 +2,12 @@
 
 namespace App\Services;
 
+use App\Enums\CancelledBookingStatus;
+use App\Enums\InvoiceStatus;
 use App\Models\Booking;
 use App\Models\CancelledBooking;
 use App\Models\Payment;
-use App\Models\Voucher;
 use App\Models\TransactionType;
-use App\Enums\CancelledBookingStatus;
-use App\Enums\InvoiceStatus;
 use Illuminate\Support\Facades\DB;
 
 class CancellationService
@@ -36,14 +35,14 @@ class CancellationService
 
         return DB::transaction(function () use ($booking, $invoice, $data, $totalPaid, $serviceCharge, $refundAmount) {
             $cancelledBooking = CancelledBooking::create([
-                'booking_id'              => $booking->id,
-                'invoice_id'              => $invoice->id,
-                'user_id'                 => auth()->id(),
-                'total_paid'              => $totalPaid,
+                'booking_id' => $booking->id,
+                'invoice_id' => $invoice->id,
+                'user_id' => auth()->id(),
+                'total_paid' => $totalPaid,
                 'service_charge_deduction' => $serviceCharge,
-                'refund_amount'           => $refundAmount,
-                'cancellation_branch_id'  => $data['cancellation_branch_id'],
-                'status'                  => CancelledBookingStatus::PROCESSING,
+                'refund_amount' => $refundAmount,
+                'cancellation_branch_id' => $data['cancellation_branch_id'],
+                'status' => CancelledBookingStatus::PROCESSING,
             ]);
 
             $booking->update(['is_cancelled' => true]);
@@ -96,33 +95,33 @@ class CancellationService
                 $deductionType = TransactionType::where('name', 'Service Charge Deduction')->first();
 
                 $deductionPayment = Payment::create([
-                    'invoice_id'           => $invoice->id,
-                    'booking_id'           => $booking->id,
-                    'branch_id'            => $cancelledBooking->cancellation_branch_id,
-                    'user_id'              => auth()->id(),
-                    'currency_rate_id'     => $currencyRateId,
-                    'payment_date'         => now(),
-                    'payment_method'       => $paymentMethod,
-                    'amount'               => $serviceCharge,
-                    'bdt_amount'           => 0,
+                    'invoice_id' => $invoice->id,
+                    'booking_id' => $booking->id,
+                    'branch_id' => $cancelledBooking->cancellation_branch_id,
+                    'user_id' => auth()->id(),
+                    'currency_rate_id' => $currencyRateId,
+                    'payment_date' => now(),
+                    'payment_method' => $paymentMethod,
+                    'amount' => $serviceCharge,
+                    'bdt_amount' => 0,
                     'cancelled_booking_id' => $cancelledBooking->id,
-                    'remarks'              => $remarks,
+                    'remarks' => $remarks,
                 ]);
 
-                $deductionVoucher = app(\App\Services\VoucherService::class)->createVoucher([
-                    'invoice_id'           => $invoice->id,
-                    'booking_id'           => $booking->id,
-                    'payment_id'           => $deductionPayment->id,
-                    'branch_id'            => $cancelledBooking->cancellation_branch_id,
-                    'user_id'              => auth()->id(),
-                    'currency_rate_id'     => $currencyRateId,
-                    'transaction_type_id'  => $deductionType->id,
-                    'payment_date'         => now(),
-                    'payment_method'       => $paymentMethod,
-                    'amount'               => $serviceCharge,
-                    'bdt_amount'           => 0,
+                $deductionVoucher = app(VoucherService::class)->createVoucher([
+                    'invoice_id' => $invoice->id,
+                    'booking_id' => $booking->id,
+                    'payment_id' => $deductionPayment->id,
+                    'branch_id' => $cancelledBooking->cancellation_branch_id,
+                    'user_id' => auth()->id(),
+                    'currency_rate_id' => $currencyRateId,
+                    'transaction_type_id' => $deductionType->id,
+                    'payment_date' => now(),
+                    'payment_method' => $paymentMethod,
+                    'amount' => $serviceCharge,
+                    'bdt_amount' => 0,
                     'cancelled_booking_id' => $cancelledBooking->id,
-                    'notes'                => $remarks,
+                    'notes' => $remarks,
                 ]);
 
                 $deductionPaymentId = $deductionPayment->id;
@@ -133,47 +132,47 @@ class CancellationService
             $refundType = TransactionType::where('name', 'Customer Refund')->first();
 
             $refundPayment = Payment::create([
-                'invoice_id'           => $invoice->id,
-                'booking_id'           => $booking->id,
-                'branch_id'            => $cancelledBooking->cancellation_branch_id,
-                'user_id'              => auth()->id(),
-                'currency_rate_id'     => $currencyRateId,
-                'payment_date'         => now(),
-                'payment_method'       => $paymentMethod,
-                'amount'               => $refundAmount,
-                'bdt_amount'           => 0,
+                'invoice_id' => $invoice->id,
+                'booking_id' => $booking->id,
+                'branch_id' => $cancelledBooking->cancellation_branch_id,
+                'user_id' => auth()->id(),
+                'currency_rate_id' => $currencyRateId,
+                'payment_date' => now(),
+                'payment_method' => $paymentMethod,
+                'amount' => $refundAmount,
+                'bdt_amount' => 0,
                 'cancelled_booking_id' => $cancelledBooking->id,
-                'remarks'              => $remarks,
+                'remarks' => $remarks,
             ]);
 
-            $refundVoucher = app(\App\Services\VoucherService::class)->createVoucher([
-                'invoice_id'           => $invoice->id,
-                'booking_id'           => $booking->id,
-                'payment_id'           => $refundPayment->id,
-                'branch_id'            => $cancelledBooking->cancellation_branch_id,
-                'user_id'              => auth()->id(),
-                'currency_rate_id'     => $currencyRateId,
-                'transaction_type_id'  => $refundType->id,
-                'payment_date'         => now(),
-                'payment_method'       => $paymentMethod,
-                'amount'               => $refundAmount,
-                'bdt_amount'           => 0,
+            $refundVoucher = app(VoucherService::class)->createVoucher([
+                'invoice_id' => $invoice->id,
+                'booking_id' => $booking->id,
+                'payment_id' => $refundPayment->id,
+                'branch_id' => $cancelledBooking->cancellation_branch_id,
+                'user_id' => auth()->id(),
+                'currency_rate_id' => $currencyRateId,
+                'transaction_type_id' => $refundType->id,
+                'payment_date' => now(),
+                'payment_method' => $paymentMethod,
+                'amount' => $refundAmount,
+                'bdt_amount' => 0,
                 'cancelled_booking_id' => $cancelledBooking->id,
-                'notes'                => $remarks,
+                'notes' => $remarks,
             ]);
 
             $cancelledBooking->update([
                 'deduction_payment_id' => $deductionPaymentId,
                 'deduction_voucher_id' => $deductionVoucherId,
-                'refund_payment_id'    => $refundPayment->id,
-                'refund_voucher_id'    => $refundVoucher->id,
-                'refund_amount'        => $refundAmount,
-                'status'               => CancelledBookingStatus::CANCELLED,
+                'refund_payment_id' => $refundPayment->id,
+                'refund_voucher_id' => $refundVoucher->id,
+                'refund_amount' => $refundAmount,
+                'status' => CancelledBookingStatus::CANCELLED,
             ]);
 
             $invoice->audit_reason = 'refund';
             $invoice->update([
-                'status'  => InvoiceStatus::REFUNDED,
+                'status' => InvoiceStatus::REFUNDED,
                 'balance' => 0,
             ]);
 
@@ -187,22 +186,22 @@ class CancellationService
         $costSummary = $this->costTrackingService->getBookingCostSummary($booking);
 
         return [
-            'total_amount'       => $invoice->total_amount,
-            'total_paid'         => $invoice->paid_amount,
-            'balance'            => $invoice->balance,
-            'costs'              => [
+            'total_amount' => $invoice->total_amount,
+            'total_paid' => $invoice->paid_amount,
+            'balance' => $invoice->balance,
+            'costs' => [
                 'fingerprint_cost' => $costSummary['fingerprint_cost'],
-                'visa_cost'        => $costSummary['visa_cost'],
-                'ticket_cost'      => $costSummary['ticket_cost'],
-                'total_cost'       => $costSummary['total_cost'],
+                'visa_cost' => $costSummary['visa_cost'],
+                'ticket_cost' => $costSummary['ticket_cost'],
+                'total_cost' => $costSummary['total_cost'],
             ],
-            'passenger_costs'    => $costSummary['passengers'],
-            'service_charge'     => 0,
-            'potential_refund'   => $invoice->paid_amount - $costSummary['total_cost'],
-            'currency_rate_id'   => $booking->currency_rate_id,
-            'booking_branch_id'  => $booking->booking_branch_id,
-            'booking_branch_name'=> $booking->bookingBranch?->name,
-            'booking_location'   => $booking->bookingBranch?->location,
+            'passenger_costs' => $costSummary['passengers'],
+            'service_charge' => 0,
+            'potential_refund' => $invoice->paid_amount - $costSummary['total_cost'],
+            'currency_rate_id' => $booking->currency_rate_id,
+            'booking_branch_id' => $booking->booking_branch_id,
+            'booking_branch_name' => $booking->bookingBranch?->name,
+            'booking_location' => $booking->bookingBranch?->location,
         ];
     }
 }
