@@ -512,7 +512,6 @@ function handleTicketSelect() {
     document.getElementById('inputTravelRoute').value = formatRoute(route);
     document.getElementById('inputTravelAirline').value = airline.name || '';
     document.getElementById('inputTravelClass').value = cls.name || '';
-    document.getElementById('inputTravelPassengerType').value = fare.passenger_type || '';
 
     document.getElementById('inputSellingFare').value = fare.selling_fare || 0;
     document.getElementById('inputNetFare').value = fare.net_fare || 0;
@@ -544,6 +543,7 @@ function handleTicketSelect() {
     const baggageAllowances = fare.baggage_allowances || [];
     const req = allRequests.find(x => x.id === currentTicketRequestId);
     const passengerType = req?.passenger?.passenger_type || 'adult';
+    document.getElementById('inputTravelPassengerType').value = passengerType;
     const inboundBaggage = baggageAllowances.find(b => b.travel_direction === 'inbound' && b.passenger_type === passengerType);
     const outboundBaggage = baggageAllowances.find(b => b.travel_direction === 'outbound' && b.passenger_type === passengerType);
     document.getElementById('inputBaggageInbound').value = inboundBaggage ? inboundBaggage.allowance : '';

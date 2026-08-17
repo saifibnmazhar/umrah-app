@@ -2,14 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PaymentMethod;
+use App\Enums\TicketStatus;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
 use App\Models\Payment;
 use App\Models\ReIssuedTicket;
 use App\Models\TransactionType;
-use App\Enums\PaymentMethod;
-use App\Enums\TicketStatus;
 use App\Services\InvoiceService;
 use App\Services\VoucherService;
 use Illuminate\Http\Request;
@@ -166,34 +166,46 @@ class ReIssueController extends Controller
                         $transactionType = TransactionType::where('name', 'Ticket Refund - Re-issue')->first();
 
                         $payment = Payment::create([
-                            'invoice_id'          => $booking->invoice?->id,
-                            'booking_id'          => $booking->id,
-                            'branch_id'           => $booking->booking_branch_id,
-                            'user_id'             => auth()->id(),
-                            'currency_rate_id'    => $booking->currency_rate_id,
-                            'payment_date'        => now(),
-                            'payment_method'      => PaymentMethod::CASH,
-                            'amount'              => $amount,
-                            'bdt_amount'          => 0,
-                            'passenger_id'        => $passenger->id,
+                            'invoice_id' => $booking->invoice?->id,
+                            'booking_id' => $booking->id,
+                            'branch_id' => $booking->booking_branch_id,
+                            'user_id' => auth()->id(),
+                            'currency_rate_id' => $booking->currency_rate_id,
+                            'payment_date' => now(),
+                            'payment_method' => PaymentMethod::CASH,
+                            'amount' => $amount,
+                            'bdt_amount' => 0,
+                            'passenger_id' => $passenger->id,
                             're_issued_ticket_id' => $reIssuedTicket->id,
-                            'remarks'             => $validated['remarks'] ?? null,
+                            'remarks' => $validated['remarks'] ?? null,
                         ]);
 
                         app(VoucherService::class)->createVoucher([
-                            'invoice_id'          => $booking->invoice?->id,
-                            'booking_id'          => $booking->id,
-                            'payment_id'          => $payment->id,
-                            'branch_id'           => $booking->booking_branch_id,
-                            'user_id'             => auth()->id(),
-                            'currency_rate_id'    => $booking->currency_rate_id,
+                            'invoice_id' => $booking->invoice?->id,
+                            'booking_id' => $booking->id,
+                            'payment_id' => $payment->id,
+                            'branch_id' => $booking->booking_branch_id,
+                            'user_id' => auth()->id(),
+                            'currency_rate_id' => $booking->currency_rate_id,
                             'transaction_type_id' => $transactionType?->id,
-                            'payment_date'        => now(),
-                            'payment_method'      => PaymentMethod::CASH,
-                            'amount'              => $amount,
-                            'bdt_amount'          => 0,
-                            'notes'               => $validated['remarks'] ?? null,
+                            'payment_date' => now(),
+                            'payment_method' => PaymentMethod::CASH,
+                            'amount' => $amount,
+                            'bdt_amount' => 0,
+                            'notes' => $validated['remarks'] ?? null,
                         ]);
+                    }
+
+                    $remainingPayment = $totalCustomerPayment - $amount;
+                    if ($remainingPayment > 0) {
+                        $invoice = $booking->invoice;
+                        if ($invoice) {
+                            app(InvoiceService::class)->updateTotals(
+                                $invoice,
+                                (float) $invoice->total_amount + $remainingPayment,
+                                're_issue_cost_added'
+                            );
+                        }
                     }
                 } elseif ($totalCustomerPayment > 0) {
                     $invoice = $booking->invoice;
@@ -216,6 +228,7 @@ class ReIssueController extends Controller
             ]);
         } catch (\InvalidArgumentException $e) {
             DB::rollBack();
+
             return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
