@@ -30,7 +30,7 @@ class VisaSubmissionObserver
         $visaSubmission->passenger->syncComputedStatus();
 
         $user = Auth::user();
-        if (!$user) {
+        if (! $user) {
             return;
         }
 

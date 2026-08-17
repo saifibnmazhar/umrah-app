@@ -26,10 +26,14 @@ class PassengerObserver
     public function updated(Passenger $passenger): void
     {
         $user = Auth::user();
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         $dirty = $passenger->getDirty();
-        if (empty($dirty)) return;
+        if (empty($dirty)) {
+            return;
+        }
 
         $original = $passenger->getOriginal();
         $oldValues = [];
@@ -52,7 +56,9 @@ class PassengerObserver
     public function deleting(Passenger $passenger): void
     {
         $user = Auth::user();
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         $oldValues = collect($passenger->attributesToArray())->except(['created_at', 'updated_at'])->toArray();
 

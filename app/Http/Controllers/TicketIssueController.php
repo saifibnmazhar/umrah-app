@@ -53,7 +53,7 @@ class TicketIssueController extends Controller
             return response()->json(['message' => 'Ticket record not found for this passenger.'], 404);
         }
 
-        if (!in_array($issuedTicket->status, ['pending', 'awaiting-group'])) {
+        if (! in_array($issuedTicket->status, ['pending', 'awaiting-group'])) {
             return response()->json(['message' => 'This ticket has already been issued.'], 400);
         }
 
@@ -80,7 +80,7 @@ class TicketIssueController extends Controller
 
             $passenger->update(['ticket_status' => 'issued']);
 
-            if ($issuedTicket->issue_type !== 'pending_outbound' && !empty($validated['ticket_fare_id'])) {
+            if ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
                 $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
             } elseif ($validated['clear_double_ticket'] ?? false) {
                 IssuedTicket::where('passenger_id', $passenger->id)
@@ -265,7 +265,7 @@ class TicketIssueController extends Controller
 
             $issuedTicket->logAction('edited', $oldData, $issuedTicket->toArray());
 
-            if ($issuedTicket->issue_type !== 'pending_outbound' && !empty($validated['ticket_fare_id'])) {
+            if ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
                 $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
             } elseif ($validated['clear_double_ticket'] ?? false) {
                 IssuedTicket::where('passenger_id', $passenger->id)
@@ -328,7 +328,7 @@ class TicketIssueController extends Controller
             return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a passenger on Hold or Cancel'], 422);
         }
 
-        if (!$passenger->ticket_fare_outbound_id) {
+        if (! $passenger->ticket_fare_outbound_id) {
             return response()->json(['message' => 'No outbound fare configured for this passenger.'], 400);
         }
 
@@ -392,6 +392,7 @@ class TicketIssueController extends Controller
             ]);
         } catch (\Exception $e) {
             \Log::error('Create pending outbound failed: '.$e->getMessage());
+
             return response()->json(['message' => 'Failed to create pending outbound ticket.'], 500);
         }
     }
@@ -413,8 +414,8 @@ class TicketIssueController extends Controller
         }
 
         $allTickets = $passenger->allIssuedTickets;
-        $regularTicket = $allTickets->first(fn($t) => is_null($t->issue_type) || $t->issue_type === 'regular');
-        $outboundTicket = $allTickets->first(fn($t) => $t->issue_type === 'pending_outbound');
+        $regularTicket = $allTickets->first(fn ($t) => is_null($t->issue_type) || $t->issue_type === 'regular');
+        $outboundTicket = $allTickets->first(fn ($t) => $t->issue_type === 'pending_outbound');
 
         $updatedIds = [];
         $createdTicket = null;
@@ -425,7 +426,7 @@ class TicketIssueController extends Controller
             $action = $validated['action'];
 
             if ($action === 'all') {
-                $confirmable = $passenger->allIssuedTickets->filter(fn($t) => in_array($t->status, ['pending', 'refunded']));
+                $confirmable = $passenger->allIssuedTickets->filter(fn ($t) => in_array($t->status, ['pending', 'refunded']));
                 foreach ($confirmable as $ticket) {
                     $oldData = $ticket->toArray();
                     $ticket->update(['status' => 'awaiting-group']);
@@ -444,7 +445,7 @@ class TicketIssueController extends Controller
             }
 
             if ($action === 'out' || $action === 'both') {
-                if (!$outboundTicket) {
+                if (! $outboundTicket) {
                     $createdTicket = IssuedTicket::create([
                         'passenger_id' => $passenger->id,
                         'booking_id' => $booking->id,
@@ -465,7 +466,7 @@ class TicketIssueController extends Controller
                     $outboundTicket->logAction('confirmed_group', $oldData, $outboundTicket->toArray());
                     $updatedIds[] = $outboundTicket->id;
                 }
-                if ($regularTicket && !$regularTicket->outbound_pending) {
+                if ($regularTicket && ! $regularTicket->outbound_pending) {
                     $oldData = $regularTicket->toArray();
                     $regularTicket->update(['outbound_pending' => true]);
                 }

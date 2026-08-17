@@ -10,10 +10,10 @@ return new class extends Migration
     public function up(): void
     {
         foreach (['bookings_branch_id_foreign', 'bookings_office_id_foreign',
-                  'bookings_booking_branch_id_foreign', 'bookings_fingerprint_branch_id_foreign'] as $fk) {
+            'bookings_booking_branch_id_foreign', 'bookings_fingerprint_branch_id_foreign'] as $fk) {
             try {
                 DB::statement("ALTER TABLE bookings DROP FOREIGN KEY `{$fk}`");
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // FK doesn't exist — safe to ignore (idempotent)
             }
         }
@@ -32,7 +32,7 @@ return new class extends Migration
         foreach (['bookings_booking_branch_id_foreign', 'bookings_fingerprint_branch_id_foreign'] as $fk) {
             try {
                 DB::statement("ALTER TABLE bookings DROP FOREIGN KEY `{$fk}`");
-            } catch (\Exception $e) {
+            } catch (Exception $e) {
                 // FK doesn't exist — safe to ignore (idempotent)
             }
         }

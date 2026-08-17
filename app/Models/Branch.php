@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\Location;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 
@@ -10,7 +11,7 @@ class Branch extends Model
     protected $fillable = ['name', 'address', 'contacts', 'location', 'fingerprint_operation', 'branch_code'];
 
     protected $casts = [
-        'location' => \App\Enums\Location::class,
+        'location' => Location::class,
         'fingerprint_operation' => 'boolean',
     ];
 

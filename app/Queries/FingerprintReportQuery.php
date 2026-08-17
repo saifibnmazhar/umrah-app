@@ -61,6 +61,7 @@ class FingerprintReportQuery
                 });
             });
         }
+
         return $this;
     }
 
@@ -76,6 +77,7 @@ class FingerprintReportQuery
                 $q->whereDate('created_at', '<=', $request->booking_date_to);
             });
         }
+
         return $this;
     }
 
@@ -91,6 +93,7 @@ class FingerprintReportQuery
                 }
             });
         }
+
         return $this;
     }
 
@@ -101,6 +104,7 @@ class FingerprintReportQuery
                 $q->where('status', $status);
             });
         }
+
         return $this;
     }
 
@@ -109,6 +113,7 @@ class FingerprintReportQuery
         if ($staffId = $request->filled('assigned_staff_id') ? $request->assigned_staff_id : null) {
             $this->query->where('assigned_staff_id', $staffId);
         }
+
         return $this;
     }
 
@@ -119,6 +124,7 @@ class FingerprintReportQuery
                 $q->where('fingerprint_location', $location);
             });
         }
+
         return $this;
     }
 
@@ -129,6 +135,7 @@ class FingerprintReportQuery
                 $q->where('booking_branch_id', $branchId);
             });
         }
+
         return $this;
     }
 
@@ -139,6 +146,7 @@ class FingerprintReportQuery
                 $q->where('district_id', $districtId);
             });
         }
+
         return $this;
     }
 
@@ -149,6 +157,7 @@ class FingerprintReportQuery
                 $q->where('fingerprint_branch_id', $branchId);
             });
         }
+
         return $this;
     }
 
@@ -159,6 +168,7 @@ class FingerprintReportQuery
                 $q->where('fingerprint_branch_id', $branchId);
             });
         }
+
         return $this;
     }
 }

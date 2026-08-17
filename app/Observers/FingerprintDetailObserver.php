@@ -20,11 +20,15 @@ class FingerprintDetailObserver
     public function updated(FingerprintDetail $fingerprintDetail): void
     {
         $user = Auth::user();
-        if (!$user) return;
+        if (! $user) {
+            return;
+        }
 
         $dirty = $fingerprintDetail->getDirty();
         $changedTracked = array_intersect_key($dirty, array_flip($this->trackedFields));
-        if (empty($changedTracked)) return;
+        if (empty($changedTracked)) {
+            return;
+        }
 
         $original = $fingerprintDetail->getOriginal();
         $oldValues = array_intersect_key($original, $changedTracked);

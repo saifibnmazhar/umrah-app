@@ -1,0 +1,55 @@
+# Version control
+.git
+.gitignore
+
+# Environment files (secrets)
+.env
+.env.*
+.env.local
+
+# IDE / editor
+.DS_Store
+.idea
+.vscode
+.fleet
+.phpactor.json
+
+# Dependencies
+node_modules
+vendor
+.gitattributes
+
+# Build artifacts
+public/build
+public/hot
+public/storage
+
+# Cache / logs
+.phpunit.result.cache
+.phpunit.cache
+bootstrap/cache/*
+/storage/*.key
+/storage/pail
+/storage/framework/cache/data/*
+/storage/framework/views/*.php
+/storage/logs/*.log
+
+# Docker / deployment (don't bake deploy scripts into image)
+docker-compose*.yml
+Dockerfile
+DEPLOYMENT.md
+deploy-prod.sh
+
+# Agent / tooling artifacts
+.hermes
+.omo
+.github
+ui-references
+
+# Test artifacts
+tests
+
+# Misc data imports
+*.sql
+*.impexp
+*.diagram

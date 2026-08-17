@@ -1,0 +1,55 @@
+name: ${COMPOSE_PROJECT_NAME:-umrah-app}
+
+services:
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: ${APP_CONTAINER_NAME:-umrah_app_app}
+    environment:
+      - DB_HOST=db
+      - DB_PORT=3306
+      - DB_DATABASE=${DB_DATABASE:-umrah_app_dev}
+      - DB_USERNAME=${DB_USERNAME:-umrah_app_user}
+      - DB_PASSWORD=${DB_PASSWORD:-dev_password}
+      - DB_CONNECTION=mysql
+      - QUEUE_CONNECTION=${QUEUE_CONNECTION:-database}
+    volumes:
+      - storage_data:/var/www/html/storage
+    ports:
+      - "${APP_PORT:-8080}:80"
+    networks:
+      - backend
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+
+  db:
+    image: mysql:8.0
+    container_name: ${DB_CONTAINER_NAME:-umrah_app_db_dev}
+    environment:
+      - MYSQL_DATABASE=${DB_DATABASE:-umrah_app_dev}
+      - MYSQL_USER=${DB_USERNAME:-umrah_app_user}
+      - MYSQL_PASSWORD=${DB_PASSWORD:-dev_password}
+      - MYSQL_ROOT_PASSWORD=${DB_PASSWORD:-dev_password}
+    ports:
+      - "127.0.0.1:${DB_EXPOSE_PORT:-3306}:3306"
+    networks:
+      - backend
+    healthcheck:
+      test: ["CMD-SHELL", "mysqladmin ping -h 127.0.0.1 -P 3306 -u${DB_USERNAME:-umrah_app_user} --password=${DB_PASSWORD:-dev_password}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    volumes:
+      - mysql_data_dev:/var/lib/mysql
+    restart: unless-stopped
+
+networks:
+  backend:
+    driver: bridge
+
+volumes:
+  mysql_data_dev:
+  storage_data:

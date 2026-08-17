@@ -2,9 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\Invoice;
-use App\Models\Booking;
 use App\Enums\InvoiceStatus;
+use App\Models\Booking;
+use App\Models\Invoice;
 
 class InvoiceService
 {
@@ -23,14 +23,14 @@ class InvoiceService
 
     public function updatePaymentStatus(Invoice $invoice): void
     {
-        \Log::info('InvoiceService: Updating payment status for invoice ID: ' . $invoice->id);
+        \Log::info('InvoiceService: Updating payment status for invoice ID: '.$invoice->id);
 
         $invoice = $invoice->fresh();
 
         $invoice->paid_amount = $invoice->payments()->sum('amount');
         $invoice->balance = $invoice->total_amount - $invoice->paid_amount;
 
-        \Log::info('InvoiceService: Paid amount calculated: ' . $invoice->paid_amount . ', Balance: ' . $invoice->balance);
+        \Log::info('InvoiceService: Paid amount calculated: '.$invoice->paid_amount.', Balance: '.$invoice->balance);
 
         if ($invoice->balance <= 0) {
             $invoice->status = InvoiceStatus::PAID;
@@ -42,12 +42,12 @@ class InvoiceService
 
         $invoice->save();
 
-        \Log::info('InvoiceService: Invoice updated successfully. Status: ' . $invoice->status->value);
+        \Log::info('InvoiceService: Invoice updated successfully. Status: '.$invoice->status->value);
     }
 
     public function canAcceptPayment(Invoice $invoice, float $amount): bool
     {
-        return ($amount <= $invoice->balance + 50);
+        return $amount <= $invoice->balance + 50;
     }
 
     public function calculateBalance(Invoice $invoice): float

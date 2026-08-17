@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\VisaSellingPrice;
-use App\Models\VisaAgentCost;
-use App\Models\VisaAgent;
 use App\Models\CommissionAgent;
+use App\Models\VisaAgent;
+use App\Models\VisaAgentCost;
+use App\Models\VisaSellingPrice;
 
 class VisaAdminController extends Controller
 {
