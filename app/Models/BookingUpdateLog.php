@@ -12,6 +12,7 @@ class BookingUpdateLog extends Model
     protected $fillable = [
         'booking_id',
         'user_id',
+        'booking_invoice_id',
         'action',
         'old_values',
         'new_values',
