@@ -5447,8 +5447,6 @@ function bookingIndexApp() {
             f.total_cost = totalCost;
             f.total_cost_bdt = rate > 0 ? Math.round(totalCost * rate) : '';
             const totalPayment = totalCost + (parseFloat(f.service_charge) || 0);
-            f.total_payment = totalPayment;
-            f.total_payment_bdt = rate > 0 ? Math.round(totalPayment * rate) : '';
 
             const adj = parseFloat(f.refund_adjustment_amount) || 0;
             if (f.payment_by === 'customer' && f.payment_option === 'refund_adjustment' && adj > 0) {
@@ -5459,8 +5457,12 @@ function bookingIndexApp() {
                 } else {
                     f.errors.refund_adjustment_amount = '';
                 }
+                f.total_payment = totalPayment - adj;
+                f.total_payment_bdt = rate > 0 ? Math.round((totalPayment - adj) * rate) : '';
             } else {
                 f.errors.refund_adjustment_amount = '';
+                f.total_payment = totalPayment;
+                f.total_payment_bdt = rate > 0 ? Math.round(totalPayment * rate) : '';
             }
         },
 
