@@ -821,30 +821,34 @@ function updateTotals() {
 
     var totalCost = reIssue + difference + other + (parseFloat(currentRefundedNetFare) || 0);
     document.getElementById('inputTotalCost').value = totalCost;
-    document.getElementById('inputTotalPayment').value = totalCost + service;
+
+    var totalPayment = totalCost + service;
+    var refundAdj = parseFloat(document.getElementById('inputRefundAdjustment').value) || 0;
+    var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
+    var isAdjustment = document.getElementById('inputPaymentOption').value === 'refund_adjustment';
+
+    if (isCustomer && isAdjustment && refundAdj > 0) {
+        if (refundAdj > totalPayment) {
+            document.getElementById('inputRefundAdjustment').setCustomValidity('Refund adjustment amount exceeds the total customer payment.');
+        } else if (refundAdj > currentRefundPayable) {
+            document.getElementById('inputRefundAdjustment').setCustomValidity('Refund adjustment amount exceeds the available refund payable.');
+        } else {
+            document.getElementById('inputRefundAdjustment').setCustomValidity('');
+        }
+        totalPayment -= refundAdj;
+    } else {
+        document.getElementById('inputRefundAdjustment').setCustomValidity('');
+    }
+
+    document.getElementById('inputTotalPayment').value = totalPayment;
 
     var rate = window.__currencyRate || 0;
     if (rate > 0) {
         document.getElementById('inputTotalCostBdt').value = sarToBdt(totalCost);
-        document.getElementById('inputTotalPaymentBdt').value = sarToBdt(totalCost + service);
+        document.getElementById('inputTotalPaymentBdt').value = sarToBdt(totalPayment);
     } else {
         document.getElementById('inputTotalCostBdt').value = '';
         document.getElementById('inputTotalPaymentBdt').value = '';
-    }
-
-    var refundAdj = parseFloat(document.getElementById('inputRefundAdjustment').value) || 0;
-    var totalPayment = totalCost + service;
-    var refundAdjEl = document.getElementById('inputRefundAdjustment');
-    if (refundAdj > 0) {
-        if (refundAdj > totalPayment) {
-            refundAdjEl.setCustomValidity('Refund adjustment amount exceeds the total customer payment.');
-        } else if (refundAdj > currentRefundPayable) {
-            refundAdjEl.setCustomValidity('Refund adjustment amount exceeds the available refund payable.');
-        } else {
-            refundAdjEl.setCustomValidity('');
-        }
-    } else {
-        refundAdjEl.setCustomValidity('');
     }
 
     syncReadonlyMirrors();
@@ -946,7 +950,7 @@ function confirmProcess() {
     }
 
     if (payload.payment_by === 'customer' && payload.payment_option === 'refund_adjustment') {
-        if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge) {
+        if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge + (parseFloat(currentRefundedNetFare) || 0)) {
             showToast('Refund adjustment amount exceeds the total customer payment.', 'error');
             return;
         }
