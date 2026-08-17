@@ -5,15 +5,16 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class PassengerUpdateLog extends Model
+class InvoiceUpdateLog extends Model
 {
     const UPDATED_AT = null;
 
     protected $fillable = [
-        'passenger_id',
+        'invoice_id',
         'user_id',
-        'passport_no',
+        'booking_invoice_id',
         'action',
+        'reason',
         'old_values',
         'new_values',
     ];
@@ -23,9 +24,9 @@ class PassengerUpdateLog extends Model
         'new_values' => 'array',
     ];
 
-    public function passenger(): BelongsTo
+    public function invoice(): BelongsTo
     {
-        return $this->belongsTo(Passenger::class);
+        return $this->belongsTo(Invoice::class);
     }
 
     public function user(): BelongsTo

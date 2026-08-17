@@ -33,12 +33,15 @@ use App\Http\Controllers\PassengerStatusController;
 use App\Http\Controllers\PaymentController;
 use App\Http\Controllers\PendingOutboundReportController;
 use App\Http\Controllers\ProfitLossReportController;
+use App\Http\Controllers\RefundController;
+use App\Http\Controllers\ReIssueController;
 use App\Http\Controllers\RouteController;
 use App\Http\Controllers\SettingsController;
 use App\Http\Controllers\TicketAgentController;
 use App\Http\Controllers\TicketAgentReportController;
 use App\Http\Controllers\TicketFareController;
 use App\Http\Controllers\TicketIssueController;
+use App\Http\Controllers\TicketRequestController;
 use App\Http\Controllers\TransactionTypeController;
 use App\Http\Controllers\TravelClassController;
 use App\Http\Controllers\UserController;
@@ -52,6 +55,7 @@ use App\Http\Controllers\VisaSellingPriceController;
 use App\Http\Controllers\VisaSubmissionController;
 use App\Http\Controllers\VoucherController;
 use App\Models\Bank;
+use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\CurrencyRate;
 use App\Models\District;
@@ -100,6 +104,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/api/ticket-fares/baggage', [TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
     Route::get('/api/ticket-fares/flight-date-gap', [TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
     Route::patch('/ticket-fares/{ticketFare}/toggle-active', [TicketFareController::class, 'toggleActive'])->name('ticket-fares.toggle-active')->middleware('role:Super Admin,Co Admin,Ticket Admin');
+    Route::get('/ticket-fares/options', [TicketRequestController::class, 'ticketFares'])->name('ticket-fares.options');
     Route::resource('ticket-fares', TicketFareController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('commission-agents', CommissionAgentController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('visa-agent-costs', VisaAgentCostController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
@@ -486,13 +491,44 @@ Route::middleware('auth')->group(function () {
     Route::resource('vouchers', VoucherController::class)->middleware('role:Super Admin,Co Admin');
     */
     Route::get('/invoices/{id}/print', fn ($id) => view('invoices.print', compact('id')))->name('invoices.print');
-    Route::get('/re-issues/{id}/confirm', fn ($id) => view('re-issues.confirmation', compact('id')))->name('re-issues.confirmation');
-    Route::get('/refunds/{id}/confirm', fn ($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation');
+    Route::get('/re-issues/{id}/confirm', function ($id) {
+        $bookingBranches = Booking::whereNotNull('booking_branch_id')
+            ->join('branches', 'branches.id', '=', 'bookings.booking_branch_id')
+            ->pluck('branches.name', 'bookings.id')
+            ->toArray();
+        $allRoutes = App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'display' => match ($r->route_type?->value) {
+                    'multi_city' => $r->multiSegments->map(fn ($s) => ($s->fromCity?->code ?? '?').'-'.($s->toCity?->code ?? '?'))->implode(', '),
+                    'round' => ($r->fromCity?->code ?? '?').'-'.($r->toCity?->code ?? '?').'-'.($r->returnCity?->code ?? '?'),
+                    default => ($r->fromCity?->code ?? '?').'-'.($r->toCity?->code ?? '?'),
+                },
+                'route_type' => $r->route_type?->value,
+                'flight_type' => $r->flight_type?->value,
+                'airline_id' => $r->airline_id,
+            ])
+            ->unique('display')
+            ->values();
+
+        return view('re-issues.confirmation', compact('id', 'bookingBranches', 'allRoutes'));
+    })->name('re-issues.confirmation')->middleware('role:Super Admin,Ticket Admin');
+    Route::get('/refunds/{id}/confirm', fn ($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation')->middleware('role:Super Admin,Ticket Admin');
     Route::get('/tickets', fn () => view('tickets.index'))->name('tickets.index')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/tickets/{id}/print', fn ($id) => view('tickets.print', compact('id')))->name('tickets.print')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::get('/tickets/{id}/add-confirm', fn ($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/tickets/{id}/add-confirm', fn ($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation')->middleware('role:Super Admin,Ticket Admin');
 
     Route::middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff')->group(function () {
+        Route::post('/ticket-requests', [TicketRequestController::class, 'store'])->name('ticket-requests.store');
+        Route::put('/ticket-requests/{ticketRequest}/process-reissue', [TicketRequestController::class, 'processReIssue'])->name('ticket-requests.process-reissue');
+        Route::put('/ticket-requests/{ticketRequest}/process-refund', [TicketRequestController::class, 'processRefund'])->name('ticket-requests.process-refund');
+        Route::put('/ticket-requests/{ticketRequest}/process-additional', [TicketRequestController::class, 'processAdditional'])->name('ticket-requests.process-additional');
+        Route::put('/ticket-requests/{ticketRequest}/reject', [TicketRequestController::class, 'reject'])->name('ticket-requests.reject');
+        Route::get('/bookings/{booking}/ticket-requests', [TicketRequestController::class, 'byBooking'])->name('ticket-requests.by-booking');
+        Route::get('/ticket-requests/reasons', [TicketRequestController::class, 'reasons'])->name('ticket-requests.reasons');
+        Route::get('/ticket-requests/agents', [TicketRequestController::class, 'agents'])->name('ticket-requests.agents');
+        Route::get('/ticket-requests/payment-methods', [TicketRequestController::class, 'paymentMethods'])->name('ticket-requests.payment-methods');
         Route::post('/bookings/{booking}/passengers/{passenger}/ticket-issue', [TicketIssueController::class, 'issue'])
             ->name('bookings.passengers.ticket-issue');
         Route::put('/bookings/{booking}/passengers/{passenger}/ticket-edit', [TicketIssueController::class, 'edit'])
@@ -501,6 +537,10 @@ Route::middleware('auth')->group(function () {
             ->name('passengers.confirm-group');
         Route::post('/passengers/{passenger}/create-outbound-pending', [TicketIssueController::class, 'createPendingOutbound'])
             ->name('passengers.create-outbound-pending');
+        Route::post('/bookings/{booking}/passengers/{passenger}/re-issue', [ReIssueController::class, 'store'])
+            ->name('bookings.passengers.re-issue');
+        Route::post('/bookings/{booking}/passengers/{passenger}/refund', [RefundController::class, 'store'])
+            ->name('bookings.passengers.refund');
     });
 
     Route::post('/api/banks/quick-create', [BankController::class, 'quickStore']);

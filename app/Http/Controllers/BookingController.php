@@ -25,6 +25,7 @@ use App\Models\Package;
 use App\Models\Passenger;
 use App\Models\PassengerStatus;
 use App\Models\Payment;
+use App\Models\ReIssueRefundReason;
 use App\Models\RescheduledFingerprint;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
@@ -112,9 +113,9 @@ class BookingController extends Controller
         }
     }
 
-    private function syncBookingFinancials(Booking $booking): array
+    private function syncBookingFinancials(Booking $booking, ?string $reason = null): array
     {
-        $this->bookingService->syncFinancials($booking);
+        $this->bookingService->syncFinancials($booking, $reason);
 
         $invoice = $booking->invoice;
         if ($invoice) {
@@ -560,10 +561,50 @@ class BookingController extends Controller
                 'allIssuedTickets.ticketFare.route.returnCity',
                 'allIssuedTickets.ticketFare.route.multiSegments.fromCity',
                 'allIssuedTickets.ticketFare.route.multiSegments.toCity',
+                'allIssuedTickets.latestReIssuedTicket',
+                'allIssuedTickets.latestReIssuedTicket.ticketAgent',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.airline',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.airlineClass.class',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.fromCity',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.toCity',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.returnCity',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.fromCity',
+                'allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
+                'allIssuedTickets.latestRefundedTicket',
+                'allIssuedTickets.latestRefundedTicket.ticketAgent',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.airline',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.airlineClass.class',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.route.fromCity',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.route.toCity',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.route.returnCity',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.route.multiSegments.fromCity',
+                'allIssuedTickets.latestRefundedTicket.ticketFare.route.multiSegments.toCity',
+                'allIssuedTickets.reIssuedTickets.reason',
+                'allIssuedTickets.refundedTickets.reason',
+                'allIssuedTickets.pendingRequests',
                 'latestIssuedTicket.ticketAgent',
                 'latestIssuedTicket.ticketFare.airline',
                 'latestIssuedTicket.ticketFare.airlineClass.class',
                 'latestIssuedTicket.ticketFare.route',
+                'latestIssuedTicket.latestReIssuedTicket',
+                'latestIssuedTicket.latestReIssuedTicket.ticketAgent',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.airline',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.airlineClass.class',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.fromCity',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.toCity',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.returnCity',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.multiSegments.fromCity',
+                'latestIssuedTicket.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
+                'latestIssuedTicket.latestRefundedTicket',
+                'latestIssuedTicket.latestRefundedTicket.ticketAgent',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.airline',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.airlineClass.class',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.fromCity',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.toCity',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.returnCity',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.multiSegments.fromCity',
+                'latestIssuedTicket.latestRefundedTicket.ticketFare.route.multiSegments.toCity',
+                'latestIssuedTicket.pendingRequests',
                 'ticketFareInbound.airline',
                 'ticketFareInbound.airlineClass.class',
                 'ticketFareInbound.route',
@@ -624,6 +665,8 @@ class BookingController extends Controller
         ];
         $fingerprintLocations = FingerprintLocation::cases();
 
+        $reIssueReasons = ReIssueRefundReason::where('reason_of', 're-issue')->get();
+
         return view('bookings.index', compact(
             'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'ticketAgents', 'canEditVisa',
             'canFilterByVisaAgent', 'canFilterByTicketAgent',
@@ -639,7 +682,8 @@ class BookingController extends Controller
             'selectedPaymentWise',
             'statusChangeOptions',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
-            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt'
+            'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt',
+            'reIssueReasons'
         ));
     }
 
@@ -1002,11 +1046,12 @@ class BookingController extends Controller
                 $validated['discount_value'] ?? 0
             );
             $booking->discount_amount = $discountAmount;
-            $booking->saveQuietly();
+            $booking->save();
 
             $discountedTotal = max(0, $booking->total_value - $discountAmount);
             $invoice->total_amount = $discountedTotal;
             $invoice->balance = $discountedTotal;
+            $invoice->audit_reason = 'booking_created';
             $invoice->save();
 
             $paymentAmount = (float) ($validated['payment']['amount'] ?? 0);
@@ -1097,6 +1142,34 @@ class BookingController extends Controller
             'passengers.ticketFare',
             'passengers.ticketFareInbound.route',
             'passengers.ticketFareOutbound.route',
+            'passengers.allIssuedTickets',
+            'passengers.allIssuedTickets.ticketAgent',
+            'passengers.allIssuedTickets.ticketFare.airline',
+            'passengers.allIssuedTickets.ticketFare.airlineClass.class',
+            'passengers.allIssuedTickets.ticketFare.route.fromCity',
+            'passengers.allIssuedTickets.ticketFare.route.toCity',
+            'passengers.allIssuedTickets.ticketFare.route.returnCity',
+            'passengers.allIssuedTickets.ticketFare.route.multiSegments.fromCity',
+            'passengers.allIssuedTickets.ticketFare.route.multiSegments.toCity',
+            'passengers.allIssuedTickets.latestReIssuedTicket',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketAgent',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.airline',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.airlineClass.class',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.route.fromCity',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.route.toCity',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.route.returnCity',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.fromCity',
+            'passengers.allIssuedTickets.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
+            'passengers.allIssuedTickets.latestRefundedTicket',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketAgent',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.airline',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.airlineClass.class',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.route.fromCity',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.route.toCity',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.route.returnCity',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.route.multiSegments.fromCity',
+            'passengers.allIssuedTickets.latestRefundedTicket.ticketFare.route.multiSegments.toCity',
+            'passengers.allIssuedTickets.pendingRequests',
             'user',
             'district',
             'package',
@@ -1401,7 +1474,7 @@ class BookingController extends Controller
             }
 
             $booking = $booking->fresh();
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'booking_updated');
 
             $discountType = $booking->discount_type;
             if ($discountType instanceof \BackedEnum) {
@@ -1488,7 +1561,7 @@ class BookingController extends Controller
             }
 
             $booking = $booking->fresh();
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'fingerprint_location_updated');
 
             return response()->json([
                 'success' => true,
@@ -1620,7 +1693,7 @@ class BookingController extends Controller
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();
 
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'passenger_added');
 
             $passenger = $passenger->fresh()->load('ticketFare');
 
@@ -1654,7 +1727,7 @@ class BookingController extends Controller
             $booking->update(['pax_qty' => $booking->passengers()->count()]);
             $booking = $booking->fresh();
 
-            $invoiceData = $this->syncBookingFinancials($booking);
+            $invoiceData = $this->syncBookingFinancials($booking, 'passenger_removed');
 
             return response()->json([
                 'success' => true,
@@ -2003,7 +2076,7 @@ class BookingController extends Controller
         $passenger->update(['package_value' => $packageValue]);
         $booking = $passenger->booking->fresh();
 
-        $invoiceData = $this->syncBookingFinancials($booking);
+        $invoiceData = $this->syncBookingFinancials($booking, 'passenger_value_recalculated');
 
         return response()->json([
             'package_value' => $packageValue,

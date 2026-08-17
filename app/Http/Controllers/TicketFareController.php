@@ -347,6 +347,8 @@ class TicketFareController extends Controller
                     'airline' => $fare->airline->name,
                     'class' => $fare->airlineClass->class?->name,
                     'selling_fare' => $fare->selling_fare,
+                    'net_fare' => $fare->net_fare,
+                    'offer_price' => $fare->offer_price,
                 ];
             });
 
