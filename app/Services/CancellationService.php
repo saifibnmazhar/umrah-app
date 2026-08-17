@@ -46,6 +46,7 @@ class CancellationService
             ]);
 
             $booking->update(['is_cancelled' => true]);
+            $invoice->audit_reason = 'booking_cancelled';
             $invoice->update(['status' => InvoiceStatus::CANCELLED]);
 
             return $cancelledBooking;
@@ -169,6 +170,7 @@ class CancellationService
                 'status' => CancelledBookingStatus::CANCELLED,
             ]);
 
+            $invoice->audit_reason = 'refund';
             $invoice->update([
                 'status' => InvoiceStatus::REFUNDED,
                 'balance' => 0,

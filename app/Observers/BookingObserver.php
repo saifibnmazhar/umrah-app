@@ -8,6 +8,21 @@ use Illuminate\Support\Facades\Auth;
 
 class BookingObserver
 {
+    public function created(Booking $booking): void
+    {
+        $user = Auth::user();
+        if (!$user) return;
+
+        BookingUpdateLog::create([
+            'booking_id'         => $booking->id,
+            'user_id'            => $user->id,
+            'booking_invoice_id' => $booking->invoice_id,
+            'action'             => 'created',
+            'old_values'         => null,
+            'new_values'         => $booking->attributesToArray(),
+        ]);
+    }
+
     public function updated(Booking $booking): void
     {
         $user = Auth::user();
@@ -29,11 +44,12 @@ class BookingObserver
         }
 
         BookingUpdateLog::create([
-            'booking_id' => $booking->id,
-            'user_id' => $user->id,
-            'action' => 'updated',
-            'old_values' => $oldValues,
-            'new_values' => $newValues,
+            'booking_id'         => $booking->id,
+            'user_id'            => $user->id,
+            'booking_invoice_id' => $booking->invoice_id,
+            'action'             => 'updated',
+            'old_values'         => $oldValues,
+            'new_values'         => $newValues,
         ]);
     }
 
@@ -47,11 +63,12 @@ class BookingObserver
         $oldValues = collect($booking->attributesToArray())->except(['created_at', 'updated_at'])->toArray();
 
         BookingUpdateLog::create([
-            'booking_id' => $booking->id,
-            'user_id' => $user->id,
-            'action' => 'deleted',
-            'old_values' => $oldValues,
-            'new_values' => null,
+            'booking_id'         => $booking->id,
+            'user_id'            => $user->id,
+            'booking_invoice_id' => $booking->invoice_id,
+            'action'             => 'deleted',
+            'old_values'         => $oldValues,
+            'new_values'         => null,
         ]);
     }
 }

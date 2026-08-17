@@ -27,6 +27,7 @@ class DatabaseSeeder extends Seeder
             VisaSellingPriceSeeder::class,
             FlightDateGapSeeder::class,
             FingerprintChargeSeeder::class,
+            ReIssueRefundReasonSeeder::class,
 
             // Dependent data (requires airlines, classes, routes, etc.)
             RouteSeeder::class,
