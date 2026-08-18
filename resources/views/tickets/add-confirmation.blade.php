@@ -512,7 +512,10 @@ function handleTicketSelect() {
     document.getElementById('inputTravelRoute').value = formatRoute(route);
     document.getElementById('inputTravelAirline').value = airline.name || '';
     document.getElementById('inputTravelClass').value = cls.name || '';
-    document.getElementById('inputTravelPassengerType').value = fare.passenger_type || '';
+    document.getElementById('inputTravelPassengerType').value = (() => {
+        const req = allRequests.find(r => r.id == currentTicketRequestId);
+        return req?.passenger?.passenger_type || '';
+    })();
 
     document.getElementById('inputSellingFare').value = fare.selling_fare || 0;
     document.getElementById('inputNetFare').value = fare.net_fare || 0;

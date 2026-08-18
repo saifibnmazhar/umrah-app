@@ -353,25 +353,23 @@
         <div id="content-addticket" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Additional Ticket History</h3>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1100px] text-sm">
+                <table class="w-full min-w-[900px] text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Date</th>
                             <th class="px-3 py-2 text-left font-medium">Passenger Name</th>
                             <th class="px-3 py-2 text-left font-medium">Passport No.</th>
+                            <th class="px-3 py-2 text-right font-medium">Price (Selling/Offer)</th>
+                            <th class="px-3 py-2 text-right font-medium">Net Fare</th>
                             <th class="px-3 py-2 text-left font-medium">PNR</th>
-                            <th class="px-3 py-2 text-left font-medium">Agent</th>
-                            <th class="px-3 py-2 text-right font-medium">Additional Ticket Cost</th>
-                            <th class="px-3 py-2 text-right font-medium">Total Customer Payment</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket Num</th>
+                            <th class="px-3 py-2 text-left font-medium">Route</th>
                             <th class="px-3 py-2 text-right font-medium">Profit</th>
-                            <th class="px-3 py-2 text-left font-medium">Payment Method</th>
-                            <th class="px-3 py-2 text-left font-medium">Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Action</th>
                         </tr>
                     </thead>
                     <tbody id="additionalTicketHistoryBody" class="divide-y divide-slate-200"></tbody>
                 </table>
-                <div id="additionalTicketHistoryEmpty" class="text-center py-4 text-slate-500">No additional ticket requests found</div>
+                <div id="additionalTicketHistoryEmpty" class="text-center py-4 text-slate-500">No additional ticket history found</div>
             </div>
         </div>
 
@@ -1738,35 +1736,54 @@ function renderAdditionalTicketHistory() {
     const emptyEl = document.getElementById('additionalTicketHistoryEmpty');
     if (!tbody) return;
 
-    fetch('/bookings/{{ $booking->id }}/ticket-requests?type=additional', {
-        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    fetch('/bookings/{{ $booking->id }}/additional-tickets', {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
     })
     .then(res => res.json())
-    .then(requests => {
-        if (!requests.length) {
+    .then(tickets => {
+        if (!tickets.length) {
             tbody.innerHTML = '';
             if (emptyEl) emptyEl.classList.remove('hidden');
             return;
         }
         if (emptyEl) emptyEl.classList.add('hidden');
         tbody.innerHTML = '';
-        requests.forEach(r => {
+        tickets.forEach(t => {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50';
-            const p = r.passenger || {};
-            const statusMap = { pending: 'Pending', processed: 'Processed', rejected: 'Rejected' };
-            const badgeClass = r.status === 'processed' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+            const p = t.passenger || {};
+            const offerPrice = parseFloat(t.offer_price) || 0;
+            const displayPrice = offerPrice > 0 ? offerPrice : (parseFloat(t.selling_fare) || 0);
+            const netFare = parseFloat(t.net_fare) || 0;
+            const profit = displayPrice - netFare;
+            const route = t.ticket_fare?.route || {};
+            const routeType = route.route_type || '';
+            let routeDisplay = '';
+            if (routeType === 'multi_city' && route.multi_segments) {
+                routeDisplay = route.multi_segments.map(s =>
+                    (s.from_city?.code || '?') + '-' + (s.to_city?.code || '?')
+                ).join(', ');
+            } else {
+                const from = route.from_city?.code || '?';
+                const to = route.to_city?.code || '?';
+                const ret = route.return_city?.code || '';
+                routeDisplay = (routeType === 'round' && ret)
+                    ? from + '-' + to + '-' + ret
+                    : from + '-' + to;
+            }
             tr.innerHTML = `
-                <td class="px-3 py-2 text-slate-600">${r.requested_at ? new Date(r.requested_at).toLocaleDateString('en-CA') : '-'}</td>
+                <td class="px-3 py-2 text-slate-600">${(t.issued_date || '').substring(0, 10) || '-'}</td>
                 <td class="px-3 py-2 text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</td>
                 <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport_no || '-')}</td>
-                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.ticket_option || '-')}</td>
-                <td class="px-3 py-2 text-slate-600">${r.probable_date_up ? new Date(r.probable_date_up).toLocaleDateString('en-CA') : '-'}</td>
-                <td class="px-3 py-2 text-slate-600">${r.probable_date_down ? new Date(r.probable_date_down).toLocaleDateString('en-CA') : '-'}</td>
-                <td class="px-3 py-2"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusMap[r.status] || r.status}</span></td>
-                <td class="px-3 py-2">
-                    <a href="/tickets/${r.booking_id}/add-confirm" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</a>
-                </td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${displayPrice.toFixed(2)}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${netFare.toFixed(2)}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(t.pnr || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(t.ticket_number || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(routeDisplay || '-')}</td>
+                <td class="px-3 py-2 text-right font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}">${profit.toFixed(2)}</td>
             `;
             tbody.appendChild(tr);
         });

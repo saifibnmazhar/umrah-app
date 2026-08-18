@@ -663,4 +663,24 @@ class TicketRequestController extends Controller
 
         return response()->json($fares);
     }
+
+    public function additionalTicketsByBooking(Booking $booking)
+    {
+        $tickets = IssuedTicket::where('booking_id', $booking->id)
+            ->where('issue_type', 'additional')
+            ->with([
+                'passenger',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
+                'ticketFare.route.returnCity',
+                'ticketFare.route.multiSegments.fromCity',
+                'ticketFare.route.multiSegments.toCity',
+                'ticketFare.airline',
+                'ticketFare.airlineClass.class',
+            ])
+            ->orderBy('issued_date', 'asc')
+            ->get();
+
+        return response()->json($tickets);
+    }
 }

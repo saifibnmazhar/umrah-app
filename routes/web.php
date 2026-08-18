@@ -541,6 +541,8 @@ Route::middleware('auth')->group(function () {
             ->name('bookings.passengers.re-issue');
         Route::get('/bookings/{booking}/re-issued-tickets', [ReIssueController::class, 'byBooking'])
             ->name('re-issued-tickets.by-booking');
+        Route::get('/bookings/{booking}/additional-tickets', [TicketRequestController::class, 'additionalTicketsByBooking'])
+            ->name('bookings.additional-tickets');
         Route::post('/bookings/{booking}/passengers/{passenger}/refund', [RefundController::class, 'store'])
             ->name('bookings.passengers.refund');
     });
