@@ -512,7 +512,7 @@ $refundRequests = $pendingRefundRequests ?? collect();
             <button @click="activeTab = 'refund'" :class="activeTab === 'refund' ? 'border-orange-500 text-orange-600' : 'border-transparent text-slate-500'" class="px-4 py-2 font-medium text-sm border-b-2 transition">Refund Requests</button>
         </div>
 
-        <div x-show="activeTab === 'reissue'" x-data="{ currentSlide: 0 }" class="relative">
+        <div x-show="activeTab === 'reissue'" x-data="{ currentSlide: 0 }" x-cloak class="relative">
             @forelse($reissueChunks as $chunkIndex => $chunk)
             <div x-show="currentSlide === {{ $chunkIndex }}" x-cloak class="space-y-3">
                 @foreach($chunk as $request)
@@ -550,7 +550,7 @@ $refundRequests = $pendingRefundRequests ?? collect();
             @endif
         </div>
 
-        <div x-show="activeTab === 'addticket'" x-data="{ currentSlide: 0 }" class="relative">
+        <div x-show="activeTab === 'addticket'" x-data="{ currentSlide: 0 }" x-cloak class="relative">
             @forelse($addChunks as $chunkIndex => $chunk)
             <div x-show="currentSlide === {{ $chunkIndex }}" x-cloak class="space-y-3">
                 @foreach($chunk as $request)
@@ -588,7 +588,7 @@ $refundRequests = $pendingRefundRequests ?? collect();
             @endif
         </div>
 
-        <div x-show="activeTab === 'refund'" x-data="{ currentSlide: 0 }" class="relative">
+        <div x-show="activeTab === 'refund'" x-data="{ currentSlide: 0 }" x-cloak class="relative">
             @forelse($refundChunks as $chunkIndex => $chunk)
             <div x-show="currentSlide === {{ $chunkIndex }}" x-cloak class="space-y-3">
                 @foreach($chunk as $request)

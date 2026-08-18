@@ -498,7 +498,7 @@
                         <input type="number" x-model="paymentData.amount_bdt" @input="handleBdtAmountInput()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter BDT amount">
                     </div>
 
-                    <div x-show="paymentData.currency === 'BDT'" class="col-span-2 mt-2">
+                    <div x-show="paymentData.currency === 'BDT'" x-cloak class="col-span-2 mt-2">
                         <template x-if="exchangeRate > 0">
                             <p class="text-sm text-slate-500">1 SAR = <span x-text="exchangeRate"></span> BDT</p>
                         </template>
