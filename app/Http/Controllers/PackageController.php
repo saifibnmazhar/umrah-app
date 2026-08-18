@@ -14,7 +14,7 @@ class PackageController extends Controller
 {
     public function index(Request $request)
     {
-        $query = Package::with([
+        $packagesArray = Package::with([
             'ticketFare',
             'ticketFare.route.fromCity',
             'ticketFare.route.toCity',
@@ -31,19 +31,7 @@ class PackageController extends Controller
             'ticketFareOutbound.route.toCity',
             'ticketFareOutbound.groupTicket',
             'visaSellingPrice',
-        ])->withCount('bookings');
-
-        if ($request->has('status') && $request->status === 'inactive') {
-            $query->where('is_active', false);
-        } elseif ($request->has('status') && $request->status === 'all') {
-            // no filter
-        } else {
-            $query->where('is_active', true);
-        }
-
-        $packages = $query->orderBy('id')->paginate(10);
-
-        $packagesArray = $packages->map(fn ($p) => [
+        ])->withCount('bookings')->orderBy('id')->get()->map(fn ($p) => [
             'id' => $p->id,
             'package_name' => $p->package_name,
             'ticket_fare_id' => $p->ticket_fare_id,
@@ -60,15 +48,12 @@ class PackageController extends Controller
         ]);
 
         $ticketFares = $this->loadTicketFares();
-
-        $inboundFares = $this->loadTicketFares(RouteType::ONE_WAY_INBOUND);
-        $outboundFares = $this->loadTicketFares(RouteType::ONE_WAY_OUTBOUND);
-
+        $inboundFares = $this->loadTicketFares(RouteType::ONEWAY_INBOUND);
+        $outboundFares = $this->loadTicketFares(RouteType::ONEWAY_OUTBOUND);
         $usedFareIds = Package::pluck('ticket_fare_id')->toArray();
-
         $latestVisa = VisaSellingPrice::latest()->first();
 
-        return view('packages.index', compact('packages', 'packagesArray', 'ticketFares', 'inboundFares', 'outboundFares', 'latestVisa', 'usedFareIds'));
+        return view('packages.index', compact('packagesArray', 'ticketFares', 'inboundFares', 'outboundFares', 'latestVisa', 'usedFareIds'));
     }
 
     private function loadTicketFares(?RouteType $routeType = null)
@@ -121,8 +106,8 @@ class PackageController extends Controller
     public function create()
     {
         $ticketFares = $this->loadTicketFares();
-        $inboundFares = $this->loadTicketFares(RouteType::ONE_WAY_INBOUND);
-        $outboundFares = $this->loadTicketFares(RouteType::ONE_WAY_OUTBOUND);
+        $inboundFares = $this->loadTicketFares(RouteType::ONEWAY_INBOUND);
+        $outboundFares = $this->loadTicketFares(RouteType::ONEWAY_OUTBOUND);
         $latestVisa = VisaSellingPrice::latest()->first();
 
         return view('packages.edit', compact('ticketFares', 'inboundFares', 'outboundFares', 'latestVisa'));
@@ -213,8 +198,8 @@ class PackageController extends Controller
         }
 
         $ticketFares = $this->loadTicketFares();
-        $inboundFares = $this->loadTicketFares(RouteType::ONE_WAY_INBOUND);
-        $outboundFares = $this->loadTicketFares(RouteType::ONE_WAY_OUTBOUND);
+        $inboundFares = $this->loadTicketFares(RouteType::ONEWAY_INBOUND);
+        $outboundFares = $this->loadTicketFares(RouteType::ONEWAY_OUTBOUND);
         $latestVisa = VisaSellingPrice::latest()->first();
 
         return view('packages.edit', compact('package', 'ticketFares', 'inboundFares', 'outboundFares', 'latestVisa'));
