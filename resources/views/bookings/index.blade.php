@@ -1924,18 +1924,18 @@ if ($passenger->ticket_fare_inbound_id) {
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div x-show="refundForm.selling_fare > 0">
                             <label class="block text-xs font-medium text-slate-500 mb-1">Selling Fare</label>
-                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" class="text-sm text-slate-800">SAR <span x-text="refundForm.selling_fare.toLocaleString()"></span></p>
-                            <p x-show="$store.currency.mode === 'BDT'" class="text-sm text-slate-800">BDT <span x-text="refundForm.selling_fare_bdt.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak class="text-sm text-slate-800">SAR <span x-text="refundForm.selling_fare.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'BDT'" x-cloak class="text-sm text-slate-800">BDT <span x-text="refundForm.selling_fare_bdt.toLocaleString()"></span></p>
                         </div>
                         <div x-show="refundForm.net_fare > 0">
                             <label class="block text-xs font-medium text-slate-500 mb-1">Net Fare</label>
-                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" class="text-sm text-slate-800">SAR <span x-text="refundForm.net_fare.toLocaleString()"></span></p>
-                            <p x-show="$store.currency.mode === 'BDT'" class="text-sm text-slate-800">BDT <span x-text="refundForm.net_fare_bdt.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak class="text-sm text-slate-800">SAR <span x-text="refundForm.net_fare.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'BDT'" x-cloak class="text-sm text-slate-800">BDT <span x-text="refundForm.net_fare_bdt.toLocaleString()"></span></p>
                         </div>
                         <div x-show="refundForm.offer_price > 0">
                             <label class="block text-xs font-medium text-slate-500 mb-1">Offer Price</label>
-                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" class="text-sm text-slate-800">SAR <span x-text="refundForm.offer_price.toLocaleString()"></span></p>
-                            <p x-show="$store.currency.mode === 'BDT'" class="text-sm text-slate-800">BDT <span x-text="refundForm.offer_price_bdt.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak class="text-sm text-slate-800">SAR <span x-text="refundForm.offer_price.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'BDT'" x-cloak class="text-sm text-slate-800">BDT <span x-text="refundForm.offer_price_bdt.toLocaleString()"></span></p>
                         </div>
                     </div>
                 </div>
@@ -1964,13 +1964,13 @@ if ($passenger->ticket_fare_inbound_id) {
                             <p x-show="refundForm.errors.reason_id" x-text="refundForm.errors.reason_id" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (SAR) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund" :max="refundForm.net_fare"
                                        @input="handleRefundSarInput('iata_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (BDT) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund_bdt" :max="refundForm.net_fare_bdt"
                                        @input="handleRefundBdtInput('iata_refund')"
@@ -1979,13 +1979,13 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (SAR) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund" :max="refundForm.net_fare"
                                        @input="handleRefundSarInput('customer_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (BDT) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund_bdt" :max="refundForm.net_fare_bdt"
                                        @input="handleRefundBdtInput('customer_refund')"
@@ -1994,13 +1994,13 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR) (Auto: IATA Refund - Customer Refund)</label>
                                 <input type="number" step="0.01" x-model.number="refundForm.service_charge"
                                        readonly
                                        class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT) (Auto: IATA Refund - Customer Refund)</label>
                                 <input type="number" step="0.01" x-model.number="refundForm.service_charge_bdt"
                                        readonly
@@ -2009,13 +2009,13 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refund Compensation (SAR) (Auto: Net Fare - IATA Refund)</label>
                                 <input type="number" step="0.01" x-model.number="refundForm.refund_compensation"
                                        readonly
                                        class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refund Compensation (BDT) (Auto: Net Fare - IATA Refund)</label>
                                 <input type="number" step="0.01" x-model.number="refundForm.refund_compensation_bdt"
                                        readonly
@@ -2303,7 +2303,7 @@ if ($passenger->ticket_fare_inbound_id) {
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
                                 <input type="number" x-model="ticketFareForm.selling_fare" min="0" step="0.000001"
                                        @input="handleTicketFareSarInput('selling_fare'); ticketFareForm.errors.selling_fare = ''"
@@ -2311,7 +2311,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="ticketFareForm.errors.selling_fare" x-text="ticketFareForm.errors.selling_fare" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) *</label>
                                 <input type="number" x-model="ticketFareForm.selling_fare_bdt" min="0" step="0.000001"
                                        @input="handleTicketFareBdtInput('selling_fare'); ticketFareForm.errors.selling_fare = ''"
@@ -2322,7 +2322,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR) *</label>
                                 <input type="number" x-model="ticketFareForm.net_fare" min="0" step="0.000001"
                                        @input="handleTicketFareSarInput('net_fare'); ticketFareForm.errors.net_fare = ''"
@@ -2330,7 +2330,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="ticketFareForm.errors.net_fare" x-text="ticketFareForm.errors.net_fare" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT) *</label>
                                 <input type="number" x-model="ticketFareForm.net_fare_bdt" min="0" step="0.000001"
                                        @input="handleTicketFareBdtInput('net_fare'); ticketFareForm.errors.net_fare = ''"
@@ -2341,7 +2341,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div x-show="ticketFareForm.ticket_type === 'offer'">
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
                                 <input type="number" x-model="ticketFareForm.offer_price" min="0" step="0.000001"
                                        @input="handleTicketFareSarInput('offer_price'); ticketFareForm.errors.offer_price = ''"
@@ -2349,7 +2349,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="ticketFareForm.errors.offer_price" x-text="ticketFareForm.errors.offer_price" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) *</label>
                                 <input type="number" x-model="ticketFareForm.offer_price_bdt" min="0" step="0.000001"
                                        @input="handleTicketFareBdtInput('offer_price'); ticketFareForm.errors.offer_price = ''"
@@ -2549,13 +2549,13 @@ if ($passenger->ticket_fare_inbound_id) {
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
                                 <input type="number" x-model="reIssueForm.selling_fare" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
                                 <input type="number" x-model="reIssueForm.selling_fare_bdt" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
@@ -2566,14 +2566,14 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
                                 <input type="number" x-model="reIssueForm.net_fare" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
                                        @input="recalcReIssueFareDifference()"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
                                 <input type="number" x-model="reIssueForm.net_fare_bdt" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
@@ -2584,13 +2584,13 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div x-show="reIssueForm.ticket_type === 'offer'">
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
                                 <input type="number" x-model="reIssueForm.offer_price" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
                                 <input type="number" x-model="reIssueForm.offer_price_bdt" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
@@ -2642,7 +2642,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <span class="text-sm font-medium text-emerald-700">Refund Payable (SAR)</span>
                                 <span class="text-sm font-semibold text-emerald-700" x-text="$currency(reIssueForm.refund_payable, 2)"></span>
                             </div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (SAR)</label>
                                 <input type="number" x-model="reIssueForm.refund_adjustment_amount" min="0" step="0.000001"
                                        @input="handleReIssueSarInput('refund_adjustment_amount'); reIssueForm.errors.refund_adjustment_amount = ''"
@@ -2650,7 +2650,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="reIssueForm.errors.refund_adjustment_amount" x-text="reIssueForm.errors.refund_adjustment_amount" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (BDT)</label>
                                 <input type="number" x-model="reIssueForm.refund_adjustment_amount_bdt" min="0" step="0.000001"
                                        @input="handleReIssueBdtInput('refund_adjustment_amount'); reIssueForm.errors.refund_adjustment_amount = ''"
@@ -2661,7 +2661,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR) *</label>
                                 <input type="number" x-model="reIssueForm.re_issue_charge" min="0" step="0.000001"
                                        @input="handleReIssueSarInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
@@ -2669,7 +2669,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT) *</label>
                                 <input type="number" x-model="reIssueForm.re_issue_charge_bdt" min="0" step="0.000001"
                                        @input="handleReIssueBdtInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
@@ -2680,7 +2680,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR) *</label>
                                 <input type="number" x-model="reIssueForm.fare_difference" step="0.000001"
                                        @input="handleReIssueSarInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
@@ -2688,7 +2688,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT) *</label>
                                 <input type="number" x-model="reIssueForm.fare_difference_bdt" step="0.000001"
                                        @input="handleReIssueBdtInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
@@ -2699,7 +2699,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (SAR)</label>
                                 <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001"
                                        @input="handleReIssueSarInput('other_costs'); reIssueForm.errors.other_costs = ''"
@@ -2707,7 +2707,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (BDT)</label>
                                 <input type="number" x-model="reIssueForm.other_costs_bdt" min="0" step="0.000001"
                                        @input="handleReIssueBdtInput('other_costs'); reIssueForm.errors.other_costs = ''"
@@ -2718,7 +2718,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer'">
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
                                 <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001"
                                        @input="handleReIssueSarInput('service_charge'); reIssueForm.errors.service_charge = ''"
@@ -2726,7 +2726,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
                                 <input type="number" x-model="reIssueForm.service_charge_bdt" min="0" step="0.000001"
                                        @input="handleReIssueBdtInput('service_charge'); reIssueForm.errors.service_charge = ''"
@@ -2737,33 +2737,33 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div x-show="reIssueForm.refunded_net_fare > 0">
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (SAR)</label>
                                 <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (BDT)</label>
                                 <input type="number" x-model="reIssueForm.refunded_net_fare_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                                 <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
                                 <input type="number" x-model="reIssueForm.total_cost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (BDT)</label>
                                 <input type="number" x-model="reIssueForm.total_cost_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                                 <input type="number" x-model="reIssueForm.total_cost" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                             </div>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer'">
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR)</label>
                                 <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (BDT)</label>
                                 <input type="number" x-model="reIssueForm.total_payment_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                                 <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
@@ -2878,7 +2878,7 @@ if ($passenger->ticket_fare_inbound_id) {
                     </select>
                 </div>
                 <div>
-                    <div x-show="$store.currency.mode === 'BDT'" class="mb-3">
+                    <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mb-3">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
                         <input type="number" x-model="cancelServiceChargeBdt" min="0" step="0.01"
                             @input="cancelServiceCharge = parseFloat(((parseFloat(cancelServiceChargeBdt) || 0) / ($store.currency.rate || 1)).toFixed(6))"

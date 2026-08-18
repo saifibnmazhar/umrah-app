@@ -439,7 +439,7 @@
             <h3 class="text-xl font-semibold text-slate-800" x-text="editingPaymentId ? 'Edit Payment' : 'Payment Interface'"></h3>
             <p class="text-sm text-slate-500 mb-4" x-text="editingPaymentId ? 'Update payment details' : 'Booking Summary'"></p>
 
-            <div x-show="!editingPaymentId" class="mb-4">
+            <div x-show="!editingPaymentId" x-cloak class="mb-4">
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div class="flex justify-between">
                         <span class="text-slate-500">Total Package Value:</span>

@@ -216,7 +216,7 @@
         </div>
     </div>
 
-    <div x-show="lastPage > 1" class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
+    <div x-show="lastPage > 1" x-cloak class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
         <div class="flex items-center justify-between">
             <div class="text-sm text-gray-600">
                 Showing <span class="font-medium" x-text="((currentPage - 1) * perPage + 1)"></span>
