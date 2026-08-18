@@ -8,7 +8,6 @@ use App\Models\District;
 use App\Models\FingerprintDetail;
 use App\Models\User;
 use App\Queries\FingerprintReportQuery;
-use App\Services\CurrencyRateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -45,12 +44,7 @@ class FingerprintReportController extends Controller
         $canViewFinancials = $this->canViewFinancials();
         $items = $this->mapReportData($fingerprints->items(), $canViewFinancials);
 
-        $allQuery = (new FingerprintReportQuery($request))->getQuery();
-        if ($branchId) {
-            $allQuery->whereHas('booking', fn ($q) => $q->where('fingerprint_branch_id', $branchId));
-        }
-        $allFingerprints = $allQuery->get();
-        $allItems = $this->mapReportData($allFingerprints->all(), $canViewFinancials);
+        $allItems = $this->mapReportData($query->get()->all(), $canViewFinancials);
         $summary = $this->computeTotals($allItems);
 
         return response()->json([
@@ -89,6 +83,7 @@ class FingerprintReportController extends Controller
         $fingerprintDetail->load([
             'fingerprint.booking.customer',
             'fingerprint.booking.fingerprintCharge',
+            'fingerprint.booking.currencyRate',
             'fingerprint.assignedStaff',
             'passenger',
             'rescheduledFingerprints' => fn ($q) => $q->orderBy('occurrence'),
@@ -122,9 +117,7 @@ class FingerprintReportController extends Controller
 
         $canViewFinancials = $this->canViewFinancials();
 
-        $rate = $booking?->currencyRate?->rate
-            ?? app(CurrencyRateService::class)->getRateForDate($booking?->created_at)?->rate
-            ?? 0;
+        $rate = $booking?->currencyRate?->rate ?? 0;
 
         return response()->json([
             'rate' => $rate,
@@ -194,9 +187,7 @@ class FingerprintReportController extends Controller
                         ->first()?->remarks
                     : null;
 
-                $rate = $booking?->currencyRate?->rate
-                    ?? app(CurrencyRateService::class)->getRateForDate($booking?->created_at)?->rate
-                    ?? 0;
+                $rate = $booking?->currencyRate?->rate ?? 0;
 
                 $result[] = [
                     '_isFirstPassenger' => $pIdx === 0,

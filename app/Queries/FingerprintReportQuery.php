@@ -18,6 +18,7 @@ class FingerprintReportQuery
             'booking.fingerprintBranch',
             'booking.fingerprintCharge',
             'booking.passengers',
+            'booking.currencyRate',
             'fingerprintDetails.passenger',
             'fingerprintDetails.rescheduledFingerprints',
             'assignedStaff',

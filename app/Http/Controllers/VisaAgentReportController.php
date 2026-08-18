@@ -114,14 +114,17 @@ class VisaAgentReportController extends Controller
 
         $submittedSubmissions = VisaSubmission::where('visa_agent_id', $agentId)
             ->where('status', 'submitted')
-            ->with('passenger.booking')
+            ->with([
+                'passenger.booking',
+                'logs' => fn ($q) => $q
+                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'submitted'")
+                    ->latest('created_at')
+                    ->limit(1),
+            ])
             ->get();
 
         foreach ($submittedSubmissions as $submission) {
-            $submissionLog = $submission->logs()
-                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'submitted'")
-                ->latest()
-                ->first();
+            $submissionLog = $submission->logs->first();
 
             $newValues = $submissionLog ? $submissionLog->new_values : [];
             $estimatedCost = (float) ($newValues['net_visa_cost'] ?? $submission->net_visa_cost ?? 0);
@@ -144,14 +147,17 @@ class VisaAgentReportController extends Controller
 
         $issuedSubmissions = VisaSubmission::where('visa_agent_id', $agentId)
             ->where('status', 'issued')
-            ->with('passenger.booking')
+            ->with([
+                'passenger.booking',
+                'logs' => fn ($q) => $q
+                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'")
+                    ->latest('created_at')
+                    ->limit(1),
+            ])
             ->get();
 
         foreach ($issuedSubmissions as $submission) {
-            $issueLog = $submission->logs()
-                ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'")
-                ->latest()
-                ->first();
+            $issueLog = $submission->logs->first();
 
             $rowDate = $issueLog ? $issueLog->created_at : $submission->updated_at;
             $rows->push([
@@ -340,13 +346,16 @@ class VisaAgentReportController extends Controller
     {
         $submissions = VisaSubmission::where('visa_agent_id', $visaAgent->id)
             ->where('status', 'submitted')
-            ->with('passenger.booking')
+            ->with([
+                'passenger.booking',
+                'logs' => fn ($q) => $q
+                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'submitted'")
+                    ->latest('created_at')
+                    ->limit(1),
+            ])
             ->get()
             ->map(function ($submission) {
-                $submissionLog = $submission->logs()
-                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'submitted'")
-                    ->latest()
-                    ->first();
+                $submissionLog = $submission->logs->first();
 
                 return [
                     'invoice_id' => $submission->passenger->booking->invoice_id ?? '-',
@@ -363,13 +372,16 @@ class VisaAgentReportController extends Controller
     {
         $submissions = VisaSubmission::where('visa_agent_id', $visaAgent->id)
             ->where('status', 'issued')
-            ->with('passenger.booking')
+            ->with([
+                'passenger.booking',
+                'logs' => fn ($q) => $q
+                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'")
+                    ->latest('created_at')
+                    ->limit(1),
+            ])
             ->get()
             ->map(function ($submission) {
-                $issueLog = $submission->logs()
-                    ->whereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'")
-                    ->latest()
-                    ->first();
+                $issueLog = $submission->logs->first();
 
                 return [
                     'invoice_id' => $submission->passenger->booking->invoice_id ?? '-',

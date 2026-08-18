@@ -500,6 +500,8 @@ class BookingController extends Controller
             ->whereIn('id', $bookingIds)
             ->get();
 
+        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
+
         $totalPackageValue = 0;
         $totalDue = 0;
         $totalPackageBdt = 0;
@@ -514,9 +516,7 @@ class BookingController extends Controller
             $totalPackageValue += $invoice->total_amount;
             $totalDue += $invoice->balance;
 
-            $rate = $booking->currencyRate?->rate
-                ?? ($currencyRateService?->getRateForDate($booking->created_at)?->rate
-                ?? ($currencyRateService?->getFirstRate()?->rate ?? 0));
+            $rate = $booking->currencyRate?->rate ?? $firstRate;
 
             if ($rate > 0) {
                 $totalPackageBdt += $invoice->total_amount * $rate;
