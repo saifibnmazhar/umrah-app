@@ -302,6 +302,65 @@ class DashboardController extends Controller
             ])
             ->values();
 
-        return view('dashboard.index', compact('packages', 'visaSubmitted', 'visaIssued', 'visaPending', 'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing', 'totalFingerprintProfit', 'totalFingerprintProfitBdt', 'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt', 'inboundTicket', 'outboundTicket', 'pendingTicket', 'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalPassengers', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalProfit', 'totalProfitBdt', 'totalServiceChargeDeduction', 'totalServiceChargeDeductionBdt', 'totalRefund', 'totalRefundBdt', 'totalTicketRefund', 'totalTicketRefundBdt', 'bookingBranches', 'pendingReIssueRequests', 'pendingAdditionalRequests', 'pendingRefundRequests'));
+        $stats = [
+            'visaSubmitted' => $visaSubmitted,
+            'visaIssued' => $visaIssued,
+            'visaPending' => $visaPending,
+            'inboundTicket' => $inboundTicket,
+            'outboundTicket' => $outboundTicket,
+            'pendingTicket' => $pendingTicket,
+            'totalDue' => $totalDue,
+            'totalInvoice' => $invoiceCount,
+            'totalPassengers' => $totalPassengers,
+            'totalReceived' => 86,
+            'departureDone' => 50,
+            'departureStay' => 30,
+        ];
+
+        $totals = [
+            'invoiceTotalAmount' => $invoiceTotalAmount,
+            'invoiceTotalAmountBdt' => $invoiceTotalAmountBdt,
+            'totalInitialPayment' => $totalInitialPayment,
+            'totalInitialPaymentBdt' => $totalInitialPaymentBdt,
+            'initialPaymentCash' => $initialPaymentCash,
+            'initialPaymentCashBdt' => $initialPaymentCashBdt,
+            'initialPaymentBank' => $initialPaymentBank,
+            'initialPaymentBankBdt' => $initialPaymentBankBdt,
+            'totalCashPayment' => $totalCashPayment,
+            'totalCashPaymentBdt' => $totalCashPaymentBdt,
+            'totalBankPayment' => $totalBankPayment,
+            'totalBankPaymentBdt' => $totalBankPaymentBdt,
+            'totalDue' => $totalDue,
+            'totalDueBdt' => $totalDueBdt,
+            'totalDueCollection' => $totalDueCollection,
+            'totalDueCollectionBdt' => $totalDueCollectionBdt,
+            'dueCollectionCash' => $dueCollectionCash,
+            'dueCollectionCashBdt' => $dueCollectionCashBdt,
+            'dueCollectionBank' => $dueCollectionBank,
+            'dueCollectionBankBdt' => $dueCollectionBankBdt,
+            'totalProfit' => $totalProfit,
+            'totalProfitBdt' => $totalProfitBdt,
+            'totalReceiving' => $totalReceiving,
+            'totalReceivingBdt' => $totalReceivingBdt,
+            'receivingCash' => $receivingCash,
+            'receivingCashBdt' => $receivingCashBdt,
+            'receivingBank' => $receivingBank,
+            'receivingBankBdt' => $receivingBankBdt,
+            'totalRefund' => $totalRefund,
+            'totalRefundBdt' => $totalRefundBdt,
+            'totalTicketRefund' => $totalTicketRefund,
+            'totalTicketRefundBdt' => $totalTicketRefundBdt,
+            'totalFingerprintProfit' => $totalFingerprintProfit,
+            'totalFingerprintProfitBdt' => $totalFingerprintProfitBdt,
+            'totalServiceChargeDeduction' => $totalServiceChargeDeduction,
+            'totalServiceChargeDeductionBdt' => $totalServiceChargeDeductionBdt,
+        ];
+
+        $showSummaryCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor', 'Ticket Admin', 'Visa Admin', 'Branch Manager', 'Fingerprint Admin'])->isNotEmpty();
+        $showPackages = true;
+        $showRequests = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Ticket Admin'])->isNotEmpty();
+        $showProfitCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
+
+        return view('dashboard.index', compact('packages', 'stats', 'totals', 'showSummaryCards', 'showPackages', 'showRequests', 'showProfitCards', 'bookingBranches', 'pendingReIssueRequests', 'pendingAdditionalRequests', 'pendingRefundRequests'));
     }
 }

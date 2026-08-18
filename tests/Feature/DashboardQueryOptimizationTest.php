@@ -292,12 +292,22 @@ class DashboardQueryOptimizationTest extends TestCase
         Auth::login($user);
         $response = $this->get(route('dashboard'));
         $response->assertOk();
+    }
 
-        // Dashboard should show the correct profit:
-        // For 1 booking: invoice total = 50000
-        // Fingerprint cost = 100 (shared across all passengers)
-        // Per passenger: visa cost = 1000, ticket cost = 28000
-        // Total cost = 100 + (1000 + 28000) * 2 = 57100
-        // Profit = 50000 - 57100 = -7100
+    /** @test */
+    public function test_dashboard_summary_renders_as_livewire_component(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+        $this->createBooking($user, $deps, 1, 2);
+
+        Auth::login($user);
+
+        $response = $this->get(route('dashboard'));
+        $response->assertOk();
+        // After wrapping the summary section in a Livewire component,
+        // the page should contain wire: identifiers.
+        $response->assertSee('wire:id', false);
+        $response->assertSee('Total Invoice', false);
     }
 }
