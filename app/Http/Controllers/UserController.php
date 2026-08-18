@@ -17,22 +17,9 @@ class UserController extends Controller
         }
     }
 
-    public function index(Request $request)
+    public function index()
     {
-        $users = User::with(['branch', 'roles'])
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $search = $request->input('search');
-                $q->where(function ($query) use ($search) {
-                    $query->where('name', 'like', "%{$search}%")
-                        ->orWhere('email', 'like', "%{$search}%")
-                        ->orWhereHas('branch', fn ($q) => $q->where('name', 'like', "%{$search}%"));
-                });
-            })
-            ->orderBy('id')
-            ->paginate(10)
-            ->withQueryString();
-
-        return view('users.index', compact('users'));
+        return view('users.index');
     }
 
     public function create()
