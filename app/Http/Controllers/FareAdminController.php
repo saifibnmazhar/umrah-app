@@ -4,7 +4,6 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\DatabaseErrorHumanizer;
 use App\Models\Airline;
-use App\Models\AirlineClass;
 use App\Models\Route;
 use App\Models\TicketAgent;
 use App\Models\TicketFare;
@@ -15,42 +14,7 @@ class FareAdminController extends Controller
 {
     public function index(Request $request)
     {
-        $ticketAgentsQuery = TicketAgent::orderBy('name');
-        $ticketAgents = $ticketAgentsQuery->paginate(10)->withQueryString();
-
-        $ticketFaresQuery = TicketFare::with(['airline', 'airlineClass.travelClass', 'route.fromCity', 'route.toCity', 'route.returnCity', 'route.multiSegments.fromCity', 'route.multiSegments.toCity', 'user', 'groupTicket'])
-            ->withCount([
-                'packages',
-                'passengers',
-                'issuedTickets as issued_tickets_count' => function ($query) {
-                    $query->where('status', 'issued');
-                },
-            ]);
-
-        if ($request->has('airline_id') && $request->airline_id) {
-            $ticketFaresQuery->where('airline_id', $request->airline_id);
-        }
-
-        if ($request->has('ticket_type') && $request->ticket_type) {
-            $ticketFaresQuery->where('ticket_type', $request->ticket_type);
-        }
-
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-            $ticketFaresQuery->whereHas('airline', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->has('status') && $request->status === 'inactive') {
-            $ticketFaresQuery->where('is_active', false);
-        } elseif ($request->has('status') && $request->status === 'all') {
-            // no filter
-        } else {
-            $ticketFaresQuery->where('is_active', true);
-        }
-
-        $ticketFares = $ticketFaresQuery->orderBy('id', 'desc')->paginate(15)->withQueryString();
+        $ticketAgents = TicketAgent::orderBy('name')->paginate(10)->withQueryString();
 
         $routesQuery = Route::with(['airline', 'fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity']);
 
@@ -69,9 +33,8 @@ class FareAdminController extends Controller
         $routes = $routesQuery->orderBy('id', 'desc')->paginate(10)->withQueryString();
 
         $airlines = Airline::orderBy('name')->get();
-        $airlineClasses = AirlineClass::with('travelClass')->get();
 
-        return view('fares.admin', compact('ticketAgents', 'ticketFares', 'routes', 'airlines', 'airlineClasses'));
+        return view('fares.admin', compact('ticketAgents', 'routes', 'airlines'));
     }
 
     public function storeAgent(Request $request)
