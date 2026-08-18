@@ -14,6 +14,7 @@
     <script>window.__currencyRate = {{ $__currencyRate }};</script>
     <script>window.__stayDurationLimits = { minDays: {{ $__stayDurationLimits?->min_days ?? 1 }}, maxDays: {{ $__stayDurationLimits?->max_days ?? 85 }} };</script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
+    @livewireStyles
 </head>
 <body class="bg-slate-100 min-h-screen px-4">
     @auth
@@ -39,5 +40,6 @@
     @endauth
 
     @stack('scripts')
+    @livewireScripts
 </body>
 </html>
