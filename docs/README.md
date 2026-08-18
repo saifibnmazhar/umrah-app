@@ -19,6 +19,7 @@ what you need to **understand** (explanation), and what you need to **look up**
 | 6 | Git Workflow | [06-git-workflow.md](06-git-workflow.md) | How-to |
 | 7 | CI/CD | [07-ci-cd.md](07-ci-cd.md) | Explanation |
 | 8 | Domain Reference | [08-domain-reference.md](08-domain-reference.md) | Reference |
+| 9 | Livewire Best Practices | [09-livewire.md](09-livewire.md) | How-to |
 
 ## Related Documents
 

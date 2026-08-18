@@ -22,7 +22,7 @@ vouchers, reports, branches, banks, airlines, routes, and currency rates.
 | Backend            | Laravel 12, PHP 8.4                         |
 | Database (prod)    | MySQL 8.0 + Redis 7                         |
 | Database (local)   | SQLite (in-memory for tests)                |
-| Frontend           | Blade templates, Vite 7, Tailwind CSS v4, Alpine.js |
+| Frontend           | Blade templates, Vite 7, Tailwind CSS v4, Alpine.js, Livewire 3 |
 | Testing            | PHPUnit 11                                  |
 | Code Style         | Laravel Pint (PSR-12 + Laravel preset)      |
 | Containerization   | Docker (multi-stage: Node 22 + PHP 8.4-fpm-alpine) |
@@ -233,7 +233,9 @@ This applies PSR-12 + Laravel preset formatting. Pint uses default rules
 - Use `route()` helper for all internal links
 - Include navigation via `@include('partials.nav')`
 - Use Alpine.js (`x-data`, `x-show`, `x-model`, `@click`, `:class`) for interactivity
+- Use Livewire for reactive components (dashboard summaries, search forms)
 - Reference `ui-references/` for design — do not modify files in that folder
+- For Livewire best practices, see [docs/09-livewire.md](docs/09-livewire.md)
 
 ---
 
