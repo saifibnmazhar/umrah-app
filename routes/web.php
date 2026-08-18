@@ -545,6 +545,8 @@ Route::middleware('auth')->group(function () {
             ->name('bookings.additional-tickets');
         Route::post('/bookings/{booking}/passengers/{passenger}/refund', [RefundController::class, 'store'])
             ->name('bookings.passengers.refund');
+        Route::get('/bookings/{booking}/refunded-tickets', [RefundController::class, 'byBooking'])
+            ->name('refunded-tickets.by-booking');
     });
 
     Route::post('/api/banks/quick-create', [BankController::class, 'quickStore']);
