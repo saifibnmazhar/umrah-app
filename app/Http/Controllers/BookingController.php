@@ -1870,7 +1870,7 @@ class BookingController extends Controller
         $displayDueAmount = $displayGrandTotal - $displayTotalPaid;
         $totalPaid = (float) ($booking->invoice->paid_amount ?? 0);
         $currentPaid = (float) ($booking->payments->last()?->amount ?? 0);
-        $dueAmount = $grandTotal - $totalPaid;
+        $dueAmount = (float) ($booking->invoice->total_amount ?? 0) - $totalPaid;
         $invoiceDate = $booking->payments->last()?->payment_date?->format('d M Y');
 
         $conditions = BookingCondition::where('is_active', true)

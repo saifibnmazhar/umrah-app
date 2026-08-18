@@ -649,7 +649,7 @@
                 <tbody>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Total Amount:</td>
-                        <td class="px-2 py-1 text-right font-bold border border-slate-300">@currency($grandTotal, 2, $rate)</td>
+                        <td class="px-2 py-1 text-right font-bold border border-slate-300">@currency($booking->invoice->total_amount ?? 0, 2, $rate)</td>
                     </tr>
                     <tr>
                         <td class="px-2 py-1 font-bold text-slate-800 border border-slate-300">Previous Paid Amount:</td>
