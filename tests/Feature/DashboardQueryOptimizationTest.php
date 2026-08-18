@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Livewire\Dashboard\DashboardPackageSlider;
 use App\Models\Airline;
 use App\Models\AirlineClass;
 use App\Models\Bank;
@@ -33,6 +34,7 @@ use App\Models\VisaSubmission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class DashboardQueryOptimizationTest extends TestCase
@@ -309,5 +311,40 @@ class DashboardQueryOptimizationTest extends TestCase
         // the page should contain wire: identifiers.
         $response->assertSee('wire:id', false);
         $response->assertSee('Total Invoice', false);
+    }
+
+    /** @test */
+    public function test_dashboard_packages_renders_as_livewire_component(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+        $this->createBooking($user, $deps, 1, 2);
+
+        Auth::login($user);
+
+        Livewire::test(DashboardPackageSlider::class, [
+            'packages' => collect([$deps['package']]),
+            'showPackages' => true,
+        ])
+            ->assertSee('Packages')
+            ->assertSee($deps['package']->package_name)
+            ->assertSeeLivewire('dashboard.dashboard-package-slider');
+    }
+
+    /** @test */
+    public function test_dashboard_requests_renders_as_livewire_component(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+        $this->createBooking($user, $deps, 1, 2);
+
+        Auth::login($user);
+        $response = $this->get(route('dashboard'));
+
+        $response->assertOk();
+        $response->assertSeeLivewire('dashboard.dashboard-request-tabs');
+        $response->assertSee('Re-Issue Requests');
+        $response->assertSee('Add. Tkt Requests');
+        $response->assertSee('Refund Requests');
     }
 }
