@@ -391,6 +391,212 @@
                         @endif
                         <td class="px-1 py-0.5 border border-slate-300">{{ $booking->remarks ?? '-' }}</td>
                     </tr>
+                    @foreach($passenger->allIssuedTickets->where('issue_type', 'additional')->sortBy('id') as $addTicket)
+                    @php
+                        $addTf = $addTicket->ticketFare;
+                        $addRoute = $addTf?->route;
+                        $addRouteType = $addRoute?->route_type?->value ?? '';
+                        $addInDate = $addTicket->inbound_date;
+                        $addOutDate = $addTicket->outbound_date;
+                        $addDuration = ($addInDate && $addOutDate) ? $addInDate->diffInDays($addOutDate) : null;
+                        $addIsSplit = in_array($addRouteType, ['round', 'multi_city']);
+                    @endphp
+                    <tr class="bg-slate-50">
+                        <td class="px-1 py-0.5 border border-slate-300"></td>
+                        <td class="px-1 py-0.5 border border-slate-300">{{ $addTicket->passenger->first_name ?? '' }} {{ $addTicket->passenger->last_name ?? '' }}</td>
+                        <td class="px-1 py-0.5 border border-slate-300">{{ $addTicket->passenger->gender ?? '-' }}</td>
+                        <td class="px-1 py-0.5 border border-slate-300">{{ $addTicket->passenger->passport_no ?? '-' }}</td>
+                        <td class="px-1 py-0.5 border border-slate-300">N/A</td>
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $addDuration !== null ? $addDuration : 'N/A' }}</td>
+                        <td class="px-1 py-0.5 text-right border border-slate-300">N/A</td>
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            @if($addIsSplit)
+                            <div class="py-0.5 leading-tight">In Bound</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">Out Bound</div>
+                            @elseif($addRouteType === 'oneway_inbound')
+                            <div class="py-0.5 leading-tight">In Bound</div>
+                            @elseif($addRouteType === 'oneway_outbound')
+                            <div class="py-0.5 leading-tight">Out Bound</div>
+                            @else
+                            <div class="py-0.5 leading-tight">-</div>
+                            @endif
+                        </td>
+                        @php
+                            $addAirIn = 'N/A';
+                            $addAirOut = 'N/A';
+                            if ($addIsSplit) {
+                                $addAirIn = $addTf?->airline?->code ?? 'N/A';
+                                $addAirOut = $addTf?->airline?->code ?? 'N/A';
+                            } elseif ($addRouteType === 'oneway_inbound') {
+                                $addAirIn = $addTf?->airline?->code ?? 'N/A';
+                            } elseif ($addRouteType === 'oneway_outbound') {
+                                $addAirOut = $addTf?->airline?->code ?? 'N/A';
+                            } else {
+                                $addAirIn = $addTf?->airline?->code ?? 'N/A';
+                                $addAirOut = $addTf?->airline?->code ?? 'N/A';
+                            }
+                        @endphp
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            @if($addIsSplit)
+                            <div class="py-0.5 leading-tight">{{ $addAirIn }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">{{ $addAirOut }}</div>
+                            @else
+                            <div class="py-0.5 leading-tight">{{ $addRouteType === 'oneway_outbound' ? $addAirOut : $addAirIn }}</div>
+                            @endif
+                        </td>
+                        @php
+                            $addFmtRt = function($r) {
+                                if (!$r) return 'N/A';
+                                return ($r->fromCity?->code ?? '-') . '-' . ($r->toCity?->code ?? '-');
+                            };
+                            $addRouteTop = 'N/A';
+                            $addRouteBottom = 'N/A';
+                            if ($addIsSplit) {
+                                if ($addRouteType === 'multi_city' && $addRoute?->multiSegments) {
+                                    $addInSeg = $addRoute->multiSegments->first(fn($s) => $s->segment_direction?->value === 'inbound');
+                                    $addOutSeg = $addRoute->multiSegments->first(fn($s) => $s->segment_direction?->value === 'outbound');
+                                    if ($addInSeg && $addInSeg->fromCity && $addInSeg->toCity) {
+                                        $addRouteTop = $addInSeg->fromCity->code . ' → ' . $addInSeg->toCity->code;
+                                    }
+                                    if ($addOutSeg && $addOutSeg->fromCity && $addOutSeg->toCity) {
+                                        $addRouteBottom = $addOutSeg->fromCity->code . ' → ' . $addOutSeg->toCity->code;
+                                    }
+                                } else {
+                                    $addRouteTop = $addFmtRt($addRoute);
+                                    $addRouteBottom = $addFmtRt($addRoute);
+                                }
+                            } elseif ($addRouteType === 'oneway_inbound') {
+                                $addRouteTop = $addFmtRt($addRoute);
+                            } elseif ($addRouteType === 'oneway_outbound') {
+                                $addRouteBottom = $addFmtRt($addRoute);
+                            } else {
+                                $addRouteTop = $addFmtRt($addRoute);
+                            }
+                        @endphp
+                        @if($addIsSplit)
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">{{ $addRouteTop }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">{{ $addRouteBottom }}</div>
+                        </td>
+                        @else
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $addRouteType === 'oneway_outbound' ? $addRouteBottom : $addRouteTop }}</td>
+                        @endif
+                        @if($addIsSplit && $addInDate && $addOutDate)
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">{{ $addInDate->format('d M Y') }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">After {{ $addDuration }} Days</div>
+                        </td>
+                        @else
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ ($addRouteType === 'oneway_outbound' && $addOutDate) ? $addOutDate->format('d M Y') : ($addInDate ? $addInDate->format('d M Y') : '-') }}</td>
+                        @endif
+                        @php
+                            $addBdIn = 'N/A';
+                            $addBdOut = 'N/A';
+                            $addPassengerType = $addTicket->passenger?->passenger_type?->value;
+                            if ($addTf && $addPassengerType) {
+                                $addAllowances = $addTf->baggageAllowances ?? collect();
+                                $addInBag = $addAllowances->filter(fn($a) => $a->travel_direction?->value === 'inbound' && ($a->passenger_type?->value ?? $a->passenger_type) === $addPassengerType)->first()?->allowance;
+                                $addOutBag = $addAllowances->filter(fn($a) => $a->travel_direction?->value === 'outbound' && ($a->passenger_type?->value ?? $a->passenger_type) === $addPassengerType)->first()?->allowance;
+                                if ($addInBag !== null) $addBdIn = preg_replace('/[^0-9]/', '', $addInBag) ?: 'N/A';
+                                if ($addOutBag !== null) $addBdOut = preg_replace('/[^0-9]/', '', $addOutBag) ?: 'N/A';
+                            }
+                        @endphp
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $addRouteType === 'oneway_outbound' ? $addBdOut : $addBdIn }}</td>
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $addRouteType === 'oneway_inbound' ? $addBdIn : $addBdOut }}</td>
+                        @php
+                            $addCabinVal = $addTf?->airlineClass?->travelClass?->name ?? '-';
+                            $addCabinTop = $addCabinVal;
+                            $addCabinBottom = $addCabinVal;
+                            $addCabinSplit = false;
+                            if ($addIsSplit) {
+                                $addCabinTop = $addCabinVal;
+                                $addCabinBottom = $addCabinVal;
+                                $addCabinSplit = true;
+                            } elseif ($addRouteType === 'oneway_inbound') {
+                                $addCabinBottom = 'N/A';
+                                $addCabinSplit = true;
+                            } elseif ($addRouteType === 'oneway_outbound') {
+                                $addCabinTop = 'N/A';
+                                $addCabinSplit = true;
+                            }
+                        @endphp
+                        @if($addCabinSplit)
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">{{ $addCabinTop }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">{{ $addCabinBottom }}</div>
+                        </td>
+                        @else
+                        <td class="px-1 py-0.5 border border-slate-300">{{ $addCabinVal }}</td>
+                        @endif
+                        @php
+                            $addMealVal = $addTf?->with_meal === true ? 'Yes' : 'No';
+                            $addMealTop = $addMealVal;
+                            $addMealBottom = $addMealVal;
+                            $addMealSplit = false;
+                            if ($addIsSplit) {
+                                $addMealSplit = true;
+                            } elseif ($addRouteType === 'oneway_inbound') {
+                                $addMealBottom = 'N/A';
+                                $addMealSplit = true;
+                            } elseif ($addRouteType === 'oneway_outbound') {
+                                $addMealTop = 'N/A';
+                                $addMealSplit = true;
+                            }
+                        @endphp
+                        @if($addMealSplit)
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">{{ $addMealTop }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">{{ $addMealBottom }}</div>
+                        </td>
+                        @else
+                        <td class="px-1 py-0.5 border border-slate-300">{{ $addMealVal }}</td>
+                        @endif
+                        @php
+                            $addFmt = function($mins) {
+                                if (!$mins || $mins <= 0) return 'Direct';
+                                $h = intdiv($mins, 60);
+                                $m = $mins % 60;
+                                return sprintf('Transit: %02d hr %02d min', $h, $m);
+                            };
+                            $addFtTop = 'N/A';
+                            $addFtBottom = 'N/A';
+                            $addFtSplit = false;
+                            if ($addRoute) {
+                                $addTransits = $addRoute->transits ?? collect();
+                                $addInMins = $addTransits->filter(fn($t) => $t->route_direction?->value === 'inbound')->sum('transit_time');
+                                $addOutMins = $addTransits->filter(fn($t) => $t->route_direction?->value === 'outbound')->sum('transit_time');
+                                $addFtType = $addRoute->flight_type?->value;
+                                if ($addIsSplit) {
+                                    $addFtTop = $addFtType === 'transit' ? $addFmt($addInMins) : 'Direct';
+                                    $addFtBottom = $addFtType === 'transit' ? $addFmt($addOutMins) : 'Direct';
+                                    $addFtSplit = true;
+                                } elseif ($addRouteType === 'oneway_inbound') {
+                                    $addFtTop = $addFtType === 'transit' ? $addFmt($addInMins) : 'Direct';
+                                    $addFtSplit = true;
+                                } elseif ($addRouteType === 'oneway_outbound') {
+                                    $addFtBottom = $addFtType === 'transit' ? $addFmt($addOutMins) : 'Direct';
+                                    $addFtSplit = true;
+                                }
+                            }
+                        @endphp
+                        @if($addFtSplit)
+                        <td class="px-1 py-0 text-center border border-slate-300">
+                            <div class="py-0.5 leading-tight">{{ $addFtTop }}</div>
+                            <div class="border-t border-slate-300"></div>
+                            <div class="py-0.5 leading-tight">{{ $addFtBottom }}</div>
+                        </td>
+                        @else
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $addFtTop }}</td>
+                        @endif
+                        <td class="px-1 py-0.5 border border-slate-300">{{ $booking->remarks ?? '-' }}</td>
+                    </tr>
+                    @endforeach
                     @empty
                     <tr>
                         <td colspan="17" class="px-3 py-2 text-center text-slate-500 border border-slate-300">No passenger data</td>
