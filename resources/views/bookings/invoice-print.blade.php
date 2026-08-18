@@ -505,8 +505,8 @@
                                 if ($addOutBag !== null) $addBdOut = preg_replace('/[^0-9]/', '', $addOutBag) ?: 'N/A';
                             }
                         @endphp
-                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $addRouteType === 'oneway_outbound' ? $addBdOut : $addBdIn }}</td>
-                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $addRouteType === 'oneway_inbound' ? $addBdIn : $addBdOut }}</td>
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $addRouteType === 'oneway_outbound' ? 'N/A' : $addBdIn }}</td>
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $addRouteType === 'oneway_inbound' ? 'N/A' : $addBdOut }}</td>
                         @php
                             $addCabinVal = $addTf?->airlineClass?->travelClass?->name ?? '-';
                             $addCabinTop = $addCabinVal;
