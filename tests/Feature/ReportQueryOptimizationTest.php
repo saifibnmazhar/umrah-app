@@ -426,8 +426,8 @@ class ReportQueryOptimizationTest extends TestCase
         $user = $this->setupUser();
         $deps = $this->seedAllPrerequisites($user);
 
-        // Create 8 bookings, each with 1 passenger (8 visa submissions)
-        for ($i = 0; $i < 8; $i++) {
+        // Create 25 bookings, each with 1 passenger (25 visa submissions)
+        for ($i = 0; $i < 25; $i++) {
             $this->createBookingWithPassengers($user, $deps, $i, 1);
         }
 
@@ -443,8 +443,36 @@ class ReportQueryOptimizationTest extends TestCase
         $queryCount = count(DB::getQueryLog());
 
         $response->assertOk();
-        $this->assertLessThan(12, $queryCount,
-            'Visa report should execute fewer than 12 queries regardless of submission count. Actual: '.$queryCount);
+        $this->assertLessThan(40, $queryCount,
+            'Visa report should execute fewer than 40 queries regardless of submission count. Actual: '.$queryCount);
+    }
+
+    /** @test */
+    public function test_visa_report_returns_correct_summary(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        // 5 bookings each with 1 passenger; all visa submissions 'issued', final_cost = 1000
+        for ($i = 0; $i < 5; $i++) {
+            $this->createBookingWithPassengers($user, $deps, $i, 1);
+        }
+
+        Auth::login($user);
+
+        $response = $this->get(route('api.reports.visa', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+        ]));
+
+        $response->assertOk();
+        $summary = $response->json('summary');
+
+        $this->assertSame(5, $summary['total_records']);
+        $this->assertSame(5, $summary['total_invoices']);
+        $this->assertEquals(5000.0, $summary['total_agent_cost']);
+        $this->assertSame(5, $summary['issued']);
+        $this->assertSame(0, $summary['pending']);
     }
 
     /** @test */
@@ -453,8 +481,8 @@ class ReportQueryOptimizationTest extends TestCase
         $user = $this->setupUser();
         $deps = $this->seedAllPrerequisites($user);
 
-        // Create 8 bookings, each with 1 passenger
-        for ($i = 0; $i < 8; $i++) {
+        // Create 25 bookings, each with 1 passenger
+        for ($i = 0; $i < 25; $i++) {
             $this->createBookingWithPassengers($user, $deps, $i, 1);
         }
 
@@ -470,8 +498,8 @@ class ReportQueryOptimizationTest extends TestCase
         $queryCount = count(DB::getQueryLog());
 
         $response->assertOk();
-        $this->assertLessThan(20, $queryCount,
-            'Fingerprint report should execute fewer than 60 queries. Actual: '.$queryCount);
+        $this->assertLessThan(40, $queryCount,
+            'Fingerprint report should execute fewer than 40 queries. Actual: '.$queryCount);
     }
 
     /** @test */

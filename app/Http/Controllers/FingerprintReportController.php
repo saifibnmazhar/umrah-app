@@ -44,12 +44,13 @@ class FingerprintReportController extends Controller
         $canViewFinancials = $this->canViewFinancials();
         $items = $this->mapReportData($fingerprints->items(), $canViewFinancials);
 
-        $allItems = $this->mapReportData($query->get()->all(), $canViewFinancials);
-        $summary = $this->computeTotals($allItems);
+        // Compute totals via aggregate queries on a fresh base query,
+        // avoiding the previous second full-model hydration pass.
+        $totals = $this->computeTotalsFromQuery($request, $branchId);
 
         return response()->json([
             'data' => $items,
-            'summary' => $summary,
+            'summary' => $totals,
             'pagination' => [
                 'current_page' => $fingerprints->currentPage(),
                 'last_page' => $fingerprints->lastPage(),
@@ -221,6 +222,54 @@ class FingerprintReportController extends Controller
         }
 
         return $result;
+    }
+
+    /**
+     * Compute report totals via aggregate queries on the base query,
+     * avoiding the full-model hydration pass used by the legacy
+     * computeTotals() which maps every row just to sum scalar fields.
+     */
+    protected function computeTotalsFromQuery(Request $request, ?int $branchId): array
+    {
+        $query = (new FingerprintReportQuery($request))->getBaseQueryForAggregates();
+        if ($branchId) {
+            $query->whereHas('booking', fn ($q) => $q->where('fingerprint_branch_id', $branchId));
+        }
+        // Strip the base query's orderBy('created_at') which becomes ambiguous
+        // once we join additional tables with their own created_at columns.
+        $query->getQuery()->orders = [];
+        $canViewFinancials = $this->canViewFinancials();
+
+        $base = $query->join('bookings', 'fingerprints.booking_id', '=', 'bookings.id');
+
+        $paxAndInvoices = (clone $base)
+            ->selectRaw('COUNT(DISTINCT fingerprints.id) as total_pax')
+            ->selectRaw('COUNT(DISTINCT bookings.invoice_id) as total_invoices')
+            ->selectRaw('SUM(COALESCE(bookings.pax_qty, 0)) as total_pax_qty')
+            ->first();
+
+        $financials = $canViewFinancials
+            ? (clone $base)
+                ->leftJoin('fingerprint_charges', 'bookings.fingerprint_charge_id', '=', 'fingerprint_charges.id')
+                ->selectRaw('SUM(COALESCE(fingerprint_charges.fingerprint_charge, 0)) as total_fingerprint_charge')
+                ->selectRaw('SUM(COALESCE(fingerprints.cost, 0)) as total_fingerprint_cost')
+                ->first()
+            : null;
+
+        $totalFingerprintCharge = $canViewFinancials ? (float) ($financials->total_fingerprint_charge ?? 0) : 0;
+        $totalFingerprintCost = $canViewFinancials ? (float) ($financials->total_fingerprint_cost ?? 0) : 0;
+        $totalProfit = max(0, $totalFingerprintCharge - $totalFingerprintCost);
+        $totalLoss = abs(min(0, $totalFingerprintCharge - $totalFingerprintCost));
+
+        return [
+            'total_invoices' => (int) ($paxAndInvoices->total_invoices ?? 0),
+            'total_pax' => (int) ($paxAndInvoices->total_pax_qty ?? 0),
+            'total_fingerprint_charge' => $totalFingerprintCharge,
+            'total_fingerprint_cost' => $totalFingerprintCost,
+            'total_profit' => $totalProfit,
+            'total_loss' => $totalLoss,
+            'total_profit_loss' => $totalProfit - $totalLoss,
+        ];
     }
 
     protected function computeTotals(array $items): array

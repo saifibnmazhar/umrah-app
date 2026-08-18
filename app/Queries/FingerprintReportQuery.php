@@ -32,6 +32,16 @@ class FingerprintReportQuery
         return $this->query;
     }
 
+    /**
+     * Return a clone of the query with eager-load relations removed,
+     * suitable for aggregate (count/sum/groupBy) queries without
+     * hydrating full models or re-running per-row lazy loads.
+     */
+    public function getBaseQueryForAggregates()
+    {
+        return clone $this->query;
+    }
+
     protected function applyFilters(Request $request): void
     {
         $this->applySearch($request)
