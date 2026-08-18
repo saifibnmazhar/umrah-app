@@ -316,11 +316,15 @@
                         @else
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->route_display }}</td>
                         @endif
+                        @if($_hasSrc && in_array($_srcRt, ['oneway_inbound', 'oneway_outbound']))
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $_srcRt === 'oneway_outbound' ? 'After ' . ($passenger->stay_duration ?? '-') . ' Days' : $passenger->flight_date_display }}</td>
+                        @else
                         <td class="px-1 py-0 text-center border border-slate-300">
                             <div class="py-0.5 leading-tight">{{ $passenger->flight_date_display }}</div>
                             <div class="border-t border-slate-300"></div>
                             <div class="py-0.5 leading-tight">After {{ $passenger->stay_duration ?? '-' }} Days</div>
                         </td>
+                        @endif
                         @php
                             $_bd = $passenger->baggage_display;
                             $_in = 'N/A';
@@ -611,14 +615,16 @@ if ($_hasSrc) {
                         @else
                         <td class="px-1 py-0.5 text-center border border-slate-300">{{ $addRouteType === 'oneway_outbound' ? $addRouteBottom : $addRouteTop }}</td>
                         @endif
-                        @if($addIsSplit && $addInDate && $addOutDate)
+                        @if($addIsSplit)
                         <td class="px-1 py-0 text-center border border-slate-300">
-                            <div class="py-0.5 leading-tight">{{ $addInDate->format('d M Y') }}</div>
+                            <div class="py-0.5 leading-tight">{{ $passenger->flight_date_display }}</div>
                             <div class="border-t border-slate-300"></div>
-                            <div class="py-0.5 leading-tight">After {{ $addDuration }} Days</div>
+                            <div class="py-0.5 leading-tight">After {{ $passenger->stay_duration ?? '-' }} Days</div>
                         </td>
+                        @elseif($addRouteType === 'oneway_outbound')
+                        <td class="px-1 py-0.5 text-center border border-slate-300">After {{ $passenger->stay_duration ?? '-' }} Days</td>
                         @else
-                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ ($addRouteType === 'oneway_outbound' && $addOutDate) ? $addOutDate->format('d M Y') : ($addInDate ? $addInDate->format('d M Y') : '-') }}</td>
+                        <td class="px-1 py-0.5 text-center border border-slate-300">{{ $passenger->flight_date_display }}</td>
                         @endif
                         @php
                             $addBdIn = 'N/A';
