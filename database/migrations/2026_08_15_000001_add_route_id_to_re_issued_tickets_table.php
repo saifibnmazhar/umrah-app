@@ -10,10 +10,10 @@ return new class extends Migration
     {
         Schema::table('re_issued_tickets', function (Blueprint $table) {
             $table->foreignId('route_id')
-                  ->nullable()
-                  ->after('group_ticket_id')
-                  ->constrained('routes')
-                  ->nullOnDelete();
+                ->nullable()
+                ->after('group_ticket_id')
+                ->constrained('routes')
+                ->nullOnDelete();
         });
     }
 

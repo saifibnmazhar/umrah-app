@@ -158,8 +158,8 @@ class BranchWiseReportController extends Controller
 
         $ticketRefundRow = Voucher::whereDate('vouchers.created_at', '>=', $dateFrom)
             ->whereDate('vouchers.created_at', '<=', $dateTo)
-            ->whereHas('transactionType', fn($q) => $q->whereIn('name', ['Ticket Refund - Payment', 'Ticket Refund - Re-issue']))
-            ->when($branchId, fn($q) => $q->where('vouchers.branch_id', $branchId))
+            ->whereHas('transactionType', fn ($q) => $q->whereIn('name', ['Ticket Refund - Payment', 'Ticket Refund - Re-issue']))
+            ->when($branchId, fn ($q) => $q->where('vouchers.branch_id', $branchId))
             ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
             ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
             ->selectRaw('

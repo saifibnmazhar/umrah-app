@@ -539,6 +539,8 @@ Route::middleware('auth')->group(function () {
             ->name('passengers.create-outbound-pending');
         Route::post('/bookings/{booking}/passengers/{passenger}/re-issue', [ReIssueController::class, 'store'])
             ->name('bookings.passengers.re-issue');
+        Route::get('/bookings/{booking}/re-issued-tickets', [ReIssueController::class, 'byBooking'])
+            ->name('re-issued-tickets.by-booking');
         Route::post('/bookings/{booking}/passengers/{passenger}/refund', [RefundController::class, 'store'])
             ->name('bookings.passengers.refund');
     });

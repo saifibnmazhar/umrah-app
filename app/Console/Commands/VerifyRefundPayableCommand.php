@@ -8,6 +8,7 @@ use Illuminate\Console\Command;
 class VerifyRefundPayableCommand extends Command
 {
     protected $signature = 'refund:verify';
+
     protected $description = 'Cross-check stored passengers.refund_payable against dynamic aggregation';
 
     public function handle(): int
@@ -26,7 +27,7 @@ class VerifyRefundPayableCommand extends Command
 
                     $mismatches++;
                     $this->line("Mismatch passenger #{$passenger->id}: "
-                        . "stored={$passenger->refund_payable} computed={$computed}");
+                        ."stored={$passenger->refund_payable} computed={$computed}");
                 }
             });
 

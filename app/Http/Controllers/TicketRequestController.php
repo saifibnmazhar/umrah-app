@@ -2,25 +2,24 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Booking;
-use App\Models\IssuedTicket;
-use App\Models\Passenger;
-use App\Models\ReIssueRefundReason;
-use App\Models\ReIssuedTicket;
-use App\Models\RefundedTicket;
-use App\Models\TicketRequest;
-use App\Models\TicketAgent;
-use App\Models\TicketFare;
-use App\Models\BaggageAllowance;
-use App\Models\Payment;
-use App\Models\TransactionType;
 use App\Enums\PaymentMethod;
 use App\Enums\TicketStatus;
+use App\Models\BaggageAllowance;
+use App\Models\Booking;
+use App\Models\IssuedTicket;
+use App\Models\Payment;
+use App\Models\RefundedTicket;
+use App\Models\ReIssuedTicket;
+use App\Models\ReIssueRefundReason;
+use App\Models\TicketAgent;
+use App\Models\TicketFare;
+use App\Models\TicketRequest;
+use App\Models\TransactionType;
 use App\Services\InvoiceService;
 use App\Services\VoucherService;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Validation\Rule;
 
 class TicketRequestController extends Controller
 {
@@ -50,7 +49,7 @@ class TicketRequestController extends Controller
 
         if (in_array($validated['request_type'], ['re_issue', 'refund'])) {
             $ticketIds = collect($validated['passengers'])
-                ->flatMap(fn($p) => collect($p['tickets'] ?? []))
+                ->flatMap(fn ($p) => collect($p['tickets'] ?? []))
                 ->pluck('issued_ticket_id')
                 ->filter()
                 ->unique()
@@ -294,33 +293,33 @@ class TicketRequestController extends Controller
                         $transactionType = TransactionType::where('name', 'Ticket Refund - Re-issue')->first();
 
                         $payment = Payment::create([
-                            'invoice_id'          => $booking->invoice?->id,
-                            'booking_id'          => $booking->id,
-                            'branch_id'           => $ticketRequest->request_branch_id ?? $booking->booking_branch_id,
-                            'user_id'             => auth()->id(),
-                            'currency_rate_id'    => $booking->currency_rate_id,
-                            'payment_date'        => now(),
-                            'payment_method'      => PaymentMethod::CASH,
-                            'amount'              => $amount,
-                            'bdt_amount'          => 0,
-                            'passenger_id'        => $passenger->id,
+                            'invoice_id' => $booking->invoice?->id,
+                            'booking_id' => $booking->id,
+                            'branch_id' => $ticketRequest->request_branch_id ?? $booking->booking_branch_id,
+                            'user_id' => auth()->id(),
+                            'currency_rate_id' => $booking->currency_rate_id,
+                            'payment_date' => now(),
+                            'payment_method' => PaymentMethod::CASH,
+                            'amount' => $amount,
+                            'bdt_amount' => 0,
+                            'passenger_id' => $passenger->id,
                             're_issued_ticket_id' => $reIssuedTicket->id,
-                            'remarks'             => $validated['remarks'] ?? null,
+                            'remarks' => $validated['remarks'] ?? null,
                         ]);
 
                         app(VoucherService::class)->createVoucher([
-                            'invoice_id'          => $booking->invoice?->id,
-                            'booking_id'          => $booking->id,
-                            'payment_id'          => $payment->id,
-                            'branch_id'           => $ticketRequest->request_branch_id ?? $booking->booking_branch_id,
-                            'user_id'             => auth()->id(),
-                            'currency_rate_id'    => $booking->currency_rate_id,
+                            'invoice_id' => $booking->invoice?->id,
+                            'booking_id' => $booking->id,
+                            'payment_id' => $payment->id,
+                            'branch_id' => $ticketRequest->request_branch_id ?? $booking->booking_branch_id,
+                            'user_id' => auth()->id(),
+                            'currency_rate_id' => $booking->currency_rate_id,
                             'transaction_type_id' => $transactionType?->id,
-                            'payment_date'        => now(),
-                            'payment_method'      => PaymentMethod::CASH,
-                            'amount'              => $amount,
-                            'bdt_amount'          => 0,
-                            'notes'               => $validated['remarks'] ?? null,
+                            'payment_date' => now(),
+                            'payment_method' => PaymentMethod::CASH,
+                            'amount' => $amount,
+                            'bdt_amount' => 0,
+                            'notes' => $validated['remarks'] ?? null,
                         ]);
                     }
                 } elseif ($totalCustomerPayment > 0) {
@@ -344,10 +343,12 @@ class TicketRequestController extends Controller
             ]);
         } catch (\InvalidArgumentException $e) {
             DB::rollBack();
+
             return response()->json(['message' => $e->getMessage()], 422);
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Ticket re-issue failed: '.$e->getMessage());
+
             return response()->json(['message' => 'Failed to re-issue ticket.'], 500);
         }
     }
@@ -451,6 +452,7 @@ class TicketRequestController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Ticket refund failed: '.$e->getMessage());
+
             return response()->json(['message' => 'Failed to refund ticket.'], 500);
         }
     }
@@ -531,6 +533,7 @@ class TicketRequestController extends Controller
         } catch (\Exception $e) {
             DB::rollBack();
             \Log::error('Additional ticket issue failed: '.$e->getMessage());
+
             return response()->json(['message' => 'Failed to issue additional ticket.'], 500);
         }
     }
@@ -604,7 +607,7 @@ class TicketRequestController extends Controller
             'issuedTicket.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
         ])->get();
 
-        $requests->each(fn($r) => $r->passenger?->append([
+        $requests->each(fn ($r) => $r->passenger?->append([
             'route_display', 'flight_date_display', 'airline_display', 'class_display',
         ]));
 
@@ -633,7 +636,7 @@ class TicketRequestController extends Controller
     public function paymentMethods()
     {
         return response()->json(
-            collect(PaymentMethod::cases())->map(fn($case) => ['value' => $case->value, 'label' => ucfirst($case->value)])->values()
+            collect(PaymentMethod::cases())->map(fn ($case) => ['value' => $case->value, 'label' => ucfirst($case->value)])->values()
         );
     }
 
@@ -642,13 +645,13 @@ class TicketRequestController extends Controller
         $query = TicketFare::query();
 
         if ($routeType = $request->query('route_type')) {
-            $query->whereHas('route', fn($q) => $q->where('route_type', $routeType));
+            $query->whereHas('route', fn ($q) => $q->where('route_type', $routeType));
         }
         if ($ticketType = $request->query('ticket_type')) {
             $query->where('ticket_type', $ticketType);
         }
         if ($flightType = $request->query('flight_type')) {
-            $query->whereHas('route', fn($q) => $q->where('flight_type', $flightType));
+            $query->whereHas('route', fn ($q) => $q->where('flight_type', $flightType));
         }
 
         $fares = $query->with([
