@@ -41,6 +41,7 @@
     $dateLabel = $dateFrom->format('d M Y') . ' - ' . $dateTo->format('d M Y');
     $showProfitCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
 
+    if (! function_exists('cascadeRound')) {
     function cascadeRound($value): int {
         $parts = explode('.', number_format((float) $value, 6, '.', ''));
         if (count($parts) !== 2) return (int) round($value);
@@ -49,6 +50,7 @@
             $carry = ((int) $parts[1][$i] + ($carry ? 1 : 0)) >= 5;
         }
         return (int) $parts[0] + ($carry ? 1 : 0);
+    }
     }
     @endphp
 

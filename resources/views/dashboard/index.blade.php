@@ -4,6 +4,7 @@
 
 @section('content')
 @php
+if (! function_exists('cascadeRound')) {
 function cascadeRound($value): int {
     $parts = explode('.', number_format((float) $value, 6, '.', ''));
     if (count($parts) !== 2) return (int) round($value);
@@ -12,6 +13,7 @@ function cascadeRound($value): int {
         $carry = ((int) $parts[1][$i] + ($carry ? 1 : 0)) >= 5;
     }
     return (int) $parts[0] + ($carry ? 1 : 0);
+}
 }
 
 $showSummaryCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor', 'Ticket Admin', 'Visa Admin', 'Branch Manager', 'Fingerprint Admin'])->isNotEmpty();
