@@ -421,6 +421,60 @@ class ReportQueryOptimizationTest extends TestCase
     }
 
     /** @test */
+    public function test_visa_report_data_stays_bounded_query_count(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        // Create 8 bookings, each with 1 passenger (8 visa submissions)
+        for ($i = 0; $i < 8; $i++) {
+            $this->createBookingWithPassengers($user, $deps, $i, 1);
+        }
+
+        Auth::login($user);
+
+        DB::enableQueryLog();
+        $response = $this->get(route('api.reports.visa', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+        ]));
+        DB::disableQueryLog();
+
+        $queryCount = count(DB::getQueryLog());
+
+        $response->assertOk();
+        $this->assertLessThan(12, $queryCount,
+            'Visa report should execute fewer than 12 queries regardless of submission count. Actual: '.$queryCount);
+    }
+
+    /** @test */
+    public function test_fingerprint_report_data_stays_bounded_query_count(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        // Create 8 bookings, each with 1 passenger
+        for ($i = 0; $i < 8; $i++) {
+            $this->createBookingWithPassengers($user, $deps, $i, 1);
+        }
+
+        Auth::login($user);
+
+        DB::enableQueryLog();
+        $response = $this->get(route('api.reports.fingerprint', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+        ]));
+        DB::disableQueryLog();
+
+        $queryCount = count(DB::getQueryLog());
+
+        $response->assertOk();
+        $this->assertLessThan(20, $queryCount,
+            'Fingerprint report should execute fewer than 60 queries. Actual: '.$queryCount);
+    }
+
+    /** @test */
     public function test_branch_wise_report_stays_bounded_query_count(): void
     {
         $user = $this->setupUser();
