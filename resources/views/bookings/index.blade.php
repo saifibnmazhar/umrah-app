@@ -5166,7 +5166,6 @@ function bookingIndexApp() {
                 this.reIssueForm.group_ticket_id = re.group_ticket_id || '';
                 this.reIssueForm.ticket_number = re.ticket_number || '';
                 this.reIssueForm.pnr = re.pnr || '';
-                this.reIssueForm.date = this.formatToDDMMMYY(re.re_issue_date) || today;
                 this.reIssueForm.ticket_agent_id = re.ticket_agent_id || '';
                 this.reIssueForm.inbound_date = this.formatToDDMMMYY(re.inbound_date) || '';
                 this.reIssueForm.outbound_date = this.formatToDDMMMYY(re.outbound_date) || '';
