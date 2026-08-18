@@ -9,9 +9,7 @@ class BranchController extends Controller
 {
     public function index()
     {
-        $branches = Branch::orderBy('name')->paginate(10)->withQueryString();
-
-        return view('branches.index', compact('branches'));
+        return view('branches.index');
     }
 
     public function create()
