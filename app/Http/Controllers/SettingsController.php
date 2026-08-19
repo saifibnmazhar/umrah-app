@@ -5,7 +5,6 @@ namespace App\Http\Controllers;
 use App\Enums\TicketType;
 use App\Exceptions\DatabaseErrorHumanizer;
 use App\Models\District;
-use App\Models\FingerprintCharge;
 use App\Models\FlightDateGap;
 use App\Models\Package;
 use App\Models\StayDurationLimit;
@@ -18,15 +17,8 @@ class SettingsController extends Controller
 {
     public function index()
     {
-        $fingerprintChargesQuery = FingerprintCharge::with(['district', 'user']);
-
-        if (request()->has('division') && request('division')) {
-            $fingerprintChargesQuery->whereHas('district', fn ($q) => $q->where('division', request('division')));
-        }
-
-        $fingerprintCharges = $fingerprintChargesQuery->orderBy('id')->paginate(10)->withQueryString();
-        $districts = District::orderBy('division')->orderBy('name')->get();
         $divisions = District::distinct()->pluck('division')->sort();
+        $districts = District::orderBy('division')->orderBy('name')->get();
 
         $flightDateGap = FlightDateGap::first();
 
@@ -141,9 +133,8 @@ class SettingsController extends Controller
         $stayDurationLimit = StayDurationLimit::getOrCreate();
 
         return view('settings.index', compact(
-            'fingerprintCharges',
-            'districts',
             'divisions',
+            'districts',
             'flightDateGap',
             'packages',
             'ticketFares',
