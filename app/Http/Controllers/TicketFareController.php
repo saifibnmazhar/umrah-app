@@ -17,39 +17,9 @@ use Illuminate\Support\Facades\DB;
 
 class TicketFareController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $query = TicketFare::with(['airline', 'airlineClass', 'route', 'user', 'groupTicket', 'baggageAllowances'])
-            ->withCount(['packages', 'passengers']);
-
-        if ($request->has('airline_id') && $request->airline_id) {
-            $query->where('airline_id', $request->airline_id);
-        }
-
-        if ($request->has('ticket_type') && $request->ticket_type) {
-            $query->where('ticket_type', $request->ticket_type);
-        }
-
-        if ($request->has('search') && $request->search) {
-            $search = $request->search;
-            $query->whereHas('airline', function ($q) use ($search) {
-                $q->where('name', 'like', "%{$search}%");
-            });
-        }
-
-        if ($request->has('status') && $request->status === 'inactive') {
-            $query->where('is_active', false);
-        } elseif ($request->has('status') && $request->status === 'all') {
-            // no filter
-        } else {
-            $query->where('is_active', true);
-        }
-
-        $ticketFares = $query->orderBy('id', 'desc')->paginate(15)->withQueryString();
-
-        $airlines = Airline::orderBy('name')->get();
-
-        return view('ticket-fares.index', compact('ticketFares', 'airlines'));
+        return view('ticket-fares.index');
     }
 
     public function create()
