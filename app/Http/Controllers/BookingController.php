@@ -795,6 +795,306 @@ class BookingController extends Controller
         ]);
     }
 
+    public function passengerData(Request $request)
+    {
+        $user = auth()->user();
+        abort_unless($user, 401, 'Unauthenticated');
+        $userBranchId = $user->branch_id;
+
+        $canFilterByVisaAgent = $user->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
+        $canFilterByTicketAgent = $user->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty();
+
+        $selectedBranchId = $userBranchId ? null : $request->get('booking_branch_id');
+
+        $perPage = (int) ($request->get('per_page') ?: 15);
+
+        $passengerStatuses = PassengerStatus::all();
+        $fingerprintStatuses = FingerprintStatus::cases();
+        $visaStatuses = VisaStatus::cases();
+        $ticketStatuses = [
+            ['value' => 'pending', 'label' => 'Pending'],
+            ['value' => 'issued-inbound', 'label' => 'Issued - Inbound'],
+            ['value' => 'issued-outbound', 'label' => 'Issued - Outbound'],
+            ['value' => 'issued-both', 'label' => 'Issued - Both'],
+            ['value' => 'awaiting-group', 'label' => 'Awaiting Group'],
+            ['value' => 'awaiting-group-inbound', 'label' => 'Awaiting Group - Inbound'],
+            ['value' => 'awaiting-group-outbound', 'label' => 'Awaiting Group - Outbound'],
+            ['value' => 'awaiting-group-both', 'label' => 'Awaiting Group - Both'],
+            ['value' => 'partial-re-issued', 'label' => 'Partial Re-Issued'],
+            ['value' => 're-issued', 'label' => 'Re-Issued'],
+            ['value' => 'partial-refunded', 'label' => 'Partial Refunded'],
+            ['value' => 'refunded', 'label' => 'Refunded'],
+        ];
+
+        $bookingBranches = $userBranchId ? collect() : Branch::orderBy('name')->get(['id', 'name']);
+        $canFilterByVisaAgent = $user->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
+        $canFilterByTicketAgent = $user->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty();
+
+        $visaAgents = collect();
+        if ($canFilterByVisaAgent) {
+            $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
+                ->orderBy('name')
+                ->get()
+                ->map(fn ($a) => [
+                    'id' => $a->id,
+                    'name' => $a->name,
+                    'cost' => (float) ($a->visaAgentCost?->visa_agent_cost ?? 0),
+                    'commission_agents' => $a->commissionAgents->map(fn ($ca) => [
+                        'id' => $ca->id,
+                        'name' => $ca->name,
+                    ]),
+                ]);
+        }
+
+        $ticketAgents = collect();
+        if ($canFilterByTicketAgent) {
+            $ticketAgents = TicketAgent::orderBy('name')->get();
+        }
+
+        $routesList = Route::orderBy('from_city_id')->get(['id', 'route_type', 'from_city_id', 'to_city_id']);
+        $packagesList = Package::where('is_active', true)->orderBy('package_name')->get(['id', 'package_name']);
+
+        $canEditVisa = $user->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty();
+        $canEditFingerprint = $user->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Fingerprint Admin', 'Delivery Staff'])->isNotEmpty();
+        $canEditTicket = $user->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty();
+
+        $passengers = Passenger::query()
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $term = $request->input('search');
+                $q->where(function ($q) use ($term) {
+                    $q->whereHas('booking.customer', fn ($cq) => $cq->where('name', 'like', "%{$term}%")
+                        ->orWhere('mobile_no', 'like', "%{$term}%")
+                        ->orWhere('passport_no', 'like', "%{$term}%"))
+                        ->orWhereHas('booking', fn ($bq) => $bq->where('invoice_id', 'like', "%{$term}%"))
+                        ->orWhere('first_name', 'like', "%{$term}%")
+                        ->orWhere('last_name', 'like', "%{$term}%")
+                        ->orWhere('passport_no', 'like', "%{$term}%")
+                        ->orWhere('mobile_no', 'like', "%{$term}%");
+                });
+            })
+            ->when($userBranchId, fn ($q) => $q->whereHas('booking', fn ($q) => $q->where(function ($q) {
+                $q->where('booking_branch_id', auth()->user()->branch_id)
+                    ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+            })))
+            ->when($selectedBranchId, fn ($q) => $q->whereHas('booking', fn ($q) => $q->where('booking_branch_id', $selectedBranchId)))
+            ->when($request->filled('booking_status'), function ($q) use ($request) {
+                $status = $request->input('booking_status');
+                if ($status === 'active') {
+                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', false));
+                } elseif ($status === 'cancellation_processing') {
+                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', true)
+                        ->whereHas('cancelledBooking', fn ($cq) => $cq->where('status', 'cancellation processing')));
+                } elseif ($status === 'cancelled') {
+                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', true)
+                        ->where(fn ($bw) => $bw->whereDoesntHave('cancelledBooking')
+                            ->orWhereHas('cancelledBooking', fn ($cq) => $cq->where('status', 'cancelled'))));
+                }
+            })
+            ->when($request->filled('fingerprint_status'), fn ($q) => $q->whereHas('fingerprintDetail', fn ($q) => $q->where('status', $request->input('fingerprint_status'))))
+            ->when($request->filled('visa_status'), fn ($q) => $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status'))))
+            ->when($request->filled('ticket_status'), function ($q) use ($request) {
+                $val = $request->input('ticket_status');
+
+                if (in_array($val, ['partial-re-issued', 'partial-refunded', 're-issued', 'refunded'])) {
+                    $targetStatus = str_contains($val, 're-issued') ? 're-issued' : 'refunded';
+                    $q->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $targetStatus));
+                } elseif (str_starts_with($val, 'issued-') || str_starts_with($val, 'awaiting-group')) {
+                    $isIssued = str_starts_with($val, 'issued-');
+                    $status = $isIssued ? 'issued' : 'awaiting-group';
+                    $q->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status));
+                } elseif ($val === 'pending') {
+                    $q->whereDoesntHave('allIssuedTickets');
+                }
+            })
+            ->when($request->filled('visa_agent_id'), fn ($q) => $q->whereHas('visaSubmission', fn ($q) => $q->where('visa_agent_id', $request->input('visa_agent_id'))))
+            ->when($request->filled('ticket_agent_id'), fn ($q) => $q->whereHas('allIssuedTickets', fn ($q) => $q->where('ticket_agent_id', $request->input('ticket_agent_id'))))
+            ->when($request->filled('passenger_status'), fn ($q) => $q->where('passenger_status_id', $request->input('passenger_status')))
+            ->when($request->filled('route_display'), fn ($q) => $q->whereHas('ticketFare.route', fn ($q) => $q->where('id', $request->input('route_display'))))
+            ->when($request->filled('package_id'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->where('package_id', $request->input('package_id'))))
+            ->when($request->filled('booking_date_from'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from'))))
+            ->when($request->filled('booking_date_to'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to'))))
+            ->when($request->filled('actual_flight_from'), function ($q) use ($request) {
+                $d = $request->input('actual_flight_from');
+                $q->where(function ($q) use ($d) {
+                    $q->whereDate('actual_flight_from', '>=', $d)
+                        ->orWhereHas('allIssuedTickets', fn ($iq) => $iq->whereDate('actual_flight_from', '>=', $d));
+                });
+            })
+            ->when($request->filled('actual_flight_to'), function ($q) use ($request) {
+                $d = $request->input('actual_flight_to');
+                $q->where(function ($q) use ($d) {
+                    $q->whereDate('actual_flight_to', '<=', $d)
+                        ->orWhereHas('allIssuedTickets', fn ($iq) => $iq->whereDate('actual_flight_to', '<=', $d));
+                });
+            })
+            ->when($request->filled('return_date_from'), fn ($q) => $q->whereDate('actual_return_from', '>=', $request->input('return_date_from')))
+            ->when($request->filled('return_date_to'), fn ($q) => $q->whereDate('actual_return_to', '<=', $request->input('return_date_to')))
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->input('search');
+                $q->where(function ($query) use ($search) {
+                    $query->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('passport_no', 'like', "%{$search}%")
+                        ->orWhere('mobile_no', 'like', "%{$search}%")
+                        ->orWhereHas('visaSubmission', fn ($q) => $q->where('visa_number', 'like', "%{$search}%"))
+                        ->orWhereHas('allIssuedTickets', fn ($q) => $q->where('pnr', 'like', "%{$search}%")->orWhere('ticket_number', 'like', "%{$search}%"))
+                        ->orWhereHas('booking', fn ($q) => $q->where('invoice_id', 'like', "%{$search}%"));
+                });
+            })
+            ->when($request->filled('status_change_action'), function ($q) use ($request) {
+                $action = $request->input('status_change_action');
+                if ($action) {
+                    $q->where(function ($q) use ($request, $action) {
+                        $q->where('passenger_status_id', $request->input('status_change_from'))
+                            ->orWhereHas('statusChanges', fn ($sq) => $sq->where('new_values->passenger_status_id', $action));
+                    });
+                }
+            })
+            ->when($request->filled('payment_wise'), function ($q) use ($request) {
+                $val = $request->input('payment_wise');
+                if ($val === 'paid') {
+                    $q->whereHas('booking.invoice', fn ($iq) => $iq->whereColumn('paid_amount', '>=', 'total_amount'));
+                } elseif ($val === 'due') {
+                    $q->whereHas('booking.invoice', fn ($iq) => $iq->whereColumn('paid_amount', '<', 'total_amount'));
+                }
+            })
+            ->with([
+                'booking.customer',
+                'booking.package',
+                'booking.invoice',
+                'booking.fingerprintBranch',
+                'booking.bookingBranch',
+                'booking.district',
+                'booking.currencyRate',
+                'booking.documents',
+                'visaSubmission',
+                'visaSubmission.visaAgent',
+                'visaSubmission.commissionAgent',
+                'fingerprintDetail.fingerprint.fingerprintDetails',
+                'fingerprintDetail.approvedLog',
+                'allIssuedTickets',
+                'allIssuedTickets.ticketAgent',
+                'allIssuedTickets.ticketFare.airline',
+                'allIssuedTickets.ticketFare.airlineClass.class',
+                'allIssuedTickets.ticketFare.route.fromCity',
+                'allIssuedTickets.ticketFare.route.toCity',
+                'allIssuedTickets.ticketFare.route.returnCity',
+                'allIssuedTickets.latestReIssuedTicket',
+                'allIssuedTickets.latestRefundedTicket',
+                'latestIssuedTicket',
+                'status',
+            ])
+            ->withCount('documents')
+            ->orderBy('created_at', 'desc');
+
+        $totalPassengerCount = (clone $passengers)->count();
+        $passengers = $passengers->paginate($perPage)->appends(['tab' => 'passenger'])->withQueryString();
+
+        $currencyRateService = app(CurrencyRateService::class);
+
+        $data = $passengers->map(function ($passenger) use ($currencyRateService) {
+            $booking = $passenger->booking;
+            $bookingCurrencyRate = $booking ? ($booking->currencyRate?->rate
+                ?? $currencyRateService->getRateForDate($booking->created_at)?->rate
+                ?? $currencyRateService->getFirstRate()?->rate ?? 0) : 0;
+            $bookingCurrencyRate = (float) $bookingCurrencyRate;
+
+            return [
+                'id' => $passenger->id,
+                'booking_id' => $passenger->booking_id,
+                'invoice_id' => $booking?->invoice_id ?? '—',
+                'booking_date' => $booking && $booking->created_at ? $booking->created_at->format('Y-m-d') : '—',
+                'customer_name' => $booking->customer->name ?? 'N/A',
+                'customer_mobile' => $booking->customer->mobile_no ?? 'N/A',
+                'first_name' => $passenger->first_name,
+                'last_name' => $passenger->last_name,
+                'full_name' => $passenger->first_name.' '.$passenger->last_name,
+                'passport_no' => $passenger->passport_no ?? '—',
+                'mobile_no' => $passenger->mobile_no ?? '—',
+                'passenger_status' => $passenger->status?->name ?? 'N/A',
+                'fingerprint_status' => $passenger->fingerprintDetail?->status?->value ?? 'pending',
+                'visa_status' => $passenger->visaSubmission?->status?->value ?? null,
+                'visa_number' => $passenger->visaSubmission?->visa_number ?? '—',
+                'booking_branch' => $booking?->bookingBranch?->name ?? '—',
+                'fingerprint_branch' => $booking?->fingerprintBranch?->name ?? '—',
+                'district' => $booking->district->name ?? 'N/A',
+                'package' => $booking->package->package_name ?? 'N/A',
+                'pax_qty' => $booking->pax_qty ?? 1,
+                'currency_rate' => $bookingCurrencyRate,
+                'invoice_total' => (float) ($booking?->invoice?->total_amount ?? 0),
+                'invoice_paid' => (float) ($booking?->invoice?->paid_amount ?? 0),
+                'invoice_balance' => (float) ($booking?->invoice?->balance ?? 0),
+                'is_cancelled' => $booking?->is_cancelled ?? false,
+                'documents_count' => $passenger->documents_count ?? 0,
+                'can_edit_visa' => auth()->user()->roles->pluck('name')
+                    ->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])->isNotEmpty(),
+                'can_edit_fingerprint' => auth()->user()->roles->pluck('name')
+                    ->intersect(['Super Admin', 'Co Admin', 'Fingerprint Admin', 'Delivery Staff'])->isNotEmpty(),
+                'can_edit_ticket' => auth()->user()->roles->pluck('name')
+                    ->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty(),
+                'ticket_data' => $this->buildPassengerTicketData($passenger, $bookingCurrencyRate),
+                'visa_data' => $this->buildPassengerVisaData($passenger),
+            ];
+        })->values();
+
+        return response()->json([
+            'data' => $data,
+            'summary' => [
+                'totalPassengerCount' => $totalPassengerCount,
+            ],
+            'pagination' => [
+                'current_page' => $passengers->currentPage(),
+                'last_page' => $passengers->lastPage(),
+                'per_page' => $passengers->perPage(),
+                'total' => $passengers->total(),
+            ],
+            'filterOptions' => [
+                'passengerStatuses' => $passengerStatuses ?? [],
+                'visaStatuses' => $visaStatuses ?? [],
+                'ticketStatuses' => $ticketStatuses ?? [],
+                'visaAgents' => $visaAgents ?? [],
+                'ticketAgents' => $ticketAgents ?? [],
+                'routesList' => $routesList ?? [],
+                'packagesList' => $packagesList ?? [],
+                'fingerprintLocations' => FingerprintLocation::cases(),
+                'bookingBranches' => $bookingBranches ?? [],
+                'canEditVisa' => $canEditVisa,
+                'canEditFingerprint' => $canEditFingerprint,
+                'canEditTicket' => $canEditTicket,
+            ],
+        ]);
+    }
+
+    protected function buildPassengerTicketData($passenger, $bookingCurrencyRate): array
+    {
+        $latestIssued = $passenger->latestIssuedTicket;
+        $allIssued = $passenger->allIssuedTickets;
+        $pendingOutbound = $allIssued?->firstWhere('issue_type', 'pending_outbound');
+        $pendingInbound = $allIssued?->firstWhere(fn ($t) => $t->issue_type === 'pending_outbound' ? false : true);
+
+        return [
+            'is_ticket_held' => false,
+            'latest_issued_ticket' => $latestIssued,
+            'pending_outbound_issued_ticket' => $pendingOutbound,
+            'is_cancelled' => $passenger->booking?->is_cancelled ?? false,
+            'fingerprint_status' => $passenger->fingerprintDetail?->status?->value ?? 'pending',
+            'status' => $passenger->status?->name ?? '',
+            'all_issued_tickets' => $allIssued,
+        ];
+    }
+
+    protected function buildPassengerVisaData($passenger): array
+    {
+        return [
+            'visa' => $passenger->visaSubmission,
+            'status' => $passenger->visaSubmission?->status?->value,
+            'visa_number' => $passenger->visaSubmission?->visa_number,
+            'is_submitted' => $passenger->visaSubmission?->status?->value === 'submitted',
+            'is_issued' => $passenger->visaSubmission?->status?->value === 'issued',
+            'is_pending' => in_array($passenger->visaSubmission?->status?->value, ['pending', null]),
+        ];
+    }
+
     public function create(Request $request)
     {
         $packageId = $request->query('package_id');
