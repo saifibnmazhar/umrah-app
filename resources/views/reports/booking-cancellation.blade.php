@@ -142,7 +142,7 @@
             </table>
         </div>
 
-        <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200" x-show="!loading && pagination.last_page > 1">
+        <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200" x-show="!loading && pagination.last_page > 1" x-cloak>
             <span class="text-xs text-gray-600" x-text="`Page ${pagination.current_page} of ${pagination.last_page} (${pagination.total} records)`"></span>
             <div class="flex gap-2">
                 <button @click="goToPage(pagination.current_page - 1)" :disabled="pagination.current_page <= 1"

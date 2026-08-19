@@ -9,16 +9,20 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('passengers', function (Blueprint $table) {
-            $table->decimal('refund_payable', 14, 6)
-                ->default(0)
-                ->after('package_value');
+            if (! Schema::hasColumn('passengers', 'refund_payable')) {
+                $table->decimal('refund_payable', 14, 6)
+                    ->default(0)
+                    ->after('package_value');
+            }
         });
     }
 
     public function down(): void
     {
         Schema::table('passengers', function (Blueprint $table) {
-            $table->dropColumn('refund_payable');
+            if (Schema::hasColumn('passengers', 'refund_payable')) {
+                $table->dropColumn('refund_payable');
+            }
         });
     }
 };

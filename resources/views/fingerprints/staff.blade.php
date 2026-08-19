@@ -130,7 +130,7 @@
             </table>
         </div>
 
-        <div x-show="lastPage > 1" class="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 px-1">
+        <div x-show="lastPage > 1" x-cloak class="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 px-1">
             <div class="text-sm text-slate-600">
                 Showing <span class="font-medium" x-text="((currentPage - 1) * 10 + 1)"></span>
                 to <span class="font-medium" x-text="Math.min(currentPage * 10, totalRecords)"></span>
@@ -157,7 +157,7 @@
     </div>
 
     <!-- Hold Modal -->
-    <div x-show="showHoldModal"
+    <div x-show="showHoldModal" x-cloak
          class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
          style="display: none;">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
@@ -200,7 +200,7 @@
         </div>
     </div>
 
-    <div x-show="toastVisible"
+    <div x-show="toastVisible" x-cloak
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="translate-x-full opacity-0"
          x-transition:enter-end="translate-x-0 opacity-100"

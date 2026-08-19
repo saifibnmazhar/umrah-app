@@ -8,6 +8,13 @@ use Illuminate\Http\Request;
 
 class ProfitLossReportController extends Controller
 {
+    private function buildCostSummaries($bookings, CostTrackingService $costService): array
+    {
+        return $bookings->mapWithKeys(function (Booking $booking) use ($costService) {
+            return [$booking->id => $costService->getBookingCostSummary($booking)];
+        })->toArray();
+    }
+
     public function data(Request $request)
     {
         $dateFrom = $request->date_from;
@@ -33,9 +40,10 @@ class ProfitLossReportController extends Controller
         $bookings = $query->get();
 
         $costService = app(CostTrackingService::class);
+        $costSummaries = $this->buildCostSummaries($bookings, $costService);
 
-        $customers = $bookings->map(function (Booking $booking) use ($costService) {
-            $costSummary = $costService->getBookingCostSummary($booking);
+        $customers = $bookings->map(function (Booking $booking) use ($costSummaries) {
+            $costSummary = $costSummaries[$booking->id];
             $totalCost = $costSummary['total_cost'];
             $totalAmount = (float) $booking->invoice->total_amount;
 
@@ -52,8 +60,8 @@ class ProfitLossReportController extends Controller
             ];
         })->values();
 
-        $passengers = $bookings->flatMap(function (Booking $booking) use ($costService) {
-            $passengerCosts = $costService->getPassengerCosts($booking);
+        $passengers = $bookings->flatMap(function (Booking $booking) use ($costSummaries) {
+            $passengerCosts = collect($costSummaries[$booking->id]['passengers']);
 
             return $booking->passengers->map(function ($passenger) use ($booking, $passengerCosts) {
                 $cost = $passengerCosts->firstWhere('passenger_id', $passenger->id);
@@ -108,9 +116,10 @@ class ProfitLossReportController extends Controller
         $bookings = $query->get();
 
         $costService = app(CostTrackingService::class);
+        $costSummaries = $this->buildCostSummaries($bookings, $costService);
 
-        $customers = $bookings->map(function (Booking $booking) use ($costService) {
-            $costSummary = $costService->getBookingCostSummary($booking);
+        $customers = $bookings->map(function (Booking $booking) use ($costSummaries) {
+            $costSummary = $costSummaries[$booking->id];
             $totalCost = $costSummary['total_cost'];
             $totalAmount = (float) $booking->invoice->total_amount;
 
@@ -127,8 +136,8 @@ class ProfitLossReportController extends Controller
             ];
         })->values();
 
-        $passengers = $bookings->flatMap(function (Booking $booking) use ($costService) {
-            $passengerCosts = $costService->getPassengerCosts($booking);
+        $passengers = $bookings->flatMap(function (Booking $booking) use ($costSummaries) {
+            $passengerCosts = collect($costSummaries[$booking->id]['passengers']);
 
             return $booking->passengers->map(function ($passenger) use ($booking, $passengerCosts) {
                 $cost = $passengerCosts->firstWhere('passenger_id', $passenger->id);

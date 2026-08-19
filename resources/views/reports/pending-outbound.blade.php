@@ -231,7 +231,7 @@ select {
         </div>
     </div>
 
-    <div x-show="lastPage > 1" class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
+    <div x-show="lastPage > 1" x-cloak class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
         <div class="flex items-center justify-between">
             <div class="text-sm text-gray-600">
                 Showing <span class="font-medium" x-text="((currentPage - 1) * perPage + 1)"></span>
@@ -284,7 +284,7 @@ select {
         </div>
     </div>
 
-    <div x-show="modalOpen" class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto">
+    <div x-show="modalOpen" x-cloak class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto">
         <div class="modal-backdrop fixed inset-0 bg-black/50" @click="closeModal()"></div>
         <div class="modal-content relative z-10 bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden">
             <div class="bg-slate-700 text-white px-6 py-4 flex justify-between items-center">

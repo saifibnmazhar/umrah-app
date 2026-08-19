@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Enums\PaymentMethod;
 use App\Enums\TicketStatus;
+use App\Enums\TicketType;
 use App\Models\BaggageAllowance;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
@@ -322,6 +323,18 @@ class TicketRequestController extends Controller
                             'notes' => $validated['remarks'] ?? null,
                         ]);
                     }
+
+                    $remainingPayment = $totalCustomerPayment - $amount;
+                    if ($remainingPayment > 0) {
+                        $invoice = $booking->invoice;
+                        if ($invoice) {
+                            app(InvoiceService::class)->updateTotals(
+                                $invoice,
+                                (float) $invoice->total_amount + $remainingPayment,
+                                're_issue_cost_added'
+                            );
+                        }
+                    }
                 } elseif ($totalCustomerPayment > 0) {
                     $invoice = $booking->invoice;
                     if ($invoice) {
@@ -516,9 +529,13 @@ class TicketRequestController extends Controller
 
             $invoice = $ticketRequest->booking->invoice;
             if ($invoice) {
+                $ticketAmount = $selectedFare->ticket_type === TicketType::OFFER
+                    ? (float) ($issuedTicket->offer_price ?: $issuedTicket->selling_fare ?? 0)
+                    : (float) ($issuedTicket->selling_fare ?? 0);
+
                 app(InvoiceService::class)->updateTotals(
                     $invoice,
-                    (float) $invoice->total_amount + (float) ($issuedTicket->selling_fare ?? 0),
+                    (float) $invoice->total_amount + $ticketAmount,
                     'additional_ticket_added'
                 );
             }

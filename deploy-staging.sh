@@ -26,6 +26,14 @@ fi
 # Update IMAGE_TAG in env file
 sed -i "s/^IMAGE_TAG=.*/IMAGE_TAG=${IMAGE_TAG}/" .env.staging
 
+# Load staging env vars for docker compose
+set -a
+source .env.staging
+set +a
+
+# Set defaults for docker compose project isolation
+export COMPOSE_PROJECT_NAME=${COMPOSE_PROJECT_NAME:-umrah-app-staging}
+
 # Pull the new image
 echo "📥 Pulling image..."
 docker compose -f docker-compose.staging.yml pull

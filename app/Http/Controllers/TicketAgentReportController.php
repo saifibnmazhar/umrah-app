@@ -70,24 +70,34 @@ class TicketAgentReportController extends Controller
             ->selectRaw('ticket_agent_id, COUNT(*) as count')
             ->pluck('count', 'ticket_agent_id');
 
-        $data = $agents->map(function ($agent) use ($payablePerAgent, $paidPerAgent, $refundCounts, $reissueCounts, $dateFrom, $dateTo) {
+        $dailyTicketsPerAgent = IssuedTicket::whereIn('ticket_agent_id', $agentIds)
+            ->whereBetween('issued_date', [$dateFrom, $dateTo])
+            ->groupBy('ticket_agent_id', 'issued_date')
+            ->selectRaw('ticket_agent_id, issued_date, SUM(net_fare) as total_payable')
+            ->orderBy('ticket_agent_id')
+            ->orderBy('issued_date')
+            ->get()
+            ->groupBy('ticket_agent_id');
+
+        $dailyPaymentsPerAgent = Payment::whereIn('ticket_agent_id', $agentIds)
+            ->whereBetween('payment_date', [$dateFrom, $dateTo])
+            ->groupBy('ticket_agent_id', 'payment_date')
+            ->selectRaw('ticket_agent_id, payment_date, SUM(amount) as total_paid')
+            ->orderBy('ticket_agent_id')
+            ->orderBy('payment_date')
+            ->get()
+            ->groupBy('ticket_agent_id');
+
+        $data = $agents->map(function ($agent) use ($payablePerAgent, $paidPerAgent, $refundCounts, $reissueCounts, $dailyTicketsPerAgent, $dailyPaymentsPerAgent) {
             $payable = (float) ($payablePerAgent[$agent->id] ?? 0);
             $paid = (float) ($paidPerAgent[$agent->id] ?? 0);
             $balance = $paid - $payable;
 
-            $dailyTickets = IssuedTicket::where('ticket_agent_id', $agent->id)
-                ->whereBetween('issued_date', [$dateFrom, $dateTo])
-                ->groupBy('issued_date')
-                ->selectRaw('issued_date, SUM(net_fare) as total_payable')
-                ->orderBy('issued_date')
-                ->pluck('total_payable', 'issued_date');
+            $agentDailyTickets = $dailyTicketsPerAgent[$agent->id] ?? collect();
+            $agentDailyPayments = $dailyPaymentsPerAgent[$agent->id] ?? collect();
 
-            $dailyPayments = Payment::where('ticket_agent_id', $agent->id)
-                ->whereBetween('payment_date', [$dateFrom, $dateTo])
-                ->groupBy('payment_date')
-                ->selectRaw('payment_date, SUM(amount) as total_paid')
-                ->orderBy('payment_date')
-                ->pluck('total_paid', 'payment_date');
+            $dailyTickets = $agentDailyTickets->pluck('total_payable', 'issued_date');
+            $dailyPayments = $agentDailyPayments->pluck('total_paid', 'payment_date');
 
             $allDates = collect(array_keys($dailyTickets->toArray()))
                 ->merge(array_keys($dailyPayments->toArray()))

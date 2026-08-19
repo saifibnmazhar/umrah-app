@@ -173,7 +173,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             </div>
 
             <div class="p-4">
-                <div x-show="activeTab === 'customer'" class="animate-fade">
+                <div x-show="activeTab === 'customer'" x-cloak class="animate-fade">
                     <div class="overflow-x-auto scrollbar-thin">
                         <table class="w-full min-w-[900px] table-fixed">
                             <thead>
@@ -222,7 +222,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     </div>
                 </div>
 
-                <div x-show="activeTab === 'passenger'" class="animate-fade">
+                <div x-show="activeTab === 'passenger'" x-cloak class="animate-fade">
                     <div class="overflow-x-auto scrollbar-thin">
                         <table class="w-full min-w-[1000px] table-fixed">
                             <thead>

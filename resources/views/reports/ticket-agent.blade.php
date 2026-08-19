@@ -259,7 +259,7 @@
                                 </div>
                             </div>
 
-                            <div x-show="activeTab === 'payment'">
+                            <div x-show="activeTab === 'payment'" x-cloak>
                                 <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
                                     <table class="w-full">
                                         <thead>
