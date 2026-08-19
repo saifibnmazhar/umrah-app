@@ -21,27 +21,9 @@ use Illuminate\Support\Facades\DB;
 
 class PaymentController extends Controller
 {
-    public function index(Request $request)
+    public function index()
     {
-        $typeNames = ['Ticket Agent Payment', 'Visa Agent Payment', 'Commission Agent Payment'];
-
-        $query = Payment::with(['user', 'bank', 'senderBank', 'voucher.transactionType'])
-            ->whereHas('voucher.transactionType', function ($q) use ($typeNames) {
-                $q->whereIn('name', $typeNames);
-            })
-            ->orderBy('created_at', 'desc');
-
-        if ($request->filled('transaction_type_id')) {
-            $query->whereHas('voucher', function ($q) use ($request) {
-                $q->where('transaction_type_id', $request->transaction_type_id);
-            });
-        }
-
-        $payments = $query->paginate(10)->withQueryString();
-
-        $transactionTypes = TransactionType::whereIn('name', $typeNames)->orderBy('name')->get();
-
-        return view('payments.index', compact('payments', 'transactionTypes'));
+        return view('payments.index');
     }
 
     public function create()
