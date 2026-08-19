@@ -7,35 +7,7 @@
 <div class="max-w-7xl mx-auto pt-6" x-data="branchWiseReport({ vouchersByDate: {{ $vouchersByDateJson }}, dateFrom: '{{ $dateFrom->format('Y-m-d') }}', dateTo: '{{ $dateTo->format('Y-m-d') }}', branchId: '{{ $selectedBranch }}', banks: {{ $banksJson }} })">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Branch Wise Report</h1>
 
-    <form method="GET" action="{{ route('report.branch-wise') }}" class="flex flex-wrap items-end gap-4 mb-6 bg-white rounded-lg border border-slate-200 shadow-sm p-4">
-        <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Date From</label>
-            <input type="date" name="date_from" value="{{ $dateFrom->format('Y-m-d') }}"
-                class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none"
-                onchange="this.form.submit()">
-        </div>
-        <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Date To</label>
-            <input type="date" name="date_to" value="{{ $dateTo->format('Y-m-d') }}"
-                class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none"
-                onchange="this.form.submit()">
-        </div>
-        @if(!$userBranchId)
-        <div>
-            <label class="block text-xs font-medium text-slate-500 mb-1">Branch</label>
-            <select name="branch_id" class="px-3 py-2 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none" onchange="this.form.submit()">
-                <option value="">All Branches</option>
-                <option value="central" {{ $selectedBranch === 'central' ? 'selected' : '' }}>Central</option>
-                @foreach($branches as $branch)
-                <option value="{{ $branch->id }}" {{ ($selectedBranch ?? '') == $branch->id ? 'selected' : '' }}>
-                    {{ $branch->name }}
-                </option>
-                @endforeach
-            </select>
-        </div>
-        @endif
-        <a href="{{ route('report.branch-wise') }}" class="px-4 py-2 bg-slate-200 text-slate-700 text-sm font-medium rounded-lg hover:bg-slate-300 transition">Reset</a>
-    </form>
+    @livewire('report.branch-wise-report-filters')
 
     @php
     $dateLabel = $dateFrom->format('d M Y') . ' - ' . $dateTo->format('d M Y');
