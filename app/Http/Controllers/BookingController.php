@@ -687,6 +687,114 @@ class BookingController extends Controller
         ));
     }
 
+    public function data(Request $request)
+    {
+        $user = auth()->user();
+        abort_unless($user, 401, 'Unauthenticated');
+        $userBranchId = $user->branch_id;
+
+        $selectedBranchId = $userBranchId ? null : $request->get('booking_branch_id');
+        $selectedBookingDateFrom = $request->get('booking_date_from');
+        $selectedBookingDateTo = $request->get('booking_date_to');
+        $selectedFingerprintLocation = $request->get('fingerprint_location');
+        $selectedBookingStatus = $request->get('booking_status');
+        $perPage = (int) ($request->get('per_page') ?: 10);
+
+        $bookingQuery = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'bookingBranch', 'invoice', 'district', 'package', 'currencyRate'])
+            ->when($userBranchId, fn ($q) => $q->where(function ($q) {
+                $q->where('booking_branch_id', auth()->user()->branch_id)
+                    ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+            })
+            )
+            ->when($selectedBranchId, fn ($q) => $q->where('booking_branch_id', $selectedBranchId)
+            )
+            ->when($request->filled('search'), function ($q) use ($request) {
+                $search = $request->input('search');
+                $q->where(function ($query) use ($search) {
+                    $query->where('invoice_id', 'like', "%{$search}%")
+                        ->orWhereHas('customer', fn ($q) => $q->where('mobile_no', 'like', "%{$search}%"))
+                        ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
+                });
+            })
+            ->when($request->filled('booking_date_from'), fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from'))
+            )
+            ->when($request->filled('booking_date_to'), fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to'))
+            )
+            ->when($request->filled('fingerprint_location'), fn ($q) => $q->where('fingerprint_location', $request->input('fingerprint_location'))
+            )
+            ->when($request->filled('booking_status'), function ($q) use ($request) {
+                $status = $request->input('booking_status');
+                if ($status === 'active') {
+                    $q->where('is_cancelled', false);
+                } elseif ($status === 'cancellation_processing') {
+                    $q->where('is_cancelled', true)
+                        ->whereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancellation processing'));
+                } elseif ($status === 'cancelled') {
+                    $q->where('is_cancelled', true)
+                        ->where(function ($q) {
+                            $q->whereDoesntHave('cancelledBooking')
+                                ->orWhereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancelled'));
+                        });
+                }
+            })
+            ->orderBy('created_at', 'desc');
+
+        $totalBookingCount = (clone $bookingQuery)->count();
+        $totalBookingPassengerCount = (clone $bookingQuery)->sum('pax_qty');
+
+        $bookings = $bookingQuery->paginate($perPage);
+
+        $currencyRateService = app(CurrencyRateService::class);
+        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
+
+        $data = $bookings->map(function ($booking) use ($currencyRateService, $firstRate) {
+            $bookingCurrencyRate = $booking->currencyRate?->rate
+                ?? $currencyRateService->getRateForDate($booking->created_at)?->rate
+                ?? $firstRate;
+            $bookingCurrencyRate = (float) $bookingCurrencyRate;
+
+            return [
+                'id' => $booking->id,
+                'invoice_id' => $booking->invoice_id,
+                'booking_date' => $booking->created_at->format('Y-m-d'),
+                'customer_name' => $booking->customer->name ?? 'N/A',
+                'customer_mobile' => $booking->customer->mobile_no ?? 'N/A',
+                'pax_qty' => $booking->pax_qty,
+                'fingerprint_location' => $booking->fingerprint_location?->value ?? 'office',
+                'booking_branch' => $booking->bookingBranch->name ?? '—',
+                'fingerprint_branch' => $booking->fingerprintBranch->name ?? '—',
+                'district' => $booking->district->name ?? 'N/A',
+                'package' => $booking->package->package_name ?? 'N/A',
+                'invoice_total' => (float) ($booking->invoice?->total_amount ?? 0),
+                'invoice_paid' => (float) ($booking->invoice?->paid_amount ?? 0),
+                'invoice_balance' => (float) ($booking->invoice?->balance ?? 0),
+                'is_cancelled' => $booking->is_cancelled,
+                'cancelled_status' => $booking->cancelledBooking?->status?->value,
+                'currency_rate' => $bookingCurrencyRate,
+                'can_view_actions' => true,
+                'can_edit_fingerprint' => auth()->user()->roles->pluck('name')
+                    ->intersect(['Super Admin', 'Co Admin', 'Fingerprint Admin', 'Delivery Staff'])->isNotEmpty(),
+                'can_delete' => auth()->user()->roles->pluck('name')
+                    ->intersect(['Super Admin'])->isNotEmpty(),
+                'can_cancel' => ! $booking->is_cancelled && in_array(auth()->user()->roles->pluck('name')->first(), ['Super Admin', 'Co Admin']),
+            ];
+        })->values();
+
+        return response()->json([
+            'data' => $data,
+            'summary' => [
+                'totalBookingCount' => $totalBookingCount,
+                'totalBookingPassengerCount' => $totalBookingPassengerCount,
+            ],
+            'pagination' => [
+                'current_page' => $bookings->currentPage(),
+                'last_page' => $bookings->lastPage(),
+                'per_page' => $bookings->perPage(),
+                'total' => $bookings->total(),
+            ],
+        ]);
+    }
+
     public function create(Request $request)
     {
         $packageId = $request->query('package_id');
