@@ -533,3 +533,14 @@ Or check that local MySQL is running:
 ```bash
 mysqladmin ping -h 127.0.0.1 --password=$DB_PASSWORD
 ```
+
+### `Failed to load trust proxies from Cloudflare server` (500 on every request)
+
+The globally-prepended `TrustProxies` middleware (`app/Http/Middleware/TrustProxies.php`)
+fetches Cloudflare IP ranges via HTTPS at runtime. On Windows PHP (e.g. winget installs),
+this fails with `cURL error 60: unable to get local issuer certificate` unless a CA bundle
+is configured — `curl.cainfo` and `openssl.cafile` must point at a `cacert.pem`
+(download from <https://curl.se/ca/cacert.pem>) in `php.ini`.
+
+Quick local-dev alternative: set `LARAVEL_CLOUDFLARE_ENABLED=false` in `.env` (gitignored)
+to make the middleware a no-op. Production keeps it enabled (Docker/Alpine bundles CA certs).
