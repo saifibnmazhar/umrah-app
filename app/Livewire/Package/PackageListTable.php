@@ -4,6 +4,7 @@ namespace App\Livewire\Package;
 
 use App\Models\Package;
 use Illuminate\Support\Collection;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -25,7 +26,11 @@ class PackageListTable extends Component
 
     public ?float $latestVisaPrice = null;
 
-    protected $listeners = ['refresh' => '$refresh'];
+    #[On('refresh')]
+    public function refresh(): void
+    {
+        // Re-render is handled automatically by Livewire after method execution.
+    }
 
     public function render()
     {

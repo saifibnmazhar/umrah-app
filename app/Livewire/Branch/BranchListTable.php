@@ -3,6 +3,7 @@
 namespace App\Livewire\Branch;
 
 use App\Models\Branch;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -12,7 +13,11 @@ class BranchListTable extends Component
 
     public string $search = '';
 
-    protected $listeners = ['refresh' => '$refresh'];
+    #[On('refresh')]
+    public function refresh(): void
+    {
+        // Re-render is handled automatically by Livewire after method execution.
+    }
 
     public function render()
     {

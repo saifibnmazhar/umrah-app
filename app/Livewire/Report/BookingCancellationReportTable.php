@@ -79,26 +79,31 @@ class BookingCancellationReportTable extends Component
 
     public function updatedSearch(): void
     {
+        $this->pagination['current_page'] = 1;
         $this->loadData();
     }
 
     public function updatedDateFrom(): void
     {
+        $this->pagination['current_page'] = 1;
         $this->loadData();
     }
 
     public function updatedDateTo(): void
     {
+        $this->pagination['current_page'] = 1;
         $this->loadData();
     }
 
     public function updatedBranchId(): void
     {
+        $this->pagination['current_page'] = 1;
         $this->loadData();
     }
 
     public function updatedStatus(): void
     {
+        $this->pagination['current_page'] = 1;
         $this->loadData();
     }
 
@@ -109,6 +114,7 @@ class BookingCancellationReportTable extends Component
         $this->dateTo = null;
         $this->branchId = null;
         $this->status = null;
+        $this->pagination['current_page'] = 1;
         $this->loadData();
     }
 

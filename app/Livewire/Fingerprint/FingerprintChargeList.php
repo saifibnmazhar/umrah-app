@@ -6,6 +6,7 @@ use App\Models\District;
 use App\Models\FingerprintCharge;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Auth;
+use Livewire\Attributes\On;
 use Livewire\Component;
 use Livewire\WithPagination;
 
@@ -21,7 +22,11 @@ class FingerprintChargeList extends Component
 
     public int $perPage = 10;
 
-    protected $listeners = ['refresh' => 'render'];
+    #[On('refresh')]
+    public function refresh(): void
+    {
+        // Re-render is handled automatically by Livewire after method execution.
+    }
 
     public function boot()
     {
