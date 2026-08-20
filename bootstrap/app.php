@@ -3,6 +3,7 @@
 use App\Exceptions\DatabaseErrorHumanizer;
 use App\Http\Middleware\CheckActive;
 use App\Http\Middleware\CheckRole;
+use App\Http\Middleware\EnsureTicketRequestAccess;
 use App\Http\Middleware\TrustProxies;
 use Illuminate\Console\Scheduling\Schedule;
 use Illuminate\Database\Eloquent\ModelNotFoundException;
@@ -32,6 +33,7 @@ return Application::configure(basePath: dirname(__DIR__))
 
         $middleware->alias([
             'role' => CheckRole::class,
+            'ticket-request-branch' => EnsureTicketRequestAccess::class,
         ]);
 
         $middleware->appendToGroup('auth', CheckActive::class);
