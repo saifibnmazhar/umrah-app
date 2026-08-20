@@ -237,4 +237,27 @@ class ReIssueController extends Controller
             return response()->json(['message' => 'Failed to re-issue ticket.'], 500);
         }
     }
+
+    public function byBooking(Booking $booking)
+    {
+        $reIssuedTickets = ReIssuedTicket::whereHas('issuedTicket', function ($q) use ($booking) {
+            $q->where('booking_id', $booking->id);
+        })
+            ->with([
+            'ticketAgent',
+            'ticketFare.airline',
+            'ticketFare.airlineClass.class',
+            'ticketFare.route.fromCity',
+            'ticketFare.route.toCity',
+            'ticketFare.route.returnCity',
+            'ticketFare.route.multiSegments.fromCity',
+            'ticketFare.route.multiSegments.toCity',
+            'reason',
+            'issuedTicket.passenger',
+        ])
+            ->orderBy('re_issue_date', 'asc')
+            ->get();
+
+        return response()->json($reIssuedTickets);
+    }
 }
