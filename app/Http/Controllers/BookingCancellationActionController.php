@@ -144,7 +144,7 @@ class BookingCancellationActionController extends Controller
 
     public function updateRefundAmount(Request $request, CancelledBooking $cancelledBooking)
     {
-        $this->ensureBranchAccess($cancelledBooking);
+        $this->ensureCancellationAccess($cancelledBooking);
 
         $validated = $request->validate([
             'refund_amount' => 'required|numeric|min:0',
@@ -158,18 +158,5 @@ class BookingCancellationActionController extends Controller
             'success' => true,
             'refund_amount' => $cancelledBooking->refund_amount,
         ]);
-    }
-
-    private function ensureBranchAccess(CancelledBooking $cancelledBooking): void
-    {
-        if (auth()->user()->roles->pluck('name')->intersect(['Fingerprint Admin'])->isNotEmpty()
-            && ! auth()->user()->branch_id) {
-            abort(403);
-        }
-
-        if (auth()->user()->branch_id
-            && auth()->user()->branch_id !== $cancelledBooking->cancellation_branch_id) {
-            abort(403);
-        }
     }
 }

@@ -11,7 +11,6 @@ use App\Models\Booking;
 use App\Models\BookingCondition;
 use App\Models\Branch;
 use App\Models\CancelledSubmission;
-use App\Models\CurrencyRate;
 use App\Models\Customer;
 use App\Models\District;
 use App\Models\Document;
@@ -67,6 +66,7 @@ class BookingController extends Controller
         $invoice = $booking->invoice;
         if ($invoice) {
             $invoice = $invoice->fresh();
+
             return [
                 'total_amount' => (float) $invoice->total_amount,
                 'paid_amount' => (float) $invoice->paid_amount,
@@ -198,7 +198,7 @@ class BookingController extends Controller
             ->withQueryString();
 
         $canFilterByAgent = $this->canFilterByAgent();
-        $canFilterByTicketAgent = $this->canFilterByAgent();
+        $canFilterByTicketAgent = $this->canEditTickets();
 
         $passengers = Passenger::query()
             ->when(auth()->user()->branch_id, fn ($q) => $q->whereHas('booking', fn ($q) => $q->where(function ($q) {
@@ -444,7 +444,7 @@ class BookingController extends Controller
             ->whereIn('id', $bookingIds)
             ->get();
 
-        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
+        $firstRate = $currencyRateService->getFirstRateValue();
 
         $totalPackageValue = 0;
         $totalDue = 0;
@@ -644,7 +644,7 @@ class BookingController extends Controller
         $bookings = $query->paginate();
 
         $currencyRateService = app(CurrencyRateService::class);
-        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
+        $firstRate = $currencyRateService->getFirstRateValue();
 
         $admin = auth()->user();
         $canEditFingerprint = $admin && in_array($admin->roles->pluck('name')->first(), ['Super Admin', 'Co Admin', 'Fingerprint Admin', 'Delivery Staff']);
@@ -728,7 +728,7 @@ class BookingController extends Controller
             $booking = $passenger->booking;
             $bookingCurrencyRate = $booking ? ($booking->currencyRate?->rate
                 ?? $currencyRateService->getRateForDate($booking->created_at)?->rate
-                ?? $currencyRateService->getFirstRate()?->rate ?? 0) : 0;
+                ?? $currencyRateService->getFirstRateValue()) : 0;
             $bookingCurrencyRate = (float) $bookingCurrencyRate;
 
             return [
@@ -1678,7 +1678,7 @@ class BookingController extends Controller
         ]);
 
         $user = auth()->user();
-        if (! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin')) {
+        if (! $this->isAdmin()) {
             $currentLocation = $booking->fingerprint_location?->value;
             $newLocation = $validated['fingerprint_location'];
 

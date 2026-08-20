@@ -368,7 +368,7 @@ class FingerprintReportController extends Controller
     protected function getFingerprintBranchFilter(): ?int
     {
         $user = auth()->user();
-        if ($user->branch?->fingerprint_operation && ! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin')) {
+        if ($user->branch?->fingerprint_operation && ! $this->isAdmin()) {
             return $user->branch_id;
         }
 

@@ -3,8 +3,8 @@
 namespace Tests\Unit;
 
 use App\Concerns\HandlesBranchAccess;
-use App\Models\Branch;
 use App\Models\Booking;
+use App\Models\Branch;
 use App\Models\CancelledBooking;
 use App\Models\Customer;
 use App\Models\District;
@@ -17,8 +17,8 @@ use App\Models\User;
 use App\Models\VisaSellingPrice;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
+use Symfony\Component\HttpKernel\Exception\HttpException;
 use Tests\TestCase;
 
 class HandlesBranchAccessTest extends TestCase
@@ -31,7 +31,8 @@ class HandlesBranchAccessTest extends TestCase
     {
         parent::setUp();
 
-        $this->controller = new class {
+        $this->controller = new class
+        {
             use HandlesBranchAccess;
         };
     }
@@ -58,7 +59,7 @@ class HandlesBranchAccessTest extends TestCase
         ]);
     }
 
-    private function seedBookingDeps(User $user = null): array
+    private function seedBookingDeps(?User $user = null): array
     {
         $district = District::create(['name' => 'D', 'division' => 'Div']);
         $customer = Customer::create([
@@ -265,7 +266,7 @@ class HandlesBranchAccessTest extends TestCase
 
     public function test_ensure_branch_access_blocks_cross_branch_non_admin(): void
     {
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $this->expectException(HttpException::class);
 
         $branch1 = $this->createBranch();
         $branch2 = Branch::create(['name' => 'B2', 'address' => '', 'contacts' => '', 'location' => 'KSA', 'branch_code' => 'B002', 'fingerprint_operation' => false]);
@@ -296,7 +297,7 @@ class HandlesBranchAccessTest extends TestCase
 
     public function test_ensure_cancellation_access_blocks_fingerprint_admin_without_branch(): void
     {
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $this->expectException(HttpException::class);
 
         $user = $this->createAdmin('Fingerprint Admin');
         $this->actingAs($user);
@@ -321,7 +322,7 @@ class HandlesBranchAccessTest extends TestCase
 
     public function test_ensure_cancellation_access_blocks_cross_branch(): void
     {
-        $this->expectException(\Symfony\Component\HttpKernel\Exception\HttpException::class);
+        $this->expectException(HttpException::class);
 
         $branch1 = Branch::create(['name' => 'B1', 'address' => '', 'contacts' => '', 'location' => 'KSA', 'branch_code' => 'B001', 'fingerprint_operation' => false]);
         $branch2 = Branch::create(['name' => 'B2', 'address' => '', 'contacts' => '', 'location' => 'KSA', 'branch_code' => 'B002', 'fingerprint_operation' => false]);

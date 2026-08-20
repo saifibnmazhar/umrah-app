@@ -38,7 +38,7 @@ class BookingCancellationViewController extends Controller
 
     public function confirm(CancelledBooking $cancelledBooking)
     {
-        $this->ensureBranchAccess($cancelledBooking);
+        $this->ensureCancellationAccess($cancelledBooking);
 
         $cancelledBooking->load([
             'booking.customer',
@@ -87,23 +87,5 @@ class BookingCancellationViewController extends Controller
         $branches = Branch::select('id', 'name')->orderBy('name')->get();
 
         return view('reports.booking-cancellation', compact('branches'));
-    }
-
-    private function ensureBranchAccess(CancelledBooking $cancelledBooking): void
-    {
-        $this->ensureFingerprintAdminHasBranch();
-
-        if (auth()->user()->branch_id
-            && auth()->user()->branch_id !== $cancelledBooking->cancellation_branch_id) {
-            abort(403);
-        }
-    }
-
-    private function ensureFingerprintAdminHasBranch(): void
-    {
-        if (auth()->user()->roles->pluck('name')->intersect(['Fingerprint Admin'])->isNotEmpty()
-            && ! auth()->user()->branch_id) {
-            abort(403);
-        }
     }
 }

@@ -4,6 +4,7 @@ namespace App\Concerns;
 
 use App\Models\Booking;
 use App\Models\CancelledBooking;
+use App\Models\Passenger;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 
@@ -14,6 +15,7 @@ trait HandlesBranchAccess
      * within the same request don't hit the DB.
      */
     protected ?array $userRoleNames = null;
+
     protected ?int $cachedUserId = null;
 
     public function userRoleNames(): array
@@ -100,12 +102,21 @@ trait HandlesBranchAccess
     }
 
     /**
-     * Can the user filter by visa/ticket agent?
+     * Can the user filter by ticket agent?
      * Super Admin, Co Admin, Visa Admin, Ticket Admin.
      */
     public function canFilterByAgent(): bool
     {
         return $this->hasAnyRole(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin']);
+    }
+
+    /**
+     * Can the user edit ticket data?
+     * Super Admin, Co Admin, Ticket Admin.
+     */
+    public function canEditTickets(): bool
+    {
+        return $this->hasAnyRole(['Super Admin', 'Co Admin', 'Ticket Admin']);
     }
 
     /**
@@ -140,6 +151,26 @@ trait HandlesBranchAccess
     public function ensureBranchAccess(Booking $booking): void
     {
         $user = Auth::user();
+
+        if ($user->branch_id
+            && $user->branch_id !== $booking->booking_branch_id
+            && $user->branch_id !== $booking->fingerprint_branch_id) {
+            abort(403);
+        }
+    }
+
+    /**
+     * Ensure the current user has access to the given passenger.
+     * Delegates to the passenger's booking branch check.
+     */
+    public function ensurePassengerBranchAccess(Passenger $passenger): void
+    {
+        $user = Auth::user();
+
+        $booking = $passenger->booking;
+        if (! $booking) {
+            return;
+        }
 
         if ($user->branch_id
             && $user->branch_id !== $booking->booking_branch_id

@@ -33,27 +33,9 @@ class PassengerController extends Controller
         private InvoiceService $invoiceService,
     ) {}
 
-    private function ensureBranchAccess(Passenger $passenger): void
-    {
-        if (auth()->user()->branch_id
-            && auth()->user()->branch_id !== $passenger->booking->booking_branch_id
-            && auth()->user()->branch_id !== $passenger->booking->fingerprint_branch_id) {
-            abort(403);
-        }
-    }
-
-    private function isGlobalNonAdmin(): bool
-    {
-        $user = auth()->user();
-
-        return ! $user->branch_id
-            && ! $user->hasRole('Super Admin')
-            && ! $user->hasRole('Co Admin');
-    }
-
     public function show(Passenger $passenger)
     {
-        $this->ensureBranchAccess($passenger);
+        $this->ensurePassengerBranchAccess($passenger);
 
         $passenger->load([
             'booking',
@@ -175,9 +157,7 @@ class PassengerController extends Controller
                 ]),
             ]);
 
-        $canEditVisa = auth()->user()->roles->pluck('name')
-            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin'])
-            ->isNotEmpty();
+        $canEditVisa = $this->canEditVisa();
 
         $historyRows = [];
         $visaSubmission = $passenger->visaSubmission;
@@ -259,7 +239,7 @@ class PassengerController extends Controller
 
     public function edit(Passenger $passenger)
     {
-        $this->ensureBranchAccess($passenger);
+        $this->ensurePassengerBranchAccess($passenger);
 
         if ($this->isGlobalNonAdmin() && $passenger->booking->user_id !== auth()->id()) {
             abort(403);
@@ -452,8 +432,8 @@ class PassengerController extends Controller
 
     public function destroyDocument(Passenger $passenger, Document $document)
     {
-        if (! auth()->user()->hasRole('Super Admin') && ! auth()->user()->hasRole('Co Admin')) {
-            $this->ensureBranchAccess($passenger);
+        if (! $this->isAdmin()) {
+            $this->ensurePassengerBranchAccess($passenger);
         }
 
         if ($document->owner_id !== $passenger->id || $document->owner_type !== Passenger::class) {
@@ -693,7 +673,7 @@ class PassengerController extends Controller
 
     public function toggleTicketHold(Passenger $passenger)
     {
-        $this->ensureBranchAccess($passenger);
+        $this->ensurePassengerBranchAccess($passenger);
 
         if ($passenger->is_ticket_held) {
             $passenger->update([

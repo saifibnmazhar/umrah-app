@@ -92,7 +92,7 @@ class FingerprintController extends Controller
         }
 
         $user = auth()->user();
-        if ($user->branch?->fingerprint_operation && ! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin')) {
+        if ($user->branch?->fingerprint_operation && ! $this->isAdmin()) {
             $query->whereHas('booking', function ($q) use ($user) {
                 $q->where('fingerprint_branch_id', $user->branch_id);
             });
@@ -101,7 +101,7 @@ class FingerprintController extends Controller
         $fingerprints = $query->paginate(10);
 
         $currencyRateService = app(CurrencyRateService::class);
-        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
+        $firstRate = $currencyRateService->getFirstRateValue();
 
         $items = collect($fingerprints->items())
             ->map(function ($fingerprint) use ($firstRate) {
@@ -236,13 +236,13 @@ class FingerprintController extends Controller
         }
 
         $twentyFourHoursAgo = now()->subHours(24);
-        $isSuperOrCoAdmin = $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
+        $isSuperOrCoAdmin = $this->isAdmin();
         $isFingerprintStaffRole = $user->hasRole('Fingerprint Staff');
 
         $fingerprints = $query->paginate(10);
 
         $currencyRateService = app(CurrencyRateService::class);
-        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
+        $firstRate = $currencyRateService->getFirstRateValue();
 
         $items = collect($fingerprints->items())
             ->map(function ($fingerprint) use ($isSuperOrCoAdmin, $isFingerprintStaffRole, $twentyFourHoursAgo, $firstRate) {
@@ -391,7 +391,7 @@ class FingerprintController extends Controller
         }
 
         $user = auth()->user();
-        if (! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+        if (! $this->isAdmin() && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
         }
 
@@ -423,7 +423,7 @@ class FingerprintController extends Controller
     {
         $user = auth()->user();
         $fingerprint = $fingerprintDetail->fingerprint;
-        if (! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin') && ! $user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+        if (! $this->isAdmin() && ! $user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
         }
 
@@ -499,7 +499,7 @@ class FingerprintController extends Controller
     {
         $user = auth()->user();
         $fingerprint = $fingerprintDetail->fingerprint;
-        if (! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin') && ! $user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+        if (! $this->isAdmin() && ! $user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
             abort(403);
         }
 
@@ -558,7 +558,8 @@ class FingerprintController extends Controller
             $query->where('branch_id', (int) $request->fingerprint_branch_id);
         }
 
-        if ($user->branch?->fingerprint_operation && ! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin')) {
+        $user = auth()->user();
+        if ($user->branch?->fingerprint_operation && ! $this->isAdmin()) {
             $query->where('branch_id', $user->branch_id);
         }
 

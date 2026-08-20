@@ -7,7 +7,6 @@ use App\Enums\PaymentMethod;
 use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
 use App\Models\Booking;
-use App\Models\CurrencyRate;
 use App\Models\Fingerprint;
 use App\Models\FingerprintDetailLog;
 use App\Models\Invoice;
@@ -33,7 +32,7 @@ class DashboardController extends Controller
         }
 
         $branchId = auth()->user()->branch_id;
-        $firstRate = (float) (CurrencyRate::orderBy('created_at')->first()?->rate ?? 0);
+        $firstRate = app(CurrencyRateService::class)->getFirstRateValue();
         $branchScope = fn ($query) => $query
             ->where('booking_branch_id', $branchId);
 
@@ -356,10 +355,10 @@ class DashboardController extends Controller
             'totalServiceChargeDeductionBdt' => $totalServiceChargeDeductionBdt,
         ];
 
-        $showSummaryCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor', 'Ticket Admin', 'Visa Admin', 'Branch Manager', 'Fingerprint Admin'])->isNotEmpty();
+        $showSummaryCards = $this->canViewSummaryCards();
         $showPackages = true;
-        $showRequests = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Ticket Admin'])->isNotEmpty();
-        $showProfitCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
+        $showRequests = $this->canViewTicketRequests();
+        $showProfitCards = $this->canViewProfitCards();
 
         return view('dashboard.index', compact('packages', 'stats', 'totals', 'showSummaryCards', 'showPackages', 'showRequests', 'showProfitCards', 'bookingBranches', 'pendingReIssueRequests', 'pendingAdditionalRequests', 'pendingRefundRequests'));
     }

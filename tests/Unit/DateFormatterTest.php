@@ -8,7 +8,7 @@ use Tests\TestCase;
 
 class DateFormatterTest extends TestCase
 {
-    public function test_short_formats_as_d_M_Y(): void
+    public function test_short_formats_as_d_m_y(): void
     {
         $date = Carbon::create(2025, 1, 15, 14, 30, 0);
 
@@ -25,7 +25,7 @@ class DateFormatterTest extends TestCase
         $this->assertEquals('-', DateFormatter::short(null));
     }
 
-    public function test_iso_formats_as_Y_m_d(): void
+    public function test_iso_formats_as_y_m_d(): void
     {
         $date = Carbon::create(2025, 1, 15, 14, 30, 0);
 
@@ -37,7 +37,7 @@ class DateFormatterTest extends TestCase
         $this->assertEquals('-', DateFormatter::iso(null));
     }
 
-    public function test_date_time_formats_as_Y_m_d_H_i(): void
+    public function test_date_time_formats_as_y_m_d_h_i(): void
     {
         $date = Carbon::create(2025, 1, 15, 14, 30, 45);
 
