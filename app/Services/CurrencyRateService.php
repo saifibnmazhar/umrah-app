@@ -41,6 +41,14 @@ class CurrencyRateService
     }
 
     /**
+     * Returns all currency rates ordered by created_at ascending.
+     */
+    public function getAllRates(): array
+    {
+        return CurrencyRate::orderBy('created_at')->get()->all();
+    }
+
+    /**
      * Returns the rate value of the first (oldest) currency rate,
      * or 0.0 when no rate has been set.
      */

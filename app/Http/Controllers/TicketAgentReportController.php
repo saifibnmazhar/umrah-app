@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\IssuedTicket;
 use App\Models\Payment;
 use App\Models\TicketAgent;
+use App\Support\DateFormatter;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
@@ -107,7 +108,7 @@ class TicketAgentReportController extends Controller
 
             $transactions = $allDates->map(function ($date) use ($dailyTickets, $dailyPayments) {
                 return [
-                    'date' => Carbon::parse($date)->format('d-M-Y'),
+                    'date' => DateFormatter::short(Carbon::parse($date)),
                     'payable' => (float) ($dailyTickets[$date] ?? 0),
                     'paid' => (float) ($dailyPayments[$date] ?? 0),
                 ];

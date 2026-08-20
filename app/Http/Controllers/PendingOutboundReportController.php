@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\IssuedTicket;
 use App\Models\TicketAgent;
 use App\Models\TicketFare;
+use App\Support\DateFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -202,8 +203,8 @@ class PendingOutboundReportController extends Controller
             $regularTicket = $passenger?->issuedTickets->first();
 
             $inboundDate = $regularTicket?->inbound_date;
-            $visaExpiryDate = $inboundDate ? $inboundDate->copy()->addDays(90)->format('d-M-Y') : null;
-            $expectedFlightDate = $inboundDate?->format('d-M-Y') ?? $passenger?->flight_date_display ?? '-';
+            $visaExpiryDate = $inboundDate ? DateFormatter::short($inboundDate->copy()->addDays(90)) : null;
+            $expectedFlightDate = DateFormatter::short($inboundDate) ?? $passenger?->flight_date_display ?? '-';
 
             $fare = $regularTicket?->ticketFare;
             $routeDisplay = '-';
@@ -257,7 +258,7 @@ class PendingOutboundReportController extends Controller
                         ->first()?->allowance ?? '',
                 ] : null,
 
-                'booking_date' => $booking?->created_at?->format('d-M-Y') ?? '-',
+                'booking_date' => DateFormatter::short($booking?->created_at),
                 'invoice' => $booking?->invoice_id ?? '-',
                 'customer_name' => $customer?->name ?? '-',
                 'customer_mobile' => $customer?->mobile_no ?? '-',
@@ -267,13 +268,13 @@ class PendingOutboundReportController extends Controller
                 'status' => $ticket->status ?? 'pending',
                 'visa_expiry_date' => $visaExpiryDate ?? '-',
                 'expected_flight_date' => $expectedFlightDate,
-                'actual_flight_date' => $ticket->outbound_date?->format('d-M-Y') ?? '-',
+                'actual_flight_date' => DateFormatter::short($ticket->outbound_date) ?? '-',
                 'passenger_type' => $passenger?->passenger_type?->value ?? 'adult',
                 'current_ticket' => [
                     'ticket_number' => $ticket->ticket_number,
                     'pnr' => $ticket->pnr,
-                    'outbound_date' => $ticket->outbound_date?->format('Y-m-d'),
-                    'issued_date' => $ticket->issued_date?->format('Y-m-d'),
+                    'outbound_date' => DateFormatter::iso($ticket->outbound_date),
+                    'issued_date' => DateFormatter::iso($ticket->issued_date),
                     'ticket_agent_id' => $ticket->ticket_agent_id,
                     'selling_fare' => (float) $ticket->selling_fare,
                     'net_fare' => (float) $ticket->net_fare,
@@ -284,8 +285,8 @@ class PendingOutboundReportController extends Controller
                 'regular_ticket' => $regularTicket ? [
                     'ticket_agent_id' => $regularTicket->ticket_agent_id,
                     'ticket_fare_id' => $regularTicket->ticket_fare_id,
-                    'inbound_date' => $inboundDate?->format('Y-m-d'),
-                    'outbound_date' => $regularTicket->outbound_date?->format('Y-m-d'),
+                    'inbound_date' => DateFormatter::iso($inboundDate),
+                    'outbound_date' => DateFormatter::iso($regularTicket->outbound_date),
                     'selling_fare' => (float) $regularTicket->selling_fare,
                     'net_fare' => (float) $regularTicket->net_fare,
                     'offer_price' => (float) ($regularTicket->offer_price ?? 0),

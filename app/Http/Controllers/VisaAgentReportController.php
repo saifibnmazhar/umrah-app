@@ -7,6 +7,7 @@ use App\Models\Payment;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Services\CurrencyRateService;
+use App\Support\DateFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Carbon;
@@ -131,8 +132,8 @@ class VisaAgentReportController extends Controller
 
             $rowDate = $submissionLog ? $submissionLog->created_at : $submission->created_at;
             $rows->push([
-                'date' => $rowDate->format('d-M-Y'),
-                'sort_date' => $rowDate->format('Y-m-d'),
+                'date' => DateFormatter::short($rowDate),
+                'sort_date' => DateFormatter::iso($rowDate),
                 'invoice_id' => $submission->passenger->booking->invoice_id ?? '-',
                 'passenger_name' => trim(($submission->passenger->first_name ?? '').' '.($submission->passenger->last_name ?? '')),
                 'passport_no' => $submission->passenger->passport_no ?? '-',
@@ -161,8 +162,8 @@ class VisaAgentReportController extends Controller
 
             $rowDate = $issueLog ? $issueLog->created_at : $submission->updated_at;
             $rows->push([
-                'date' => $rowDate->format('d-M-Y'),
-                'sort_date' => $rowDate->format('Y-m-d'),
+                'date' => DateFormatter::short($rowDate),
+                'sort_date' => DateFormatter::iso($rowDate),
                 'invoice_id' => $submission->passenger->booking->invoice_id ?? '-',
                 'passenger_name' => trim(($submission->passenger->first_name ?? '').' '.($submission->passenger->last_name ?? '')),
                 'passport_no' => $submission->passenger->passport_no ?? '-',
@@ -192,8 +193,8 @@ class VisaAgentReportController extends Controller
             }
 
             $rows->push([
-                'date' => $cs->created_at->format('d-M-Y'),
-                'sort_date' => $cs->created_at->format('Y-m-d'),
+                'date' => DateFormatter::short($cs->created_at),
+                'sort_date' => DateFormatter::iso($cs->created_at),
                 'invoice_id' => $invoiceId,
                 'passenger_name' => $passengerName,
                 'passport_no' => $passportNo,
@@ -212,8 +213,8 @@ class VisaAgentReportController extends Controller
 
         foreach ($payments as $payment) {
             $rows->push([
-                'date' => $payment->payment_date->format('d-M-Y'),
-                'sort_date' => $payment->payment_date->format('Y-m-d'),
+                'date' => DateFormatter::short($payment->payment_date),
+                'sort_date' => DateFormatter::iso($payment->payment_date),
                 'invoice_id' => null,
                 'passenger_name' => null,
                 'passport_no' => null,
@@ -279,7 +280,7 @@ class VisaAgentReportController extends Controller
         foreach ($issuedSubmissions as $submission) {
             $issueLog = $submission->logs->first();
             $transactions->push([
-                'date' => $issueLog ? $issueLog->created_at->format('d-M-Y') : $submission->updated_at->format('d-M-Y'),
+                'date' => $issueLog ? DateFormatter::short($issueLog->created_at) : DateFormatter::short($submission->updated_at),
                 'status' => 'issued',
                 'payable' => (float) ($submission->net_visa_cost ?? 0) + (float) ($submission->additional_cost ?? 0),
                 'paid' => 0,
@@ -292,7 +293,7 @@ class VisaAgentReportController extends Controller
 
         foreach ($cancelledSubmissions as $cs) {
             $transactions->push([
-                'date' => $cs->created_at->format('d-M-Y'),
+                'date' => DateFormatter::short($cs->created_at),
                 'status' => 'cancelled',
                 'payable' => 0,
                 'paid' => 0,
@@ -307,7 +308,7 @@ class VisaAgentReportController extends Controller
 
         foreach ($payments as $payment) {
             $transactions->push([
-                'date' => $payment->payment_date->format('d-M-Y'),
+                'date' => DateFormatter::short($payment->payment_date),
                 'status' => 'payment',
                 'payable' => 0,
                 'paid' => (float) ($payment->amount ?? 0),
@@ -361,7 +362,7 @@ class VisaAgentReportController extends Controller
                     'invoice_id' => $submission->passenger->booking->invoice_id ?? '-',
                     'passenger_name' => trim(($submission->passenger->first_name ?? '').' '.($submission->passenger->last_name ?? '')),
                     'passport_no' => $submission->passenger->passport_no ?? '-',
-                    'submission_date' => $submissionLog ? $submissionLog->created_at->format('d-M-Y') : '-',
+                    'submission_date' => $submissionLog ? DateFormatter::short($submissionLog->created_at) : '-',
                 ];
             });
 
@@ -387,7 +388,7 @@ class VisaAgentReportController extends Controller
                     'invoice_id' => $submission->passenger->booking->invoice_id ?? '-',
                     'passenger_name' => trim(($submission->passenger->first_name ?? '').' '.($submission->passenger->last_name ?? '')),
                     'passport_no' => $submission->passenger->passport_no ?? '-',
-                    'issue_date' => $issueLog ? $issueLog->created_at->format('d-M-Y') : '-',
+                    'issue_date' => $issueLog ? DateFormatter::short($issueLog->created_at) : '-',
                 ];
             });
 

@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Services\CurrencyRateService;
+use App\Support\DateFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -117,7 +118,7 @@ class VisaReportController extends Controller
                 'pax_passport' => $passport ? "Passport: {$passport}" : 'N/A',
                 'mobile' => $passenger?->mobile_no ?? '-',
                 'customer_mobile' => $customer?->mobile_no ?? '-',
-                'visa_submit_date' => $submission->created_at?->format('d-M-Y'),
+                'visa_submit_date' => DateFormatter::short($submission->created_at),
                 'visa_status' => $submission->status?->value ?? 'pending',
                 'flight_date' => $passenger?->flight_date_display ?? '-',
                 'visa_number' => $submission->visa_number ?? '-',

@@ -9,7 +9,6 @@ use App\Enums\VisaStatus;
 use App\Models\Bank;
 use App\Models\Booking;
 use App\Models\Branch;
-use App\Models\CurrencyRate;
 use App\Models\FingerprintDetailLog;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
@@ -20,6 +19,7 @@ use App\Models\VisaSubmission;
 use App\Models\VisaUpdateLog;
 use App\Models\Voucher;
 use App\Services\CostTrackingService;
+use App\Support\DateFormatter;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -34,7 +34,7 @@ class BranchWiseReportController extends Controller
         $branchId = $userBranchId ?: $request->branch_id;
         $selectedBranch = $branchId;
         $branches = Branch::orderBy('name')->get(['id', 'name']);
-        $firstRate = (float) (CurrencyRate::orderBy('created_at')->first()?->rate ?? 0);
+        $firstRate = app(CurrencyRateService::class)->getFirstRateValue();
 
         $branchScope = fn ($query) => $branchId === 'central'
             ? $query->whereNull('booking_branch_id')
@@ -248,7 +248,7 @@ class BranchWiseReportController extends Controller
 
         $vouchersByDate = [];
         foreach ($payments as $payment) {
-            $dateKey = $payment->created_at->format('Y-m-d');
+            $dateKey = DateFormatter::iso($payment->created_at);
             foreach ($payment->vouchers as $v) {
                 if (! in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
                     continue;
@@ -264,7 +264,7 @@ class BranchWiseReportController extends Controller
                     'amount' => (float) $v->amount,
                     'bdt_amount' => (float) ($v->bdt_amount ?: 0),
                     'currency_rate' => (float) ($v->currencyRate?->rate ?? $firstRate),
-                    'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
+                    'payment_date' => DateFormatter::short($v->payment_date),
                     'bank' => $v->bank?->name ?? '-',
                     'bank_id' => $v->bank_id,
                 ];
@@ -297,7 +297,7 @@ class BranchWiseReportController extends Controller
             ? (object) ['name' => 'Central']
             : ($branchId ? Branch::find($branchId) : null);
         $bankName = $bankId === 'all' ? 'All Banks' : ($bankId ? Bank::find($bankId)?->name : null);
-        $firstRate = (float) (CurrencyRate::orderBy('created_at')->first()?->rate ?? 0);
+        $firstRate = app(CurrencyRateService::class)->getFirstRateValue();
 
         $payments = Payment::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
@@ -325,7 +325,7 @@ class BranchWiseReportController extends Controller
                     'amount' => (float) $v->amount,
                     'bdt_amount' => $bdtAmount > 0 ? $bdtAmount : (float) $v->amount * $firstRate,
                     'currency_rate' => (float) ($v->currencyRate?->rate ?? $firstRate),
-                    'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
+                    'payment_date' => DateFormatter::short($v->payment_date),
                     'bank' => $v->bank?->name ?? '-',
                     'bank_id' => $v->bank_id,
                 ]);
@@ -351,7 +351,7 @@ class BranchWiseReportController extends Controller
         $totalAmount = $vouchers->sum('amount');
         $totalAmountBdt = $vouchers->sum('bdt_amount');
 
-        $dateLabel = $dateFrom->format('d-M-Y').' to '.$dateTo->format('d-M-Y');
+        $dateLabel = DateFormatter::short($dateFrom).' to '.DateFormatter::short($dateTo);
 
         return view('reports.branch-wise.payment-history-print', compact(
             'vouchers', 'totalCash', 'totalCashBdt', 'totalBank', 'totalBankBdt',

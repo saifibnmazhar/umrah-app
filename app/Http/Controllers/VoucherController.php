@@ -6,7 +6,6 @@ use App\Models\Bank;
 use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\CommissionAgent;
-use App\Models\CurrencyRate;
 use App\Models\Payment;
 use App\Models\TicketAgent;
 use App\Models\TransactionType;
@@ -33,7 +32,7 @@ class VoucherController extends Controller
         $bookings = Booking::orderBy('id', 'desc')->get();
         $payments = Payment::orderBy('id', 'desc')->get();
         $branches = Branch::orderBy('name')->get();
-        $currencyRates = CurrencyRate::orderBy('created_at', 'desc')->get();
+        $currencyRates = app(CurrencyRateService::class)->getAllRates();
         $banks = Bank::orderBy('name')->get();
         $ticketAgents = TicketAgent::orderBy('name')->get();
         $visaAgents = VisaAgent::orderBy('name')->get();
@@ -95,7 +94,7 @@ class VoucherController extends Controller
         $bookings = Booking::orderBy('id', 'desc')->get();
         $payments = Payment::with('booking')->orderBy('id', 'desc')->get();
         $branches = Branch::orderBy('name')->get();
-        $currencyRates = CurrencyRate::orderBy('created_at', 'desc')->get();
+        $currencyRates = app(CurrencyRateService::class)->getAllRates();
         $banks = Bank::orderBy('name')->get();
         $ticketAgents = TicketAgent::orderBy('name')->get();
         $visaAgents = VisaAgent::orderBy('name')->get();

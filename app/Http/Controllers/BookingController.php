@@ -891,7 +891,7 @@ class BookingController extends Controller
             ];
         });
 
-        $currencyRates = CurrencyRate::orderBy('created_at', 'desc')->get();
+        $currencyRates = app(CurrencyRateService::class)->getAllRates();
         $currentCurrencyRate = app(CurrencyRateService::class)->getRateForDate(now());
 
         $userBranchLocation = $userBranch?->location?->value;
@@ -1970,14 +1970,8 @@ class BookingController extends Controller
         $grandTotal = $subTotal + $fingerprintCharge - $discount;
 
         // Currency rate resolution
-        $currencyRate = $booking->currencyRate;
-        if (! $currencyRate) {
-            $currencyRate = CurrencyRate::where('created_at', '<=', $booking->created_at)
-                ->orderBy('created_at', 'desc')
-                ->first();
-        }
-        $rate = $currencyRate?->rate;
-        $useBdt = $rate && $rate > 0;
+        $rate = app(CurrencyRateService::class)->resolveRate($booking->currencyRate, $booking->created_at);
+        $useBdt = $rate > 0;
         $currencySuffix = $useBdt ? 'BDT' : 'SAR';
 
         if ($useBdt) {

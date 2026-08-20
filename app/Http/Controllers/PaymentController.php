@@ -6,7 +6,6 @@ use App\Models\Bank;
 use App\Models\Branch;
 use App\Models\CancelledSubmission;
 use App\Models\CommissionAgent;
-use App\Models\CurrencyRate;
 use App\Models\IssuedTicket;
 use App\Models\Payment;
 use App\Models\TicketAgent;
@@ -15,6 +14,7 @@ use App\Models\User;
 use App\Models\VisaAgent;
 use App\Models\VisaSubmission;
 use App\Models\Voucher;
+use App\Services\CurrencyRateService;
 use App\Services\VoucherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -28,7 +28,7 @@ class PaymentController extends Controller
 
     public function create()
     {
-        $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currentCurrencyRate = app(CurrencyRateService::class)->getCurrentRate();
         $banks = Bank::orderBy('name')->get();
         $branches = Branch::orderBy('name')->get();
         $transactionTypes = TransactionType::whereIn('name', [
@@ -79,7 +79,7 @@ class PaymentController extends Controller
         $userId = auth()->id() ?? User::first()?->id;
         $validated['user_id'] = $userId;
 
-        $currentRate = CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currentRate = app(CurrencyRateService::class)->getCurrentRate();
         $validated['currency_rate_id'] = $currentRate?->id;
 
         try {
@@ -202,7 +202,7 @@ class PaymentController extends Controller
 
     public function edit(Payment $payment)
     {
-        $currentCurrencyRate = CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currentCurrencyRate = app(CurrencyRateService::class)->getCurrentRate();
         $banks = Bank::orderBy('name')->get();
         $branches = Branch::orderBy('name')->get();
         $transactionTypes = TransactionType::whereIn('name', [
@@ -250,7 +250,7 @@ class PaymentController extends Controller
             'payment_referral' => 'nullable|string|max:255',
         ]);
 
-        $currentRate = CurrencyRate::orderBy('created_at', 'desc')->first();
+        $currentRate = app(CurrencyRateService::class)->getCurrentRate();
         $validated['currency_rate_id'] = $currentRate?->id;
 
         try {

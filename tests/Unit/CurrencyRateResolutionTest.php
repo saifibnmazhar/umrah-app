@@ -100,4 +100,23 @@ class CurrencyRateResolutionTest extends TestCase
 
         $this->assertEquals(0.0, $service->resolveRate(null, now()));
     }
+
+    public function test_get_all_rates_returns_all_ordered_by_created_at(): void
+    {
+        $this->seedRates(28.0, 30.0);
+
+        $service = app(CurrencyRateService::class);
+        $rates = $service->getAllRates();
+
+        $this->assertCount(2, $rates);
+        $this->assertEquals(28.0, $rates[0]->rate);
+        $this->assertEquals(30.0, $rates[1]->rate);
+    }
+
+    public function test_get_all_rates_returns_empty_array_when_no_rates(): void
+    {
+        $service = app(CurrencyRateService::class);
+
+        $this->assertEquals([], $service->getAllRates());
+    }
 }
