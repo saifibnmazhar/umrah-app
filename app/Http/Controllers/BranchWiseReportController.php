@@ -19,6 +19,7 @@ use App\Models\VisaSubmission;
 use App\Models\VisaUpdateLog;
 use App\Models\Voucher;
 use App\Services\CostTrackingService;
+use App\Services\CurrencyRateService;
 use App\Support\DateFormatter;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
