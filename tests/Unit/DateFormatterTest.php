@@ -48,4 +48,33 @@ class DateFormatterTest extends TestCase
     {
         $this->assertEquals('-', DateFormatter::dateTime(null));
     }
+
+    public function test_human_readable_formats_as_d_m_y_text(): void
+    {
+        $date = Carbon::create(2025, 1, 15, 14, 30, 0);
+
+        $this->assertEquals('15 Jan 2025', DateFormatter::humanReadable($date));
+    }
+
+    public function test_human_readable_accepts_string(): void
+    {
+        $this->assertEquals('15 Jan 2025', DateFormatter::humanReadable('2025-01-15'));
+    }
+
+    public function test_human_readable_accepts_null(): void
+    {
+        $this->assertEquals('-', DateFormatter::humanReadable(null));
+    }
+
+    public function test_human_date_time_formats(): void
+    {
+        $date = Carbon::create(2025, 1, 15, 14, 30, 0);
+
+        $this->assertEquals('15 Jan 2025 14:30', DateFormatter::humanDateTime($date));
+    }
+
+    public function test_human_date_time_accepts_null(): void
+    {
+        $this->assertEquals('-', DateFormatter::humanDateTime(null));
+    }
 }

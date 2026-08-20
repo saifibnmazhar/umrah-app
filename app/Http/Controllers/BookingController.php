@@ -42,6 +42,7 @@ use App\Services\CostTrackingService;
 use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
 use App\Services\PaymentService;
+use App\Support\DateFormatter;
 use App\Support\DiagnosticLogger;
 use App\Traits\ConvertsDocumentsToPdf;
 use Illuminate\Database\QueryException;
@@ -635,7 +636,7 @@ class BookingController extends Controller
             return [
                 'id' => $booking->id,
                 'invoice_id' => $booking->invoice_id,
-                'booking_date' => $booking->created_at->format('Y-m-d'),
+                'booking_date' => DateFormatter::iso($booking->created_at),
                 'customer_name' => $booking->customer->name ?? 'N/A',
                 'customer_mobile' => $booking->customer->mobile_no ?? 'N/A',
                 'pax_qty' => $booking->pax_qty,
@@ -711,7 +712,7 @@ class BookingController extends Controller
                 'id' => $passenger->id,
                 'booking_id' => $passenger->booking_id,
                 'invoice_id' => $booking?->invoice_id ?? '—',
-                'booking_date' => $booking && $booking->created_at ? $booking->created_at->format('Y-m-d') : '—',
+                'booking_date' => $booking && $booking->created_at ? DateFormatter::iso($booking->created_at) : '—',
                 'customer_name' => $booking->customer->name ?? 'N/A',
                 'customer_mobile' => $booking->customer->mobile_no ?? 'N/A',
                 'first_name' => $passenger->first_name,
@@ -2002,7 +2003,7 @@ class BookingController extends Controller
         $totalPaid = (float) ($booking->invoice->paid_amount ?? 0);
         $currentPaid = (float) ($booking->payments->last()?->amount ?? 0);
         $dueAmount = (float) ($booking->invoice->total_amount ?? 0) - $totalPaid;
-        $invoiceDate = $booking->payments->last()?->payment_date?->format('d M Y');
+        $invoiceDate = DateFormatter::humanReadable($booking->payments->last()?->payment_date);
 
         $conditions = BookingCondition::where('is_active', true)
             ->orderBy('sort_order')

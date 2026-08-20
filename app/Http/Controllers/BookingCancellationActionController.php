@@ -6,6 +6,7 @@ use App\Enums\PaymentMethod;
 use App\Models\Booking;
 use App\Models\CancelledBooking;
 use App\Services\CancellationService;
+use App\Support\DateFormatter;
 use Illuminate\Http\Request;
 
 class BookingCancellationActionController extends Controller
@@ -40,7 +41,7 @@ class BookingCancellationActionController extends Controller
 
     public function revert(CancelledBooking $cancelledBooking)
     {
-        $this->ensureBranchAccess($cancelledBooking);
+        $this->ensureCancellationAccess($cancelledBooking);
 
         try {
             $service = app(CancellationService::class);
@@ -56,7 +57,7 @@ class BookingCancellationActionController extends Controller
 
     public function confirmSubmit(Request $request, CancelledBooking $cancelledBooking)
     {
-        $this->ensureBranchAccess($cancelledBooking);
+        $this->ensureCancellationAccess($cancelledBooking);
 
         $validated = $request->validate([
             'payment_method' => 'required|in:'.implode(',', array_column(PaymentMethod::cases(), 'value')),
@@ -118,8 +119,8 @@ class BookingCancellationActionController extends Controller
             'refund_amount' => $cb->refund_amount,
             'method' => $cb->refundPayment?->payment_method?->value ?? '-',
             'remarks' => $cb->refundPayment?->remarks ?? '-',
-            'cancelled_at' => $cb->created_at->format('Y-m-d H:i'),
-            'refunded_at' => $cb->refundVoucher?->created_at?->format('Y-m-d H:i') ?? '-',
+            'cancelled_at' => DateFormatter::dateTime($cb->created_at),
+            'refunded_at' => DateFormatter::dateTime($cb->refundVoucher?->created_at),
             'refunded_by' => $cb->refundVoucher?->user?->name ?? '-',
             'status' => $cb->status->value,
         ]);

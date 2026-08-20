@@ -9,6 +9,7 @@ use App\Models\FingerprintDetail;
 use App\Models\RescheduledFingerprint;
 use App\Models\User;
 use App\Services\CurrencyRateService;
+use App\Support\DateFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -115,9 +116,9 @@ class FingerprintController extends Controller
 
                     $statusDisplay = $this->computePartiallyApprovedStatus($detail, $passengers);
 
-                    $rescheduleDeadline = $detail?->rescheduledFingerprints
+                    $rescheduleDeadline = DateFormatter::iso($detail?->rescheduledFingerprints
                         ->sortByDesc('created_at')
-                        ->first()?->next_date?->format('Y-m-d');
+                        ->first()?->next_date);
 
                     $rate = $booking?->currencyRate?->rate ?? $firstRate;
 
@@ -125,13 +126,13 @@ class FingerprintController extends Controller
                         'fingerprint_id' => $fingerprint->id,
                         'fingerprint_detail_id' => $detail?->id,
                         'invoice_id' => $booking->invoice_id,
-                        'booking_date' => $booking->created_at->format('Y-m-d'),
+                        'booking_date' => DateFormatter::iso($booking->created_at),
                         'customer_name' => $booking->customer->name,
                         'pax_qty' => $booking->pax_qty,
                         'customer_mobile' => $booking->customer->mobile_no,
                         'passenger_mobile' => $passenger->mobile_no,
                         'district' => $booking->district->name ?? '-',
-                        'deadline' => $fingerprint->deadline?->format('Y-m-d'),
+                        'deadline' => DateFormatter::iso($fingerprint->deadline),
                         'reschedule_deadline' => $rescheduleDeadline,
                         'cost' => $fingerprint->cost,
                         'rate' => $rate,
@@ -146,12 +147,12 @@ class FingerprintController extends Controller
                         'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
                         'is_cancelled' => $booking->is_cancelled,
                         'cancellation_status' => $booking->cancelledBooking?->status?->value,
-                        'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
-                        'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
+                        'flight_date_from' => DateFormatter::iso($passenger->flight_date_from),
+                        'flight_date_to' => DateFormatter::iso($passenger->flight_date_to),
                         'required_flight_date' => $passenger->flight_date_from && $passenger->flight_date_to
-                            ? $passenger->flight_date_from->format('d M Y').' → '.$passenger->flight_date_to->format('d M Y')
-                            : ($passenger->flight_date_from?->format('d M Y') ?? $passenger->flight_date_to?->format('d M Y') ?? '-'),
-                        'actual_flight_date' => $passenger->actual_flight_date?->format('d M Y') ?? '-',
+                            ? DateFormatter::humanReadable($passenger->flight_date_from).' → '.DateFormatter::humanReadable($passenger->flight_date_to)
+                            : (DateFormatter::humanReadable($passenger->flight_date_from) ?? DateFormatter::humanReadable($passenger->flight_date_to) ?? '-'),
+                        'actual_flight_date' => DateFormatter::humanReadable($passenger->actual_flight_date) ?? '-',
                     ];
                 });
             })->flatten(1);
@@ -277,14 +278,14 @@ class FingerprintController extends Controller
                         'fingerprint_id' => $fingerprint->id,
                         'fingerprint_detail_id' => $detail?->id,
                         'invoice_id' => $booking->invoice_id,
-                        'booking_date' => $booking->created_at?->format('Y-m-d'),
+                        'booking_date' => DateFormatter::iso($booking->created_at),
                         'customer_name' => $booking->customer?->name ?? '-',
                         'pax_qty' => $passengers->count(),
                         'customer_mobile' => $booking->customer?->mobile_no ?? '',
                         'passenger_mobile' => $passenger->mobile_no ?? '',
                         'fingerprint_branch_name' => $booking->fingerprintBranch?->name ?? '-',
                         'district' => $booking->district?->name ?? '-',
-                        'deadline' => $fingerprint->deadline?->format('Y-m-d'),
+                        'deadline' => DateFormatter::iso($fingerprint->deadline),
                         'passenger_name' => $passengerName,
                         'passenger_address' => $passenger->address ?? '-',
                         'cost' => $fingerprint->cost,
@@ -296,8 +297,8 @@ class FingerprintController extends Controller
                         'fingerprint_location' => $booking->fingerprint_location?->value ?? '-',
                         'is_cancelled' => $booking->is_cancelled,
                         'cancellation_status' => $booking->cancelledBooking?->status?->value,
-                        'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
-                        'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
+                        'flight_date_from' => DateFormatter::iso($passenger->flight_date_from),
+                        'flight_date_to' => DateFormatter::iso($passenger->flight_date_to),
                     ];
                 });
             })->flatten(1);

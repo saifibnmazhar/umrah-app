@@ -8,6 +8,7 @@ use App\Models\District;
 use App\Models\FingerprintDetail;
 use App\Models\User;
 use App\Queries\FingerprintReportQuery;
+use App\Support\DateFormatter;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -105,10 +106,10 @@ class FingerprintReportController extends Controller
             $reasonLabel = $this->mapRescheduleReasonLabel($r->reason->value, $r->other_reason);
 
             return [
-                'previous_date' => $fingerprint->deadline?->format('Y-m-d'),
-                'new_date' => $r->next_date?->format('Y-m-d'),
+                'previous_date' => DateFormatter::iso($fingerprint->deadline),
+                'new_date' => DateFormatter::iso($r->next_date),
                 'rescheduled_by' => $rescheduledBy,
-                'rescheduled_at' => $r->created_at?->format('Y-m-d h:i A'),
+                'rescheduled_at' => DateFormatter::humanDateTime($r->created_at),
                 'reason' => $reasonLabel,
                 'remarks' => $r->remarks ?? '-',
             ];
@@ -124,8 +125,8 @@ class FingerprintReportController extends Controller
             'rate' => $rate,
             'invoice_id' => $booking->invoice_id,
             'customer_name' => $booking->customer?->name ?? '-',
-            'booking_date' => $booking->created_at?->format('Y-m-d'),
-            'fingerprint_deadline' => $fingerprint->deadline?->format('Y-m-d'),
+            'booking_date' => DateFormatter::iso($booking->created_at),
+            'fingerprint_deadline' => DateFormatter::iso($fingerprint->deadline),
             'fingerprint_charge' => $canViewFinancials ? (float) ($booking->fingerprintCharge?->fingerprint_charge ?? 0) : null,
             'fingerprint_cost' => (float) ($fingerprint->cost ?? 0),
             'profit' => $canViewFinancials ? max(0, (float) ($booking->fingerprintCharge?->fingerprint_charge ?? 0) - (float) ($fingerprint->cost ?? 0)) : null,
@@ -138,12 +139,12 @@ class FingerprintReportController extends Controller
             ],
             'customer_mobile' => $booking->customer?->mobile_no ?? '-',
             'completed_date' => $fingerprintDetail->status === FingerprintStatus::APPROVED
-                ? $fingerprintDetail->updated_at?->format('Y-m-d')
+                ? DateFormatter::iso($fingerprintDetail->updated_at)
                 : '-',
             'fingerprint_status' => $fingerprintDetail->status?->value ?? 'none',
             'status_display' => $statusDisplay,
             'required_flight' => $passenger->flight_date_display ?? '-',
-            'actual_flight' => $passenger->actual_flight_date?->format('Y-m-d') ?? '-',
+            'actual_flight' => DateFormatter::iso($passenger->actual_flight_date) ?? '-',
             'reschedule_history' => $rescheduleHistory,
         ]);
     }
@@ -197,7 +198,7 @@ class FingerprintReportController extends Controller
                     'fingerprint_id' => $fingerprint->id,
                     'fingerprint_detail_id' => $detail?->id,
                     'invoice_id' => $booking->invoice_id,
-                    'booking_date' => $booking->created_at?->format('Y-m-d'),
+                    'booking_date' => DateFormatter::iso($booking->created_at),
                     'customer_name' => $booking->customer?->name ?? '-',
                     'customer_mobile' => $booking->customer?->mobile_no ?? '-',
                     'passenger_name' => trim(($passenger->first_name ?? '').' '.($passenger->last_name ?? '')),
@@ -206,13 +207,13 @@ class FingerprintReportController extends Controller
                     'district' => $booking->district?->name ?? '-',
                     'fingerprint_charge' => $canViewFinancials ? (float) $fingerprintCharge : null,
                     'fingerprint_cost' => (float) $cost,
-                    'fingerprint_deadline' => $fingerprint->deadline?->format('Y-m-d'),
+                    'fingerprint_deadline' => DateFormatter::iso($fingerprint->deadline),
                     'completed_date' => $detail && $detail->status === FingerprintStatus::APPROVED
-                        ? $detail->updated_at?->format('Y-m-d')
+                        ? DateFormatter::iso($detail->updated_at)
                         : '-',
                     'status_display' => $statusDisplay,
                     'required_flight' => $passenger->flight_date_display ?? '-',
-                    'actual_flight' => $passenger->actual_flight_date?->format('Y-m-d') ?? '-',
+                    'actual_flight' => DateFormatter::iso($passenger->actual_flight_date) ?? '-',
                     'remarks' => $remarks ?? '-',
                     'profit' => $canViewFinancials ? max(0, (float) $profitLoss) : null,
                     'loss' => $canViewFinancials ? abs(min(0, (float) $profitLoss)) : null,
