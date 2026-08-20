@@ -3,15 +3,10 @@
 namespace App\Livewire\Booking;
 
 use App\Enums\FingerprintLocation;
-use App\Http\Controllers\BookingController;
-use App\Models\Branch;
-use Illuminate\Http\Request;
-use Livewire\Component;
+use App\Livewire\IndexDataTable;
 
-class BookingIndexTable extends Component
+class BookingIndexTable extends IndexDataTable
 {
-    public ?string $search = null;
-
     public ?string $bookingDateFrom = null;
 
     public ?string $bookingDateTo = null;
@@ -22,70 +17,43 @@ class BookingIndexTable extends Component
 
     public ?string $branchId = null;
 
-    public int $perPage = 10;
-
-    public int $page = 1;
+    public array $fingerprintLocations = [];
 
     public $data = [];
 
-    public $summary = [
-        'totalBookingCount' => 0,
-        'totalBookingPassengerCount' => 0,
-    ];
+    public mixed $perPage = null;
 
-    public $pagination = [
-        'current_page' => 1,
-        'last_page' => 1,
-        'per_page' => 10,
-        'total' => 0,
-    ];
-
-    public $branches = [];
-
-    public $fingerprintLocations = [];
-
-    public bool $loading = false;
-
-    protected function loadData(): void
+    protected function endpoint(): string
     {
-        $this->loading = true;
+        return '/api/bookings/data';
+    }
 
-        $params = array_filter([
-            'search' => $this->search,
+    protected function controllerMethod(): string
+    {
+        return 'data';
+    }
+
+    protected function filterParams(): array
+    {
+        return [
             'booking_date_from' => $this->bookingDateFrom,
             'booking_date_to' => $this->bookingDateTo,
             'fingerprint_location' => $this->fingerprintLocation,
             'booking_status' => $this->bookingStatus,
             'booking_branch_id' => $this->branchId,
-            'per_page' => $this->perPage,
-        ], fn ($v) => $v !== null && $v !== '');
+        ];
+    }
 
-        $params['page'] = $this->pagination['current_page'];
-
-        $request = Request::create('/api/bookings/data', 'GET', $params);
-        $response = app(BookingController::class)->data($request);
-        $payload = $response->getData(true);
-
-        $this->data = $payload['data'] ?? [];
-        $this->summary = $payload['summary'] ?? $this->summary;
-        $this->pagination = $payload['pagination'] ?? $this->pagination;
-
-        $this->loading = false;
+    protected function dataTableProperty(): string
+    {
+        return 'data';
     }
 
     public function boot()
     {
-        $this->branches = ! auth()->user()->branch_id
-            ? Branch::orderBy('name')->get(['id', 'name'])->keyBy('id')->toArray()
-            : [];
+        $this->perPage = 10;
+        $this->branches = $this->branchOptions();
         $this->fingerprintLocations = FingerprintLocation::cases();
-
-        $this->loadData();
-    }
-
-    public function updatedSearch(): void
-    {
-        $this->pagination['current_page'] = 1;
         $this->loadData();
     }
 
@@ -131,17 +99,11 @@ class BookingIndexTable extends Component
         $this->loadData();
     }
 
-    public function goToPage(int $page): void
-    {
-        $this->pagination['current_page'] = $page;
-        $this->loadData();
-    }
-
     public function render()
     {
         return view('livewire.booking.booking-index-table', [
             'branches' => $this->branches,
-            'fingerprintLocations' => $this->fingerprintLocations,
+            'fingerprintLocations' => FingerprintLocation::cases(),
             'bookings' => $this->data,
             'summary' => $this->summary,
             'pagination' => $this->pagination,

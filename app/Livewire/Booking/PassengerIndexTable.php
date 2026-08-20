@@ -3,15 +3,10 @@
 namespace App\Livewire\Booking;
 
 use App\Enums\FingerprintLocation;
-use App\Http\Controllers\BookingController;
-use App\Models\Branch;
-use Illuminate\Http\Request;
-use Livewire\Component;
+use App\Livewire\IndexDataTable;
 
-class PassengerIndexTable extends Component
+class PassengerIndexTable extends IndexDataTable
 {
-    public ?string $search = null;
-
     public ?string $bookingDateFrom = null;
 
     public ?string $bookingDateTo = null;
@@ -52,44 +47,21 @@ class PassengerIndexTable extends Component
 
     public ?string $bookingStatus = null;
 
-    public int $perPage = 15;
-
     public $passengers = [];
 
-    public $summary = [];
-
-    public $pagination = [
-        'current_page' => 1,
-        'last_page' => 1,
-        'per_page' => 15,
-        'total' => 0,
-    ];
-
-    public $filterOptions = [];
-
-    public $branches = [];
-
-    public bool $loading = false;
-
-    public function boot()
+    protected function endpoint(): string
     {
-        $this->branches = $this->branchOptions();
-        $this->loadData();
+        return '/api/passengers/data';
     }
 
-    protected function branchOptions()
+    protected function controllerMethod(): string
     {
-        if (auth()->user()->branch_id) {
-            return [];
-        }
-
-        return Branch::orderBy('name')->get(['id', 'name'])->keyBy('id')->toArray();
+        return 'passengerData';
     }
 
-    protected function loadData(): void
+    protected function filterParams(): array
     {
-        $params = array_filter([
-            'search' => $this->search,
+        return [
             'booking_date_from' => $this->bookingDateFrom,
             'booking_date_to' => $this->bookingDateTo,
             'actual_flight_from' => $this->actualFlightFrom,
@@ -110,24 +82,17 @@ class PassengerIndexTable extends Component
             'payment_wise' => $this->paymentWise,
             'booking_branch_id' => $this->bookingBranchId,
             'booking_status' => $this->bookingStatus,
-            'per_page' => $this->perPage,
-        ], fn ($v) => $v !== null && $v !== '');
-
-        $request = Request::create('/api/passengers/data', 'GET', $params);
-        $request->query->set('page', $this->pagination['current_page']);
-
-        $response = app(BookingController::class)->passengerData($request);
-        $payload = $response->getData(true);
-
-        $this->passengers = $payload['data'] ?? [];
-        $this->summary = $payload['summary'] ?? [];
-        $this->pagination = array_merge($this->pagination, $payload['pagination'] ?? []);
-        $this->filterOptions = $payload['filterOptions'] ?? [];
+        ];
     }
 
-    public function updatedSearch(): void
+    protected function dataTableProperty(): string
     {
-        $this->pagination['current_page'] = 1;
+        return 'passengers';
+    }
+
+    public function boot()
+    {
+        $this->branches = $this->branchOptions();
         $this->loadData();
     }
 
@@ -251,12 +216,6 @@ class PassengerIndexTable extends Component
         $this->loadData();
     }
 
-    public function updatedPerPage(): void
-    {
-        $this->pagination['current_page'] = 1;
-        $this->loadData();
-    }
-
     public function resetFilters(): void
     {
         $this->search = null;
@@ -281,12 +240,6 @@ class PassengerIndexTable extends Component
         $this->bookingBranchId = null;
         $this->bookingStatus = null;
         $this->pagination['current_page'] = 1;
-        $this->loadData();
-    }
-
-    public function goToPage(int $page): void
-    {
-        $this->pagination['current_page'] = $page;
         $this->loadData();
     }
 

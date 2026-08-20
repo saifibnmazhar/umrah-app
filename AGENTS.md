@@ -228,6 +228,30 @@ This applies PSR-12 + Laravel preset formatting. Pint uses default rules
 - **Views:** dot-notation paths matching route structure (e.g., `bookings.edit`, `reports.profit-loss`)
 - **Database tables:** plural snake_case (e.g., `bookings`, `passengers`, `visa_submissions`)
 
+### Modular & Reusable Code
+
+Always write code that is modular, reusable, and DRY across the codebase.
+
+- **Extract shared logic** — if you find yourself duplicating logic (query scopes,
+  filter handling, validation rules, helper methods), extract it into a reusable
+  trait, class, or package before copying it.
+- **Repository / query classes** — for non-trivial or repeated database queries
+  (especially those shared across reports, exports, and Livewire components),
+  prefer a dedicated query/repository class over inline query builder chains
+  in controllers, Livewire components, or jobs.
+- **Livewire components** — components should declare a single responsibility.
+  Reuse base table components (e.g. `Table` primitives) and shared traits for
+  filtering, sorting, and pagination. Avoid duplicating table markup or filter
+  logic across report components.
+- **Blade partials** — share common view fragments (filter bars, table wrappers,
+  modals, form fields) via Blade partials or components instead of copy-pasting
+  HTML into multiple views.
+- **Services** — encapsulate cross-domain operations (sync, calculation,
+  notification) in dedicated service classes rather than nesting logic inside
+  controllers or models.
+- **Before adding new code, search** for existing abstractions that already
+  cover your use case — prefer composing over rewriting.
+
 ### Blade Templates
 
 - Use `route()` helper for all internal links
