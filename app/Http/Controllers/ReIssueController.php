@@ -50,7 +50,7 @@ class ReIssueController extends Controller
             'service_charge' => 'required|numeric|min:0',
             'total_customer_payment' => 'required_if:payment_by,customer|numeric|min:0',
             'remarks' => 'nullable|string',
-            'payment_by' => 'nullable|in:customer,airline,employee',
+            'payment_by' => 'nullable|in:customer,airline,employee,company',
             'payment_option' => 'nullable|required_if:payment_by,customer|in:customer_payment,refund_adjustment',
             'refund_adjustment_amount' => [
                 Rule::requiredIf(function () use ($request) {
@@ -244,17 +244,17 @@ class ReIssueController extends Controller
             $q->where('booking_id', $booking->id);
         })
             ->with([
-            'ticketAgent',
-            'ticketFare.airline',
-            'ticketFare.airlineClass.class',
-            'ticketFare.route.fromCity',
-            'ticketFare.route.toCity',
-            'ticketFare.route.returnCity',
-            'ticketFare.route.multiSegments.fromCity',
-            'ticketFare.route.multiSegments.toCity',
-            'reason',
-            'issuedTicket.passenger',
-        ])
+                'ticketAgent',
+                'ticketFare.airline',
+                'ticketFare.airlineClass.class',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
+                'ticketFare.route.returnCity',
+                'ticketFare.route.multiSegments.fromCity',
+                'ticketFare.route.multiSegments.toCity',
+                'reason',
+                'issuedTicket.passenger',
+            ])
             ->orderBy('re_issue_date', 'asc')
             ->get();
 

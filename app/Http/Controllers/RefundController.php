@@ -54,7 +54,7 @@ class RefundController extends Controller
             'customer_refund' => 'required|numeric|min:0|max:'.$refundNetFare,
             'service_charge' => 'required|numeric',
             'remarks' => 'nullable|string',
-            'payment_by' => 'nullable|in:customer,airline,employee',
+            'payment_by' => 'nullable|in:customer,airline,employee,company',
         ]);
 
         if (! in_array($issuedTicket->status, ['issued', 're-issued'])) {
@@ -115,12 +115,12 @@ class RefundController extends Controller
     public function byBooking(Booking $booking)
     {
         $refundedTickets = RefundedTicket::whereHas('issuedTicket', function ($q) use ($booking) {
-                $q->where('booking_id', $booking->id);
-            })
+            $q->where('booking_id', $booking->id);
+        })
             ->with([
-                'ticketAgent',
-                'issuedTicket.passenger',
-            ])
+            'ticketAgent',
+            'issuedTicket.passenger',
+        ])
             ->orderBy('refund_date', 'asc')
             ->get();
 

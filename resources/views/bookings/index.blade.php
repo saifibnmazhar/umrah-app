@@ -1144,7 +1144,10 @@ if ($passenger->ticket_fare_inbound_id) {
             ->first(fn($t) => in_array($t->issue_type, [null, 'regular'], true) && in_array($t->status, ['issued', 're-issued']));
         $actualFlightDate = 'N/A';
         if ($regularTicket) {
-            $actualFlightDate = $regularTicket->inbound_date?->format('d M Y') ?? 'N/A';
+            $date = $regularTicket->status === 're-issued'
+                ? ($regularTicket->latestReIssuedTicket?->inbound_date ?? $regularTicket->inbound_date)
+                : $regularTicket->inbound_date;
+            $actualFlightDate = $date?->format('d M Y') ?? 'N/A';
         }
     @endphp
     <td class="px-3 py-2 text-slate-700">{{ $actualFlightDate }}</td>
@@ -1155,10 +1158,16 @@ if ($passenger->ticket_fare_inbound_id) {
                 ->first(fn($t) => $t->issue_type === 'pending_outbound'
                     && in_array($t->status, ['issued', 're-issued'], true));
             if ($pendingTicket) {
-                $returnDate = $pendingTicket->outbound_date?->format('d M Y') ?? 'N/A';
+                $d = $pendingTicket->status === 're-issued'
+                    ? ($pendingTicket->latestReIssuedTicket?->outbound_date ?? $pendingTicket->outbound_date)
+                    : $pendingTicket->outbound_date;
+                $returnDate = $d?->format('d M Y') ?? 'N/A';
             }
         } elseif ($regularTicket) {
-            $returnDate = $regularTicket->outbound_date?->format('d M Y') ?? 'N/A';
+            $d = $regularTicket->status === 're-issued'
+                ? ($regularTicket->latestReIssuedTicket?->outbound_date ?? $regularTicket->outbound_date)
+                : $regularTicket->outbound_date;
+            $returnDate = $d?->format('d M Y') ?? 'N/A';
         }
     @endphp
     <td class="px-3 py-2 text-slate-700">{{ $returnDate }}</td>
@@ -1325,7 +1334,7 @@ if ($passenger->ticket_fare_inbound_id) {
             <div>
                 <div class="flex flex-wrap gap-1 mb-1">
                     <template x-for="status in getTicketStatuses({{ $loop->index }})" :key="status">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap"
                             :class="statusColorClass(status)"
                             x-text="status">
                         </span>
@@ -1333,7 +1342,7 @@ if ($passenger->ticket_fare_inbound_id) {
                 </div>
                 <template x-for="ticket in passengersTicketData[{{ $loop->index }}]?.all_issued_tickets || []">
                     <template x-if="ticket.pnr && (ticket.status === 'issued' || ticket.status === 're-issued')">
-                        <div class="text-xs leading-tight text-slate-500" x-text="ticketInfoSrc(ticket).pnr + (ticket.issue_type ? ' (' + ticket.issue_type + ')' : '')"></div>
+                        <div class="text-xs leading-tight text-slate-500" x-text="ticketInfoSrc(ticket).pnr + (ticket.issue_type ? ' (' + (ticket.issue_type === 'pending_outbound' ? 'outbound' : ticket.issue_type) + ')' : '')"></div>
                     </template>
                 </template>
             </div>
@@ -2030,6 +2039,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                     <option value="customer">Customer</option>
                                     <option value="airline">Airline</option>
                                     <option value="employee">Employee</option>
+                                    <option value="company">Company</option>
                                 </select>
                         </div>
                         <div class="md:col-span-2">
@@ -2627,6 +2637,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <option value="customer">Customer</option>
                                 <option value="airline">Airline</option>
                                 <option value="employee">Employee</option>
+                                <option value="company">Company</option>
                             </select>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer'">

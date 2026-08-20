@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentBy;
 use App\Enums\ReIssuePaymentOption;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
@@ -39,6 +40,7 @@ class ReIssuedTicket extends Model
         'service_charge' => 'decimal:6',
         'is_refundable' => 'boolean',
         'is_exchangeable' => 'boolean',
+        'payment_by' => PaymentBy::class,
         'payment_option' => ReIssuePaymentOption::class,
         'refund_adjustment_amount' => 'decimal:6',
         'total_customer_payment' => 'decimal:6',
