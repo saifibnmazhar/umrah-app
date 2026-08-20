@@ -159,33 +159,33 @@
                 <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                        <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
                             <input type="number" id="inputSellingFare" min="0" step="0.000001" oninput="syncSellingFareFromSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
-                        <div x-show="$store.currency.mode === 'BDT'">
+                        <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) *</label>
                             <input type="number" id="inputSellingFareBdt" min="0" step="0.000001" oninput="syncSellingFareFromBdt()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <input type="number" id="inputSellingFareReadonly" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                         </div>
                     </div>
                     <div>
-                        <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                        <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR) *</label>
                             <input type="number" id="inputNetFare" min="0" step="0.000001" oninput="syncNetFareFromSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
-                        <div x-show="$store.currency.mode === 'BDT'">
+                        <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT) *</label>
                             <input type="number" id="inputNetFareBdt" min="0" step="0.000001" oninput="syncNetFareFromBdt()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <input type="number" id="inputNetFareReadonly" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                         </div>
                     </div>
                     <div id="offerPriceSection" class="hidden">
-                        <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                        <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
                             <input type="number" id="inputOfferPrice" min="0" step="0.000001" oninput="syncOfferPriceFromSar()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
-                        <div x-show="$store.currency.mode === 'BDT'">
+                        <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) *</label>
                             <input type="number" id="inputOfferPriceBdt" min="0" step="0.000001" oninput="syncOfferPriceFromBdt()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <input type="number" id="inputOfferPriceReadonly" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
@@ -512,7 +512,6 @@ function handleTicketSelect() {
     document.getElementById('inputTravelRoute').value = formatRoute(route);
     document.getElementById('inputTravelAirline').value = airline.name || '';
     document.getElementById('inputTravelClass').value = cls.name || '';
-    document.getElementById('inputTravelPassengerType').value = fare.passenger_type || '';
 
     document.getElementById('inputSellingFare').value = fare.selling_fare || 0;
     document.getElementById('inputNetFare').value = fare.net_fare || 0;
@@ -544,6 +543,7 @@ function handleTicketSelect() {
     const baggageAllowances = fare.baggage_allowances || [];
     const req = allRequests.find(x => x.id === currentTicketRequestId);
     const passengerType = req?.passenger?.passenger_type || 'adult';
+    document.getElementById('inputTravelPassengerType').value = passengerType;
     const inboundBaggage = baggageAllowances.find(b => b.travel_direction === 'inbound' && b.passenger_type === passengerType);
     const outboundBaggage = baggageAllowances.find(b => b.travel_direction === 'outbound' && b.passenger_type === passengerType);
     document.getElementById('inputBaggageInbound').value = inboundBaggage ? inboundBaggage.allowance : '';

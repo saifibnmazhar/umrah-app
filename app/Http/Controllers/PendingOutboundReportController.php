@@ -82,8 +82,7 @@ class PendingOutboundReportController extends Controller
             $tickets = $query->paginate($perPage);
             $items = $this->mapItems($tickets->items());
 
-            $allQuery = $this->buildQuery($request);
-            $allItems = $this->mapItems($allQuery->get()->all());
+            $allItems = $this->mapItems($query->get()->all());
             $summary = $this->computeSummary($allItems);
 
             return response()->json([

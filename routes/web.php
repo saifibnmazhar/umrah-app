@@ -519,8 +519,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/tickets/{id}/print', fn ($id) => view('tickets.print', compact('id')))->name('tickets.print')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/tickets/{id}/add-confirm', fn ($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation')->middleware('role:Super Admin,Ticket Admin');
 
+    Route::post('/ticket-requests', [TicketRequestController::class, 'store'])->name('ticket-requests.store')
+        ->middleware('ticket-request-branch:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+
     Route::middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff')->group(function () {
-        Route::post('/ticket-requests', [TicketRequestController::class, 'store'])->name('ticket-requests.store');
         Route::put('/ticket-requests/{ticketRequest}/process-reissue', [TicketRequestController::class, 'processReIssue'])->name('ticket-requests.process-reissue');
         Route::put('/ticket-requests/{ticketRequest}/process-refund', [TicketRequestController::class, 'processRefund'])->name('ticket-requests.process-refund');
         Route::put('/ticket-requests/{ticketRequest}/process-additional', [TicketRequestController::class, 'processAdditional'])->name('ticket-requests.process-additional');
@@ -539,8 +541,14 @@ Route::middleware('auth')->group(function () {
             ->name('passengers.create-outbound-pending');
         Route::post('/bookings/{booking}/passengers/{passenger}/re-issue', [ReIssueController::class, 'store'])
             ->name('bookings.passengers.re-issue');
+        Route::get('/bookings/{booking}/re-issued-tickets', [ReIssueController::class, 'byBooking'])
+            ->name('re-issued-tickets.by-booking');
+        Route::get('/bookings/{booking}/additional-tickets', [TicketRequestController::class, 'additionalTicketsByBooking'])
+            ->name('bookings.additional-tickets');
         Route::post('/bookings/{booking}/passengers/{passenger}/refund', [RefundController::class, 'store'])
             ->name('bookings.passengers.refund');
+        Route::get('/bookings/{booking}/refunded-tickets', [RefundController::class, 'byBooking'])
+            ->name('refunded-tickets.by-booking');
     });
 
     Route::post('/api/banks/quick-create', [BankController::class, 'quickStore']);

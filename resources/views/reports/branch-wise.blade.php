@@ -41,6 +41,7 @@
     $dateLabel = $dateFrom->format('d M Y') . ' - ' . $dateTo->format('d M Y');
     $showProfitCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
 
+    if (! function_exists('cascadeRound')) {
     function cascadeRound($value): int {
         $parts = explode('.', number_format((float) $value, 6, '.', ''));
         if (count($parts) !== 2) return (int) round($value);
@@ -49,6 +50,7 @@
             $carry = ((int) $parts[1][$i] + ($carry ? 1 : 0)) >= 5;
         }
         return (int) $parts[0] + ($carry ? 1 : 0);
+    }
     }
     @endphp
 
@@ -402,15 +404,15 @@
                         </div>
                     </template>
                 </div>
-                <div x-show="totalPages > 1" class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50 shrink-0">
+                <div x-show="totalPages > 1" x-cloak class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50 shrink-0">
                     <span class="text-sm text-gray-500">
                         Showing <span x-text="((currentPage - 1) * perPage) + 1"></span>-<span x-text="Math.min(currentPage * perPage, filteredVouchers.length)"></span> of <span x-text="filteredVouchers.length"></span>
                     </span>
                     <span class="inline-flex items-center gap-2">
                         <span x-show="currentPage === 1" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Previous</span>
-                        <button x-show="currentPage > 1" @click="goToPage(currentPage - 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Previous</button>
+                        <button x-show="currentPage > 1" x-cloak @click="goToPage(currentPage - 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Previous</button>
                         <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5" x-text="currentPage"></span>
-                        <button x-show="currentPage < totalPages" @click="goToPage(currentPage + 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Next</button>
+                        <button x-show="currentPage < totalPages" x-cloak @click="goToPage(currentPage + 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Next</button>
                         <span x-show="currentPage === totalPages" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Next</span>
                     </span>
                 </div>

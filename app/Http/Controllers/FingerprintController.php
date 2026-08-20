@@ -23,6 +23,7 @@ class FingerprintController extends Controller
         $query = Fingerprint::with([
             'booking.customer',
             'booking.district',
+            'booking.currencyRate',
             'booking.passengers',
             'booking.cancelledBooking',
             'fingerprintDetails.passenger',
@@ -99,14 +100,15 @@ class FingerprintController extends Controller
 
         $fingerprints = $query->paginate(10);
 
+        $currencyRateService = app(CurrencyRateService::class);
+        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
+
         $items = collect($fingerprints->items())
-            ->map(function ($fingerprint) {
+            ->map(function ($fingerprint) use ($firstRate) {
                 $booking = $fingerprint->booking;
                 $passengers = $booking->passengers;
 
-                $currencyRateService = app(CurrencyRateService::class);
-
-                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $currencyRateService) {
+                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $firstRate) {
                     $detail = $fingerprint->fingerprintDetails
                         ->where('passenger_id', $passenger->id)
                         ->first();
@@ -117,10 +119,7 @@ class FingerprintController extends Controller
                         ->sortByDesc('created_at')
                         ->first()?->next_date?->format('Y-m-d');
 
-                    $rate = $booking?->currencyRate?->rate
-                        ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
-                        ?? $currencyRateService->getFirstRate()?->rate
-                        ?? 0;
+                    $rate = $booking?->currencyRate?->rate ?? $firstRate;
 
                     return [
                         'fingerprint_id' => $fingerprint->id,
@@ -178,6 +177,7 @@ class FingerprintController extends Controller
             'firstCostLog',
             'booking.customer',
             'booking.district',
+            'booking.currencyRate',
             'booking.fingerprintBranch',
             'booking.passengers',
             'booking.cancelledBooking',
@@ -241,16 +241,17 @@ class FingerprintController extends Controller
 
         $fingerprints = $query->paginate(10);
 
+        $currencyRateService = app(CurrencyRateService::class);
+        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
+
         $items = collect($fingerprints->items())
-            ->map(function ($fingerprint) use ($isSuperOrCoAdmin, $isFingerprintStaffRole, $twentyFourHoursAgo) {
+            ->map(function ($fingerprint) use ($isSuperOrCoAdmin, $isFingerprintStaffRole, $twentyFourHoursAgo, $firstRate) {
                 $booking = $fingerprint->booking;
                 if (! $booking) {
                     return collect([]);
                 }
 
                 $passengers = $booking->passengers;
-
-                $currencyRateService = app(CurrencyRateService::class);
 
                 $firstLog = $fingerprint->firstCostLog;
                 $canEditCost = $isSuperOrCoAdmin
@@ -259,7 +260,7 @@ class FingerprintController extends Controller
                         || $firstLog->created_at >= $twentyFourHoursAgo
                     ));
 
-                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $currencyRateService, $canEditCost) {
+                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $canEditCost, $firstRate) {
                     $detail = $fingerprint->fingerprintDetails()
                         ->where('passenger_id', $passenger->id)
                         ->first();
@@ -270,10 +271,7 @@ class FingerprintController extends Controller
                     $lastName = $passenger->last_name ?? '';
                     $passengerName = trim($firstName.' '.$lastName) ?: '-';
 
-                    $rate = $booking?->currencyRate?->rate
-                        ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
-                        ?? $currencyRateService->getFirstRate()?->rate
-                        ?? 0;
+                    $rate = $booking?->currencyRate?->rate ?? $firstRate;
 
                     return [
                         'fingerprint_id' => $fingerprint->id,

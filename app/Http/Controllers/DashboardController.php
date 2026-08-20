@@ -166,8 +166,8 @@ class DashboardController extends Controller
         $totalRefundBdt = $refundRow->bdt_total ?? 0;
 
         $ticketRefundRow = Voucher::where('vouchers.created_at', '>=', now()->subDays(30))
-            ->when($branchId, fn($q) => $q->where('vouchers.branch_id', $branchId))
-            ->whereHas('transactionType', fn($q) => $q->whereIn('name', ['Ticket Refund - Payment', 'Ticket Refund - Re-issue']))
+            ->when($branchId, fn ($q) => $q->where('vouchers.branch_id', $branchId))
+            ->whereHas('transactionType', fn ($q) => $q->whereIn('name', ['Ticket Refund - Payment', 'Ticket Refund - Re-issue']))
             ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
             ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
             ->selectRaw('
@@ -202,25 +202,22 @@ class DashboardController extends Controller
         $initialPaymentBank = $initialPaymentRow->bank_sar ?? 0;
         $initialPaymentBankBdt = $initialPaymentRow->bank_bdt ?? 0;
 
-        $profitBookings = Booking::with(['invoice', 'fingerprint', 'passengers.visaSubmission', 'passengers.allIssuedTickets'])
+        $profitBookings = Booking::with(['invoice', 'fingerprint', 'currencyRate', 'passengers.visaSubmission', 'passengers.allIssuedTickets'])
             ->where('is_cancelled', false)
             ->whereHas('invoice')
             ->where('created_at', '>=', now()->subDays(30))
             ->when($branchId, fn ($q) => $q->where('booking_branch_id', $branchId))
             ->get();
         $costService = app(CostTrackingService::class);
-        $totalProfit = $profitBookings->sum(function (Booking $booking) use ($costService) {
-            $costSummary = $costService->getBookingCostSummary($booking);
-
-            return (float) $booking->invoice->total_amount - $costSummary['total_cost'];
-        });
-        $totalProfitBdt = $profitBookings->sum(function (Booking $booking) use ($costService, $firstRate) {
+        $totalProfit = 0;
+        $totalProfitBdt = 0;
+        foreach ($profitBookings as $booking) {
             $costSummary = $costService->getBookingCostSummary($booking);
             $profit = (float) $booking->invoice->total_amount - $costSummary['total_cost'];
+            $totalProfit += $profit;
             $rate = (float) ($booking->currencyRate?->rate ?? $firstRate);
-
-            return $profit * $rate;
-        });
+            $totalProfitBdt += $profit * $rate;
+        }
 
         $paymentRow = Payment::where('payments.created_at', '>=', now()->subDays(30))
             ->when($branchId, fn ($q) => $q->where('payments.branch_id', $branchId))
@@ -253,12 +250,12 @@ class DashboardController extends Controller
 
         $pendingReIssueRequests = TicketRequest::whereIn('status', ['pending', 'processed', 'rejected'])
             ->where('request_type', 're_issue')
-            ->when($branchId, fn($q) => $q->whereHas('booking', fn($b) => $b->where('booking_branch_id', $branchId)))
+            ->when($branchId, fn ($q) => $q->whereHas('booking', fn ($b) => $b->where('booking_branch_id', $branchId)))
             ->with(['booking.customer', 'booking.bookingBranch', 'passenger', 'issuedTicket'])
             ->orderByRaw("FIELD(status, 'pending', 'processed', 'rejected')")
             ->get()
             ->groupBy('booking_id')
-            ->map(fn($rows, $bookingId) => [
+            ->map(fn ($rows, $bookingId) => [
                 'booking_id' => $bookingId,
                 'invoice_no' => $rows->first()->booking?->invoice_id ?? $bookingId,
                 'customer_name' => $rows->first()->booking?->customer?->name ?? '-',
@@ -271,12 +268,12 @@ class DashboardController extends Controller
 
         $pendingAdditionalRequests = TicketRequest::whereIn('status', ['pending', 'processed', 'rejected'])
             ->where('request_type', 'additional')
-            ->when($branchId, fn($q) => $q->whereHas('booking', fn($b) => $b->where('booking_branch_id', $branchId)))
+            ->when($branchId, fn ($q) => $q->whereHas('booking', fn ($b) => $b->where('booking_branch_id', $branchId)))
             ->with(['booking.customer', 'booking.bookingBranch', 'passenger'])
             ->orderByRaw("FIELD(status, 'pending', 'processed', 'rejected')")
             ->get()
             ->groupBy('booking_id')
-            ->map(fn($rows, $bookingId) => [
+            ->map(fn ($rows, $bookingId) => [
                 'booking_id' => $bookingId,
                 'invoice_no' => $rows->first()->booking?->invoice_id ?? $bookingId,
                 'customer_name' => $rows->first()->booking?->customer?->name ?? '-',
@@ -289,12 +286,12 @@ class DashboardController extends Controller
 
         $pendingRefundRequests = TicketRequest::whereIn('status', ['pending', 'processed', 'rejected'])
             ->where('request_type', 'refund')
-            ->when($branchId, fn($q) => $q->whereHas('booking', fn($b) => $b->where('booking_branch_id', $branchId)))
+            ->when($branchId, fn ($q) => $q->whereHas('booking', fn ($b) => $b->where('booking_branch_id', $branchId)))
             ->with(['booking.customer', 'booking.bookingBranch', 'passenger'])
             ->orderByRaw("FIELD(status, 'pending', 'processed', 'rejected')")
             ->get()
             ->groupBy('booking_id')
-            ->map(fn($rows, $bookingId) => [
+            ->map(fn ($rows, $bookingId) => [
                 'booking_id' => $bookingId,
                 'invoice_no' => $rows->first()->booking?->invoice_id ?? $bookingId,
                 'customer_name' => $rows->first()->booking?->customer?->name ?? '-',

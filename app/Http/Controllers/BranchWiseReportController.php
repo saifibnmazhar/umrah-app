@@ -158,8 +158,8 @@ class BranchWiseReportController extends Controller
 
         $ticketRefundRow = Voucher::whereDate('vouchers.created_at', '>=', $dateFrom)
             ->whereDate('vouchers.created_at', '<=', $dateTo)
-            ->whereHas('transactionType', fn($q) => $q->whereIn('name', ['Ticket Refund - Payment', 'Ticket Refund - Re-issue']))
-            ->when($branchId, fn($q) => $q->where('vouchers.branch_id', $branchId))
+            ->whereHas('transactionType', fn ($q) => $q->whereIn('name', ['Ticket Refund - Payment', 'Ticket Refund - Re-issue']))
+            ->when($branchId, fn ($q) => $q->where('vouchers.branch_id', $branchId))
             ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
             ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
             ->selectRaw('
@@ -192,7 +192,7 @@ class BranchWiseReportController extends Controller
         $initialPaymentBank = $initialPaymentRow->bank_sar ?? 0;
         $initialPaymentBankBdt = $initialPaymentRow->bank_bdt ?? 0;
 
-        $profitBookings = Booking::with(['invoice', 'fingerprint', 'passengers.visaSubmission', 'passengers.allIssuedTickets'])
+        $profitBookings = Booking::with(['invoice', 'fingerprint', 'currencyRate', 'passengers.visaSubmission', 'passengers.allIssuedTickets'])
             ->where('is_cancelled', false)
             ->whereHas('invoice')
             ->whereDate('created_at', '>=', $dateFrom)
@@ -200,18 +200,15 @@ class BranchWiseReportController extends Controller
             ->pipe(fn ($q) => $branchFilter($q, 'booking_branch_id'))
             ->get();
         $costService = app(CostTrackingService::class);
-        $totalProfit = $profitBookings->sum(function (Booking $booking) use ($costService) {
-            $costSummary = $costService->getBookingCostSummary($booking);
-
-            return (float) $booking->invoice->total_amount - $costSummary['total_cost'];
-        });
-        $totalProfitBdt = $profitBookings->sum(function (Booking $booking) use ($costService, $firstRate) {
+        $totalProfit = 0;
+        $totalProfitBdt = 0;
+        foreach ($profitBookings as $booking) {
             $costSummary = $costService->getBookingCostSummary($booking);
             $profit = (float) $booking->invoice->total_amount - $costSummary['total_cost'];
+            $totalProfit += $profit;
             $rate = (float) ($booking->currencyRate?->rate ?? $firstRate);
-
-            return $profit * $rate;
-        });
+            $totalProfitBdt += $profit * $rate;
+        }
 
         $totalPassengers = Passenger::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)

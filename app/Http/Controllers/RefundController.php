@@ -111,4 +111,19 @@ class RefundController extends Controller
             return response()->json(['message' => 'Failed to refund ticket.'], 500);
         }
     }
+
+    public function byBooking(Booking $booking)
+    {
+        $refundedTickets = RefundedTicket::whereHas('issuedTicket', function ($q) use ($booking) {
+            $q->where('booking_id', $booking->id);
+        })
+            ->with([
+            'ticketAgent',
+            'issuedTicket.passenger',
+        ])
+            ->orderBy('refund_date', 'asc')
+            ->get();
+
+        return response()->json($refundedTickets);
+    }
 }
