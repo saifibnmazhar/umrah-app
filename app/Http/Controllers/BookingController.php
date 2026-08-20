@@ -60,61 +60,6 @@ class BookingController extends Controller
         private InvoiceService $invoiceService,
     ) {}
 
-    private function isAdminRole(): bool
-    {
-        $user = auth()->user();
-
-        return $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
-    }
-
-    private function isBranchScoped(): bool
-    {
-        $user = auth()->user();
-
-        return ! $this->isAdminRole()
-            && ($user->hasRole('Branch Manager') || $user->hasRole('Branch Staff'));
-    }
-
-    private function isGlobalNonAdmin(): bool
-    {
-        return ! auth()->user()->branch_id && ! $this->isAdminRole();
-    }
-
-    private function resolveBookingBranch(Request $request, bool $forUpdate): int
-    {
-        $user = auth()->user();
-
-        if (! $user->branch_id && $request->filled('booking_branch_id')) {
-            return (int) $request->input('booking_branch_id');
-        }
-
-        if ($user->branch_id) {
-            return (int) $user->branch_id;
-        }
-
-        abort(422, 'Your account is not assigned to a branch. Contact an administrator.');
-    }
-
-    private function ensureBranchAccess(Booking $booking): void
-    {
-        if (auth()->user()->branch_id
-            && auth()->user()->branch_id !== $booking->booking_branch_id
-            && auth()->user()->branch_id !== $booking->fingerprint_branch_id) {
-            abort(403);
-        }
-    }
-
-    private function ensureEditWindow(Booking $booking): void
-    {
-        if ($this->isAdminRole()) {
-            return;
-        }
-
-        if ($booking->created_at->diffInHours(now()) >= 12) {
-            abort(403, 'Edit window has expired. Bookings can only be edited within 12 hours of creation.');
-        }
-    }
-
     private function syncBookingFinancials(Booking $booking, ?string $reason = null): array
     {
         $this->bookingService->syncFinancials($booking, $reason);
@@ -122,7 +67,6 @@ class BookingController extends Controller
         $invoice = $booking->invoice;
         if ($invoice) {
             $invoice = $invoice->fresh();
-
             return [
                 'total_amount' => (float) $invoice->total_amount,
                 'paid_amount' => (float) $invoice->paid_amount,
@@ -253,10 +197,8 @@ class BookingController extends Controller
             ->appends(['tab' => $tab])
             ->withQueryString();
 
-        $canFilterByVisaAgent = auth()->user()->roles->pluck('name')
-            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
-        $canFilterByTicketAgent = auth()->user()->roles->pluck('name')
-            ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
+        $canFilterByAgent = $this->canFilterByAgent();
+        $canFilterByTicketAgent = $this->canFilterByAgent();
 
         $passengers = Passenger::query()
             ->when(auth()->user()->branch_id, fn ($q) => $q->whereHas('booking', fn ($q) => $q->where(function ($q) {
@@ -396,7 +338,7 @@ class BookingController extends Controller
                         ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular')));
                 }
             })
-            ->when($request->filled('visa_agent_id') && $canFilterByVisaAgent, fn ($q) => $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
+            ->when($request->filled('visa_agent_id') && $canFilterByAgent, fn ($q) => $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
             )
             ->when($request->filled('booking_branch_id'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->where('booking_branch_id', $request->input('booking_branch_id')))
             )
@@ -627,7 +569,7 @@ class BookingController extends Controller
         )->values();
 
         $visaAgents = collect();
-        if ($canFilterByVisaAgent) {
+        if ($canFilterByAgent) {
             $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
                 ->orderBy('name')
                 ->get()
@@ -671,7 +613,7 @@ class BookingController extends Controller
 
         return view('bookings.index', compact(
             'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'ticketAgents', 'canEditVisa',
-            'canFilterByVisaAgent', 'canFilterByTicketAgent',
+            'canFilterByAgent', 'canFilterByTicketAgent',
             'currencyRateService', 'bookingBranches', 'selectedBranchId', 'totalBookingCount',
             'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
@@ -1103,8 +1045,8 @@ class BookingController extends Controller
                 'fingerprint_charge_id' => $validated['fingerprint_charge_id'] ?? null,
                 'fingerprint_location' => $validated['fingerprint_location'] ?? 'Office',
                 'pax_qty' => count($validated['passengers']),
-                'discount_type' => $this->isAdminRole() ? (($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage') : 'fixed_amount',
-                'discount_value' => $this->isAdminRole() ? ($validated['discount_value'] ?? 0) : 0,
+                'discount_type' => $this->isAdmin() ? (($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage') : 'fixed_amount',
+                'discount_value' => $this->isAdmin() ? ($validated['discount_value'] ?? 0) : 0,
                 'discount_amount' => 0,
                 'remarks' => $validated['remarks'] ?? null,
                 'currency_rate_id' => $currentCurrencyRate?->id,
@@ -1479,7 +1421,7 @@ class BookingController extends Controller
 
         $booking->load(['customer', 'passengers', 'district', 'fingerprintBranch', 'package', 'documents', 'passengers.documents', 'passengers.ticketFare', 'passengers.ticketFareInbound.route', 'passengers.ticketFareOutbound.route', 'fingerprintCharge']);
 
-        $bookingBranches = $this->isAdminRole() ? Branch::orderBy('name')->get(['id', 'name']) : collect();
+        $bookingBranches = $this->isAdmin() ? Branch::orderBy('name')->get(['id', 'name']) : collect();
         $fingerprintBranches = Branch::where('fingerprint_operation', true)->orderBy('name')->get(['id', 'name']);
 
         $districts = District::orderBy('name')->get();
@@ -1627,7 +1569,7 @@ class BookingController extends Controller
             DB::beginTransaction();
 
             $validated['discount_type'] = ($validated['discount_type'] ?? 'fixed') === 'fixed' ? 'fixed_amount' : 'percentage';
-            if (! $this->isAdminRole()) {
+            if (! $this->isAdmin()) {
                 unset($validated['booking_branch_id']);
                 unset($validated['package_id']);
                 unset($validated['discount_type']);
