@@ -1334,7 +1334,7 @@ if ($passenger->ticket_fare_inbound_id) {
             <div>
                 <div class="flex flex-wrap gap-1 mb-1">
                     <template x-for="status in getTicketStatuses({{ $loop->index }})" :key="status">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap"
                             :class="statusColorClass(status)"
                             x-text="status">
                         </span>
