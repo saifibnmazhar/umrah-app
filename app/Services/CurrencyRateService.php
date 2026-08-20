@@ -40,11 +40,43 @@ class CurrencyRateService
         return CurrencyRate::orderBy('created_at')->first();
     }
 
+    /**
+     * Returns the rate value of the first (oldest) currency rate,
+     * or 0.0 when no rate has been set.
+     */
+    public function getFirstRateValue(): float
+    {
+        return (float) ($this->getFirstRate()?->rate ?? 0);
+    }
+
     public function getCurrentRateValue(): float
     {
         $rate = $this->getCurrentRate();
 
         return $rate ? (float) $rate->rate : 0;
+    }
+
+    /**
+     * Unified three-tier rate resolution:
+     *  1. Explicit CurrencyRate relation (e.g. booking.currencyRate)
+     *  2. Rate effective on the given date (e.g. booking.created_at)
+     *  3. First (oldest) rate on file
+     * Returns 0.0 if none found.
+     */
+    public function resolveRate(?CurrencyRate $explicitRate = null, $date = null): float
+    {
+        if ($explicitRate) {
+            return (float) $explicitRate->rate;
+        }
+
+        if ($date) {
+            $rate = $this->getRateForDate($date);
+            if ($rate) {
+                return (float) $rate->rate;
+            }
+        }
+
+        return $this->getFirstRateValue();
     }
 
     public function convertSarToBdt(float $sarAmount, $date = null): float
