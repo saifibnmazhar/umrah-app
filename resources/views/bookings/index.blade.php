@@ -1342,7 +1342,7 @@ if ($passenger->ticket_fare_inbound_id) {
                 </div>
                 <template x-for="ticket in passengersTicketData[{{ $loop->index }}]?.all_issued_tickets || []">
                     <template x-if="ticket.pnr && (ticket.status === 'issued' || ticket.status === 're-issued')">
-                        <div class="text-xs leading-tight text-slate-500" x-text="ticketInfoSrc(ticket).pnr + (ticket.issue_type ? ' (' + ticket.issue_type + ')' : '')"></div>
+                        <div class="text-xs leading-tight text-slate-500" x-text="ticketInfoSrc(ticket).pnr + (ticket.issue_type ? ' (' + (ticket.issue_type === 'pending_outbound' ? 'outbound' : ticket.issue_type) + ')' : '')"></div>
                     </template>
                 </template>
             </div>
