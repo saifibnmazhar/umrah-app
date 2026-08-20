@@ -11,6 +11,7 @@ use App\Enums\VisaStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Passenger extends Model
@@ -41,6 +42,7 @@ class Passenger extends Model
         'ticket_remarks',
         'ticket_fare_inbound_id',
         'ticket_fare_outbound_id',
+        'refund_payable',
     ];
 
     protected $casts = [
@@ -57,6 +59,7 @@ class Passenger extends Model
         'package_value' => 'decimal:6',
         'is_ticket_held' => 'boolean',
         'ticket_held_at' => 'datetime',
+        'refund_payable' => 'decimal:6',
     ];
 
     public function booking(): BelongsTo
@@ -107,6 +110,52 @@ class Passenger extends Model
     public function allIssuedTickets(): HasMany
     {
         return $this->hasMany(IssuedTicket::class);
+    }
+
+    public function refundedTickets(): HasManyThrough
+    {
+        return $this->hasManyThrough(
+            RefundedTicket::class,
+            IssuedTicket::class,
+            'passenger_id',
+            'issued_ticket_id',
+            'id',
+            'id'
+        );
+    }
+
+    public function reIssueSettlements(): HasMany
+    {
+        return $this->hasMany(Payment::class)
+            ->whereHas('vouchers.transactionType', function ($q) {
+                $q->where('name', 'Ticket Refund - Re-issue');
+            });
+    }
+
+    public function verifyRefundPayable(): float
+    {
+        $refunds = (float) $this->refundedTickets()->sum('refund_to_customer');
+        $settlements = (float) $this->reIssueSettlements()->sum('amount');
+
+        return max(0, $refunds - $settlements);
+    }
+
+    public function assertRefundPayableInSync(?float &$computed = null): bool
+    {
+        $computed = $this->verifyRefundPayable();
+
+        return abs($computed - (float) $this->refund_payable) < 0.000001;
+    }
+
+    public function increaseRefundPayable(float $amount): void
+    {
+        $this->increment('refund_payable', $amount);
+    }
+
+    public function decreaseRefundPayable(float $amount): void
+    {
+        $this->refund_payable = max(0, $this->refund_payable - $amount);
+        $this->save();
     }
 
     public function latestIssuedTicket(): HasOne
@@ -259,6 +308,30 @@ class Passenger extends Model
         return $this->ticketFare?->route?->flight_type?->value ?? '-';
     }
 
+    public function getAirlineDisplayAttribute(): string
+    {
+        if ($this->ticket_fare_inbound_id) {
+            $inbound = $this->ticketFareInbound?->airline?->name ?? '-';
+            $outbound = $this->ticketFareOutbound?->airline?->name ?? '-';
+
+            return "In: {$inbound}\nOut: {$outbound}";
+        }
+
+        return $this->ticketFare?->airline?->name ?? '-';
+    }
+
+    public function getClassDisplayAttribute(): string
+    {
+        if ($this->ticket_fare_inbound_id) {
+            $inbound = $this->ticketFareInbound?->airlineClass?->class?->name ?? '-';
+            $outbound = $this->ticketFareOutbound?->airlineClass?->class?->name ?? '-';
+
+            return "In: {$inbound}\nOut: {$outbound}";
+        }
+
+        return $this->ticketFare?->airlineClass?->class?->name ?? '-';
+    }
+
     public function getTripDisplayAttribute(): string
     {
         $routeType = $this->ticketFare?->route?->route_type?->value;
@@ -278,13 +351,16 @@ class Passenger extends Model
         $visaStatus = $this->visaSubmission?->status?->value;
         $ticketStatus = $this->ticket_status?->value;
         $issuedTicketStatus = $this->latestIssuedTicket?->status;
+        $pendingOutboundStatus = $this->allIssuedTickets
+            ->first(fn ($t) => $t->issue_type === 'pending_outbound')?->status;
 
         $isFingerprintApproved = $fpStatus === FingerprintStatus::APPROVED->value;
         $isVisaSubmitted = $visaStatus === VisaStatus::SUBMITTED->value;
         $isVisaIssued = $visaStatus === VisaStatus::ISSUED->value;
         $isVisaCancelled = $visaStatus === VisaStatus::CANCELLED->value;
         $isTicketIssued = in_array($ticketStatus, ['issued', 're-issued'])
-            || in_array($issuedTicketStatus, ['issued', 're-issued']);
+            || in_array($issuedTicketStatus, ['issued', 're-issued'])
+            || in_array($pendingOutboundStatus, ['issued', 're-issued']);
 
         if ($isTicketIssued && $isVisaIssued) {
             return 'Ticket Issued';

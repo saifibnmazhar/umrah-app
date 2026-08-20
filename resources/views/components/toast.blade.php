@@ -1,9 +1,10 @@
-<div x-data="{ 
-    show: false, 
-    message: '', 
-    type: 'info' 
-}" 
+<div x-data="{
+    show: false,
+    message: '',
+    type: 'info'
+}"
 x-init="$watch('$store.toast', (value) => { if(value) { message = value.message; type = value.type; show = true; setTimeout(() => show = false, 3000); $store.toast = null } })"
+x-cloak
 x-show="show"
 x-transition:enter="transition ease-out duration-300"
 x-transition:enter-start="translate-x-full opacity-0"

@@ -147,7 +147,7 @@
                 </div>
             </div>
 
-            <div x-show="passengers.length > 0" class="mb-6">
+            <div x-show="passengers.length > 0" x-cloak class="mb-6">
                 <h3 class="text-lg font-semibold text-slate-700 mb-4">Passengers</h3>
                 <div class="space-y-4">
                     <template x-for="(passenger, index) in passengers" :key="index">
@@ -259,8 +259,8 @@
                 </select>
             </div>
 
-            <div x-show="bookingData.discount_type === 'fixed'" class="mb-4">
-                <div x-show="$store.currency.mode === 'BDT'" class="mb-3">
+            <div x-show="bookingData.discount_type === 'fixed'" x-cloak class="mb-4">
+                <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mb-3">
                     <label class="block text-sm font-medium text-slate-600 mb-1">Fixed (BDT)</label>
                     <input type="number" x-model="bookingData.discountValueBdt"
                         min="0" step="0.01"
@@ -278,7 +278,7 @@
                 </div>
             </div>
 
-            <div x-show="bookingData.discount_type === 'percentage'" class="mb-4">
+            <div x-show="bookingData.discount_type === 'percentage'" x-cloak class="mb-4">
                 <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value (%)</label>
                 <input type="number" x-model="bookingData.discount_value" name="discount_value"
                     min="0" max="100" step="0.01"
@@ -402,9 +402,9 @@
                             <option value="referral">Referral</option>
                         </select>
                     </div>
-                    <div x-show="newCustomer.iqama_type !== 'none'&& newCustomer.iqama_type !== ''">
+                    <div x-show="newCustomer.iqama_type !== 'none'&& newCustomer.iqama_type !== ''" x-cloak>
                         <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No. (Self)</label>
-                        <input type="text" x-model="newCustomer.iqama_no" x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <input type="text" x-model="newCustomer.iqama_no" x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" x-cloak class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-600 mb-1">Customer Docs (Self)</label>

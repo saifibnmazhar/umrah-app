@@ -128,7 +128,7 @@ class BookingService
     {
         foreach ($booking->passengers as $passenger) {
             $passenger->package_value = $this->calculatePackageValue($passenger);
-            $passenger->saveQuietly();
+            $passenger->save();
         }
 
         $passengerTotal = (float) $booking->passengers->sum('package_value');
@@ -146,13 +146,16 @@ class BookingService
         $total = $passengerTotal + $fingerprintCharge;
 
         $booking->total_value = $total;
-        $booking->saveQuietly();
+        $booking->save();
 
         return $total;
     }
 
-    public function syncFinancials(Booking $booking): void
+    public function syncFinancials(Booking $booking, ?string $reason = null): void
     {
+        $oldTotal = (float) $booking->total_value;
+        $oldDiscount = (float) $booking->discount_amount;
+
         $this->recalculateBookingTotal($booking);
 
         $discountType = $booking->discount_type;
@@ -168,13 +171,20 @@ class BookingService
 
         if ($booking->discount_amount != $discountAmount) {
             $booking->discount_amount = $discountAmount;
-            $booking->saveQuietly();
+            $booking->save();
         }
 
         $invoice = $booking->invoice;
         if ($invoice) {
-            $discountedTotal = max(0, $booking->total_value - $discountAmount);
-            $this->invoiceService->updateTotals($invoice, $discountedTotal);
+            $oldDiscounted = max(0, $oldTotal - $oldDiscount);
+            $newDiscounted = max(0, $booking->total_value - $discountAmount);
+            $delta = $newDiscounted - $oldDiscounted;
+
+            $this->invoiceService->updateTotals(
+                $invoice,
+                (float) $invoice->total_amount + $delta,
+                $reason
+            );
         }
     }
 
