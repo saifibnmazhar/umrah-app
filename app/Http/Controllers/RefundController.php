@@ -54,7 +54,7 @@ class RefundController extends Controller
             'customer_refund' => 'required|numeric|min:0|max:'.$refundNetFare,
             'service_charge' => 'required|numeric',
             'remarks' => 'nullable|string',
-            'payment_by' => 'nullable|in:customer,airline,employee',
+            'payment_by' => 'nullable|in:customer,airline,employee,company',
         ]);
 
         if (! in_array($issuedTicket->status, ['issued', 're-issued'])) {
