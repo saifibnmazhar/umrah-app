@@ -36,7 +36,7 @@ class AppServiceProvider extends ServiceProvider
         // The app runs behind an ISPConfig reverse proxy that terminates TLS.
         // Without this, Laravel generates http:// URLs (the internal Docker
         // network scheme), causing CORS errors and broken redirects.
-        if ($this->app->environment('production')) {
+        if (self::shouldForceHttps($this->app->environment())) {
             URL::forceScheme('https');
         }
 
@@ -68,5 +68,18 @@ class AppServiceProvider extends ServiceProvider
         Blade::directive('endcurrency', function () {
             return '';
         });
+    }
+
+    /**
+     * Whether generated URLs should be forced to the https scheme.
+     *
+     * Both production and staging run behind the ISPConfig reverse proxy that
+     * terminates TLS, so without forcing https Laravel emits http:// URLs
+     * (the internal Docker network scheme). On https:// pages this triggers
+     * mixed-content blocks on fetch() calls and http:// redirects.
+     */
+    public static function shouldForceHttps(string $environment): bool
+    {
+        return in_array($environment, ['production', 'staging'], true);
     }
 }
