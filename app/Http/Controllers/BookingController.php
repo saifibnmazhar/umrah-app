@@ -2204,6 +2204,33 @@ class BookingController extends Controller
             'passengers.ticketFare.route.multiSegments.fromCity',
             'passengers.ticketFare.route.multiSegments.toCity',
             'passengers.ticketFare.baggageAllowances',
+            'passengers.allIssuedTickets.ticketFare.airline',
+            'passengers.allIssuedTickets.ticketFare.airlineClass.travelClass',
+            'passengers.allIssuedTickets.ticketFare.route',
+            'passengers.allIssuedTickets.ticketFare.route.fromCity',
+            'passengers.allIssuedTickets.ticketFare.route.toCity',
+            'passengers.allIssuedTickets.ticketFare.route.returnCity',
+            'passengers.allIssuedTickets.ticketFare.route.multiSegments.fromCity',
+            'passengers.allIssuedTickets.ticketFare.route.multiSegments.toCity',
+            'passengers.allIssuedTickets.ticketFare.baggageAllowances',
+            'passengers.latestIssuedTicket.ticketFare.airline',
+            'passengers.latestIssuedTicket.ticketFare.airlineClass.travelClass',
+            'passengers.latestIssuedTicket.ticketFare.route.fromCity',
+            'passengers.latestIssuedTicket.ticketFare.route.toCity',
+            'passengers.latestIssuedTicket.ticketFare.route.returnCity',
+            'passengers.latestIssuedTicket.ticketFare.route.multiSegments.fromCity',
+            'passengers.latestIssuedTicket.ticketFare.route.multiSegments.toCity',
+            'passengers.latestIssuedTicket.ticketFare.baggageAllowances',
+            'passengers.latestIssuedTicket.latestReIssuedTicket.ticketFare.airline',
+            'passengers.latestIssuedTicket.latestReIssuedTicket.ticketFare.airlineClass.travelClass',
+            'passengers.latestIssuedTicket.latestReIssuedTicket.ticketFare.route.fromCity',
+            'passengers.latestIssuedTicket.latestReIssuedTicket.ticketFare.route.toCity',
+            'passengers.latestIssuedTicket.latestReIssuedTicket.ticketFare.route.returnCity',
+            'passengers.latestIssuedTicket.latestReIssuedTicket.ticketFare.route.multiSegments.fromCity',
+            'passengers.latestIssuedTicket.latestReIssuedTicket.ticketFare.route.multiSegments.toCity',
+            'passengers.latestIssuedTicket.latestReIssuedTicket.ticketFare.baggageAllowances',
+            'passengers.latestIssuedTicket.latestReIssuedTicket.route.fromCity',
+            'passengers.latestIssuedTicket.latestReIssuedTicket.route.toCity',
             'payments',
             'invoice',
         ])->findOrFail($booking->id);
@@ -2269,7 +2296,7 @@ class BookingController extends Controller
         $displayDueAmount = $displayGrandTotal - $displayTotalPaid;
         $totalPaid = (float) ($booking->invoice->paid_amount ?? 0);
         $currentPaid = (float) ($booking->payments->last()?->amount ?? 0);
-        $dueAmount = $grandTotal - $totalPaid;
+        $dueAmount = (float) ($booking->invoice->total_amount ?? 0) - $totalPaid;
         $invoiceDate = $booking->payments->last()?->payment_date?->format('d M Y');
 
         $conditions = BookingCondition::where('is_active', true)

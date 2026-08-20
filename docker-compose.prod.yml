@@ -1,4 +1,4 @@
-name: ${COMPOSE_PROJECT_NAME}
+name: ${COMPOSE_PROJECT_NAME:-umrah-app}
 
 services:
   app:
@@ -16,8 +16,10 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
+        required: false
 
     labels:
       - com.centurylinklabs.watchtower=true
@@ -35,14 +37,12 @@ services:
       - backend
 
   db:
+    profiles: ["${DB_TYPE:-mysql}"]
     image: ${DB_IMAGE:-mysql:8.0}
-
     env_file:
       - .env.production
-
     volumes:
       - db_data:/var/lib/mysql
-
     healthcheck:
       test:
         [
@@ -53,9 +53,32 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
-
     restart: unless-stopped
+    networks:
+      - backend
 
+  db-postgres:
+    profiles: ["postgresql"]
+    image: ${DB_IMAGE:-postgres:16-alpine}
+    env_file:
+      - .env.production
+    environment:
+      - POSTGRES_DB=${DB_DATABASE:-binmishal_umrah_live}
+      - POSTGRES_USER=${DB_USERNAME:-binmishal_umrah}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-${MYSQL_PASSWORD:-}}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -p 5432 -U ${DB_USERNAME:-binmishal_umrah}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+    restart: unless-stopped
     networks:
       - backend
 
@@ -74,7 +97,10 @@ services:
 
     healthcheck:
       test:
-        ["CMD-SHELL", 'redis-cli --pass "$${REDIS_PASSWORD}" ping | grep PONG']
+        [
+          "CMD-SHELL",
+          'redis-cli --pass "$${REDIS_PASSWORD}" ping | grep PONG',
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -88,6 +114,7 @@ services:
 volumes:
   app_storage:
   db_data:
+  postgres_data:
 
 networks:
   backend:
