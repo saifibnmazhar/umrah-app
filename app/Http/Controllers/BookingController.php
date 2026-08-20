@@ -173,21 +173,8 @@ class BookingController extends Controller
             )
             ->when($request->filled('fingerprint_location'), fn ($q) => $q->where('fingerprint_location', $request->input('fingerprint_location'))
             )
-            ->when($request->filled('booking_status'), function ($q) use ($request) {
-                $status = $request->input('booking_status');
-                if ($status === 'active') {
-                    $q->where('is_cancelled', false);
-                } elseif ($status === 'cancellation_processing') {
-                    $q->where('is_cancelled', true)
-                        ->whereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancellation processing'));
-                } elseif ($status === 'cancelled') {
-                    $q->where('is_cancelled', true)
-                        ->where(function ($q) {
-                            $q->whereDoesntHave('cancelledBooking')
-                                ->orWhereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancelled'));
-                        });
-                }
-            })
+            ->when($request->filled('booking_status'), fn ($q) => $this->scopeBookingStatus($q, $request->input('booking_status'))
+            )
             ->orderBy('created_at', 'desc');
 
         $totalBookingCount = (clone $bookingQuery)->count();
@@ -207,19 +194,8 @@ class BookingController extends Controller
             })
             )
             )
-            ->when($request->filled('booking_status'), function ($q) use ($request) {
-                $status = $request->input('booking_status');
-                if ($status === 'active') {
-                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', false));
-                } elseif ($status === 'cancellation_processing') {
-                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', true)
-                        ->whereHas('cancelledBooking', fn ($cq) => $cq->where('status', 'cancellation processing')));
-                } elseif ($status === 'cancelled') {
-                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', true)
-                        ->where(fn ($bw) => $bw->whereDoesntHave('cancelledBooking')
-                            ->orWhereHas('cancelledBooking', fn ($cq) => $cq->where('status', 'cancelled'))));
-                }
-            })
+            ->when($request->filled('booking_status'), fn ($q) => $this->scopeBookingStatusViaBooking($q, $request->input('booking_status'))
+            )
             ->when($request->filled('fingerprint_status'), fn ($q) => $q->whereHas('fingerprintDetail', fn ($q) => $q->where('status', $request->input('fingerprint_status')))
             )
             ->when($request->filled('visa_status'), fn ($q) => $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status')))
