@@ -2,19 +2,14 @@
 
 namespace App\Livewire\Package;
 
+use App\Livewire\BaseListTable;
 use App\Models\Package;
 use Illuminate\Support\Collection;
 use Livewire\Attributes\On;
-use Livewire\Component;
-use Livewire\WithPagination;
 
-class PackageListTable extends Component
+class PackageListTable extends BaseListTable
 {
-    use WithPagination;
-
     public string $statusFilter = '';
-
-    public string $search = '';
 
     public ?Collection $ticketFares = null;
 

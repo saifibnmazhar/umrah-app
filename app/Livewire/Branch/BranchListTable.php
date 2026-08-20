@@ -2,17 +2,12 @@
 
 namespace App\Livewire\Branch;
 
+use App\Livewire\BaseListTable;
 use App\Models\Branch;
 use Livewire\Attributes\On;
-use Livewire\Component;
-use Livewire\WithPagination;
 
-class BranchListTable extends Component
+class BranchListTable extends BaseListTable
 {
-    use WithPagination;
-
-    public string $search = '';
-
     #[On('refresh')]
     public function refresh(): void
     {
@@ -28,17 +23,8 @@ class BranchListTable extends Component
 
     public function getBranchesProperty()
     {
-        return Branch::when($this->search, function ($query) {
-            $query->where(function ($q) {
-                $q->where('name', 'like', '%'.$this->search.'%')
-                    ->orWhere('branch_code', 'like', '%'.$this->search.'%')
-                    ->orWhere('location', 'like', '%'.$this->search.'%');
-            });
-        })->orderBy('name')->paginate(10);
-    }
-
-    public function resetSearch()
-    {
-        $this->search = '';
+        return $this->applySearch(Branch::query(), ['name', 'branch_code', 'location'])
+            ->orderBy('name')
+            ->paginate(10);
     }
 }

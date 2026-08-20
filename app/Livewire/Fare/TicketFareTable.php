@@ -2,17 +2,12 @@
 
 namespace App\Livewire\Fare;
 
+use App\Livewire\BaseListTable;
 use App\Models\TicketFare;
 use Illuminate\Support\Collection;
-use Livewire\Component;
-use Livewire\WithPagination;
 
-class TicketFareTable extends Component
+class TicketFareTable extends BaseListTable
 {
-    use WithPagination;
-
-    public string $search = '';
-
     public string $airlineFilter = '';
 
     public string $ticketTypeFilter = '';

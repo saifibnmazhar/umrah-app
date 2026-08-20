@@ -2,15 +2,12 @@
 
 namespace App\Livewire\Settings;
 
+use App\Livewire\BaseListTable;
 use App\Models\District;
 use App\Models\FingerprintCharge;
-use Livewire\Component;
-use Livewire\WithPagination;
 
-class FingerprintChargeTable extends Component
+class FingerprintChargeTable extends BaseListTable
 {
-    use WithPagination;
-
     public string $divisionFilter = '';
 
     public function render()

@@ -2,17 +2,12 @@
 
 namespace App\Livewire\User;
 
+use App\Livewire\BaseListTable;
 use App\Models\User;
 use Livewire\Attributes\Locked;
-use Livewire\Component;
-use Livewire\WithPagination;
 
-class UserListTable extends Component
+class UserListTable extends BaseListTable
 {
-    use WithPagination;
-
-    public string $search = '';
-
     #[Locked]
     public bool $isSuperAdmin = false;
 
@@ -35,10 +30,5 @@ class UserListTable extends Component
             })
             ->orderBy('id')
             ->paginate(10);
-    }
-
-    public function resetSearch()
-    {
-        $this->search = '';
     }
 }

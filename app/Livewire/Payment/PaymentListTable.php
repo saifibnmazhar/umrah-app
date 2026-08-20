@@ -2,15 +2,12 @@
 
 namespace App\Livewire\Payment;
 
+use App\Livewire\BaseListTable;
 use App\Models\Payment;
 use App\Models\TransactionType;
-use Livewire\Component;
-use Livewire\WithPagination;
 
-class PaymentListTable extends Component
+class PaymentListTable extends BaseListTable
 {
-    use WithPagination;
-
     public string $transactionTypeFilter = '';
 
     public function render()
