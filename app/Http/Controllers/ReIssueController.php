@@ -244,17 +244,17 @@ class ReIssueController extends Controller
             $q->where('booking_id', $booking->id);
         })
             ->with([
-            'ticketAgent',
-            'ticketFare.airline',
-            'ticketFare.airlineClass.class',
-            'ticketFare.route.fromCity',
-            'ticketFare.route.toCity',
-            'ticketFare.route.returnCity',
-            'ticketFare.route.multiSegments.fromCity',
-            'ticketFare.route.multiSegments.toCity',
-            'reason',
-            'issuedTicket.passenger',
-        ])
+                'ticketAgent',
+                'ticketFare.airline',
+                'ticketFare.airlineClass.class',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
+                'ticketFare.route.returnCity',
+                'ticketFare.route.multiSegments.fromCity',
+                'ticketFare.route.multiSegments.toCity',
+                'reason',
+                'issuedTicket.passenger',
+            ])
             ->orderBy('re_issue_date', 'asc')
             ->get();
 

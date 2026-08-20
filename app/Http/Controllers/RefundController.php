@@ -115,12 +115,12 @@ class RefundController extends Controller
     public function byBooking(Booking $booking)
     {
         $refundedTickets = RefundedTicket::whereHas('issuedTicket', function ($q) use ($booking) {
-                $q->where('booking_id', $booking->id);
-            })
+            $q->where('booking_id', $booking->id);
+        })
             ->with([
-                'ticketAgent',
-                'issuedTicket.passenger',
-            ])
+            'ticketAgent',
+            'issuedTicket.passenger',
+        ])
             ->orderBy('refund_date', 'asc')
             ->get();
 
