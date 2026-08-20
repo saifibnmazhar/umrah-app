@@ -9,9 +9,11 @@ return new class extends Migration
     public function up(): void
     {
         Schema::table('re_issue_refund_reasons', function (Blueprint $table) {
-            $table->enum('default_payment_by', ['customer', 'airline', 'employee'])
-                ->nullable()
-                ->after('name');
+            if (! Schema::hasColumn('re_issue_refund_reasons', 'default_payment_by')) {
+                $table->enum('default_payment_by', ['customer', 'airline', 'employee'])
+                    ->nullable()
+                    ->after('name');
+            }
         });
     }
 
