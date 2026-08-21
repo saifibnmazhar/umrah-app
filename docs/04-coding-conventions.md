@@ -153,7 +153,11 @@ if ($booking->discount_type === DiscountType::FIXED_AMOUNT) { ... }
 
 ### Service Pattern
 
-Business logic lives in service classes, injected via constructor:
+### Service Pattern
+
+Business logic lives in service classes, injected via constructor. The `app/Support/`
+directory also holds non-service helpers like `DateFormatter` (per-user timezone
+display) and `DiagnosticLogger` (file upload diagnostics):
 
 ```php
 class BookingController extends Controller
@@ -170,6 +174,35 @@ class BookingController extends Controller
     }
 }
 ```
+
+### Concerns (Reusable Traits)
+
+Shared cross-cutting logic lives in `app/Concerns/`, used by multiple controllers:
+
+- **`HandlesBranchAccess`** — role checks (`isAdmin`, `isBranchScoped`), branch-scoped
+  access enforcement (`ensureBranchAccess`, `ensurePassengerBranchAccess`,
+  `ensureCancellationAccess`), edit window (12h), and permission checks
+  (`canEditVisa`, `canEditFingerprint`, `canEditTickets`, `canFilterByAgent`).
+- **`FiltersBookingStatus`** — reusable `bookingStatus` / `bookingStatusViaBooking`
+  query scopes for active / cancellation_processing / cancelled states.
+
+### Query Repository Pattern
+
+Complex or repeated database queries are encapsulated in **query repository classes**
+(`app/Queries/`). Controllers delegate to these classes instead of building inline
+query-builder chains. This eliminates duplication between initial page renders and
+Livewire AJAX data endpoints:
+
+| Query class | For |
+|-------------|-----|
+| `BookingIndexQuery` | Booking index page + Livewire BookingIndexTable data endpoint |
+| `PassengerIndexQuery` | Passenger index Livewire table data endpoint |
+| `FingerprintReportQuery` | Fingerprint report filtering + eager loading |
+| `TicketAgentReportQuery` | Ticket agent report data (payable, paid, refunds, reissues) |
+| `VisaAgentReportQuery` | Visa agent report data (submitted, issued, cancelled, payments) |
+
+Constructor takes a `Request`, applies filters, and exposes `getQuery()`,
+`paginate()`, and `getSummary()` methods.
 
 ### Form Request Validation
 

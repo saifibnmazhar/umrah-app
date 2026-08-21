@@ -197,6 +197,12 @@ Validation `max:5120` means files must be ≤ 5120 KB. To test rejection, create
 - **`FlightDateGapSeedTest`** — Tests seed data creates flight date gap options
   (7, 10, 14, 30 days) for passenger creation forms.
 - **`BookingFormSubmissionWorkflowTest`** — Full booking form submission workflow tests.
+- **`VisaAgentReportQueryTest`** — Unit tests for the `VisaAgentReportQuery` query
+  repository (6 tests covering agent row building, submitted/issued/cancelled counts,
+  payment sums, and empty results).
+- **`TicketAgentReportQueryTest`** — Unit tests for the `TicketAgentReportQuery`
+  query repository (5 tests covering payable/paid aggregation, refund/reissue counts,
+  and daily ticket/payment summaries).
 
 ## Creating New Tests
 

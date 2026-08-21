@@ -15,7 +15,7 @@ class FingerprintChargeList extends BaseListTable
 
     public ?string $divisionFilter = null;
 
-    public ?string $search = null;
+    public string $search = '';
 
     public int $perPage = 10;
 
@@ -43,7 +43,7 @@ class FingerprintChargeList extends BaseListTable
     public function clearFilter()
     {
         $this->divisionFilter = null;
-        $this->search = null;
+        $this->search = '';
         $this->resetPage();
     }
 

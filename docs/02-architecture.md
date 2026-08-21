@@ -40,6 +40,7 @@ Branch → Booking → Passenger(s) → [Visa | Ticket | Fingerprint] → Invoic
 ```
 app/
 ├── Console/              # Artisan commands (data migration, backfill, sync)
+├── Concerns/             # Reusable traits (HandlesBranchAccess, FiltersBookingStatus)
 ├── Enums/                # 18 PHP backed enums (DiscountType, Gender, etc.)
 ├── Exceptions/           # Custom exception handlers
 ├── Http/
@@ -47,12 +48,13 @@ app/
 │   ├── Middleware/       # CheckRole (RBAC), CheckActive (login state)
 │   ├── Requests/         # Form Request validation classes
 │   └── ...
+├── Livewire/             # Livewire components (dashboard, list tables)
 ├── Models/               # ~50 Eloquent models
 ├── Observers/            # 5 model observers (audit logging)
 ├── Providers/            # AppServiceProvider (observer registration, Blade directives)
-├── Queries/              # Custom query builders
+├── Queries/              # Query repository classes (BookingIndexQuery, etc.)
 ├── Services/             # 7 service classes (business logic)
-├── Support/              # DiagnosticLogger (file upload diagnostics)
+├── Support/              # DateFormatter, DiagnosticLogger
 └── Traits/               # ConvertsDocumentsToPdf (FPDF/FPDI)
 
 database/
@@ -105,6 +107,52 @@ Services:
 - `CancellationService` — booking/visa cancellation logic
 - `CostTrackingService` — cost/labor tracking
 - `CurrencyRateService` — currency rate management
+- `DateFormatter` — per-user timezone display (in `app/Support/`)
+
+### Query Repositories
+
+Complex or repeated database queries are encapsulated in **query repository
+classes** (`app/Queries/`). Controllers (including Livewire data endpoints)
+delegate to these classes instead of building inline query-builder chains.
+
+| Query class | For |
+|-------------|-----|
+| `BookingIndexQuery` | Booking index page + Livewire BookingIndexTable data endpoint |
+| `PassengerIndexQuery` | Passenger index Livewire table data endpoint |
+| `FingerprintReportQuery` | Fingerprint report filtering + eager loading |
+| `TicketAgentReportQuery` | Ticket agent report data (payable, paid, refunds, reissues) |
+| `VisaAgentReportQuery` | Visa agent report data (submitted, issued, cancelled, payments) |
+
+Constructor takes a `Request`, applies filters (search, date ranges, status,
+branch scoping), and exposes `getQuery()`, `paginate()`, and `getSummary()`.
+
+### Concerns (Reusable Traits)
+
+Shared cross-cutting logic lives in `app/Concerns/`, used by multiple controllers:
+
+| Trait | Purpose |
+|-------|---------|
+| `HandlesBranchAccess` | Role checks (isAdmin, isBranchScoped), branch-scoped access enforcement (ensureBranchAccess, ensurePassengerBranchAccess), edit window (12h), payment/agent permission checks |
+| `FiltersBookingStatus` | Reusable `bookingStatus` / `bookingStatusViaBooking` query scopes for active/cancellation_processing/cancelled states |
+
+### Livewire List Tables (BaseListTable)
+
+Reactive list/table views use Livewire. `app/Livewire/BaseListTable.php` is an
+abstract base class providing search reset and a shared `applySearch()` helper.
+Concrete list tables extend it:
+
+| Component | For |
+|-----------|-----|
+| `BookingIndexTable` | Booking index Livewire table |
+| `PassengerIndexTable` | Passenger index Livewire table |
+| `PackageListTable` | Package list |
+| `BranchListTable` | Branch list |
+| `PaymentListTable` | Payment list |
+| `UserListTable` | User list |
+| `TicketFareTable` | Ticket fare list |
+| `TicketFareIndexTable` | Ticket fare index |
+| `FingerprintChargeTable` | Fingerprint charge list |
+| `FingerprintChargeList` | Fingerprint charge list (report) |
 
 ### Model Observers (Audit Logging)
 
@@ -195,9 +243,10 @@ See [Domain Reference](08-domain-reference.md) for the full role matrix.
 2. **Middleware** (`auth`, `role:...`, `active`) applied
 3. **Controller method** receives request, calls Form Request for validation
 4. **Service layer** (if needed) handles business logic
-5. **Model** interacts with database (Eloquent)
-6. **Observers** fire on model events (creating, updating, etc.)
+5. **Query repository** (`app/Queries/`) or **model** interacts with database
+6. **Livewire** components render reactive tables/views (where applicable)
 7. **Blade view** rendered and returned to user
+8. **Observers** fire on model events (creating, updating, etc.)
 
 ---
 

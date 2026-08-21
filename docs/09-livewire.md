@@ -171,12 +171,54 @@ Never place `@livewireScripts` inside a section — it must be in the main layou
 
 ## Pitfalls
 
-- **Component namespace**: `App\Livewire`, not `App\Http\Livewire`. Components
+- **Component namespace**: `App\\Livewire`, not `App\\Http\\Livewire`. Components
   in subdirectories use dot notation (e.g., `dashboard.dashboard-summary`).
 - **Stale view cache**: Run `php artisan view:clear` after moving components.
 - **Public property serialization**: Eloquent collections in public properties
   are serialized on every request. Use `mount()` for read-only data fetched
   once, or use `protected` with a getter.
 - **`@entangle`**: For Alpine ↔ Livewire two-way binding. Use sparingly.
-- **`protected $listeners`**: In Livewire 3, use the `#[On('event-name')]` 
+- **`protected $listeners`**: In Livewire 3, use the `#[On('event-name')]`
   attribute instead.
+
+## List Tables & BaseListTable
+
+List/table Livewire components extend the abstract `BaseListTable` base class
+(`app/Livewire/BaseListTable.php`), which provides:
+
+- **`WithPagination`** trait (page, perPage, resetPage)
+- **`resetSearch()`** — clears the search term and resets to page 1
+- **`applySearch($query, $columns)`** — fluent search helper that supports both
+  simple column names (LIKE `%search%`) and custom `[operator, value]` pairs
+
+Concrete examples: `BookingIndexTable`, `PassengerIndexTable`,
+`PackageListTable`, `BranchListTable`, `TicketFareTable`, etc.
+
+## Query Repository Integration
+
+List tables delegate data fetching to **query repository classes** in
+`app/Queries/`. The component constructor receives a `Request` (injected by
+Livewire) and passes it to the query class. This keeps query logic in one place
+and shares it between the initial page render (controller) and AJAX data
+endpoints (Livewire `data()` method):
+
+```php
+// Controller (initial render)
+public function index(BookingIndexQuery $query)
+{
+    $bookings = $query->paginate();
+    // ...
+}
+
+// Livewire component (AJAX data endpoint)
+public function render(BookingIndexQuery $query)
+{
+    return view('livewire.booking-index-table', [
+        'bookings' => $query->paginate(),
+    ]);
+}
+```
+
+Query classes take `Request` in the constructor, apply filters (search, date
+ranges, branch scoping), and expose `paginate()`, `getQuery()`, and
+`getSummary()`.
