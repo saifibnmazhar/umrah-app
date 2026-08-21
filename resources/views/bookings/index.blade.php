@@ -1908,6 +1908,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                     <option value="customer">Customer</option>
                                     <option value="airline">Airline</option>
                                     <option value="employee">Employee</option>
+                                    <option value="company">Company</option>
                                 </select>
                         </div>
                         <div class="md:col-span-2">
@@ -2505,6 +2506,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <option value="customer">Customer</option>
                                 <option value="airline">Airline</option>
                                 <option value="employee">Employee</option>
+                                <option value="company">Company</option>
                             </select>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer'">
