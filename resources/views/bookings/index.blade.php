@@ -681,6 +681,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin'])->isNotEmpty();
             $canViewActionColumn = true;
             $canViewPassengerIndex = true;
+            $canCancelPassenger = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
+            $canConfirmCancellation = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || auth()->user()->hasRole('Branch Manager') || auth()->user()->hasRole('Fingerprint Admin');
         @endphp
         <h1 class="text-2xl font-bold text-slate-800">Booking</h1>
         @if($canCreateBooking)
@@ -1126,10 +1128,21 @@ if ($passenger->ticket_fare_inbound_id) {
         <select
             class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
             x-bind:value="getComputedStatusId({{ $loop->index }})"
-            x-on:change="updatePassengerStatus({{ $passenger->id }}, $event.target.value)">
+            x-on:change="updatePassengerStatus({{ $passenger->id }}, $event.target.value, this)">
             <option value="">None</option>
             @foreach($passengerStatuses as $status)
-                <option value="{{ $status->id }}" @if(in_array($status->name, ['Processing', 'Fingerprint Done', 'Visa Submitted', 'Visa Issued', 'Ticket Issued', 'Ticket Issued before Visa'])) disabled @endif>{{ $status->name }}</option>
+                @php
+                    $isCancelStatus = $status->name === 'Cancel';
+                    $isLocked = $passenger->cancelled_passengers()->whereNull('reverted_at')->exists();
+                @endphp
+                @if($isCancelStatus && !$canCancelPassenger)
+                    @continue
+                @endif
+                <option
+                    value="{{ $status->id }}"
+                    @if(in_array($status->name, ['Processing', 'Fingerprint Done', 'Visa Submitted', 'Visa Issued', 'Ticket Issued', 'Ticket Issued before Visa'])) disabled @endif
+                    @if($isCancelStatus && $isLocked) disabled title="Active cancellation in progress" @endif
+                >{{ $status->name }}</option>
             @endforeach
         </select>
         @else
@@ -1373,7 +1386,16 @@ if ($passenger->ticket_fare_inbound_id) {
                 $displayStatus = 'Pending Pax Completion';
             }
         @endphp
-        @if(in_array($passenger->status?->name, ['Hold', 'Cancel']) && !$passenger->booking?->is_cancelled)
+        @php
+            $activeCancellation = $passenger->cancelled_passengers()->whereNull('reverted_at')->first();
+            $isConfirmedCancelled = $activeCancellation && $activeCancellation->status === 'cancelled' && $activeCancellation->confirmed_at;
+            $isProcessingCancellation = $activeCancellation && $activeCancellation->status === 'cancellation processing' && !$activeCancellation->confirmed_at;
+        @endphp
+        @if($isConfirmedCancelled)
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>
+        @elseif($isProcessingCancellation)
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Cancellation Processing</span>
+        @elseif(in_array($passenger->status?->name, ['Hold', 'Cancel']) && !$passenger->booking?->is_cancelled)
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $passenger->status?->name === 'Cancel' ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700' }}">{{ $passenger->status?->name }}</span>
         @endif
         @if($displayStatus)
@@ -6605,7 +6627,14 @@ function bookingIndexApp() {
     }
 }
 
-function updatePassengerStatus(passengerId, statusId) {
+function updatePassengerStatus(passengerId, statusId, selectEl) {
+    const cancelStatusId = @json($passengerStatuses->firstWhere('name', 'Cancel')->id ?? null);
+    if (cancelStatusId && statusId == cancelStatusId) {
+        openCancelPassengerModal(passengerId);
+        if (selectEl) selectEl.value = '';
+        return;
+    }
+
     fetch(`/passengers/${passengerId}/status`, {
         method: 'PATCH',
         headers: {
@@ -6619,13 +6648,58 @@ function updatePassengerStatus(passengerId, statusId) {
         if (data.success) {
             console.log('Status updated successfully');
         } else {
-            alert('Failed to update status');
+            alert(data.message || 'Failed to update status');
         }
     })
     .catch(error => {
         console.error('Error:', error);
         alert('Failed to update status');
     });
+}
+
+function openCancelPassengerModal(passengerId) {
+    fetch(`/passengers/${passengerId}/cancellation/preview`, {
+        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+    })
+    .then(r => r.json())
+    .then(data => {
+        if (data.error) { alert(data.error); return; }
+        document.getElementById('cancelPassengerData').value = JSON.stringify(data);
+        document.getElementById('cancelPassengerName').textContent = data.passenger.full_name;
+        document.getElementById('cancelBookingRef').textContent = data.booking.booking_ref;
+        document.getElementById('cancelPackageValue').textContent = data.package_value.toFixed(2);
+        document.getElementById('cancelVisaCost').textContent = data.visa_cost.toFixed(2);
+        document.getElementById('cancelTicketCost').textContent = data.ticket_cost.toFixed(2);
+        document.getElementById('cancelTotalDeduction').textContent = data.total_deduction.toFixed(2);
+        document.getElementById('cancelRefundable').textContent = data.refundable.toFixed(2);
+        document.getElementById('cancelWarning').textContent = data.warning;
+        document.getElementById('cancelPassengerModal').classList.remove('hidden');
+    })
+    .catch(err => alert('Failed to load cancellation preview'));
+}
+
+function closeModal(id) {
+    document.getElementById(id).classList.add('hidden');
+}
+
+function submitCancelPassenger() {
+    const data = JSON.parse(document.getElementById('cancelPassengerData').value);
+    fetch(`/passengers/${data.passenger.id}/cancellation/initiate`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': '{{ csrf_token() }}'
+        }
+    })
+    .then(r => r.json())
+    .then(result => {
+        if (result.success) {
+            window.location.reload();
+        } else {
+            alert(result.error || 'Failed to initiate cancellation');
+        }
+    })
+    .catch(err => alert('Failed to initiate cancellation'));
 }
 
 function updateFingerprintLocation(bookingId, location, select) {
@@ -6671,5 +6745,31 @@ window.addEventListener('pageshow', function(event) {
         location.reload();
     }
 });
+
+{{-- Cancel Passenger Modal --}}
+<div id="cancelPassengerModal" class="hidden fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+        <h3 class="text-lg font-semibold text-slate-800 mb-1">Cancel Passenger</h3>
+        <p class="text-sm text-slate-500 mb-4">This action initiates cancellation for the selected passenger only.</p>
+
+        <div class="space-y-2 text-sm">
+            <div class="flex justify-between"><span class="text-slate-500">Passenger</span><span id="cancelPassengerName" class="font-medium text-slate-700"></span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Booking Ref</span><span id="cancelBookingRef" class="font-medium text-slate-700"></span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Package Value</span><span id="cancelPackageValue" class="font-medium text-slate-700"></span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Visa Cost</span><span id="cancelVisaCost" class="font-medium text-red-600"></span></div>
+            <div class="flex justify-between"><span class="text-slate-500">Ticket Cost</span><span id="cancelTicketCost" class="font-medium text-red-600"></span></div>
+            <div class="border-t border-slate-200 pt-2 flex justify-between"><span class="text-slate-700 font-medium">Total Deduction</span><span id="cancelTotalDeduction" class="font-semibold text-red-600"></span></div>
+            <div class="flex justify-between"><span class="text-slate-700 font-medium">Refundable Amount</span><span id="cancelRefundable" class="font-semibold text-green-600"></span></div>
+        </div>
+
+        <div id="cancelWarning" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-700"></div>
+
+        <div class="flex justify-end gap-3 mt-6">
+            <button onclick="closeModal('cancelPassengerModal')" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition">Close</button>
+            <button onclick="submitCancelPassenger()" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition">Cancel Passenger</button>
+        </div>
+    </div>
+</div>
+<input type="hidden" id="cancelPassengerData" value="">
 </script>
 @endsection

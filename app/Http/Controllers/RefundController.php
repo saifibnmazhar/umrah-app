@@ -118,9 +118,9 @@ class RefundController extends Controller
             $q->where('booking_id', $booking->id);
         })
             ->with([
-            'ticketAgent',
-            'issuedTicket.passenger',
-        ])
+                'ticketAgent',
+                'issuedTicket.passenger',
+            ])
             ->orderBy('refund_date', 'asc')
             ->get();
 

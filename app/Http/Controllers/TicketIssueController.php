@@ -17,8 +17,8 @@ class TicketIssueController extends Controller
             abort(403, 'Passenger does not belong to this booking.');
         }
 
-        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
-            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a passenger on Hold or Cancel'], 422);
+        if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
 
         $validated = $request->validate([
@@ -163,8 +163,8 @@ class TicketIssueController extends Controller
             abort(403, 'Passenger does not belong to this booking.');
         }
 
-        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
-            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a passenger on Hold or Cancel'], 422);
+        if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
 
         $validated = $request->validate([
@@ -324,8 +324,8 @@ class TicketIssueController extends Controller
 
     public function createPendingOutbound(Request $request, Passenger $passenger)
     {
-        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
-            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a passenger on Hold or Cancel'], 422);
+        if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
 
         if (! $passenger->ticket_fare_outbound_id) {
@@ -399,8 +399,8 @@ class TicketIssueController extends Controller
 
     public function confirmGroup(Request $request, Passenger $passenger)
     {
-        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
-            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a passenger on Hold or Cancel'], 422);
+        if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
 
         $validated = $request->validate([

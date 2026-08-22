@@ -43,6 +43,8 @@ class Passenger extends Model
         'ticket_fare_inbound_id',
         'ticket_fare_outbound_id',
         'refund_payable',
+        'is_cancelled',
+        'cancelled_at',
     ];
 
     protected $casts = [
@@ -60,6 +62,8 @@ class Passenger extends Model
         'is_ticket_held' => 'boolean',
         'ticket_held_at' => 'datetime',
         'refund_payable' => 'decimal:6',
+        'is_cancelled' => 'boolean',
+        'cancelled_at' => 'datetime',
     ];
 
     public function booking(): BelongsTo
@@ -122,6 +126,11 @@ class Passenger extends Model
             'id',
             'id'
         );
+    }
+
+    public function cancelledPassengers(): HasMany
+    {
+        return $this->hasMany(CancelledPassenger::class);
     }
 
     public function reIssueSettlements(): HasMany

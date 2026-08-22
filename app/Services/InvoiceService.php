@@ -27,7 +27,12 @@ class InvoiceService
 
         $invoice = $invoice->fresh();
 
-        $invoice->paid_amount = $invoice->payments()->sum('amount');
+        $invoice->paid_amount = $invoice->payments()
+            ->whereNull('cancelled_booking_id')
+            ->whereNull('cancelled_passenger_id')
+            ->whereNull('refunded_ticket_id')
+            ->whereNull('re_issued_ticket_id')
+            ->sum('amount');
         $invoice->balance = $invoice->total_amount - $invoice->paid_amount;
 
         \Log::info('InvoiceService: Paid amount calculated: '.$invoice->paid_amount.', Balance: '.$invoice->balance);
