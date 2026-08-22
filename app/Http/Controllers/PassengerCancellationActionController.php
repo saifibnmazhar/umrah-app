@@ -45,10 +45,10 @@ class PassengerCancellationActionController extends Controller
             $service = app(PassengerCancellationService::class);
             $service->revertCancellation($cancelledPassenger);
 
-            return redirect()->route('pending-refunds.passengers')
+            return redirect()->route('pending-refunds.index', ['tab' => 'passengers'])
                 ->with('success', 'Cancellation reverted successfully.');
         } catch (\Exception $e) {
-            return redirect()->route('pending-refunds.passengers')
+            return redirect()->route('pending-refunds.index', ['tab' => 'passengers'])
                 ->with('error', $e->getMessage());
         }
     }
@@ -67,30 +67,12 @@ class PassengerCancellationActionController extends Controller
             $service = app(PassengerCancellationService::class);
             $service->confirmCancellation($cancelledPassenger, $validated);
 
-            return redirect()->route('pending-refunds.passengers')
+            return redirect()->route('pending-refunds.index', ['tab' => 'passengers'])
                 ->with('success', 'Passenger cancellation confirmed successfully.');
         } catch (\Exception $e) {
-            return redirect()->route('pending-refunds.passengers')
+            return redirect()->route('pending-refunds.index', ['tab' => 'passengers'])
                 ->with('error', $e->getMessage());
         }
-    }
-
-    public function updateRefundAmount(Request $request, CancelledPassenger $cancelledPassenger)
-    {
-        $this->ensureBranchAccess($cancelledPassenger);
-
-        $validated = $request->validate([
-            'refund_amount' => 'required|numeric|min:0',
-        ]);
-
-        $cancelledPassenger->update([
-            'refund_amount' => $validated['refund_amount'],
-        ]);
-
-        return response()->json([
-            'success' => true,
-            'refund_amount' => $cancelledPassenger->refund_amount,
-        ]);
     }
 
     private function ensureBranchAccess(CancelledPassenger $cancelledPassenger): void

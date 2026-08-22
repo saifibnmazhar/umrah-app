@@ -1133,7 +1133,7 @@ if ($passenger->ticket_fare_inbound_id) {
             @foreach($passengerStatuses as $status)
                 @php
                     $isCancelStatus = $status->name === 'Cancel';
-                    $isLocked = $passenger->cancelled_passengers()->whereNull('reverted_at')->exists();
+                    $isLocked = $passenger->cancelledPassengers()->exists();
                 @endphp
                 @if($isCancelStatus && !$canCancelPassenger)
                     @continue
@@ -1387,7 +1387,7 @@ if ($passenger->ticket_fare_inbound_id) {
             }
         @endphp
         @php
-            $activeCancellation = $passenger->cancelled_passengers()->whereNull('reverted_at')->first();
+            $activeCancellation = $passenger->cancelledPassengers()->first();
             $isConfirmedCancelled = $activeCancellation && $activeCancellation->status === 'cancelled' && $activeCancellation->confirmed_at;
             $isProcessingCancellation = $activeCancellation && $activeCancellation->status === 'cancellation processing' && !$activeCancellation->confirmed_at;
         @endphp
@@ -6601,6 +6601,76 @@ function bookingIndexApp() {
             }
         },
 
+        // ── Passenger Cancellation State ──
+        cancelPassengerModalVisible: false,
+        cancelPassengerId: null,
+        cancelPassengerData: {},
+        cancelPassengerBranchId: '',
+        cancelPassengerServiceCharge: 0,
+        cancelPassengerServiceChargeBdt: '',
+        cancelPassengerLoading: false,
+
+        get cancelPassengerRefundableAmount() {
+            const pkg = this.cancelPassengerData.package_value || 0;
+            const costs = (this.cancelPassengerData.visa_cost?.total || 0)
+                        + (this.cancelPassengerData.ticket_cost?.total || 0);
+            return Math.max(0, pkg - costs - (this.cancelPassengerServiceCharge || 0) + (this.cancelPassengerData.refund_payable || 0));
+        },
+
+        async openCancelPassengerModal(passengerId) {
+            this.cancelPassengerId = passengerId;
+            this.cancelPassengerBranchId = '';
+            this.cancelPassengerServiceCharge = 0;
+            this.cancelPassengerServiceChargeBdt = '';
+            this.cancelPassengerLoading = false;
+            try {
+                const res = await fetch(`/passengers/${passengerId}/cancellation/preview`, {
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                });
+                const data = await res.json();
+                if (data.error) { alert(data.error); return; }
+                this.cancelPassengerData = data;
+                this.cancelPassengerModalVisible = true;
+            } catch (e) {
+                alert('Failed to load cancellation preview.');
+            }
+        },
+
+        closeCancelPassengerModal() {
+            this.cancelPassengerModalVisible = false;
+            this.cancelPassengerId = null;
+        },
+
+        async submitCancelPassenger() {
+            if (!this.cancelPassengerBranchId || this.cancelPassengerLoading) return;
+            this.cancelPassengerLoading = true;
+            try {
+                const res = await fetch(`/passengers/${this.cancelPassengerId}/cancellation/initiate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        cancellation_branch_id: this.cancelPassengerBranchId,
+                        service_charge_deduction: this.cancelPassengerServiceCharge || null,
+                    }),
+                });
+                const result = await res.json();
+                if (result.success) {
+                    this.cancelPassengerModalVisible = false;
+                    window.location.reload();
+                } else {
+                    alert(result.message || 'Failed to initiate cancellation');
+                }
+            } catch (e) {
+                alert('Failed to initiate cancellation');
+            } finally {
+                this.cancelPassengerLoading = false;
+            }
+        },
+
         showToast(message) {
             const container = document.getElementById('toastContainer') || (() => {
                 const el = document.createElement('div');
@@ -6630,7 +6700,8 @@ function bookingIndexApp() {
 function updatePassengerStatus(passengerId, statusId, selectEl) {
     const cancelStatusId = @json($passengerStatuses->firstWhere('name', 'Cancel')->id ?? null);
     if (cancelStatusId && statusId == cancelStatusId) {
-        openCancelPassengerModal(passengerId);
+        const appData = Alpine.$data(document.querySelector('[x-data]'));
+        appData.openCancelPassengerModal(passengerId);
         if (selectEl) selectEl.value = '';
         return;
     }
@@ -6655,51 +6726,6 @@ function updatePassengerStatus(passengerId, statusId, selectEl) {
         console.error('Error:', error);
         alert('Failed to update status');
     });
-}
-
-function openCancelPassengerModal(passengerId) {
-    fetch(`/passengers/${passengerId}/cancellation/preview`, {
-        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-    })
-    .then(r => r.json())
-    .then(data => {
-        if (data.error) { alert(data.error); return; }
-        document.getElementById('cancelPassengerData').value = JSON.stringify(data);
-        document.getElementById('cancelPassengerName').textContent = data.passenger.full_name;
-        document.getElementById('cancelBookingRef').textContent = data.booking.booking_ref;
-        document.getElementById('cancelPackageValue').textContent = data.package_value.toFixed(2);
-        document.getElementById('cancelVisaCost').textContent = data.visa_cost.toFixed(2);
-        document.getElementById('cancelTicketCost').textContent = data.ticket_cost.toFixed(2);
-        document.getElementById('cancelTotalDeduction').textContent = data.total_deduction.toFixed(2);
-        document.getElementById('cancelRefundable').textContent = data.refundable.toFixed(2);
-        document.getElementById('cancelWarning').textContent = data.warning;
-        document.getElementById('cancelPassengerModal').classList.remove('hidden');
-    })
-    .catch(err => alert('Failed to load cancellation preview'));
-}
-
-function closeModal(id) {
-    document.getElementById(id).classList.add('hidden');
-}
-
-function submitCancelPassenger() {
-    const data = JSON.parse(document.getElementById('cancelPassengerData').value);
-    fetch(`/passengers/${data.passenger.id}/cancellation/initiate`, {
-        method: 'POST',
-        headers: {
-            'Content-Type': 'application/json',
-            'X-CSRF-TOKEN': '{{ csrf_token() }}'
-        }
-    })
-    .then(r => r.json())
-    .then(result => {
-        if (result.success) {
-            window.location.reload();
-        } else {
-            alert(result.error || 'Failed to initiate cancellation');
-        }
-    })
-    .catch(err => alert('Failed to initiate cancellation'));
 }
 
 function updateFingerprintLocation(bookingId, location, select) {
@@ -6745,31 +6771,111 @@ window.addEventListener('pageshow', function(event) {
         location.reload();
     }
 });
+</script>
 
-{{-- Cancel Passenger Modal --}}
-<div id="cancelPassengerModal" class="hidden fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4">
-    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
-        <h3 class="text-lg font-semibold text-slate-800 mb-1">Cancel Passenger</h3>
+{{-- Cancel Passenger Modal (Alpine.js) --}}
+<div x-show="cancelPassengerModalVisible" x-cloak
+     class="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4"
+     @click.self="closeCancelPassengerModal()">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-semibold text-slate-800 mb-1">Cancel Passenger</h3>
         <p class="text-sm text-slate-500 mb-4">This action initiates cancellation for the selected passenger only.</p>
 
-        <div class="space-y-2 text-sm">
-            <div class="flex justify-between"><span class="text-slate-500">Passenger</span><span id="cancelPassengerName" class="font-medium text-slate-700"></span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Booking Ref</span><span id="cancelBookingRef" class="font-medium text-slate-700"></span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Package Value</span><span id="cancelPackageValue" class="font-medium text-slate-700"></span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Visa Cost</span><span id="cancelVisaCost" class="font-medium text-red-600"></span></div>
-            <div class="flex justify-between"><span class="text-slate-500">Ticket Cost</span><span id="cancelTicketCost" class="font-medium text-red-600"></span></div>
-            <div class="border-t border-slate-200 pt-2 flex justify-between"><span class="text-slate-700 font-medium">Total Deduction</span><span id="cancelTotalDeduction" class="font-semibold text-red-600"></span></div>
-            <div class="flex justify-between"><span class="text-slate-700 font-medium">Refundable Amount</span><span id="cancelRefundable" class="font-semibold text-green-600"></span></div>
+        <div class="space-y-2 text-sm mb-4 p-3 bg-slate-50 rounded-lg">
+            <div class="flex justify-between">
+                <span class="text-slate-500">Package Value</span>
+                <span class="font-medium text-slate-700" x-text="$currency(cancelPassengerData.package_value || 0, 2)"></span>
+            </div>
+
+            <template x-if="cancelPassengerData.visa_cost && cancelPassengerData.visa_cost.total > 0">
+                <div class="pt-2 border-t border-slate-200">
+                    <p class="text-xs font-medium text-slate-500 uppercase mb-1">Visa Cost</p>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex justify-between"><span class="text-slate-400">Net Visa Cost</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.net_visa_cost || 0, 2)"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Agent Commission</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.agent_commission || 0, 2)"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Additional Cost</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.additional_cost || 0, 2)"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Cancellation Fee</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.cancellation_fee || 0, 2)"></span></div>
+                        <div class="flex justify-between font-medium pt-1 border-t border-slate-200"><span class="text-slate-600">Visa Total</span><span class="text-red-600" x-text="$currency(cancelPassengerData.visa_cost.total || 0, 2)"></span></div>
+                    </div>
+                </div>
+            </template>
+
+            <template x-if="cancelPassengerData.ticket_cost && cancelPassengerData.ticket_cost.total > 0">
+                <div class="pt-2 border-t border-slate-200">
+                    <p class="text-xs font-medium text-slate-500 uppercase mb-1">Ticket Cost</p>
+                    <div class="space-y-1 text-xs">
+                        <template x-for="(ticket, idx) in (cancelPassengerData.ticket_cost.tickets || [])" :key="idx">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400" x-text="ticket.ticket_number || 'N/A'"></span>
+                                <span class="text-slate-600" x-text="$currency(ticket.net_fare || 0, 2)"></span>
+                            </div>
+                        </template>
+                        <div class="flex justify-between font-medium pt-1 border-t border-slate-200"><span class="text-slate-600">Ticket Total</span><span class="text-red-600" x-text="$currency(cancelPassengerData.ticket_cost.total || 0, 2)"></span></div>
+                    </div>
+                </div>
+            </template>
+
+            <div class="flex justify-between pt-1 border-t border-slate-200 font-semibold">
+                <span class="text-slate-700">Total Cost</span>
+                <span class="text-red-600" x-text="$currency(cancelPassengerData.total_cost || 0, 2)"></span>
+            </div>
+
+            <template x-if="(cancelPassengerData.refund_payable || 0) > 0">
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-700 font-medium">Refund Payable</span>
+                    <span class="font-semibold text-blue-600" x-text="$currency(cancelPassengerData.refund_payable || 0, 2)"></span>
+                </div>
+            </template>
         </div>
 
-        <div id="cancelWarning" class="mt-3 p-3 bg-yellow-50 border border-yellow-200 rounded-lg text-xs text-yellow-700"></div>
+        <div class="mb-4 p-3 bg-green-50 rounded-lg text-sm">
+            <div class="flex justify-between items-center">
+                <span class="text-slate-700 font-medium">Refundable Amount:</span>
+                <span class="font-bold text-green-700" x-text="$currency(cancelPassengerRefundableAmount, 2)"></span>
+            </div>
+        </div>
 
-        <div class="flex justify-end gap-3 mt-6">
-            <button onclick="closeModal('cancelPassengerModal')" class="px-4 py-2 text-sm font-medium text-slate-600 bg-slate-100 rounded-lg hover:bg-slate-200 transition">Close</button>
-            <button onclick="submitCancelPassenger()" class="px-4 py-2 text-sm font-medium text-white bg-red-600 rounded-lg hover:bg-red-700 transition">Cancel Passenger</button>
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Cancellation Branch *</label>
+                <select x-model="cancelPassengerBranchId" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none bg-white">
+                    <option value="">Select Branch</option>
+                    <template x-for="branch in (cancelPassengerData.branches || [])" :key="branch.id">
+                        <option :value="branch.id" x-text="branch.name"></option>
+                    </template>
+                </select>
+            </div>
+            <div>
+                <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mb-3">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                    <input type="number" x-model="cancelPassengerServiceChargeBdt" min="0" step="0.01"
+                        @input="cancelPassengerServiceCharge = parseFloat(((parseFloat(cancelPassengerServiceChargeBdt) || 0) / ($store.currency.rate || 1)).toFixed(6))"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none"
+                        placeholder="Enter amount in BDT">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
+                    <input type="number" x-model.number="cancelPassengerServiceCharge" step="0.000001" min="0"
+                        :readonly="$store.currency.mode === 'BDT'"
+                        :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}"
+                        @input="if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { cancelPassengerServiceChargeBdt = Math.round((cancelPassengerServiceCharge || 0) * $store.currency.rate * 100) / 100; }"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none"
+                        placeholder="Enter amount in SAR">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button @click="submitCancelPassenger()" :disabled="!cancelPassengerBranchId || cancelPassengerLoading"
+                class="flex-1 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium disabled:opacity-50">
+                <span x-show="!cancelPassengerLoading">Start Cancellation</span>
+                <span x-show="cancelPassengerLoading" x-cloak>Processing...</span>
+            </button>
+            <button @click="closeCancelPassengerModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
+                Cancel
+            </button>
         </div>
     </div>
 </div>
-<input type="hidden" id="cancelPassengerData" value="">
-</script>
+
 @endsection

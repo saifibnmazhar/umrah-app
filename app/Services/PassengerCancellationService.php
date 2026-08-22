@@ -15,22 +15,25 @@ class PassengerCancellationService
 {
     public function getCancellationPreview(Passenger $passenger): array
     {
-        $booking = $passenger->booking;
         $packageValue = (float) $passenger->package_value;
 
         $visaCost = $this->computeVisaCost($passenger);
+        $visaBreakdown = $this->getVisaCostBreakdown($passenger);
+
         $ticketCost = $this->computeTicketCost($passenger);
+        $ticketBreakdown = $this->getTicketCostBreakdown($passenger);
+
         $refundPayable = (float) $passenger->refund_payable;
 
         $branches = Branch::select('id', 'name')->orderBy('name')->get();
 
         return [
             'package_value' => $packageValue,
-            'visa_cost' => $this->getVisaCostBreakdown($passenger),
-            'ticket_cost' => $this->getTicketCostBreakdown($passenger),
+            'visa_cost' => $visaBreakdown,
+            'ticket_cost' => $ticketBreakdown,
             'total_cost' => $visaCost + $ticketCost,
             'refund_payable' => $refundPayable,
-            'refundable_amount' => $packageValue - $visaCost - $ticketCost + $refundPayable,
+            'refundable_amount' => max(0, $packageValue - $visaCost - $ticketCost + $refundPayable),
             'branches' => $branches,
         ];
     }

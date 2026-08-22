@@ -35,8 +35,6 @@ Route::get('/passengers/{passenger}/cancellation/preview', [PassengerCancellatio
     ->name('passengers.cancellation.preview')->middleware('role:Super Admin,Co Admin');
 Route::get('/cancelled-passengers/{cancelledPassenger}/confirm', [PassengerCancellationViewController::class, 'confirmPage'])
     ->name('cancelled-passengers.confirm')->middleware('role:Branch Manager,Fingerprint Admin');
-Route::get('/pending-refunds/passengers', [PassengerCancellationViewController::class, 'passengerIndex'])
-    ->name('pending-refunds.passengers')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
 
 // Action routes
 Route::post('/passengers/{passenger}/cancellation/initiate', [PassengerCancellationActionController::class, 'initiate'])
@@ -45,5 +43,3 @@ Route::post('/cancelled-passengers/{cancelledPassenger}/revert', [PassengerCance
     ->name('cancelled-passengers.revert')->middleware('role:Branch Manager,Fingerprint Admin');
 Route::post('/cancelled-passengers/{cancelledPassenger}/confirm', [PassengerCancellationActionController::class, 'confirmSubmit'])
     ->name('cancelled-passengers.confirm.submit')->middleware('role:Branch Manager,Fingerprint Admin');
-Route::put('/api/cancelled-passengers/{cancelledPassenger}/refund-amount', [PassengerCancellationActionController::class, 'updateRefundAmount'])
-    ->name('cancelled-passengers.refund-amount.update')->middleware('role:Branch Manager,Fingerprint Admin');
