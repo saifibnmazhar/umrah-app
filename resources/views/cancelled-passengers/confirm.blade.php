@@ -88,7 +88,9 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-500">Initiated Date</span>
-                        <span class="font-medium text-slate-800">{{ $cancelledPassenger->created_at->format('Y-m-d H:i') }}</span>
+                        {{-- DB stores GMT; the browser converts it to local time. --}}
+                        <span class="font-medium text-slate-800"
+                            x-text="new Date('{{ $cancelledPassenger->created_at->toIso8601String() }}').toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })"></span>
                     </div>
                 </div>
             </div>
