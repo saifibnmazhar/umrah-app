@@ -33,27 +33,27 @@ class BranchWiseReportFilters extends Component
 
     public $selectedBranch = null;
 
-    protected function parseDate(?string $date): Carbon
-    {
-        return $date ? Carbon::parse($date) : now();
-    }
-
     public function updatedDateFrom(): void
     {
-        $this->refreshReport();
+        $this->loadReport();
     }
 
     public function updatedDateTo(): void
     {
-        $this->refreshReport();
+        $this->loadReport();
     }
 
     public function updatedBranchId(): void
     {
-        $this->refreshReport();
+        $this->loadReport();
     }
 
     public function refreshReport(): void
+    {
+        $this->loadReport();
+    }
+
+    public function mount(): void
     {
         $this->loadReport();
     }
@@ -92,6 +92,9 @@ class BranchWiseReportFilters extends Component
         foreach ($payments as $payment) {
             $dateKey = $payment->created_at->format('Y-m-d');
             foreach ($payment->vouchers as $v) {
+                if (! in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
+                    continue;
+                }
                 $this->vouchersByDate[$dateKey][] = [
                     'invoice_id' => $v->booking?->invoice_id ?? 'N/A',
                     'voucher_no' => $v->voucher_id ?? $v->id,
@@ -106,8 +109,6 @@ class BranchWiseReportFilters extends Component
                     'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
                     'bank' => $v->bank?->name ?? '-',
                     'bank_id' => $v->bank_id,
-                    'receive_branch_id' => $v->user?->branch_id,
-                    'payment_method' => $v->payment_method?->value ?? '',
                 ];
             }
         }
@@ -120,8 +121,6 @@ class BranchWiseReportFilters extends Component
 
     public function render()
     {
-        $this->loadReport();
-
         return view('livewire.report.branch-wise-report-filters', [
             'dailyPayments' => $this->dailyPayments,
             'vouchersByDate' => $this->vouchersByDate,

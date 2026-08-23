@@ -9,6 +9,7 @@ use App\Enums\VisaStatus;
 use App\Models\Bank;
 use App\Models\Booking;
 use App\Models\Branch;
+use App\Models\Fingerprint;
 use App\Models\FingerprintDetailLog;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
@@ -204,9 +205,46 @@ class BranchWiseReportQuery
         $refundAgg = $this->voucherAggregates(['Customer Refund']);
         $ticketRefundAgg = $this->voucherAggregates(['Ticket Refund - Payment', 'Ticket Refund - Re-issue']);
 
+        // --- Fingerprint profit ---
+        $fingerprintProfitRow = Fingerprint::query()
+            ->leftJoin('bookings', 'fingerprints.booking_id', '=', 'bookings.id')
+            ->leftJoin('fingerprint_charges', 'bookings.fingerprint_charge_id', '=', 'fingerprint_charges.id')
+            ->leftJoin('invoices', 'bookings.id', '=', 'invoices.booking_id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->where('invoices.created_at', '>=', $this->dateFrom)
+            ->where('invoices.created_at', '<=', $this->dateTo)
+            ->when($this->branchId === 'central', fn ($q) => $q->whereNull('bookings.booking_branch_id'))
+            ->when($this->branchId !== 'central' && $this->branchId, fn ($q) => $q->where('bookings.booking_branch_id', $this->branchId))
+            ->selectRaw(
+                'SUM(COALESCE(fingerprint_charges.fingerprint_charge, 0)) - SUM(COALESCE(fingerprints.cost, 0)) as sar_profit,
+                SUM(COALESCE(fingerprint_charges.fingerprint_charge, 0) * COALESCE(currency_rates.rate, ?)) - SUM(COALESCE(fingerprints.cost, 0) * COALESCE(currency_rates.rate, ?)) as bdt_profit',
+                [$this->firstRate, $this->firstRate]
+            )
+            ->first();
+        $totalFingerprintProfit = $fingerprintProfitRow->sar_profit ?? 0;
+        $totalFingerprintProfitBdt = $fingerprintProfitRow->bdt_profit ?? 0;
+
+        // --- Service charge deduction ---
+        $scDeductionRow = Voucher::whereDate('vouchers.created_at', '>=', $this->dateFrom)
+            ->whereDate('vouchers.created_at', '<=', $this->dateTo)
+            ->when($this->branchId === 'central', fn ($q) => $q->whereHas('user', fn ($u) => $u->whereNull('branch_id')))
+            ->when($this->branchId !== 'central' && $this->branchId, fn ($q) => $q->whereHas('user', fn ($u) => $u->where('branch_id', $this->branchId)))
+            ->whereHas('transactionType', fn ($q) => $q->where('name', 'Service Charge Deduction'))
+            ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw(
+                'SUM(vouchers.amount) as sar_total,
+                SUM(vouchers.amount * COALESCE(currency_rates.rate, ?)) as bdt_total',
+                [$this->firstRate]
+            )
+            ->first();
+        $totalServiceChargeDeduction = $scDeductionRow->sar_total ?? 0;
+        $totalServiceChargeDeductionBdt = $scDeductionRow->bdt_total ?? 0;
+
         // --- Profit (iterates bookings — kept from original controller) ---
         $totalProfit = 0.0;
         $totalProfitBdt = 0.0;
+
         $profitBookings = Booking::with(['invoice', 'fingerprint', 'currencyRate', 'passengers.visaSubmission', 'passengers.allIssuedTickets'])
             ->where('is_cancelled', false)
             ->whereHas('invoice')
@@ -282,6 +320,11 @@ class BranchWiseReportQuery
             'totalRefundBdt' => $refundAgg['bdt'],
             'totalTicketRefund' => $ticketRefundAgg['sar'],
             'totalTicketRefundBdt' => $ticketRefundAgg['bdt'],
+            // Fingerprint profit + service charge deduction
+            'totalFingerprintProfit' => $totalFingerprintProfit,
+            'totalFingerprintProfitBdt' => $totalFingerprintProfitBdt,
+            'totalServiceChargeDeduction' => $totalServiceChargeDeduction,
+            'totalServiceChargeDeductionBdt' => $totalServiceChargeDeductionBdt,
             // Passengers
             'totalPassengers' => $totalPassengers,
         ];
@@ -385,7 +428,7 @@ class BranchWiseReportQuery
                     'receive_by' => $v->user?->name ?? '',
                     'receive_at' => $v->user?->branch?->name ?? 'Central',
                     'amount' => (float) $v->amount,
-                    'bdt_amount' => (float) ($v->bdt_amount ?: 0),
+                    'bdt_amount' => (float) ($v->bdt_amount ?: 0) ?: (float) ($v->amount * $this->firstRate),
                     'currency_rate' => (float) ($v->currencyRate?->rate ?? $this->firstRate),
                     'payment_date' => DateFormatter::short($v->payment_date),
                     'bank' => $v->bank?->name ?? '-',
