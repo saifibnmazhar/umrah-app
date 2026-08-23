@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Enums\CancelledBookingStatus;
+use App\Enums\TicketType;
 use App\Models\Branch;
 use App\Models\CancelledPassenger;
 use App\Models\Passenger;
@@ -16,6 +17,8 @@ class PassengerCancellationService
     public function getCancellationPreview(Passenger $passenger): array
     {
         $packageValue = (float) $passenger->package_value;
+        $additionalTicketValue = $this->computeAdditionalTicketValue($passenger);
+        $totalPassengerDue = $packageValue + $additionalTicketValue;
 
         $visaCost = $this->computeVisaCost($passenger);
         $visaBreakdown = $this->getVisaCostBreakdown($passenger);
@@ -29,11 +32,13 @@ class PassengerCancellationService
 
         return [
             'package_value' => $packageValue,
+            'additional_ticket_value' => $additionalTicketValue,
+            'total_passenger_due' => $totalPassengerDue,
             'visa_cost' => $visaBreakdown,
             'ticket_cost' => $ticketBreakdown,
             'total_cost' => $visaCost + $ticketCost,
             'refund_payable' => $refundPayable,
-            'refundable_amount' => max(0, $packageValue - $visaCost - $ticketCost + $refundPayable),
+            'refundable_amount' => max(0, $totalPassengerDue - $visaCost - $ticketCost + $refundPayable),
             'branches' => $branches,
         ];
     }
@@ -66,13 +71,15 @@ class PassengerCancellationService
         }
 
         $packageValue = (float) $passenger->package_value;
+        $additionalTicketValue = $this->computeAdditionalTicketValue($passenger);
+        $totalPassengerDue = $packageValue + $additionalTicketValue;
         $visaCost = $this->computeVisaCost($passenger);
         $ticketCost = $this->computeTicketCost($passenger);
         $serviceCharge = isset($data['service_charge_deduction']) ? (float) $data['service_charge_deduction'] : 0;
         $refundPayable = (float) $passenger->refund_payable;
-        $refundable = max(0, $packageValue - $visaCost - $ticketCost - $serviceCharge + $refundPayable);
+        $refundable = max(0, $totalPassengerDue - $visaCost - $ticketCost - $serviceCharge + $refundPayable);
 
-        return DB::transaction(function () use ($passenger, $booking, $data, $packageValue, $visaCost, $ticketCost, $serviceCharge, $refundable) {
+        return DB::transaction(function () use ($passenger, $booking, $data, $packageValue, $additionalTicketValue, $totalPassengerDue, $visaCost, $ticketCost, $serviceCharge, $refundable) {
             $holdStatus = PassengerStatus::firstOrCreate(['name' => 'Hold']);
 
             $cancelledPassenger = CancelledPassenger::create([
@@ -81,6 +88,8 @@ class PassengerCancellationService
                 'invoice_id' => $booking->invoice_id,
                 'user_id' => auth()->id(),
                 'package_value' => $packageValue,
+                'additional_ticket_value' => $additionalTicketValue,
+                'total_passenger_due' => $totalPassengerDue,
                 'visa_cost' => $visaCost,
                 'ticket_cost' => $ticketCost,
                 'service_charge_deduction' => $serviceCharge > 0 ? $serviceCharge : null,
@@ -134,6 +143,7 @@ class PassengerCancellationService
             $passenger = $cancelledPassenger->passenger;
 
             $pkg = (float) $cancelledPassenger->package_value;
+            $totalPassengerDue = (float) $cancelledPassenger->total_passenger_due;
             $refundable = (float) $cancelledPassenger->refundable_amount;
             $adjusted = (float) $data['balance_adjusted_amount'];
             $refund = max(0, $refundable - $adjusted);
@@ -143,9 +153,11 @@ class PassengerCancellationService
             $remarks = $data['remarks'] ?? null;
 
             // 1. Reduce totals
+            // Booking: package value only. Invoice: full passenger due
+            // (package + additional ticket value).
             $booking->update(['pax_qty' => $booking->pax_qty - 1]);
             $booking->update(['total_value' => (float) $booking->total_value - $pkg]);
-            $invoice->update(['total_amount' => (float) $invoice->total_amount - $pkg]);
+            $invoice->update(['total_amount' => (float) $invoice->total_amount - $totalPassengerDue]);
 
             // 2. Credit balance
             $newBalance = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount);
@@ -262,6 +274,21 @@ class PassengerCancellationService
 
             return $cancelledPassenger->fresh();
         });
+    }
+
+    private function computeAdditionalTicketValue(Passenger $passenger): float
+    {
+        return $passenger->allIssuedTickets
+            ->filter(fn ($t) => $t->issue_type === 'additional')
+            ->filter(fn ($t) => in_array($t->status, ['issued', 're-issued', 'refunded']))
+            ->sum(function ($ticket) {
+                $isOffer = $ticket->ticketFare?->ticket_type === TicketType::OFFER;
+
+                // Mirrors the value added to the invoice when the additional
+                // ticket was issued: offer price for offer fares, selling fare
+                // otherwise.
+                return (float) ($isOffer ? ($ticket->offer_price ?: ($ticket->selling_fare ?? 0)) : ($ticket->selling_fare ?? 0));
+            });
     }
 
     private function computeVisaCost(Passenger $passenger): float

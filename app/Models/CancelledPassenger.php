@@ -17,6 +17,8 @@ class CancelledPassenger extends Model
         'invoice_id',
         'user_id',
         'package_value',
+        'additional_ticket_value',
+        'total_passenger_due',
         'visa_cost',
         'ticket_cost',
         'service_charge_deduction',
@@ -35,6 +37,8 @@ class CancelledPassenger extends Model
 
     protected $casts = [
         'package_value' => 'decimal:6',
+        'additional_ticket_value' => 'decimal:6',
+        'total_passenger_due' => 'decimal:6',
         'visa_cost' => 'decimal:6',
         'ticket_cost' => 'decimal:6',
         'service_charge_deduction' => 'decimal:6',

@@ -2990,6 +2990,9 @@ if ($passenger->ticket_fare_inbound_id) {
                 </form>
             </template>
 
+        </div>
+    </div>
+
 {{-- Cancel Passenger Modal (Alpine.js) --}}
 <div x-show="cancelPassengerModalVisible" x-cloak
      class="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4"
@@ -3004,22 +3007,36 @@ if ($passenger->ticket_fare_inbound_id) {
                 <span class="font-medium text-slate-700" x-text="$currency(cancelPassengerData.package_value || 0, 2)"></span>
             </div>
 
+            <div class="flex justify-between">
+                <span class="text-slate-500">Additional Tickets</span>
+                <span class="font-medium text-slate-700" x-text="$currency(cancelPassengerData.additional_ticket_value || 0, 2)"></span>
+            </div>
+
+            <div class="flex justify-between pt-1 border-t border-slate-200 font-semibold">
+                <span class="text-slate-700">Total Passenger Due</span>
+                <span class="text-slate-800" x-text="$currency((cancelPassengerData.total_passenger_due ?? ((cancelPassengerData.package_value || 0) + (cancelPassengerData.additional_ticket_value || 0))), 2)"></span>
+            </div>
+
             <template x-if="cancelPassengerData.visa_cost && cancelPassengerData.visa_cost.total > 0">
                 <div class="pt-2 border-t border-slate-200">
-                    <p class="text-xs font-medium text-slate-500 uppercase mb-1">Visa Cost</p>
+                    <p class="text-xs font-medium text-slate-500 uppercase mb-1">Visa Cost Breakdown</p>
                     <div class="space-y-1 text-xs">
                         <div class="flex justify-between"><span class="text-slate-400">Net Visa Cost</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.net_visa_cost || 0, 2)"></span></div>
                         <div class="flex justify-between"><span class="text-slate-400">Agent Commission</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.agent_commission || 0, 2)"></span></div>
                         <div class="flex justify-between"><span class="text-slate-400">Additional Cost</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.additional_cost || 0, 2)"></span></div>
                         <div class="flex justify-between"><span class="text-slate-400">Cancellation Fee</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.cancellation_fee || 0, 2)"></span></div>
-                        <div class="flex justify-between font-medium pt-1 border-t border-slate-200"><span class="text-slate-600">Visa Total</span><span class="text-red-600" x-text="$currency(cancelPassengerData.visa_cost.total || 0, 2)"></span></div>
                     </div>
                 </div>
             </template>
 
+            <div class="flex justify-between">
+                <span class="text-slate-500">Total Visa Cost</span>
+                <span class="font-medium text-red-600" x-text="$currency(cancelPassengerData.visa_cost?.total || 0, 2)"></span>
+            </div>
+
             <template x-if="cancelPassengerData.ticket_cost && cancelPassengerData.ticket_cost.total > 0">
                 <div class="pt-2 border-t border-slate-200">
-                    <p class="text-xs font-medium text-slate-500 uppercase mb-1">Ticket Cost</p>
+                    <p class="text-xs font-medium text-slate-500 uppercase mb-1">Ticket Cost Breakdown</p>
                     <div class="space-y-1 text-xs">
                         <template x-for="(ticket, idx) in (cancelPassengerData.ticket_cost.tickets || [])" :key="idx">
                             <div class="flex justify-between">
@@ -3027,10 +3044,14 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <span class="text-slate-600" x-text="$currency(ticket.net_fare || 0, 2)"></span>
                             </div>
                         </template>
-                        <div class="flex justify-between font-medium pt-1 border-t border-slate-200"><span class="text-slate-600">Ticket Total</span><span class="text-red-600" x-text="$currency(cancelPassengerData.ticket_cost.total || 0, 2)"></span></div>
                     </div>
                 </div>
             </template>
+
+            <div class="flex justify-between">
+                <span class="text-slate-500">Ticket Total</span>
+                <span class="font-medium text-red-600" x-text="$currency(cancelPassengerData.ticket_cost?.total || 0, 2)"></span>
+            </div>
 
             <div class="flex justify-between pt-1 border-t border-slate-200 font-semibold">
                 <span class="text-slate-700">Total Cost</span>
@@ -3094,8 +3115,6 @@ if ($passenger->ticket_fare_inbound_id) {
         </div>
     </div>
 </div>
-        </div>
-    </div>
 </div>
 
 <style>
@@ -6716,10 +6735,11 @@ function bookingIndexApp() {
         cancelPassengerLoading: false,
 
         get cancelPassengerRefundableAmount() {
-            const pkg = this.cancelPassengerData.package_value || 0;
+            const totalDue = this.cancelPassengerData.total_passenger_due
+                          ?? ((this.cancelPassengerData.package_value || 0) + (this.cancelPassengerData.additional_ticket_value || 0));
             const costs = (this.cancelPassengerData.visa_cost?.total || 0)
                         + (this.cancelPassengerData.ticket_cost?.total || 0);
-            return Math.max(0, pkg - costs - (this.cancelPassengerServiceCharge || 0) + (this.cancelPassengerData.refund_payable || 0));
+            return Math.max(0, totalDue - costs - (this.cancelPassengerServiceCharge || 0) + (this.cancelPassengerData.refund_payable || 0));
         },
 
         async openCancelPassengerModal(passengerId) {

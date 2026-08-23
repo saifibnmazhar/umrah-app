@@ -57,6 +57,14 @@
                         <span class="font-semibold text-slate-800">@currency($cancelledPassenger->package_value, 2)</span>
                     </div>
                     <div class="flex justify-between p-3 bg-green-50 rounded-lg">
+                        <span class="text-slate-700 font-medium">Additional Tickets</span>
+                        <span class="font-semibold text-slate-800">@currency($cancelledPassenger->additional_ticket_value, 2)</span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-green-50 rounded-lg">
+                        <span class="text-slate-700 font-medium">Total Passenger Due</span>
+                        <span class="font-semibold text-slate-800">@currency($cancelledPassenger->total_passenger_due, 2)</span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-green-50 rounded-lg">
                         <span class="text-slate-700 font-medium">Refundable Amount</span>
                         <span class="font-semibold text-green-700">@currency($cancelledPassenger->refundable_amount, 2)</span>
                     </div>
