@@ -82,10 +82,18 @@ class PassengerCancellationService
         return DB::transaction(function () use ($passenger, $booking, $data, $packageValue, $additionalTicketValue, $totalPassengerDue, $visaCost, $ticketCost, $serviceCharge, $refundable) {
             $holdStatus = PassengerStatus::firstOrCreate(['name' => 'Hold']);
 
+            // bookings.invoice_id stores the formatted invoice number (string),
+            // not the numeric invoices.id required by this FK column.
+            $invoiceId = $booking->invoice?->id;
+
+            if ($invoiceId === null) {
+                throw new \Exception('Booking has no invoice record.');
+            }
+
             $cancelledPassenger = CancelledPassenger::create([
                 'booking_id' => $booking->id,
                 'passenger_id' => $passenger->id,
-                'invoice_id' => $booking->invoice_id,
+                'invoice_id' => $invoiceId,
                 'user_id' => auth()->id(),
                 'package_value' => $packageValue,
                 'additional_ticket_value' => $additionalTicketValue,

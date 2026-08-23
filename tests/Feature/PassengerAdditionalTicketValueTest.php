@@ -62,7 +62,8 @@ class PassengerAdditionalTicketValueTest extends TestCase
 
         $this->ensureTable('bookings', function ($table) {
             $table->id();
-            $table->unsignedBigInteger('invoice_id')->default(0);
+            // Real column is a string storing the formatted invoice number.
+            $table->string('invoice_id')->default('');
             $table->unsignedBigInteger('user_id')->default(0);
             $table->unsignedBigInteger('customer_id')->default(0);
             $table->unsignedBigInteger('package_id')->default(0);
@@ -309,7 +310,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
     {
         DB::table('bookings')->insert(array_merge([
             'id' => 101,
-            'invoice_id' => 301,
+            'invoice_id' => '(###)-127826',
             'user_id' => 1,
             'customer_id' => 0,
             'package_id' => 0,
@@ -549,6 +550,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
 
         // Persisted sibling so "last active passenger" guard passes.
         $this->insertPassenger(['id' => 202, 'passport_no' => 'P456', 'first_name' => 'Jane']);
+        $this->insertInvoice(['user_id' => $user->id]);
 
         $fareId = $this->insertFare('offer');
         $this->insertTicket(['issue_type' => 'regular', 'selling_fare' => '1000', 'net_fare' => '800']);
@@ -566,6 +568,27 @@ class PassengerAdditionalTicketValueTest extends TestCase
         $this->assertEqualsWithDelta(5000, (float) $cancelled->total_passenger_due, 0.000001);
         // 5000 - (0 visa + 1700 tickets) - 50 service + 100 refund payable.
         $this->assertEqualsWithDelta(3350, (float) $cancelled->refundable_amount, 0.000001);
+    }
+
+    public function test_initiate_resolves_numeric_invoice_id_from_relationship(): void
+    {
+        $user = $this->signIn();
+        $this->insertBranch();
+        // bookings.invoice_id holds a formatted invoice number, not invoices.id.
+        $this->insertBooking(['user_id' => $user->id]);
+        $this->insertPassenger();
+        $this->insertPassenger(['id' => 202, 'passport_no' => 'P456', 'first_name' => 'Jane']);
+        $this->insertInvoice(['user_id' => $user->id]); // id 301, booking_id 101
+
+        $passenger = Passenger::findOrFail(201);
+
+        $cancelled = app(PassengerCancellationService::class)
+            ->initiateCancellation($passenger, [
+                'cancellation_branch_id' => 1,
+            ]);
+
+        $this->assertSame(301, (int) $cancelled->invoice_id);
+        $this->assertNotSame('(###)-127826', (string) $cancelled->invoice_id);
     }
 
     public function test_confirm_deducts_invoice_by_total_due_and_booking_by_package_only(): void
