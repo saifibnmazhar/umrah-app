@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Enums\CancelledBookingStatus;
+use App\Enums\InvoiceStatus;
 use App\Models\CancelledPassenger;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
@@ -174,6 +175,8 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->unsignedBigInteger('deduction_voucher_id')->nullable();
             $table->unsignedBigInteger('refund_payment_id')->nullable();
             $table->unsignedBigInteger('refund_voucher_id')->nullable();
+            $table->unsignedBigInteger('adjustment_payment_id')->nullable();
+            $table->unsignedBigInteger('adjustment_voucher_id')->nullable();
             $table->unsignedBigInteger('confirmed_by_id')->nullable();
             $table->unsignedBigInteger('reverted_by_id')->nullable();
             $table->timestamps();
@@ -212,6 +215,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
         $this->ensureTable('transaction_types', function ($table) {
             $table->id();
             $table->string('name');
+            $table->string('type')->default('credit');
             $table->timestamps();
         });
 
@@ -231,6 +235,31 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->unsignedBigInteger('refunded_ticket_id')->nullable();
             $table->unsignedBigInteger('re_issued_ticket_id')->nullable();
             $table->string('remarks')->nullable();
+            $table->timestamps();
+        });
+
+        $this->ensureTable('vouchers', function ($table) {
+            $table->id();
+            $table->string('voucher_id');
+            $table->unsignedBigInteger('invoice_id')->nullable();
+            $table->unsignedBigInteger('booking_id')->nullable();
+            $table->unsignedBigInteger('payment_id')->nullable();
+            $table->unsignedBigInteger('branch_id')->nullable();
+            $table->unsignedBigInteger('user_id')->nullable();
+            $table->unsignedBigInteger('currency_rate_id')->nullable();
+            $table->unsignedBigInteger('bank_id')->nullable();
+            $table->unsignedBigInteger('ticket_agent_id')->nullable();
+            $table->unsignedBigInteger('visa_agent_id')->nullable();
+            $table->unsignedBigInteger('commission_agent_id')->nullable();
+            $table->unsignedBigInteger('transaction_type_id')->nullable();
+            $table->date('payment_date')->nullable();
+            $table->string('payment_method')->nullable();
+            $table->string('transaction_id')->nullable();
+            $table->decimal('amount', 14, 6)->default(0);
+            $table->decimal('bdt_amount', 14, 6)->default(0);
+            $table->unsignedBigInteger('cancelled_booking_id')->nullable();
+            $table->unsignedBigInteger('cancelled_passenger_id')->nullable();
+            $table->text('notes')->nullable();
             $table->timestamps();
         });
 
@@ -372,6 +401,69 @@ class PassengerAdditionalTicketValueTest extends TestCase
             'created_at' => now(),
             'updated_at' => now(),
         ], $overrides));
+    }
+
+    private function insertTransactionType(string $name, string $type): int
+    {
+        return DB::table('transaction_types')->insertGetId([
+            'name' => $name,
+            'type' => $type,
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
+    }
+
+    private function insertRegularPayment(array $overrides = []): int
+    {
+        return DB::table('payments')->insertGetId(array_merge([
+            'invoice_id' => 301,
+            'booking_id' => 101,
+            'branch_id' => 1,
+            'user_id' => 1,
+            'payment_date' => now(),
+            'payment_method' => 'cash',
+            'amount' => 9900,
+            'bdt_amount' => 0,
+        ], $overrides));
+    }
+
+    /**
+     * Full confirm-scenario fixture: booking 101 (pax 2, total 12000),
+     * invoice 301 (10000 total / 9900 paid / 100 balance), cancelled row
+     * for passenger 201 (due 5000, refundable 100) plus seeded transaction
+     * types. Returns the cancelled_passengers id.
+     */
+    private function seedConfirmScenario(User $user): int
+    {
+        $this->insertBranch();
+        $this->insertBooking(['user_id' => $user->id]);
+        $this->insertPassenger();
+        $this->insertInvoice(['user_id' => $user->id]);
+        $this->insertRegularPayment(['user_id' => $user->id]);
+
+        $this->insertTransactionType('Due Adjustment', 'credit');
+        $this->insertTransactionType('Customer Refund', 'debit');
+        $this->insertTransactionType('Service Charge Deduction', 'credit');
+
+        return DB::table('cancelled_passengers')->insertGetId([
+            'booking_id' => 101,
+            'passenger_id' => 201,
+            'invoice_id' => 301,
+            'user_id' => $user->id,
+            'package_value' => 3000,
+            'additional_ticket_value' => 2000,
+            'total_passenger_due' => 5000,
+            'visa_cost' => 0,
+            'ticket_cost' => 0,
+            'service_charge_deduction' => null,
+            'refundable_amount' => 100,
+            'balance_adjusted_amount' => 0,
+            'refund_amount' => 0,
+            'cancellation_branch_id' => 1,
+            'status' => 'cancellation processing',
+            'created_at' => now(),
+            'updated_at' => now(),
+        ]);
     }
 
     private function insertFare(string $type, ?int $id = null): int
@@ -591,53 +683,126 @@ class PassengerAdditionalTicketValueTest extends TestCase
         $this->assertNotSame('(###)-127826', (string) $cancelled->invoice_id);
     }
 
-    public function test_confirm_deducts_invoice_by_total_due_and_booking_by_package_only(): void
+    public function test_confirm_keeps_invoice_and_booking_totals_and_reduces_pax_qty(): void
     {
         $user = $this->signIn();
-        $this->insertBranch();
-        $this->insertBooking(['user_id' => $user->id]);
-        $this->insertPassenger();
-        $this->insertInvoice(['user_id' => $user->id]);
-
-        $cancelledId = DB::table('cancelled_passengers')->insertGetId([
-            'booking_id' => 101,
-            'passenger_id' => 201,
-            'invoice_id' => 301,
-            'user_id' => $user->id,
-            'package_value' => 3000,
-            'additional_ticket_value' => 2000,
-            'total_passenger_due' => 5000,
-            'visa_cost' => 0,
-            'ticket_cost' => 0,
-            'service_charge_deduction' => null,
-            'refundable_amount' => 100,
-            'balance_adjusted_amount' => 0,
-            'refund_amount' => 0,
-            'cancellation_branch_id' => 1,
-            'status' => 'cancellation processing',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
-
-        $cancelled = CancelledPassenger::findOrFail($cancelledId);
+        $cancelledId = $this->seedConfirmScenario($user);
 
         app(PassengerCancellationService::class)
-            ->confirmCancellation($cancelled, [
-                'balance_adjusted_amount' => '100', // >= refundable -> no refund payment
+            ->confirmCancellation(CancelledPassenger::findOrFail($cancelledId), [
+                'balance_adjusted_amount' => '0',
                 'payment_method' => 'cash',
             ]);
 
-        // Invoice reduced by total_passenger_due (5000), not package_value.
-        $this->assertEqualsWithDelta(5000, (float) Invoice::findOrFail(301)->total_amount, 0.000001);
+        // Totals must stay untouched: cancellation settles via credit,
+        // it never rewrites historical amounts.
+        $this->assertEqualsWithDelta(10000, (float) Invoice::findOrFail(301)->total_amount, 0.000001);
 
         $booking = DB::table('bookings')->where('id', 101)->first();
-        // Booking reduced by package_value only (3000).
-        $this->assertEqualsWithDelta(9000, (float) $booking->total_value, 0.000001);
+        $this->assertEqualsWithDelta(12000, (float) $booking->total_value, 0.000001);
         $this->assertEquals(1, (int) $booking->pax_qty);
 
         $this->assertEquals(
             CancelledBookingStatus::CANCELLED,
             CancelledPassenger::findOrFail($cancelledId)->status
         );
+    }
+
+    public function test_confirm_with_full_adjustment_settles_balance_via_due_adjustment_payment(): void
+    {
+        $user = $this->signIn();
+        $cancelledId = $this->seedConfirmScenario($user);
+
+        app(PassengerCancellationService::class)
+            ->confirmCancellation(CancelledPassenger::findOrFail($cancelledId), [
+                // Full refundable adjusted against the invoice due.
+                'balance_adjusted_amount' => '100',
+                'payment_method' => 'cash',
+            ]);
+
+        // Exactly one settlement payment: a Due Adjustment, no cash refund.
+        $settlementPayments = DB::table('payments')
+            ->where('cancelled_passenger_id', $cancelledId)
+            ->get();
+        $this->assertCount(1, $settlementPayments);
+        $this->assertEqualsWithDelta(100, (float) $settlementPayments[0]->amount, 0.000001);
+
+        $voucher = DB::table('vouchers')
+            ->where('payment_id', $settlementPayments[0]->id)
+            ->first();
+        $typeName = DB::table('transaction_types')->where('id', $voucher->transaction_type_id)->value('name');
+        $this->assertSame('Due Adjustment', $typeName);
+
+        // Balance formula: total - paid - due adjustments = 10000 - 9900 - 100.
+        $invoice = Invoice::findOrFail(301);
+        $this->assertEqualsWithDelta(10000, (float) $invoice->total_amount, 0.000001);
+        $this->assertEqualsWithDelta(9900, (float) $invoice->paid_amount, 0.000001);
+        $this->assertEqualsWithDelta(0, (float) $invoice->balance, 0.000001);
+        $this->assertSame(InvoiceStatus::PAID, $invoice->status);
+
+        // Links stored on the cancelled record.
+        $cancelled = CancelledPassenger::findOrFail($cancelledId);
+        $this->assertEqualsWithDelta(100, (float) $cancelled->balance_adjusted_amount, 0.000001);
+        $this->assertEqualsWithDelta(0, (float) $cancelled->refund_amount, 0.000001);
+        $this->assertSame((int) $settlementPayments[0]->id, (int) $cancelled->adjustment_payment_id);
+        $this->assertSame((int) $voucher->id, (int) $cancelled->adjustment_voucher_id);
+        $this->assertNull($cancelled->refund_payment_id);
+        $this->assertNull($cancelled->refund_voucher_id);
+
+        // Audit log records the balance change with the adjustment reason.
+        $log = DB::table('invoice_update_logs')
+            ->where('invoice_id', 301)
+            ->orderByDesc('id')
+            ->first();
+        $this->assertSame('passenger_cancellation_due_adjustment', $log->reason);
+        $old = json_decode($log->old_values, true);
+        $new = json_decode($log->new_values, true);
+        $this->assertEqualsWithDelta(100, (float) $old['balance'], 0.000001);
+        $this->assertEqualsWithDelta(0, (float) $new['balance'], 0.000001);
+    }
+
+    public function test_confirm_with_refund_settlement_creates_customer_refund_payment(): void
+    {
+        $user = $this->signIn();
+        $cancelledId = $this->seedConfirmScenario($user);
+
+        app(PassengerCancellationService::class)
+            ->confirmCancellation(CancelledPassenger::findOrFail($cancelledId), [
+                'balance_adjusted_amount' => '0',
+                'payment_method' => 'cash',
+            ]);
+
+        $refundPayments = DB::table('payments')
+            ->where('cancelled_passenger_id', $cancelledId)
+            ->get();
+        $this->assertCount(1, $refundPayments);
+        $this->assertEqualsWithDelta(100, (float) $refundPayments[0]->amount, 0.000001);
+
+        $voucher = DB::table('vouchers')
+            ->where('payment_id', $refundPayments[0]->id)
+            ->first();
+        $typeName = DB::table('transaction_types')->where('id', $voucher->transaction_type_id)->value('name');
+        $this->assertSame('Customer Refund', $typeName);
+
+        // No adjustment happened: balance keeps its paid-vs-total delta.
+        $invoice = Invoice::findOrFail(301);
+        $this->assertEqualsWithDelta(10000, (float) $invoice->total_amount, 0.000001);
+        $this->assertEqualsWithDelta(9900, (float) $invoice->paid_amount, 0.000001);
+        $this->assertEqualsWithDelta(100, (float) $invoice->balance, 0.000001);
+        $this->assertSame(InvoiceStatus::PARTIAL, $invoice->status);
+
+        // Refund links populated, adjustment links untouched.
+        $cancelled = CancelledPassenger::findOrFail($cancelledId);
+        $this->assertEqualsWithDelta(0, (float) $cancelled->balance_adjusted_amount, 0.000001);
+        $this->assertEqualsWithDelta(100, (float) $cancelled->refund_amount, 0.000001);
+        $this->assertSame((int) $refundPayments[0]->id, (int) $cancelled->refund_payment_id);
+        $this->assertSame((int) $voucher->id, (int) $cancelled->refund_voucher_id);
+        $this->assertNull($cancelled->adjustment_payment_id);
+        $this->assertNull($cancelled->adjustment_voucher_id);
+
+        // Nothing changed on the invoice itself, so no invoice_update_logs
+        // row is expected here; the audit trail is the refund payment.
+        $logCount = DB::table('invoice_update_logs')->where('invoice_id', 301)->count();
+        $this->assertSame(0, $logCount);
     }
 }

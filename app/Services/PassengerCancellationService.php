@@ -150,8 +150,6 @@ class PassengerCancellationService
             $invoice = $cancelledPassenger->invoice;
             $passenger = $cancelledPassenger->passenger;
 
-            $pkg = (float) $cancelledPassenger->package_value;
-            $totalPassengerDue = (float) $cancelledPassenger->total_passenger_due;
             $refundable = (float) $cancelledPassenger->refundable_amount;
             $adjusted = (float) $data['balance_adjusted_amount'];
             $refund = max(0, $refundable - $adjusted);
@@ -160,16 +158,9 @@ class PassengerCancellationService
             $paymentMethod = $data['payment_method'];
             $remarks = $data['remarks'] ?? null;
 
-            // 1. Reduce totals
-            // Booking: package value only. Invoice: full passenger due
-            // (package + additional ticket value).
+            // 1. Reduce seat count only. Totals stay untouched: cancellation
+            // settles via credit payments, never by rewriting amounts.
             $booking->update(['pax_qty' => $booking->pax_qty - 1]);
-            $booking->update(['total_value' => (float) $booking->total_value - $pkg]);
-            $invoice->update(['total_amount' => (float) $invoice->total_amount - $totalPassengerDue]);
-
-            // 2. Credit balance
-            $newBalance = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount);
-            $invoice->update(['balance' => max(0, $newBalance - $adjusted)]);
 
             $deductionPaymentId = null;
             $deductionVoucherId = null;
@@ -212,10 +203,51 @@ class PassengerCancellationService
                 $deductionVoucherId = $deductionVoucher->id;
             }
 
+            $adjustmentPaymentId = null;
+            $adjustmentVoucherId = null;
+
+            // 4. Due Adjustment settlement (credit against the invoice due)
+            if ($adjusted > 0) {
+                $adjustmentType = TransactionType::where('name', 'Due Adjustment')->first();
+
+                $adjustmentPayment = Payment::create([
+                    'invoice_id' => $invoice->id,
+                    'booking_id' => $booking->id,
+                    'branch_id' => $cancelledPassenger->cancellation_branch_id,
+                    'user_id' => auth()->id(),
+                    'currency_rate_id' => $currencyRateId,
+                    'payment_date' => now(),
+                    'payment_method' => $paymentMethod,
+                    'amount' => $adjusted,
+                    'bdt_amount' => 0,
+                    'cancelled_passenger_id' => $cancelledPassenger->id,
+                    'remarks' => $remarks,
+                ]);
+
+                $adjustmentVoucher = app(VoucherService::class)->createVoucher([
+                    'invoice_id' => $invoice->id,
+                    'booking_id' => $booking->id,
+                    'payment_id' => $adjustmentPayment->id,
+                    'branch_id' => $cancelledPassenger->cancellation_branch_id,
+                    'user_id' => auth()->id(),
+                    'currency_rate_id' => $currencyRateId,
+                    'transaction_type_id' => $adjustmentType->id,
+                    'payment_date' => now(),
+                    'payment_method' => $paymentMethod,
+                    'amount' => $adjusted,
+                    'bdt_amount' => 0,
+                    'cancelled_passenger_id' => $cancelledPassenger->id,
+                    'notes' => $remarks,
+                ]);
+
+                $adjustmentPaymentId = $adjustmentPayment->id;
+                $adjustmentVoucherId = $adjustmentVoucher->id;
+            }
+
             $refundPaymentId = null;
             $refundVoucherId = null;
 
-            // 4. Refund payment (customer payout)
+            // 5. Refund payment (customer payout)
             if ($refund > 0) {
                 $refundType = TransactionType::where('name', 'Customer Refund')->first();
 
@@ -253,18 +285,18 @@ class PassengerCancellationService
                 $refundVoucherId = $refundVoucher->id;
             }
 
-            // 5. Reduce refund_payable
+            // 6. Reduce refund_payable
             $passenger->update([
                 'refund_payable' => max(0, (float) $passenger->refund_payable - $refundable),
             ]);
 
-            // 6. Set permanent status
+            // 7. Set permanent status
             $cancelStatus = PassengerStatus::firstOrCreate(['name' => 'Cancel']);
             $passenger->update([
                 'passenger_status_id' => $cancelStatus->id,
             ]);
 
-            // 7. Update cancelled_passengers record
+            // 8. Update cancelled_passengers record
             $cancelledPassenger->update([
                 'status' => CancelledBookingStatus::CANCELLED,
                 'balance_adjusted_amount' => $adjusted,
@@ -272,11 +304,16 @@ class PassengerCancellationService
                 'confirmed_by_id' => auth()->id(),
                 'deduction_payment_id' => $deductionPaymentId,
                 'deduction_voucher_id' => $deductionVoucherId,
+                'adjustment_payment_id' => $adjustmentPaymentId,
+                'adjustment_voucher_id' => $adjustmentVoucherId,
                 'refund_payment_id' => $refundPaymentId,
                 'refund_voucher_id' => $refundVoucherId,
             ]);
 
-            // 8. Recompute invoice status
+            // 9. Recompute invoice status
+            $invoice->audit_reason = $adjusted > 0
+                ? 'passenger_cancellation_due_adjustment'
+                : 'passenger_cancellation_refund';
             $invoiceService = app(InvoiceService::class);
             $invoiceService->updatePaymentStatus($invoice);
 

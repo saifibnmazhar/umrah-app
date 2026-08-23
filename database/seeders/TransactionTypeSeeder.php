@@ -23,6 +23,10 @@ class TransactionTypeSeeder extends Seeder
                 'type' => 'debit',
             ],
             [
+                'name' => 'Due Adjustment',
+                'type' => 'credit',
+            ],
+            [
                 'name' => 'Ticket Refund - Payment',
                 'type' => 'debit',
             ],

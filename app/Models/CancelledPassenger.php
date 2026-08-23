@@ -31,6 +31,8 @@ class CancelledPassenger extends Model
         'deduction_voucher_id',
         'refund_payment_id',
         'refund_voucher_id',
+        'adjustment_payment_id',
+        'adjustment_voucher_id',
         'confirmed_by_id',
         'reverted_by_id',
     ];
@@ -91,6 +93,16 @@ class CancelledPassenger extends Model
     public function refundVoucher(): BelongsTo
     {
         return $this->belongsTo(Voucher::class, 'refund_voucher_id');
+    }
+
+    public function adjustmentPayment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class, 'adjustment_payment_id');
+    }
+
+    public function adjustmentVoucher(): BelongsTo
+    {
+        return $this->belongsTo(Voucher::class, 'adjustment_voucher_id');
     }
 
     public function confirmedBy(): BelongsTo
