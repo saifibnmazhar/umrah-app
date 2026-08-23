@@ -403,7 +403,7 @@ class BranchWiseReportQuery
         $query = Payment::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
             ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
-            ->with(['vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking', 'vouchers.currencyRate', 'vouchers.bank']);
+            ->with(['branch', 'vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking', 'vouchers.currencyRate', 'vouchers.bank']);
 
         if ($branchId === 'central') {
             $query->whereHas('vouchers.user', fn ($u) => $u->whereNull('branch_id'));
@@ -427,6 +427,8 @@ class BranchWiseReportQuery
                     'trx_id' => $v->transaction_id ?? '-',
                     'receive_by' => $v->user?->name ?? '',
                     'receive_at' => $v->user?->branch?->name ?? 'Central',
+                    'receive_branch_id' => $payment->branch_id,
+                    'receive_branch_location' => $payment->branch?->location,
                     'amount' => (float) $v->amount,
                     'bdt_amount' => (float) ($v->bdt_amount ?: 0) ?: (float) ($v->amount * $this->firstRate),
                     'currency_rate' => (float) ($v->currencyRate?->rate ?? $this->firstRate),

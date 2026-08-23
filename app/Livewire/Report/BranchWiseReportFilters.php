@@ -3,8 +3,9 @@
 namespace App\Livewire\Report;
 
 use App\Models\Branch;
-use App\Models\Payment;
+use App\Queries\BranchWiseReportQuery;
 use Carbon\Carbon;
+use Illuminate\Support\Collection;
 use Livewire\Component;
 
 class BranchWiseReportFilters extends Component
@@ -68,55 +69,32 @@ class BranchWiseReportFilters extends Component
 
         $this->branches = Branch::orderBy('name')->get(['id', 'name']);
 
-        $payments = Payment::whereDate('created_at', '>=', $dateFrom)
-            ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId === 'central', fn ($q) => $q->whereHas('vouchers.user', fn ($u) => $u->whereNull('branch_id')))
-            ->when($branchId && $branchId !== 'central' && $branchId !== 'all', fn ($q) => $q->whereHas('vouchers.user', fn ($u) => $u->where('branch_id', $branchId)))
-            ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
-            ->with(['branch', 'vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking', 'vouchers.currencyRate', 'vouchers.bank'])
-            ->get();
+        $query = new BranchWiseReportQuery($dateFrom, $dateTo, $branchId);
+        $vouchers = collect($query->paymentHistory($dateFrom, $dateTo, $branchId));
 
-        $this->dailyPayments = $payments->groupBy(fn ($p) => $p->created_at->format('Y-m-d'))
-            ->map(function ($dayPayments, $date) {
+        // Build daily aggregates from the voucher list
+        $this->dailyPayments = $vouchers
+            ->groupBy('payment_date')
+            ->map(function (Collection $dayVouchers, string $date) {
                 return [
                     'date' => $date,
-                    'cash' => $dayPayments->where('payment_method', 'cash')->sum('amount'),
-                    'bank' => $dayPayments->where('payment_method', 'bank')->sum('amount'),
-                    'bd_office' => $dayPayments->filter(fn ($p) => $p->branch?->location === 'BD')->sum('amount'),
-                    'ksa_office' => $dayPayments->filter(fn ($p) => $p->branch?->location === 'KSA')->sum('amount'),
+                    'cash' => $dayVouchers->where('method', 'Cash')->sum('amount'),
+                    'bank' => $dayVouchers->where('method', 'Bank')->sum('amount'),
+                    'bd_office' => $dayVouchers->where('receive_branch_location', 'BD')->sum('amount'),
+                    'ksa_office' => $dayVouchers->where('receive_branch_location', 'KSA')->sum('amount'),
                 ];
             })
             ->sortKeys();
 
-        $this->vouchersByDate = [];
-        foreach ($payments as $payment) {
-            $dateKey = $payment->created_at->format('Y-m-d');
-            foreach ($payment->vouchers as $v) {
-                if (! in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
-                    continue;
-                }
-                $this->vouchersByDate[$dateKey][] = [
-                    'invoice_id' => $v->booking?->invoice_id ?? 'N/A',
-                    'voucher_no' => $v->voucher_id ?? $v->id,
-                    'method' => ucfirst($v->payment_method?->value ?? ''),
-                    'transaction_type' => $v->transactionType?->name ?? '',
-                    'trx_id' => $v->transaction_id ?? '-',
-                    'receive_by' => $v->user?->name ?? '',
-                    'receive_at' => $v->user?->branch?->name ?? 'Central',
-                    'amount' => (float) $v->amount,
-                    'bdt_amount' => (float) ($v->bdt_amount ?: 0),
-                    'currency_rate' => (float) ($v->currencyRate?->rate ?? 1),
-                    'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
-                    'bank' => $v->bank?->name ?? '-',
-                    'bank_id' => $v->bank_id,
-                ];
-            }
-        }
+        $this->vouchersByDate = $vouchers
+            ->groupBy('payment_date')
+            ->map(fn (Collection $dayVouchers) => $dayVouchers->toArray())
+            ->toArray();
 
-        $this->totalCashPayment = $payments->where('payment_method', 'cash')->sum('amount');
-        $this->totalBankPayment = $payments->where('payment_method', 'bank')->sum('amount');
-        $this->totalBdOfficeCollection = $payments->filter(fn ($p) => $p->branch?->location === 'BD')->sum('amount');
-        $this->totalKsaOfficeCollection = $payments->filter(fn ($p) => $p->branch?->location === 'KSA')->sum('amount');
+        $this->totalCashPayment = $vouchers->where('method', 'Cash')->sum('amount');
+        $this->totalBankPayment = $vouchers->where('method', 'Bank')->sum('amount');
+        $this->totalBdOfficeCollection = $vouchers->where('receive_branch_location', 'BD')->sum('amount');
+        $this->totalKsaOfficeCollection = $vouchers->where('receive_branch_location', 'KSA')->sum('amount');
     }
 
     public function render()
