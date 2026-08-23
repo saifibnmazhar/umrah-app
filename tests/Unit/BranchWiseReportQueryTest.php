@@ -62,6 +62,7 @@ class BranchWiseReportQueryTest extends TestCase
 
         $payment = Payment::create([
             'user_id' => $user->id,
+            'branch_id' => $branch->id,
             'bank_id' => $bank->id,
             'payment_date' => now()->toDateString(),
             'payment_method' => $method === 'bank' ? 'bank' : 'cash',
@@ -165,6 +166,8 @@ class BranchWiseReportQueryTest extends TestCase
         $this->assertIsArray($history);
         $this->assertCount(2, $history);
         $this->assertSame(5000.0, (float) collect($history)->sum('amount'));
+        $this->assertArrayHasKey('receive_branch_location', $history[0]);
+        $this->assertArrayHasKey('receive_branch_id', $history[0]);
     }
 
     public function test_payment_history_filters_by_method(): void
