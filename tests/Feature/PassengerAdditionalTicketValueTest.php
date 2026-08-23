@@ -805,4 +805,57 @@ class PassengerAdditionalTicketValueTest extends TestCase
         $logCount = DB::table('invoice_update_logs')->where('invoice_id', 301)->count();
         $this->assertSame(0, $logCount);
     }
+
+    public function test_confirm_with_mixed_settlement_creates_both_adjustment_and_refund_payments(): void
+    {
+        $user = $this->signIn();
+        $cancelledId = $this->seedConfirmScenario($user);
+
+        app(PassengerCancellationService::class)
+            ->confirmCancellation(CancelledPassenger::findOrFail($cancelledId), [
+                'balance_adjusted_amount' => '40',
+                'payment_method' => 'cash',
+            ]);
+
+        // Two settlement payments: 40 credited to the due, 60 paid out.
+        $settlementPayments = DB::table('payments')
+            ->where('cancelled_passenger_id', $cancelledId)
+            ->orderBy('id')
+            ->get();
+        $this->assertCount(2, $settlementPayments);
+        $this->assertEqualsWithDelta(40, (float) $settlementPayments[0]->amount, 0.000001);
+        $this->assertEqualsWithDelta(60, (float) $settlementPayments[1]->amount, 0.000001);
+
+        $adjustmentVoucher = DB::table('vouchers')->where('payment_id', $settlementPayments[0]->id)->first();
+        $refundVoucher = DB::table('vouchers')->where('payment_id', $settlementPayments[1]->id)->first();
+        $adjustmentTypeName = DB::table('transaction_types')->where('id', $adjustmentVoucher->transaction_type_id)->value('name');
+        $refundTypeName = DB::table('transaction_types')->where('id', $refundVoucher->transaction_type_id)->value('name');
+        $this->assertSame('Due Adjustment', $adjustmentTypeName);
+        $this->assertSame('Customer Refund', $refundTypeName);
+
+        // Balance formula: 10000 - 9900 - 40 = 60.
+        $invoice = Invoice::findOrFail(301);
+        $this->assertEqualsWithDelta(10000, (float) $invoice->total_amount, 0.000001);
+        $this->assertEqualsWithDelta(9900, (float) $invoice->paid_amount, 0.000001);
+        $this->assertEqualsWithDelta(60, (float) $invoice->balance, 0.000001);
+        $this->assertSame(InvoiceStatus::PARTIAL, $invoice->status);
+
+        $cancelled = CancelledPassenger::findOrFail($cancelledId);
+        $this->assertEqualsWithDelta(40, (float) $cancelled->balance_adjusted_amount, 0.000001);
+        $this->assertEqualsWithDelta(60, (float) $cancelled->refund_amount, 0.000001);
+        $this->assertSame((int) $settlementPayments[0]->id, (int) $cancelled->adjustment_payment_id);
+        $this->assertSame((int) $adjustmentVoucher->id, (int) $cancelled->adjustment_voucher_id);
+        $this->assertSame((int) $settlementPayments[1]->id, (int) $cancelled->refund_payment_id);
+        $this->assertSame((int) $refundVoucher->id, (int) $cancelled->refund_voucher_id);
+
+        $log = DB::table('invoice_update_logs')
+            ->where('invoice_id', 301)
+            ->orderByDesc('id')
+            ->first();
+        $this->assertSame('passenger_cancellation_due_adjustment', $log->reason);
+        $old = json_decode($log->old_values, true);
+        $new = json_decode($log->new_values, true);
+        $this->assertEqualsWithDelta(100, (float) $old['balance'], 0.000001);
+        $this->assertEqualsWithDelta(60, (float) $new['balance'], 0.000001);
+    }
 }
