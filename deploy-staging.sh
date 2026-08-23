@@ -20,7 +20,7 @@ if [ -z "${COMPOSE_PROJECT_NAME:-}" ]; then
     WEB_DIR="$SCRIPT_DIR"
     DOMAIN_PATH=$(echo "$WEB_DIR" | sed 's|/var/www/||' | sed 's|/web$||')
     if [ -n "$DOMAIN_PATH" ]; then
-        COMPOSE_PROJECT_NAME=$(echo "$DOMAIN_PATH" | sed 's|/|-|g')
+        COMPOSE_PROJECT_NAME=$(echo "$DOMAIN_PATH" | sed 's|[/.]|-|g')
     else
         COMPOSE_PROJECT_NAME=$(basename "$WEB_DIR")
     fi
