@@ -261,6 +261,17 @@ Always write code that is modular, reusable, and DRY across the codebase.
 - Reference `ui-references/` for design — do not modify files in that folder
 - For Livewire best practices, see [docs/09-livewire.md](docs/09-livewire.md)
 
+### Alpine.js Conventions
+
+- Extract reusable `x-data` logic into named data functions registered via
+  `Alpine.data()` in `resources/js/alpine-data.js` — avoid large inline scripts
+- Always pair `x-show` with `x-cloak` to prevent FOUC (define `[x-cloak] { display: none }` in CSS)
+- Debounce search/input handlers (300ms+) inside `init()`, never in inline expressions
+- Wrap DOM reads in `$nextTick()` after state changes
+- When coexisting with Livewire: use `$watch` for Alpine→Livewire sync,
+  and `@custom-event.window` (or `$dispatch`) for Livewire→Alpine communication
+- For detailed reference, see `.hermes/plans/2026-08-23_153000-alpinejs-best-practices.md`
+
 ---
 
 ## 5. Testing Conventions
