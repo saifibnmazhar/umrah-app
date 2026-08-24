@@ -1,0 +1,265 @@
+<?php
+
+namespace Tests\Feature;
+
+use App\Enums\InvoiceStatus;
+use App\Models\Booking;
+use App\Models\Branch;
+use App\Models\Customer;
+use App\Models\Invoice;
+use App\Models\Payment;
+use App\Models\User;
+use App\Services\InvoiceService;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
+use Tests\TestCase;
+
+class InvoiceServiceTest extends TestCase
+{
+    use RefreshDatabase;
+
+    protected InvoiceService $service;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        $this->service = app(InvoiceService::class);
+
+        Schema::create('branches', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+
+        Schema::create('customers', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+
+        Schema::create('bookings', function ($table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
+            $table->foreignId('customer_id')->constrained()->restrictOnDelete();
+            $table->foreignId('booking_branch_id')->constrained('branches')->restrictOnDelete();
+            $table->integer('pax_qty')->default(1);
+            $table->decimal('total_value', 14, 6)->default(0);
+            $table->decimal('discount_amount', 14, 6)->default(0);
+            $table->boolean('is_cancelled')->default(false);
+            $table->timestamps();
+        });
+
+        Schema::create('invoices', function ($table) {
+            $table->id();
+            $table->foreignId('booking_id')->constrained()->restrictOnDelete();
+            $table->foreignId('branch_id')->constrained('branches')->restrictOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
+            $table->decimal('total_amount', 14, 6)->default(0);
+            $table->decimal('paid_amount', 14, 6)->default(0);
+            $table->decimal('balance', 14, 6)->default(0);
+            $table->enum('status', ['pending', 'partial', 'paid', 'cancelled', 'refunded'])->default('pending');
+            $table->timestamps();
+        });
+
+        Schema::create('cancelled_bookings', function ($table) {
+            $table->id();
+            $table->foreignId('booking_id')->constrained()->restrictOnDelete();
+            $table->timestamps();
+        });
+
+        Schema::create('cancelled_passengers', function ($table) {
+            $table->id();
+            $table->foreignId('booking_id')->constrained('bookings')->restrictOnDelete();
+            $table->foreignId('passenger_id')->constrained('passengers')->restrictOnDelete();
+            $table->foreignId('invoice_id')->constrained('invoices')->restrictOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
+            $table->decimal('package_value', 14, 6);
+            $table->foreignId('cancellation_branch_id')->constrained('branches')->restrictOnDelete();
+            $table->enum('status', ['cancellation processing', 'cancelled'])->default('cancellation processing');
+            $table->timestamps();
+            $table->softDeletes();
+        });
+
+        Schema::create('refunded_tickets', function ($table) {
+            $table->id();
+            $table->timestamps();
+        });
+
+        Schema::create('re_issued_tickets', function ($table) {
+            $table->id();
+            $table->timestamps();
+        });
+
+        Schema::create('payments', function ($table) {
+            $table->id();
+            $table->foreignId('invoice_id')->nullable()->constrained('invoices')->nullOnDelete();
+            $table->foreignId('booking_id')->nullable()->constrained('bookings')->nullOnDelete();
+            $table->foreignId('branch_id')->nullable()->constrained('branches')->nullOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
+            $table->decimal('amount', 14, 6);
+            $table->decimal('bdt_amount', 14, 6)->default(0);
+            $table->enum('payment_method', ['cash', 'bank'])->default('cash');
+            $table->date('payment_date');
+            $table->foreignId('cancelled_booking_id')->nullable()->constrained('cancelled_bookings')->nullOnDelete();
+            $table->foreignId('cancelled_passenger_id')->nullable()->constrained('cancelled_passengers')->nullOnDelete();
+            $table->foreignId('refunded_ticket_id')->nullable()->constrained('refunded_tickets')->nullOnDelete();
+            $table->foreignId('re_issued_ticket_id')->nullable()->constrained('re_issued_tickets')->nullOnDelete();
+            $table->timestamps();
+        });
+    }
+
+    private function createInvoiceWithPayments(): array
+    {
+        $user = User::factory()->create();
+        $customer = Customer::create(['name' => 'Test']);
+        $branch = Branch::create(['name' => 'Main']);
+
+        $booking = Booking::create([
+            'user_id' => $user->id,
+            'customer_id' => $customer->id,
+            'booking_branch_id' => $branch->id,
+            'pax_qty' => 2,
+            'total_value' => 5000.00,
+        ]);
+
+        $invoice = Invoice::create([
+            'booking_id' => $booking->id,
+            'branch_id' => $branch->id,
+            'user_id' => $user->id,
+            'total_amount' => 5000.00,
+            'paid_amount' => 0,
+            'balance' => 5000.00,
+        ]);
+
+        return compact('user', 'booking', 'invoice');
+    }
+
+    public function test_regular_payments_counted(): void
+    {
+        ['invoice' => $invoice, 'user' => $user, 'booking' => $booking] = $this->createInvoiceWithPayments();
+
+        Payment::create([
+            'invoice_id' => $invoice->id,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'amount' => 1000,
+            'bdt_amount' => 0,
+            'payment_method' => 'cash',
+            'payment_date' => now(),
+        ]);
+
+        $this->service->updatePaymentStatus($invoice->fresh());
+
+        $this->assertEquals(1000.00, (float) $invoice->fresh()->paid_amount);
+    }
+
+    public function test_cancelled_booking_payments_excluded(): void
+    {
+        ['invoice' => $invoice, 'user' => $user, 'booking' => $booking] = $this->createInvoiceWithPayments();
+
+        Payment::create([
+            'invoice_id' => $invoice->id,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'amount' => 1000,
+            'bdt_amount' => 0,
+            'payment_method' => 'cash',
+            'payment_date' => now(),
+        ]);
+
+        Payment::create([
+            'invoice_id' => $invoice->id,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'amount' => 500,
+            'bdt_amount' => 0,
+            'payment_method' => 'cash',
+            'payment_date' => now(),
+            'cancelled_booking_id' => 1,
+        ]);
+
+        $this->service->updatePaymentStatus($invoice->fresh());
+
+        $this->assertEquals(1000.00, (float) $invoice->fresh()->paid_amount);
+    }
+
+    public function test_cancelled_passenger_payments_excluded(): void
+    {
+        ['invoice' => $invoice, 'user' => $user, 'booking' => $booking] = $this->createInvoiceWithPayments();
+
+        Payment::create([
+            'invoice_id' => $invoice->id,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'amount' => 800,
+            'bdt_amount' => 0,
+            'payment_method' => 'cash',
+            'payment_date' => now(),
+        ]);
+
+        Payment::create([
+            'invoice_id' => $invoice->id,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'amount' => 200,
+            'bdt_amount' => 0,
+            'payment_method' => 'cash',
+            'payment_date' => now(),
+            'cancelled_passenger_id' => 1,
+        ]);
+
+        $this->service->updatePaymentStatus($invoice->fresh());
+
+        $this->assertEquals(800.00, (float) $invoice->fresh()->paid_amount);
+    }
+
+    public function test_refunded_ticket_payments_excluded(): void
+    {
+        ['invoice' => $invoice, 'user' => $user, 'booking' => $booking] = $this->createInvoiceWithPayments();
+
+        Payment::create([
+            'invoice_id' => $invoice->id,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'amount' => 1500,
+            'bdt_amount' => 0,
+            'payment_method' => 'cash',
+            'payment_date' => now(),
+        ]);
+
+        Payment::create([
+            'invoice_id' => $invoice->id,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'amount' => 300,
+            'bdt_amount' => 0,
+            'payment_method' => 'cash',
+            'payment_date' => now(),
+            'refunded_ticket_id' => 1,
+        ]);
+
+        $this->service->updatePaymentStatus($invoice->fresh());
+
+        $this->assertEquals(1500.00, (float) $invoice->fresh()->paid_amount);
+    }
+
+    public function test_balance_recomputes_correctly(): void
+    {
+        ['invoice' => $invoice, 'user' => $user, 'booking' => $booking] = $this->createInvoiceWithPayments();
+
+        Payment::create([
+            'invoice_id' => $invoice->id,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'amount' => 3000,
+            'bdt_amount' => 0,
+            'payment_method' => 'cash',
+            'payment_date' => now(),
+        ]);
+
+        $this->service->updatePaymentStatus($invoice->fresh());
+
+        $this->assertEquals(2000.00, (float) $invoice->fresh()->balance);
+        $this->assertEquals(InvoiceStatus::PARTIAL, $invoice->fresh()->status);
+    }
+}

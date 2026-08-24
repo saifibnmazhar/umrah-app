@@ -25,10 +25,27 @@ class InvoiceService
     {
         \Log::info('InvoiceService: Updating payment status for invoice ID: '.$invoice->id);
 
+        $auditReason = $invoice->audit_reason ?? null;
+
         $invoice = $invoice->fresh();
 
-        $invoice->paid_amount = $invoice->payments()->sum('amount');
-        $invoice->balance = $invoice->total_amount - $invoice->paid_amount;
+        if ($auditReason !== null) {
+            $invoice->audit_reason = $auditReason;
+        }
+
+        $invoice->paid_amount = $invoice->payments()
+            ->whereNull('cancelled_booking_id')
+            ->whereNull('cancelled_passenger_id')
+            ->whereNull('refunded_ticket_id')
+            ->whereNull('re_issued_ticket_id')
+            ->sum('amount');
+        $dueAdjustments = (float) $invoice->payments()
+            ->whereNotNull('cancelled_passenger_id')
+            ->whereHas('voucher.transactionType', function ($query) {
+                $query->where('name', 'Due Adjustment');
+            })
+            ->sum('amount');
+        $invoice->balance = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount - $dueAdjustments);
 
         \Log::info('InvoiceService: Paid amount calculated: '.$invoice->paid_amount.', Balance: '.$invoice->balance);
 

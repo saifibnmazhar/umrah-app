@@ -7,16 +7,23 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\SoftDeletes;
 
-class CancelledBooking extends Model
+class CancelledPassenger extends Model
 {
     use SoftDeletes;
 
     protected $fillable = [
         'booking_id',
+        'passenger_id',
         'invoice_id',
         'user_id',
-        'total_paid',
+        'package_value',
+        'additional_ticket_value',
+        'total_passenger_due',
+        'visa_cost',
+        'ticket_cost',
         'service_charge_deduction',
+        'refundable_amount',
+        'balance_adjusted_amount',
         'refund_amount',
         'cancellation_branch_id',
         'status',
@@ -24,13 +31,21 @@ class CancelledBooking extends Model
         'deduction_voucher_id',
         'refund_payment_id',
         'refund_voucher_id',
+        'adjustment_payment_id',
+        'adjustment_voucher_id',
         'confirmed_by_id',
         'reverted_by_id',
     ];
 
     protected $casts = [
-        'total_paid' => 'decimal:6',
+        'package_value' => 'decimal:6',
+        'additional_ticket_value' => 'decimal:6',
+        'total_passenger_due' => 'decimal:6',
+        'visa_cost' => 'decimal:6',
+        'ticket_cost' => 'decimal:6',
         'service_charge_deduction' => 'decimal:6',
+        'refundable_amount' => 'decimal:6',
+        'balance_adjusted_amount' => 'decimal:6',
         'refund_amount' => 'decimal:6',
         'status' => CancelledBookingStatus::class,
     ];
@@ -38,6 +53,11 @@ class CancelledBooking extends Model
     public function booking(): BelongsTo
     {
         return $this->belongsTo(Booking::class);
+    }
+
+    public function passenger(): BelongsTo
+    {
+        return $this->belongsTo(Passenger::class);
     }
 
     public function invoice(): BelongsTo
@@ -73,6 +93,16 @@ class CancelledBooking extends Model
     public function refundVoucher(): BelongsTo
     {
         return $this->belongsTo(Voucher::class, 'refund_voucher_id');
+    }
+
+    public function adjustmentPayment(): BelongsTo
+    {
+        return $this->belongsTo(Payment::class, 'adjustment_payment_id');
+    }
+
+    public function adjustmentVoucher(): BelongsTo
+    {
+        return $this->belongsTo(Voucher::class, 'adjustment_voucher_id');
     }
 
     public function confirmedBy(): BelongsTo

@@ -350,10 +350,10 @@ class FingerprintController extends Controller
         }
 
         $passengers = $fingerprint->booking->passengers;
-        if ($passengers->isNotEmpty() && $passengers->every(fn ($p) => $p->isOnHold() || $p->isOnCancel())) {
+        if ($passengers->isNotEmpty() && $passengers->every(fn ($p) => $p->isOnHold() || $p->isOnCancel() || $p->is_cancelled)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot update fingerprint for a passenger on Hold or Cancel',
+                'message' => 'Cannot update fingerprint for a cancelled passenger',
             ], 422);
         }
 
@@ -383,10 +383,10 @@ class FingerprintController extends Controller
         }
 
         $passengers = $fingerprint->booking->passengers;
-        if ($passengers->isNotEmpty() && $passengers->every(fn ($p) => $p->isOnHold() || $p->isOnCancel())) {
+        if ($passengers->isNotEmpty() && $passengers->every(fn ($p) => $p->isOnHold() || $p->isOnCancel() || $p->is_cancelled)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot update fingerprint for a passenger on Hold or Cancel',
+                'message' => 'Cannot update fingerprint for a cancelled passenger',
             ], 422);
         }
 
@@ -434,10 +434,10 @@ class FingerprintController extends Controller
             ], 422);
         }
 
-        if ($fingerprintDetail->passenger?->isOnHold() || $fingerprintDetail->passenger?->isOnCancel()) {
+        if ($fingerprintDetail->passenger?->isOnHold() || $fingerprintDetail->passenger?->isOnCancel() || $fingerprintDetail->passenger?->is_cancelled) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot update fingerprint for a passenger on Hold or Cancel',
+                'message' => 'Cannot update fingerprint for a cancelled passenger',
             ], 422);
         }
 
@@ -510,10 +510,10 @@ class FingerprintController extends Controller
             ], 422);
         }
 
-        if ($fingerprintDetail->passenger?->isOnHold() || $fingerprintDetail->passenger?->isOnCancel()) {
+        if ($fingerprintDetail->passenger?->isOnHold() || $fingerprintDetail->passenger?->isOnCancel() || $fingerprintDetail->passenger?->is_cancelled) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot update fingerprint for a passenger on Hold or Cancel',
+                'message' => 'Cannot update fingerprint for a cancelled passenger',
             ], 422);
         }
 

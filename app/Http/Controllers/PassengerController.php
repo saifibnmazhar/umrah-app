@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Enums\PassengerType;
 use App\Exceptions\DatabaseErrorHumanizer;
+use App\Models\CancelledPassenger;
 use App\Models\Document;
 use App\Models\FingerprintCharge;
 use App\Models\Package;
 use App\Models\Passenger;
+use App\Models\PassengerStatus;
 use App\Models\StayDurationLimit;
 use App\Models\TicketFare;
 use App\Models\VisaAgent;
@@ -724,6 +726,25 @@ class PassengerController extends Controller
         $validated = $request->validate([
             'passenger_status_id' => 'nullable|exists:passenger_statuses,id',
         ]);
+
+        $statusName = PassengerStatus::find($validated['passenger_status_id'])?->name;
+
+        if ($statusName === 'Cancel') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Use the cancellation workflow to cancel a passenger.',
+            ], 422);
+        }
+
+        $hasActiveCancellation = CancelledPassenger::where('passenger_id', $passenger->id)
+            ->whereNull('deleted_at')->exists();
+
+        if ($hasActiveCancellation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Passenger status is locked during cancellation.',
+            ], 422);
+        }
 
         try {
             $passenger->update(['passenger_status_id' => $validated['passenger_status_id']]);
