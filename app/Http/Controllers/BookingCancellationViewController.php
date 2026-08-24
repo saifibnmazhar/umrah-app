@@ -6,6 +6,7 @@ use App\Enums\CancelledBookingStatus;
 use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\CancelledBooking;
+use App\Models\CancelledPassenger;
 use App\Services\CostTrackingService;
 use Illuminate\Http\Request;
 
@@ -62,6 +63,8 @@ class BookingCancellationViewController extends Controller
     {
         $this->ensureFingerprintAdminHasBranch();
 
+        $tab = $request->get('tab', 'bookings');
+
         $query = CancelledBooking::with([
             'booking.customer',
             'booking.bookingBranch',
@@ -77,9 +80,26 @@ class BookingCancellationViewController extends Controller
         }
 
         $cancelledBookings = $query->latest()->paginate(20)->withQueryString();
+
+        $passengerQuery = CancelledPassenger::with([
+            'booking.customer',
+            'booking.bookingBranch',
+            'passenger',
+            'user',
+            'cancellationBranch',
+        ])->where('status', CancelledBookingStatus::PROCESSING);
+
+        $passengerQuery->when(auth()->user()->branch_id, fn ($q) => $q->where('cancellation_branch_id', auth()->user()->branch_id));
+
+        if ($request->filled('branch_id')) {
+            $passengerQuery->where('cancellation_branch_id', $request->branch_id);
+        }
+
+        $cancelledPassengers = $passengerQuery->latest()->paginate(20)->withQueryString();
+
         $branches = Branch::select('id', 'name')->orderBy('name')->get();
 
-        return view('pending-refunds.index', compact('cancelledBookings', 'branches'));
+        return view('pending-refunds.index', compact('cancelledBookings', 'cancelledPassengers', 'branches', 'tab'));
     }
 
     public function report()
