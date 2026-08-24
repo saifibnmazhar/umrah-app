@@ -329,10 +329,13 @@ test: add coverage for invoice export
 
 ### Before Pushing
 
+**CRITICAL: Never push to any git remote without explicit user permission.**
+
 1. Ensure all tests pass: `php artisan test`
 2. Run Pint: `vendor/bin/pint`
 3. Ensure build passes: `npm run build`
 4. Validate Docker: `docker compose config --quiet`
+5. Only push when the user explicitly says "push" or "deploy"
 
 ---
 
