@@ -11,22 +11,33 @@ use App\Models\Passenger;
 use App\Models\TicketFare;
 use App\Models\User;
 use App\Services\PassengerCancellationService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
 class PassengerAdditionalTicketValueTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
-    private array $createdTables = [];
-
-    private function ensureTable(string $name, \Closure $definition): void
+    // Override to avoid starting a DB transaction. DDL (Schema::create/drop)
+    // in setUp() on MySQL implicitly commits, which breaks nested
+    // DB::transaction() savepoints in the service layer under test.
+    protected function beginDatabaseTransaction(): void
     {
-        if (! Schema::hasTable($name)) {
-            Schema::create($name, $definition);
-            $this->createdTables[] = $name;
+        // no-op
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        // Restore migration schema so other test classes aren't affected by
+        // our drop/recreate pattern in setUp().
+        try {
+            Artisan::call('migrate:fresh');
+        } catch (\Throwable $e) {
+            RefreshDatabaseState::$migrated = false;
         }
     }
 
@@ -41,7 +52,27 @@ class PassengerAdditionalTicketValueTest extends TestCase
             DB::unprepared('SET FOREIGN_KEY_CHECKS=0');
         }
 
-        $this->ensureTable('users', function ($table) {
+        // Drop tables that already exist from migrations or prior test classes
+        // so we can recreate simplified schemas matching the service layer.
+        Schema::disableForeignKeyConstraints();
+        Schema::dropIfExists('payments');
+        Schema::dropIfExists('vouchers');
+        Schema::dropIfExists('invoices');
+        Schema::dropIfExists('invoice_update_logs');
+        Schema::dropIfExists('passenger_update_logs');
+        Schema::dropIfExists('booking_update_logs');
+        Schema::dropIfExists('cancelled_passengers');
+        Schema::dropIfExists('issued_tickets');
+        Schema::dropIfExists('ticket_fares');
+        Schema::dropIfExists('passengers');
+        Schema::dropIfExists('bookings');
+        Schema::dropIfExists('transaction_types');
+        Schema::dropIfExists('visa_submissions');
+        Schema::dropIfExists('passenger_statuses');
+        Schema::dropIfExists('users');
+        Schema::dropIfExists('branches');
+
+        Schema::create('users', function ($table) {
             $table->id();
             $table->string('name');
             $table->string('email')->unique();
@@ -53,7 +84,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->timestamps();
         });
 
-        $this->ensureTable('branches', function ($table) {
+        Schema::create('branches', function ($table) {
             $table->id();
             $table->string('name');
             $table->string('address')->default('');
@@ -61,7 +92,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->timestamps();
         });
 
-        $this->ensureTable('bookings', function ($table) {
+        Schema::create('bookings', function ($table) {
             $table->id();
             // Real column is a string storing the formatted invoice number.
             $table->string('invoice_id')->default('');
@@ -84,7 +115,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->timestamps();
         });
 
-        $this->ensureTable('passengers', function ($table) {
+        Schema::create('passengers', function ($table) {
             $table->id();
             $table->unsignedBigInteger('booking_id')->nullable();
             $table->string('first_name');
@@ -109,7 +140,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->timestamps();
         });
 
-        $this->ensureTable('ticket_fares', function ($table) {
+        Schema::create('ticket_fares', function ($table) {
             $table->id();
             $table->unsignedBigInteger('airline_id')->default(0);
             $table->unsignedBigInteger('airline_classes_id')->default(0);
@@ -127,7 +158,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->timestamps();
         });
 
-        $this->ensureTable('issued_tickets', function ($table) {
+        Schema::create('issued_tickets', function ($table) {
             $table->id();
             $table->unsignedBigInteger('passenger_id');
             $table->unsignedBigInteger('booking_id');
@@ -154,7 +185,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->softDeletes();
         });
 
-        $this->ensureTable('cancelled_passengers', function ($table) {
+        Schema::create('cancelled_passengers', function ($table) {
             $table->id();
             $table->unsignedBigInteger('booking_id');
             $table->unsignedBigInteger('passenger_id');
@@ -183,14 +214,14 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->softDeletes();
         });
 
-        $this->ensureTable('passenger_statuses', function ($table) {
+        Schema::create('passenger_statuses', function ($table) {
             $table->id();
             $table->string('name');
             $table->timestamps();
         });
 
         // visaSubmission hasOne(latestOfMany) lazy-loads even on detached models.
-        $this->ensureTable('visa_submissions', function ($table) {
+        Schema::create('visa_submissions', function ($table) {
             $table->id();
             $table->unsignedBigInteger('passenger_id')->nullable();
             $table->decimal('net_visa_cost', 14, 6)->default(0);
@@ -199,7 +230,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->timestamps();
         });
 
-        $this->ensureTable('invoices', function ($table) {
+        Schema::create('invoices', function ($table) {
             $table->id();
             $table->unsignedBigInteger('booking_id');
             $table->unsignedBigInteger('user_id');
@@ -212,14 +243,14 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->timestamps();
         });
 
-        $this->ensureTable('transaction_types', function ($table) {
+        Schema::create('transaction_types', function ($table) {
             $table->id();
             $table->string('name');
             $table->string('type')->default('credit');
             $table->timestamps();
         });
 
-        $this->ensureTable('payments', function ($table) {
+        Schema::create('payments', function ($table) {
             $table->id();
             $table->unsignedBigInteger('invoice_id')->nullable();
             $table->unsignedBigInteger('booking_id')->nullable();
@@ -238,7 +269,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->timestamps();
         });
 
-        $this->ensureTable('vouchers', function ($table) {
+        Schema::create('vouchers', function ($table) {
             $table->id();
             $table->string('voucher_id');
             $table->unsignedBigInteger('invoice_id')->nullable();
@@ -264,11 +295,11 @@ class PassengerAdditionalTicketValueTest extends TestCase
         });
 
         // BookingObserver::updated writes here on every booking update.
-        $this->ensureTable('booking_update_logs', function ($table) {
+        Schema::create('booking_update_logs', function ($table) {
             $table->id();
-            $table->unsignedBigInteger('booking_id');
+            $table->unsignedBigInteger('booking_id')->nullable();
             $table->unsignedBigInteger('user_id')->nullable();
-            $table->unsignedBigInteger('booking_invoice_id')->nullable();
+            $table->string('booking_invoice_id')->nullable();
             $table->string('action')->default('updated');
             $table->json('old_values')->nullable();
             $table->json('new_values')->nullable();
@@ -276,11 +307,11 @@ class PassengerAdditionalTicketValueTest extends TestCase
         });
 
         // InvoiceObserver::updated writes here on every invoice update.
-        $this->ensureTable('invoice_update_logs', function ($table) {
+        Schema::create('invoice_update_logs', function ($table) {
             $table->id();
             $table->unsignedBigInteger('invoice_id')->nullable();
             $table->unsignedBigInteger('user_id')->nullable();
-            $table->unsignedBigInteger('booking_invoice_id')->nullable();
+            $table->string('booking_invoice_id')->nullable();
             $table->string('action')->default('updated');
             $table->string('reason')->nullable();
             $table->json('old_values')->nullable();
@@ -289,7 +320,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
         });
 
         // PassengerObserver::updated writes here on every passenger update.
-        $this->ensureTable('passenger_update_logs', function ($table) {
+        Schema::create('passenger_update_logs', function ($table) {
             $table->id();
             $table->unsignedBigInteger('passenger_id');
             $table->unsignedBigInteger('user_id')->nullable();
@@ -299,20 +330,8 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->json('new_values')->nullable();
             $table->timestamps();
         });
-    }
 
-    protected function tearDown(): void
-    {
-        foreach ($this->createdTables as $table) {
-            Schema::dropIfExists($table);
-        }
-        $this->createdTables = [];
-
-        if (DB::getDriverName() !== 'sqlite') {
-            DB::unprepared('SET FOREIGN_KEY_CHECKS=1');
-        }
-
-        parent::tearDown();
+        Schema::enableForeignKeyConstraints();
     }
 
     protected function signIn(): User
@@ -325,82 +344,91 @@ class PassengerAdditionalTicketValueTest extends TestCase
 
     private function insertBranch(int $id = 1): void
     {
-        DB::table('branches')->insert([
-            'id' => $id,
-            'name' => 'Main Branch',
-            'address' => '',
-            'contacts' => '',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ]);
+        DB::table('branches')->updateOrInsert(
+            ['id' => $id],
+            [
+                'name' => 'Main Branch',
+                'address' => '',
+                'contacts' => '',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ]
+        );
     }
 
     private function insertBooking(array $overrides = []): void
     {
-        DB::table('bookings')->insert(array_merge([
-            'id' => 101,
-            'invoice_id' => '(###)-127826',
-            'user_id' => 1,
-            'customer_id' => 0,
-            'package_id' => 0,
-            'booking_branch_id' => 1,
-            'fingerprint_branch_id' => 1,
-            'fingerprint_charge_id' => 0,
-            'district_id' => 0,
-            'date_gap_id' => 0,
-            'pax_qty' => 2,
-            'total_value' => 12000,
-            'discount_amount' => 0,
-            'discount_type' => 'fixed_amount',
-            'discount_value' => 0,
-            'fingerprint_location' => 'home',
-            'is_cancelled' => false,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ], $overrides));
+        DB::table('bookings')->updateOrInsert(
+            ['id' => 101],
+            array_merge([
+                'invoice_id' => '(###)-127826',
+                'user_id' => 1,
+                'customer_id' => 0,
+                'package_id' => 0,
+                'booking_branch_id' => 1,
+                'fingerprint_branch_id' => 1,
+                'fingerprint_charge_id' => 0,
+                'district_id' => 0,
+                'date_gap_id' => 0,
+                'pax_qty' => 2,
+                'total_value' => 12000,
+                'discount_amount' => 0,
+                'discount_type' => 'fixed_amount',
+                'discount_value' => 0,
+                'fingerprint_location' => 'home',
+                'is_cancelled' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ], $overrides)
+        );
     }
 
     private function insertPassenger(array $overrides = []): void
     {
-        DB::table('passengers')->insert(array_merge([
-            'id' => 201,
-            'booking_id' => 101,
-            'first_name' => 'John',
-            'last_name' => 'Doe',
-            'address' => '',
-            'mobile_no' => '123',
-            'passport_no' => 'P123',
-            'passport_expiry' => '2030-01-01',
-            'date_of_birth' => '1990-01-01',
-            'flight_date_from' => '2026-09-01',
-            'flight_date_to' => '2026-09-15',
-            'passenger_type' => 'adult',
-            'gender' => 'male',
-            'service_required' => 'all',
-            'stay_duration' => 7,
-            'ticket_status' => 'pending',
-            'package_value' => 3000,
-            'refund_payable' => 100,
-            'is_cancelled' => false,
-            'created_at' => now(),
-            'updated_at' => now(),
-        ], $overrides));
+        $id = $overrides['id'] ?? 201;
+        DB::table('passengers')->updateOrInsert(
+            ['id' => $id],
+            array_merge([
+                'booking_id' => 101,
+                'first_name' => 'John',
+                'last_name' => 'Doe',
+                'address' => '',
+                'mobile_no' => '123',
+                'passport_no' => 'P123',
+                'passport_expiry' => '2030-01-01',
+                'date_of_birth' => '1990-01-01',
+                'flight_date_from' => '2026-09-01',
+                'flight_date_to' => '2026-09-15',
+                'passenger_type' => 'adult',
+                'gender' => 'male',
+                'service_required' => 'all',
+                'stay_duration' => 7,
+                'ticket_status' => 'pending',
+                'package_value' => 3000,
+                'refund_payable' => 100,
+                'is_cancelled' => false,
+                'created_at' => now(),
+                'updated_at' => now(),
+            ], $overrides)
+        );
     }
 
     private function insertInvoice(array $overrides = []): void
     {
-        DB::table('invoices')->insert(array_merge([
-            'id' => 301,
-            'booking_id' => 101,
-            'user_id' => 1,
-            'branch_id' => 1,
-            'total_amount' => 10000,
-            'paid_amount' => 9900,
-            'balance' => 100,
-            'status' => 'partial',
-            'created_at' => now(),
-            'updated_at' => now(),
-        ], $overrides));
+        DB::table('invoices')->updateOrInsert(
+            ['id' => 301],
+            array_merge([
+                'booking_id' => 101,
+                'user_id' => 1,
+                'branch_id' => 1,
+                'total_amount' => 10000,
+                'paid_amount' => 9900,
+                'balance' => 100,
+                'status' => 'partial',
+                'created_at' => now(),
+                'updated_at' => now(),
+            ], $overrides)
+        );
     }
 
     private function insertTransactionType(string $name, string $type): int
