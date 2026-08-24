@@ -367,7 +367,7 @@ Jobs (run in parallel where possible):
 
 ### Container Registry
 
-- Images pushed to: `ghcr.io/mostafiz-8bits/umrah-app`
+- Images pushed to: `ghcr.io/${{ github.repository }}` (resolved by CI based on repo)
 - Tags: `latest` + `sha-<short-sha>`
 - Build cache: `buildx-cache:latest` in registry
 

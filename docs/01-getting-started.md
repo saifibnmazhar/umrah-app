@@ -25,7 +25,7 @@ under 10 minutes.
 If you have PHP and Composer locally, the fastest path is:
 
 ```bash
-git clone https://github.com/mostafiz-8bits/umrah-app.git
+git clone https://github.com/saifibnmazhar/umrah-app.git
 cd umrah-app
 
 # The "setup" script handles everything:
@@ -51,7 +51,7 @@ Visit: `http://localhost:8000`
 If you prefer containers (recommended for consistency with production):
 
 ```bash
-git clone https://github.com/mostafiz-8bits/umrah-app.git
+git clone https://github.com/saifibnmazhar/umrah-app.git
 cd umrah-app
 
 # One command starts app + MySQL

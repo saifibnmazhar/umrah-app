@@ -81,7 +81,7 @@ Steps:
 5. Build and push Docker image
 6. **Build cache** stored at `ghcr.io/${{ github.repository }}/buildx-cache:latest`
 
-**Image:** `ghcr.io/mostafiz-8bits/umrah-app`
+**Image:** `ghcr.io/${{ github.repository }}`
 
 **When this fails:**
 - Check Dockerfile syntax
