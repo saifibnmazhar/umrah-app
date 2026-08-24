@@ -123,7 +123,7 @@
                         <p class="text-xs text-slate-400">Refundable Amount − Adjusted, paid out as cash</p>
                     </div>
 
-                    <div x-show="customerRefund > 0" x-cloak>
+                    <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method *</label>
                         <select x-model="paymentMethod" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none bg-white">
                             <option value="cash">Cash</option>
