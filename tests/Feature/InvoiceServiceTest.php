@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Services\InvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -24,6 +25,20 @@ class InvoiceServiceTest extends TestCase
     {
         parent::setUp();
         $this->service = app(InvoiceService::class);
+
+        // Drop tables that already exist from migrations so we can recreate
+        // simplified schemas for this test.
+        Schema::disableForeignKeyConstraints();
+        Schema::dropIfExists('payments');
+        Schema::dropIfExists('cancelled_passengers');
+        Schema::dropIfExists('cancelled_bookings');
+        Schema::dropIfExists('invoices');
+        Schema::dropIfExists('re_issued_tickets');
+        Schema::dropIfExists('refunded_tickets');
+        Schema::dropIfExists('passengers');
+        Schema::dropIfExists('bookings');
+        Schema::dropIfExists('customers');
+        Schema::dropIfExists('branches');
 
         Schema::create('branches', function ($table) {
             $table->id();
@@ -46,6 +61,15 @@ class InvoiceServiceTest extends TestCase
             $table->decimal('total_value', 14, 6)->default(0);
             $table->decimal('discount_amount', 14, 6)->default(0);
             $table->boolean('is_cancelled')->default(false);
+            $table->timestamps();
+        });
+
+        Schema::create('passengers', function ($table) {
+            $table->id();
+            $table->foreignId('booking_id')->constrained('bookings')->restrictOnDelete();
+            $table->string('first_name');
+            $table->string('last_name');
+            $table->decimal('package_value', 12, 2)->default(0);
             $table->timestamps();
         });
 
@@ -106,6 +130,8 @@ class InvoiceServiceTest extends TestCase
             $table->foreignId('re_issued_ticket_id')->nullable()->constrained('re_issued_tickets')->nullOnDelete();
             $table->timestamps();
         });
+
+        Schema::enableForeignKeyConstraints();
     }
 
     private function createInvoiceWithPayments(): array
@@ -157,6 +183,8 @@ class InvoiceServiceTest extends TestCase
     {
         ['invoice' => $invoice, 'user' => $user, 'booking' => $booking] = $this->createInvoiceWithPayments();
 
+        DB::table('cancelled_bookings')->insert(['id' => 1, 'booking_id' => $booking->id, 'created_at' => now(), 'updated_at' => now()]);
+
         Payment::create([
             'invoice_id' => $invoice->id,
             'booking_id' => $booking->id,
@@ -187,6 +215,9 @@ class InvoiceServiceTest extends TestCase
     {
         ['invoice' => $invoice, 'user' => $user, 'booking' => $booking] = $this->createInvoiceWithPayments();
 
+        DB::table('passengers')->insert(['id' => 1, 'booking_id' => $booking->id, 'first_name' => 'Test', 'last_name' => 'Pax', 'package_value' => 0, 'created_at' => now(), 'updated_at' => now()]);
+        DB::table('cancelled_passengers')->insert(['id' => 1, 'booking_id' => $booking->id, 'passenger_id' => 1, 'invoice_id' => $invoice->id, 'user_id' => $user->id, 'package_value' => 0, 'cancellation_branch_id' => $invoice->branch_id, 'created_at' => now(), 'updated_at' => now()]);
+
         Payment::create([
             'invoice_id' => $invoice->id,
             'booking_id' => $booking->id,
@@ -216,6 +247,8 @@ class InvoiceServiceTest extends TestCase
     public function test_refunded_ticket_payments_excluded(): void
     {
         ['invoice' => $invoice, 'user' => $user, 'booking' => $booking] = $this->createInvoiceWithPayments();
+
+        DB::table('refunded_tickets')->insert(['id' => 1, 'created_at' => now(), 'updated_at' => now()]);
 
         Payment::create([
             'invoice_id' => $invoice->id,
