@@ -78,9 +78,11 @@
                 <th>Customer Name</th>
                 <th>Mobile</th>
                 <th>Pax Qty</th>
-                <th>Total Package Value ({{ $__currency }})</th>
-                <th>Total Cost ({{ $__currency }})</th>
-                <th>Profit/Loss ({{ $__currency }})</th>
+                <th>Package Value ({{ $__currency }})</th>
+                <th>Fingerprint Profit</th>
+                <th>Passenger Profit</th>
+                <th>Discount</th>
+                <th>Total Profit ({{ $__currency }})</th>
             </tr>
         </thead>
         <tbody>
@@ -91,27 +93,33 @@
                 <td class="text-center">{{ $row['mobile'] }}</td>
                 <td class="text-center">{{ $row['pax_qty'] }}</td>
                 <td class="text-right">{{ $fmtCurrency($row['package_value']) }}</td>
-                <td class="text-right">{{ $fmtCurrency($row['total_cost']) }}</td>
-                <td class="text-right {{ $row['profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($row['profit'] >= 0 ? '+' : '') . $fmtCurrency($row['profit']) }}</td>
+                <td class="text-right {{ $row['fingerprint_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($row['fingerprint_profit'] >= 0 ? '+' : '') . $fmtCurrency($row['fingerprint_profit']) }}</td>
+                <td class="text-right {{ $row['passenger_profit_total'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($row['passenger_profit_total'] >= 0 ? '+' : '') . $fmtCurrency($row['passenger_profit_total']) }}</td>
+                <td class="text-right">{{ $fmtCurrency($row['discount']) }}</td>
+                <td class="text-right {{ $row['total_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($row['total_profit'] >= 0 ? '+' : '') . $fmtCurrency($row['total_profit']) }}</td>
             </tr>
             @empty
             <tr>
-                <td colspan="7" class="text-center" style="padding: 20px;">No records found.</td>
+                <td colspan="9" class="text-center" style="padding: 20px;">No records found.</td>
             </tr>
             @endforelse
             @if(count($customers) > 0)
             @php
                 $grandTotal = $customers->reduce(fn($acc, $r) => [
                     'package_value' => $acc['package_value'] + $r['package_value'],
-                    'total_cost' => $acc['total_cost'] + $r['total_cost'],
-                    'profit' => $acc['profit'] + $r['profit'],
-                ], ['package_value' => 0, 'total_cost' => 0, 'profit' => 0]);
+                    'fingerprint_profit' => $acc['fingerprint_profit'] + $r['fingerprint_profit'],
+                    'passenger_profit_total' => $acc['passenger_profit_total'] + $r['passenger_profit_total'],
+                    'discount' => $acc['discount'] + $r['discount'],
+                    'total_profit' => $acc['total_profit'] + $r['total_profit'],
+                ], ['package_value' => 0, 'fingerprint_profit' => 0, 'passenger_profit_total' => 0, 'discount' => 0, 'total_profit' => 0]);
             @endphp
             <tr class="grand-total">
                 <td class="text-left" colspan="4">Grand Total</td>
                 <td class="text-right">{{ $fmtCurrency($grandTotal['package_value']) }}</td>
-                <td class="text-right">{{ $fmtCurrency($grandTotal['total_cost']) }}</td>
-                <td class="text-right {{ $grandTotal['profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($grandTotal['profit'] >= 0 ? '+' : '') . $fmtCurrency($grandTotal['profit']) }}</td>
+                <td class="text-right {{ $grandTotal['fingerprint_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($grandTotal['fingerprint_profit'] >= 0 ? '+' : '') . $fmtCurrency($grandTotal['fingerprint_profit']) }}</td>
+                <td class="text-right {{ $grandTotal['passenger_profit_total'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($grandTotal['passenger_profit_total'] >= 0 ? '+' : '') . $fmtCurrency($grandTotal['passenger_profit_total']) }}</td>
+                <td class="text-right">{{ $fmtCurrency($grandTotal['discount']) }}</td>
+                <td class="text-right {{ $grandTotal['total_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($grandTotal['total_profit'] >= 0 ? '+' : '') . $fmtCurrency($grandTotal['total_profit']) }}</td>
             </tr>
             @endif
         </tbody>
@@ -125,39 +133,50 @@
                 <th>Mobile</th>
                 <th>Passenger Name</th>
                 <th>Package Value ({{ $__currency }})</th>
-                <th>Total Cost ({{ $__currency }})</th>
-                <th>Profit/Loss ({{ $__currency }})</th>
+                <th>Total Profit ({{ $__currency }})</th>
             </tr>
         </thead>
         <tbody>
             @forelse($passengers as $row)
+            @php
+                $bd = $row['breakdown'] ?? [];
+                $fmtSigned = fn($v) => ($v >= 0 ? '+' : '') . $fmtNum($v);
+            @endphp
             <tr>
                 <td class="text-left">{{ $row['invoice_id'] }}</td>
                 <td class="text-left">{{ $row['customer_name'] }}</td>
                 <td class="text-center">{{ $row['mobile'] }}</td>
                 <td class="text-left">{{ $row['passenger_name'] }}</td>
                 <td class="text-right">{{ $fmtCurrency($row['package_value']) }}</td>
-                <td class="text-right">{{ $fmtCurrency($row['total_cost']) }}</td>
-                <td class="text-right {{ $row['profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($row['profit'] >= 0 ? '+' : '') . $fmtCurrency($row['profit']) }}</td>
+                <td class="text-right {{ $row['total_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($row['total_profit'] >= 0 ? '+' : '') . $fmtCurrency($row['total_profit']) }}</td>
+            </tr>
+            <tr>
+                <td colspan="6" class="text-left" style="font-size: 10px; color: #555; border-top: none; padding-top: 0;">
+                    Visa: {{ $fmtSigned($bd['visa_profit'] ?? 0) }}
+                    &nbsp;|&nbsp; Ticket: {{ $fmtSigned($bd['ticket_profit'] ?? 0) }}
+                    &nbsp;|&nbsp; Additional: {{ $fmtSigned($bd['additional_ticket_profit'] ?? 0) }}
+                    &nbsp;|&nbsp; Re-Issue Profit: {{ $fmtSigned($bd['re_issue_profit'] ?? 0) }}
+                    &nbsp;|&nbsp; Refund Profit: {{ $fmtSigned($bd['refund_profit'] ?? 0) }}
+                    &nbsp;|&nbsp; Re-Issue Cost: -{{ $fmtNum($bd['re_issue_cost'] ?? 0) }}
+                    &nbsp;|&nbsp; Service Charge: {{ $fmtSigned($bd['service_charge'] ?? 0) }}
+                </td>
             </tr>
             @empty
             <tr>
-                <td colspan="7" class="text-center" style="padding: 20px;">No records found.</td>
+                <td colspan="6" class="text-center" style="padding: 20px;">No records found.</td>
             </tr>
             @endforelse
             @if(count($passengers) > 0)
             @php
                 $grandTotal = $passengers->reduce(fn($acc, $r) => [
                     'package_value' => $acc['package_value'] + $r['package_value'],
-                    'total_cost' => $acc['total_cost'] + $r['total_cost'],
-                    'profit' => $acc['profit'] + $r['profit'],
-                ], ['package_value' => 0, 'total_cost' => 0, 'profit' => 0]);
+                    'total_profit' => $acc['total_profit'] + $r['total_profit'],
+                ], ['package_value' => 0, 'total_profit' => 0]);
             @endphp
             <tr class="grand-total">
                 <td class="text-left" colspan="4">Grand Total</td>
                 <td class="text-right">{{ $fmtCurrency($grandTotal['package_value']) }}</td>
-                <td class="text-right">{{ $fmtCurrency($grandTotal['total_cost']) }}</td>
-                <td class="text-right {{ $grandTotal['profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($grandTotal['profit'] >= 0 ? '+' : '') . $fmtCurrency($grandTotal['profit']) }}</td>
+                <td class="text-right {{ $grandTotal['total_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($grandTotal['total_profit'] >= 0 ? '+' : '') . $fmtCurrency($grandTotal['total_profit']) }}</td>
             </tr>
             @endif
         </tbody>

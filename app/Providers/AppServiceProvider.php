@@ -3,16 +3,22 @@
 namespace App\Providers;
 
 use App\Models\Booking;
+use App\Models\Fingerprint;
 use App\Models\FingerprintDetail;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
+use App\Models\RefundedTicket;
+use App\Models\ReIssuedTicket;
 use App\Models\VisaSubmission;
 use App\Observers\BookingObserver;
 use App\Observers\FingerprintDetailObserver;
+use App\Observers\FingerprintObserver;
 use App\Observers\InvoiceObserver;
 use App\Observers\IssuedTicketObserver;
 use App\Observers\PassengerObserver;
+use App\Observers\RefundedTicketObserver;
+use App\Observers\ReIssuedTicketObserver;
 use App\Observers\VisaSubmissionObserver;
 use Illuminate\Support\Facades\Blade;
 use Illuminate\Support\Facades\URL;
@@ -46,6 +52,9 @@ class AppServiceProvider extends ServiceProvider
         VisaSubmission::observe(VisaSubmissionObserver::class);
         IssuedTicket::observe(IssuedTicketObserver::class);
         Invoice::observe(InvoiceObserver::class);
+        ReIssuedTicket::observe(ReIssuedTicketObserver::class);
+        RefundedTicket::observe(RefundedTicketObserver::class);
+        Fingerprint::observe(FingerprintObserver::class);
 
         Blade::directive('currency', function ($expression) {
             $parts = explode(',', $expression);

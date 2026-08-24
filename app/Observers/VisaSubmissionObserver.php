@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\VisaSubmission;
 use App\Models\VisaUpdateLog;
+use App\Services\ProfitCalculationService;
 use Illuminate\Support\Facades\Auth;
 
 class VisaSubmissionObserver
@@ -20,24 +21,36 @@ class VisaSubmissionObserver
         'status',
     ];
 
+    protected array $profitFields = [
+        'status',
+        'net_visa_cost',
+        'agent_commission',
+        'additional_cost',
+        'visa_selling_price_id',
+    ];
+
     public function created(VisaSubmission $visaSubmission): void
     {
+        $this->recalculateProfit($visaSubmission);
+
         $visaSubmission->passenger->syncComputedStatus();
     }
 
     public function updated(VisaSubmission $visaSubmission): void
     {
+        $changedTracked = array_intersect_key(
+            $visaSubmission->getDirty(),
+            array_flip($this->trackedFields)
+        );
+
+        if ($visaSubmission->wasChanged($this->profitFields)) {
+            $this->recalculateProfit($visaSubmission);
+        }
+
         $visaSubmission->passenger->syncComputedStatus();
 
         $user = Auth::user();
-        if (! $user) {
-            return;
-        }
-
-        $dirty = $visaSubmission->getDirty();
-        $changedTracked = array_intersect_key($dirty, array_flip($this->trackedFields));
-
-        if (empty($changedTracked)) {
+        if (! $user || empty($changedTracked)) {
             return;
         }
 
@@ -73,5 +86,14 @@ class VisaSubmissionObserver
         }
 
         return 'edited';
+    }
+
+    protected function recalculateProfit(VisaSubmission $visaSubmission): void
+    {
+        $passenger = $visaSubmission->passenger;
+
+        if ($passenger?->booking) {
+            app(ProfitCalculationService::class)->recalculateBookingProfit($passenger->booking);
+        }
     }
 }

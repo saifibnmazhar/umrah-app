@@ -3,162 +3,95 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
-use App\Services\CostTrackingService;
+use App\Services\ProfitCalculationService;
 use Illuminate\Http\Request;
 
 class ProfitLossReportController extends Controller
 {
-    private function buildCostSummaries($bookings, CostTrackingService $costService): array
+    private function bookingsQuery(Request $request)
     {
-        return $bookings->mapWithKeys(function (Booking $booking) use ($costService) {
-            return [$booking->id => $costService->getBookingCostSummary($booking)];
-        })->toArray();
-    }
-
-    public function data(Request $request)
-    {
-        $dateFrom = $request->date_from;
-        $dateTo = $request->date_to;
-
         $query = Booking::with([
             'customer',
             'invoice',
             'fingerprint',
-            'passengers.visaSubmission',
-            'passengers.allIssuedTickets',
+            'package.ticketFare',
+            'package.ticketFareInbound',
+            'package.ticketFareOutbound',
+            'passengers.visaSubmission.cancelledSubmissions',
+            'passengers.allIssuedTickets.ticketFare',
+            'passengers.allIssuedTickets.reIssuedTickets',
+            'passengers.allIssuedTickets.refundedTickets',
         ])
             ->where('is_cancelled', false)
             ->whereHas('invoice');
 
-        if ($dateFrom) {
-            $query->whereDate('created_at', '>=', $dateFrom);
+        if ($request->date_from) {
+            $query->whereDate('created_at', '>=', $request->date_from);
         }
-        if ($dateTo) {
-            $query->whereDate('created_at', '<=', $dateTo);
+        if ($request->date_to) {
+            $query->whereDate('created_at', '<=', $request->date_to);
         }
 
-        $bookings = $query->get();
+        return $query->get();
+    }
 
-        $costService = app(CostTrackingService::class);
-        $costSummaries = $this->buildCostSummaries($bookings, $costService);
+    private function mapCustomers($bookings): array
+    {
+        return $bookings->map(fn (Booking $booking) => [
+            'invoice_id' => $booking->invoice_id,
+            'customer_name' => $booking->customer->name ?? '',
+            'customer_passport' => $booking->customer->passport_no ?? '',
+            'customer_iqama' => $booking->customer->iqama_no ?? '',
+            'mobile' => $booking->customer->mobile_no ?? '',
+            'pax_qty' => $booking->pax_qty,
+            'package_value' => (float) ($booking->invoice->total_amount ?? 0),
+            'fingerprint_profit' => (float) ($booking->fingerprint?->profit ?? 0),
+            'passenger_profit_total' => (float) $booking->passengers->sum('profit'),
+            'discount' => (float) ($booking->discount_amount ?? 0),
+            'total_profit' => (float) ($booking->profit ?? 0),
+        ])->values()->toArray();
+    }
 
-        $customers = $bookings->map(function (Booking $booking) use ($costSummaries) {
-            $costSummary = $costSummaries[$booking->id];
-            $totalCost = $costSummary['total_cost'];
-            $totalAmount = (float) $booking->invoice->total_amount;
+    private function mapPassengers($bookings, ProfitCalculationService $profitService): array
+    {
+        return $bookings->flatMap(fn (Booking $booking) => $booking->passengers->map(fn ($passenger) => [
+            'invoice_id' => $booking->invoice_id,
+            'customer_name' => $booking->customer->name ?? '',
+            'customer_passport' => $booking->customer->passport_no ?? '',
+            'customer_iqama' => $booking->customer->iqama_no ?? '',
+            'mobile' => $passenger->mobile_no,
+            'passenger_name' => trim($passenger->first_name.' '.$passenger->last_name),
+            'passenger_passport' => $passenger->passport_no ?? '',
+            'package_value' => (float) ($passenger->package_value ?? 0),
+            'total_profit' => (float) ($passenger->profit ?? 0),
+            'breakdown' => $profitService->getPassengerProfitBreakdown($passenger),
+        ]))->values()->toArray();
+    }
 
-            return [
-                'invoice_id' => $booking->invoice_id,
-                'customer_name' => $booking->customer->name ?? '',
-                'customer_passport' => $booking->customer->passport_no ?? '',
-                'customer_iqama' => $booking->customer->iqama_no ?? '',
-                'mobile' => $booking->customer->mobile_no ?? '',
-                'pax_qty' => $booking->pax_qty,
-                'package_value' => $totalAmount,
-                'total_cost' => $totalCost,
-                'profit' => $totalAmount - $totalCost,
-            ];
-        })->values();
-
-        $passengers = $bookings->flatMap(function (Booking $booking) use ($costSummaries) {
-            $passengerCosts = collect($costSummaries[$booking->id]['passengers']);
-
-            return $booking->passengers->map(function ($passenger) use ($booking, $passengerCosts) {
-                $cost = $passengerCosts->firstWhere('passenger_id', $passenger->id);
-                $totalCost = $cost['total_cost'] ?? 0;
-                $packageValue = (float) $passenger->package_value;
-
-                return [
-                    'invoice_id' => $booking->invoice_id,
-                    'customer_name' => $booking->customer->name ?? '',
-                    'customer_passport' => $booking->customer->passport_no ?? '',
-                    'customer_iqama' => $booking->customer->iqama_no ?? '',
-                    'mobile' => $passenger->mobile_no,
-                    'passenger_name' => $passenger->first_name.' '.$passenger->last_name,
-                    'passenger_passport' => $passenger->passport_no ?? '',
-                    'package_value' => $packageValue,
-                    'total_cost' => $totalCost,
-                    'profit' => $packageValue - $totalCost,
-                ];
-            });
-        })->values();
+    public function data(Request $request)
+    {
+        $bookings = $this->bookingsQuery($request);
 
         return response()->json([
-            'customers' => $customers,
-            'passengers' => $passengers,
+            'customers' => $this->mapCustomers($bookings),
+            'passengers' => $this->mapPassengers($bookings, app(ProfitCalculationService::class)),
         ]);
     }
 
     public function print(Request $request)
     {
-        $dateFrom = $request->date_from;
-        $dateTo = $request->date_to;
         $type = $request->get('type', 'customer');
         $currency = $request->get('currency', 'SAR');
+        $dateFrom = $request->date_from;
+        $dateTo = $request->date_to;
 
-        $query = Booking::with([
-            'customer',
-            'invoice',
-            'fingerprint',
-            'passengers.visaSubmission',
-            'passengers.allIssuedTickets',
-        ])
-            ->where('is_cancelled', false)
-            ->whereHas('invoice');
+        $bookings = $this->bookingsQuery($request);
 
-        if ($dateFrom) {
-            $query->whereDate('created_at', '>=', $dateFrom);
-        }
-        if ($dateTo) {
-            $query->whereDate('created_at', '<=', $dateTo);
-        }
+        $customers = collect($this->mapCustomers($bookings));
+        $passengers = collect($this->mapPassengers($bookings, app(ProfitCalculationService::class)));
 
-        $bookings = $query->get();
-
-        $costService = app(CostTrackingService::class);
-        $costSummaries = $this->buildCostSummaries($bookings, $costService);
-
-        $customers = $bookings->map(function (Booking $booking) use ($costSummaries) {
-            $costSummary = $costSummaries[$booking->id];
-            $totalCost = $costSummary['total_cost'];
-            $totalAmount = (float) $booking->invoice->total_amount;
-
-            return [
-                'invoice_id' => $booking->invoice_id,
-                'customer_name' => $booking->customer->name ?? '',
-                'customer_passport' => $booking->customer->passport_no ?? '',
-                'customer_iqama' => $booking->customer->iqama_no ?? '',
-                'mobile' => $booking->customer->mobile_no ?? '',
-                'pax_qty' => $booking->pax_qty,
-                'package_value' => $totalAmount,
-                'total_cost' => $totalCost,
-                'profit' => $totalAmount - $totalCost,
-            ];
-        })->values();
-
-        $passengers = $bookings->flatMap(function (Booking $booking) use ($costSummaries) {
-            $passengerCosts = collect($costSummaries[$booking->id]['passengers']);
-
-            return $booking->passengers->map(function ($passenger) use ($booking, $passengerCosts) {
-                $cost = $passengerCosts->firstWhere('passenger_id', $passenger->id);
-                $totalCost = $cost['total_cost'] ?? 0;
-                $packageValue = (float) $passenger->package_value;
-
-                return [
-                    'invoice_id' => $booking->invoice_id,
-                    'customer_name' => $booking->customer->name ?? '',
-                    'customer_passport' => $booking->customer->passport_no ?? '',
-                    'customer_iqama' => $booking->customer->iqama_no ?? '',
-                    'mobile' => $passenger->mobile_no,
-                    'passenger_name' => $passenger->first_name.' '.$passenger->last_name,
-                    'passenger_passport' => $passenger->passport_no ?? '',
-                    'package_value' => $packageValue,
-                    'total_cost' => $totalCost,
-                    'profit' => $packageValue - $totalCost,
-                ];
-            });
-        })->values();
-
-        return view('reports.profit-loss-print', compact('type', 'currency', 'customers', 'passengers', 'dateFrom', 'dateTo'));
+        return view('reports.profit-loss-print', compact(
+            'type', 'currency', 'customers', 'passengers', 'dateFrom', 'dateTo'
+        ));
     }
 }
