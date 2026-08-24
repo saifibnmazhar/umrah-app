@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Services\InvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
@@ -33,9 +34,11 @@ class InvoiceServiceTest extends TestCase
     public static function tearDownAfterClass(): void
     {
         // Restore migration schema so other test classes aren't affected.
-        // Artisan::call works in tearDownAfterClass because Artisan facade
-        // lazily resolves the kernel from the container.
-        Artisan::call('migrate:fresh');
+        try {
+            Artisan::call('migrate:fresh');
+        } catch (\Throwable $e) {
+            RefreshDatabaseState::$migrated = false;
+        }
     }
 
     protected function setUp(): void

@@ -11,6 +11,7 @@ use App\Models\Passenger;
 use App\Models\Role;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -30,7 +31,11 @@ class PassengerCancellationControllerTest extends TestCase
     public static function tearDownAfterClass(): void
     {
         // Restore migration schema so other test classes aren't affected.
-        Artisan::call('migrate:fresh');
+        try {
+            Artisan::call('migrate:fresh');
+        } catch (\Throwable $e) {
+            RefreshDatabaseState::$migrated = false;
+        }
     }
 
     protected function setUp(): void
