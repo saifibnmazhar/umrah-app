@@ -8,28 +8,47 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('cancelled_bookings', function (Blueprint $table) {
-            $table->foreignId('confirmed_by_id')
-                ->nullable()
-                ->after('user_id')
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->foreignId('reverted_by_id')
-                ->nullable()
-                ->after('confirmed_by_id')
-                ->constrained('users')
-                ->nullOnDelete();
-            $table->softDeletes();
-        });
+        if (! Schema::hasColumn('cancelled_bookings', 'confirmed_by_id')) {
+            Schema::table('cancelled_bookings', function (Blueprint $table) {
+                $table->foreignId('confirmed_by_id')
+                    ->nullable()
+                    ->after('user_id')
+                    ->constrained('users')
+                    ->nullOnDelete();
+            });
+        }
+
+        if (! Schema::hasColumn('cancelled_bookings', 'reverted_by_id')) {
+            Schema::table('cancelled_bookings', function (Blueprint $table) {
+                $table->foreignId('reverted_by_id')
+                    ->nullable()
+                    ->after('confirmed_by_id')
+                    ->constrained('users')
+                    ->nullOnDelete();
+            });
+        }
+
+        if (! Schema::hasColumn('cancelled_bookings', 'deleted_at')) {
+            Schema::table('cancelled_bookings', function (Blueprint $table) {
+                $table->softDeletes();
+            });
+        }
     }
 
     public function down(): void
     {
         Schema::table('cancelled_bookings', function (Blueprint $table) {
-            $table->dropForeign(['confirmed_by_id']);
-            $table->dropForeign(['reverted_by_id']);
-            $table->dropColumn(['confirmed_by_id', 'reverted_by_id']);
-            $table->dropSoftDeletes();
+            if (Schema::hasColumn('cancelled_bookings', 'confirmed_by_id')) {
+                $table->dropForeign(['confirmed_by_id']);
+                $table->dropColumn('confirmed_by_id');
+            }
+            if (Schema::hasColumn('cancelled_bookings', 'reverted_by_id')) {
+                $table->dropForeign(['reverted_by_id']);
+                $table->dropColumn('reverted_by_id');
+            }
+            if (Schema::hasColumn('cancelled_bookings', 'deleted_at')) {
+                $table->dropSoftDeletes();
+            }
         });
     }
 };

@@ -8,16 +8,28 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('cancelled_passengers', function (Blueprint $table) {
-            $table->decimal('additional_ticket_value', 14, 6)->default(0)->after('package_value');
-            $table->decimal('total_passenger_due', 14, 6)->default(0)->after('additional_ticket_value');
-        });
+        if (! Schema::hasColumn('cancelled_passengers', 'additional_ticket_value')) {
+            Schema::table('cancelled_passengers', function (Blueprint $table) {
+                $table->decimal('additional_ticket_value', 14, 6)->default(0)->after('package_value');
+            });
+        }
+
+        if (! Schema::hasColumn('cancelled_passengers', 'total_passenger_due')) {
+            Schema::table('cancelled_passengers', function (Blueprint $table) {
+                $table->decimal('total_passenger_due', 14, 6)->default(0)->after('additional_ticket_value');
+            });
+        }
     }
 
     public function down(): void
     {
         Schema::table('cancelled_passengers', function (Blueprint $table) {
-            $table->dropColumn(['additional_ticket_value', 'total_passenger_due']);
+            if (Schema::hasColumn('cancelled_passengers', 'additional_ticket_value')) {
+                $table->dropColumn('additional_ticket_value');
+            }
+            if (Schema::hasColumn('cancelled_passengers', 'total_passenger_due')) {
+                $table->dropColumn('total_passenger_due');
+            }
         });
     }
 };

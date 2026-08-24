@@ -8,16 +8,28 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('passengers', function (Blueprint $table) {
-            $table->boolean('is_cancelled')->default(false)->after('refund_payable');
-            $table->timestamp('cancelled_at')->nullable()->after('is_cancelled');
-        });
+        if (! Schema::hasColumn('passengers', 'is_cancelled')) {
+            Schema::table('passengers', function (Blueprint $table) {
+                $table->boolean('is_cancelled')->default(false)->after('refund_payable');
+            });
+        }
+
+        if (! Schema::hasColumn('passengers', 'cancelled_at')) {
+            Schema::table('passengers', function (Blueprint $table) {
+                $table->timestamp('cancelled_at')->nullable()->after('is_cancelled');
+            });
+        }
     }
 
     public function down(): void
     {
         Schema::table('passengers', function (Blueprint $table) {
-            $table->dropColumn(['is_cancelled', 'cancelled_at']);
+            if (Schema::hasColumn('passengers', 'is_cancelled')) {
+                $table->dropColumn('is_cancelled');
+            }
+            if (Schema::hasColumn('passengers', 'cancelled_at')) {
+                $table->dropColumn('cancelled_at');
+            }
         });
     }
 };

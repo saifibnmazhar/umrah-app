@@ -8,33 +8,41 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::table('payments', function (Blueprint $table) {
-            $table->foreignId('cancelled_passenger_id')
-                ->nullable()
-                ->after('cancelled_booking_id')
-                ->constrained('cancelled_passengers')
-                ->nullOnDelete();
-        });
+        if (! Schema::hasColumn('payments', 'cancelled_passenger_id')) {
+            Schema::table('payments', function (Blueprint $table) {
+                $table->foreignId('cancelled_passenger_id')
+                    ->nullable()
+                    ->after('cancelled_booking_id')
+                    ->constrained('cancelled_passengers')
+                    ->nullOnDelete();
+            });
+        }
 
-        Schema::table('vouchers', function (Blueprint $table) {
-            $table->foreignId('cancelled_passenger_id')
-                ->nullable()
-                ->after('cancelled_booking_id')
-                ->constrained('cancelled_passengers')
-                ->nullOnDelete();
-        });
+        if (! Schema::hasColumn('vouchers', 'cancelled_passenger_id')) {
+            Schema::table('vouchers', function (Blueprint $table) {
+                $table->foreignId('cancelled_passenger_id')
+                    ->nullable()
+                    ->after('cancelled_booking_id')
+                    ->constrained('cancelled_passengers')
+                    ->nullOnDelete();
+            });
+        }
     }
 
     public function down(): void
     {
         Schema::table('payments', function (Blueprint $table) {
-            $table->dropForeign(['cancelled_passenger_id']);
-            $table->dropColumn('cancelled_passenger_id');
+            if (Schema::hasColumn('payments', 'cancelled_passenger_id')) {
+                $table->dropForeign(['cancelled_passenger_id']);
+                $table->dropColumn('cancelled_passenger_id');
+            }
         });
 
         Schema::table('vouchers', function (Blueprint $table) {
-            $table->dropForeign(['cancelled_passenger_id']);
-            $table->dropColumn('cancelled_passenger_id');
+            if (Schema::hasColumn('vouchers', 'cancelled_passenger_id')) {
+                $table->dropForeign(['cancelled_passenger_id']);
+                $table->dropColumn('cancelled_passenger_id');
+            }
         });
     }
 };
