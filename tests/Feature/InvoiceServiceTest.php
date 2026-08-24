@@ -11,6 +11,7 @@ use App\Models\Payment;
 use App\Models\User;
 use App\Services\InvoiceService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
@@ -20,6 +21,22 @@ class InvoiceServiceTest extends TestCase
     use RefreshDatabase;
 
     protected InvoiceService $service;
+
+    // Override to avoid starting a DB transaction. DDL (Schema::create)
+    // in setUp() on MySQL implicitly commits, which breaks the
+    // RefreshDatabase transaction state.
+    protected function beginDatabaseTransaction(): void
+    {
+        // no-op
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        // Restore migration schema so other test classes aren't affected.
+        // Artisan::call works in tearDownAfterClass because Artisan facade
+        // lazily resolves the kernel from the container.
+        Artisan::call('migrate:fresh');
+    }
 
     protected function setUp(): void
     {
@@ -43,6 +60,8 @@ class InvoiceServiceTest extends TestCase
         Schema::create('branches', function ($table) {
             $table->id();
             $table->string('name');
+            $table->text('address')->nullable();
+            $table->text('contacts')->nullable();
             $table->timestamps();
         });
 
@@ -137,8 +156,8 @@ class InvoiceServiceTest extends TestCase
     private function createInvoiceWithPayments(): array
     {
         $user = User::factory()->create();
-        $customer = Customer::create(['name' => 'Test']);
-        $branch = Branch::create(['name' => 'Main']);
+        $customer = Customer::create(['name' => 'Test Customer']);
+        $branch = Branch::create(['name' => 'Main Branch']);
 
         $booking = Booking::create([
             'user_id' => $user->id,

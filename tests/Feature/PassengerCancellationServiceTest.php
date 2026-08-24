@@ -13,6 +13,8 @@ use App\Models\TransactionType;
 use App\Models\User;
 use App\Services\PassengerCancellationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Foundation\Testing\RefreshDatabaseState;
+use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
@@ -28,6 +30,16 @@ class PassengerCancellationServiceTest extends TestCase
     protected function beginDatabaseTransaction(): void
     {
         // no-op
+    }
+
+    public static function tearDownAfterClass(): void
+    {
+        // Restore migration schema so other test classes aren't affected.
+        try {
+            Artisan::call('migrate:fresh');
+        } catch (\Throwable $e) {
+            RefreshDatabaseState::$migrated = false;
+        }
     }
 
     protected function setUp(): void
