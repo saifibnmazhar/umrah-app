@@ -10,6 +10,7 @@
 <div class="max-w-4xl mx-auto" x-data="{
     refundableAmount: {{ (float) $cancelledPassenger->refundable_amount }},
     adjustedAmount: {{ $maxAdjustable }},
+    adjustedAmountBdt: Math.round(parseFloat('{{ $maxAdjustable }}') * (window.__currencyRate || 1) * 100) / 100,
     paymentMethod: 'cash',
     remarks: '',
 
@@ -105,8 +106,23 @@
 
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Adjust from Due</label>
-                        <input type="number" x-model.number="adjustedAmount" @change="clampAdjusted()" min="0" :max="maxAdjustment"
+                        <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mb-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Adjust from Due (BDT)</label>
+                            <input type="number" x-model.number="adjustedAmountBdt"
+                                @input="adjustedAmount = parseFloat(((parseFloat(adjustedAmountBdt) || 0) / ($store.currency.rate || 1)).toFixed(6)); clampAdjusted();"
+                                min="0"
+                                :max="maxAdjustment * ($store.currency.rate || 1)"
+                                step="0.01"
+                                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none font-medium"
+                                placeholder="0">
+                        </div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Adjust from Due (SAR)</label>
+                        <input type="number" x-model.number="adjustedAmount"
+                            @change="clampAdjusted(); if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { adjustedAmountBdt = Math.round((parseFloat(adjustedAmount) || 0) * $store.currency.rate * 100) / 100; }"
+                            @input="if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { adjustedAmountBdt = Math.round((parseFloat($event.target.value) || 0) * $store.currency.rate * 100) / 100; }"
+                            :readonly="$store.currency.mode === 'BDT'"
+                            :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}"
+                            min="0" :max="maxAdjustment"
                             step="0.000001"
                             class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none font-medium"
                             placeholder="0">
