@@ -20,6 +20,13 @@
     get customerRefund() {
         return Math.max(0, parseFloat(this.refundableAmount) - parseFloat(this.adjustedAmount || 0));
     },
+    init() {
+        window.addEventListener('currency-toggled', () => {
+            this.adjustedAmountBdt = Math.round(
+                (parseFloat(this.adjustedAmount) || 0) * ($store.currency.rate || 1) * 100
+            ) / 100;
+        });
+    },
     clampAdjusted() {
         this.adjustedAmount = Math.min(Math.max(parseFloat(this.adjustedAmount) || 0, 0), this.maxAdjustment);
     },
@@ -77,6 +84,7 @@
                 </div>
             </div>
 
+{{--
             <div class="bg-white rounded-xl shadow-lg p-6">
                 <h3 class="text-lg font-semibold text-slate-700 mb-4">Cancellation Info</h3>
                 <div class="space-y-3 text-sm">
@@ -96,6 +104,7 @@
                     </div>
                 </div>
             </div>
+            --}}
         </div>
 
         <div class="space-y-6">
