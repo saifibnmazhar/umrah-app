@@ -7,6 +7,12 @@
     $passenger = $cancelledPassenger->passenger;
     $maxAdjustable = min((float) $cancelledPassenger->refundable_amount, max(0, (float) ($invoice->balance ?? 0)));
 @endphp
+
+{{-- Cancellation timestamp ISO string for client-side local-time conversion --}}
+<span id="cancelled-passenger-created-at" class="hidden">
+    {{ $cancelledPassenger->created_at->toIso8601String() }}
+</span>
+{{-- End cancellation timestamp --}}
 <div class="max-w-4xl mx-auto" x-data="{
     refundableAmount: {{ (float) $cancelledPassenger->refundable_amount }},
     adjustedAmount: {{ $maxAdjustable }},
