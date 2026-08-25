@@ -2081,9 +2081,15 @@ class BookingController extends Controller
                 $invoice = $booking->invoice;
                 if ($invoice) {
                     $totalPaid = $booking->payments()->sum('amount');
+                    $dueAdjustments = (float) $booking->payments()
+                        ->whereNotNull('cancelled_passenger_id')
+                        ->whereHas('voucher.transactionType', function ($query) {
+                            $query->where('name', 'Due Adjustment');
+                        })
+                        ->sum('amount');
                     $invoice->update([
                         'paid_amount' => $totalPaid,
-                        'balance' => max(0, $invoice->total_amount - $totalPaid),
+                        'balance' => max(0, $invoice->total_amount - $totalPaid - $dueAdjustments),
                     ]);
                 }
             });
