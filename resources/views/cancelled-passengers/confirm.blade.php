@@ -70,12 +70,13 @@
                         <span class="font-semibold text-green-700">@currency($cancelledPassenger->refundable_amount, 2)</span>
                     </div>
                     <div class="flex justify-between p-3 bg-slate-50 rounded-lg">
-                        <span class="text-slate-700 font-medium">Invoice Balance</span>
+                        <span class="text-slate-700 font-medium">Invoice Due</span>
                         <span class="font-semibold text-slate-800">@currency($invoice->balance ?? 0, 2)</span>
                     </div>
                 </div>
             </div>
 
+            {{--
             <div class="bg-white rounded-xl shadow-lg p-6">
                 <h3 class="text-lg font-semibold text-slate-700 mb-4">Cancellation Info</h3>
                 <div class="space-y-3 text-sm">
@@ -89,12 +90,13 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-500">Initiated Date</span>
-                        {{-- DB stores GMT; the browser converts it to local time. --}}
+                        <!-- DB stores GMT; the browser converts it to local time. -->
                         <span class="font-medium text-slate-800"
                             x-text="new Date('{{ $cancelledPassenger->created_at->toIso8601String() }}').toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })"></span>
                     </div>
                 </div>
             </div>
+            --}}
         </div>
 
         <div class="space-y-6">
@@ -103,7 +105,7 @@
 
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Adjust from Balance</label>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Adjust from Due</label>
                         <input type="number" x-model.number="adjustedAmount" @change="clampAdjusted()" min="0" :max="maxAdjustment"
                             step="0.000001"
                             class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none font-medium"

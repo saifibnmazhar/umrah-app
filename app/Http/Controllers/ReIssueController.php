@@ -24,6 +24,10 @@ class ReIssueController extends Controller
             abort(403, 'Passenger does not belong to this booking.');
         }
 
+        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
+            return response()->json(['message' => 'Re-issue is not allowed for passengers with Hold or Cancel status.'], 422);
+        }
+
         $validated = $request->validate([
             'issued_ticket_id' => 'required|exists:issued_tickets,id',
             'ticket_number' => 'nullable|string|max:100',

@@ -33,6 +33,7 @@
                     || ($booking->created_at->diffInHours(now()) < 12
                         && (auth()->user()->branch_id || $booking->user_id === auth()->id())));
                 $canViewRequestButtons = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && (auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty());
+                $canViewHistory = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty();
                 $canAddPassenger = !$isFingerprintOnlyViewer && !$isCrossBranchViewer
                     && (auth()->user()->hasRole('Super Admin')
                     || auth()->user()->hasRole('Co Admin')
@@ -260,7 +261,7 @@
                 <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
                     Payment History
                 </button>
-                @if($canViewRequestButtons)
+                @if($canViewHistory)
                 <button onclick="switchTab('reissue')" id="tab-reissue" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
                     Re-issue History
                 </button>
@@ -325,7 +326,7 @@
             </div>
         </div>
 
-        @if($canViewRequestButtons)
+        @if($canViewHistory)
         {{-- Re-issue History Tab --}}
         <div id="content-reissue" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Re-issue History</h3>
@@ -528,15 +529,19 @@
         <div id="reIssuePassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
             @foreach($booking->passengers as $index => $passenger)
             @php
+                $isRestricted = $passenger->isOnHold() || $passenger->isOnCancel();
                 $viewableTickets = collect($passenger->allIssuedTickets)
                     ->filter(fn($t) => in_array($t->status, ['issued', 're-issued', 'refunded']))
                     ->values();
             @endphp
-            <div class="border border-slate-200 rounded-lg p-4">
+            <div class="border border-slate-200 rounded-lg p-4 {{ $isRestricted ? 'opacity-50' : '' }}">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <input type="checkbox" id="reIssue_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('reIssue_{{ $index }}', 'reIssueTicketList_{{ $index }}')">
+                        <input type="checkbox" id="reIssue_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" @if($isRestricted) onchange="this.checked=false; showToast('Re-issue is not available for passengers with {{ addslashes($passenger->status?->name) }} status.', 'error')" @else onchange="toggleReIssueFields('reIssue_{{ $index }}', 'reIssueTicketList_{{ $index }}')" @endif>
                         <label for="reIssue_{{ $index }}" class="font-medium text-slate-800 whitespace-nowrap">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                        @if($isRestricted)
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600">{{ $passenger->status?->name }}</span>
+                        @endif
                     </div>
                 </div>
                 <div id="reIssueTicketList_{{ $index }}" class="hidden mt-3 pl-7">
@@ -646,14 +651,18 @@
         <div id="refundPassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
             @foreach($booking->passengers as $index => $passenger)
             @php
+                $isRestricted = $passenger->isOnHold() || $passenger->isOnCancel();
                 $viewableTickets = collect($passenger->allIssuedTickets)
                     ->filter(fn($t) => in_array($t->status, ['issued', 're-issued']))
                     ->values();
             @endphp
-            <div class="border border-slate-200 rounded-lg p-4">
+            <div class="border border-slate-200 rounded-lg p-4 {{ $isRestricted ? 'opacity-50' : '' }}">
                 <div class="flex items-center gap-3">
-                    <input type="checkbox" id="refund_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleRefundFields('refund_{{ $index }}', 'refundTicketList_{{ $index }}')">
+                    <input type="checkbox" id="refund_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" @if($isRestricted) onchange="this.checked=false; showToast('Refund is not available for passengers with {{ addslashes($passenger->status?->name) }} status.', 'error')" @else onchange="toggleRefundFields('refund_{{ $index }}', 'refundTicketList_{{ $index }}')" @endif>
                     <label for="refund_{{ $index }}" class="font-medium text-slate-800">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                    @if($isRestricted)
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600">{{ $passenger->status?->name }}</span>
+                    @endif
                 </div>
                 <div id="refundTicketList_{{ $index }}" class="hidden mt-3 pl-7">
                     @forelse($viewableTickets as $ticket)
@@ -729,11 +738,17 @@
         </div>
         <div id="addTicketPassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
             @foreach($booking->passengers as $index => $passenger)
-            <div class="border border-slate-200 rounded-lg p-4">
+            @php
+                $isRestricted = $passenger->isOnHold() || $passenger->isOnCancel();
+            @endphp
+            <div class="border border-slate-200 rounded-lg p-4 {{ $isRestricted ? 'opacity-50' : '' }}">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <input type="checkbox" id="addTicket_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('addTicket_{{ $index }}', 'addTicketFields_{{ $index }}')">
+                        <input type="checkbox" id="addTicket_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" @if($isRestricted) onchange="this.checked=false; showToast('Additional ticket is not available for passengers with {{ addslashes($passenger->status?->name) }} status.', 'error')" @else onchange="toggleReIssueFields('addTicket_{{ $index }}', 'addTicketFields_{{ $index }}')" @endif>
                         <label for="addTicket_{{ $index }}" class="font-medium text-slate-800 whitespace-nowrap">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                        @if($isRestricted)
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600">{{ $passenger->status?->name }}</span>
+                        @endif
                     </div>
                     <div id="addTicketFields_{{ $index }}" class="hidden flex items-center gap-3">
                         <label for="addTicketOption_{{ $index }}" class="text-sm font-medium text-slate-700">Ticket Option</label>

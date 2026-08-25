@@ -69,14 +69,29 @@ class InvoiceService
 
     public function calculateBalance(Invoice $invoice): float
     {
-        return $invoice->total_amount - $invoice->paid_amount;
+        $dueAdjustments = (float) $invoice->payments()
+            ->whereNotNull('cancelled_passenger_id')
+            ->whereHas('voucher.transactionType', function ($query) {
+                $query->where('name', 'Due Adjustment');
+            })
+            ->sum('amount');
+
+        return $invoice->total_amount - $invoice->paid_amount - $dueAdjustments;
     }
 
     public function updateTotals(Invoice $invoice, float $newTotal, ?string $reason = null): void
     {
         $invoice->audit_reason = $reason;
         $invoice->total_amount = $newTotal;
-        $invoice->balance = max(0, $newTotal - $invoice->paid_amount);
+
+        $dueAdjustments = (float) $invoice->payments()
+            ->whereNotNull('cancelled_passenger_id')
+            ->whereHas('voucher.transactionType', function ($query) {
+                $query->where('name', 'Due Adjustment');
+            })
+            ->sum('amount');
+
+        $invoice->balance = max(0, $newTotal - $invoice->paid_amount - $dueAdjustments);
 
         $invoice->status = match (true) {
             $invoice->balance <= 0 => InvoiceStatus::PAID,

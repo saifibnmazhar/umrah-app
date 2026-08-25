@@ -8,6 +8,7 @@ use App\Enums\TicketType;
 use App\Models\BaggageAllowance;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
+use App\Models\Passenger;
 use App\Models\Payment;
 use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
@@ -62,6 +63,15 @@ class TicketRequestController extends Controller
                 ->exists()) {
                 return response()->json(['message' => 'A re-issue or refund request is already pending for one of the selected tickets.'], 422);
             }
+        }
+
+        $passengerIds = collect($validated['passengers'])->pluck('passenger_id');
+        $restrictedCount = Passenger::whereIn('id', $passengerIds)
+            ->whereHas('status', fn ($q) => $q->whereIn('name', ['Hold', 'Cancel']))
+            ->count();
+
+        if ($restrictedCount > 0) {
+            return response()->json(['message' => 'Requests cannot be created for passengers with Hold or Cancel status.'], 422);
         }
 
         if ($validated['request_type'] === 'refund' && $ticketIds->isNotEmpty()) {
@@ -134,6 +144,11 @@ class TicketRequestController extends Controller
     {
         if ($ticketRequest->status !== 'pending') {
             return response()->json(['message' => 'This request has already been processed.'], 400);
+        }
+
+        $passenger = $ticketRequest->passenger;
+        if ($passenger && ($passenger->isOnHold() || $passenger->isOnCancel())) {
+            return response()->json(['message' => 'This request cannot be processed — the passenger has '.$passenger->status?->name.' status.'], 422);
         }
 
         $validated = $request->validate([
@@ -372,6 +387,11 @@ class TicketRequestController extends Controller
             return response()->json(['message' => 'This request has already been processed.'], 400);
         }
 
+        $passenger = $ticketRequest->passenger;
+        if ($passenger && ($passenger->isOnHold() || $passenger->isOnCancel())) {
+            return response()->json(['message' => 'This request cannot be processed — the passenger has '.$passenger->status?->name.' status.'], 422);
+        }
+
         $issuedTicket = $ticketRequest->issuedTicket;
         if (! $issuedTicket) {
             return response()->json(['message' => 'Issued ticket not found.'], 404);
@@ -476,6 +496,11 @@ class TicketRequestController extends Controller
             return response()->json(['message' => 'This request has already been processed.'], 400);
         }
 
+        $passenger = $ticketRequest->passenger;
+        if ($passenger && ($passenger->isOnHold() || $passenger->isOnCancel())) {
+            return response()->json(['message' => 'This request cannot be processed — the passenger has '.$passenger->status?->name.' status.'], 422);
+        }
+
         $validated = $request->validate([
             'ticket_number' => 'nullable|string|max:100',
             'pnr' => 'nullable|string|max:50',
@@ -494,6 +519,24 @@ class TicketRequestController extends Controller
 
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
 
+        $passengerType = $passenger->passenger_type?->value ?? 'adult';
+        $childPct = (float) ($selectedFare->child_fare_percentage ?: 70);
+        $infantPct = (float) ($selectedFare->infant_fare_percentage ?: 30);
+
+        $sellingFare = (float) ($selectedFare->selling_fare ?? 0);
+        $netFare = (float) ($selectedFare->net_fare ?? 0);
+        $offerPrice = (float) ($selectedFare->offer_price ?? 0);
+
+        if ($passengerType === 'child') {
+            $sellingFare = round($sellingFare * $childPct / 100, 6);
+            $netFare = round($netFare * $childPct / 100, 6);
+            $offerPrice = round($offerPrice * $childPct / 100, 6);
+        } elseif ($passengerType === 'infant') {
+            $sellingFare = round($sellingFare * $infantPct / 100, 6);
+            $netFare = round($netFare * $infantPct / 100, 6);
+            $offerPrice = round($offerPrice * $infantPct / 100, 6);
+        }
+
         try {
             DB::beginTransaction();
 
@@ -508,9 +551,9 @@ class TicketRequestController extends Controller
                 'issued_date' => $validated['issued_date'] ?? now(),
                 'inbound_date' => $validated['inbound_date'] ?? null,
                 'outbound_date' => $validated['outbound_date'] ?? null,
-                'selling_fare' => $selectedFare->selling_fare ?? 0,
-                'net_fare' => $selectedFare->net_fare ?? 0,
-                'offer_price' => $selectedFare->offer_price ?? 0,
+                'selling_fare' => $sellingFare,
+                'net_fare' => $netFare,
+                'offer_price' => $offerPrice,
                 'is_refundable' => $selectedFare->is_refundable ?? false,
                 'is_exchangeable' => $selectedFare->is_exchangeable ?? false,
                 'baggage_inbound' => BaggageAllowance::where('ticket_fare_id', $selectedFare->id)->where('passenger_type', $passenger->passenger_type)->where('travel_direction', 'inbound')->value('allowance'),
