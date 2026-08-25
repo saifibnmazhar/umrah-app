@@ -33,6 +33,7 @@
                     || ($booking->created_at->diffInHours(now()) < 12
                         && (auth()->user()->branch_id || $booking->user_id === auth()->id())));
                 $canViewRequestButtons = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && (auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty());
+                $canViewHistory = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty();
                 $canAddPassenger = !$isFingerprintOnlyViewer && !$isCrossBranchViewer
                     && (auth()->user()->hasRole('Super Admin')
                     || auth()->user()->hasRole('Co Admin')
@@ -260,7 +261,7 @@
                 <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
                     Payment History
                 </button>
-                @if($canViewRequestButtons)
+                @if($canViewHistory)
                 <button onclick="switchTab('reissue')" id="tab-reissue" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
                     Re-issue History
                 </button>
@@ -325,7 +326,7 @@
             </div>
         </div>
 
-        @if($canViewRequestButtons)
+        @if($canViewHistory)
         {{-- Re-issue History Tab --}}
         <div id="content-reissue" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Re-issue History</h3>
