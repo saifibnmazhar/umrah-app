@@ -1173,8 +1173,17 @@ class BookingController extends Controller
             'package',
             'fingerprintBranch',
             'invoice',
-            'payments.vouchers', 'payments.bank',
+            'payments.vouchers.transactionType', 'payments.bank',
         ]);
+
+        $booking->setRelation(
+            'payments',
+            $booking->payments->filter(function ($payment) {
+                return $payment->vouchers->contains(function ($voucher) {
+                    return in_array($voucher->transactionType?->name, ['Initial Payment', 'Due Collection']);
+                });
+            })->values()
+        );
 
         $packages = Package::where('is_active', true)->with(['ticketFare', 'visaSellingPrice', 'ticketFareInbound', 'ticketFareOutbound'])->orderBy('package_name')->get()->map(function ($pkg) {
             return [
