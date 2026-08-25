@@ -519,6 +519,24 @@ class TicketRequestController extends Controller
 
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
 
+        $passengerType = $passenger->passenger_type?->value ?? 'adult';
+        $childPct = (float) ($selectedFare->child_fare_percentage ?: 70);
+        $infantPct = (float) ($selectedFare->infant_fare_percentage ?: 30);
+
+        $sellingFare = (float) ($selectedFare->selling_fare ?? 0);
+        $netFare = (float) ($selectedFare->net_fare ?? 0);
+        $offerPrice = (float) ($selectedFare->offer_price ?? 0);
+
+        if ($passengerType === 'child') {
+            $sellingFare = round($sellingFare * $childPct / 100, 6);
+            $netFare = round($netFare * $childPct / 100, 6);
+            $offerPrice = round($offerPrice * $childPct / 100, 6);
+        } elseif ($passengerType === 'infant') {
+            $sellingFare = round($sellingFare * $infantPct / 100, 6);
+            $netFare = round($netFare * $infantPct / 100, 6);
+            $offerPrice = round($offerPrice * $infantPct / 100, 6);
+        }
+
         try {
             DB::beginTransaction();
 
@@ -533,9 +551,9 @@ class TicketRequestController extends Controller
                 'issued_date' => $validated['issued_date'] ?? now(),
                 'inbound_date' => $validated['inbound_date'] ?? null,
                 'outbound_date' => $validated['outbound_date'] ?? null,
-                'selling_fare' => $selectedFare->selling_fare ?? 0,
-                'net_fare' => $selectedFare->net_fare ?? 0,
-                'offer_price' => $selectedFare->offer_price ?? 0,
+                'selling_fare' => $sellingFare,
+                'net_fare' => $netFare,
+                'offer_price' => $offerPrice,
                 'is_refundable' => $selectedFare->is_refundable ?? false,
                 'is_exchangeable' => $selectedFare->is_exchangeable ?? false,
                 'baggage_inbound' => BaggageAllowance::where('ticket_fare_id', $selectedFare->id)->where('passenger_type', $passenger->passenger_type)->where('travel_direction', 'inbound')->value('allowance'),
