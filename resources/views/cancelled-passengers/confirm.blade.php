@@ -77,7 +77,6 @@
                 </div>
             </div>
 
-            {{--
             <div class="bg-white rounded-xl shadow-lg p-6">
                 <h3 class="text-lg font-semibold text-slate-700 mb-4">Cancellation Info</h3>
                 <div class="space-y-3 text-sm">
@@ -97,7 +96,6 @@
                     </div>
                 </div>
             </div>
-            --}}
         </div>
 
         <div class="space-y-6">
