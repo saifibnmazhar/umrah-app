@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\Booking;
 use App\Models\BookingUpdateLog;
+use App\Services\ProfitCalculationService;
 use Illuminate\Support\Facades\Auth;
 
 class BookingObserver
@@ -27,13 +28,14 @@ class BookingObserver
 
     public function updated(Booking $booking): void
     {
-        $user = Auth::user();
-        if (! $user) {
-            return;
+        $dirty = $booking->getDirty();
+
+        if (! empty(array_intersect_key($dirty, array_flip(['discount_amount', 'discount_value'])))) {
+            app(ProfitCalculationService::class)->recalculateBookingProfit($booking);
         }
 
-        $dirty = $booking->getDirty();
-        if (empty($dirty)) {
+        $user = Auth::user();
+        if (! $user || empty($dirty)) {
             return;
         }
 

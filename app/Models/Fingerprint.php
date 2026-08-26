@@ -13,12 +13,14 @@ class Fingerprint extends Model
         'booking_id',
         'deadline',
         'cost',
+        'profit',
         'assigned_staff_id',
     ];
 
     protected $casts = [
         'deadline' => 'date',
         'cost' => 'decimal:6',
+        'profit' => 'decimal:6',
     ];
 
     public function booking(): BelongsTo

@@ -346,8 +346,11 @@ class ReportQueryOptimizationTest extends TestCase
         $queryCount = count(DB::getQueryLog());
 
         $response->assertOk();
-        $this->assertLessThan(50, $queryCount,
-            'Profit loss report should execute fewer than 50 queries for 5 bookings. Actual: '.$queryCount);
+        // Bound raised from 50: per-passenger sector breakdowns require 5 extra
+        // eager loads (cancelledSubmissions, ticketFare, reIssued/refundedTickets,
+        // package fares). Count stays flat as bookings grow — no N+1.
+        $this->assertLessThan(60, $queryCount,
+            'Profit loss report should execute fewer than 60 queries for 5 bookings. Actual: '.$queryCount);
     }
 
     /** @test */

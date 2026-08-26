@@ -163,8 +163,7 @@ class TicketRequestController extends Controller
             'payment_option' => 'nullable|required_if:payment_by,customer|in:customer_payment,refund_adjustment',
             'refund_adjustment_amount' => [
                 Rule::requiredIf(function () use ($request) {
-                    return $request->input('payment_by') === 'customer'
-                        && $request->input('payment_option') === 'refund_adjustment';
+                    return $request->input('payment_option') === 'refund_adjustment';
                 }),
                 'numeric',
                 'min:0',
@@ -263,6 +262,15 @@ class TicketRequestController extends Controller
             ];
 
             $reIssuedTicket = ReIssuedTicket::create($reIssueData);
+
+            $rawCost = (float) $reIssueData['re_issue_charge']
+                + (float) $reIssueData['fare_difference']
+                + (float) $reIssueData['other_costs']
+                + (float) $reIssueData['net_fare'];
+
+            $totalCost = $rawCost - ($reIssueData['refund_adjustment_amount'] ?? 0);
+            $reIssuedTicket->update(['total_cost' => round($totalCost, 6)]);
+
             $issuedTicket->update(['status' => 're-issued']);
 
             $newData = $reIssuedTicket->toArray();

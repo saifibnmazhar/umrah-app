@@ -547,6 +547,7 @@ class BookingController extends Controller
                 'visaSubmission.visaAgent',
                 'visaSubmission.visaSellingPrice',
                 'visaSubmission.commissionAgent',
+                'visaSubmission.cancelledSubmissions',
                 'fingerprintDetail.fingerprint.fingerprintDetails',
                 'fingerprintDetail.approvedLog',
                 'ticketFare.baggageAllowances',
