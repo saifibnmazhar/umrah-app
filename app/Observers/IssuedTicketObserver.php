@@ -22,7 +22,7 @@ class IssuedTicketObserver
 
         $issuedTicket->passenger->syncComputedStatus();
 
-        if ($issuedTicket->wasChanged(['status', 'net_fare', 'issue_type'])) {
+        if ($issuedTicket->wasChanged(['net_fare', 'issue_type'])) {
             $this->recalculateProfit($issuedTicket);
         }
     }
