@@ -17,6 +17,10 @@ class RefundController extends Controller
             abort(403, 'Passenger does not belong to this booking.');
         }
 
+        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
+            return response()->json(['message' => 'Refund is not allowed for passengers with Hold or Cancel status.'], 422);
+        }
+
         $issuedTicket = IssuedTicket::where('id', $request->input('issued_ticket_id'))
             ->where('passenger_id', $passenger->id)
             ->first();
@@ -118,9 +122,9 @@ class RefundController extends Controller
             $q->where('booking_id', $booking->id);
         })
             ->with([
-            'ticketAgent',
-            'issuedTicket.passenger',
-        ])
+                'ticketAgent',
+                'issuedTicket.passenger',
+            ])
             ->orderBy('refund_date', 'asc')
             ->get();
 

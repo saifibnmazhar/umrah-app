@@ -23,9 +23,10 @@ services:
         condition: service_healthy
         required: false
 
-    # NOTE: No Watchtower label — staging is deployed
-    # manually via deploy-staging.sh or the GitHub Actions
-    # deploy-staging job over SSH.
+    # Auto-deploy via Watchtower (same as production)
+    labels:
+      - com.centurylinklabs.watchtower=true
+
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost || exit 1"]
       interval: 10s
@@ -41,10 +42,13 @@ services:
   db:
     profiles: ["${DB_TYPE:-mysql}"]
     image: ${DB_IMAGE:-mysql:8.0}
+
     env_file:
       - .env.staging
+
     volumes:
       - db_data:/var/lib/mysql
+
     healthcheck:
       test:
         [
@@ -55,21 +59,27 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+
     restart: unless-stopped
+
     networks:
       - backend
 
   db-postgres:
     profiles: ["postgresql"]
     image: ${DB_IMAGE:-postgres:16-alpine}
+
     env_file:
       - .env.staging
+
     environment:
       - POSTGRES_DB=${DB_DATABASE:-umrah_staging}
       - POSTGRES_USER=${DB_USERNAME:-stageuser}
       - POSTGRES_PASSWORD=${DB_PASSWORD:-${MYSQL_PASSWORD:-}}
+
     volumes:
       - postgres_data:/var/lib/postgresql/data
+
     healthcheck:
       test:
         [
@@ -80,7 +90,9 @@ services:
       timeout: 5s
       retries: 10
       start_period: 20s
+
     restart: unless-stopped
+
     networks:
       - backend
 
