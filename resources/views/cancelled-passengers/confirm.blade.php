@@ -7,9 +7,16 @@
     $passenger = $cancelledPassenger->passenger;
     $maxAdjustable = min((float) $cancelledPassenger->refundable_amount, max(0, (float) ($invoice->balance ?? 0)));
 @endphp
+
+{{-- Cancellation timestamp ISO string for client-side local-time conversion --}}
+<span id="cancelled-passenger-created-at" class="hidden">
+    {{ $cancelledPassenger->created_at->toIso8601String() }}
+</span>
+{{-- End cancellation timestamp --}}
 <div class="max-w-4xl mx-auto" x-data="{
     refundableAmount: {{ (float) $cancelledPassenger->refundable_amount }},
     adjustedAmount: {{ $maxAdjustable }},
+    adjustedAmountBdt: Math.round(parseFloat('{{ $maxAdjustable }}') * (window.__currencyRate || 1) * 100) / 100,
     paymentMethod: 'cash',
     remarks: '',
 
@@ -18,6 +25,13 @@
     },
     get customerRefund() {
         return Math.max(0, parseFloat(this.refundableAmount) - parseFloat(this.adjustedAmount || 0));
+    },
+    init() {
+        window.addEventListener('currency-toggled', () => {
+            this.adjustedAmountBdt = Math.round(
+                (parseFloat(this.adjustedAmount) || 0) * ($store.currency.rate || 1) * 100
+            ) / 100;
+        });
     },
     clampAdjusted() {
         this.adjustedAmount = Math.min(Math.max(parseFloat(this.adjustedAmount) || 0, 0), this.maxAdjustment);
@@ -70,12 +84,13 @@
                         <span class="font-semibold text-green-700">@currency($cancelledPassenger->refundable_amount, 2)</span>
                     </div>
                     <div class="flex justify-between p-3 bg-slate-50 rounded-lg">
-                        <span class="text-slate-700 font-medium">Invoice Balance</span>
+                        <span class="text-slate-700 font-medium">Invoice Due</span>
                         <span class="font-semibold text-slate-800">@currency($invoice->balance ?? 0, 2)</span>
                     </div>
                 </div>
             </div>
 
+{{--
             <div class="bg-white rounded-xl shadow-lg p-6">
                 <h3 class="text-lg font-semibold text-slate-700 mb-4">Cancellation Info</h3>
                 <div class="space-y-3 text-sm">
@@ -89,12 +104,13 @@
                     </div>
                     <div class="flex justify-between">
                         <span class="text-slate-500">Initiated Date</span>
-                        {{-- DB stores GMT; the browser converts it to local time. --}}
+                        <!-- DB stores GMT; the browser converts it to local time. -->
                         <span class="font-medium text-slate-800"
                             x-text="new Date('{{ $cancelledPassenger->created_at->toIso8601String() }}').toLocaleString('en-GB', { day: '2-digit', month: 'short', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: true })"></span>
                     </div>
                 </div>
             </div>
+            --}}
         </div>
 
         <div class="space-y-6">
@@ -103,8 +119,23 @@
 
                 <div class="space-y-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Adjust from Balance</label>
-                        <input type="number" x-model.number="adjustedAmount" @change="clampAdjusted()" min="0" :max="maxAdjustment"
+                        <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mb-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Adjust from Due (BDT)</label>
+                            <input type="number" x-model.number="adjustedAmountBdt"
+                                @input="adjustedAmount = parseFloat(((parseFloat(adjustedAmountBdt) || 0) / ($store.currency.rate || 1)).toFixed(6)); clampAdjusted();"
+                                min="0"
+                                :max="maxAdjustment * ($store.currency.rate || 1)"
+                                step="0.01"
+                                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none font-medium"
+                                placeholder="0">
+                        </div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Adjust from Due (SAR)</label>
+                        <input type="number" x-model.number="adjustedAmount"
+                            @change="clampAdjusted(); if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { adjustedAmountBdt = Math.round((parseFloat(adjustedAmount) || 0) * $store.currency.rate * 100) / 100; }"
+                            @input="if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { adjustedAmountBdt = Math.round((parseFloat($event.target.value) || 0) * $store.currency.rate * 100) / 100; }"
+                            :readonly="$store.currency.mode === 'BDT'"
+                            :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}"
+                            min="0" :max="maxAdjustment"
                             step="0.000001"
                             class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none font-medium"
                             placeholder="0">
