@@ -154,7 +154,7 @@ class ProfitCalculationService
     private function calculateReIssueProfit(Passenger $passenger): float
     {
         return (float) $this->passengerReIssues($passenger)
-            ->filter(fn ($r) => $r->payment_by !== PaymentBy::COMPANY)
+            ->filter(fn ($r) => $r->payment_by === PaymentBy::CUSTOMER)
             ->sum('service_charge');
     }
 
