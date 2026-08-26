@@ -2689,15 +2689,16 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <option value="company">Company</option>
                             </select>
                         </div>
-                        <div x-show="reIssueForm.payment_by === 'customer'">
+                        <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
                             <select x-model="reIssueForm.payment_option" @change="handleReIssuePaymentOptionChange()"
-                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                    :disabled="reIssueForm.payment_by !== 'customer'"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed">
                                 <option value="customer_payment">Customer Payment</option>
                                 <option value="refund_adjustment">Refund Adjustment</option>
                             </select>
                         </div>
-                        <div x-show="reIssueForm.payment_by === 'customer' && reIssueForm.payment_option === 'refund_adjustment'">
+                        <div x-show="reIssueForm.payment_option === 'refund_adjustment'">
                             <div class="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 mb-2">
                                 <span class="text-sm font-medium text-emerald-700">Refund Payable (SAR)</span>
                                 <span class="text-sm font-semibold text-emerald-700" x-text="$currency(reIssueForm.refund_payable, 2)"></span>
@@ -5668,9 +5669,7 @@ function bookingIndexApp() {
             if (this.reIssueForm.payment_by !== 'customer') {
                 this.reIssueForm.service_charge = 0;
                 this.reIssueForm.service_charge_bdt = '';
-                this.reIssueForm.payment_option = 'customer_payment';
-                this.reIssueForm.refund_adjustment_amount = 0;
-                this.reIssueForm.refund_adjustment_amount_bdt = '';
+                this.reIssueForm.payment_option = 'refund_adjustment';
             }
             this.recalcReIssueTotals();
         },

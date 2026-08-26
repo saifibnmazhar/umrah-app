@@ -436,6 +436,7 @@ class ProfitCalculationServiceTest extends TestCase
             'fare_difference' => 50.00,
             'other_costs' => 25.00,
             'net_fare' => 26500.00,
+            'total_cost' => 26675.00,
             'payment_by' => 'company',
         ]);
 

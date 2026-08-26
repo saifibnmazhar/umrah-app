@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Booking;
+use App\Models\ReIssuedTicket;
 use App\Services\ProfitCalculationService;
 use Illuminate\Console\Command;
 
@@ -47,6 +48,19 @@ class BackfillProfitData extends Command
         $bar->finish();
         $this->newLine();
         $this->info("Backfilled {$count} bookings.");
+
+        $reIssueCount = ReIssuedTicket::where('total_cost', 0)->count();
+
+        if ($reIssueCount > 0) {
+            ReIssuedTicket::where('total_cost', 0)->each(function ($reIssue) {
+                $rawCost = (float) $reIssue->re_issue_charge
+                    + (float) $reIssue->fare_difference
+                    + (float) $reIssue->other_costs;
+                $reIssue->update(['total_cost' => round($rawCost, 6)]);
+            });
+
+            $this->info("Backfilled total_cost for {$reIssueCount} re-issued tickets.");
+        }
 
         return self::SUCCESS;
     }

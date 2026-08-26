@@ -857,27 +857,27 @@ function updateTotals() {
 
 function handlePaymentByChange() {
     var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
-    var isAdjustment = document.getElementById('inputPaymentOption').value === 'refund_adjustment';
-    document.getElementById('fieldServiceCharge').classList.toggle('hidden', !isCustomer);
-    document.getElementById('fieldTotalPayment').classList.toggle('hidden', !isCustomer);
-    document.getElementById('fieldPaymentOption').classList.toggle('hidden', !isCustomer);
-    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !(isCustomer && isAdjustment));
+    var paymentOptionEl = document.getElementById('inputPaymentOption');
 
     if (!isCustomer) {
+        paymentOptionEl.value = 'refund_adjustment';
+        paymentOptionEl.disabled = true;
         document.getElementById('inputServiceCharge').value = '';
         document.getElementById('inputServiceChargeBdt').value = '';
-        document.getElementById('inputPaymentOption').value = 'customer_payment';
-        document.getElementById('inputRefundAdjustment').value = '';
-        document.getElementById('inputRefundAdjustmentBdt').value = '';
-        document.getElementById('inputRefundAdjustmentBdtSar').value = '';
-        updateTotals();
+    } else {
+        paymentOptionEl.disabled = false;
     }
+
+    document.getElementById('fieldServiceCharge').classList.toggle('hidden', !isCustomer);
+    document.getElementById('fieldTotalPayment').classList.toggle('hidden', !isCustomer);
+    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', false);
+    updateTotals();
 }
 
 function handlePaymentOptionChange() {
     var isAdjustment = document.getElementById('inputPaymentOption').value === 'refund_adjustment';
     var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
-    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !(isCustomer && isAdjustment));
+    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !isAdjustment);
 
     if (!isAdjustment) {
         document.getElementById('inputRefundAdjustment').value = '';

@@ -162,10 +162,7 @@ class ProfitCalculationService
     {
         return (float) $this->passengerReIssues($passenger)
             ->filter(fn ($r) => $r->payment_by === PaymentBy::COMPANY)
-            ->sum(fn ($r) => (float) ($r->re_issue_charge ?? 0)
-                + (float) ($r->fare_difference ?? 0)
-                + (float) ($r->other_costs ?? 0)
-                + (float) ($r->net_fare ?? 0));
+            ->sum('total_cost');
     }
 
     private function calculateRefundProfit(Passenger $passenger): float
