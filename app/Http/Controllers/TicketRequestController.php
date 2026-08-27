@@ -253,10 +253,10 @@ class TicketRequestController extends Controller
                 'reason_id' => $validated['reason_id'],
                 'remarks' => $validated['remarks'] ?? null,
                 'payment_by' => $validated['payment_by'] ?? null,
-                'payment_option' => ($validated['payment_by'] ?? null) === 'customer'
+                'payment_option' => ($validated['payment_by'] ?? null) === 'customer' || $wasRefunded
                     ? $validated['payment_option']
                     : null,
-                'refund_adjustment_amount' => ($validated['payment_by'] ?? null) === 'customer'
+                'refund_adjustment_amount' => (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded)
                         && $validated['payment_option'] === 'refund_adjustment'
                     ? (float) $validated['refund_adjustment_amount']
                     : 0,
@@ -267,10 +267,14 @@ class TicketRequestController extends Controller
 
             $reIssuedTicket = ReIssuedTicket::create($reIssueData);
 
+            $refundedNetFare = $wasRefunded
+                ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
+                : 0;
+
             $rawCost = (float) $reIssueData['re_issue_charge']
                 + (float) $reIssueData['fare_difference']
                 + (float) $reIssueData['other_costs']
-                + (float) $reIssueData['net_fare'];
+                + $refundedNetFare;
 
             $totalCost = $rawCost - ($reIssueData['refund_adjustment_amount'] ?? 0);
             $reIssuedTicket->update(['total_cost' => round($totalCost, 6)]);
@@ -290,7 +294,7 @@ class TicketRequestController extends Controller
                 'result_re_issued_ticket_id' => $reIssuedTicket->id,
             ]);
 
-            if (($validated['payment_by'] ?? null) === 'customer') {
+            if (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded) {
                 $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
 
                 $passenger = $ticketRequest->passenger;
@@ -299,7 +303,7 @@ class TicketRequestController extends Controller
                 if ($validated['payment_option'] === 'refund_adjustment') {
                     $amount = (float) $validated['refund_adjustment_amount'];
 
-                    if ($amount > $totalCustomerPayment) {
+                    if ($amount > $rawCost) {
                         throw new \InvalidArgumentException('Refund adjustment amount exceeds the total customer payment.');
                     }
                     if ($amount > (float) $passenger->refund_payable) {
