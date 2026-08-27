@@ -16,6 +16,9 @@ class ProfitCalculationService
 {
     public function recalculatePassengerProfit(Passenger $passenger): float
     {
+        $passenger->unsetRelation('allIssuedTickets');
+        $passenger->unsetRelation('visaSubmission');
+
         $breakdown = $this->getPassengerProfitBreakdown($passenger);
 
         $passenger->profit = round($breakdown['total'], 6);
