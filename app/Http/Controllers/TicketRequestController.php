@@ -193,6 +193,10 @@ class TicketRequestController extends Controller
 
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
 
+        $sellingFare = (float) ($validated['selling_fare'] ?? $selectedFare->selling_fare ?? $issuedTicket->selling_fare ?? 0);
+        $netFare = (float) ($validated['net_fare'] ?? $selectedFare->net_fare ?? $issuedTicket->net_fare ?? 0);
+        $offerPrice = (float) ($validated['offer_price'] ?? $selectedFare->offer_price ?? $issuedTicket->offer_price ?? 0);
+
         try {
             DB::beginTransaction();
 
@@ -235,9 +239,9 @@ class TicketRequestController extends Controller
                 're_issue_date' => $validated['travel_date'] ?? now(),
                 'inbound_date' => $validated['inbound_date'] ?? $issuedTicket->inbound_date,
                 'outbound_date' => $validated['outbound_date'] ?? $issuedTicket->outbound_date,
-                'selling_fare' => $validated['selling_fare'] ?? $selectedFare->selling_fare ?? $issuedTicket->selling_fare ?? 0,
-                'net_fare' => $validated['net_fare'] ?? $selectedFare->net_fare ?? $issuedTicket->net_fare ?? 0,
-                'offer_price' => $validated['offer_price'] ?? $selectedFare->offer_price ?? $issuedTicket->offer_price ?? 0,
+                'selling_fare' => $sellingFare,
+                'net_fare' => $netFare,
+                'offer_price' => $offerPrice,
                 'is_refundable' => $selectedFare->is_refundable ?? $issuedTicket->is_refundable,
                 'is_exchangeable' => $selectedFare->is_exchangeable ?? $issuedTicket->is_exchangeable,
                 'baggage_inbound' => BaggageAllowance::where('ticket_fare_id', $selectedFare->id)->where('passenger_type', $ticketRequest->passenger->passenger_type)->where('travel_direction', 'inbound')->value('allowance'),
@@ -249,10 +253,10 @@ class TicketRequestController extends Controller
                 'reason_id' => $validated['reason_id'],
                 'remarks' => $validated['remarks'] ?? null,
                 'payment_by' => $validated['payment_by'] ?? null,
-                'payment_option' => ($validated['payment_by'] ?? null) === 'customer'
+                'payment_option' => ($validated['payment_by'] ?? null) === 'customer' || $wasRefunded
                     ? $validated['payment_option']
                     : null,
-                'refund_adjustment_amount' => ($validated['payment_by'] ?? null) === 'customer'
+                'refund_adjustment_amount' => (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded)
                         && $validated['payment_option'] === 'refund_adjustment'
                     ? (float) $validated['refund_adjustment_amount']
                     : 0,
@@ -263,10 +267,14 @@ class TicketRequestController extends Controller
 
             $reIssuedTicket = ReIssuedTicket::create($reIssueData);
 
+            $refundedNetFare = $wasRefunded
+                ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
+                : 0;
+
             $rawCost = (float) $reIssueData['re_issue_charge']
                 + (float) $reIssueData['fare_difference']
                 + (float) $reIssueData['other_costs']
-                + (float) $reIssueData['net_fare'];
+                + $refundedNetFare;
 
             $totalCost = $rawCost - ($reIssueData['refund_adjustment_amount'] ?? 0);
             $reIssuedTicket->update(['total_cost' => round($totalCost, 6)]);
@@ -286,16 +294,7 @@ class TicketRequestController extends Controller
                 'result_re_issued_ticket_id' => $reIssuedTicket->id,
             ]);
 
-            if (($validated['payment_by'] ?? null) === 'customer') {
-                $refundedNetFare = $wasRefunded
-                    ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
-                    : 0;
-
-                $totalCost = (float) $validated['re_issue_charge']
-                    + (float) $validated['fare_difference']
-                    + (float) $validated['other_costs']
-                    + $refundedNetFare;
-
+            if (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded) {
                 $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
 
                 $passenger = $ticketRequest->passenger;
@@ -304,7 +303,7 @@ class TicketRequestController extends Controller
                 if ($validated['payment_option'] === 'refund_adjustment') {
                     $amount = (float) $validated['refund_adjustment_amount'];
 
-                    if ($amount > $totalCustomerPayment) {
+                    if ($amount > $rawCost) {
                         throw new \InvalidArgumentException('Refund adjustment amount exceeds the total customer payment.');
                     }
                     if ($amount > (float) $passenger->refund_payable) {

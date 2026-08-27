@@ -118,10 +118,10 @@ class ReIssueController extends Controller
                 'selling_fare' => $validated['selling_fare'] ?? $issuedTicket->selling_fare ?? 0,
                 'net_fare' => $validated['net_fare'] ?? $issuedTicket->net_fare ?? 0,
                 'offer_price' => $validated['offer_price'] ?? $issuedTicket->offer_price ?? 0,
-                'payment_option' => ($validated['payment_by'] ?? null) === 'customer'
+                'payment_option' => ($validated['payment_by'] ?? null) === 'customer' || $wasRefunded
                     ? $validated['payment_option']
                     : null,
-                'refund_adjustment_amount' => ($validated['payment_by'] ?? null) === 'customer'
+                'refund_adjustment_amount' => (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded)
                         && $validated['payment_option'] === 'refund_adjustment'
                     ? (float) $validated['refund_adjustment_amount']
                     : 0,
@@ -132,10 +132,14 @@ class ReIssueController extends Controller
 
             $reIssuedTicket = ReIssuedTicket::create($reIssueData);
 
+            $refundedNetFare = $wasRefunded
+                ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
+                : 0;
+
             $rawCost = (float) $reIssueData['re_issue_charge']
                 + (float) $reIssueData['fare_difference']
                 + (float) $reIssueData['other_costs']
-                + (float) $reIssueData['net_fare'];
+                + $refundedNetFare;
 
             $totalCost = $rawCost - ($reIssueData['refund_adjustment_amount'] ?? 0);
             $reIssuedTicket->update(['total_cost' => round($totalCost, 6)]);
@@ -149,22 +153,13 @@ class ReIssueController extends Controller
 
             $issuedTicket->logAction('re-issued', $oldData, $newData);
 
-            if (($validated['payment_by'] ?? null) === 'customer') {
-                $refundedNetFare = $wasRefunded
-                    ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
-                    : 0;
-
-                $totalCost = (float) $validated['re_issue_charge']
-                    + (float) $validated['fare_difference']
-                    + (float) $validated['other_costs']
-                    + $refundedNetFare;
-
+            if (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded) {
                 $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
 
                 if ($validated['payment_option'] === 'refund_adjustment') {
                     $amount = (float) $validated['refund_adjustment_amount'];
 
-                    if ($amount > $totalCustomerPayment) {
+                    if ($amount > $rawCost) {
                         throw new \InvalidArgumentException('Refund adjustment amount exceeds the total customer payment.');
                     }
                     if ($amount > (float) $passenger->refund_payable) {

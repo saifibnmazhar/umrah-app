@@ -147,14 +147,15 @@ class ProfitCalculationService
     private function calculateAdditionalTicketProfit(Passenger $passenger): float
     {
         return (float) $passenger->allIssuedTickets
-            ->filter(fn ($t) => $t->issue_type === 'additional' && $t->status === 'issued')
+            ->filter(fn ($t) => $t->issue_type === 'additional'
+                && in_array($t->status, ['issued', 're-issued', 'refunded'], true))
             ->sum(fn ($t) => $this->fareSellingPrice($t->ticketFare, $passenger) - (float) ($t->net_fare ?? 0));
     }
 
     private function calculateReIssueProfit(Passenger $passenger): float
     {
         return (float) $this->passengerReIssues($passenger)
-            ->filter(fn ($r) => $r->payment_by !== PaymentBy::COMPANY)
+            ->filter(fn ($r) => $r->payment_by === PaymentBy::CUSTOMER)
             ->sum('service_charge');
     }
 
@@ -199,7 +200,7 @@ class ProfitCalculationService
         $tickets = $this->regularTickets($passenger);
 
         return $tickets->isNotEmpty()
-            && $tickets->every(fn ($t) => $t->status === 'issued');
+            && $tickets->every(fn ($t) => in_array($t->status, ['issued', 're-issued', 'refunded'], true));
     }
 
     private function regularTickets(Passenger $passenger)
