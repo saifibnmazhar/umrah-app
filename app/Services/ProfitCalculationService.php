@@ -199,7 +199,7 @@ class ProfitCalculationService
         $tickets = $this->regularTickets($passenger);
 
         return $tickets->isNotEmpty()
-            && $tickets->every(fn ($t) => $t->status === 'issued');
+            && $tickets->every(fn ($t) => in_array($t->status, ['issued', 're-issued', 'refunded'], true));
     }
 
     private function regularTickets(Passenger $passenger)
