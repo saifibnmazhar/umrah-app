@@ -450,6 +450,40 @@ class ProfitCalculationServiceTest extends TestCase
     }
 
     /** @test */
+    public function test_stored_passenger_profit_reflects_reissue_total_cost_update(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        $passenger = $this->addPassenger($user, $deps, $booking);
+        $ticket = $passenger->allIssuedTickets->first();
+
+        // total_cost is set AFTER create() via update(), mirroring ReIssueController::store
+        $reissue = ReIssuedTicket::create([
+            'user_id' => $user->id,
+            'issued_ticket_id' => $ticket->id,
+            're_issue_date' => now(),
+            'service_charge' => 0,
+            're_issue_charge' => 100.00,
+            'fare_difference' => 50.00,
+            'other_costs' => 25.00,
+            'net_fare' => 26500.00,
+            'payment_by' => 'company',
+        ]);
+
+        $reissue->update(['total_cost' => 26675.00]);
+
+        // stored passenger profit must equal the recomputed breakdown total
+        $stored = $passenger->refresh()->profit;
+        $breakdown = $this->service->getPassengerProfitBreakdown($passenger);
+
+        $this->assertEqualsWithDelta($breakdown['total'], (float) $stored, 0.001);
+        // 850 + 3000 + 500 - 26675 = -22325
+        $this->assertEqualsWithDelta(-22325.0, (float) $stored, 0.001);
+    }
+
+    /** @test */
     public function test_refund_service_charge_counts_as_profit(): void
     {
         $user = $this->setupUser();

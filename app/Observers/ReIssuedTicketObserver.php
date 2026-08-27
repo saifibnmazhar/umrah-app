@@ -14,6 +14,7 @@ class ReIssuedTicketObserver
         'fare_difference',
         'other_costs',
         'net_fare',
+        'total_cost',
     ];
 
     public function created(ReIssuedTicket $reIssuedTicket): void
