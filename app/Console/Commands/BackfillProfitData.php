@@ -55,7 +55,8 @@ class BackfillProfitData extends Command
             ReIssuedTicket::where('total_cost', 0)->each(function ($reIssue) {
                 $rawCost = (float) $reIssue->re_issue_charge
                     + (float) $reIssue->fare_difference
-                    + (float) $reIssue->other_costs;
+                    + (float) $reIssue->other_costs
+                    + (float) $reIssue->net_fare;
                 $reIssue->update(['total_cost' => round($rawCost, 6)]);
             });
 

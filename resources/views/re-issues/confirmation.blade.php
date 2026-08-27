@@ -72,7 +72,7 @@
                 </div>
             </div>
 
-            <div class="mb-6">
+            <div id="fieldRefundPayable" class="mb-6">
                 <div class="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3">
                     <span class="text-sm font-medium text-emerald-700">Refund Payable (SAR)</span>
                     <span class="text-lg font-semibold text-emerald-700" id="infoRefundPayable">0.00</span>
@@ -347,6 +347,7 @@ let selectedTicketFareId = null;
 let originalTicketFareId = null;
 let originalTicketNetFare = 0;
 let sourceFares = { selling_fare: 0, net_fare: 0, offer_price: 0 };
+let currentPassengerType = 'adult';
 
 function getCurrencyMode() {
     return (typeof Alpine !== 'undefined' && Alpine.store('currency')) ? Alpine.store('currency').mode : 'SAR';
@@ -597,9 +598,28 @@ function updateNetFareEditable() {
 function syncFareFields() {
     var fareId = document.getElementById('inputTicketFare').value;
     var f = allTicketFares.find(function(x) { return String(x.id) === String(fareId); });
-    var sf = f ? (f.selling_fare ?? sourceFares.selling_fare) : sourceFares.selling_fare;
-    var nf = f ? (f.net_fare ?? sourceFares.net_fare) : sourceFares.net_fare;
-    var ofp = f ? (f.offer_price ?? sourceFares.offer_price) : sourceFares.offer_price;
+
+    var sf, nf, ofp;
+    if (f) {
+        var childPct = f.child_fare_percentage || 70;
+        var infantPct = f.infant_fare_percentage || 30;
+        sf = f.selling_fare ?? sourceFares.selling_fare;
+        nf = f.net_fare ?? sourceFares.net_fare;
+        ofp = f.offer_price ?? sourceFares.offer_price;
+        if (currentPassengerType === 'child') {
+            sf = Math.round((parseFloat(sf) || 0) * childPct / 100);
+            nf = Math.round((parseFloat(nf) || 0) * childPct / 100);
+            if (ofp) ofp = Math.round((parseFloat(ofp) || 0) * childPct / 100);
+        } else if (currentPassengerType === 'infant') {
+            sf = Math.round((parseFloat(sf) || 0) * infantPct / 100);
+            nf = Math.round((parseFloat(nf) || 0) * infantPct / 100);
+            if (ofp) ofp = Math.round((parseFloat(ofp) || 0) * infantPct / 100);
+        }
+    } else {
+        sf = sourceFares.selling_fare;
+        nf = sourceFares.net_fare;
+        ofp = sourceFares.offer_price;
+    }
     document.getElementById('inputSellingFare').value = sf;
     document.getElementById('inputNetFare').value = nf;
     document.getElementById('inputOfferPrice').value = ofp;
@@ -706,6 +726,7 @@ function processConfirmation(ticketRequestId) {
     if (!r) return;
 
     const p = r.passenger || {};
+    currentPassengerType = p.passenger_type || 'adult';
     const t = r.issued_ticket || {};
     const src = (t.status === 're-issued' && t.latest_re_issued_ticket) ? t.latest_re_issued_ticket : t;
 
@@ -820,27 +841,30 @@ function updateTotals() {
     var other = parseFloat(document.getElementById('inputOtherCosts').value) || 0;
     var service = parseFloat(document.getElementById('inputServiceCharge').value) || 0;
 
-    var totalCost = reIssue + difference + other + (parseFloat(currentRefundedNetFare) || 0);
-    document.getElementById('inputTotalCost').value = totalCost;
+    var rawCost = reIssue + difference + other + (parseFloat(document.getElementById('inputNetFare').value) || 0);
 
-    var totalPayment = totalCost + service;
-    var refundAdj = parseFloat(document.getElementById('inputRefundAdjustment').value) || 0;
     var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
     var isAdjustment = document.getElementById('inputPaymentOption').value === 'refund_adjustment';
+    var refundAdj = (isCustomer && isAdjustment)
+        ? (parseFloat(document.getElementById('inputRefundAdjustment').value) || 0)
+        : 0;
 
-    if (isCustomer && isAdjustment && refundAdj > 0) {
-        if (refundAdj > totalPayment) {
+    if (refundAdj > 0) {
+        if (refundAdj > rawCost + service) {
             document.getElementById('inputRefundAdjustment').setCustomValidity('Refund adjustment amount exceeds the total customer payment.');
         } else if (refundAdj > currentRefundPayable) {
             document.getElementById('inputRefundAdjustment').setCustomValidity('Refund adjustment amount exceeds the available refund payable.');
         } else {
             document.getElementById('inputRefundAdjustment').setCustomValidity('');
         }
-        totalPayment -= refundAdj;
     } else {
         document.getElementById('inputRefundAdjustment').setCustomValidity('');
     }
 
+    var totalCost = rawCost - refundAdj;
+    document.getElementById('inputTotalCost').value = totalCost;
+
+    var totalPayment = totalCost + service;
     document.getElementById('inputTotalPayment').value = totalPayment;
 
     var rate = window.__currencyRate || 0;
@@ -860,7 +884,7 @@ function handlePaymentByChange() {
     var paymentOptionEl = document.getElementById('inputPaymentOption');
 
     if (!isCustomer) {
-        paymentOptionEl.value = 'refund_adjustment';
+        paymentOptionEl.value = 'customer_payment';
         paymentOptionEl.disabled = true;
         document.getElementById('inputServiceCharge').value = '';
         document.getElementById('inputServiceChargeBdt').value = '';
@@ -870,16 +894,17 @@ function handlePaymentByChange() {
 
     document.getElementById('fieldServiceCharge').classList.toggle('hidden', !isCustomer);
     document.getElementById('fieldTotalPayment').classList.toggle('hidden', !isCustomer);
-    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', false);
+    document.getElementById('fieldRefundPayable').classList.toggle('hidden', !isCustomer);
+    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !isCustomer);
     updateTotals();
 }
 
 function handlePaymentOptionChange() {
     var isAdjustment = document.getElementById('inputPaymentOption').value === 'refund_adjustment';
     var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
-    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !isAdjustment);
+    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !(isAdjustment && isCustomer));
 
-    if (!isAdjustment) {
+    if (!isAdjustment || !isCustomer) {
         document.getElementById('inputRefundAdjustment').value = '';
         document.getElementById('inputRefundAdjustmentBdt').value = '';
         document.getElementById('inputRefundAdjustmentBdtSar').value = '';
@@ -951,7 +976,7 @@ function confirmProcess() {
     }
 
     if (payload.payment_by === 'customer' && payload.payment_option === 'refund_adjustment') {
-        if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge + (parseFloat(currentRefundedNetFare) || 0)) {
+        if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge + (payload.net_fare || 0)) {
             showToast('Refund adjustment amount exceeds the total customer payment.', 'error');
             return;
         }
