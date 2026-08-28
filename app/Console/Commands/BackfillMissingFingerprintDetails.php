@@ -24,6 +24,7 @@ class BackfillMissingFingerprintDetails extends Command
 
         if ($total === 0) {
             $this->info('All passengers already have fingerprint detail records.');
+
             return Command::SUCCESS;
         }
 
@@ -63,6 +64,7 @@ class BackfillMissingFingerprintDetails extends Command
 
         if ($errors > 0) {
             $this->warn("Failed for {$errors} passenger(s). Check logs for details.");
+
             return Command::FAILURE;
         }
 

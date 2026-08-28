@@ -295,7 +295,7 @@ select {
             </div>
 
             <div class="p-6 max-h-[78vh] overflow-y-auto scrollbar-thin">
-                <div x-show="activeTab === 'customerDue'">
+                <div x-show="activeTab === 'customerDue'" x-cloak>
                     <div class="overflow-x-auto">
                         <table class="w-full min-w-[1200px] table-fixed">
                             <thead>
@@ -335,7 +335,7 @@ select {
                     </div>
                 </div>
 
-                <div x-show="activeTab === 'dateWise'">
+                <div x-show="activeTab === 'dateWise'" x-cloak>
                     <div class="overflow-x-auto">
                         <table class="w-full min-w-[1000px] table-fixed">
                             <thead>

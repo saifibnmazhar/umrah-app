@@ -227,8 +227,8 @@
          x-transition:leave-end="opacity-0">
         <div class="absolute inset-0" style="background-color: rgba(0,0,0,0.5);" @click="closeModal()"></div>
         <div class="relative z-10 min-h-screen flex items-center justify-center p-4">
-            <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden">
-                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
+            <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center shrink-0">
                     <h2 class="text-xl font-bold text-white">Agent Details</h2>
                     <button @click="closeModal()" class="text-white hover:text-gray-300 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -237,7 +237,7 @@
                     </button>
                 </div>
 
-                <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)] scrollbar-thin">
+                <div class="p-6 overflow-y-auto flex-1 min-h-0 scrollbar-thin">
                     <template x-if="selectedAgent">
                         <div>
                             <div class="mb-6">
@@ -275,7 +275,7 @@
                                 </div>
                             </div>
 
-                            <div x-show="activeTab === 'payment'">
+                            <div x-show="activeTab === 'payment'" x-cloak>
                                 <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
                                     <table class="w-full">
                                         <thead>
@@ -363,7 +363,7 @@
                     </template>
                 </div>
 
-                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
+                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end shrink-0">
                     <button @click="closeModal()" class="filter-btn px-6 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>

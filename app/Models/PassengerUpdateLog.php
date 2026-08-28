@@ -12,6 +12,7 @@ class PassengerUpdateLog extends Model
     protected $fillable = [
         'passenger_id',
         'user_id',
+        'passport_no',
         'action',
         'old_values',
         'new_values',

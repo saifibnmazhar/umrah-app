@@ -2,10 +2,10 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Invoice;
-use App\Models\Branch;
-use App\Models\Payment;
 use App\Enums\InvoiceStatus;
+use App\Models\Branch;
+use App\Models\Invoice;
+use App\Models\Payment;
 use App\Services\CurrencyRateService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -15,17 +15,18 @@ class DueReportController extends Controller
     public function index()
     {
         $branches = Branch::orderBy('name')->get(['id', 'name']);
+
         return view('reports.due', compact('branches'));
     }
 
     public function data(Request $request)
     {
         $query = Invoice::select(
-                'branches.id',
-                'branches.name',
-                DB::raw('COALESCE(SUM(invoices.balance), 0) as total_due'),
-                DB::raw('COUNT(*) as invoice_count')
-            )
+            'branches.id',
+            'branches.name',
+            DB::raw('COALESCE(SUM(invoices.balance), 0) as total_due'),
+            DB::raw('COUNT(*) as invoice_count')
+        )
             ->join('branches', 'invoices.branch_id', '=', 'branches.id')
             ->where('invoices.balance', '>', 0)
             ->whereNotIn('invoices.status', [
@@ -78,14 +79,15 @@ class DueReportController extends Controller
                 InvoiceStatus::CANCELLED->value,
                 InvoiceStatus::REFUNDED->value,
             ])
-            ->when($dateFrom, fn($q) => $q->whereDate('invoices.created_at', '>=', $dateFrom))
-            ->when($dateTo, fn($q) => $q->whereDate('invoices.created_at', '<=', $dateTo))
+            ->when($dateFrom, fn ($q) => $q->whereDate('invoices.created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->whereDate('invoices.created_at', '<=', $dateTo))
             ->orderBy('invoices.created_at', 'desc')
             ->get()
             ->map(function ($invoice) {
                 $customer = $invoice->booking?->customer;
                 $passengers = $invoice->booking->passengers ?? collect();
                 $earliest = $passengers->pluck('actual_flight_date')->filter()->min();
+
                 return [
                     'id' => (int) $invoice->id,
                     'name' => $customer->name ?? 'Unknown',
@@ -105,16 +107,16 @@ class DueReportController extends Controller
                 InvoiceStatus::CANCELLED->value,
                 InvoiceStatus::REFUNDED->value,
             ])
-            ->when($dateFrom, fn($q) => $q->whereDate('created_at', '>=', $dateFrom))
-            ->when($dateTo, fn($q) => $q->whereDate('created_at', '<=', $dateTo))
+            ->when($dateFrom, fn ($q) => $q->whereDate('created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->whereDate('created_at', '<=', $dateTo))
             ->sum('balance');
 
         $dateWiseRows = Payment::select(
-                DB::raw('DATE(payments.payment_date) as date'),
-                DB::raw("COALESCE(SUM(CASE WHEN payments.payment_method = 'cash' THEN payments.amount ELSE 0 END), 0) as cash"),
-                DB::raw("COALESCE(SUM(CASE WHEN payments.payment_method = 'bank' THEN payments.amount ELSE 0 END), 0) as bank"),
-                DB::raw('COALESCE(SUM(payments.amount), 0) as total_collected')
-            )
+            DB::raw('DATE(payments.payment_date) as date'),
+            DB::raw("COALESCE(SUM(CASE WHEN payments.payment_method = 'cash' THEN payments.amount ELSE 0 END), 0) as cash"),
+            DB::raw("COALESCE(SUM(CASE WHEN payments.payment_method = 'bank' THEN payments.amount ELSE 0 END), 0) as bank"),
+            DB::raw('COALESCE(SUM(payments.amount), 0) as total_collected')
+        )
             ->join('invoices', 'payments.invoice_id', '=', 'invoices.id')
             ->where('invoices.branch_id', $branchId)
             ->where('invoices.balance', '>', 0)
@@ -123,8 +125,8 @@ class DueReportController extends Controller
                 InvoiceStatus::CANCELLED->value,
                 InvoiceStatus::REFUNDED->value,
             ])
-            ->when($dateFrom, fn($q) => $q->whereDate('invoices.created_at', '>=', $dateFrom))
-            ->when($dateTo, fn($q) => $q->whereDate('invoices.created_at', '<=', $dateTo))
+            ->when($dateFrom, fn ($q) => $q->whereDate('invoices.created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->whereDate('invoices.created_at', '<=', $dateTo))
             ->groupBy(DB::raw('DATE(payments.payment_date)'))
             ->orderBy('date')
             ->get();
@@ -133,6 +135,7 @@ class DueReportController extends Controller
         $dateWiseData = $dateWiseRows->map(function ($row) use (&$runningDue) {
             $rowDue = $runningDue;
             $runningDue -= (float) $row->total_collected;
+
             return [
                 'date' => date('d-M-Y', strtotime($row->date)),
                 'due' => max(0, $rowDue),
@@ -173,14 +176,15 @@ class DueReportController extends Controller
                 InvoiceStatus::CANCELLED->value,
                 InvoiceStatus::REFUNDED->value,
             ])
-            ->when($dateFrom, fn($q) => $q->whereDate('invoices.created_at', '>=', $dateFrom))
-            ->when($dateTo, fn($q) => $q->whereDate('invoices.created_at', '<=', $dateTo))
+            ->when($dateFrom, fn ($q) => $q->whereDate('invoices.created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->whereDate('invoices.created_at', '<=', $dateTo))
             ->orderBy('invoices.created_at', 'desc')
             ->get()
             ->map(function ($invoice) {
                 $customer = $invoice->booking?->customer;
                 $passengers = $invoice->booking->passengers ?? collect();
                 $earliest = $passengers->pluck('actual_flight_date')->filter()->min();
+
                 return [
                     'name' => $customer->name ?? 'Unknown',
                     'mobile' => $customer->mobile_no ?? '',
@@ -210,16 +214,16 @@ class DueReportController extends Controller
                 InvoiceStatus::CANCELLED->value,
                 InvoiceStatus::REFUNDED->value,
             ])
-            ->when($dateFrom, fn($q) => $q->whereDate('created_at', '>=', $dateFrom))
-            ->when($dateTo, fn($q) => $q->whereDate('created_at', '<=', $dateTo))
+            ->when($dateFrom, fn ($q) => $q->whereDate('created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->whereDate('created_at', '<=', $dateTo))
             ->sum('balance');
 
         $dateWiseRows = Payment::select(
-                DB::raw('DATE(payments.payment_date) as date'),
-                DB::raw("COALESCE(SUM(CASE WHEN payments.payment_method = 'cash' THEN payments.amount ELSE 0 END), 0) as cash"),
-                DB::raw("COALESCE(SUM(CASE WHEN payments.payment_method = 'bank' THEN payments.amount ELSE 0 END), 0) as bank"),
-                DB::raw('COALESCE(SUM(payments.amount), 0) as total_collected')
-            )
+            DB::raw('DATE(payments.payment_date) as date'),
+            DB::raw("COALESCE(SUM(CASE WHEN payments.payment_method = 'cash' THEN payments.amount ELSE 0 END), 0) as cash"),
+            DB::raw("COALESCE(SUM(CASE WHEN payments.payment_method = 'bank' THEN payments.amount ELSE 0 END), 0) as bank"),
+            DB::raw('COALESCE(SUM(payments.amount), 0) as total_collected')
+        )
             ->join('invoices', 'payments.invoice_id', '=', 'invoices.id')
             ->where('invoices.branch_id', $branchId)
             ->where('invoices.balance', '>', 0)
@@ -228,8 +232,8 @@ class DueReportController extends Controller
                 InvoiceStatus::CANCELLED->value,
                 InvoiceStatus::REFUNDED->value,
             ])
-            ->when($dateFrom, fn($q) => $q->whereDate('invoices.created_at', '>=', $dateFrom))
-            ->when($dateTo, fn($q) => $q->whereDate('invoices.created_at', '<=', $dateTo))
+            ->when($dateFrom, fn ($q) => $q->whereDate('invoices.created_at', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->whereDate('invoices.created_at', '<=', $dateTo))
             ->groupBy(DB::raw('DATE(payments.payment_date)'))
             ->orderBy('date')
             ->get();
@@ -238,6 +242,7 @@ class DueReportController extends Controller
         $dateWiseData = $dateWiseRows->map(function ($row) use (&$runningDue) {
             $rowDue = $runningDue;
             $runningDue -= (float) $row->total_collected;
+
             return [
                 'date' => date('d-M-Y', strtotime($row->date)),
                 'due' => max(0, $rowDue),
@@ -259,8 +264,8 @@ class DueReportController extends Controller
         $dateTo = $request->date_to;
 
         $payments = Payment::where('invoice_id', $invoiceId)
-            ->when($dateFrom, fn($q) => $q->whereDate('payment_date', '>=', $dateFrom))
-            ->when($dateTo, fn($q) => $q->whereDate('payment_date', '<=', $dateTo))
+            ->when($dateFrom, fn ($q) => $q->whereDate('payment_date', '>=', $dateFrom))
+            ->when($dateTo, fn ($q) => $q->whereDate('payment_date', '<=', $dateTo))
             ->orderBy('payment_date')
             ->orderBy('created_at')
             ->get();
@@ -269,6 +274,7 @@ class DueReportController extends Controller
         $transactions = $payments->map(function ($payment) use (&$runningDue) {
             $dueBefore = $runningDue;
             $runningDue -= (float) $payment->amount;
+
             return [
                 'date' => $payment->payment_date ? date('d-M-Y', strtotime($payment->payment_date)) : '',
                 'due' => max(0, $dueBefore),

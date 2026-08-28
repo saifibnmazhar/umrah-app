@@ -3,7 +3,6 @@
 namespace App\Http\Controllers;
 
 use App\Models\TransactionType;
-use App\Models\User;
 use Illuminate\Http\Request;
 use Illuminate\Validation\Rule;
 
@@ -15,6 +14,7 @@ class TransactionTypeController extends Controller
             ->orderBy('name')
             ->paginate(10)
             ->withQueryString();
+
         return view('transaction-types.index', compact('transactionTypes'));
     }
 
@@ -32,6 +32,7 @@ class TransactionTypeController extends Controller
 
         try {
             TransactionType::create($validated);
+
             return redirect()->route('transaction-types.index')->with('success', 'Transaction type created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create transaction type.')->withInput();
@@ -57,6 +58,7 @@ class TransactionTypeController extends Controller
 
         try {
             $transactionType->update($validated);
+
             return redirect()->route('transaction-types.index')->with('success', 'Transaction type updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update transaction type.')->withInput();
@@ -67,6 +69,7 @@ class TransactionTypeController extends Controller
     {
         try {
             $transactionType->delete();
+
             return redirect()->route('transaction-types.index')->with('success', 'Transaction type deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete transaction type.');

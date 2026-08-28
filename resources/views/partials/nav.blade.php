@@ -31,7 +31,7 @@
                     <button @click="reportMenuOpen = !reportMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap" data-tab="reports">
                         Reports ▾
                     </button>
-                    <div x-show="reportMenuOpen" @click.away="reportMenuOpen = false" class="absolute right-0 bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50 min-w-[220px]">
+                    <div x-show="reportMenuOpen" x-cloak @click.away="reportMenuOpen = false" class="absolute right-0 bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50 min-w-[220px]" style="display: none;">
                         @if($canAccessAdminReports || $canAccessFingerprintReport)<a href="{{ route('report.fingerprint') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Fingerprint Report</a>@endif
                         @if($canAccessVisa)<a href="{{ route('report.visa') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Report</a>@endif
                         @if($canAccessVisa)<a href="{{ route('report.visa-agent') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Visa Agent Report</a>@endif
@@ -55,7 +55,7 @@
                     <button @click="appMenuOpen = !appMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap" data-tab="appManagement">
                         App Management ▾
                     </button>
-                    <div x-show="appMenuOpen" @click.away="appMenuOpen = false" class="absolute right-0 bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50 min-w-[200px] max-h-[75vh] overflow-y-auto">
+                    <div x-show="appMenuOpen" x-cloak @click.away="appMenuOpen = false" class="absolute right-0 bg-slate-700 rounded-md mt-0 pt-2 py-1 shadow-lg z-50 min-w-[200px] max-h-[75vh] overflow-y-auto" style="display: none;">
                         @if($canAccessAdmin)<a href="{{ route('districts.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Districts</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('banks.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Banks</a>@endif
                         @if($canAccessAdmin)<a href="{{ route('booking-conditions.index') }}" class="block px-4 py-2 text-sm hover:bg-slate-600 whitespace-nowrap">Booking Conditions</a>@endif
@@ -90,8 +90,8 @@
                     <button @click="userMenuOpen = !userMenuOpen" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition whitespace-nowrap">
                         {{ auth()->user()->name }} ▾
                     </button>
-                    <div x-show="userMenuOpen" @click.away="userMenuOpen = false"
-                         class="absolute right-0 mt-2 bg-slate-700 rounded-md py-2 shadow-lg z-50 min-w-[200px]">
+                    <div x-show="userMenuOpen" x-cloak @click.away="userMenuOpen = false"
+                         class="absolute right-0 mt-2 bg-slate-700 rounded-md py-2 shadow-lg z-50 min-w-[200px]" style="display: none;">
                         <div class="px-4 py-1 text-sm text-slate-300">{{ auth()->user()->email }}</div>
                         <div class="px-4 py-1 text-sm text-slate-400">
                             {{ auth()->user()->roles->pluck('name')->implode(', ') ?: 'No Role' }}

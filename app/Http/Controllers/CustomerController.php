@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\DatabaseErrorHumanizer;
 use App\Models\Customer;
-use App\Models\Document;
+use Illuminate\Database\QueryException;
 use Illuminate\Http\Request;
-use Illuminate\Validation\Rule;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 
 class CustomerController extends Controller
 {
@@ -15,6 +16,7 @@ class CustomerController extends Controller
         $customers = Customer::orderBy('name')
             ->paginate(10)
             ->withQueryString();
+
         return view('customers.index', compact('customers'));
     }
 
@@ -51,7 +53,7 @@ class CustomerController extends Controller
                     $totalSize += $request->file('ref_iqama_doc')->getSize();
                 }
                 if ($request->hasFile('customer_docs')) {
-                    $totalSize += collect($request->file('customer_docs'))->sum(fn($f) => $f->getSize());
+                    $totalSize += collect($request->file('customer_docs'))->sum(fn ($f) => $f->getSize());
                 }
                 if ($totalSize > 20 * 1024 * 1024) {
                     return response()->json([
@@ -74,7 +76,7 @@ class CustomerController extends Controller
             if ($refIqamaPath) {
                 $customer->documents()->create([
                     'file_path' => $refIqamaPath,
-                    'display_name' => $customer->name . ' - Ref Iqama',
+                    'display_name' => $customer->name.' - Ref Iqama',
                 ]);
             }
 
@@ -82,7 +84,7 @@ class CustomerController extends Controller
                 foreach ($request->file('customer_docs') as $index => $file) {
                     $customer->documents()->create([
                         'file_path' => $file->store('customer-docs', 'public'),
-                        'display_name' => $customer->name . ' - Doc ' . ($index + 1),
+                        'display_name' => $customer->name.' - Doc '.($index + 1),
                     ]);
                 }
             }
@@ -90,20 +92,20 @@ class CustomerController extends Controller
             return response()->json([
                 'success' => true,
                 'customer' => $customer,
-                'message' => 'Customer created successfully'
+                'message' => 'Customer created successfully',
             ]);
-        } catch (\Illuminate\Validation\ValidationException $e) {
+        } catch (ValidationException $e) {
             return response()->json([
                 'success' => false,
                 'message' => 'Validation failed',
-                'errors' => $e->errors()
+                'errors' => $e->errors(),
             ], 422);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e instanceof \Illuminate\Database\QueryException
-                    ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
-                    : 'Failed to create customer.'
+                'message' => $e instanceof QueryException
+                    ? DatabaseErrorHumanizer::humanize($e)
+                    : 'Failed to create customer.',
             ], 500);
         }
     }
@@ -118,8 +120,8 @@ class CustomerController extends Controller
         $validated = $request->validate([
             'name' => 'required|string|max:255',
             'iqama_type' => 'nullable|string|max:50',
-            'passport_no' => 'required|string|max:50|unique:customers,passport_no,' . $customer->id,
-            'iqama_no' => 'nullable|string|max:50|unique:customers,iqama_no,' . $customer->id,
+            'passport_no' => 'required|string|max:50|unique:customers,passport_no,'.$customer->id,
+            'iqama_no' => 'nullable|string|max:50|unique:customers,iqama_no,'.$customer->id,
             'mobile_no' => 'required|string|max:20',
             'ref_iqama_no' => 'nullable|string|max:50',
             'ref_mobile_no' => 'nullable|string|max:20',
@@ -140,7 +142,7 @@ class CustomerController extends Controller
                 $totalSize += $request->file('ref_iqama_doc')->getSize();
             }
             if ($request->hasFile('customer_docs')) {
-                $totalSize += collect($request->file('customer_docs'))->sum(fn($f) => $f->getSize());
+                $totalSize += collect($request->file('customer_docs'))->sum(fn ($f) => $f->getSize());
             }
             if ($totalSize > 20 * 1024 * 1024) {
                 return redirect()->back()->withErrors(['files' => 'The total size of all uploaded files must not exceed 20 MB.'])->withInput();
@@ -160,12 +162,13 @@ class CustomerController extends Controller
                 foreach ($request->file('customer_docs') as $index => $file) {
                     $customer->documents()->create([
                         'file_path' => $file->store('customer-docs', 'public'),
-                        'display_name' => $customer->name . ' - Doc ' . ($index + 1),
+                        'display_name' => $customer->name.' - Doc '.($index + 1),
                     ]);
                 }
             }
 
             $customer->update($validated);
+
             return redirect()->route('customers.index')->with('success', 'Customer updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update customer.')->withInput();
@@ -176,6 +179,7 @@ class CustomerController extends Controller
     {
         try {
             $customer->delete();
+
             return redirect()->route('customers.index')->with('success', 'Customer deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete customer.');
@@ -185,17 +189,17 @@ class CustomerController extends Controller
     public function search(Request $request)
     {
         $query = $request->input('q', '');
-        
+
         if (strlen($query) < 2) {
             return response()->json([]);
         }
 
         $customers = Customer::where(function ($q) use ($query) {
-                $q->where('passport_no', 'like', "%{$query}%")
-                  ->orWhere('iqama_no', 'like', "%{$query}%")
-                  ->orWhere('name', 'like', "%{$query}%")
-                  ->orWhere('mobile_no', 'like', "%{$query}%");
-            })
+            $q->where('passport_no', 'like', "%{$query}%")
+                ->orWhere('iqama_no', 'like', "%{$query}%")
+                ->orWhere('name', 'like', "%{$query}%")
+                ->orWhere('mobile_no', 'like', "%{$query}%");
+        })
             ->limit(20)
             ->get(['id', 'name', 'passport_no', 'iqama_no', 'mobile_no']);
 

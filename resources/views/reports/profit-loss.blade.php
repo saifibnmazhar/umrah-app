@@ -173,29 +173,31 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             </div>
 
             <div class="p-4 flex-1 min-h-0 flex flex-col">
-                <div x-show="activeTab === 'customer'" class="animate-fade flex flex-col flex-1 min-h-0">
+                <div x-show="activeTab === 'customer'" x-cloak class="animate-fade flex flex-col flex-1 min-h-0">
                     <div class="overflow-auto flex-1 min-h-0 scrollbar-thin">
                         <table class="w-full min-w-[900px] table-fixed">
                             <thead class="sticky top-0 z-10">
                                 <tr class="table-header">
-                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
-                                    <th class="w-40 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
-                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
-                                    <th class="w-20 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Pax Qty</th>
-                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Package Value (<span x-text="$store.currency.mode"></span>)</th>
-                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Cost (<span x-text="$store.currency.mode"></span>)</th>
-                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-right">Profit/Loss (<span x-text="$store.currency.mode"></span>)</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
+                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
+                                    <th class="w-16 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Pax Qty</th>
+                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Package Value (<span x-text="$store.currency.mode"></span>)</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Fingerprint Profit</th>
+                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Passenger Profit</th>
+                                    <th class="w-24 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Discount</th>
+                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right">Total Profit (<span x-text="$store.currency.mode"></span>)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <template x-if="loading">
                                     <tr>
-                                        <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
+                                        <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
                                     </tr>
                                 </template>
                                 <template x-if="!loading && filteredCustomers.length === 0">
                                     <tr>
-                                        <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
+                                        <td colspan="9" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
                                     </tr>
                                 </template>
                                 <template x-for="(row, index) in paginatedCustomers" :key="index">
@@ -205,16 +207,21 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-center text-gray-600" x-text="row.mobile"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-center font-medium text-gray-700" x-text="row.pax_qty"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium text-gray-700" x-text="formatCurrency(row.package_value)"></td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium text-gray-700" x-text="formatCurrency(row.total_cost)"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="row.profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(row.profit)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right" :class="bdClass(row.fingerprint_profit)" x-text="bdText(row.fingerprint_profit)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right" :class="bdClass(row.passenger_profit_total)" x-text="bdText(row.passenger_profit_total)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium text-gray-700" x-text="formatCurrency(row.discount)"></td>
+                                        <td class="px-4 py-3 text-sm text-right cursor-pointer hover:bg-blue-50 transition-colors"
+                                            :class="row.total_profit >= 0 ? 'amount-profit' : 'amount-loss'"
+                                            @click="openBreakdown(row)" x-text="formatProfitLoss(row.total_profit)"></td>
                                     </tr>
                                 </template>
                                 <template x-if="!loading && filteredCustomers.length > 0">
                                     <tr class="table-header font-bold">
-                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-gray-800" colspan="4">Grand Total</td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalCustomer.package_value)"></td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalCustomer.total_cost)"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="grandTotalCustomer.profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(grandTotalCustomer.profit)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-gray-800" colspan="5">Grand Total</td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalCustomer.fingerprint_profit)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalCustomer.passenger_profit_total)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalCustomer.discount)"></td>
+                                        <td class="px-4 py-3 text-sm text-right" :class="grandTotalCustomer.total_profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(grandTotalCustomer.total_profit)"></td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -238,29 +245,28 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     </nav>
                 </div>
 
-                <div x-show="activeTab === 'passenger'" class="animate-fade flex flex-col flex-1 min-h-0">
+                <div x-show="activeTab === 'passenger'" x-cloak class="animate-fade flex flex-col flex-1 min-h-0">
                     <div class="overflow-auto flex-1 min-h-0 scrollbar-thin">
                         <table class="w-full min-w-[1000px] table-fixed">
                             <thead class="sticky top-0 z-10">
                                 <tr class="table-header">
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
-                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
+                                    <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
                                     <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
                                     <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Package Value (<span x-text="$store.currency.mode"></span>)</th>
-                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Cost (<span x-text="$store.currency.mode"></span>)</th>
-                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right">Profit/Loss (<span x-text="$store.currency.mode"></span>)</th>
+                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right">Total Profit (<span x-text="$store.currency.mode"></span>)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <template x-if="loading">
                                     <tr>
-                                        <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
+                                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
                                     </tr>
                                 </template>
                                 <template x-if="!loading && filteredPassengers.length === 0">
                                     <tr>
-                                        <td colspan="7" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
+                                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
                                     </tr>
                                 </template>
                                 <template x-for="(row, index) in paginatedPassengers" :key="index">
@@ -270,16 +276,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-center text-gray-600" x-text="row.mobile"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-gray-700" x-text="row.passenger_name"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium text-gray-700" x-text="formatCurrency(row.package_value)"></td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium text-gray-700" x-text="formatCurrency(row.total_cost)"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="row.profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(row.profit)"></td>
+                                        <td class="px-4 py-3 text-sm text-right cursor-pointer hover:bg-blue-50 transition-colors"
+                                            :class="row.total_profit >= 0 ? 'amount-profit' : 'amount-loss'"
+                                            @click="openBreakdown(row)" x-text="formatProfitLoss(row.total_profit)"></td>
                                     </tr>
                                 </template>
                                 <template x-if="!loading && filteredPassengers.length > 0">
                                     <tr class="table-header font-bold">
                                         <td class="px-4 py-3 text-sm border-r border-gray-300 text-gray-800" colspan="4">Grand Total</td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalPassenger.package_value)"></td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalPassenger.total_cost)"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="grandTotalPassenger.profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(grandTotalPassenger.profit)"></td>
+                                        <td class="px-4 py-3 text-sm text-right" :class="grandTotalPassenger.total_profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(grandTotalPassenger.total_profit)"></td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -303,6 +309,33 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     </nav>
                 </div>
             </div>
+
+            <!-- Profit Breakdown Modal -->
+            <div x-show="breakdownModalOpen" x-cloak
+                 class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 animate-fade"
+                 @click.self="closeBreakdown()" @keydown.escape.window="closeBreakdown()">
+                <div class="bg-white rounded-xl shadow-2xl w-80 overflow-hidden">
+                    <div class="flex items-center justify-between bg-slate-800 text-white px-4 py-3">
+                        <span class="text-sm font-semibold">Profit Breakdown</span>
+                        <button @click="closeBreakdown()" class="text-white/70 hover:text-white text-lg leading-none">&times;</button>
+                    </div>
+                    <template x-if="selectedBreakdown">
+                        <div class="p-4 text-sm">
+                            <div class="flex justify-between py-1"><span>Visa Profit</span><span :class="bdClass(selectedBreakdown.visa_profit)" x-text="bdText(selectedBreakdown.visa_profit)"></span></div>
+                            <div class="flex justify-between py-1"><span>Ticket Profit</span><span :class="bdClass(selectedBreakdown.ticket_profit)" x-text="bdText(selectedBreakdown.ticket_profit)"></span></div>
+                            <div class="flex justify-between py-1"><span>Additional Ticket</span><span :class="bdClass(selectedBreakdown.additional_ticket_profit)" x-text="bdText(selectedBreakdown.additional_ticket_profit)"></span></div>
+                            <div class="flex justify-between py-1"><span>Re-Issue Profit</span><span :class="bdClass(selectedBreakdown.re_issue_profit)" x-text="bdText(selectedBreakdown.re_issue_profit)"></span></div>
+                            <div class="flex justify-between py-1"><span>Refund Profit</span><span :class="bdClass(selectedBreakdown.refund_profit)" x-text="bdText(selectedBreakdown.refund_profit)"></span></div>
+                            <div class="flex justify-between py-1 text-red-600"><span>Re-Issue Cost</span><span x-text="'-' + formatCurrency(Math.abs(Number(selectedBreakdown.re_issue_cost) || 0))"></span></div>
+                            <div class="flex justify-between py-1"><span>Service Charge</span><span :class="bdClass(selectedBreakdown.service_charge)" x-text="bdText(selectedBreakdown.service_charge)"></span></div>
+                            <div class="border-t mt-2 pt-2 flex justify-between font-bold">
+                                <span>Total</span>
+                                <span :class="Number(selectedBreakdown.total) >= 0 ? 'amount-profit' : 'amount-loss'" x-text="bdText(selectedBreakdown.total)"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -321,6 +354,8 @@ function profitLossReport() {
         passengers: [],
         currentPage: 1,
         perPage: 25,
+        breakdownModalOpen: false,
+        selectedBreakdown: null,
 
         init() {
             this.setDefaultDates();
@@ -409,20 +444,40 @@ function profitLossReport() {
 
         get grandTotalCustomer() {
             return this.filteredCustomers.reduce((acc, r) => {
-                acc.package_value += r.package_value;
-                acc.total_cost += r.total_cost;
-                acc.profit += r.profit;
+                acc.package_value += Number(r.package_value) || 0;
+                acc.fingerprint_profit += Number(r.fingerprint_profit) || 0;
+                acc.passenger_profit_total += Number(r.passenger_profit_total) || 0;
+                acc.discount += Number(r.discount) || 0;
+                acc.total_profit += Number(r.total_profit) || 0;
                 return acc;
-            }, { package_value: 0, total_cost: 0, profit: 0 });
+            }, { package_value: 0, fingerprint_profit: 0, passenger_profit_total: 0, discount: 0, total_profit: 0 });
         },
 
         get grandTotalPassenger() {
             return this.filteredPassengers.reduce((acc, r) => {
-                acc.package_value += r.package_value;
-                acc.total_cost += r.total_cost;
-                acc.profit += r.profit;
+                acc.package_value += Number(r.package_value) || 0;
+                acc.total_profit += Number(r.total_profit) || 0;
                 return acc;
-            }, { package_value: 0, total_cost: 0, profit: 0 });
+            }, { package_value: 0, total_profit: 0 });
+        },
+
+        openBreakdown(row) {
+            if (!row?.breakdown) return;
+            this.selectedBreakdown = row.breakdown;
+            this.breakdownModalOpen = true;
+        },
+
+        closeBreakdown() {
+            this.breakdownModalOpen = false;
+            this.selectedBreakdown = null;
+        },
+
+        bdClass(v) {
+            return (Number(v) || 0) >= 0 ? 'amount-profit' : 'amount-loss';
+        },
+
+        bdText(v) {
+            return this.formatProfitLoss(Number(v) || 0);
         },
 
         formatCurrency(amount) {

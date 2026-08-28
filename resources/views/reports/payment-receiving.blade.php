@@ -4,7 +4,7 @@
 <style>
     [x-cloak] { display: none !important; }
 </style>
-<div class="max-w-[1600px] mx-auto" x-data="paymentReceivingReport({ vouchersByDate: {{ $vouchersByDateJson }}, branches: {{ $branchesJson }} })">
+<div class="max-w-[1600px] mx-auto" x-data="paymentReceivingReport({ vouchersByDate: {{ $vouchersByDateJson }}, branches: {{ $branchesJson }}, banks: {{ $banksJson }} })">
     <div class="sticky top-0 z-30 bg-white py-2 mb-3">
         <span class="text-sm text-gray-500 font-medium">Reports</span>
         <span class="text-sm text-gray-400 mx-1">›</span>
@@ -117,8 +117,8 @@
     <div x-show="modalOpen" x-cloak class="fixed inset-0 z-50">
         <div class="fixed inset-0 bg-transparent" @click="closeModal()"></div>
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="relative bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden">
-                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
+            <div class="relative bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center shrink-0">
                     <h2 class="text-xl font-bold text-white">
                         Payment Details — <span x-text="selectedDateLabel"></span>
                     </h2>
@@ -128,13 +128,27 @@
                         </svg>
                     </button>
                 </div>
-                <div class="p-6 overflow-y-auto max-h-[calc(90vh-130px)]">
-                    <div class="mb-4 flex items-center gap-2">
+                <div class="p-6 overflow-y-auto flex-1 min-h-0">
+                    <div class="mb-4 flex items-center gap-2 flex-wrap">
                         <label class="text-sm font-semibold text-gray-700">Branch:</label>
                         <select x-model="selectedBranch" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
                             <option value="all">All Branches</option>
                             <option value="central">Central</option>
                             <template x-for="b in branches" :key="b.id">
+                                <option :value="b.id" x-text="b.name"></option>
+                            </template>
+                        </select>
+                        <label class="text-sm font-semibold text-gray-700">Method:</label>
+                        <select x-model="selectedMethod" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">All Methods</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Bank">Bank</option>
+                        </select>
+                        <label class="text-sm font-semibold text-gray-700 ml-3">Bank:</label>
+                        <select x-model="selectedBank" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">Select Bank</option>
+                            <option value="all">All Banks</option>
+                            <template x-for="b in banks" :key="b.id">
                                 <option :value="b.id" x-text="b.name"></option>
                             </template>
                         </select>
@@ -150,6 +164,7 @@
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Voucher No</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Method</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Bank Name</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Transaction Type</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Trx ID</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Receive By</th>
@@ -158,7 +173,7 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    <template x-for="(v, idx) in filteredVouchers" :key="idx">
+                                    <template x-for="(v, idx) in paginatedVouchers" :key="idx">
                                         <tr class="border-b border-gray-100 even:bg-[#fafafa]">
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.invoice_id"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.voucher_no"></td>
@@ -167,6 +182,7 @@
                                                       :class="v.method === 'Bank' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'"
                                                       x-text="v.method"></span>
                                             </td>
+                                            <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.bank || '-'"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.transaction_type"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.trx_id"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.receive_by"></td>
@@ -179,7 +195,19 @@
                         </div>
                     </template>
                 </div>
-                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
+                <div x-show="totalPages > 1" x-cloak class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50 shrink-0">
+                    <span class="text-sm text-gray-500">
+                        Showing <span x-text="((currentPage - 1) * perPage) + 1"></span>-<span x-text="Math.min(currentPage * perPage, filteredVouchers.length)"></span> of <span x-text="filteredVouchers.length"></span>
+                    </span>
+                    <span class="inline-flex items-center gap-2">
+                        <span x-show="currentPage === 1" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Previous</span>
+                        <button x-show="currentPage > 1" x-cloak @click="goToPage(currentPage - 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Previous</button>
+                        <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5" x-text="currentPage"></span>
+                        <button x-show="currentPage < totalPages" x-cloak @click="goToPage(currentPage + 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Next</button>
+                        <span x-show="currentPage === totalPages" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Next</span>
+                    </span>
+                </div>
+                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center shrink-0">
                     <div class="flex gap-6 text-sm">
                         <span class="font-medium text-green-700">
                             Cash: <span x-text="formatAmount(totalCash)"></span>
@@ -191,9 +219,17 @@
                             Total: <span x-text="formatAmount(totalAmount)"></span>
                         </span>
                     </div>
+                    <div class="flex items-center gap-2">
+                    <a :href="printUrl" target="_blank" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100 flex items-center gap-1">
+                        <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z"/>
+                        </svg>
+                        Print
+                    </a>
                     <button @click="closeModal()" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md hover:bg-gray-100">
                         Close
                     </button>
+                    </div>
                 </div>
             </div>
         </div>
@@ -207,10 +243,15 @@
         return {
             vouchersByDate: options.vouchersByDate || {},
             branches: options.branches || [],
+            banks: options.banks || [],
             selectedBranch: 'all',
+            selectedBank: '',
+            selectedMethod: '',
             modalOpen: false,
             selectedDate: '',
             selectedVouchers: [],
+            currentPage: 1,
+            perPage: 50,
 
             get selectedDateLabel() {
                 if (!this.selectedDate) return '';
@@ -219,20 +260,51 @@
             },
 
             get filteredVouchers() {
-                if (this.selectedBranch === 'all') return this.selectedVouchers;
-                if (this.selectedBranch === 'central') return this.selectedVouchers.filter(v => !v.receive_branch_id);
-                return this.selectedVouchers.filter(v => v.receive_branch_id == this.selectedBranch);
+                return this.selectedVouchers.filter(v => {
+                    const branchOk = this.selectedBranch === 'all' || (this.selectedBranch === 'central' ? !v.receive_branch_id : v.receive_branch_id == this.selectedBranch);
+                    const bankOk = this.selectedBank === '' || (v.method === 'Bank' && (this.selectedBank === 'all' || v.bank_id == this.selectedBank));
+                    const methodOk = this.selectedMethod === '' || v.method === this.selectedMethod;
+                    return branchOk && bankOk && methodOk;
+                });
+            },
+
+            get paginatedVouchers() {
+                const start = (this.currentPage - 1) * this.perPage;
+                return this.filteredVouchers.slice(start, start + this.perPage);
+            },
+
+            get totalPages() {
+                return Math.ceil(this.filteredVouchers.length / this.perPage);
+            },
+
+            goToPage(page) {
+                if (page >= 1 && page <= this.totalPages) {
+                    this.currentPage = page;
+                }
             },
 
             openModal(date) {
                 this.selectedDate = date;
                 this.selectedVouchers = this.vouchersByDate[date] || [];
                 this.selectedBranch = 'all';
+                this.selectedBank = '';
+                this.selectedMethod = '';
+                this.currentPage = 1;
                 this.modalOpen = true;
             },
 
             closeModal() {
                 this.modalOpen = false;
+            },
+
+            get printUrl() {
+                const params = new URLSearchParams();
+                if (this.selectedDate) params.set('date', this.selectedDate);
+                if (this.selectedBranch) params.set('branch_id', this.selectedBranch);
+                if (this.selectedBank) params.set('bank_id', this.selectedBank);
+                if (this.selectedMethod) params.set('method', this.selectedMethod);
+                params.set('currency', Alpine.store('currency').mode);
+                return `/reports/payment-receiving/print?${params.toString()}`;
             },
 
             get totalCash() {

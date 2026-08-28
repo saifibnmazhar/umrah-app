@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -35,14 +35,18 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE visa_submissions ADD CONSTRAINT visa_submissions_agent_commission_check CHECK (agent_commission IS NULL OR agent_commission >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE visa_submissions ADD CONSTRAINT visa_submissions_agent_commission_check CHECK (agent_commission IS NULL OR agent_commission >= 0)');
+        }
     }
 
     public function down(): void
     {
         try {
-            DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS visa_submissions_agent_commission_check');
-        } catch (\Exception $e) {
+            if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+                DB::statement('ALTER TABLE visa_submissions DROP CHECK IF EXISTS visa_submissions_agent_commission_check');
+            }
+        } catch (Exception $e) {
             // MariaDB compatibility: ignore if constraint doesn't exist
         }
 

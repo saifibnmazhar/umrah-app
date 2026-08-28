@@ -269,6 +269,7 @@ select {
         </div>
     </div>
 
+<<<<<<< HEAD
     <nav x-show="lastPage > 1" class="flex justify-end" aria-label="Pagination Navigation">
         <span class="inline-flex items-center gap-2">
             <button @click="changePage(currentPage - 1)" :disabled="currentPage <= 1"

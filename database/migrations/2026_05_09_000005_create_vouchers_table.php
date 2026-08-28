@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -91,14 +91,22 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE vouchers ADD CONSTRAINT vouchers_amount_check CHECK (amount >= 0)');
-        DB::statement('ALTER TABLE vouchers ADD CONSTRAINT vouchers_bdt_amount_check CHECK (bdt_amount >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE vouchers ADD CONSTRAINT vouchers_amount_check CHECK (amount >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE vouchers ADD CONSTRAINT vouchers_bdt_amount_check CHECK (bdt_amount >= 0)');
+        }
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE vouchers DROP CHECK IF EXISTS vouchers_amount_check');
-        DB::statement('ALTER TABLE vouchers DROP CHECK IF EXISTS vouchers_bdt_amount_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE vouchers DROP CHECK IF EXISTS vouchers_amount_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE vouchers DROP CHECK IF EXISTS vouchers_bdt_amount_check');
+        }
 
         if (Schema::hasTable('vouchers')) {
             Schema::table('vouchers', function (Blueprint $table) {

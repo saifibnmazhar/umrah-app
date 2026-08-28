@@ -28,6 +28,14 @@
 
     @auth
         @include('components.toast')
+        @if(session('toast'))
+            <script>
+                document.addEventListener('DOMContentLoaded', function () {
+                    const toast = @json(session('toast'));
+                    if (toast && window.showToast) window.showToast(toast.message, toast.type);
+                });
+            </script>
+        @endif
     @endauth
 
     @stack('scripts')

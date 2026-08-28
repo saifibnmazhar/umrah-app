@@ -2,22 +2,27 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Passenger;
-use App\Models\Booking;
+use App\Enums\PassengerType;
+use App\Exceptions\DatabaseErrorHumanizer;
+use App\Models\CancelledPassenger;
 use App\Models\Document;
 use App\Models\FingerprintCharge;
 use App\Models\Package;
+use App\Models\Passenger;
+use App\Models\PassengerStatus;
+use App\Models\StayDurationLimit;
 use App\Models\TicketFare;
 use App\Models\VisaAgent;
 use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
-use App\Enums\PassengerType;
 use App\Services\BookingService;
 use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
+use App\Support\DiagnosticLogger;
 use App\Traits\ConvertsDocumentsToPdf;
-use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Database\QueryException;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -42,15 +47,16 @@ class PassengerController extends Controller
     private function isGlobalNonAdmin(): bool
     {
         $user = auth()->user();
-        return !$user->branch_id
-            && !$user->hasRole('Super Admin')
-            && !$user->hasRole('Co Admin');
+
+        return ! $user->branch_id
+            && ! $user->hasRole('Super Admin')
+            && ! $user->hasRole('Co Admin');
     }
 
     public function show(Passenger $passenger)
     {
         $this->ensureBranchAccess($passenger);
-        
+
         $passenger->load([
             'booking',
             'booking.customer',
@@ -89,24 +95,24 @@ class PassengerController extends Controller
         if ($passenger->ticket_fare_inbound_id) {
             $inbound = $passenger->ticketFareInbound?->route;
             $outbound = $passenger->ticketFareOutbound?->route;
-            $fmt = fn($r) => $r ? (($r->fromCity?->code ?? '?') . '-' . ($r->toCity?->code ?? '?')) : '?';
-            $routeDisplay = $fmt($inbound) . ' → ' . $fmt($outbound);
+            $fmt = fn ($r) => $r ? (($r->fromCity?->code ?? '?').'-'.($r->toCity?->code ?? '?')) : '?';
+            $routeDisplay = $fmt($inbound).' → '.$fmt($outbound);
         } elseif ($passenger->ticketFare?->route) {
             $route = $passenger->ticketFare->route;
             $routeType = $route->route_type?->value;
             if ($routeType === 'multi_city') {
-                $routeDisplay = $route->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                $routeDisplay = $route->multiSegments->map(fn ($s) => ($s->fromCity?->code ?? '?').'-'.($s->toCity?->code ?? '?'))->implode(', ');
             } elseif ($routeType === 'round') {
-                $routeDisplay = ($route->fromCity?->code ?? '?') . ' → ' . ($route->toCity?->code ?? '?') . ' → ' . ($route->returnCity?->code ?? '?');
+                $routeDisplay = ($route->fromCity?->code ?? '?').' → '.($route->toCity?->code ?? '?').' → '.($route->returnCity?->code ?? '?');
             } else {
-                $routeDisplay = ($route->fromCity?->code ?? '?') . ' → ' . ($route->toCity?->code ?? '?');
+                $routeDisplay = ($route->fromCity?->code ?? '?').' → '.($route->toCity?->code ?? '?');
             }
         }
 
         $inboundIssuedTicket = $passenger->allIssuedTickets
-            ->first(fn($t) => is_null($t->issue_type) || $t->issue_type === 'regular');
+            ->first(fn ($t) => is_null($t->issue_type) || $t->issue_type === 'regular');
         $outboundIssuedTicket = $passenger->allIssuedTickets
-            ->first(fn($t) => $t->issue_type === 'pending_outbound');
+            ->first(fn ($t) => $t->issue_type === 'pending_outbound');
 
         $ticketFare = 0;
         $passengerType = $passenger->passenger_type;
@@ -116,16 +122,22 @@ class PassengerController extends Controller
         $passengerType = strtolower($passengerType ?? '');
 
         $fareBase = function ($fare) {
-            if (!$fare) return 0;
+            if (! $fare) {
+                return 0;
+            }
             if ($fare->ticket_type?->value === 'offer') {
                 return (float) ($fare->offer_price ?? $fare->selling_fare ?? $fare->net_fare ?? 0);
             }
+
             return (float) ($fare->selling_fare ?? $fare->net_fare ?? 0);
         };
 
         $fareForType = function ($fare, $pType) use ($fareBase) {
-            if (!$fare) return 0;
+            if (! $fare) {
+                return 0;
+            }
             $base = $fareBase($fare);
+
             return match ($pType) {
                 'child' => $base * ((float) $fare->child_fare_percentage) / 100,
                 'infant' => $base * ((float) $fare->infant_fare_percentage) / 100,
@@ -155,11 +167,11 @@ class PassengerController extends Controller
         $visaAgents = VisaAgent::with(['visaAgentCost', 'commissionAgents'])
             ->orderBy('name')
             ->get()
-            ->map(fn($a) => [
+            ->map(fn ($a) => [
                 'id' => $a->id,
                 'name' => $a->name,
-                'cost' => (float)($a->visaAgentCost?->visa_agent_cost ?? 0),
-                'commission_agents' => $a->commissionAgents->map(fn($ca) => [
+                'cost' => (float) ($a->visaAgentCost?->visa_agent_cost ?? 0),
+                'commission_agents' => $a->commissionAgents->map(fn ($ca) => [
                     'id' => $ca->id,
                     'name' => $ca->name,
                 ]),
@@ -176,9 +188,9 @@ class PassengerController extends Controller
             $statusLogs = $visaSubmission->logs()
                 ->orderBy('created_at', 'asc')
                 ->get()
-                ->filter(fn($log) => isset($log->new_values['status']));
+                ->filter(fn ($log) => isset($log->new_values['status']));
 
-            $agentIds = $statusLogs->map(fn($l) => $l->new_values['visa_agent_id'] ?? null)
+            $agentIds = $statusLogs->map(fn ($l) => $l->new_values['visa_agent_id'] ?? null)
                 ->filter()->unique()->values()->toArray();
             $agentLookup = VisaAgent::whereIn('id', $agentIds)->get()->keyBy('id');
 
@@ -211,18 +223,18 @@ class PassengerController extends Controller
                         : 'N/A';
                 }
                 if (array_key_exists('net_visa_cost', $nv)) {
-                    $runningAgentCost = is_numeric($nv['net_visa_cost']) ? (float)$nv['net_visa_cost'] : null;
+                    $runningAgentCost = is_numeric($nv['net_visa_cost']) ? (float) $nv['net_visa_cost'] : null;
                 }
                 if (array_key_exists('additional_cost', $nv)) {
-                    $runningAdditional = is_numeric($nv['additional_cost']) ? (float)$nv['additional_cost'] : null;
+                    $runningAdditional = is_numeric($nv['additional_cost']) ? (float) $nv['additional_cost'] : null;
                 }
                 if (array_key_exists('agent_commission', $nv)) {
-                    $runningCommission = is_numeric($nv['agent_commission']) ? (float)$nv['agent_commission'] : null;
+                    $runningCommission = is_numeric($nv['agent_commission']) ? (float) $nv['agent_commission'] : null;
                 }
 
                 $caFee = null;
                 if (($nv['status'] ?? '') === 'cancelled' && isset($cancelledQueue[$cancelledIdx])) {
-                    $caFee = (float)$cancelledQueue[$cancelledIdx]->cancellation_fee ?: null;
+                    $caFee = (float) $cancelledQueue[$cancelledIdx]->cancellation_fee ?: null;
                     $cancelledIdx++;
                 }
 
@@ -271,7 +283,7 @@ class PassengerController extends Controller
             'ticketFareOutbound.route',
             'ticketFareOutbound.airline',
             'ticketFareOutbound.airlineClass.class',
-            'documents'
+            'documents',
         ]);
 
         $ticketFares = TicketFare::where('is_active', true)->with([
@@ -290,15 +302,15 @@ class PassengerController extends Controller
 
             if ($routeType === 'multi_city') {
                 $segments = $fare->route->multiSegments->map(function ($seg) {
-                    return $seg->fromCity?->code . '-' . $seg->toCity?->code;
+                    return $seg->fromCity?->code.'-'.$seg->toCity?->code;
                 })->toArray();
                 $routeCode = implode(', ', $segments);
             } elseif ($routeType === 'round') {
-                $routeCode = $fare->route->fromCity?->code . '-' .
-                    $fare->route->toCity?->code . '-' .
+                $routeCode = $fare->route->fromCity?->code.'-'.
+                    $fare->route->toCity?->code.'-'.
                     $fare->route->returnCity?->code;
             } else {
-                $routeCode = $fare->route->fromCity?->code . '-' . $fare->route->toCity?->code;
+                $routeCode = $fare->route->fromCity?->code.'-'.$fare->route->toCity?->code;
             }
 
             return [
@@ -316,6 +328,7 @@ class PassengerController extends Controller
                 'flight_type' => $fare->route->flight_type?->value,
                 'baggage_allowances' => $fare->baggageAllowances->map(function ($ba) {
                     $pt = $ba->passenger_type;
+
                     return [
                         'passenger_type' => $pt instanceof \BackedEnum ? $pt->value : (string) $pt,
                         'travel_direction' => $ba->travel_direction,
@@ -328,7 +341,7 @@ class PassengerController extends Controller
         $packages = Package::where('is_active', true)
             ->with(['ticketFare', 'ticketFareInbound', 'ticketFareOutbound'])
             ->get()
-            ->map(fn($p) => [
+            ->map(fn ($p) => [
                 'id' => $p->id,
                 'package_name' => $p->package_name,
                 'visa_selling_price' => $p->visaSellingPrice?->selling_price ?? 0,
@@ -349,7 +362,7 @@ class PassengerController extends Controller
 
     public function uploadDocument(Request $request, Passenger $passenger)
     {
-        \App\Support\DiagnosticLogger::arrival($request, 'passengers.documents.store');
+        DiagnosticLogger::arrival($request, 'passengers.documents.store');
 
         $request->validate([
             'files' => 'required|array',
@@ -359,7 +372,7 @@ class PassengerController extends Controller
             'files.*.mimes' => 'Only PDF, JPG, JPEG, and PNG files are allowed.',
         ]);
 
-        $totalSize = collect($request->file('files'))->sum(fn($f) => $f->getSize());
+        $totalSize = collect($request->file('files'))->sum(fn ($f) => $f->getSize());
         if ($totalSize > 20 * 1024 * 1024) {
             return response()->json([
                 'success' => false,
@@ -370,7 +383,7 @@ class PassengerController extends Controller
         try {
             $passenger->load('booking');
             $invoiceId = $passenger->booking->invoice_id ?? 'INV';
-            $passengerName = $passenger->first_name . ' ' . $passenger->last_name;
+            $passengerName = $passenger->first_name.' '.$passenger->last_name;
             $passportId = $passenger->passport_no ?? 'NOPASS';
             $maxNumber = 0;
             foreach ($passenger->documents as $doc) {
@@ -381,14 +394,14 @@ class PassengerController extends Controller
             $documents = [];
 
             foreach ($request->file('files', []) as $index => $file) {
-                $filename = Str::slug($passenger->first_name . ' ' . $passenger->last_name) . '_' . time() . '_' . Str::random(6) . '.' . $file->getClientOriginalExtension();
+                $filename = Str::slug($passenger->first_name.' '.$passenger->last_name).'_'.time().'_'.Str::random(6).'.'.$file->getClientOriginalExtension();
                 $path = $file->storeAs('passenger-documents', $filename);
 
                 $documents[] = Document::create([
                     'owner_type' => Passenger::class,
                     'owner_id' => $passenger->id,
                     'file_path' => $path,
-                    'display_name' => "{$invoiceId} {$passengerName} {$passportId} " . ($maxNumber + $index + 1),
+                    'display_name' => "{$invoiceId} {$passengerName} {$passportId} ".($maxNumber + $index + 1),
                 ]);
             }
 
@@ -396,15 +409,15 @@ class PassengerController extends Controller
 
             return response()->json([
                 'success' => true,
-                'message' => $count . ' document(s) uploaded successfully',
+                'message' => $count.' document(s) uploaded successfully',
                 'documents' => $documents,
                 'count' => $count,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => $e instanceof \Illuminate\Database\QueryException
-                    ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+                'message' => $e instanceof QueryException
+                    ? DatabaseErrorHumanizer::humanize($e)
                     : 'Failed to upload documents.',
             ], 500);
         }
@@ -412,18 +425,18 @@ class PassengerController extends Controller
 
     public function downloadDocument(Passenger $passenger, Document $document)
     {
-        
+
         if ($document->owner_id !== $passenger->id || $document->owner_type !== Passenger::class) {
             abort(403, 'Unauthorized');
         }
 
         $fullPath = $this->resolveDocumentPath($document);
-        if (!$fullPath || !file_exists($fullPath)) {
+        if (! $fullPath || ! file_exists($fullPath)) {
             abort(404, 'File not found');
         }
 
-        $tmpFile = storage_path('app/tmp/doc_' . uniqid() . '.pdf');
-        $fileName = $document->display_name . '.pdf';
+        $tmpFile = storage_path('app/tmp/doc_'.uniqid().'.pdf');
+        $fileName = $document->display_name.'.pdf';
 
         try {
             $this->convertToPdf($fullPath, $tmpFile);
@@ -441,7 +454,7 @@ class PassengerController extends Controller
 
     public function destroyDocument(Passenger $passenger, Document $document)
     {
-        if (!auth()->user()->hasRole('Super Admin') && !auth()->user()->hasRole('Co Admin')) {
+        if (! auth()->user()->hasRole('Super Admin') && ! auth()->user()->hasRole('Co Admin')) {
             $this->ensureBranchAccess($passenger);
         }
 
@@ -472,16 +485,16 @@ class PassengerController extends Controller
 
     public function downloadAllDocuments(Passenger $passenger)
     {
-        
+
         $passenger->load('booking.customer');
         $allDocs = $passenger->documents;
 
         abort_if($allDocs->isEmpty(), 404, 'No documents found');
 
-        $passengerName = $passenger->first_name . ' ' . $passenger->last_name;
+        $passengerName = $passenger->first_name.' '.$passenger->last_name;
         $fileName = "{$passengerName} Documents.pdf";
 
-        $tmpDir = storage_path('app/tmp/merge_' . uniqid());
+        $tmpDir = storage_path('app/tmp/merge_'.uniqid());
         mkdir($tmpDir, 0755, true);
 
         $pdfFiles = [];
@@ -489,21 +502,23 @@ class PassengerController extends Controller
         try {
             foreach ($allDocs as $doc) {
                 $fullPath = $this->resolveDocumentPath($doc);
-                if (!$fullPath || !file_exists($fullPath)) continue;
+                if (! $fullPath || ! file_exists($fullPath)) {
+                    continue;
+                }
 
-                $tmpFile = $tmpDir . '/doc_' . $doc->id . '.pdf';
+                $tmpFile = $tmpDir.'/doc_'.$doc->id.'.pdf';
                 $this->convertToPdf($fullPath, $tmpFile);
                 $pdfFiles[] = $tmpFile;
             }
 
             abort_if(empty($pdfFiles), 404, 'No processable documents found');
 
-            $outputPdf = $tmpDir . '/merged.pdf';
+            $outputPdf = $tmpDir.'/merged.pdf';
             $this->mergePdfs($pdfFiles, $outputPdf);
 
             $mergedContent = file_get_contents($outputPdf);
         } finally {
-            array_map('unlink', glob($tmpDir . '/*'));
+            array_map('unlink', glob($tmpDir.'/*'));
             rmdir($tmpDir);
         }
 
@@ -526,7 +541,7 @@ class PassengerController extends Controller
             'mobile_no' => 'nullable|string|max:20',
             'passport_expiry' => 'nullable|date',
             'service_required' => 'nullable|in:all,visa_only,ticket_only',
-            'stay_duration' => 'nullable|integer|min:' . ($limits = \App\Models\StayDurationLimit::getOrCreate())->min_days . '|max:' . $limits->max_days,
+            'stay_duration' => 'nullable|integer|min:'.($limits = StayDurationLimit::getOrCreate())->min_days.'|max:'.$limits->max_days,
             'flight_date_from' => 'nullable|date',
             'flight_date_to' => 'nullable|date',
             'address' => 'nullable|string|max:500',
@@ -541,7 +556,7 @@ class PassengerController extends Controller
             $passenger->update($validated);
 
             $newServiceRequired = $validated['service_required'] ?? null;
-            if ($newServiceRequired && $newServiceRequired !== 'ticket_only' && !$passenger->visaSubmission()->exists()) {
+            if ($newServiceRequired && $newServiceRequired !== 'ticket_only' && ! $passenger->visaSubmission()->exists()) {
                 $booking = $passenger->booking;
                 VisaSubmission::create([
                     'passenger_id' => $passenger->id,
@@ -553,7 +568,7 @@ class PassengerController extends Controller
             $booking = $passenger->booking;
             if ($booking) {
                 $booking = $booking->fresh();
-                $this->bookingService->syncFinancials($booking);
+                $this->bookingService->syncFinancials($booking, 'passenger_updated');
 
                 $invoice = $booking->invoice;
                 if ($invoice) {
@@ -578,8 +593,8 @@ class PassengerController extends Controller
             return redirect()->route('passengers.show', $passenger->id)
                 ->with('success', 'Passenger updated successfully.');
         } catch (\Exception $e) {
-            $dbMessage = $e instanceof \Illuminate\Database\QueryException
-                ? \App\Exceptions\DatabaseErrorHumanizer::humanize($e)
+            $dbMessage = $e instanceof QueryException
+                ? DatabaseErrorHumanizer::humanize($e)
                 : 'Failed to update passenger.';
 
             if ($request->wantsJson()) {
@@ -596,15 +611,15 @@ class PassengerController extends Controller
 
     public function destroy(Passenger $passenger)
     {
-        
+
         try {
             $booking = $passenger->booking;
             $passenger->delete();
-            
+
             if ($booking) {
                 $booking->update(['pax_qty' => $booking->passengers()->count()]);
                 $booking = $booking->fresh();
-                $this->bookingService->syncFinancials($booking);
+                $this->bookingService->syncFinancials($booking, 'passenger_removed');
 
                 $invoice = $booking->invoice;
                 if ($invoice) {
@@ -625,7 +640,7 @@ class PassengerController extends Controller
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to delete passenger'
+                'message' => 'Failed to delete passenger',
             ], 500);
         }
     }
@@ -633,18 +648,18 @@ class PassengerController extends Controller
     public function calculateAge(Request $request)
     {
         $dateOfBirth = $request->input('date_of_birth');
-        
-        if (!$dateOfBirth) {
+
+        if (! $dateOfBirth) {
             return response()->json([
                 'age_in_months' => null,
-                'passenger_type' => null
+                'passenger_type' => null,
             ]);
         }
 
         $dob = Carbon::parse($dateOfBirth);
         $ageInMonths = $dob->diffInMonths(Carbon::now());
 
-        $passengerType = match(true) {
+        $passengerType = match (true) {
             $ageInMonths < 19 => PassengerType::INFANT,
             $ageInMonths < 139 => PassengerType::CHILD,
             default => PassengerType::ADULT,
@@ -660,17 +675,17 @@ class PassengerController extends Controller
     public function search(Request $request)
     {
         $query = $request->input('q');
-        
-        if (!$query || strlen($query) < 2) {
+
+        if (! $query || strlen($query) < 2) {
             return response()->json([]);
         }
 
         $passengers = Passenger::where(function ($q) use ($query) {
-                $q->where('passport_no', 'like', "%{$query}%")
-                    ->orWhere('first_name', 'like', "%{$query}%")
-                    ->orWhere('last_name', 'like', "%{$query}%")
-                    ->orWhere('mobile_no', 'like', "%{$query}%");
-            })
+            $q->where('passport_no', 'like', "%{$query}%")
+                ->orWhere('first_name', 'like', "%{$query}%")
+                ->orWhere('last_name', 'like', "%{$query}%")
+                ->orWhere('mobile_no', 'like', "%{$query}%");
+        })
             ->with(['booking', 'booking.customer'])
             ->limit(20)
             ->get();
@@ -707,22 +722,42 @@ class PassengerController extends Controller
 
     public function updateStatus(Request $request, Passenger $passenger)
     {
-        
+
         $validated = $request->validate([
             'passenger_status_id' => 'nullable|exists:passenger_statuses,id',
         ]);
 
+        $statusName = PassengerStatus::find($validated['passenger_status_id'])?->name;
+
+        if ($statusName === 'Cancel') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Use the cancellation workflow to cancel a passenger.',
+            ], 422);
+        }
+
+        $hasActiveCancellation = CancelledPassenger::where('passenger_id', $passenger->id)
+            ->whereNull('deleted_at')->exists();
+
+        if ($hasActiveCancellation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Passenger status is locked during cancellation.',
+            ], 422);
+        }
+
         try {
             $passenger->update(['passenger_status_id' => $validated['passenger_status_id']]);
+
             return response()->json([
                 'success' => true,
                 'message' => 'Status updated successfully',
-                'passenger_status_id' => $passenger->passenger_status_id
+                'passenger_status_id' => $passenger->passenger_status_id,
             ]);
         } catch (\Exception $e) {
             return response()->json([
                 'success' => false,
-                'message' => 'Failed to update status'
+                'message' => 'Failed to update status',
             ], 500);
         }
     }

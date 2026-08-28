@@ -1,56 +1,67 @@
 <?php
 
-use App\Http\Controllers\BookingConditionController;
-use App\Http\Controllers\BookingController;
-use App\Http\Controllers\BranchWiseReportController;
-use App\Http\Controllers\PassengerController;
-use App\Http\Controllers\Auth\LoginController;
+use App\Enums\FingerprintStatus;
+use App\Enums\Location;
+use App\Enums\PaymentMethod;
 use App\Http\Controllers\AirlineCityController;
 use App\Http\Controllers\AirlineClassController;
 use App\Http\Controllers\AirlineController;
+use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\BankController;
+use App\Http\Controllers\BookingConditionController;
+use App\Http\Controllers\BookingController;
 use App\Http\Controllers\BranchController;
+use App\Http\Controllers\BranchWiseReportController;
 use App\Http\Controllers\CityCodeController;
+use App\Http\Controllers\CommissionAgentController;
+use App\Http\Controllers\CurrencyRateController;
 use App\Http\Controllers\CustomerController;
 use App\Http\Controllers\DashboardController;
 use App\Http\Controllers\DiagnosticController;
 use App\Http\Controllers\DistrictController;
-use App\Http\Controllers\FlightDateGapController;
-use App\Http\Controllers\FingerprintChargeController;
-use App\Http\Controllers\RouteController;
-use App\Http\Controllers\TicketAgentController;
-use App\Http\Controllers\TravelClassController;
-use App\Http\Controllers\UserController;
-use App\Http\Controllers\VisaAgentController;
-use App\Http\Controllers\VisaAgentCostController;
-use App\Http\Controllers\CommissionAgentController;
-use App\Http\Controllers\VisaSellingPriceController;
-use App\Http\Controllers\CurrencyRateController;
-use App\Http\Controllers\TransactionTypeController;
-use App\Http\Controllers\PassengerStatusController;
-use App\Http\Controllers\InvoiceController;
-use App\Http\Controllers\PaymentController;
-use App\Http\Controllers\VoucherController;
-use App\Http\Controllers\SettingsController;
-use App\Http\Controllers\VisaAdminController;
-use App\Http\Controllers\PackageController;
-use App\Http\Controllers\FareAdminController;
-use App\Http\Controllers\TicketFareController;
-use App\Http\Controllers\TicketIssueController;
-use App\Http\Controllers\PendingOutboundReportController;
 use App\Http\Controllers\DocumentController;
+use App\Http\Controllers\DueReportController;
+use App\Http\Controllers\FareAdminController;
+use App\Http\Controllers\FingerprintChargeController;
 use App\Http\Controllers\FingerprintController;
 use App\Http\Controllers\FingerprintReportController;
-use App\Http\Controllers\VisaSubmissionController;
+use App\Http\Controllers\FlightDateGapController;
+use App\Http\Controllers\InvoiceController;
+use App\Http\Controllers\PackageController;
+use App\Http\Controllers\PassengerController;
+use App\Http\Controllers\PassengerStatusController;
+use App\Http\Controllers\PaymentController;
+use App\Http\Controllers\PendingOutboundReportController;
+use App\Http\Controllers\ProfitLossReportController;
+use App\Http\Controllers\RefundController;
+use App\Http\Controllers\ReIssueController;
+use App\Http\Controllers\RouteController;
+use App\Http\Controllers\SettingsController;
+use App\Http\Controllers\TicketAgentController;
+use App\Http\Controllers\TicketAgentReportController;
+use App\Http\Controllers\TicketFareController;
+use App\Http\Controllers\TicketIssueController;
+use App\Http\Controllers\TicketRequestController;
+use App\Http\Controllers\TransactionTypeController;
+use App\Http\Controllers\TravelClassController;
+use App\Http\Controllers\UserController;
+use App\Http\Controllers\UserWiseSalesReportController;
+use App\Http\Controllers\VisaAdminController;
+use App\Http\Controllers\VisaAgentController;
+use App\Http\Controllers\VisaAgentCostController;
+use App\Http\Controllers\VisaAgentReportController;
 use App\Http\Controllers\VisaReportController;
-use App\Enums\Location;
-use App\Enums\PaymentMethod;
+use App\Http\Controllers\VisaSellingPriceController;
+use App\Http\Controllers\VisaSubmissionController;
+use App\Http\Controllers\VoucherController;
+use App\Models\Bank;
+use App\Models\Booking;
+use App\Models\Branch;
+use App\Models\CurrencyRate;
+use App\Models\District;
 use App\Models\Payment;
 use Carbon\Carbon;
-use App\Http\Controllers\VisaAgentReportController;
-use App\Http\Controllers\TicketAgentReportController;
-use App\Http\Controllers\UserWiseSalesReportController;
-use App\Http\Controllers\ProfitLossReportController;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -61,7 +72,7 @@ Route::post('/logout', [LoginController::class, 'logout'])->name('logout');
 // Protected routes (require authentication)
 Route::middleware('auth')->group(function () {
     // Home / Dashboard
-    Route::get('/', fn() => redirect('/dashboard'))->name('home');
+    Route::get('/', fn () => redirect('/dashboard'))->name('home');
     Route::get('/dashboard', [DashboardController::class, 'index'])->name('dashboard');
 
     // Main Pages
@@ -91,10 +102,11 @@ Route::middleware('auth')->group(function () {
     Route::delete('/fingerprint-charges/{fingerprint_charge}', [FingerprintChargeController::class, 'destroy'])->name('fingerprint-charges.destroy')->middleware('role:Super Admin,Co Admin');
     Route::resource('flight-date-gaps', FlightDateGapController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('routes', RouteController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin');
-    Route::get('/api/ticket-fares/baggage', [\App\Http\Controllers\TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
-    Route::get('/api/ticket-fares/flight-date-gap', [\App\Http\Controllers\TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
-    Route::patch('/ticket-fares/{ticketFare}/toggle-active', [\App\Http\Controllers\TicketFareController::class, 'toggleActive'])->name('ticket-fares.toggle-active')->middleware('role:Super Admin,Co Admin,Ticket Admin');
-    Route::resource('ticket-fares', \App\Http\Controllers\TicketFareController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/api/ticket-fares/baggage', [TicketFareController::class, 'getBaggageAllowance'])->name('api.ticket-fares.baggage');
+    Route::get('/api/ticket-fares/flight-date-gap', [TicketFareController::class, 'getFlightDateGap'])->name('api.ticket-fares.flight-date-gap');
+    Route::patch('/ticket-fares/{ticketFare}/toggle-active', [TicketFareController::class, 'toggleActive'])->name('ticket-fares.toggle-active')->middleware('role:Super Admin,Co Admin,Ticket Admin');
+    Route::get('/ticket-fares/options', [TicketRequestController::class, 'ticketFares'])->name('ticket-fares.options');
+    Route::resource('ticket-fares', TicketFareController::class)->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::resource('commission-agents', CommissionAgentController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('visa-agent-costs', VisaAgentCostController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::resource('visa-selling-prices', VisaSellingPriceController::class)->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
@@ -177,10 +189,10 @@ Route::middleware('auth')->group(function () {
     Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/fingerprints/admin', function () {
         $canAssignStaff = auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin', 'Fingerprint Admin'])->isNotEmpty();
-        $divisions = \App\Models\District::distinct()->pluck('division')->sort()->values();
-        $districts = \App\Models\District::orderBy('division')->orderBy('name')->get(['id', 'name', 'division']);
+        $divisions = District::distinct()->pluck('division')->sort()->values();
+        $districts = District::orderBy('division')->orderBy('name')->get(['id', 'name', 'division']);
 
-        $fingerprintStatuses = \App\Enums\FingerprintStatus::cases();
+        $fingerprintStatuses = FingerprintStatus::cases();
 
         $flightDateRanges = [];
         $today = (int) now()->format('d');
@@ -192,7 +204,9 @@ Route::middleware('auth')->group(function () {
             ['offset' => 3, 'startPart' => 1],
         ];
         foreach ($months as $m) {
-            if (count($flightDateRanges) >= 9) break;
+            if (count($flightDateRanges) >= 9) {
+                break;
+            }
             $month = now()->copy()->addMonths($m['offset'])->startOfMonth();
             $lastDay = (int) $month->copy()->endOfMonth()->format('d');
             $label = $month->format('M');
@@ -202,7 +216,9 @@ Route::middleware('auth')->group(function () {
                 3 => ['start' => $month->format('Y-m-21'), 'end' => $month->copy()->endOfMonth()->format('Y-m-d'), 'label' => "{$label} 21–{$lastDay}"],
             ];
             for ($p = $m['startPart']; $p <= 3; $p++) {
-                if (count($flightDateRanges) >= 9) break;
+                if (count($flightDateRanges) >= 9) {
+                    break;
+                }
                 $flightDateRanges[] = array_merge(['id' => count($flightDateRanges) + 1], $parts[$p]);
             }
         }
@@ -212,7 +228,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/fingerprints/staff', function () {
         $isFingerprintStaff = auth()->user()->hasRole('Fingerprint Staff');
 
-        $fingerprintStatuses = \App\Enums\FingerprintStatus::cases();
+        $fingerprintStatuses = FingerprintStatus::cases();
 
         $flightDateRanges = [];
         $today = (int) now()->format('d');
@@ -224,7 +240,9 @@ Route::middleware('auth')->group(function () {
             ['offset' => 3, 'startPart' => 1],
         ];
         foreach ($months as $m) {
-            if (count($flightDateRanges) >= 9) break;
+            if (count($flightDateRanges) >= 9) {
+                break;
+            }
             $month = now()->copy()->addMonths($m['offset'])->startOfMonth();
             $lastDay = (int) $month->copy()->endOfMonth()->format('d');
             $label = $month->format('M');
@@ -234,7 +252,9 @@ Route::middleware('auth')->group(function () {
                 3 => ['start' => $month->format('Y-m-21'), 'end' => $month->copy()->endOfMonth()->format('Y-m-d'), 'label' => "{$label} 21–{$lastDay}"],
             ];
             for ($p = $m['startPart']; $p <= 3; $p++) {
-                if (count($flightDateRanges) >= 9) break;
+                if (count($flightDateRanges) >= 9) {
+                    break;
+                }
                 $flightDateRanges[] = array_merge(['id' => count($flightDateRanges) + 1], $parts[$p]);
             }
         }
@@ -276,8 +296,8 @@ Route::middleware('auth')->group(function () {
     Route::put('/settings/stay-duration-limit', [SettingsController::class, 'updateStayDurationLimit'])->name('settings.stay-duration-limit.update')->middleware('role:Super Admin,Co Admin');
 
     // Reports
-    Route::get('/reports/statement', fn() => view('reports.statement'))->name('report.statement');
-    Route::get('/reports/profit-loss', fn() => view('reports.profit-loss'))->name('report.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/statement', fn () => view('reports.statement'))->name('report.statement');
+    Route::get('/reports/profit-loss', fn () => view('reports.profit-loss'))->name('report.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/profit-loss', [ProfitLossReportController::class, 'data'])->name('api.reports.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/profit-loss/print', [ProfitLossReportController::class, 'print'])->name('report.profit-loss.print')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/fingerprint', [FingerprintReportController::class, 'index'])->name('report.fingerprint')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
@@ -295,18 +315,18 @@ Route::middleware('auth')->group(function () {
     Route::get('/reports/visa-agent/{visaAgent}/print', [VisaAgentReportController::class, 'printReport'])->name('report.visa-agent.print')->middleware('role:Super Admin,Co Admin,Visa Admin');
     Route::get('/reports/ticket-agent', [TicketAgentReportController::class, 'index'])->name('report.ticket-agent')->middleware('role:Super Admin,Co Admin,Ticket Admin');
     Route::get('/api/reports/ticket-agent', [TicketAgentReportController::class, 'data'])->name('api.reports.ticket-agent')->middleware('role:Super Admin,Co Admin,Ticket Admin');
-    Route::get('/reports/due', [\App\Http\Controllers\DueReportController::class, 'index'])->name('report.due')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/api/reports/due', [\App\Http\Controllers\DueReportController::class, 'data'])->name('api.reports.due')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/api/reports/due/branch/{branchId}/details', [\App\Http\Controllers\DueReportController::class, 'branchDetails'])->name('api.reports.due.branch-details')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/api/reports/due/customer/{invoiceId}/transactions', [\App\Http\Controllers\DueReportController::class, 'customerTransactions'])->name('api.reports.due.customer-transactions')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/reports/due/branch/{branchId}/print-customers', [\App\Http\Controllers\DueReportController::class, 'printCustomers'])->name('report.due.print-customers')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/reports/due/branch/{branchId}/print-datewise', [\App\Http\Controllers\DueReportController::class, 'printDateWise'])->name('report.due.print-datewise')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/reports/reissue-refund', fn() => view('reports.reissue-refund'))->name('report.reissue-refund')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::get('/reports/user-wise-sales', fn() => view('reports.user-wise-sales'))->name('report.user-sales')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/due', [DueReportController::class, 'index'])->name('report.due')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/api/reports/due', [DueReportController::class, 'data'])->name('api.reports.due')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/api/reports/due/branch/{branchId}/details', [DueReportController::class, 'branchDetails'])->name('api.reports.due.branch-details')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/api/reports/due/customer/{invoiceId}/transactions', [DueReportController::class, 'customerTransactions'])->name('api.reports.due.customer-transactions')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/due/branch/{branchId}/print-customers', [DueReportController::class, 'printCustomers'])->name('report.due.print-customers')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/due/branch/{branchId}/print-datewise', [DueReportController::class, 'printDateWise'])->name('report.due.print-datewise')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/reissue-refund', fn () => view('reports.reissue-refund'))->name('report.reissue-refund')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/reports/user-wise-sales', fn () => view('reports.user-wise-sales'))->name('report.user-sales')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/user-wise-sales/filters', [UserWiseSalesReportController::class, 'filters'])->name('api.reports.user-wise-sales.filters')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/user-wise-sales', [UserWiseSalesReportController::class, 'data'])->name('api.reports.user-wise-sales.data')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/reports/pending-outbound', [\App\Http\Controllers\PendingOutboundReportController::class, 'index'])->name('report.pending-ticket')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::get('/api/reports/pending-outbound', [\App\Http\Controllers\PendingOutboundReportController::class, 'data'])->name('api.reports.pending-outbound')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/reports/pending-outbound', [PendingOutboundReportController::class, 'index'])->name('report.pending-ticket')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/api/reports/pending-outbound', [PendingOutboundReportController::class, 'data'])->name('api.reports.pending-outbound')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
     Route::get('/reports/payment-receiving', function () {
         $branchId = auth()->user()->branch_id;
         $dateFrom = request('date_from') ? Carbon::parse(request('date_from')) : now()->subDays(30);
@@ -314,62 +334,63 @@ Route::middleware('auth')->group(function () {
 
         $totalCashPayment = Payment::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->where('payment_method', PaymentMethod::CASH)
-            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->sum('amount');
 
         $totalBankPayment = Payment::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
             ->where('payment_method', PaymentMethod::BANK)
-            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->sum('amount');
 
         $totalBdOfficeCollection = Payment::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->whereHas('branch', fn($q) => $q->where('location', Location::BD))
-            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereHas('branch', fn ($q) => $q->where('location', Location::BD))
+            ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->sum('amount');
 
         $totalKsaOfficeCollection = Payment::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->whereHas('branch', fn($q) => $q->where('location', Location::KSA))
-            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereHas('branch', fn ($q) => $q->where('location', Location::KSA))
+            ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->sum('amount');
 
         $payments = Payment::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->where('branch_id', $branchId))
-            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->with([
                 'branch',
                 'vouchers.transactionType',
                 'vouchers.user.branch',
                 'vouchers.invoice.booking',
+                'vouchers.bank',
             ])
             ->get();
 
-        $dailyPayments = $payments->groupBy(fn($p) => $p->created_at->format('Y-m-d'))
+        $dailyPayments = $payments->groupBy(fn ($p) => $p->created_at->format('Y-m-d'))
             ->map(function ($dayPayments, $date) {
                 return [
                     'date' => $date,
                     'cash' => $dayPayments->where('payment_method', PaymentMethod::CASH)->sum('amount'),
                     'bank' => $dayPayments->where('payment_method', PaymentMethod::BANK)->sum('amount'),
-                    'bd_office' => $dayPayments->filter(fn($p) => $p->branch?->location === Location::BD)->sum('amount'),
-                    'ksa_office' => $dayPayments->filter(fn($p) => $p->branch?->location === Location::KSA)->sum('amount'),
+                    'bd_office' => $dayPayments->filter(fn ($p) => $p->branch?->location === Location::BD)->sum('amount'),
+                    'ksa_office' => $dayPayments->filter(fn ($p) => $p->branch?->location === Location::KSA)->sum('amount'),
                 ];
             })
             ->sortKeys();
 
-        $dailyPayments = new \Illuminate\Pagination\LengthAwarePaginator(
-            $dailyPayments->forPage(\Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage(), 25)->values(),
+        $dailyPayments = new LengthAwarePaginator(
+            $dailyPayments->forPage(LengthAwarePaginator::resolveCurrentPage(), 25)->values(),
             $dailyPayments->count(),
             25,
-            \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPage(),
-            ['path' => \Illuminate\Pagination\LengthAwarePaginator::resolveCurrentPath(), 'query' => request()->query()]
+            LengthAwarePaginator::resolveCurrentPage(),
+            ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => request()->query()]
         );
 
         $vouchersByDate = [];
@@ -386,15 +407,85 @@ Route::middleware('auth')->group(function () {
                     'receive_at' => $v->user?->branch?->name ?? 'Central',
                     'amount' => (float) $v->amount,
                     'receive_branch_id' => $v->user?->branch_id,
+                    'bank' => $v->bank?->name ?? '-',
+                    'bank_id' => $v->bank_id,
                 ];
             }
         }
         $vouchersByDateJson = json_encode($vouchersByDate);
-        $branchesJson = json_encode(\App\Models\Branch::orderBy('name')->get(['id', 'name']));
+        $branchesJson = json_encode(Branch::orderBy('name')->get(['id', 'name']));
+        $banksJson = json_encode(Bank::orderBy('name')->get(['id', 'name']));
 
-        return view('reports.payment-receiving', compact('totalCashPayment', 'totalBankPayment', 'totalBdOfficeCollection', 'totalKsaOfficeCollection', 'dailyPayments', 'vouchersByDateJson', 'branchesJson'));
+        return view('reports.payment-receiving', compact('totalCashPayment', 'totalBankPayment', 'totalBdOfficeCollection', 'totalKsaOfficeCollection', 'dailyPayments', 'vouchersByDateJson', 'branchesJson', 'banksJson'));
     })->name('report.payment-receiving')->middleware('role:Super Admin,Co Admin,Auditor');
-    Route::get('/reports/branch-due-details', fn() => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/payment-receiving/print', function () {
+        $date = request('date');
+        $branchSel = request('branch_id');
+        $bankSel = request('bank_id');
+        $method = request('method');
+        $currency = request('currency', 'SAR');
+        $branchId = auth()->user()->branch_id;
+        $dateLabel = $date ? Carbon::parse($date)->format('d-M-Y') : '';
+        $firstRate = (float) (CurrencyRate::orderBy('created_at')->first()?->rate ?? 0);
+
+        $payments = Payment::whereDate('created_at', $date)
+            ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))
+            ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->with(['vouchers.transactionType', 'vouchers.user.branch', 'vouchers.invoice.booking', 'vouchers.currencyRate', 'vouchers.bank'])
+            ->get();
+
+        $vouchers = collect();
+        foreach ($payments as $payment) {
+            foreach ($payment->vouchers as $v) {
+                if (! in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
+                    continue;
+                }
+                $vouchers->push([
+                    'invoice_id' => $v->invoice?->booking?->invoice_id ?? 'N/A',
+                    'voucher_no' => $v->voucher_id ?? $v->id,
+                    'method' => ucfirst($v->payment_method?->value ?? ''),
+                    'transaction_type' => $v->transactionType?->name ?? '',
+                    'trx_id' => $v->transaction_id ?? '-',
+                    'receive_by' => $v->user?->name ?? '',
+                    'receive_at' => $v->user?->branch?->name ?? 'Central',
+                    'amount' => (float) $v->amount,
+                    'bdt_amount' => (float) $v->amount * $firstRate,
+                    'currency_rate' => (float) ($v->currencyRate?->rate ?? $firstRate),
+                    'receive_branch_id' => $v->user?->branch_id,
+                    'bank' => $v->bank?->name ?? '-',
+                    'bank_id' => $v->bank_id,
+                ]);
+            }
+        }
+
+        if ($method) {
+            $vouchers = $vouchers->where('method', ucfirst(strtolower($method)));
+        }
+        if ($bankSel === 'all') {
+            $vouchers = $vouchers->where('method', 'Bank');
+        } elseif ($bankSel) {
+            $vouchers = $vouchers->where('bank_id', (int) $bankSel);
+        }
+        if ($branchSel === 'central') {
+            $vouchers = $vouchers->where('receive_branch_id', null);
+        } elseif ($branchSel && $branchSel !== 'all') {
+            $vouchers = $vouchers->where('receive_branch_id', (int) $branchSel);
+        }
+
+        $totalCash = $vouchers->where('method', 'Cash')->sum('amount');
+        $totalCashBdt = $vouchers->where('method', 'Cash')->sum('bdt_amount');
+        $totalBank = $vouchers->where('method', 'Bank')->sum('amount');
+        $totalBankBdt = $vouchers->where('method', 'Bank')->sum('bdt_amount');
+        $totalAmount = $vouchers->sum('amount');
+        $totalAmountBdt = $vouchers->sum('bdt_amount');
+
+        $branchName = ($branchSel && $branchSel !== 'all') ? ($branchSel === 'central' ? 'Central' : Branch::find($branchSel)?->name) : null;
+        $bankName = $bankSel === 'all' ? 'All Banks' : ($bankSel ? Bank::find($bankSel)?->name : null);
+        $methodLabel = $method ? ucfirst(strtolower($method)) : null;
+
+        return view('reports.payment-receiving-print', compact('vouchers', 'totalCash', 'totalCashBdt', 'totalBank', 'totalBankBdt', 'totalAmount', 'totalAmountBdt', 'currency', 'dateLabel', 'branchName', 'bankName', 'methodLabel'));
+    })->name('report.payment-receiving-print')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/reports/branch-due-details', fn () => view('reports.branch-due-details'))->name('report.branch-due-details')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/branch-wise', [BranchWiseReportController::class, 'index'])->name('report.branch-wise');
     Route::get('/reports/branch-wise/payment-history/print', [BranchWiseReportController::class, 'paymentHistoryPrint'])->name('report.branch-wise.payment-history-print')->middleware('role:Super Admin,Co Admin,Auditor');
 
@@ -408,14 +499,47 @@ Route::middleware('auth')->group(function () {
     Route::resource('invoices', InvoiceController::class)->middleware('role:Super Admin,Co Admin');
     Route::resource('vouchers', VoucherController::class)->middleware('role:Super Admin,Co Admin');
     */
-    Route::get('/invoices/{id}/print', fn($id) => view('invoices.print', compact('id')))->name('invoices.print');
-    Route::get('/re-issues/{id}/confirm', fn($id) => view('re-issues.confirmation', compact('id')))->name('re-issues.confirmation');
-    Route::get('/refunds/{id}/confirm', fn($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation');
-    Route::get('/tickets', fn() => view('tickets.index'))->name('tickets.index')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::get('/tickets/{id}/print', fn($id) => view('tickets.print', compact('id')))->name('tickets.print')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
-    Route::get('/tickets/{id}/add-confirm', fn($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/invoices/{id}/print', fn ($id) => view('invoices.print', compact('id')))->name('invoices.print');
+    Route::get('/re-issues/{id}/confirm', function ($id) {
+        $bookingBranches = Booking::whereNotNull('booking_branch_id')
+            ->join('branches', 'branches.id', '=', 'bookings.booking_branch_id')
+            ->pluck('branches.name', 'bookings.id')
+            ->toArray();
+        $allRoutes = App\Models\Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])
+            ->get()
+            ->map(fn ($r) => [
+                'id' => $r->id,
+                'display' => match ($r->route_type?->value) {
+                    'multi_city' => $r->multiSegments->map(fn ($s) => ($s->fromCity?->code ?? '?').'-'.($s->toCity?->code ?? '?'))->implode(', '),
+                    'round' => ($r->fromCity?->code ?? '?').'-'.($r->toCity?->code ?? '?').'-'.($r->returnCity?->code ?? '?'),
+                    default => ($r->fromCity?->code ?? '?').'-'.($r->toCity?->code ?? '?'),
+                },
+                'route_type' => $r->route_type?->value,
+                'flight_type' => $r->flight_type?->value,
+                'airline_id' => $r->airline_id,
+            ])
+            ->unique('display')
+            ->values();
+
+        return view('re-issues.confirmation', compact('id', 'bookingBranches', 'allRoutes'));
+    })->name('re-issues.confirmation')->middleware('role:Super Admin,Ticket Admin');
+    Route::get('/refunds/{id}/confirm', fn ($id) => view('refunds.confirmation', compact('id')))->name('refunds.confirmation')->middleware('role:Super Admin,Ticket Admin');
+    Route::get('/tickets', fn () => view('tickets.index'))->name('tickets.index')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/tickets/{id}/print', fn ($id) => view('tickets.print', compact('id')))->name('tickets.print')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::get('/tickets/{id}/add-confirm', fn ($id) => view('tickets.add-confirmation', compact('id')))->name('tickets.add-confirmation')->middleware('role:Super Admin,Ticket Admin');
+
+    Route::post('/ticket-requests', [TicketRequestController::class, 'store'])->name('ticket-requests.store')
+        ->middleware('ticket-request-branch:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
 
     Route::middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff')->group(function () {
+        Route::put('/ticket-requests/{ticketRequest}/process-reissue', [TicketRequestController::class, 'processReIssue'])->name('ticket-requests.process-reissue');
+        Route::put('/ticket-requests/{ticketRequest}/process-refund', [TicketRequestController::class, 'processRefund'])->name('ticket-requests.process-refund');
+        Route::put('/ticket-requests/{ticketRequest}/process-additional', [TicketRequestController::class, 'processAdditional'])->name('ticket-requests.process-additional');
+        Route::put('/ticket-requests/{ticketRequest}/reject', [TicketRequestController::class, 'reject'])->name('ticket-requests.reject');
+        Route::get('/bookings/{booking}/ticket-requests', [TicketRequestController::class, 'byBooking'])->name('ticket-requests.by-booking');
+        Route::get('/ticket-requests/reasons', [TicketRequestController::class, 'reasons'])->name('ticket-requests.reasons');
+        Route::get('/ticket-requests/agents', [TicketRequestController::class, 'agents'])->name('ticket-requests.agents');
+        Route::get('/ticket-requests/payment-methods', [TicketRequestController::class, 'paymentMethods'])->name('ticket-requests.payment-methods');
         Route::post('/bookings/{booking}/passengers/{passenger}/ticket-issue', [TicketIssueController::class, 'issue'])
             ->name('bookings.passengers.ticket-issue');
         Route::put('/bookings/{booking}/passengers/{passenger}/ticket-edit', [TicketIssueController::class, 'edit'])
@@ -424,6 +548,16 @@ Route::middleware('auth')->group(function () {
             ->name('passengers.confirm-group');
         Route::post('/passengers/{passenger}/create-outbound-pending', [TicketIssueController::class, 'createPendingOutbound'])
             ->name('passengers.create-outbound-pending');
+        Route::post('/bookings/{booking}/passengers/{passenger}/re-issue', [ReIssueController::class, 'store'])
+            ->name('bookings.passengers.re-issue');
+        Route::get('/bookings/{booking}/re-issued-tickets', [ReIssueController::class, 'byBooking'])
+            ->name('re-issued-tickets.by-booking');
+        Route::get('/bookings/{booking}/additional-tickets', [TicketRequestController::class, 'additionalTicketsByBooking'])
+            ->name('bookings.additional-tickets');
+        Route::post('/bookings/{booking}/passengers/{passenger}/refund', [RefundController::class, 'store'])
+            ->name('bookings.passengers.refund');
+        Route::get('/bookings/{booking}/refunded-tickets', [RefundController::class, 'byBooking'])
+            ->name('refunded-tickets.by-booking');
     });
 
     Route::post('/api/banks/quick-create', [BankController::class, 'quickStore']);

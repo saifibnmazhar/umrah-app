@@ -159,7 +159,7 @@
     </div>
 
     <!-- Hold Modal -->
-    <div x-show="showHoldModal"
+    <div x-show="showHoldModal" x-cloak
          class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
          style="display: none;">
         <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
@@ -202,7 +202,7 @@
         </div>
     </div>
 
-    <div x-show="toastVisible"
+    <div x-show="toastVisible" x-cloak
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="translate-x-full opacity-0"
          x-transition:enter-end="translate-x-0 opacity-100"

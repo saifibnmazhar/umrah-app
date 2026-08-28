@@ -2,13 +2,13 @@
 
 namespace App\Services;
 
-use App\Models\Booking;
-use App\Models\Branch;
-use App\Models\Passenger;
-use App\Models\District;
-use App\Models\FingerprintCharge;
 use App\Enums\PassengerType;
 use App\Enums\TicketType;
+use App\Models\Booking;
+use App\Models\Branch;
+use App\Models\FingerprintCharge;
+use App\Models\Invoice;
+use App\Models\Passenger;
 use Carbon\Carbon;
 
 class BookingService
@@ -16,9 +16,10 @@ class BookingService
     public function __construct(
         private InvoiceService $invoiceService,
     ) {}
+
     public function calculatePassengerType($dateOfBirth, $stayDuration = null): string
     {
-        if (!$dateOfBirth) {
+        if (! $dateOfBirth) {
             return PassengerType::ADULT->value;
         }
 
@@ -44,12 +45,13 @@ class BookingService
 
     private function parseStayDurationDays($stayDuration): ?int
     {
-        if (!$stayDuration) {
+        if (! $stayDuration) {
             return null;
         }
         if (preg_match('/(\d+)\s*Days?/', $stayDuration, $matches)) {
             return (int) $matches[1];
         }
+
         return null;
     }
 
@@ -75,7 +77,7 @@ class BookingService
         if ($serviceRequired instanceof \BackedEnum) {
             $serviceRequired = $serviceRequired->value;
         }
-        
+
         $passengerType = $passenger->passenger_type;
         if ($passengerType instanceof \BackedEnum) {
             $passengerType = $passengerType->value;
@@ -94,18 +96,18 @@ class BookingService
                 $outboundAmount = $outboundFare ? (float) $outboundFare->selling_fare : 0;
                 $baseFare = $inboundAmount + $outboundAmount;
                 $ticketAmount = match ($passengerType) {
-                    'child'  => $baseFare * ((float) ($inboundFare->child_fare_percentage ?? 70)) / 100,
+                    'child' => $baseFare * ((float) ($inboundFare->child_fare_percentage ?? 70)) / 100,
                     'infant' => $baseFare * ((float) ($inboundFare->infant_fare_percentage ?? 30)) / 100,
-                    default  => $baseFare,
+                    default => $baseFare,
                 };
             } elseif ($ticketFare) {
                 $baseFare = $ticketFare->ticket_type === TicketType::OFFER
                     ? (float) ($ticketFare->offer_price ?? $ticketFare->selling_fare)
                     : (float) $ticketFare->selling_fare;
                 $ticketAmount = match ($passengerType) {
-                    'child'  => $baseFare * ((float) $ticketFare->child_fare_percentage) / 100,
+                    'child' => $baseFare * ((float) $ticketFare->child_fare_percentage) / 100,
                     'infant' => $baseFare * ((float) $ticketFare->infant_fare_percentage) / 100,
-                    default  => $baseFare,
+                    default => $baseFare,
                 };
             }
         }
@@ -126,31 +128,34 @@ class BookingService
     {
         foreach ($booking->passengers as $passenger) {
             $passenger->package_value = $this->calculatePackageValue($passenger);
-            $passenger->saveQuietly();
+            $passenger->save();
         }
 
         $passengerTotal = (float) $booking->passengers->sum('package_value');
-        
+
         $fingerprintLocation = $booking->fingerprint_location;
         if ($fingerprintLocation instanceof \BackedEnum) {
             $fingerprintLocation = $fingerprintLocation->value;
         }
-        
+
         $fingerprintCharge = $this->getFingerprintCharge(
             $booking->district_id,
             $fingerprintLocation
         );
-        
+
         $total = $passengerTotal + $fingerprintCharge;
 
         $booking->total_value = $total;
-        $booking->saveQuietly();
+        $booking->save();
 
         return $total;
     }
 
-    public function syncFinancials(Booking $booking): void
+    public function syncFinancials(Booking $booking, ?string $reason = null): void
     {
+        $oldTotal = (float) $booking->total_value;
+        $oldDiscount = (float) $booking->discount_amount;
+
         $this->recalculateBookingTotal($booking);
 
         $discountType = $booking->discount_type;
@@ -166,13 +171,20 @@ class BookingService
 
         if ($booking->discount_amount != $discountAmount) {
             $booking->discount_amount = $discountAmount;
-            $booking->saveQuietly();
+            $booking->save();
         }
 
         $invoice = $booking->invoice;
         if ($invoice) {
-            $discountedTotal = max(0, $booking->total_value - $discountAmount);
-            $this->invoiceService->updateTotals($invoice, $discountedTotal);
+            $oldDiscounted = max(0, $oldTotal - $oldDiscount);
+            $newDiscounted = max(0, $booking->total_value - $discountAmount);
+            $delta = $newDiscounted - $oldDiscounted;
+
+            $this->invoiceService->updateTotals(
+                $invoice,
+                (float) $invoice->total_amount + $delta,
+                $reason
+            );
         }
     }
 
@@ -215,8 +227,8 @@ class BookingService
     {
         $lastBooking = Booking::orderBy('id', 'desc')->first();
         $nextNumber = $lastBooking ? $lastBooking->id + 1 : 1;
-        
-        return 'INV-' . date('Y') . '-' . str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
+
+        return 'INV-'.date('Y').'-'.str_pad($nextNumber, 4, '0', STR_PAD_LEFT);
     }
 
     public function generateInvoiceId(int $branchId): string
@@ -227,7 +239,7 @@ class BookingService
 
         do {
             $random = substr(str_shuffle('0123456789'), 0, 4);
-            $invoiceId = $prefix . '-' . $random . $year;
+            $invoiceId = $prefix.'-'.$random.$year;
         } while (Booking::where('invoice_id', $invoiceId)->exists());
 
         return $invoiceId;
@@ -235,7 +247,7 @@ class BookingService
 
     public function getFingerprintCharge($districtId, ?string $location = null): float
     {
-        if (!$districtId || !$location || strtolower($location) === 'office') {
+        if (! $districtId || ! $location || strtolower($location) === 'office') {
             return 0;
         }
 
@@ -267,7 +279,7 @@ class BookingService
         foreach ($data['passengers'] as $passengerData) {
             $passengerData['booking_id'] = $booking->id;
             $passengerData['passenger_type'] = $this->calculatePassengerType($passengerData['date_of_birth']);
-            
+
             Passenger::create($passengerData);
         }
 
@@ -281,8 +293,8 @@ class BookingService
         return $totals;
     }
 
-    public function createInvoiceForBooking(Booking $booking): \App\Models\Invoice
+    public function createInvoiceForBooking(Booking $booking): Invoice
     {
-        return app(\App\Services\InvoiceService::class)->createForBooking($booking);
+        return app(InvoiceService::class)->createForBooking($booking);
     }
 }

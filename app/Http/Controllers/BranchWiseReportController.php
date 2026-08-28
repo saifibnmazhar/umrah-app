@@ -6,20 +6,20 @@ use App\Enums\FingerprintStatus;
 use App\Enums\PaymentMethod;
 use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
+use App\Models\Bank;
+use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\CurrencyRate;
-use App\Models\FingerprintDetail;
 use App\Models\FingerprintDetailLog;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
 use App\Models\IssuedTicketLog;
-use App\Models\Booking;
 use App\Models\Passenger;
 use App\Models\Payment;
-use App\Services\CostTrackingService;
 use App\Models\VisaSubmission;
 use App\Models\VisaUpdateLog;
 use App\Models\Voucher;
+use App\Services\CostTrackingService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -36,56 +36,56 @@ class BranchWiseReportController extends Controller
         $branches = Branch::orderBy('name')->get(['id', 'name']);
         $firstRate = (float) (CurrencyRate::orderBy('created_at')->first()?->rate ?? 0);
 
-        $branchScope = fn($query) => $branchId === 'central'
+        $branchScope = fn ($query) => $branchId === 'central'
             ? $query->whereNull('booking_branch_id')
-            : $query->when($branchId, fn($q) => $q->where('booking_branch_id', $branchId));
+            : $query->when($branchId, fn ($q) => $q->where('booking_branch_id', $branchId));
 
-        $branchFilter = fn($query, $column) => $branchId === 'central'
+        $branchFilter = fn ($query, $column) => $branchId === 'central'
             ? $query->whereNull($column)
-            : $query->when($branchId, fn($q) => $q->where($column, $branchId));
+            : $query->when($branchId, fn ($q) => $q->where($column, $branchId));
 
-        $userBranchFilter = fn($query, $relation) => $branchId === 'central'
-            ? $query->whereHas($relation, fn($u) => $u->whereNull('branch_id'))
-            : $query->when($branchId, fn($q) => $q->whereHas($relation, fn($u) => $u->where('branch_id', $branchId)));
+        $userBranchFilter = fn ($query, $relation) => $branchId === 'central'
+            ? $query->whereHas($relation, fn ($u) => $u->whereNull('branch_id'))
+            : $query->when($branchId, fn ($q) => $q->whereHas($relation, fn ($u) => $u->where('branch_id', $branchId)));
 
         $visaSubmitted = VisaUpdateLog::where('new_values->status', 'submitted')
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('visaSubmission.passenger.booking', $branchScope))
+            ->when($branchId, fn ($q) => $q->whereHas('visaSubmission.passenger.booking', $branchScope))
             ->count();
         $visaIssued = VisaUpdateLog::where('new_values->status', 'issued')
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('visaSubmission.passenger.booking', $branchScope))
+            ->when($branchId, fn ($q) => $q->whereHas('visaSubmission.passenger.booking', $branchScope))
             ->count();
         $visaPending = VisaSubmission::where('status', VisaStatus::PENDING)
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('passenger.booking', $branchScope))
+            ->when($branchId, fn ($q) => $q->whereHas('passenger.booking', $branchScope))
             ->count();
 
         $fingerprintApproved = FingerprintDetailLog::where('new_values->status', FingerprintStatus::APPROVED->value)
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
+            ->when($branchId, fn ($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
             ->count();
         $fingerprintDone = FingerprintDetailLog::where('new_values->status', FingerprintStatus::DONE->value)
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
+            ->when($branchId, fn ($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
             ->count();
         $fingerprintProcessing = FingerprintDetailLog::where('new_values->status', FingerprintStatus::PROCESSING->value)
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
+            ->when($branchId, fn ($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
             ->count();
 
         $invoiceCount = Invoice::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->pipe(fn($q) => $branchFilter($q, 'branch_id'))->count();
+            ->pipe(fn ($q) => $branchFilter($q, 'branch_id'))->count();
         $invoiceRow = Invoice::whereDate('invoices.created_at', '>=', $dateFrom)
             ->whereDate('invoices.created_at', '<=', $dateTo)
-            ->pipe(fn($q) => $branchFilter($q, 'invoices.branch_id'))
+            ->pipe(fn ($q) => $branchFilter($q, 'invoices.branch_id'))
             ->leftJoin('bookings', 'invoices.booking_id', '=', 'bookings.id')
             ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
             ->selectRaw('
@@ -103,27 +103,27 @@ class BranchWiseReportController extends Controller
         $inboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->whereHas('issuedTicket', fn($q) => $q->whereNotNull('inbound_date'))
-            ->when($branchId, fn($q) => $q->whereHas('issuedTicket.booking', $branchScope))
+            ->whereHas('issuedTicket', fn ($q) => $q->whereNotNull('inbound_date'))
+            ->when($branchId, fn ($q) => $q->whereHas('issuedTicket.booking', $branchScope))
             ->count();
 
         $outboundTicket = IssuedTicketLog::whereIn('new_data->status', [TicketStatus::ISSUED->value, TicketStatus::RE_ISSUED->value])
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->whereHas('issuedTicket', fn($q) => $q->whereNotNull('outbound_date'))
-            ->when($branchId, fn($q) => $q->whereHas('issuedTicket.booking', $branchScope))
+            ->whereHas('issuedTicket', fn ($q) => $q->whereNotNull('outbound_date'))
+            ->when($branchId, fn ($q) => $q->whereHas('issuedTicket.booking', $branchScope))
             ->count();
 
         $pendingTicket = IssuedTicket::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))
+            ->when($branchId, fn ($q) => $q->whereHas('booking', $branchScope))
             ->where('status', TicketStatus::PENDING)
             ->count();
 
         $dueCollectionRow = Voucher::whereDate('vouchers.created_at', '>=', $dateFrom)
             ->whereDate('vouchers.created_at', '<=', $dateTo)
-            ->pipe(fn($q) => $userBranchFilter($q, 'user'))
-            ->whereHas('transactionType', fn($q) => $q->where('name', 'Due Collection'))
+            ->pipe(fn ($q) => $userBranchFilter($q, 'user'))
+            ->whereHas('transactionType', fn ($q) => $q->where('name', 'Due Collection'))
             ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
             ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
             ->selectRaw('
@@ -144,8 +144,8 @@ class BranchWiseReportController extends Controller
 
         $refundRow = Voucher::whereDate('vouchers.created_at', '>=', $dateFrom)
             ->whereDate('vouchers.created_at', '<=', $dateTo)
-            ->whereHas('transactionType', fn($q) => $q->where('name', 'Customer Refund'))
-            ->pipe(fn($q) => $userBranchFilter($q, 'user'))
+            ->whereHas('transactionType', fn ($q) => $q->where('name', 'Customer Refund'))
+            ->pipe(fn ($q) => $userBranchFilter($q, 'user'))
             ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
             ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
             ->selectRaw('
@@ -156,10 +156,24 @@ class BranchWiseReportController extends Controller
         $totalRefund = $refundRow->sar_total ?? 0;
         $totalRefundBdt = $refundRow->bdt_total ?? 0;
 
+        $ticketRefundRow = Voucher::whereDate('vouchers.created_at', '>=', $dateFrom)
+            ->whereDate('vouchers.created_at', '<=', $dateTo)
+            ->whereHas('transactionType', fn ($q) => $q->whereIn('name', ['Ticket Refund - Payment', 'Ticket Refund - Re-issue']))
+            ->when($branchId, fn ($q) => $q->where('vouchers.branch_id', $branchId))
+            ->leftJoin('bookings', 'vouchers.booking_id', '=', 'bookings.id')
+            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
+            ->selectRaw('
+                SUM(vouchers.amount) as sar_total,
+                SUM(vouchers.amount * COALESCE(currency_rates.rate, ?)) as bdt_total
+            ', [$firstRate])
+            ->first();
+        $totalTicketRefund = $ticketRefundRow->sar_total ?? 0;
+        $totalTicketRefundBdt = $ticketRefundRow->bdt_total ?? 0;
+
         $initialPaymentRow = Payment::whereDate('payments.created_at', '>=', $dateFrom)
             ->whereDate('payments.created_at', '<=', $dateTo)
-            ->pipe(fn($q) => $userBranchFilter($q, 'vouchers.user'))
-            ->whereHas('vouchers.transactionType', fn($q) => $q->where('name', 'Initial Payment'))
+            ->pipe(fn ($q) => $userBranchFilter($q, 'vouchers.user'))
+            ->whereHas('vouchers.transactionType', fn ($q) => $q->where('name', 'Initial Payment'))
             ->leftJoin('bookings', 'payments.booking_id', '=', 'bookings.id')
             ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
             ->selectRaw('
@@ -178,33 +192,32 @@ class BranchWiseReportController extends Controller
         $initialPaymentBank = $initialPaymentRow->bank_sar ?? 0;
         $initialPaymentBankBdt = $initialPaymentRow->bank_bdt ?? 0;
 
-        $profitBookings = Booking::with(['invoice', 'fingerprint', 'passengers.visaSubmission', 'passengers.allIssuedTickets'])
+        $profitBookings = Booking::with(['invoice', 'fingerprint', 'currencyRate', 'passengers.visaSubmission', 'passengers.allIssuedTickets'])
             ->where('is_cancelled', false)
             ->whereHas('invoice')
             ->whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->pipe(fn($q) => $branchFilter($q, 'booking_branch_id'))
+            ->pipe(fn ($q) => $branchFilter($q, 'booking_branch_id'))
             ->get();
         $costService = app(CostTrackingService::class);
-        $totalProfit = $profitBookings->sum(function (Booking $booking) use ($costService) {
-            $costSummary = $costService->getBookingCostSummary($booking);
-            return (float) $booking->invoice->total_amount - $costSummary['total_cost'];
-        });
-        $totalProfitBdt = $profitBookings->sum(function (Booking $booking) use ($costService, $firstRate) {
+        $totalProfit = 0;
+        $totalProfitBdt = 0;
+        foreach ($profitBookings as $booking) {
             $costSummary = $costService->getBookingCostSummary($booking);
             $profit = (float) $booking->invoice->total_amount - $costSummary['total_cost'];
+            $totalProfit += $profit;
             $rate = (float) ($booking->currencyRate?->rate ?? $firstRate);
-            return $profit * $rate;
-        });
+            $totalProfitBdt += $profit * $rate;
+        }
 
         $totalPassengers = Passenger::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId, fn($q) => $q->whereHas('booking', $branchScope))->count();
+            ->when($branchId, fn ($q) => $q->whereHas('booking', $branchScope))->count();
 
         $paymentRow = Payment::whereDate('payments.created_at', '>=', $dateFrom)
             ->whereDate('payments.created_at', '<=', $dateTo)
-            ->pipe(fn($q) => $userBranchFilter($q, 'vouchers.user'))
-            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->pipe(fn ($q) => $userBranchFilter($q, 'vouchers.user'))
+            ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
             ->leftJoin('bookings', 'payments.booking_id', '=', 'bookings.id')
             ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
             ->selectRaw('
@@ -228,16 +241,16 @@ class BranchWiseReportController extends Controller
 
         $payments = Payment::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->pipe(fn($q) => $userBranchFilter($q, 'vouchers.user'))
-            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
-            ->with(['branch', 'vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking', 'vouchers.currencyRate'])
+            ->pipe(fn ($q) => $userBranchFilter($q, 'vouchers.user'))
+            ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->with(['branch', 'vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking', 'vouchers.currencyRate', 'vouchers.bank'])
             ->get();
 
         $vouchersByDate = [];
         foreach ($payments as $payment) {
             $dateKey = $payment->created_at->format('Y-m-d');
             foreach ($payment->vouchers as $v) {
-                if (!in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
+                if (! in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
                     continue;
                 }
                 $vouchersByDate[$dateKey][] = [
@@ -252,20 +265,23 @@ class BranchWiseReportController extends Controller
                     'bdt_amount' => (float) ($v->bdt_amount ?: 0),
                     'currency_rate' => (float) ($v->currencyRate?->rate ?? $firstRate),
                     'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
+                    'bank' => $v->bank?->name ?? '-',
+                    'bank_id' => $v->bank_id,
                 ];
             }
         }
         $vouchersByDateJson = json_encode($vouchersByDate);
+        $banksJson = json_encode(Bank::orderBy('name')->get(['id', 'name']));
 
         return view('reports.branch-wise', compact(
             'visaSubmitted', 'visaIssued', 'visaPending',
             'fingerprintApproved', 'fingerprintDone', 'fingerprintProcessing',
             'invoiceCount', 'invoiceTotalAmount', 'invoiceTotalAmountBdt',
             'inboundTicket', 'outboundTicket', 'pendingTicket',
-            'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalPassengers', 'totalProfit', 'totalProfitBdt', 'totalRefund', 'totalRefundBdt',
+            'totalDue', 'totalDueBdt', 'totalDueCollection', 'totalDueCollectionBdt', 'dueCollectionCash', 'dueCollectionCashBdt', 'dueCollectionBank', 'dueCollectionBankBdt', 'totalInitialPayment', 'totalInitialPaymentBdt', 'initialPaymentCash', 'initialPaymentCashBdt', 'initialPaymentBank', 'initialPaymentBankBdt', 'totalReceiving', 'totalReceivingBdt', 'receivingCash', 'receivingCashBdt', 'receivingBank', 'receivingBankBdt', 'totalPassengers', 'totalProfit', 'totalProfitBdt', 'totalRefund', 'totalRefundBdt', 'totalTicketRefund', 'totalTicketRefundBdt',
             'totalCashPayment', 'totalCashPaymentBdt', 'totalBankPayment', 'totalBankPaymentBdt',
             'dateFrom', 'dateTo', 'selectedBranch', 'branches', 'userBranchId',
-            'vouchersByDateJson', 'vouchersByDate'
+            'vouchersByDateJson', 'vouchersByDate', 'banksJson'
         ));
     }
 
@@ -274,24 +290,27 @@ class BranchWiseReportController extends Controller
         $dateFrom = $request->date_from ? Carbon::parse($request->date_from) : now()->subDays(30);
         $dateTo = $request->date_to ? Carbon::parse($request->date_to) : now();
         $branchId = $request->branch_id;
+        $bankId = $request->bank_id;
+        $method = $request->method;
         $currency = $request->get('currency', 'SAR');
         $branch = $branchId === 'central'
             ? (object) ['name' => 'Central']
             : ($branchId ? Branch::find($branchId) : null);
+        $bankName = $bankId === 'all' ? 'All Banks' : ($bankId ? Bank::find($bankId)?->name : null);
         $firstRate = (float) (CurrencyRate::orderBy('created_at')->first()?->rate ?? 0);
 
         $payments = Payment::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
-            ->when($branchId === 'central', fn($q) => $q->whereHas('vouchers.user', fn($u) => $u->whereNull('branch_id')))
-            ->when($branchId && $branchId !== 'central', fn($q) => $q->whereHas('vouchers.user', fn($u) => $u->where('branch_id', $branchId)))
-            ->whereHas('vouchers.transactionType', fn($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
-            ->with(['vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking', 'vouchers.currencyRate'])
+            ->when($branchId === 'central', fn ($q) => $q->whereHas('vouchers.user', fn ($u) => $u->whereNull('branch_id')))
+            ->when($branchId && $branchId !== 'central', fn ($q) => $q->whereHas('vouchers.user', fn ($u) => $u->where('branch_id', $branchId)))
+            ->whereHas('vouchers.transactionType', fn ($q) => $q->whereIn('name', ['Initial Payment', 'Due Collection']))
+            ->with(['vouchers.transactionType', 'vouchers.user.branch', 'vouchers.booking', 'vouchers.currencyRate', 'vouchers.bank'])
             ->get();
 
         $vouchers = collect();
         foreach ($payments as $payment) {
             foreach ($payment->vouchers as $v) {
-                if (!in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
+                if (! in_array($v->transactionType?->name, ['Initial Payment', 'Due Collection'])) {
                     continue;
                 }
                 $bdtAmount = (float) ($v->bdt_amount ?: 0);
@@ -307,9 +326,23 @@ class BranchWiseReportController extends Controller
                     'bdt_amount' => $bdtAmount > 0 ? $bdtAmount : (float) $v->amount * $firstRate,
                     'currency_rate' => (float) ($v->currencyRate?->rate ?? $firstRate),
                     'payment_date' => $v->payment_date?->format('d-M-Y') ?? '',
+                    'bank' => $v->bank?->name ?? '-',
+                    'bank_id' => $v->bank_id,
                 ]);
             }
         }
+
+        if ($bankId === 'all') {
+            $vouchers = $vouchers->where('method', 'Bank');
+        } elseif ($bankId) {
+            $vouchers = $vouchers->where('bank_id', (int) $bankId);
+        }
+
+        if ($method) {
+            $vouchers = $vouchers->where('method', ucfirst(strtolower($method)));
+        }
+
+        $methodLabel = $method ? ucfirst(strtolower($method)) : null;
 
         $totalCash = $vouchers->where('method', 'Cash')->sum('amount');
         $totalCashBdt = $vouchers->where('method', 'Cash')->sum('bdt_amount');
@@ -318,11 +351,11 @@ class BranchWiseReportController extends Controller
         $totalAmount = $vouchers->sum('amount');
         $totalAmountBdt = $vouchers->sum('bdt_amount');
 
-        $dateLabel = $dateFrom->format('d-M-Y') . ' to ' . $dateTo->format('d-M-Y');
+        $dateLabel = $dateFrom->format('d-M-Y').' to '.$dateTo->format('d-M-Y');
 
         return view('reports.branch-wise.payment-history-print', compact(
             'vouchers', 'totalCash', 'totalCashBdt', 'totalBank', 'totalBankBdt',
-            'totalAmount', 'totalAmountBdt', 'currency', 'branch', 'dateLabel', 'dateFrom', 'dateTo'
+            'totalAmount', 'totalAmountBdt', 'currency', 'branch', 'bankName', 'methodLabel', 'dateLabel', 'dateFrom', 'dateTo'
         ));
     }
 }

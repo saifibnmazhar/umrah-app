@@ -231,6 +231,7 @@ select {
         </div>
     </div>
 
+<<<<<<< HEAD
     <nav x-show="lastPage > 1" class="flex justify-end" aria-label="Pagination Navigation">
         <span class="inline-flex items-center gap-2">
             <button @click="changePage(currentPage - 1)" :disabled="currentPage <= 1"
@@ -277,7 +278,7 @@ select {
         </div>
     </div>
 
-    <div x-show="modalOpen" class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto">
+    <div x-show="modalOpen" x-cloak class="fixed inset-0 z-50 flex items-start justify-center p-4 pt-8 overflow-y-auto">
         <div class="modal-backdrop fixed inset-0 bg-black/50" @click="closeModal()"></div>
         <div class="modal-content relative z-10 bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 overflow-hidden">
             <div class="bg-slate-700 text-white px-6 py-4 flex justify-between items-center">

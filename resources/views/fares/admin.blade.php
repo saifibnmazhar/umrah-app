@@ -539,7 +539,7 @@
     </div>
     </div>
 
-    <div x-show="showAgentModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+    <div x-show="showAgentModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4">
             <div x-show="showAgentModal" x-transition.opacity class="fixed inset-0 bg-black/50" @click="showAgentModal = false"></div>
             <div x-show="showAgentModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 z-10">
@@ -574,7 +574,7 @@
 
 
 
-    <div x-show="showRouteModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+    <div x-show="showRouteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4">
             <div x-show="showRouteModal" x-transition.opacity class="fixed inset-0 bg-black/50" @click="showRouteModal = false"></div>
             <div x-show="showRouteModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-3xl p-6 z-10">

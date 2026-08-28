@@ -19,10 +19,21 @@
     </div>
     @endif
 
+    <div class="mb-4 flex border-b border-slate-200">
+        <a href="?tab=bookings{{ request('branch_id') ? '&branch_id=' . request('branch_id') : '' }}"
+           class="px-4 py-2 text-sm font-medium border-b-2 transition {{ $tab === 'bookings' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700' }}">
+            Booking Cancellations
+        </a>
+        <a href="?tab=passengers{{ request('branch_id') ? '&branch_id=' . request('branch_id') : '' }}"
+           class="px-4 py-2 text-sm font-medium border-b-2 transition {{ $tab === 'passengers' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700' }}">
+            Passenger Cancellations
+        </a>
+    </div>
+
     <div class="bg-white rounded-xl shadow-lg p-6">
         <div class="mb-4 flex flex-wrap items-center gap-4">
             @unless(auth()->user()->branch_id)
-            <select onchange="window.location.href = this.value ? '?branch_id=' + this.value : '?'"
+            <select onchange="window.location.href = this.value ? '?tab={{ $tab }}&branch_id=' + this.value : '?tab={{ $tab }}'"
                     class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                 <option value="">All Branches</option>
                 @foreach($branches as $branch)
@@ -98,7 +109,7 @@
                     </tr>
                     @empty
                     <tr>
-                        <td colspan="{{ $canSeeCancelledBy ? 11 : 10 }}" class="px-3 py-4 text-center text-slate-500">No pending refunds found</td>
+                        <td colspan="{{ $canSeeCancelledBy ? 11 : 10 }}" class="px-3 py-4 text-center text-slate-500">No pending booking refunds found</td>
                     </tr>
                     @endforelse
                 </tbody>
@@ -108,6 +119,75 @@
         <div class="mt-4">
             {{ $cancelledBookings->links() }}
         </div>
+
+        @else
+        <div class="overflow-x-auto">
+            <table class="w-full min-w-[1000px] text-sm">
+                <thead class="bg-slate-50 text-slate-600">
+                    <tr>
+                        <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
+                        <th class="px-3 py-2 text-left font-medium">Customer</th>
+                        <th class="px-3 py-2 text-left font-medium">Passenger</th>
+                        <th class="px-3 py-2 text-left font-medium">Cancellation Branch</th>
+                        <th class="px-3 py-2 text-right font-medium">Package Value</th>
+                        <th class="px-3 py-2 text-right font-medium">Refundable</th>
+                        @if($canSeeCancelledBy)<th class="px-3 py-2 text-left font-medium">Status</th>@endif
+                        @if($canSeeCancelledBy)<th class="px-3 py-2 text-left font-medium">Initiated By</th>@endif
+                        <th class="px-3 py-2 text-left font-medium">Date</th>
+                        @unless($canSeeCancelledBy)<th class="px-3 py-2 text-center font-medium">Actions</th>@endunless
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    @forelse($cancelledPassengers as $cp)
+                    <tr>
+                        <td class="px-3 py-2 text-slate-700">{{ $cp->booking?->invoice_id ?? '—' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ $cp->booking?->customer?->name ?? 'N/A' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ trim(($cp->passenger?->first_name ?? '') . ' ' . ($cp->passenger?->last_name ?? '')) ?: '—' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ $cp->cancellationBranch?->name ?? '—' }}</td>
+                        <td class="px-3 py-2 text-slate-700 text-right">@currency($cp->package_value, 2)</td>
+                        <td class="px-3 py-2 text-slate-800 font-medium text-right">@currency($cp->refundable_amount, 2)</td>
+                        @if($canSeeCancelledBy)
+                        <td class="px-3 py-2">
+                            @if($cp->status === \App\Enums\CancelledBookingStatus::PROCESSING)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-800">Cancellation Processing</span>
+                            @elseif($cp->status === \App\Enums\CancelledBookingStatus::CANCELLED)
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-800">Cancelled</span>
+                            @else
+                                <span class="text-slate-600">{{ $cp->status->value ?? '—' }}</span>
+                            @endif
+                        </td>
+                        @endif
+                        @if($canSeeCancelledBy)<td class="px-3 py-2 text-slate-600">{{ $cp->user?->name ?? '—' }}</td>@endif
+                        <td class="px-3 py-2 text-slate-600">{{ $cp->created_at->format('Y-m-d') }}</td>
+                        @unless($canSeeCancelledBy)
+                        <td class="px-3 py-2 text-center whitespace-nowrap">
+                            <form method="POST" action="{{ route('cancelled-passengers.revert', $cp->id) }}"
+                                  onsubmit="return confirm('Revert this cancellation? The passenger will be restored to active.')" class="inline">
+                                @csrf
+                                <button type="submit" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-600 px-2 py-1 rounded font-medium">
+                                    Revert
+                                </button>
+                            </form>
+                            <a href="{{ route('cancelled-passengers.confirm', $cp->id) }}"
+                               class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium ml-1">
+                                Confirm
+                            </a>
+                        </td>
+                        @endunless
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="{{ $canSeeCancelledBy ? 10 : 9 }}" class="px-3 py-4 text-center text-slate-500">No pending passenger refunds found</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+
+        <div class="mt-4">
+            {{ $cancelledPassengers->links() }}
+        </div>
+        @endif
     </div>
 </div>
 @endsection
