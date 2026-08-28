@@ -165,6 +165,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'ticket_remarks' => $p->ticket_remarks ?? '',
     'due' => $p->booking?->invoice?->balance ?? 0,
     'refund_payable' => (float) ($p->refund_payable ?? 0),
+    'profit' => (float) ($p->profit ?? 0),
+    'profit_breakdown' => app(\App\Services\ProfitCalculationService::class)->getPassengerProfitBreakdown($p),
     'required_flight_date' => $p->flight_date_from?->format('Y-m-d') ?? '',
     'actual_flight_date' => $p->actual_flight_date?->format('Y-m-d') ?? '',
     'fingerprint_location' => $p->booking?->fingerprint_location?->value ?? 'None',
@@ -1039,9 +1041,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Return Date</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Package Value</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
-                            <th class="px-3 py-2 text-left font-medium">Due</th>
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Invoice Info</th>
                             <th class="px-3 py-2 text-left font-medium">Stay Duration</th>
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
@@ -1187,12 +1188,38 @@ if ($passenger->ticket_fare_inbound_id) {
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)
-    <td class="px-3 py-2 text-slate-700" x-text="(passengersTicketData[{{ $loop->index }}]?.total_cost || 0) > 0 ? $currency(passengersTicketData[{{ $loop->index }}].total_cost, 2, {{ $passBookingRate }}) : '—'"></td>
+    <td class="px-3 py-2 text-slate-700 relative align-top"
+        x-data="{ tipOpen: false }"
+        @mouseenter="tipOpen = true" @mouseleave="tipOpen = false">
+        <span class="font-medium cursor-help"
+              :class="(passengersTicketData[{{ $loop->index }}]?.profit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'"
+              x-text="(passengersTicketData[{{ $loop->index }}]?.profit || 0) !== 0 ? $currency(passengersTicketData[{{ $loop->index }}].profit, 2, {{ $passBookingRate }}) : '—'">—</span>
+        <div x-show="tipOpen" x-cloak
+             class="absolute z-50 mt-1 left-0 w-52 bg-slate-900 text-white text-xs rounded-lg shadow-xl p-3 leading-relaxed">
+            <div class="flex justify-between"><span>Visa Profit</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.visa_profit ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between"><span>Ticket Profit</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.ticket_profit ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between"><span>Additional Ticket</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.additional_ticket_profit ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between"><span>Re-Issue Profit</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.re_issue_profit ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between"><span>Refund Profit</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.refund_profit ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between text-red-300"><span>Re-Issue Cost</span><span x-text="'-' + $currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.re_issue_cost ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between"><span>Service Charge</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.service_charge ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="border-t border-slate-600 my-1 pt-1 flex justify-between font-semibold">
+                <span>Total</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.total ?? 0, 2, {{ $passBookingRate }})"></span>
+            </div>
+        </div>
+    </td>
     @endif
-    @if($canViewFinancialColumns)
-    <td class="px-3 py-2 text-slate-700" x-text="({{ $passenger->package_value ?? 0 }} > 0 || (passengersTicketData[{{ $loop->index }}]?.total_cost || 0) > 0) ? $currency({{ $passenger->package_value ?? 0 }} - passengersTicketData[{{ $loop->index }}].total_cost, 2, {{ $passBookingRate }}) : '—'"></td>
-    @endif
-    <td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice)<div class="font-medium">Total: @currency($passenger->booking->invoice->total_amount, 2, $passBookingRate)</div><div class="font-medium">Due: @currency($passenger->booking->invoice->balance, 2, $passBookingRate)</div>@else—@endif @endif</td>
+    <td class="px-3 py-2 text-slate-700 text-xs leading-relaxed">
+        @if($isFirstRow)
+            @if($passenger->booking?->invoice)
+                <div>Total: @currency($passenger->booking->invoice->total_amount, 2, $passBookingRate)</div>
+                <div>Due: @currency($passenger->booking->invoice->balance, 2, $passBookingRate)</div>
+                <div>Discount: @currency($passenger->booking->discount_amount ?? 0, 2, $passBookingRate)</div>
+            @else
+                —
+            @endif
+        @endif
+    </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->stay_duration ?? '—' }}</td>
     @if($canViewVisaColumns)
     <td class="px-3 py-2" x-init="$nextTick(() => console.log('P'+{{ $loop->index }}+': visa='+((passengersVisaData[{{ $loop->index }}]?.visa?.status)||'null')+' fp='+((passengersTicketData[{{ $loop->index }}]?.fingerprint_status)||'null')+' canc='+passengersTicketData[{{ $loop->index }}]?.is_cancelled))">
@@ -2662,15 +2689,16 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <option value="company">Company</option>
                             </select>
                         </div>
-                        <div x-show="reIssueForm.payment_by === 'customer'">
+                        <div x-show="reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
                             <select x-model="reIssueForm.payment_option" @change="handleReIssuePaymentOptionChange()"
-                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                    :disabled="reIssueForm.payment_by !== 'customer' && !reIssueForm.refunded_ticket"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed">
                                 <option value="customer_payment">Customer Payment</option>
                                 <option value="refund_adjustment">Refund Adjustment</option>
                             </select>
                         </div>
-                        <div x-show="reIssueForm.payment_by === 'customer' && reIssueForm.payment_option === 'refund_adjustment'">
+                        <div x-show="reIssueForm.payment_option === 'refund_adjustment' && (reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket)">
                             <div class="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 mb-2">
                                 <span class="text-sm font-medium text-emerald-700">Refund Payable (SAR)</span>
                                 <span class="text-sm font-semibold text-emerald-700" x-text="$currency(reIssueForm.refund_payable, 2)"></span>
@@ -4351,6 +4379,7 @@ function bookingIndexApp() {
             refund_adjustment_amount: 0,
             refund_adjustment_amount_bdt: '',
             refund_payable: 0,
+            refunded_ticket: false,
             isRouteTypeLocked: false,
             errors: {
                 pnr: '',
@@ -5297,6 +5326,7 @@ function bookingIndexApp() {
             this.reIssueForm.refund_adjustment_amount = 0;
             this.reIssueForm.refund_adjustment_amount_bdt = '';
             this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0);
+            this.reIssueForm.refunded_ticket = ticket.status === 'refunded';
             this.reIssueForm.refunded_net_fare = (ticket.status === 'refunded') ? ((ticket.refunded_net_fare ?? 0) || 0) : 0;
             this.reIssueForm.refunded_net_fare_bdt = '';
 
@@ -5596,30 +5626,31 @@ function bookingIndexApp() {
         recalcReIssueTotals() {
             const f = this.reIssueForm;
             const rate = window.__currencyRate || 0;
-            const totalCost = (parseFloat(f.re_issue_charge) || 0)
+            const rawCost = (parseFloat(f.re_issue_charge) || 0)
                             + (parseFloat(f.fare_difference) || 0)
                             + (parseFloat(f.other_costs) || 0)
                             + (parseFloat(f.refunded_net_fare) || 0);
-            f.total_cost = totalCost;
-            f.total_cost_bdt = rate > 0 ? Math.round(totalCost * rate) : '';
-            const totalPayment = totalCost + (parseFloat(f.service_charge) || 0);
 
             const adj = parseFloat(f.refund_adjustment_amount) || 0;
-            if (f.payment_by === 'customer' && f.payment_option === 'refund_adjustment' && adj > 0) {
-                if (adj > totalPayment) {
+            const canAdjust = (f.payment_by === 'customer' || f.refunded_ticket) && f.payment_option === 'refund_adjustment';
+
+            if (canAdjust && adj > 0) {
+                if (adj > rawCost) {
                     f.errors.refund_adjustment_amount = 'Refund adjustment amount exceeds the total customer payment.';
                 } else if (adj > f.refund_payable) {
                     f.errors.refund_adjustment_amount = 'Refund adjustment amount exceeds the available refund payable.';
                 } else {
                     f.errors.refund_adjustment_amount = '';
                 }
-                f.total_payment = totalPayment - adj;
-                f.total_payment_bdt = rate > 0 ? Math.round((totalPayment - adj) * rate) : '';
             } else {
                 f.errors.refund_adjustment_amount = '';
-                f.total_payment = totalPayment;
-                f.total_payment_bdt = rate > 0 ? Math.round(totalPayment * rate) : '';
             }
+
+            const totalCost = rawCost - adj;
+            f.total_cost = totalCost;
+            f.total_cost_bdt = rate > 0 ? Math.round(totalCost * rate) : '';
+            f.total_payment = totalCost + (parseFloat(f.service_charge) || 0);
+            f.total_payment_bdt = rate > 0 ? Math.round(f.total_payment * rate) : '';
         },
 
         recalcReIssueFareDifference() {
@@ -5641,9 +5672,7 @@ function bookingIndexApp() {
             if (this.reIssueForm.payment_by !== 'customer') {
                 this.reIssueForm.service_charge = 0;
                 this.reIssueForm.service_charge_bdt = '';
-                this.reIssueForm.payment_option = 'customer_payment';
-                this.reIssueForm.refund_adjustment_amount = 0;
-                this.reIssueForm.refund_adjustment_amount_bdt = '';
+                this.reIssueForm.payment_option = this.reIssueForm.refunded_ticket ? 'refund_adjustment' : 'customer_payment';
             }
             this.recalcReIssueTotals();
         },
@@ -5665,7 +5694,8 @@ function bookingIndexApp() {
         },
 
         handleReIssuePaymentOptionChange() {
-            if (this.reIssueForm.payment_option !== 'refund_adjustment') {
+            const canAdjust = this.reIssueForm.payment_by === 'customer' || this.reIssueForm.refunded_ticket;
+            if (this.reIssueForm.payment_option !== 'refund_adjustment' || !canAdjust) {
                 this.reIssueForm.refund_adjustment_amount = 0;
                 this.reIssueForm.refund_adjustment_amount_bdt = '';
             }
@@ -5704,12 +5734,12 @@ function bookingIndexApp() {
                 total_customer_payment: form.total_payment || 0,
                 remarks: form.remarks,
                 payment_by: form.payment_by,
-                payment_option: form.payment_by === 'customer' ? form.payment_option : undefined,
-                refund_adjustment_amount: form.payment_by === 'customer' && form.payment_option === 'refund_adjustment' ? (parseFloat(form.refund_adjustment_amount) || 0) : 0,
+                payment_option: (form.payment_by === 'customer' || form.refunded_ticket) ? form.payment_option : undefined,
+                refund_adjustment_amount: (form.payment_by === 'customer' || form.refunded_ticket) && form.payment_option === 'refund_adjustment' ? (parseFloat(form.refund_adjustment_amount) || 0) : 0,
             };
 
-            if (payload.payment_by === 'customer' && payload.payment_option === 'refund_adjustment') {
-                if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge + (parseFloat(form.refunded_net_fare) || 0)) {
+            if ((payload.payment_by === 'customer' || form.refunded_ticket) && payload.payment_option === 'refund_adjustment') {
+                if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + (parseFloat(form.refunded_net_fare) || 0)) {
                     this.showToast('Refund adjustment amount exceeds the total customer payment.', 'error');
                     this.isSubmitting = false;
                     return;
