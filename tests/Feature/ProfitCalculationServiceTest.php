@@ -157,7 +157,7 @@ class ProfitCalculationServiceTest extends TestCase
             'booking_branch_id' => $branch->id,
             'invoice_id' => 'INV-'.substr(uniqid(), -8),
             'date_gap_id' => FlightDateGap::getOrCreate()->id,
-            'fingerprint_location' => 'office',
+            'fingerprint_location' => 'home',
             'pax_qty' => 1,
             'discount_type' => 'fixed_amount',
             'discount_value' => $discountAmount,
@@ -553,6 +553,95 @@ class ProfitCalculationServiceTest extends TestCase
 
         // 4350 * 2 + 200 fingerprint - 500 discount = 8400
         $this->assertEqualsWithDelta(8400.0, $bookingProfit, 0.001);
+    }
+
+    /** @test */
+    public function test_fingerprint_profit_zero_for_office_location(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $booking->update(['fingerprint_location' => 'office']);
+
+        $fingerprint = $booking->refresh()->fingerprint;
+
+        $this->assertEqualsWithDelta(0.0, $this->service->calculateFingerprintProfit($fingerprint), 0.001);
+    }
+
+    /** @test */
+    public function test_fingerprint_profit_zero_for_zero_cost(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        $booking->fingerprint->update(['cost' => 0]);
+
+        $this->assertEqualsWithDelta(0.0, $this->service->calculateFingerprintProfit($booking->fingerprint), 0.001);
+    }
+
+    /** @test */
+    public function test_fingerprint_profit_home_location_with_cost(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        // home + cost 100 => 300 - 100 = 200
+        $this->assertEqualsWithDelta(200.0, $this->service->calculateFingerprintProfit($booking->fingerprint), 0.001);
+    }
+
+    /** @test */
+    public function test_booking_discount_skipped_when_passenger_not_effective(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps, 'A', 500.00);
+
+        $passenger = $this->addPassenger($user, $deps, $booking);
+        // visa not issued => passenger not effective => discount = 0
+        $passenger->visaSubmission->update(['status' => 'submitted']);
+
+        $bookingProfit = $this->service->recalculateBookingProfit($booking->refresh());
+
+        // passenger is non-effective => excluded from booking sum
+        // fingerprint 200 (home + cost). discount skipped.
+        $this->assertEqualsWithDelta(200.0, $bookingProfit, 0.001);
+    }
+
+    /** @test */
+    public function test_booking_discount_applied_when_all_passengers_effective(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps, 'A', 500.00);
+
+        $this->addPassenger($user, $deps, $booking);
+
+        $bookingProfit = $this->service->recalculateBookingProfit($booking);
+
+        // passenger 4350 + fingerprint 200 - discount 500 = 4050
+        $this->assertEqualsWithDelta(4050.0, $bookingProfit, 0.001);
+    }
+
+    /** @test */
+    public function test_booking_profit_excludes_non_effective_passenger(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        $p1 = $this->addPassenger($user, $deps, $booking);
+        $p2 = $this->addPassenger($user, $deps, $booking);
+
+        // p2 visa not issued => p2 excluded from booking sum
+        $p2->visaSubmission->update(['status' => 'submitted']);
+
+        $bookingProfit = $this->service->recalculateBookingProfit($booking->refresh());
+
+        // p1: effective 4350 ; p2 not effective => excluded
+        // fingerprint 200 (home + cost). no discount
+        $this->assertEqualsWithDelta(4350.0 + 200.0, $bookingProfit, 0.001);
     }
 
     /** @test */

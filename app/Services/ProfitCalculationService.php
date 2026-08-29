@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\FingerprintLocation;
 use App\Enums\PassengerType;
 use App\Enums\PaymentBy;
 use App\Enums\ServiceRequired;
@@ -44,10 +45,21 @@ class ProfitCalculationService
             $booking->fingerprint->saveQuietly();
         }
 
+        $effectivePassengerProfit = 0;
+        $allPassengersEffective = $booking->passengers->isNotEmpty();
+
+        foreach ($booking->passengers as $passenger) {
+            if ($this->isPassengerProfitEffective($passenger)) {
+                $effectivePassengerProfit += (float) $passenger->profit;
+            } else {
+                $allPassengersEffective = false;
+            }
+        }
+
+        $discount = $allPassengersEffective ? (float) ($booking->discount_amount ?? 0) : 0;
+
         $booking->profit = round(
-            (float) $booking->passengers()->sum('profit')
-                + $fingerprintProfit
-                - (float) ($booking->discount_amount ?? 0),
+            $effectivePassengerProfit + $fingerprintProfit - $discount,
             6
         );
         $booking->saveQuietly();
@@ -57,9 +69,16 @@ class ProfitCalculationService
 
     public function calculateFingerprintProfit(Fingerprint $fingerprint): float
     {
+        $location = $fingerprint->booking->fingerprint_location;
+        $cost = (float) ($fingerprint->cost ?? 0);
+
+        if ($location !== FingerprintLocation::HOME || $cost <= 0) {
+            return 0.0;
+        }
+
         $charge = (float) ($fingerprint->booking->fingerprintCharge?->fingerprint_charge ?? 0);
 
-        return $charge - (float) ($fingerprint->cost ?? 0);
+        return $charge - $cost;
     }
 
     public function getPassengerProfitBreakdown(Passenger $passenger): array
@@ -204,6 +223,12 @@ class ProfitCalculationService
 
         return $tickets->isNotEmpty()
             && $tickets->every(fn ($t) => in_array($t->status, ['issued', 're-issued', 'refunded'], true));
+    }
+
+    private function isPassengerProfitEffective(Passenger $passenger): bool
+    {
+        return $this->isVisaProfitEffective($passenger)
+            && $this->isTicketProfitEffective($passenger);
     }
 
     private function regularTickets(Passenger $passenger)
