@@ -153,8 +153,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <label class="text-sm font-semibold text-gray-700">Profit/Loss:</label>
                         <select x-model="profitLossFilter" class="px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-300">
                             <option value="all">All</option>
-                            <option value="profit">Profit (>= 0)</option>
-                            <option value="loss">Loss (< 0)</option>
+                            <option value="profit">Profit</option>
+                            <option value="loss">Loss</option>
                         </select>
                     </div>
 
