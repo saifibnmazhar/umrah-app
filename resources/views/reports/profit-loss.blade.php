@@ -149,6 +149,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <input type="text" x-model="search" placeholder="Search by Invoice ID, Customer Name, Passenger Name, Passport, Iqama"
                                class="search-input w-72 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-semibold text-gray-700">Profit/Loss:</label>
+                        <select x-model="profitLossFilter" class="px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-300">
+                            <option value="all">All</option>
+                            <option value="profit">Profit (>= 0)</option>
+                            <option value="loss">Loss (< 0)</option>
+                        </select>
+                    </div>
 
                 </div>
             </div>
@@ -316,6 +324,7 @@ function profitLossReport() {
         date_from: '',
         date_to: '',
         search: '',
+        profitLossFilter: 'all',
         activeTab: 'customer',
         loading: false,
         customers: [],
@@ -360,27 +369,43 @@ function profitLossReport() {
         },
 
         get filteredCustomers() {
-            if (!this.search) return this.customers;
-            const q = this.search.toLowerCase();
-            return this.customers.filter(r =>
-                (r.invoice_id && r.invoice_id.toLowerCase().includes(q)) ||
-                (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
-                (r.customer_passport && r.customer_passport.toLowerCase().includes(q)) ||
-                (r.customer_iqama && r.customer_iqama.toLowerCase().includes(q))
-            );
+            let rows = this.customers;
+            if (this.search) {
+                const q = this.search.toLowerCase();
+                rows = rows.filter(r =>
+                    (r.invoice_id && r.invoice_id.toLowerCase().includes(q)) ||
+                    (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
+                    (r.customer_passport && r.customer_passport.toLowerCase().includes(q)) ||
+                    (r.customer_iqama && r.customer_iqama.toLowerCase().includes(q))
+                );
+            }
+            return this.applyProfitLoss(rows);
         },
 
         get filteredPassengers() {
-            if (!this.search) return this.passengers;
-            const q = this.search.toLowerCase();
-            return this.passengers.filter(r =>
-                (r.invoice_id && r.invoice_id.toLowerCase().includes(q)) ||
-                (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
-                (r.passenger_name && r.passenger_name.toLowerCase().includes(q)) ||
-                (r.passenger_passport && r.passenger_passport.toLowerCase().includes(q)) ||
-                (r.customer_passport && r.customer_passport.toLowerCase().includes(q)) ||
-                (r.customer_iqama && r.customer_iqama.toLowerCase().includes(q))
-            );
+            let rows = this.passengers;
+            if (this.search) {
+                const q = this.search.toLowerCase();
+                rows = rows.filter(r =>
+                    (r.invoice_id && r.invoice_id.toLowerCase().includes(q)) ||
+                    (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
+                    (r.passenger_name && r.passenger_name.toLowerCase().includes(q)) ||
+                    (r.passenger_passport && r.passenger_passport.toLowerCase().includes(q)) ||
+                    (r.customer_passport && r.customer_passport.toLowerCase().includes(q)) ||
+                    (r.customer_iqama && r.customer_iqama.toLowerCase().includes(q))
+                );
+            }
+            return this.applyProfitLoss(rows);
+        },
+
+        applyProfitLoss(rows) {
+            if (this.profitLossFilter === 'profit') {
+                return rows.filter(r => (Number(r.total_profit) || 0) >= 0);
+            }
+            if (this.profitLossFilter === 'loss') {
+                return rows.filter(r => (Number(r.total_profit) || 0) < 0);
+            }
+            return rows;
         },
 
         get grandTotalCustomer() {
