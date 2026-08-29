@@ -137,14 +137,31 @@ class ProfitCalculationService
             && $booking->fingerprint_location === FingerprintLocation::HOME
             && (float) ($booking->fingerprint->cost ?? 0) > 0;
 
+        $fingerprint = $fingerprintEffective ? [
+            'effective' => true,
+            'location' => $booking->fingerprint_location?->value,
+            'charge' => round((float) ($booking->fingerprintCharge?->fingerprint_charge ?? 0), 6),
+            'cost' => round((float) ($booking->fingerprint?->cost ?? 0), 6),
+            'profit' => round((float) ($booking->fingerprint?->profit ?? 0), 6),
+            'reason' => null,
+        ] : [
+            'effective' => false,
+            'location' => $booking->fingerprint ? $booking->fingerprint_location?->value : null,
+            'charge' => 0.0,
+            'cost' => 0.0,
+            'profit' => 0.0,
+            'reason' => ! $booking->fingerprint
+                ? 'No fingerprint record'
+                : ($booking->fingerprint_location === FingerprintLocation::HOME
+                    ? 'Fingerprint cost not set'
+                    : 'Fingerprint location is office'),
+        ];
+
         $recap = $this->getPassengerProfitBreakdownForPassengers($booking);
 
         return $recap + [
             'passengers' => $passengers,
-            'fingerprint' => [
-                'effective' => $fingerprintEffective,
-                'profit' => $fingerprintEffective ? round((float) ($booking->fingerprint?->profit ?? 0), 6) : 0.0,
-            ],
+            'fingerprint' => $fingerprint,
             'discount' => [
                 'effective' => $allPassengersEffective,
                 'amount' => $allPassengersEffective ? round((float) ($booking->discount_amount ?? 0), 6) : 0.0,

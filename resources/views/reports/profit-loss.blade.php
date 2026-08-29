@@ -207,8 +207,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-center text-gray-600" x-text="row.mobile"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-center font-medium text-gray-700" x-text="row.pax_qty"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium text-gray-700" x-text="formatCurrency(row.package_value)"></td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right" :class="bdClass(row.fingerprint_profit)" x-text="bdText(row.fingerprint_profit)"></td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right" :class="bdClass(row.passenger_profit_total)" x-text="bdText(row.passenger_profit_total)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right cursor-pointer hover:bg-blue-50 transition-colors"
+                                            :class="bdClass(row.fingerprint_profit)" x-text="bdText(row.fingerprint_profit)"
+                                            @click="openFingerprintBreakdown(row)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right cursor-pointer hover:bg-blue-50 transition-colors"
+                                            :class="bdClass(row.passenger_profit_total)" x-text="bdText(row.passenger_profit_total)"
+                                            @click="openPassengerProfitBreakdown(row)"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium text-gray-700" x-text="formatCurrency(row.discount)"></td>
                                         <td class="px-4 py-3 text-sm text-right cursor-pointer hover:bg-blue-50 transition-colors"
                                             :class="row.total_profit >= 0 ? 'amount-profit' : 'amount-loss'"
@@ -356,6 +360,96 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     </template>
                 </div>
             </div>
+
+            <!-- Fingerprint Profit Modal -->
+            <div x-show="fingerprintModalOpen" x-cloak
+                 class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 animate-fade"
+                 @click.self="closeFingerprintBreakdown()" @keydown.escape.window="closeFingerprintBreakdown()">
+                <div class="bg-white rounded-xl shadow-2xl w-[28rem] max-h-[90vh] overflow-y-auto">
+                    <div class="flex items-center justify-between bg-slate-800 text-white px-4 py-3 sticky top-0">
+                        <span class="text-sm font-semibold">Fingerprint Profit</span>
+                        <button @click="closeFingerprintBreakdown()" class="text-white/70 hover:text-white text-lg leading-none">&times;</button>
+                    </div>
+
+                    <template x-if="selectedFingerprint">
+                        <div class="p-4 text-sm">
+                            <div class="flex items-center justify-between pb-2 mb-2 border-b border-gray-200">
+                                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Fingerprint Profit</span>
+                                <span class="text-xs text-gray-500" x-text="fingerprintHeader"></span>
+                            </div>
+
+                            <div class="flex justify-between py-1">
+                                <span class="text-gray-700">Fingerprint Location</span>
+                                <span class="capitalize" x-text="selectedFingerprint.location || '—'"></span>
+                            </div>
+
+                            <template x-if="selectedFingerprint.effective">
+                                <div>
+                                    <div class="flex justify-between py-1">
+                                        <span class="text-gray-700">Fingerprint Charge</span>
+                                        <span x-text="formatCurrency(selectedFingerprint.charge)"></span>
+                                    </div>
+                                    <div class="flex justify-between py-1">
+                                        <span class="text-gray-700">Fingerprint Cost</span>
+                                        <span x-text="formatCurrency(selectedFingerprint.cost)"></span>
+                                    </div>
+                                    <div class="border-t mt-2 pt-2 flex justify-between font-bold">
+                                        <span>Profit</span>
+                                        <span :class="bdClass(selectedFingerprint.profit)" x-text="bdText(selectedFingerprint.profit)"></span>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <template x-if="!selectedFingerprint.effective">
+                                <div>
+                                    <div class="border-t mt-2 pt-2">
+                                        <div class="italic text-gray-400 mb-1">profit not effective</div>
+                                        <div class="italic text-gray-400 text-xs" x-text="selectedFingerprint.reason"></div>
+                                    </div>
+                                </div>
+                            </template>
+                        </div>
+                    </template>
+                </div>
+            </div>
+
+            <!-- Passenger Profit Modal -->
+            <div x-show="passengerProfitModalOpen" x-cloak
+                 class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 animate-fade"
+                 @click.self="closePassengerProfitBreakdown()" @keydown.escape.window="closePassengerProfitBreakdown()">
+                <div class="bg-white rounded-xl shadow-2xl w-[28rem] max-h-[90vh] overflow-y-auto">
+                    <div class="flex items-center justify-between bg-slate-800 text-white px-4 py-3 sticky top-0">
+                        <span class="text-sm font-semibold">Passenger Profit</span>
+                        <button @click="closePassengerProfitBreakdown()" class="text-white/70 hover:text-white text-lg leading-none">&times;</button>
+                    </div>
+
+                    <template x-if="selectedPassengerProfit">
+                        <div class="p-4 text-sm">
+                            <div class="flex items-center justify-between pb-2 mb-2 border-b border-gray-200">
+                                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Passenger Profit</span>
+                                <span class="text-xs text-gray-500" x-text="passengerProfitHeader"></span>
+                            </div>
+
+                            <template x-for="(p, i) in (selectedPassengerProfit.passengers || [])" :key="i">
+                                <div class="flex justify-between py-1">
+                                    <span class="text-gray-700" x-text="p.name"></span>
+                                    <template x-if="p.effective">
+                                        <span :class="bdClass(p.profit)" x-text="bdText(p.profit)"></span>
+                                    </template>
+                                    <template x-if="!p.effective">
+                                        <span class="italic text-gray-400">profit not effective</span>
+                                    </template>
+                                </div>
+                            </template>
+
+                            <div class="border-t mt-2 pt-2 flex justify-between font-bold">
+                                <span>Total Passenger Profit</span>
+                                <span :class="bdClass(selectedPassengerProfit.passenger_profit_total)" x-text="bdText(selectedPassengerProfit.passenger_profit_total)"></span>
+                            </div>
+                        </div>
+                    </template>
+                </div>
+            </div>
         </div>
     </div>
 </div>
@@ -376,6 +470,12 @@ function profitLossReport() {
         selectedBreakdown: null,
         breakdownType: null,
         breakdownHeader: '',
+        fingerprintModalOpen: false,
+        selectedFingerprint: null,
+        fingerprintHeader: '',
+        passengerProfitModalOpen: false,
+        selectedPassengerProfit: null,
+        passengerProfitHeader: '',
 
         init() {
             this.setDefaultDates();
@@ -469,6 +569,35 @@ function profitLossReport() {
             this.selectedBreakdown = null;
             this.breakdownType = null;
             this.breakdownHeader = '';
+        },
+
+        openFingerprintBreakdown(row) {
+            if (!row?.breakdown) return;
+            this.selectedFingerprint = row.breakdown.fingerprint;
+            this.fingerprintHeader = row.customer_name ? (row.invoice_id + ' · ' + row.customer_name) : '';
+            this.fingerprintModalOpen = true;
+        },
+
+        closeFingerprintBreakdown() {
+            this.fingerprintModalOpen = false;
+            this.selectedFingerprint = null;
+            this.fingerprintHeader = '';
+        },
+
+        openPassengerProfitBreakdown(row) {
+            if (!row?.breakdown) return;
+            this.selectedPassengerProfit = {
+                passengers: row.breakdown.passengers || [],
+                passenger_profit_total: row.passenger_profit_total,
+            };
+            this.passengerProfitHeader = row.customer_name ? (row.invoice_id + ' · ' + row.customer_name) : '';
+            this.passengerProfitModalOpen = true;
+        },
+
+        closePassengerProfitBreakdown() {
+            this.passengerProfitModalOpen = false;
+            this.selectedPassengerProfit = null;
+            this.passengerProfitHeader = '';
         },
 
         bdClass(v) {
