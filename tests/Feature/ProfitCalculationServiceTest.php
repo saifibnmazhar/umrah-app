@@ -645,6 +645,190 @@ class ProfitCalculationServiceTest extends TestCase
     }
 
     /** @test */
+    public function test_customer_breakdown_full_effective_applies_discount(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps, 'B', 500.00);
+
+        $passenger = $this->addPassenger($user, $deps, $booking);
+
+        $this->service->recalculateBookingProfit($booking);
+        $booking->loadMissing('passengers', 'fingerprint', 'fingerprintCharge');
+
+        $breakdown = $this->service->getCustomerProfitBreakdown($booking);
+
+        $this->assertCount(1, $breakdown['passengers']);
+        $this->assertSame(trim($passenger->first_name.' '.$passenger->last_name), $breakdown['passengers'][0]['name']);
+        $this->assertEqualsWithDelta(4350.0, $breakdown['passengers'][0]['profit'], 0.001);
+        $this->assertTrue($breakdown['passengers'][0]['effective']);
+
+        $this->assertTrue($breakdown['fingerprint']['effective']);
+        $this->assertEqualsWithDelta(200.0, $breakdown['fingerprint']['profit'], 0.001);
+
+        $this->assertTrue($breakdown['discount']['effective']);
+        $this->assertEqualsWithDelta(500.0, $breakdown['discount']['amount'], 0.001);
+
+        // 4350 + 200 - 500 = 4050
+        $this->assertEqualsWithDelta(4050.0, $breakdown['total'], 0.001);
+        $this->assertEqualsWithDelta((float) $booking->profit, $breakdown['total'], 0.001);
+    }
+
+    /** @test */
+    public function test_customer_breakdown_office_fingerprint_not_effective(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        $this->addPassenger($user, $deps, $booking);
+
+        $booking->update(['fingerprint_location' => 'office']);
+        $this->service->recalculateBookingProfit($booking->refresh());
+        $booking->loadMissing('passengers', 'fingerprint', 'fingerprintCharge');
+
+        $breakdown = $this->service->getCustomerProfitBreakdown($booking);
+
+        // fingerprint profit must be excluded entirely for office fingerprints
+        $this->assertFalse($breakdown['fingerprint']['effective']);
+        $this->assertEqualsWithDelta(0.0, $breakdown['fingerprint']['profit'], 0.001);
+
+        $this->assertTrue($breakdown['passengers'][0]['effective']);
+        $this->assertEqualsWithDelta(4350.0, $breakdown['passengers'][0]['profit'], 0.001);
+
+        $this->assertEqualsWithDelta(4350.0, $breakdown['total'], 0.001);
+        $this->assertEqualsWithDelta(4350.0, (float) $booking->refresh()->profit, 0.001);
+    }
+
+    /** @test */
+    public function test_customer_breakdown_partial_passenger_effectiveness_skips_discount(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps, 'B', 500.00);
+
+        $effective = $this->addPassenger($user, $deps, $booking);
+        $ineffective = $this->addPassenger($user, $deps, $booking);
+        $ineffective->visaSubmission->update(['status' => 'submitted']);
+
+        $this->service->recalculateBookingProfit($booking->refresh());
+
+        $booking->loadMissing('passengers', 'fingerprint', 'fingerprintCharge');
+        $breakdown = $this->service->getCustomerProfitBreakdown($booking);
+
+        $byName = collect($breakdown['passengers'])->keyBy('name');
+
+        $this->assertTrue($byName[trim($effective->first_name.' '.$effective->last_name)]['effective']);
+        $this->assertFalse($byName[trim($ineffective->first_name.' '.$ineffective->last_name)]['effective']);
+
+        // discount must be skipped because not every passenger is effective
+        $this->assertFalse($breakdown['discount']['effective']);
+        $this->assertEqualsWithDelta(0.0, $breakdown['discount']['amount'], 0.001);
+
+        $this->assertEqualsWithDelta(200.0, $breakdown['fingerprint']['profit'], 0.001);
+
+        // 4350 (effective pax) + 200 fingerprint - 0 discount = 4550
+        $this->assertEqualsWithDelta(4550.0, $breakdown['total'], 0.001);
+        $this->assertEqualsWithDelta((float) $booking->profit, $breakdown['total'], 0.001);
+    }
+
+    /** @test */
+    public function test_customer_breakdown_empty_booking_keeps_fingerprint_and_skips_discount(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps, 'B', 500.00);
+
+        $this->service->recalculateBookingProfit($booking);
+
+        $booking->loadMissing('passengers', 'fingerprint', 'fingerprintCharge');
+        $breakdown = $this->service->getCustomerProfitBreakdown($booking);
+
+        $this->assertCount(0, $breakdown['passengers']);
+        $this->assertFalse($breakdown['discount']['effective']);
+        $this->assertTrue($breakdown['fingerprint']['effective']);
+        $this->assertEqualsWithDelta(200.0, $breakdown['total'], 0.001);
+    }
+
+    /** @test */
+    public function test_customer_fingerprint_breakdown_effective(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        $this->addPassenger($user, $deps, $booking);
+        $this->service->recalculateBookingProfit($booking->refresh());
+        $booking->loadMissing('fingerprint', 'fingerprintCharge');
+
+        $fingerprint = $this->service->getCustomerProfitBreakdown($booking)['fingerprint'];
+
+        $this->assertTrue($fingerprint['effective']);
+        $this->assertSame('home', $fingerprint['location']);
+        $this->assertEqualsWithDelta(300.0, $fingerprint['charge'], 0.001);
+        $this->assertEqualsWithDelta(100.0, $fingerprint['cost'], 0.001);
+        $this->assertEqualsWithDelta(200.0, $fingerprint['profit'], 0.001);
+        $this->assertNull($fingerprint['reason']);
+    }
+
+    /** @test */
+    public function test_customer_fingerprint_breakdown_office_not_effective(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        $this->addPassenger($user, $deps, $booking);
+        $booking->update(['fingerprint_location' => 'office']);
+        $this->service->recalculateBookingProfit($booking->refresh());
+        $booking->loadMissing('fingerprint', 'fingerprintCharge');
+
+        $fingerprint = $this->service->getCustomerProfitBreakdown($booking)['fingerprint'];
+
+        $this->assertFalse($fingerprint['effective']);
+        $this->assertSame('office', $fingerprint['location']);
+        $this->assertEqualsWithDelta(0.0, $fingerprint['charge'], 0.001);
+        $this->assertEqualsWithDelta(0.0, $fingerprint['cost'], 0.001);
+        $this->assertSame('Fingerprint location is office', $fingerprint['reason']);
+    }
+
+    /** @test */
+    public function test_customer_fingerprint_breakdown_zero_cost_not_effective(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        $this->addPassenger($user, $deps, $booking);
+        $booking->fingerprint->update(['cost' => 0]);
+        $this->service->recalculateBookingProfit($booking->refresh());
+        $booking->loadMissing('fingerprint', 'fingerprintCharge');
+
+        $fingerprint = $this->service->getCustomerProfitBreakdown($booking)['fingerprint'];
+
+        $this->assertFalse($fingerprint['effective']);
+        $this->assertSame('home', $fingerprint['location']);
+        $this->assertSame('Fingerprint cost not set', $fingerprint['reason']);
+    }
+
+    /** @test */
+    public function test_customer_fingerprint_breakdown_missing_record_not_effective(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        $booking->fingerprint()->delete();
+        $booking->loadMissing('fingerprint', 'fingerprintCharge');
+
+        $fingerprint = $this->service->getCustomerProfitBreakdown($booking)['fingerprint'];
+
+        $this->assertFalse($fingerprint['effective']);
+        $this->assertNull($fingerprint['location']);
+        $this->assertSame('No fingerprint record', $fingerprint['reason']);
+    }
+
+    /** @test */
     public function test_backfill_updates_stored_values_without_errors(): void
     {
         $user = $this->setupUser();
