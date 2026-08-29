@@ -188,6 +188,16 @@ class TicketIssueController extends Controller
             'clear_double_ticket' => 'boolean',
             'ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
             'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
+            'reason_id' => 'nullable|exists:re_issue_refund_reasons,id',
+            're_issue_charge' => 'nullable|numeric|min:0',
+            'fare_difference' => 'nullable|numeric',
+            'other_costs' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
+            'total_customer_payment' => 'nullable|numeric|min:0',
+            'remarks' => 'nullable|string',
+            'payment_by' => 'nullable|in:customer,airline,employee,company',
+            'payment_option' => 'nullable|in:customer_payment,refund_adjustment',
+            'refund_adjustment_amount' => 'nullable|numeric|min:0',
         ]);
 
         $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])
@@ -230,6 +240,28 @@ class TicketIssueController extends Controller
                     'is_exchangeable' => $validated['is_exchangeable'] ?? $latestRe->is_exchangeable,
                     'baggage_inbound' => $validated['baggage_inbound'] ?? $latestRe->baggage_inbound,
                     'baggage_outbound' => $validated['baggage_outbound'] ?? $latestRe->baggage_outbound,
+                ]);
+
+                $reIssueCharge = $validated['re_issue_charge'] ?? (float) $latestRe->re_issue_charge;
+                $fareDifference = $validated['fare_difference'] ?? (float) $latestRe->fare_difference;
+                $otherCosts = $validated['other_costs'] ?? (float) $latestRe->other_costs;
+                $refundAdjustment = $validated['refund_adjustment_amount'] ?? (float) $latestRe->refund_adjustment_amount;
+                $totalCost = (float) $reIssueCharge + (float) $fareDifference + (float) $otherCosts - (float) $refundAdjustment;
+
+                $latestRe->update([
+                    'reason_id' => array_key_exists('reason_id', $validated) ? $validated['reason_id'] : $latestRe->reason_id,
+                    're_issue_charge' => $reIssueCharge,
+                    'fare_difference' => $fareDifference,
+                    'other_costs' => $otherCosts,
+                    'service_charge' => array_key_exists('service_charge', $validated) ? (float) $validated['service_charge'] : $latestRe->service_charge,
+                    'total_customer_payment' => array_key_exists('total_customer_payment', $validated) ? (float) $validated['total_customer_payment'] : $latestRe->total_customer_payment,
+                    'remarks' => array_key_exists('remarks', $validated) ? $validated['remarks'] : $latestRe->remarks,
+                    'payment_by' => array_key_exists('payment_by', $validated) ? $validated['payment_by'] : $latestRe->payment_by,
+                    'payment_option' => array_key_exists('payment_option', $validated) && $validated['payment_by'] === 'customer'
+                        ? $validated['payment_option']
+                        : (array_key_exists('payment_by', $validated) && $validated['payment_by'] !== 'customer' ? null : $latestRe->payment_option),
+                    'refund_adjustment_amount' => $refundAdjustment,
+                    'total_cost' => round($totalCost, 6),
                 ]);
 
                 $newData = $latestRe->toArray();
