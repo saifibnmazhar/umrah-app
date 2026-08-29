@@ -169,6 +169,25 @@ class ProfitCalculationService
         ];
     }
 
+    public function getPassengerProfitBreakdownDetailed(Passenger $passenger): array
+    {
+        $breakdown = $this->getPassengerProfitBreakdown($passenger);
+
+        $visa = $this->visaBreakdown($passenger);
+        $ticket = $this->ticketBreakdown($passenger);
+        $additional = $this->additionalTicketsBreakdown($passenger);
+
+        if ($visa) {
+            $breakdown['visa'] = $visa;
+        }
+        if ($ticket) {
+            $breakdown['ticket'] = $ticket;
+        }
+        $breakdown['additional_tickets'] = $additional;
+
+        return $breakdown;
+    }
+
     private function getPassengerProfitBreakdownForPassengers(Booking $booking): array
     {
         $total = 0.0;
@@ -281,6 +300,99 @@ class ProfitCalculationService
         return (float) $passenger->allIssuedTickets
             ->flatMap(fn ($t) => $t->refundedTickets)
             ->sum('service_charge');
+    }
+
+    private function visaBreakdown(Passenger $passenger): ?array
+    {
+        if (! $this->isVisaProfitEffective($passenger)) {
+            return null;
+        }
+
+        $visa = $passenger->visaSubmission;
+
+        if (! $visa) {
+            return null;
+        }
+
+        $sellingPrice = (float) ($visa->visaSellingPrice?->selling_price ?? 0);
+        $netVisaCost = (float) ($visa->net_visa_cost ?? 0);
+        $agentCommission = (float) ($visa->agent_commission ?? 0);
+        $additionalCost = (float) ($visa->additional_cost ?? 0);
+        $cancellationFees = (float) $visa->cancelledSubmissions->sum('cancellation_fee');
+
+        return [
+            'selling_price' => round($sellingPrice, 6),
+            'net_visa_cost' => round($netVisaCost, 6),
+            'agent_commission' => round($agentCommission, 6),
+            'additional_cost' => round($additionalCost, 6),
+            'cancellation_fees' => round($cancellationFees, 6),
+            'profit' => round($sellingPrice - $netVisaCost - $agentCommission - $additionalCost - $cancellationFees, 6),
+        ];
+    }
+
+    private function ticketBreakdown(Passenger $passenger): ?array
+    {
+        $tickets = $this->regularTickets($passenger);
+
+        if ($tickets->isEmpty() || ! $this->isTicketProfitEffective($passenger)) {
+            return null;
+        }
+
+        $sellingFare = $this->getPackageTicketSellingFare($passenger);
+
+        $netFares = [];
+        $index = 0;
+        foreach ($tickets as $ticket) {
+            $index++;
+            $netFares[] = [
+                'issue_type' => $ticket->issue_type ?: 'regular',
+                'label' => $this->ticketTypeLabel($ticket->issue_type, $index),
+                'net_fare' => round((float) ($ticket->net_fare ?? 0), 6),
+            ];
+        }
+
+        return [
+            'selling_fare' => round($sellingFare, 6),
+            'net_fares' => $netFares,
+            'profit' => round($sellingFare - (float) $tickets->sum('net_fare'), 6),
+        ];
+    }
+
+    private function additionalTicketsBreakdown(Passenger $passenger): array
+    {
+        $tickets = $passenger->allIssuedTickets
+            ->filter(fn ($t) => $t->issue_type === 'additional'
+                && in_array($t->status, ['issued', 're-issued', 'refunded'], true));
+
+        $items = [];
+        $profit = 0.0;
+
+        foreach ($tickets as $ticket) {
+            $sellingFare = $this->fareSellingPrice($ticket->ticketFare, $passenger);
+            $netFare = (float) ($ticket->net_fare ?? 0);
+            $itemProfit = $sellingFare - $netFare;
+            $profit += $itemProfit;
+
+            $items[] = [
+                'selling_fare' => round($sellingFare, 6),
+                'net_fare' => round($netFare, 6),
+                'profit' => round($itemProfit, 6),
+            ];
+        }
+
+        return [
+            'items' => $items,
+            'profit' => round($profit, 6),
+        ];
+    }
+
+    private function ticketTypeLabel(?string $issueType, int $index): string
+    {
+        return match ($issueType) {
+            'pending_outbound' => 'Pending Outbound',
+            'regular', null => 'Regular',
+            default => 'Ticket '.$index,
+        };
     }
 
     private function calculateServiceCharge(Passenger $passenger): float

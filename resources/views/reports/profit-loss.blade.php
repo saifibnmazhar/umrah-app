@@ -345,9 +345,63 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     <!-- Passenger breakdown -->
                     <template x-if="breakdownType === 'passenger' && selectedBreakdown">
                         <div class="p-4 text-sm">
-                            <div class="flex justify-between py-1"><span>Visa Profit</span><span :class="bdClass(selectedBreakdown.visa_profit)" x-text="bdText(selectedBreakdown.visa_profit)"></span></div>
-                            <div class="flex justify-between py-1"><span>Ticket Profit</span><span :class="bdClass(selectedBreakdown.ticket_profit)" x-text="bdText(selectedBreakdown.ticket_profit)"></span></div>
-                            <div class="flex justify-between py-1"><span>Additional Ticket</span><span :class="bdClass(selectedBreakdown.additional_ticket_profit)" x-text="bdText(selectedBreakdown.additional_ticket_profit)"></span></div>
+                            <!-- Visa Profit -->
+                            <template x-if="selectedBreakdown.visa">
+                                <div class="mb-3">
+                                    <div class="flex justify-between py-1 font-semibold">
+                                        <span>Visa Profit</span>
+                                        <span :class="bdClass(selectedBreakdown.visa.profit)" x-text="bdText(selectedBreakdown.visa.profit)"></span>
+                                    </div>
+                                    <div class="pl-4 border-l-2 border-gray-200 text-gray-600">
+                                        <div class="flex justify-between py-0.5"><span>Selling Price</span><span x-text="formatCurrency(selectedBreakdown.visa.selling_price)"></span></div>
+                                        <div class="flex justify-between py-0.5"><span>Net Visa Cost</span><span class="amount-loss" x-text="'-' + formatCurrency(Math.abs(Number(selectedBreakdown.visa.net_visa_cost) || 0))"></span></div>
+                                        <div class="flex justify-between py-0.5"><span>Agent Commission</span><span class="amount-loss" x-text="'-' + formatCurrency(Math.abs(Number(selectedBreakdown.visa.agent_commission) || 0))"></span></div>
+                                        <div class="flex justify-between py-0.5"><span>Additional Cost</span><span class="amount-loss" x-text="'-' + formatCurrency(Math.abs(Number(selectedBreakdown.visa.additional_cost) || 0))"></span></div>
+                                        <div class="flex justify-between py-0.5"><span>Cancellation Fees</span><span class="amount-loss" x-text="'-' + formatCurrency(Math.abs(Number(selectedBreakdown.visa.cancellation_fees) || 0))"></span></div>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Ticket Profit -->
+                            <template x-if="selectedBreakdown.ticket">
+                                <div class="mb-3">
+                                    <div class="flex justify-between py-1 font-semibold">
+                                        <span>Ticket Profit</span>
+                                        <span :class="bdClass(selectedBreakdown.ticket.profit)" x-text="bdText(selectedBreakdown.ticket.profit)"></span>
+                                    </div>
+                                    <div class="pl-4 border-l-2 border-gray-200 text-gray-600">
+                                        <div class="flex justify-between py-0.5"><span>Selling Fare (Package)</span><span x-text="formatCurrency(selectedBreakdown.ticket.selling_fare)"></span></div>
+                                        <template x-for="(nf, i) in (selectedBreakdown.ticket.net_fares || [])" :key="i">
+                                            <div class="flex justify-between py-0.5">
+                                                <span class="pl-3" x-text="'Net Fare · ' + nf.label"></span>
+                                                <span class="amount-loss" x-text="'-' + formatCurrency(Math.abs(Number(nf.net_fare) || 0))"></span>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Additional Ticket Profit -->
+                            <template x-if="(selectedBreakdown.additional_tickets?.items || []).length > 0">
+                                <div class="mb-3">
+                                    <div class="flex justify-between py-1 font-semibold">
+                                        <span>Additional Ticket</span>
+                                        <span :class="bdClass(selectedBreakdown.additional_tickets.profit)" x-text="bdText(selectedBreakdown.additional_tickets.profit)"></span>
+                                    </div>
+                                    <div class="pl-4 border-l-2 border-gray-200 text-gray-600">
+                                        <template x-for="(item, i) in (selectedBreakdown.additional_tickets.items || [])" :key="i">
+                                            <div class="py-0.5">
+                                                <div class="flex justify-between"><span x-text="'#' + (i + 1)"></span></div>
+                                                <div class="flex justify-between pl-3"><span>Selling Fare</span><span x-text="formatCurrency(item.selling_fare)"></span></div>
+                                                <div class="flex justify-between pl-3"><span>Net Fare</span><span class="amount-loss" x-text="'-' + formatCurrency(Math.abs(Number(item.net_fare) || 0))"></span></div>
+                                                <div class="flex justify-between pl-3 font-medium" :class="bdClass(item.profit)"><span>Profit</span><span x-text="bdText(item.profit)"></span></div>
+                                            </div>
+                                        </template>
+                                    </div>
+                                </div>
+                            </template>
+
+                            <!-- Other single-line values -->
                             <div class="flex justify-between py-1"><span>Re-Issue Profit</span><span :class="bdClass(selectedBreakdown.re_issue_profit)" x-text="bdText(selectedBreakdown.re_issue_profit)"></span></div>
                             <div class="flex justify-between py-1"><span>Refund Profit</span><span :class="bdClass(selectedBreakdown.refund_profit)" x-text="bdText(selectedBreakdown.refund_profit)"></span></div>
                             <div class="flex justify-between py-1 text-red-600"><span>Re-Issue Cost</span><span x-text="'-' + formatCurrency(Math.abs(Number(selectedBreakdown.re_issue_cost) || 0))"></span></div>
