@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\FingerprintLocation;
 use App\Enums\PassengerType;
 use App\Enums\PaymentBy;
 use App\Enums\ServiceRequired;
@@ -44,10 +45,21 @@ class ProfitCalculationService
             $booking->fingerprint->saveQuietly();
         }
 
+        $effectivePassengerProfit = 0;
+        $allPassengersEffective = $booking->passengers->isNotEmpty();
+
+        foreach ($booking->passengers as $passenger) {
+            if ($this->isPassengerProfitEffective($passenger)) {
+                $effectivePassengerProfit += (float) $passenger->profit;
+            } else {
+                $allPassengersEffective = false;
+            }
+        }
+
+        $discount = $allPassengersEffective ? (float) ($booking->discount_amount ?? 0) : 0;
+
         $booking->profit = round(
-            (float) $booking->passengers()->sum('profit')
-                + $fingerprintProfit
-                - (float) ($booking->discount_amount ?? 0),
+            $effectivePassengerProfit + $fingerprintProfit - $discount,
             6
         );
         $booking->saveQuietly();
@@ -57,9 +69,16 @@ class ProfitCalculationService
 
     public function calculateFingerprintProfit(Fingerprint $fingerprint): float
     {
+        $location = $fingerprint->booking->fingerprint_location;
+        $cost = (float) ($fingerprint->cost ?? 0);
+
+        if ($location !== FingerprintLocation::HOME || $cost <= 0) {
+            return 0.0;
+        }
+
         $charge = (float) ($fingerprint->booking->fingerprintCharge?->fingerprint_charge ?? 0);
 
-        return $charge - (float) ($fingerprint->cost ?? 0);
+        return $charge - $cost;
     }
 
     public function getPassengerProfitBreakdown(Passenger $passenger): array
@@ -90,6 +109,77 @@ class ProfitCalculationService
                     - $reIssueCost,
                 6
             ),
+        ];
+    }
+
+    public function getCustomerProfitBreakdown(Booking $booking): array
+    {
+        $booking->loadMissing('passengers', 'fingerprint', 'fingerprintCharge');
+
+        $passengers = [];
+        $allPassengersEffective = $booking->passengers->isNotEmpty();
+
+        foreach ($booking->passengers as $passenger) {
+            $effective = $this->isPassengerProfitEffective($passenger);
+
+            $passengers[] = [
+                'name' => trim($passenger->first_name.' '.$passenger->last_name),
+                'profit' => round((float) $passenger->profit, 6),
+                'effective' => $effective,
+            ];
+
+            if (! $effective) {
+                $allPassengersEffective = false;
+            }
+        }
+
+        $fingerprintEffective = $booking->fingerprint
+            && $booking->fingerprint_location === FingerprintLocation::HOME
+            && (float) ($booking->fingerprint->cost ?? 0) > 0;
+
+        $recap = $this->getPassengerProfitBreakdownForPassengers($booking);
+
+        return $recap + [
+            'passengers' => $passengers,
+            'fingerprint' => [
+                'effective' => $fingerprintEffective,
+                'profit' => $fingerprintEffective ? round((float) ($booking->fingerprint?->profit ?? 0), 6) : 0.0,
+            ],
+            'discount' => [
+                'effective' => $allPassengersEffective,
+                'amount' => $allPassengersEffective ? round((float) ($booking->discount_amount ?? 0), 6) : 0.0,
+            ],
+        ];
+    }
+
+    private function getPassengerProfitBreakdownForPassengers(Booking $booking): array
+    {
+        $total = 0.0;
+
+        foreach ($booking->passengers as $passenger) {
+            if ($this->isPassengerProfitEffective($passenger)) {
+                $total += (float) $passenger->profit;
+            }
+        }
+
+        $fingerprintProfit = $booking->fingerprint
+            && $booking->fingerprint_location === FingerprintLocation::HOME
+            && (float) ($booking->fingerprint->cost ?? 0) > 0
+            ? (float) ($booking->fingerprint?->profit ?? 0)
+            : 0.0;
+
+        $allPassengersEffective = $booking->passengers->isNotEmpty();
+        foreach ($booking->passengers as $passenger) {
+            if (! $this->isPassengerProfitEffective($passenger)) {
+                $allPassengersEffective = false;
+                break;
+            }
+        }
+
+        $discount = $allPassengersEffective ? (float) ($booking->discount_amount ?? 0) : 0;
+
+        return [
+            'total' => round($total + $fingerprintProfit - $discount, 6),
         ];
     }
 
@@ -204,6 +294,12 @@ class ProfitCalculationService
 
         return $tickets->isNotEmpty()
             && $tickets->every(fn ($t) => in_array($t->status, ['issued', 're-issued', 'refunded'], true));
+    }
+
+    private function isPassengerProfitEffective(Passenger $passenger): bool
+    {
+        return $this->isVisaProfitEffective($passenger)
+            && $this->isTicketProfitEffective($passenger);
     }
 
     private function regularTickets(Passenger $passenger)

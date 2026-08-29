@@ -35,7 +35,7 @@ class ProfitLossReportController extends Controller
         return $query->get();
     }
 
-    private function mapCustomers($bookings): array
+    private function mapCustomers($bookings, ProfitCalculationService $profitService): array
     {
         return $bookings->map(fn (Booking $booking) => [
             'invoice_id' => $booking->invoice_id,
@@ -49,6 +49,7 @@ class ProfitLossReportController extends Controller
             'passenger_profit_total' => (float) $booking->passengers->sum('profit'),
             'discount' => (float) ($booking->discount_amount ?? 0),
             'total_profit' => (float) ($booking->profit ?? 0),
+            'breakdown' => $profitService->getCustomerProfitBreakdown($booking),
         ])->values()->toArray();
     }
 
@@ -73,7 +74,7 @@ class ProfitLossReportController extends Controller
         $bookings = $this->bookingsQuery($request);
 
         return response()->json([
-            'customers' => $this->mapCustomers($bookings),
+            'customers' => $this->mapCustomers($bookings, app(ProfitCalculationService::class)),
             'passengers' => $this->mapPassengers($bookings, app(ProfitCalculationService::class)),
         ]);
     }
@@ -87,7 +88,7 @@ class ProfitLossReportController extends Controller
 
         $bookings = $this->bookingsQuery($request);
 
-        $customers = collect($this->mapCustomers($bookings));
+        $customers = collect($this->mapCustomers($bookings, app(ProfitCalculationService::class)));
         $passengers = collect($this->mapPassengers($bookings, app(ProfitCalculationService::class)));
 
         return view('reports.profit-loss-print', compact(

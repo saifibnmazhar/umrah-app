@@ -282,12 +282,64 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <div x-show="breakdownModalOpen" x-cloak
                  class="fixed inset-0 z-[60] flex items-center justify-center bg-black/40 animate-fade"
                  @click.self="closeBreakdown()" @keydown.escape.window="closeBreakdown()">
-                <div class="bg-white rounded-xl shadow-2xl w-80 overflow-hidden">
-                    <div class="flex items-center justify-between bg-slate-800 text-white px-4 py-3">
+                <div class="bg-white rounded-xl shadow-2xl w-[36rem] max-h-[90vh] overflow-y-auto">
+                    <div class="flex items-center justify-between bg-slate-800 text-white px-4 py-3 sticky top-0">
                         <span class="text-sm font-semibold">Profit Breakdown</span>
                         <button @click="closeBreakdown()" class="text-white/70 hover:text-white text-lg leading-none">&times;</button>
                     </div>
-                    <template x-if="selectedBreakdown">
+
+                    <!-- Customer breakdown -->
+                    <template x-if="breakdownType === 'customer' && selectedBreakdown">
+                        <div class="p-4 text-sm">
+                            <div class="flex items-center justify-between pb-2 mb-2 border-b border-gray-200">
+                                <span class="text-xs font-semibold text-gray-500 uppercase tracking-wide">Per Customer</span>
+                                <span class="text-xs text-gray-500" x-text="breakdownHeader"></span>
+                            </div>
+
+                            <div class="mb-2">
+                                <div class="text-xs font-semibold text-gray-500 uppercase tracking-wide mb-1">Passengers</div>
+                                <template x-for="(p, i) in (selectedBreakdown.passengers || [])" :key="i">
+                                    <div class="flex justify-between py-1">
+                                        <span class="text-gray-700" x-text="p.name"></span>
+                                        <template x-if="p.effective">
+                                            <span :class="bdClass(p.profit)" x-text="'profit = ' + bdText(p.profit)"></span>
+                                        </template>
+                                        <template x-if="!p.effective">
+                                            <span class="italic text-gray-400">profit not effective</span>
+                                        </template>
+                                    </div>
+                                </template>
+                            </div>
+
+                            <div class="flex justify-between py-1">
+                                <span class="text-gray-700">Fingerprint Profit</span>
+                                <template x-if="selectedBreakdown.fingerprint.effective">
+                                    <span :class="bdClass(selectedBreakdown.fingerprint.profit)" x-text="bdText(selectedBreakdown.fingerprint.profit)"></span>
+                                </template>
+                                <template x-if="!selectedBreakdown.fingerprint.effective">
+                                    <span class="italic text-gray-400">fingerprint profit not effective</span>
+                                </template>
+                            </div>
+
+                            <div class="flex justify-between py-1">
+                                <span class="text-gray-700">Discount</span>
+                                <template x-if="selectedBreakdown.discount.effective">
+                                    <span class="amount-loss" x-text="'-' + formatCurrency(Math.abs(Number(selectedBreakdown.discount.amount) || 0))"></span>
+                                </template>
+                                <template x-if="!selectedBreakdown.discount.effective">
+                                    <span class="italic text-gray-400">discount not effective</span>
+                                </template>
+                            </div>
+
+                            <div class="border-t mt-2 pt-2 flex justify-between font-bold">
+                                <span>Total</span>
+                                <span :class="Number(selectedBreakdown.total) >= 0 ? 'amount-profit' : 'amount-loss'" x-text="bdText(selectedBreakdown.total)"></span>
+                            </div>
+                        </div>
+                    </template>
+
+                    <!-- Passenger breakdown -->
+                    <template x-if="breakdownType === 'passenger' && selectedBreakdown">
                         <div class="p-4 text-sm">
                             <div class="flex justify-between py-1"><span>Visa Profit</span><span :class="bdClass(selectedBreakdown.visa_profit)" x-text="bdText(selectedBreakdown.visa_profit)"></span></div>
                             <div class="flex justify-between py-1"><span>Ticket Profit</span><span :class="bdClass(selectedBreakdown.ticket_profit)" x-text="bdText(selectedBreakdown.ticket_profit)"></span></div>
@@ -322,6 +374,8 @@ function profitLossReport() {
         passengers: [],
         breakdownModalOpen: false,
         selectedBreakdown: null,
+        breakdownType: null,
+        breakdownHeader: '',
 
         init() {
             this.setDefaultDates();
@@ -405,12 +459,16 @@ function profitLossReport() {
         openBreakdown(row) {
             if (!row?.breakdown) return;
             this.selectedBreakdown = row.breakdown;
+            this.breakdownType = row.breakdown.passengers ? 'customer' : 'passenger';
+            this.breakdownHeader = row.customer_name ? (row.invoice_id + ' · ' + row.customer_name) : '';
             this.breakdownModalOpen = true;
         },
 
         closeBreakdown() {
             this.breakdownModalOpen = false;
             this.selectedBreakdown = null;
+            this.breakdownType = null;
+            this.breakdownHeader = '';
         },
 
         bdClass(v) {
