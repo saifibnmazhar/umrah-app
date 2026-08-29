@@ -180,7 +180,41 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                 </div>
             </div>
 
-            <div class="p-4">
+            <div class="p-4 pt-4">
+                <div x-show="activeTab === 'customer'" x-cloak class="animate-fade mb-4">
+                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                        <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Fingerprint Profit</div>
+                            <div class="mt-1 text-lg font-bold" :class="bdClass(grandTotalCustomer.fingerprint_profit)" x-text="formatProfitLoss(grandTotalCustomer.fingerprint_profit)"></div>
+                        </div>
+                        <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Passenger Profit</div>
+                            <div class="mt-1 text-lg font-bold" :class="bdClass(grandTotalCustomer.passenger_profit_total)" x-text="formatProfitLoss(grandTotalCustomer.passenger_profit_total)"></div>
+                        </div>
+                        <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Discount</div>
+                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="formatCurrency(grandTotalCustomer.discount)"></div>
+                        </div>
+                        <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Profit</div>
+                            <div class="mt-1 text-lg font-bold" :class="grandTotalCustomer.total_profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(grandTotalCustomer.total_profit)"></div>
+                        </div>
+                    </div>
+                </div>
+
+                <div x-show="activeTab === 'passenger'" x-cloak class="animate-fade mb-4">
+                    <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
+                        <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Package Value</div>
+                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="formatCurrency(grandTotalPassenger.package_value)"></div>
+                        </div>
+                        <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Profit</div>
+                            <div class="mt-1 text-lg font-bold" :class="grandTotalPassenger.total_profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(grandTotalPassenger.total_profit)"></div>
+                        </div>
+                    </div>
+                </div>
+
                 <div x-show="activeTab === 'customer'" x-cloak class="animate-fade">
                     <div class="overflow-x-auto scrollbar-thin">
                         <table class="w-full min-w-[1100px] table-fixed">
