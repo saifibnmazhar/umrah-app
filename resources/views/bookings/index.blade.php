@@ -594,6 +594,17 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'is_exchangeable' => $src->is_exchangeable ?? $poit->is_exchangeable ?? false,
             'baggage_outbound' => $src->baggage_outbound ?? $poit->baggage_outbound ?? '',
             'status' => $poit->status,
+            're_issue_details' => $poit->status === 're-issued' && $src !== $poit ? [
+                'reason_id' => $src->reason_id,
+                're_issue_charge' => (float)($src->re_issue_charge ?? 0),
+                'fare_difference' => (float)($src->fare_difference ?? 0),
+                'other_costs' => (float)($src->other_costs ?? 0),
+                'service_charge' => (float)($src->service_charge ?? 0),
+                'payment_by' => $src->payment_by,
+                'payment_option' => $src->payment_option?->value,
+                'refund_adjustment_amount' => (float)($src->refund_adjustment_amount ?? 0),
+                'remarks' => $src->remarks ?? '',
+            ] : null,
         ];
     })() : null,
     'inbound_ticket_fare' => ($inFare = $p->ticketFareInbound) ? (function() use ($inFare, $p) {
@@ -5039,7 +5050,12 @@ function bookingIndexApp() {
 
             this.handleTicketOptionChange();
             this.handleTicketFareRouteTypeChange();
-            this.isEditingReIssued = false;
+            this.isEditingReIssued = !!(poit.status === 're-issued' && poit.re_issue_details);
+            if (this.isEditingReIssued) {
+                this.populateReIssueEditForm(poit.re_issue_details, poit.id, row);
+            } else {
+                this.resetReIssueEditFields();
+            }
             this.isTicketFareModalOpen = true;
         },
 
@@ -5056,42 +5072,9 @@ function bookingIndexApp() {
             this.isEditingReIssued = !!(lit && lit.status === 're-issued');
 
             if (this.isEditingReIssued) {
-                const re = lit.latest_re_issued_ticket || {};
-                this.reIssueForm.issued_ticket_id = lit.id || null;
-                this.reIssueForm.passenger_id = row.id;
-                this.reIssueForm.booking_id = row.booking_id;
-                this.reIssueForm.reason_id = re.reason_id || '';
-                this.reIssueForm.payment_by = re.payment_by || '';
-                this.reIssueForm.payment_option = re.payment_option || 'customer_payment';
-                this.reIssueForm.refund_adjustment_amount = re.refund_adjustment_amount || 0;
-                this.reIssueForm.refund_adjustment_amount_bdt = '';
-                this.reIssueForm.re_issue_charge = re.re_issue_charge || 0;
-                this.reIssueForm.fare_difference = re.fare_difference || 0;
-                this.reIssueForm.other_costs = re.other_costs || 0;
-                this.reIssueForm.service_charge = re.service_charge || 0;
-                this.reIssueForm.remarks = re.remarks || '';
-                this.reIssueForm.refunded_ticket = false;
-                this.reIssueForm.refunded_net_fare = 0;
-                this.reIssueForm.refunded_net_fare_bdt = '';
-                this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0);
+                this.populateReIssueEditForm(lit.latest_re_issued_ticket || {}, lit.id || null, row);
             } else {
-                this.reIssueForm.reason_id = '';
-                this.reIssueForm.payment_by = '';
-                this.reIssueForm.payment_option = 'customer_payment';
-                this.reIssueForm.refund_adjustment_amount = 0;
-                this.reIssueForm.refund_adjustment_amount_bdt = '';
-                this.reIssueForm.re_issue_charge = 0;
-                this.reIssueForm.re_issue_charge_bdt = '';
-                this.reIssueForm.fare_difference = 0;
-                this.reIssueForm.fare_difference_bdt = '';
-                this.reIssueForm.other_costs = 0;
-                this.reIssueForm.other_costs_bdt = '';
-                this.reIssueForm.service_charge = 0;
-                this.reIssueForm.service_charge_bdt = '';
-                this.reIssueForm.remarks = '';
-                this.reIssueForm.refunded_ticket = false;
-                this.reIssueForm.refunded_net_fare = 0;
-                this.reIssueForm.refund_payable = 0;
+                this.resetReIssueEditFields();
             }
 
             this.ticketFareForm.isOutboundMode = false;
@@ -5394,6 +5377,52 @@ function bookingIndexApp() {
             this.isTicketFareModalOpen = false;
             this.isEditingReIssued = false;
             this.editingPassengerIndex = null;
+        },
+
+        populateReIssueEditForm(re, issuedTicketId, row) {
+            this.reIssueForm.issued_ticket_id = issuedTicketId || null;
+            this.reIssueForm.passenger_id = row.id;
+            this.reIssueForm.booking_id = row.booking_id;
+            this.reIssueForm.reason_id = re.reason_id || '';
+            this.reIssueForm.payment_by = re.payment_by || '';
+            this.reIssueForm.payment_option = re.payment_option || 'customer_payment';
+            this.reIssueForm.refund_adjustment_amount = re.refund_adjustment_amount || 0;
+            this.reIssueForm.refund_adjustment_amount_bdt = '';
+            this.reIssueForm.re_issue_charge = re.re_issue_charge || 0;
+            this.reIssueForm.fare_difference = re.fare_difference || 0;
+            this.reIssueForm.other_costs = re.other_costs || 0;
+            this.reIssueForm.service_charge = re.service_charge || 0;
+            this.reIssueForm.remarks = re.remarks || '';
+            this.reIssueForm.refunded_ticket = false;
+            this.reIssueForm.refunded_net_fare = 0;
+            this.reIssueForm.refunded_net_fare_bdt = '';
+            this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0);
+            this.recalcReIssueTotals();
+        },
+
+        resetReIssueEditFields() {
+            this.reIssueForm.reason_id = '';
+            this.reIssueForm.payment_by = '';
+            this.reIssueForm.payment_option = 'customer_payment';
+            this.reIssueForm.refund_adjustment_amount = 0;
+            this.reIssueForm.refund_adjustment_amount_bdt = '';
+            this.reIssueForm.re_issue_charge = 0;
+            this.reIssueForm.re_issue_charge_bdt = '';
+            this.reIssueForm.fare_difference = 0;
+            this.reIssueForm.fare_difference_bdt = '';
+            this.reIssueForm.other_costs = 0;
+            this.reIssueForm.other_costs_bdt = '';
+            this.reIssueForm.service_charge = 0;
+            this.reIssueForm.service_charge_bdt = '';
+            this.reIssueForm.remarks = '';
+            this.reIssueForm.refunded_ticket = false;
+            this.reIssueForm.refunded_net_fare = 0;
+            this.reIssueForm.refunded_net_fare_bdt = '';
+            this.reIssueForm.refund_payable = 0;
+            this.reIssueForm.total_cost = 0;
+            this.reIssueForm.total_cost_bdt = '';
+            this.reIssueForm.total_payment = 0;
+            this.reIssueForm.total_payment_bdt = '';
         },
 
         openReIssueModal(rowIndex, ticket) {
