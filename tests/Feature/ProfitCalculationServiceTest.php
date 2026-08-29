@@ -540,6 +540,79 @@ class ProfitCalculationServiceTest extends TestCase
     }
 
     /** @test */
+    public function test_detailed_breakdown_visa_inputs(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        $passenger = $this->addPassenger($user, $deps, $booking);
+
+        $breakdown = $this->service->getPassengerProfitBreakdownDetailed($passenger);
+
+        $this->assertArrayHasKey('visa', $breakdown);
+        $this->assertEqualsWithDelta(2000.0, $breakdown['visa']['selling_price'], 0.001);
+        $this->assertEqualsWithDelta(1000.0, $breakdown['visa']['net_visa_cost'], 0.001);
+        $this->assertEqualsWithDelta(100.0, $breakdown['visa']['agent_commission'], 0.001);
+        $this->assertEqualsWithDelta(50.0, $breakdown['visa']['additional_cost'], 0.001);
+        $this->assertEqualsWithDelta(0.0, $breakdown['visa']['cancellation_fees'], 0.001);
+        $this->assertEqualsWithDelta(850.0, $breakdown['visa']['profit'], 0.001);
+        $this->assertEqualsWithDelta($breakdown['visa_profit'], $breakdown['visa']['profit'], 0.001);
+    }
+
+    /** @test */
+    public function test_detailed_breakdown_ticket_shows_per_ticket_net_fare(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        $passenger = $this->addPassenger($user, $deps, $booking);
+
+        // Add a pending_outbound ticket so net fare is split across two lines
+        $this->addRegularTicket($user, $deps, $passenger, ['issue_type' => 'pending_outbound']);
+
+        $breakdown = $this->service->getPassengerProfitBreakdownDetailed($passenger->refresh());
+
+        $this->assertArrayHasKey('ticket', $breakdown);
+        // Package selling fare is computed from the package fare, not ticket selling_fare
+        $this->assertEqualsWithDelta(30000.0, $breakdown['ticket']['selling_fare'], 0.001);
+
+        $this->assertCount(2, $breakdown['ticket']['net_fares']);
+        $this->assertEquals('regular', $breakdown['ticket']['net_fares'][0]['issue_type']);
+        $this->assertEquals('Regular', $breakdown['ticket']['net_fares'][0]['label']);
+        $this->assertEqualsWithDelta(27000.0, $breakdown['ticket']['net_fares'][0]['net_fare'], 0.001);
+        $this->assertEquals('pending_outbound', $breakdown['ticket']['net_fares'][1]['issue_type']);
+        $this->assertEquals('Pending Outbound', $breakdown['ticket']['net_fares'][1]['label']);
+
+        // profit = selling - (27000 + 27000)
+        $this->assertEqualsWithDelta(-24000.0, $breakdown['ticket']['profit'], 0.001);
+        $this->assertEqualsWithDelta($breakdown['ticket_profit'], $breakdown['ticket']['profit'], 0.001);
+    }
+
+    /** @test */
+    public function test_detailed_breakdown_additional_tickets(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+
+        $passenger = $this->addPassenger($user, $deps, $booking);
+
+        $this->addRegularTicket($user, $deps, $passenger, ['issue_type' => 'additional', 'net_fare' => 24000.00]);
+        $this->addRegularTicket($user, $deps, $passenger, ['issue_type' => 'additional', 'net_fare' => 26000.00]);
+
+        $breakdown = $this->service->getPassengerProfitBreakdownDetailed($passenger->refresh());
+
+        $this->assertCount(2, $breakdown['additional_tickets']['items']);
+        $this->assertEqualsWithDelta(30000.0, $breakdown['additional_tickets']['items'][0]['selling_fare'], 0.001);
+        $this->assertEqualsWithDelta(24000.0, $breakdown['additional_tickets']['items'][0]['net_fare'], 0.001);
+        $this->assertEqualsWithDelta(6000.0, $breakdown['additional_tickets']['items'][0]['profit'], 0.001);
+        $this->assertEqualsWithDelta(30000.0 - 24000.0 + 30000.0 - 26000.0, $breakdown['additional_tickets']['profit'], 0.001);
+        $this->assertEqualsWithDelta($breakdown['additional_ticket_profit'], $breakdown['additional_tickets']['profit'], 0.001);
+    }
+
+    /** @test */
     public function test_booking_profit_subtracts_discount(): void
     {
         $user = $this->setupUser();

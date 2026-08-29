@@ -64,7 +64,7 @@ class ProfitLossReportController extends Controller
             'passenger_passport' => $passenger->passport_no ?? '',
             'package_value' => (float) ($passenger->package_value ?? 0),
             'total_profit' => (float) ($passenger->profit ?? 0),
-            'breakdown' => $profitService->getPassengerProfitBreakdown($passenger),
+            'breakdown' => $profitService->getPassengerProfitBreakdownDetailed($passenger),
         ]))->values()->toArray();
     }
 
