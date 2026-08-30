@@ -30,6 +30,7 @@ use App\Models\VisaAgent;
 use App\Models\VisaAgentCost;
 use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
+use App\Services\ProfitCalculationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
@@ -287,17 +288,29 @@ class DashboardQueryOptimizationTest extends TestCase
         $user = $this->setupUser();
         $deps = $this->seedAllPrerequisites($user);
 
-        $this->createBooking($user, $deps, 1, 2);
+        $booking = $this->createBooking($user, $deps, 1, 2);
+
+        // Persist the same values the Profit & Loss "Per Customer" tab sums:
+        // Booking.profit and Fingerprint.profit.
+        app(ProfitCalculationService::class)->recalculateBookingProfit($booking);
+
+        $expectedTotalProfit = (float) $booking->refresh()->profit;
+        $expectedFpProfit = (float) ($booking->fingerprint?->profit ?? 0);
+        $expectedTotalProfitBdt = $expectedTotalProfit * (float) $deps['currencyRate']->rate;
+        $expectedFpProfitBdt = $expectedFpProfit * (float) $deps['currencyRate']->rate;
 
         Auth::login($user);
         $response = $this->get(route('dashboard'));
         $response->assertOk();
 
-        // Dashboard should show the correct profit:
-        // For 1 booking: invoice total = 50000
-        // Fingerprint cost = 100 (shared across all passengers)
-        // Per passenger: visa cost = 1000, ticket cost = 28000
-        // Total cost = 100 + (1000 + 28000) * 2 = 57100
-        // Profit = 50000 - 57100 = -7100
+        $html = $response->getContent();
+
+        // Total Profit card mirrors Booking.profit (SAR + BDT).
+        $this->assertStringContainsString('data-sar="'.number_format($expectedTotalProfit, 6, '.', '').'"', $html);
+        $this->assertStringContainsString('data-bdt="'.number_format($expectedTotalProfitBdt, 6, '.', '').'"', $html);
+
+        // Total Fingerprint Profit card mirrors Fingerprint.profit (SAR + BDT).
+        $this->assertStringContainsString('data-sar="'.number_format($expectedFpProfit, 6, '.', '').'"', $html);
+        $this->assertStringContainsString('data-bdt="'.number_format($expectedFpProfitBdt, 6, '.', '').'"', $html);
     }
 }

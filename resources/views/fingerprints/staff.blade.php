@@ -4,7 +4,8 @@
 
 @section('content')
 <div class="w-full mx-auto pt-6" x-data='fingerprintStaff({ isFingerprintStaff: @json($isFingerprintStaff), flightDateRanges: @json($flightDateRanges) })'>
-    <div class="bg-white rounded-xl shadow-lg p-6 mb-6">
+    <div class="flex flex-col" style="max-height: calc(100vh - 168px);">
+    <div class="bg-white rounded-xl shadow-lg p-6 mb-4 flex-shrink-0">
         <div>
             <label class="block text-sm font-medium text-slate-700 mb-1">Search</label>
             <input type="text" x-model="filters.search" @input.debounce.400ms="currentPage = 1; loadData()"
@@ -45,11 +46,11 @@
         </div>
     </div>
 
-    <div class="bg-white rounded-xl shadow-lg p-6">
-        <h2 class="text-xl font-semibold text-slate-700 mb-6">Fingerprint Staff</h2>
-        <div class="overflow-x-auto">
+    <div class="bg-white rounded-xl shadow-lg p-6 flex flex-col flex-1 min-h-0">
+        <h2 class="text-xl font-semibold text-slate-700 mb-6 flex-shrink-0">Fingerprint Staff</h2>
+        <div class="overflow-auto flex-1 min-h-0">
             <table class="w-full text-sm border-collapse">
-                <thead class="bg-slate-50 text-slate-600">
+                <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
                     <tr>
                         <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
                         <th class="px-3 py-2 text-left font-medium">Customer Name</th>
@@ -130,7 +131,7 @@
             </table>
         </div>
 
-        <div x-show="lastPage > 1" x-cloak class="mt-4 flex items-center justify-between border-t border-slate-200 pt-4 px-1">
+        <div x-show="lastPage > 1" class="mt-4 flex-shrink-0 flex items-center justify-between border-t border-slate-200 pt-4 px-1">
             <div class="text-sm text-slate-600">
                 Showing <span class="font-medium" x-text="((currentPage - 1) * 10 + 1)"></span>
                 to <span class="font-medium" x-text="Math.min(currentPage * 10, totalRecords)"></span>
@@ -154,6 +155,7 @@
                 </button>
             </nav>
         </div>
+    </div>
     </div>
 
     <!-- Hold Modal -->
