@@ -182,7 +182,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
             <div class="p-4 pt-4">
                 <div x-show="activeTab === 'customer'" x-cloak class="animate-fade mb-4">
-                    <div class="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
+                        <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Customers</div>
+                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="filteredCustomers.length"></div>
+                        </div>
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Fingerprint Profit</div>
                             <div class="mt-1 text-lg font-bold" :class="bdClass(grandTotalCustomer.fingerprint_profit)" x-text="formatProfitLoss(grandTotalCustomer.fingerprint_profit)"></div>
@@ -203,7 +207,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                 </div>
 
                 <div x-show="activeTab === 'passenger'" x-cloak class="animate-fade mb-4">
-                    <div class="grid grid-cols-2 md:grid-cols-2 gap-4">
+                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                        <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Passengers</div>
+                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="filteredPassengers.length"></div>
+                        </div>
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Package Value</div>
                             <div class="mt-1 text-lg font-bold text-gray-800" x-text="formatCurrency(grandTotalPassenger.package_value)"></div>
