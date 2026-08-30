@@ -241,10 +241,11 @@ class ProfitLossBreakdownDetailTest extends TestCase
         $response = $this->get(route('api.reports.profit-loss', [
             'date_from' => now()->subDays(60)->toDateString(),
             'date_to' => now()->addDays(1)->toDateString(),
+            'tab' => 'passenger',
         ]));
 
         $response->assertOk();
-        $data = $response->json('passengers');
+        $data = $response->json('data');
         $this->assertCount(1, $data);
 
         $breakdown = $data[0]['breakdown'];

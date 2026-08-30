@@ -58,13 +58,26 @@ class ProfitLossReportFingerprintModalTest extends TestCase
         }
     }
 
+    public function test_print_buttons_pass_search_and_profit_loss_filter(): void
+    {
+        $html = view('reports.profit-loss')->render();
+
+        foreach (['type=customer', 'type=passenger'] as $type) {
+            $this->assertStringContainsString($type, $html);
+            $this->assertStringContainsString(
+                "&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter",
+                $html
+            );
+        }
+    }
+
     public function test_summary_cards_show_total_customer_and_passenger_counts(): void
     {
         $html = view('reports.profit-loss')->render();
 
         $this->assertStringContainsString('Total Customers', $html);
-        $this->assertStringContainsString('filteredCustomers.length', $html);
+        $this->assertStringContainsString('summary.customer.count', $html);
         $this->assertStringContainsString('Total Passengers', $html);
-        $this->assertStringContainsString('filteredPassengers.length', $html);
+        $this->assertStringContainsString('summary.passenger.count', $html);
     }
 }

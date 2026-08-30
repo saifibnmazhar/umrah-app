@@ -139,19 +139,19 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                 <div class="flex flex-wrap items-center gap-3">
                     <div class="flex items-center gap-2">
                         <label class="text-sm font-semibold text-gray-700">From:</label>
-                        <input type="date" x-model="date_from" @change="loadData()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="date" x-model="date_from" @change="currentPage = 1; loadDataForTab(); loadSummary()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div class="flex items-center gap-2">
                         <label class="text-sm font-semibold text-gray-700">To:</label>
-                        <input type="date" x-model="date_to" @change="loadData()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="date" x-model="date_to" @change="currentPage = 1; loadDataForTab(); loadSummary()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div class="flex items-center gap-2">
-                        <input type="text" x-model="search" @input="currentPage = 1" placeholder="Search by Invoice ID, Customer Name, Passenger Name, Passport, Iqama"
+                        <input type="text" x-model="search" @input="clearSearchTimeout(); searchTimeout = setTimeout(() => { currentPage = 1; loadDataForTab(); loadSummary(); }, 300)" placeholder="Search by Invoice ID, Customer Name, Passenger Name, Passport, Iqama"
                                class="search-input w-72 px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div class="flex items-center gap-2">
                         <label class="text-sm font-semibold text-gray-700">Profit/Loss:</label>
-                        <select x-model="profitLossFilter" class="px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-300">
+                        <select x-model="profitLossFilter" @change="currentPage = 1; loadDataForTab(); loadSummary()" class="px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-300">
                             <option value="all">All</option>
                             <option value="profit">Profit</option>
                             <option value="loss">Loss</option>
@@ -166,16 +166,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <div class="border-b border-gray-300 bg-gray-50 px-4 pt-3 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <div class="flex gap-0" id="tabButtons">
-                        <button @click="activeTab = 'customer'; currentPage = 1" :class="activeTab === 'customer' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
+                        <button @click="activeTab = 'customer'; currentPage = 1; loadDataForTab()" :class="activeTab === 'customer' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
                             Per Customer
                         </button>
-                        <button @click="activeTab = 'passenger'; currentPage = 1" :class="activeTab === 'passenger' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
+                        <button @click="activeTab = 'passenger'; currentPage = 1; loadDataForTab()" :class="activeTab === 'passenger' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
                             Per Passenger
                         </button>
                     </div>
                     <div class="flex items-center gap-2 pr-1 pb-3">
-                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=customer&currency=' + $store.currency.mode" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-700">Customer Print</a>
-                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=passenger&currency=' + $store.currency.mode" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-700">Passenger Print</a>
+                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=customer&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-700">Customer Print</a>
+                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=passenger&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-700">Passenger Print</a>
                     </div>
                 </div>
             </div>
@@ -185,23 +185,23 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Customers</div>
-                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="filteredCustomers.length"></div>
+                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="summary.customer.count"></div>
                         </div>
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Fingerprint Profit</div>
-                            <div class="mt-1 text-lg font-bold" :class="bdClass(grandTotalCustomer.fingerprint_profit)" x-text="formatProfitLoss(grandTotalCustomer.fingerprint_profit)"></div>
+                            <div class="mt-1 text-lg font-bold" :class="bdClass(summary.customer.fingerprint_profit)" x-text="formatProfitLoss(summary.customer.fingerprint_profit)"></div>
                         </div>
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Passenger Profit</div>
-                            <div class="mt-1 text-lg font-bold" :class="bdClass(grandTotalCustomer.passenger_profit_total)" x-text="formatProfitLoss(grandTotalCustomer.passenger_profit_total)"></div>
+                            <div class="mt-1 text-lg font-bold" :class="bdClass(summary.customer.passenger_profit_total)" x-text="formatProfitLoss(summary.customer.passenger_profit_total)"></div>
                         </div>
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Discount</div>
-                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="formatCurrency(grandTotalCustomer.discount)"></div>
+                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="formatCurrency(summary.customer.discount)"></div>
                         </div>
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Profit</div>
-                            <div class="mt-1 text-lg font-bold" :class="grandTotalCustomer.total_profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(grandTotalCustomer.total_profit)"></div>
+                            <div class="mt-1 text-lg font-bold" :class="summary.customer.total_profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(summary.customer.total_profit)"></div>
                         </div>
                     </div>
                 </div>
@@ -210,15 +210,15 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Passengers</div>
-                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="filteredPassengers.length"></div>
+                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="summary.passenger.count"></div>
                         </div>
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Package Value</div>
-                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="formatCurrency(grandTotalPassenger.package_value)"></div>
+                            <div class="mt-1 text-lg font-bold text-gray-800" x-text="formatCurrency(summary.passenger.package_value)"></div>
                         </div>
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Profit</div>
-                            <div class="mt-1 text-lg font-bold" :class="grandTotalPassenger.total_profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(grandTotalPassenger.total_profit)"></div>
+                            <div class="mt-1 text-lg font-bold" :class="summary.passenger.total_profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(summary.passenger.total_profit)"></div>
                         </div>
                     </div>
                 </div>
@@ -267,15 +267,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td class="px-4 py-3 text-sm text-right cursor-pointer hover:bg-blue-50 transition-colors"
                                             :class="row.total_profit >= 0 ? 'amount-profit' : 'amount-loss'"
                                             @click="openBreakdown(row)" x-text="formatProfitLoss(row.total_profit)"></td>
-                                    </tr>
-                                </template>
-                                <template x-if="!loading && filteredCustomers.length > 0">
-                                    <tr class="table-header font-bold">
-                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-gray-800" colspan="5">Grand Total</td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalCustomer.fingerprint_profit)"></td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalCustomer.passenger_profit_total)"></td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalCustomer.discount)"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="grandTotalCustomer.total_profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(grandTotalCustomer.total_profit)"></td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -333,13 +324,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td class="px-4 py-3 text-sm text-right cursor-pointer hover:bg-blue-50 transition-colors"
                                             :class="row.total_profit >= 0 ? 'amount-profit' : 'amount-loss'"
                                             @click="openBreakdown(row)" x-text="formatProfitLoss(row.total_profit)"></td>
-                                    </tr>
-                                </template>
-                                <template x-if="!loading && filteredPassengers.length > 0">
-                                    <tr class="table-header font-bold">
-                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-gray-800" colspan="4">Grand Total</td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-300 text-right text-gray-800" x-text="formatCurrency(grandTotalPassenger.package_value)"></td>
-                                        <td class="px-4 py-3 text-sm text-right" :class="grandTotalPassenger.total_profit >= 0 ? 'amount-profit' : 'amount-loss'" x-text="formatProfitLoss(grandTotalPassenger.total_profit)"></td>
                                     </tr>
                                 </template>
                             </tbody>
@@ -605,6 +589,14 @@ function profitLossReport() {
         passengers: [],
         currentPage: 1,
         perPage: 25,
+        summary: {
+            customer: { count: 0, package_value: 0, fingerprint_profit: 0, passenger_profit_total: 0, discount: 0, total_profit: 0 },
+            passenger: { count: 0, package_value: 0, total_profit: 0 }
+        },
+        summaryLoading: false,
+        searchTimeout: null,
+        customerMeta: { current_page: 1, last_page: 1, total: 0 },
+        passengerMeta: { current_page: 1, last_page: 1, total: 0 },
         breakdownModalOpen: false,
         selectedBreakdown: null,
         breakdownType: null,
@@ -618,7 +610,8 @@ function profitLossReport() {
 
         init() {
             this.setDefaultDates();
-            this.loadData();
+            this.loadSummary();
+            this.loadDataForTab();
             window.addEventListener('currency-toggled', () => {
                 this.customers = [...this.customers];
                 this.passengers = [...this.passengers];
@@ -633,107 +626,107 @@ function profitLossReport() {
             this.date_to = today.toISOString().split('T')[0];
         },
 
-        async loadData() {
-            this.loading = true;
-            this.currentPage = 1;
+        clearSearchTimeout() {
+            if (this.searchTimeout) {
+                clearTimeout(this.searchTimeout);
+                this.searchTimeout = null;
+            }
+        },
+
+        async loadSummary() {
+            this.summaryLoading = true;
             try {
                 const params = new URLSearchParams();
                 if (this.date_from) params.set('date_from', this.date_from);
                 if (this.date_to) params.set('date_to', this.date_to);
+                if (this.search) params.set('search', this.search);
+                if (this.profitLossFilter !== 'all') params.set('profit_loss_filter', this.profitLossFilter);
+                const res = await fetch(`/api/reports/profit-loss/summary?${params}`);
+                const json = await res.json();
+                this.summary = {
+                    customer: Object.assign(this.summary.customer, json.customer || {}),
+                    passenger: Object.assign(this.summary.passenger, json.passenger || {}),
+                };
+            } catch (e) {
+                console.error('Failed to load profit/loss summary', e);
+            } finally {
+                this.summaryLoading = false;
+            }
+        },
+
+        async loadDataForTab() {
+            this.loading = true;
+            try {
+                const params = new URLSearchParams();
+                if (this.date_from) params.set('date_from', this.date_from);
+                if (this.date_to) params.set('date_to', this.date_to);
+                if (this.search) params.set('search', this.search);
+                if (this.profitLossFilter !== 'all') params.set('profit_loss_filter', this.profitLossFilter);
+                params.set('tab', this.activeTab);
+                params.set('page', this.currentPage);
+                params.set('per_page', this.perPage);
                 const res = await fetch(`/api/reports/profit-loss?${params}`);
                 const json = await res.json();
-                this.customers = json.customers || [];
-                this.passengers = json.passengers || [];
+                if (this.activeTab === 'customer') {
+                    this.customers = json.data || [];
+                    this.customerMeta = {
+                        current_page: json.current_page,
+                        last_page: json.last_page,
+                        total: json.total,
+                    };
+                } else {
+                    this.passengers = json.data || [];
+                    this.passengerMeta = {
+                        current_page: json.current_page,
+                        last_page: json.last_page,
+                        total: json.total,
+                    };
+                }
             } catch (e) {
                 console.error('Failed to load profit/loss data', e);
-                this.customers = [];
-                this.passengers = [];
+                if (this.activeTab === 'customer') {
+                    this.customers = [];
+                } else {
+                    this.passengers = [];
+                }
             } finally {
                 this.loading = false;
             }
         },
 
         get filteredCustomers() {
-            let rows = this.customers;
-            if (this.search) {
-                const q = this.search.toLowerCase();
-                rows = rows.filter(r =>
-                    (r.invoice_id && r.invoice_id.toLowerCase().includes(q)) ||
-                    (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
-                    (r.customer_passport && r.customer_passport.toLowerCase().includes(q)) ||
-                    (r.customer_iqama && r.customer_iqama.toLowerCase().includes(q))
-                );
-            }
-            return this.applyProfitLoss(rows);
+            return this.customers;
         },
 
         get filteredPassengers() {
-            let rows = this.passengers;
-            if (this.search) {
-                const q = this.search.toLowerCase();
-                rows = rows.filter(r =>
-                    (r.invoice_id && r.invoice_id.toLowerCase().includes(q)) ||
-                    (r.customer_name && r.customer_name.toLowerCase().includes(q)) ||
-                    (r.passenger_name && r.passenger_name.toLowerCase().includes(q)) ||
-                    (r.passenger_passport && r.passenger_passport.toLowerCase().includes(q)) ||
-                    (r.customer_passport && r.customer_passport.toLowerCase().includes(q)) ||
-                    (r.customer_iqama && r.customer_iqama.toLowerCase().includes(q))
-                );
-            }
-            return this.applyProfitLoss(rows);
-        },
-
-        applyProfitLoss(rows) {
-            if (this.profitLossFilter === 'profit') {
-                return rows.filter(r => (Number(r.total_profit) || 0) >= 0);
-            }
-            if (this.profitLossFilter === 'loss') {
-                return rows.filter(r => (Number(r.total_profit) || 0) < 0);
-            }
-            return rows;
-        },
-
-        get customerTotalPages() {
-            return Math.max(1, Math.ceil(this.filteredCustomers.length / this.perPage));
+            return this.passengers;
         },
 
         get paginatedCustomers() {
-            const start = (this.currentPage - 1) * this.perPage;
-            return this.filteredCustomers.slice(start, start + this.perPage);
-        },
-
-        get passengerTotalPages() {
-            return Math.max(1, Math.ceil(this.filteredPassengers.length / this.perPage));
+            return this.customers;
         },
 
         get paginatedPassengers() {
-            const start = (this.currentPage - 1) * this.perPage;
-            return this.filteredPassengers.slice(start, start + this.perPage);
+            return this.passengers;
+        },
+
+        get customerTotalPages() {
+            return this.customerMeta.last_page || 1;
+        },
+
+        get passengerTotalPages() {
+            return this.passengerMeta.last_page || 1;
+        },
+
+        get currentMeta() {
+            return this.activeTab === 'customer' ? this.customerMeta : this.passengerMeta;
         },
 
         goToPage(page) {
             const totalPages = this.activeTab === 'customer' ? this.customerTotalPages : this.passengerTotalPages;
             if (page < 1 || page > totalPages) return;
             this.currentPage = page;
-        },
-
-        get grandTotalCustomer() {
-            return this.filteredCustomers.reduce((acc, r) => {
-                acc.package_value += Number(r.package_value) || 0;
-                acc.fingerprint_profit += Number(r.fingerprint_profit) || 0;
-                acc.passenger_profit_total += Number(r.passenger_profit_total) || 0;
-                acc.discount += Number(r.discount) || 0;
-                acc.total_profit += Number(r.total_profit) || 0;
-                return acc;
-            }, { package_value: 0, fingerprint_profit: 0, passenger_profit_total: 0, discount: 0, total_profit: 0 });
-        },
-
-        get grandTotalPassenger() {
-            return this.filteredPassengers.reduce((acc, r) => {
-                acc.package_value += Number(r.package_value) || 0;
-                acc.total_profit += Number(r.total_profit) || 0;
-                return acc;
-            }, { package_value: 0, total_profit: 0 });
+            this.loadDataForTab();
         },
 
         openBreakdown(row) {
