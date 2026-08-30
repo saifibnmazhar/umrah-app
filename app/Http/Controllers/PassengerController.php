@@ -720,6 +720,33 @@ class PassengerController extends Controller
         ]);
     }
 
+    public function toggleVisaHold(Passenger $passenger)
+    {
+        $this->ensureBranchAccess($passenger);
+
+        if ($passenger->is_visa_held) {
+            $passenger->update([
+                'is_visa_held' => false,
+                'visa_held_by' => null,
+                'visa_held_at' => null,
+            ]);
+            $message = 'Visa hold released';
+        } else {
+            $passenger->update([
+                'is_visa_held' => true,
+                'visa_held_by' => auth()->id(),
+                'visa_held_at' => now(),
+            ]);
+            $message = 'Visa hold applied';
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'is_visa_held' => $passenger->fresh()->is_visa_held,
+        ]);
+    }
+
     public function updateStatus(Request $request, Passenger $passenger)
     {
 

@@ -26,6 +26,7 @@ $passengersVisaData = ($passengers ?? collect())->map(function($p) {
         'id' => $p->id,
         'booking_id' => $p->booking_id,
         'rate' => $rate,
+        'is_visa_held' => (bool)($p->is_visa_held ?? false),
         'visa' => $p->visaSubmission ? [
             'id' => $p->visaSubmission->id,
             'agent_id' => $p->visaSubmission->visa_agent_id,
@@ -1240,27 +1241,38 @@ if ($passenger->ticket_fare_inbound_id) {
                       x-text="passengersTicketData[{{ $loop->index }}]?.status"></span>
             </template>
 
+            @if($canEditVisa)
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <button @click="toggleVisaHold({{ $loop->index }})"
+                    :disabled="isTogglingVisaHold[{{ $loop->index }}]"
+                    class="px-2 py-1 text-xs font-medium rounded transition"
+                    :class="passengersVisaData[{{ $loop->index }}]?.is_visa_held ? 'text-yellow-600 bg-yellow-100 hover:bg-yellow-200' : 'text-orange-600 bg-orange-100 hover:bg-orange-200'"
+                    x-text="passengersVisaData[{{ $loop->index }}]?.is_visa_held ? 'Unhold' : 'Hold'">
+                </button>
+            </template>
+            @endif
+
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                 <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
                         @click="openVisaSubmitModal({{ $loop->index }})"
                         class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Submit</button>
             </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                 <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
                         @click="openVisaIssueModal({{ $loop->index }})"
                         class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
             </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                 <button x-show="(passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' || passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
                         @click="openVisaEditModal({{ $loop->index }})"
                         class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
             </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                 <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted'"
                         @click="openVisaCancelModal({{ $loop->index }})"
                         class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Cancel</button>
             </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                 <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
                         @click="openVisaResubmitModal({{ $loop->index }})"
                         class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
@@ -1283,7 +1295,10 @@ if ($passenger->ticket_fare_inbound_id) {
     </td>
     @endif
     <td class="px-3 py-2">
-        <template x-if="passengersVisaData[{{ $loop->index }}]?.visa">
+        <template x-if="passengersVisaData[{{ $loop->index }}]?.is_visa_held">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Visa Hold</span>
+        </template>
+        <template x-if="passengersVisaData[{{ $loop->index }}]?.visa && !passengersVisaData[{{ $loop->index }}]?.is_visa_held">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                 :class="{
                     'bg-green-100 text-green-700': passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued',
@@ -1293,7 +1308,7 @@ if ($passenger->ticket_fare_inbound_id) {
                 x-text="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' ? 'Resubmission Pending' : (passengersVisaData[{{ $loop->index }}]?.visa?.status.charAt(0).toUpperCase() + passengersVisaData[{{ $loop->index }}]?.visa?.status.slice(1))">
             </span>
         </template>
-        <template x-if="!passengersVisaData[{{ $loop->index }}]?.visa">
+        <template x-if="!passengersVisaData[{{ $loop->index }}]?.visa && !passengersVisaData[{{ $loop->index }}]?.is_visa_held">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">N/A</span>
         </template>
     </td>
@@ -3571,6 +3586,7 @@ function bookingIndexApp() {
         passengersVisaData: @json($passengersVisaData),
         passengersTicketData: @json($passengersTicketData),
         isTogglingTicketHold: [],
+        isTogglingVisaHold: [],
         passengerStatusMap: @json($passengerStatuses->pluck('id', 'name')),
 
         ticketAgents: @json($ticketAgents),
@@ -4452,6 +4468,30 @@ function bookingIndexApp() {
             })
             .finally(() => {
                 this.isTogglingTicketHold[index] = false;
+            });
+        },
+
+        toggleVisaHold(index) {
+            const row = this.passengersVisaData[index];
+            if (!row) return;
+
+            this.isTogglingVisaHold[index] = true;
+
+            fetch(`/passengers/${row.id}/toggle-visa-hold`, {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                    'Accept': 'application/json',
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.passengersVisaData[index].is_visa_held = data.is_visa_held;
+                }
+            })
+            .finally(() => {
+                this.isTogglingVisaHold[index] = false;
             });
         },
 
