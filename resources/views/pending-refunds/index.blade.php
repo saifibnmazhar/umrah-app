@@ -43,6 +43,7 @@
             @endunless
         </div>
 
+        @if($tab === 'bookings')
         <div class="overflow-auto flex-1 min-h-0" style="max-height: calc(95vh - 260px);">
             <table class="w-full min-w-[900px] text-sm">
                 <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">

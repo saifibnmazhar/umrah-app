@@ -158,12 +158,6 @@
                     </button>
                 </span>
             </nav>
-                <button @click="goToPage(pagination.current_page + 1)" :disabled="pagination.current_page >= pagination.last_page"
-                        class="px-3 py-1 text-xs rounded border border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100">
-                    Next
-                </button>
-            </div>
->>>>>>> 1783ebca2fbc0f2adc616189a09b3397996001ee
         </div>
     </div>
 </div>
