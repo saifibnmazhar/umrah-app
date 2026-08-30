@@ -175,13 +175,13 @@ select {
 
 <div x-data="dueReportApp()">
 <div class="max-w-[1600px] mx-auto p-4">
-    <div class="mb-3">
+    <div class="sticky top-0 z-30 bg-white py-2 mb-3">
         <span class="text-sm text-gray-500 font-medium">Reports</span>
         <span class="text-sm text-gray-400 mx-1">></span>
         <span class="text-sm text-gray-700 font-semibold">Due Report</span>
     </div>
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mb-4">
+    <div class="sticky top-[40px] z-20 bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mb-4">
         <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div>
                 <label class="block text-sm font-semibold text-gray-700 mb-1">Date From</label>
@@ -196,10 +196,10 @@ select {
 
 
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
-        <div class="overflow-x-auto">
+    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin flex flex-col" style="max-height: calc(100vh - 280px);">
+        <div class="overflow-auto flex-1 min-h-0">
             <table class="w-full min-w-[800px] table-fixed">
-                <thead>
+                <thead class="sticky top-0 z-10">
                     <tr class="table-header">
                         <th class="w-1/2 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Branch Name</th>
                         <th class="w-1/4 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Total Due</th>
@@ -217,7 +217,7 @@ select {
                             <td colspan="3" class="px-4 py-8 text-center text-sm text-gray-500">No due data found</td>
                         </tr>
                     </template>
-                    <template x-for="(branch, index) in branches" :key="branch.id">
+                    <template x-for="(branch, index) in paginatedBranches" :key="branch.id">
                         <tr class="table-row-due">
                             <td class="px-4 py-3 text-sm border-r border-gray-200 font-medium text-gray-800" x-text="branch.name"></td>
                             <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-semibold amount-due" x-text="$currency(branch.totalDue, 2)"></td>
@@ -230,6 +230,22 @@ select {
             </table>
         </div>
     </div>
+
+    <nav x-show="branchTotalPages > 1" class="flex justify-end" aria-label="Pagination Navigation">
+        <span class="inline-flex items-center gap-2">
+            <button @click="goToPage(currentPage - 1)" :disabled="currentPage <= 1"
+                    :class="currentPage <= 1 ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Prev
+            </button>
+            <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5">
+                <span x-text="currentPage"></span>/<span x-text="branchTotalPages"></span>
+            </span>
+            <button @click="goToPage(currentPage + 1)" :disabled="currentPage >= branchTotalPages"
+                    :class="currentPage >= branchTotalPages ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Next
+            </button>
+        </span>
+    </nav>
 </div>
 
 <div x-show="branchModalOpen" x-cloak class="fixed inset-0 z-50 overflow-y-auto"
@@ -458,6 +474,8 @@ function dueReportApp() {
 
         loading: false,
         branches: [],
+        currentPage: 1,
+        perPage: 25,
         branchModalOpen: false,
         detailModalOpen: false,
         activeTab: 'customerDue',
@@ -468,12 +486,22 @@ function dueReportApp() {
         filterDateTo: '',
         filteredTransactions: [],
 
+        get branchTotalPages() {
+            return Math.max(1, Math.ceil(this.branches.length / this.perPage));
+        },
+
+        get paginatedBranches() {
+            const start = (this.currentPage - 1) * this.perPage;
+            return this.branches.slice(start, start + this.perPage);
+        },
+
         init() {
             this.loadData();
         },
 
         async loadData() {
             this.loading = true;
+            this.currentPage = 1;
             try {
                 const params = new URLSearchParams();
                 if (this.date_from) params.set('date_from', this.date_from);
@@ -487,6 +515,11 @@ function dueReportApp() {
             } finally {
                 this.loading = false;
             }
+        },
+
+        goToPage(page) {
+            if (page < 1 || page > this.branchTotalPages) return;
+            this.currentPage = page;
         },
 
         async openBranchModal(branchId) {

@@ -61,6 +61,7 @@ use App\Models\CurrencyRate;
 use App\Models\District;
 use App\Models\Payment;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -383,6 +384,14 @@ Route::middleware('auth')->group(function () {
                 ];
             })
             ->sortKeys();
+
+        $dailyPayments = new LengthAwarePaginator(
+            $dailyPayments->forPage(LengthAwarePaginator::resolveCurrentPage(), 25)->values(),
+            $dailyPayments->count(),
+            25,
+            LengthAwarePaginator::resolveCurrentPage(),
+            ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => request()->query()]
+        );
 
         $vouchersByDate = [];
         foreach ($payments as $payment) {
