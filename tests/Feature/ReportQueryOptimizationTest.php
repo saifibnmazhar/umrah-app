@@ -369,10 +369,162 @@ class ReportQueryOptimizationTest extends TestCase
 
         $response->assertOk();
         $data = $response->json();
-        $this->assertArrayHasKey('customers', $data);
-        $this->assertArrayHasKey('passengers', $data);
-        $this->assertCount(1, $data['customers'], 'Should have 1 customer row');
-        $this->assertCount(2, $data['passengers'], 'Should have 2 passenger rows');
+        $this->assertArrayHasKey('data', $data);
+        $this->assertArrayHasKey('current_page', $data);
+        $this->assertArrayHasKey('last_page', $data);
+        $this->assertArrayHasKey('total', $data);
+        $this->assertCount(1, $data['data'], 'Should have 1 customer row');
+
+        $passengerResponse = $this->get(route('api.reports.profit-loss', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+            'tab' => 'passenger',
+        ]));
+        $passengerResponse->assertOk();
+        $pData = $passengerResponse->json();
+        $this->assertCount(2, $pData['data'], 'Should have 2 passenger rows');
+        $this->assertEquals(2, $pData['total']);
+    }
+
+    /** @test */
+    public function test_profit_loss_summary_returns_correct_aggregates(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        $this->createBookingWithPassengers($user, $deps, 0, 2);
+
+        // Force stored profit values so the SQL aggregation is deterministic
+        // (use saveQuietly to bypass the Booking observer that would recalculate profit)
+        $booking = Booking::first();
+        $booking->profit = 500.00;
+        $booking->discount_amount = 100.00;
+        $booking->saveQuietly();
+        foreach ($booking->passengers as $p) {
+            $p->profit = 250.00;
+            $p->saveQuietly();
+        }
+        $booking->fingerprint->profit = 30.00;
+        $booking->fingerprint->saveQuietly();
+        $booking->refresh();
+
+        Auth::login($user);
+        $response = $this->get(route('api.reports.profit-loss.summary', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+        ]));
+
+        $response->assertOk();
+        $summary = $response->json();
+
+        // 1 booking -> 1 customer, 2 passengers
+        $this->assertEquals(1, $summary['customer']['count']);
+        $this->assertEquals(2, $summary['passenger']['count']);
+        $this->assertEquals(30.0, $summary['customer']['fingerprint_profit']);
+        $this->assertEquals(500.0, $summary['customer']['passenger_profit_total']);
+        $this->assertEquals(100.0, $summary['customer']['discount']);
+        $this->assertEquals(500.0, $summary['customer']['total_profit']);
+        $this->assertEquals(500.0, $summary['passenger']['total_profit']);
+        $this->assertEquals(50000.0, $summary['customer']['package_value']);
+    }
+
+    /** @test */
+    public function test_profit_loss_summary_respects_profit_loss_filter(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        // Two bookings: one profit, one loss
+        $this->createBookingWithPassengers($user, $deps, 0, 1);
+        $this->createBookingWithPassengers($user, $deps, 1, 1);
+
+        $bookings = Booking::orderBy('id')->get();
+        $bookings[0]->profit = 100.00;
+        $bookings[0]->save();
+        $bookings[1]->profit = -50.00;
+        $bookings[1]->save();
+
+        Auth::login($user);
+
+        $profit = $this->get(route('api.reports.profit-loss.summary', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+            'profit_loss_filter' => 'profit',
+        ]))->json();
+
+        $this->assertEquals(1, $profit['customer']['count']);
+        $this->assertEquals(100.0, $profit['customer']['total_profit']);
+
+        $loss = $this->get(route('api.reports.profit-loss.summary', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+            'profit_loss_filter' => 'loss',
+        ]))->json();
+
+        $this->assertEquals(1, $loss['customer']['count']);
+        $this->assertEquals(-50.0, $loss['customer']['total_profit']);
+    }
+
+    /** @test */
+    public function test_profit_loss_data_respects_pagination(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        for ($i = 0; $i < 5; $i++) {
+            $this->createBookingWithPassengers($user, $deps, $i, 1);
+        }
+
+        Auth::login($user);
+
+        $page1 = $this->get(route('api.reports.profit-loss', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+            'tab' => 'customer',
+            'page' => 1,
+            'per_page' => 200,
+        ]))->json();
+
+        $this->assertEquals(5, $page1['total']);
+        $this->assertCount(5, $page1['data']);
+
+        // With a per_page of 2, we should get 3 pages
+        $small = $this->get(route('api.reports.profit-loss', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+            'tab' => 'customer',
+            'page' => 1,
+            'per_page' => 2,
+        ]))->json();
+
+        $this->assertEquals(5, $small['total']);
+        $this->assertEquals(3, $small['last_page']);
+        $this->assertCount(2, $small['data']);
+    }
+
+    /** @test */
+    public function test_profit_loss_print_includes_summary_data(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        $this->createBookingWithPassengers($user, $deps, 0, 1);
+
+        $booking = Booking::first();
+        $booking->profit = 500.00;
+        $booking->saveQuietly();
+
+        Auth::login($user);
+
+        $response = $this->get(route('report.profit-loss.print', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+            'type' => 'customer',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Profit/Loss Report');
+        $response->assertSee('1 Customer');
     }
 
     /** @test */
