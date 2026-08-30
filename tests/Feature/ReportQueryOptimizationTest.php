@@ -528,6 +528,29 @@ class ReportQueryOptimizationTest extends TestCase
     }
 
     /** @test */
+    public function test_profit_loss_passenger_print_matches_index_tab_columns(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        $this->createBookingWithPassengers($user, $deps, 0, 1);
+
+        Auth::login($user);
+
+        $response = $this->get(route('report.profit-loss.print', [
+            'date_from' => now()->subDays(60)->toDateString(),
+            'date_to' => now()->addDays(1)->toDateString(),
+            'type' => 'passenger',
+        ]));
+
+        $response->assertOk();
+        $response->assertSee('Passenger Name');
+        $response->assertSee('1 Passenger');
+        $response->assertDontSee('Visa:');
+        $response->assertDontSee('Service Charge:');
+    }
+
+    /** @test */
     public function test_ticket_agent_report_stays_bounded_query_count(): void
     {
         $user = $this->setupUser();

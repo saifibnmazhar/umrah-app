@@ -135,10 +135,6 @@
         </thead>
         <tbody>
             @forelse($passengers as $row)
-            @php
-                $bd = $row['breakdown'] ?? [];
-                $fmtSigned = fn($v) => ($v >= 0 ? '+' : '') . $fmtNum($v);
-            @endphp
             <tr>
                 <td class="text-left">{{ $row['invoice_id'] }}</td>
                 <td class="text-left">{{ $row['customer_name'] }}</td>
@@ -146,17 +142,6 @@
                 <td class="text-left">{{ $row['passenger_name'] }}</td>
                 <td class="text-right">{{ $fmtCurrency($row['package_value']) }}</td>
                 <td class="text-right {{ $row['total_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($row['total_profit'] >= 0 ? '+' : '') . $fmtCurrency($row['total_profit']) }}</td>
-            </tr>
-            <tr>
-                <td colspan="6" class="text-left" style="font-size: 10px; color: #555; border-top: none; padding-top: 0;">
-                    Visa: {{ $fmtSigned($bd['visa_profit'] ?? 0) }}
-                    &nbsp;|&nbsp; Ticket: {{ $fmtSigned($bd['ticket_profit'] ?? 0) }}
-                    &nbsp;|&nbsp; Additional: {{ $fmtSigned($bd['additional_ticket_profit'] ?? 0) }}
-                    &nbsp;|&nbsp; Re-Issue Profit: {{ $fmtSigned($bd['re_issue_profit'] ?? 0) }}
-                    &nbsp;|&nbsp; Refund Profit: {{ $fmtSigned($bd['refund_profit'] ?? 0) }}
-                    &nbsp;|&nbsp; Re-Issue Cost: -{{ $fmtNum($bd['re_issue_cost'] ?? 0) }}
-                    &nbsp;|&nbsp; Service Charge: {{ $fmtSigned($bd['service_charge'] ?? 0) }}
-                </td>
             </tr>
             @empty
             <tr>
