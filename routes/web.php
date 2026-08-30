@@ -61,6 +61,7 @@ use App\Models\CurrencyRate;
 use App\Models\District;
 use App\Models\Payment;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -297,6 +298,7 @@ Route::middleware('auth')->group(function () {
     // Reports
     Route::get('/reports/statement', fn () => view('reports.statement'))->name('report.statement');
     Route::get('/reports/profit-loss', fn () => view('reports.profit-loss'))->name('report.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/api/reports/profit-loss/summary', [ProfitLossReportController::class, 'summary'])->name('api.reports.profit-loss.summary')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/profit-loss', [ProfitLossReportController::class, 'data'])->name('api.reports.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/profit-loss/print', [ProfitLossReportController::class, 'print'])->name('report.profit-loss.print')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/fingerprint', [FingerprintReportController::class, 'index'])->name('report.fingerprint')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
@@ -383,6 +385,14 @@ Route::middleware('auth')->group(function () {
                 ];
             })
             ->sortKeys();
+
+        $dailyPayments = new LengthAwarePaginator(
+            $dailyPayments->forPage(LengthAwarePaginator::resolveCurrentPage(), 25)->values(),
+            $dailyPayments->count(),
+            25,
+            LengthAwarePaginator::resolveCurrentPage(),
+            ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => request()->query()]
+        );
 
         $vouchersByDate = [];
         foreach ($payments as $payment) {

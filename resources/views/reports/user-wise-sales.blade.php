@@ -111,13 +111,13 @@ select {
 
 <div x-data="userSalesReport()">
     <div class="max-w-[1600px] mx-auto p-4">
-        <div class="mb-3">
+        <div class="sticky top-0 z-30 bg-white py-2 mb-3">
             <span class="text-sm text-gray-500 font-medium">Report</span>
             <span class="text-sm text-gray-400 mx-1">></span>
             <span class="text-sm text-gray-700 font-semibold">User Wise Sales Report</span>
         </div>
 
-        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
+        <div class="sticky top-[40px] z-20 bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
             <div class="flex flex-wrap items-center gap-3">
                 <div class="flex items-center gap-2">
                     <label class="text-sm font-semibold text-gray-700">Branch</label>
@@ -158,10 +158,10 @@ select {
             </div>
         </div>
 
-        <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
-            <div class="overflow-x-auto">
+        <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin flex flex-col" style="max-height: calc(100vh - 280px);">
+            <div class="overflow-auto flex-1 min-h-0">
                 <table class="w-full min-w-[900px] table-fixed">
-                    <thead>
+                    <thead class="sticky top-0 z-10">
                         <tr class="table-header">
                             <th class="w-32 px-2 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Branch</th>
                             <th class="w-40 px-2 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">User</th>
@@ -182,7 +182,7 @@ select {
                                 <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
                             </tr>
                         </template>
-                        <template x-for="(row, index) in rows" :key="index">
+                        <template x-for="(row, index) in paginatedRows" :key="index">
                             <tr class="table-row-sales">
                                 <td class="px-2 py-3 text-xs text-center border-r border-gray-200 font-medium" x-text="row.branch"></td>
                                 <td class="px-2 py-3 text-xs text-left border-r border-gray-200 font-medium" x-text="row.user"></td>
@@ -199,17 +199,33 @@ select {
                                 </td>
                             </tr>
                         </template>
-                    </tbody>
-                </table>
-            </div>
+                </tbody>
+            </table>
         </div>
+    </div>
 
-        <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mt-0">
-            <div class="flex flex-wrap gap-6">
-                <div class="footer-box rounded-lg overflow-hidden min-w-[320px]">
-                    <div class="footer-box-header px-4 py-2">
-                        <span class="text-sm font-bold text-gray-700">User Wise Sales Summary</span>
-                    </div>
+    <nav x-show="rowTotalPages > 1" class="flex justify-end" aria-label="Pagination Navigation">
+        <span class="inline-flex items-center gap-2">
+            <button @click="goToPage(currentPage - 1)" :disabled="currentPage <= 1"
+                    :class="currentPage <= 1 ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Prev
+            </button>
+            <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5">
+                <span x-text="currentPage"></span>/<span x-text="rowTotalPages"></span>
+            </span>
+            <button @click="goToPage(currentPage + 1)" :disabled="currentPage >= rowTotalPages"
+                    :class="currentPage >= rowTotalPages ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Next
+            </button>
+        </span>
+    </nav>
+
+    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mt-0">
+        <div class="flex flex-wrap gap-6">
+            <div class="footer-box rounded-lg overflow-hidden min-w-[320px]">
+                <div class="footer-box-header px-4 py-2">
+                    <span class="text-sm font-bold text-gray-700">User Wise Sales Summary</span>
+                </div>
                     <div class="p-4">
                         <div class="grid grid-cols-2 gap-x-8 gap-y-2">
                             <div class="flex justify-between">
@@ -275,6 +291,17 @@ function userSalesReport() {
         branches: [],
         users: [],
         summary: {},
+        currentPage: 1,
+        perPage: 25,
+
+        get rowTotalPages() {
+            return Math.max(1, Math.ceil(this.rows.length / this.perPage));
+        },
+
+        get paginatedRows() {
+            const start = (this.currentPage - 1) * this.perPage;
+            return this.rows.slice(start, start + this.perPage);
+        },
 
         init() {
             this.setDefaultDates();
@@ -303,6 +330,7 @@ function userSalesReport() {
 
         async loadData() {
             this.loading = true;
+            this.currentPage = 1;
             try {
                 const params = new URLSearchParams();
                 if (this.branch !== 'all') params.set('branch_id', this.branch);
@@ -327,6 +355,11 @@ function userSalesReport() {
             this.user = 'all';
             this.setDefaultDates();
             this.loadData();
+        },
+
+        goToPage(page) {
+            if (page < 1 || page > this.rowTotalPages) return;
+            this.currentPage = page;
         },
 
         formatCurrency(amount) {
