@@ -70,4 +70,14 @@ class ProfitLossReportFingerprintModalTest extends TestCase
             );
         }
     }
+
+    public function test_summary_cards_show_total_customer_and_passenger_counts(): void
+    {
+        $html = view('reports.profit-loss')->render();
+
+        $this->assertStringContainsString('Total Customers', $html);
+        $this->assertStringContainsString('summary.customer.count', $html);
+        $this->assertStringContainsString('Total Passengers', $html);
+        $this->assertStringContainsString('summary.passenger.count', $html);
+    }
 }
