@@ -138,6 +138,7 @@ Route::middleware('auth')->group(function () {
     Route::post('/diagnostics/upload-failure', [DiagnosticController::class, 'recordUploadFailure']);
     Route::get('/passengers/{passenger}/download-all-docs', [PassengerController::class, 'downloadAllDocuments'])->name('passengers.download-all-docs');
     Route::patch('/passengers/{passenger}/toggle-ticket-hold', [PassengerController::class, 'toggleTicketHold'])->name('passengers.toggle-ticket-hold')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
+    Route::patch('/passengers/{passenger}/toggle-visa-hold', [PassengerController::class, 'toggleVisaHold'])->name('passengers.toggle-visa-hold')->middleware('role:Super Admin,Co Admin,Visa Admin');
     Route::patch('/passengers/{passenger}/ticket-remarks', [PassengerController::class, 'updateTicketRemarks'])->name('passengers.ticket-remarks')->middleware('role:Super Admin,Co Admin,Ticket Admin,Ticket Staff');
 
     // Booking-specific routes
