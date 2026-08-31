@@ -419,34 +419,95 @@ class BookingController extends Controller
                 $dateFrom = $request->input('status_change_from');
                 $dateTo = $request->input('status_change_to');
 
-                $q->where('passenger_status_id', $action);
+                if (in_array($action, ['visa_submitted', 'visa_issued', 'ticket_issued'])) {
+                    // New filters: exclude passengers whose current status is Cancel/Delivered/Hold
+                    $excludeIds = PassengerStatus::whereIn('name', ['Cancel', 'Delivered', 'Hold'])
+                        ->pluck('id')
+                        ->toArray();
 
-                if ($dateFrom || $dateTo) {
-                    $q->where(function ($query) use ($action, $dateFrom, $dateTo) {
-                        $query->where(function ($q) use ($action, $dateFrom, $dateTo) {
-                            $q->whereHas('updateLogs', function ($logQ) use ($action, $dateFrom, $dateTo) {
-                                $logQ->where('action', 'updated')
-                                    ->where('new_values->passenger_status_id', $action);
+                    $q->where(function ($sub) use ($excludeIds) {
+                        $sub->whereNull('passenger_status_id')
+                            ->orWhereNotIn('passenger_status_id', $excludeIds);
+                    });
+
+                    match ($action) {
+                        'visa_submitted' => $q->whereHas(
+                            'visaSubmission',
+                            fn ($vs) => $vs->whereHas('logs', function ($log) use ($dateFrom, $dateTo) {
+                                $log->where(function ($log) {
+                                    $log->where('action', 'submitted')
+                                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'submitted'");
+                                });
                                 if ($dateFrom) {
-                                    $logQ->whereDate('created_at', '>=', $dateFrom);
+                                    $log->whereDate('created_at', '>=', $dateFrom);
                                 }
                                 if ($dateTo) {
-                                    $logQ->whereDate('created_at', '<=', $dateTo);
+                                    $log->whereDate('created_at', '<=', $dateTo);
+                                }
+                            })
+                        ),
+                        'visa_issued' => $q->whereHas(
+                            'visaSubmission',
+                            fn ($vs) => $vs->whereHas('logs', function ($log) use ($dateFrom, $dateTo) {
+                                $log->where(function ($log) {
+                                    $log->where('action', 'issued')
+                                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'");
+                                });
+                                if ($dateFrom) {
+                                    $log->whereDate('created_at', '>=', $dateFrom);
+                                }
+                                if ($dateTo) {
+                                    $log->whereDate('created_at', '<=', $dateTo);
+                                }
+                            })
+                        ),
+                        'ticket_issued' => $q->whereHas(
+                            'issuedTickets',
+                            fn ($it) => $it->whereHas('logs', function ($log) use ($dateFrom, $dateTo) {
+                                $log->where(function ($log) {
+                                    $log->where('action', 'issued')
+                                        ->orWhere('new_data->status', 'issued');
+                                });
+                                if ($dateFrom) {
+                                    $log->whereDate('created_at', '>=', $dateFrom);
+                                }
+                                if ($dateTo) {
+                                    $log->whereDate('created_at', '<=', $dateTo);
+                                }
+                            })
+                        ),
+                    };
+                } else {
+                    // Existing Cancel/Delivered/Hold logic — unchanged
+                    $q->where('passenger_status_id', $action);
+
+                    if ($dateFrom || $dateTo) {
+                        $q->where(function ($query) use ($action, $dateFrom, $dateTo) {
+                            $query->where(function ($q) use ($action, $dateFrom, $dateTo) {
+                                $q->whereHas('updateLogs', function ($logQ) use ($action, $dateFrom, $dateTo) {
+                                    $logQ->where('action', 'updated')
+                                        ->where('new_values->passenger_status_id', $action);
+                                    if ($dateFrom) {
+                                        $logQ->whereDate('created_at', '>=', $dateFrom);
+                                    }
+                                    if ($dateTo) {
+                                        $logQ->whereDate('created_at', '<=', $dateTo);
+                                    }
+                                });
+                            })->orWhere(function ($q) use ($action, $dateFrom, $dateTo) {
+                                $q->whereDoesntHave('updateLogs', function ($logQ) use ($action) {
+                                    $logQ->where('action', 'updated')
+                                        ->where('new_values->passenger_status_id', $action);
+                                });
+                                if ($dateFrom) {
+                                    $q->whereDate('updated_at', '>=', $dateFrom);
+                                }
+                                if ($dateTo) {
+                                    $q->whereDate('updated_at', '<=', $dateTo);
                                 }
                             });
-                        })->orWhere(function ($q) use ($action, $dateFrom, $dateTo) {
-                            $q->whereDoesntHave('updateLogs', function ($logQ) use ($action) {
-                                $logQ->where('action', 'updated')
-                                    ->where('new_values->passenger_status_id', $action);
-                            });
-                            if ($dateFrom) {
-                                $q->whereDate('updated_at', '>=', $dateFrom);
-                            }
-                            if ($dateTo) {
-                                $q->whereDate('updated_at', '<=', $dateTo);
-                            }
                         });
-                    });
+                    }
                 }
             })
             ->when($selectedRouteDisplay, function ($q) use ($routeDisplayMap, $selectedRouteDisplay) {
@@ -622,6 +683,11 @@ class BookingController extends Controller
         $passengerStatuses = PassengerStatus::all();
         $statusChangeOptions = $passengerStatuses->filter(fn ($s) => in_array($s->name, ['Cancel', 'Delivered', 'Hold'])
         )->values();
+        $statusChangeOptions = $statusChangeOptions->concat(collect([
+            (object) ['id' => 'visa_submitted', 'name' => 'Visa Submitted'],
+            (object) ['id' => 'visa_issued', 'name' => 'Visa Issued'],
+            (object) ['id' => 'ticket_issued', 'name' => 'Ticket Issued'],
+        ]));
 
         $visaAgents = collect();
         if ($canFilterByVisaAgent) {
