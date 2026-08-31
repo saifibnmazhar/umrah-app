@@ -244,4 +244,17 @@ class CancelPassengerModalPlacementTest extends TestCase
             $this->assertStringContainsString($label, $html);
         }
     }
+
+    public function test_ticket_status_badges_fall_back_when_outbound_pending_without_outbound_ticket(): void
+    {
+        $html = $this->renderIndex();
+
+        // Passengers whose regular ticket has outbound_pending=true but no
+        // pending_outbound issued-ticket row must still render a status badge.
+        $fallback = "} else {\n"
+            ."                    if (R.status === 'issued') statuses.push('Inbound Issued');\n"
+            ."                    if (R.status === 'pending') statuses.push('Pending');";
+
+        $this->assertStringContainsString($fallback, $html);
+    }
 }
