@@ -61,6 +61,7 @@ use App\Models\CurrencyRate;
 use App\Models\District;
 use App\Models\Payment;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Route;
 
 // Guest routes (accessible without authentication)
@@ -188,6 +189,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/fingerprints/admin', function () {
         $canAssignStaff = auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin', 'Fingerprint Admin'])->isNotEmpty();
+        $approvalOverrideAllowed = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
         $divisions = District::distinct()->pluck('division')->sort()->values();
         $districts = District::orderBy('division')->orderBy('name')->get(['id', 'name', 'division']);
 
@@ -222,10 +224,11 @@ Route::middleware('auth')->group(function () {
             }
         }
 
-        return view('fingerprints.admin', compact('canAssignStaff', 'divisions', 'districts', 'fingerprintStatuses', 'flightDateRanges'));
+        return view('fingerprints.admin', compact('canAssignStaff', 'approvalOverrideAllowed', 'divisions', 'districts', 'fingerprintStatuses', 'flightDateRanges'));
     })->name('fingerprint.admin')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::get('/fingerprints/staff', function () {
         $isFingerprintStaff = auth()->user()->hasRole('Fingerprint Staff');
+        $approvalOverrideAllowed = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
 
         $fingerprintStatuses = FingerprintStatus::cases();
 
@@ -258,7 +261,7 @@ Route::middleware('auth')->group(function () {
             }
         }
 
-        return view('fingerprints.staff', compact('isFingerprintStaff', 'fingerprintStatuses', 'flightDateRanges'));
+        return view('fingerprints.staff', compact('isFingerprintStaff', 'approvalOverrideAllowed', 'fingerprintStatuses', 'flightDateRanges'));
     })->name('fingerprint.staff')->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
 
     Route::get('/api/fingerprints/admin', [FingerprintController::class, 'adminIndex'])
@@ -279,6 +282,9 @@ Route::middleware('auth')->group(function () {
     Route::put('/api/fingerprints/detail/{fingerprintDetail}/status', [FingerprintController::class, 'updateStatus'])
         ->name('api.fingerprints.update-status')
         ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
+    Route::post('/api/fingerprints/{fingerprint}/approve-all', [FingerprintController::class, 'approveAll'])
+        ->name('api.fingerprints.approve-all')
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
     Route::post('/api/fingerprints/detail/{fingerprintDetail}/hold', [FingerprintController::class, 'hold'])
         ->name('api.fingerprints.hold')
         ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
@@ -297,6 +303,7 @@ Route::middleware('auth')->group(function () {
     // Reports
     Route::get('/reports/statement', fn () => view('reports.statement'))->name('report.statement');
     Route::get('/reports/profit-loss', fn () => view('reports.profit-loss'))->name('report.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
+    Route::get('/api/reports/profit-loss/summary', [ProfitLossReportController::class, 'summary'])->name('api.reports.profit-loss.summary')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/api/reports/profit-loss', [ProfitLossReportController::class, 'data'])->name('api.reports.profit-loss')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/profit-loss/print', [ProfitLossReportController::class, 'print'])->name('report.profit-loss.print')->middleware('role:Super Admin,Co Admin,Auditor');
     Route::get('/reports/fingerprint', [FingerprintReportController::class, 'index'])->name('report.fingerprint')->middleware('role:Super Admin,Co Admin,Auditor,Fingerprint Admin');
@@ -383,6 +390,14 @@ Route::middleware('auth')->group(function () {
                 ];
             })
             ->sortKeys();
+
+        $dailyPayments = new LengthAwarePaginator(
+            $dailyPayments->forPage(LengthAwarePaginator::resolveCurrentPage(), 25)->values(),
+            $dailyPayments->count(),
+            25,
+            LengthAwarePaginator::resolveCurrentPage(),
+            ['path' => LengthAwarePaginator::resolveCurrentPath(), 'query' => request()->query()]
+        );
 
         $vouchersByDate = [];
         foreach ($payments as $payment) {
