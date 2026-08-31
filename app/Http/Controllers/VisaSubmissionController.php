@@ -246,4 +246,42 @@ class VisaSubmissionController extends Controller
             'visa_submission' => $visaSubmission->fresh()->load(['visaAgent', 'commissionAgent', 'visaSellingPrice', 'cancelledSubmission']),
         ]);
     }
+
+    public function revert(Request $request, Booking $booking, Passenger $passenger)
+    {
+        if ($passenger->booking_id !== $booking->id) {
+            return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
+        }
+
+        if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
+            return response()->json(['success' => false, 'message' => 'Cannot modify visa for a cancelled passenger'], 422);
+        }
+
+        $visaSubmission = $passenger->visaSubmission;
+
+        if (! $visaSubmission) {
+            return response()->json(['success' => false, 'message' => 'No visa submission found for this passenger'], 404);
+        }
+
+        if ($visaSubmission->status?->value !== 'issued') {
+            return response()->json(['success' => false, 'message' => 'Visa must be in issued status to revert'], 422);
+        }
+
+        $additionalCost = (float) ($visaSubmission->additional_cost ?? 0);
+        $currentFinalCost = (float) ($visaSubmission->final_cost ?? 0);
+        $finalCost = $currentFinalCost - $additionalCost;
+
+        $visaSubmission->update([
+            'visa_number' => null,
+            'additional_cost' => null,
+            'final_cost' => $finalCost ?: null,
+            'status' => 'submitted',
+        ]);
+
+        return response()->json([
+            'success' => true,
+            'message' => 'Visa reverted successfully',
+            'visa_submission' => $visaSubmission->fresh()->load(['visaAgent', 'commissionAgent', 'visaSellingPrice']),
+        ]);
+    }
 }

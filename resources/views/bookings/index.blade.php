@@ -1265,6 +1265,11 @@ if ($passenger->ticket_fare_inbound_id) {
                         @click="openVisaResubmitModal({{ $loop->index }})"
                         class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
             </template>
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued'"
+                        @click="openVisaRevertModal({{ $loop->index }})"
+                        class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Revert</button>
+            </template>
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved' && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                 <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
             </template>
@@ -1861,6 +1866,32 @@ if ($passenger->ticket_fare_inbound_id) {
                     <button type="button" @click="closeVisaCancelModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Close</button>
                 </div>
             </form>
+        </div>
+    </div>
+
+    {{-- Visa Revert Confirmation Modal --}}
+    <div x-show="visaRevertModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center" @keydown.escape="closeVisaRevertModal()">
+        <div class="fixed inset-0 bg-black/50" @click="closeVisaRevertModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6 max-h-[90vh] overflow-y-auto">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Revert Visa</h3>
+            <div class="space-y-4">
+                <p class="text-sm text-slate-600">Are you sure you want to revert this issued visa?</p>
+                <div class="bg-slate-50 rounded-lg p-4 space-y-2">
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Visa Number:</span>
+                        <span class="font-medium text-slate-700" x-text="passengersVisaData[editingVisaIndex]?.visa?.visa_number || '-'"></span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Agent:</span>
+                        <span class="font-medium text-slate-700" x-text="passengersVisaData[editingVisaIndex]?.visa?.agent || '-'"></span>
+                    </div>
+                </div>
+                <p class="text-xs text-red-600">The visa number and additional cost will be cleared. The visa will return to submitted status.</p>
+            </div>
+            <div class="flex gap-3 mt-6">
+                <button type="button" @click="handleVisaRevert()" class="flex-1 px-6 py-2 bg-red-600 text-white rounded-lg hover:bg-red-700 transition font-medium">Revert</button>
+                <button type="button" @click="closeVisaRevertModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
         </div>
     </div>
 
@@ -3588,6 +3619,7 @@ function bookingIndexApp() {
         visaIssueModalVisible: false,
         visaEditModalVisible: false,
         visaResubmitModalVisible: false,
+        visaRevertModalVisible: false,
         editingVisaIndex: null,
 
         visaSubmitForm: {
@@ -4132,6 +4164,52 @@ function bookingIndexApp() {
             .catch(err => {
                 console.error('Visa cancel error:', err);
                 alert('Failed to cancel visa');
+            });
+        },
+
+        openVisaRevertModal(index) {
+            this.editingVisaIndex = index;
+            this.visaRevertModalVisible = true;
+        },
+
+        closeVisaRevertModal() {
+            this.editingVisaIndex = null;
+            this.visaRevertModalVisible = false;
+        },
+
+        handleVisaRevert() {
+            if (this.editingVisaIndex === null) return;
+            const data = this.passengersVisaData[this.editingVisaIndex];
+            if (!data?.visa) return;
+
+            fetch('/bookings/' + data.booking_id + '/passengers/' + data.id + '/visa-revert', {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+                },
+            })
+            .then(r => r.json())
+            .then(res => {
+                if (res.success) {
+                    const sub = res.visa_submission;
+                    this.$nextTick(() => {
+                        if (data.visa) {
+                            data.visa.visa_number = null;
+                            data.visa.additional_cost = null;
+                            data.visa.final_cost = sub.final_cost;
+                            data.visa.status = 'submitted';
+                        }
+                    });
+                    this.closeVisaRevertModal();
+                    this.showToast('Visa reverted successfully');
+                } else {
+                    alert(res.message || 'Revert failed');
+                }
+            })
+            .catch(err => {
+                console.error('Visa revert error:', err);
+                alert('Failed to revert visa');
             });
         },
 
