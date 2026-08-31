@@ -10,6 +10,7 @@
         $canAccessFingerprintReport = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty() || (auth()->user()->hasRole('Fingerprint Admin') && auth()->user()->branch?->fingerprint_operation);
         $canAccessBooking = true;
         $canAccessPendingRefunds = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Fingerprint Admin'])->isNotEmpty();
+        $canAccessCancelledBookings = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Branch Manager', 'Fingerprint Admin'])->isNotEmpty();
     @endphp
     <div class="w-full mx-auto px-4">
         <div class="flex justify-center items-center h-16 space-x-5">
@@ -21,6 +22,7 @@
                 <a href="{{ route('dashboard') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="dashboard">Dashboard</a>
                 @if($canAccessBooking)<a href="{{ route('bookings.index') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="booking">Booking</a>@endif
                 @if($canAccessPendingRefunds)<a href="{{ route('pending-refunds.index') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="pendingRefunds">Pending Refunds</a>@endif
+                @if($canAccessCancelledBookings)<a href="{{ route('cancelled-bookings.index') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="cancelledBookings">Cancelled Bookings</a>@endif
                 @if($canAccessFingerprintAdmin)<a href="{{ route('fingerprint.admin') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="fingerprintAdmin">Fingerprint Admin</a>@endif
                 @if($canAccessFingerprintStaff)<a href="{{ route('fingerprint.staff') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="fingerprintStaff">Fingerprint Staff</a>@endif
                 @if(!$canAccessAdmin)<a href="{{ route('fingerprint-charges.index') }}" class="nav-item px-4 py-2 rounded-md font-medium text-sm text-slate-400 hover:text-white transition" data-tab="fingerprintCharge">Fingerprint Charge</a>@endif
@@ -129,6 +131,7 @@
             <a href="{{ route('dashboard') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Dashboard</a>
             @if($canAccessBooking)<a href="{{ route('bookings.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Booking</a>@endif
             @if($canAccessPendingRefunds)<a href="{{ route('pending-refunds.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Pending Refunds</a>@endif
+            @if($canAccessCancelledBookings)<a href="{{ route('cancelled-bookings.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Cancelled Bookings</a>@endif
             @if($canAccessFingerprintAdmin)<a href="{{ route('fingerprint.admin') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Admin</a>@endif
             @if($canAccessFingerprintStaff)<a href="{{ route('fingerprint.staff') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Staff</a>@endif
             <a href="{{ route('fingerprint-charges.index') }}" class="block w-full text-left px-3 py-2 rounded-md font-medium hover:bg-slate-600">Fingerprint Charge</a>

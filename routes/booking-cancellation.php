@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\BookingCancellationActionController;
 use App\Http\Controllers\BookingCancellationViewController;
+use App\Http\Controllers\CancelledRecordController;
 use App\Http\Controllers\PassengerCancellationActionController;
 use App\Http\Controllers\PassengerCancellationViewController;
 use Illuminate\Support\Facades\Route;
@@ -43,3 +44,17 @@ Route::post('/cancelled-passengers/{cancelledPassenger}/revert', [PassengerCance
     ->name('cancelled-passengers.revert')->middleware('role:Branch Manager,Fingerprint Admin');
 Route::post('/cancelled-passengers/{cancelledPassenger}/confirm', [PassengerCancellationActionController::class, 'confirmSubmit'])
     ->name('cancelled-passengers.confirm.submit')->middleware('role:Branch Manager,Fingerprint Admin');
+
+// ─── Cancelled Records Index / Details / Print ───
+Route::get('/cancelled-bookings', [CancelledRecordController::class, 'bookingIndex'])
+    ->name('cancelled-bookings.index')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
+Route::get('/cancelled-bookings/{cancelledBooking}', [CancelledRecordController::class, 'bookingShow'])
+    ->name('cancelled-bookings.show')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
+Route::get('/cancelled-bookings/{cancelledBooking}/print', [CancelledRecordController::class, 'bookingPrint'])
+    ->name('cancelled-bookings.print')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
+Route::get('/cancelled-passengers', [CancelledRecordController::class, 'passengerIndex'])
+    ->name('cancelled-passengers.index')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
+Route::get('/cancelled-passengers/{cancelledPassenger}', [CancelledRecordController::class, 'passengerShow'])
+    ->name('cancelled-passengers.show')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
+Route::get('/cancelled-passengers/{cancelledPassenger}/print', [CancelledRecordController::class, 'passengerPrint'])
+    ->name('cancelled-passengers.print')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');

@@ -73,10 +73,10 @@ class PassengerCancellationActionController extends Controller
             $service = app(PassengerCancellationService::class);
             $service->confirmCancellation($cancelledPassenger, $validated);
 
-            return redirect()->route('pending-refunds.index', ['tab' => 'passengers'])
+            return redirect()->route('cancelled-passengers.print', $cancelledPassenger)
                 ->with('success', 'Passenger cancellation confirmed successfully.');
         } catch (\Exception $e) {
-            return redirect()->route('pending-refunds.index', ['tab' => 'passengers'])
+            return redirect()->route('cancelled-passengers.print', $cancelledPassenger)
                 ->with('error', $e->getMessage());
         }
     }

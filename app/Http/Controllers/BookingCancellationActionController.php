@@ -68,10 +68,10 @@ class BookingCancellationActionController extends Controller
             $service = app(CancellationService::class);
             $service->confirmCancellation($cancelledBooking, $validated);
 
-            return redirect()->route('pending-refunds.index')
+            return redirect()->route('cancelled-bookings.print', $cancelledBooking)
                 ->with('success', 'Refund processed successfully.');
         } catch (\Exception $e) {
-            return redirect()->route('pending-refunds.index')
+            return redirect()->route('cancelled-bookings.print', $cancelledBooking)
                 ->with('error', $e->getMessage());
         }
     }
