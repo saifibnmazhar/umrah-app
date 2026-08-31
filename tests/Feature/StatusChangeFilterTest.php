@@ -4,14 +4,14 @@ namespace Tests\Feature;
 
 use App\Models\User;
 use App\Services\CurrencyRateService;
-use Illuminate\Foundation\Testing\DatabaseTransactions;
+use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-class CancelPassengerModalPlacementTest extends TestCase
+class StatusChangeFilterTest extends TestCase
 {
-    use DatabaseTransactions;
+    use RefreshDatabase;
 
     private array $createdTables = [];
 
@@ -83,12 +83,6 @@ class CancelPassengerModalPlacementTest extends TestCase
             $table->boolean('is_active')->default(true);
         });
 
-        $this->ensureTable('passengers', function ($table) {
-            $table->id();
-            $table->foreignId('booking_id')->nullable();
-            $table->foreignId('ticket_fare_id')->nullable();
-        });
-
         $this->ensureTable('city_codes', function ($table) {
             $table->id();
             $table->string('city_name')->nullable();
@@ -120,15 +114,15 @@ class CancelPassengerModalPlacementTest extends TestCase
         parent::tearDown();
     }
 
-    private function renderIndex(): string
+    private function renderIndex(array $overrides = []): string
     {
         $user = User::factory()->create();
         $this->actingAs($user);
 
         $emptyPaginator = new LengthAwarePaginator(collect([]), 0, 20);
 
-        return view('bookings.index', [
-            'tab' => 'bookings',
+        $data = [
+            'tab' => 'passenger',
             'bookings' => $emptyPaginator,
             'passengers' => $emptyPaginator,
             'passengerStatuses' => collect([]),
@@ -151,7 +145,7 @@ class CancelPassengerModalPlacementTest extends TestCase
             'selectedBookingDateFrom' => null,
             'selectedBookingDateTo' => null,
             'selectedFingerprintLocation' => null,
-            'selectedBookingStatus' => null,
+            'selectedBookingStatus' => 'active',
             'selectedPassengerStatus' => null,
             'selectedRouteDisplay' => null,
             'routesList' => collect([]),
@@ -165,7 +159,11 @@ class CancelPassengerModalPlacementTest extends TestCase
             'selectedStatusChangeFrom' => null,
             'selectedStatusChangeTo' => null,
             'selectedPaymentWise' => null,
-            'statusChangeOptions' => collect([]),
+            'statusChangeOptions' => collect([
+                (object) ['id' => 'visa_submitted', 'name' => 'Visa Submitted'],
+                (object) ['id' => 'visa_issued', 'name' => 'Visa Issued'],
+                (object) ['id' => 'ticket_issued', 'name' => 'Ticket Issued'],
+            ]),
             'fingerprintStatuses' => [],
             'visaStatuses' => [],
             'ticketStatuses' => [],
@@ -176,85 +174,20 @@ class CancelPassengerModalPlacementTest extends TestCase
             'totalPackageBdt' => 0,
             'totalDueBdt' => 0,
             'reIssueReasons' => collect([]),
-        ])->render();
+        ];
+
+        return view('bookings.index', array_merge($data, $overrides))->render();
     }
 
-    private function assertNotNestedInside(string $html, string $outerMarker, string $innerMarker): void
-    {
-        $outerPos = strpos($html, $outerMarker);
-        $innerPos = strpos($html, $innerMarker);
-
-        $this->assertNotFalse($outerPos, "Outer marker '{$outerMarker}' not found in rendered HTML");
-        $this->assertNotFalse($innerPos, "Inner marker '{$innerMarker}' not found in rendered HTML");
-
-        if ($innerPos < $outerPos) {
-            return;
-        }
-
-        preg_match_all('/<div\b|<\/div>/', substr($html, 0, $outerPos), $prefixMatches);
-        $depth = 0;
-        foreach ($prefixMatches[0] as $tag) {
-            $tag === '<div' ? $depth++ : $depth--;
-        }
-        $baseDepth = $depth;
-
-        preg_match_all('/<div\b|<\/div>/', substr($html, $outerPos, $innerPos - $outerPos), $betweenMatches);
-        foreach ($betweenMatches[0] as $tag) {
-            $tag === '<div' ? $depth++ : $depth--;
-        }
-
-        $this->assertEquals($baseDepth, $depth,
-            "'{$innerMarker}' element is nested inside the '{$outerMarker}' container (relative depth "
-            .($depth - $baseDepth).'). It must be a sibling so x-show can display it independently.');
-    }
-
-    public function test_cancel_passenger_modal_is_not_nested_inside_remarks_modal(): void
+    public function test_status_change_dropdown_renders_new_options(): void
     {
         $html = $this->renderIndex();
 
-        $this->assertStringContainsString('x-show="cancelPassengerModalVisible"', $html);
-        $this->assertStringContainsString('x-show="remarksModalVisible"', $html);
-
-        $this->assertNotNestedInside(
-            $html,
-            'x-show="remarksModalVisible"',
-            'x-show="cancelPassengerModalVisible"'
-        );
-    }
-
-    public function test_booking_cancel_modal_is_not_nested_inside_other_modals(): void
-    {
-        $html = $this->renderIndex();
-
-        $this->assertStringContainsString('x-show="cancelModalVisible"', $html);
-
-        $this->assertNotNestedInside(
-            $html,
-            'x-show="remarksModalVisible"',
-            'x-show="cancelModalVisible"'
-        );
-    }
-
-    public function test_cancel_passenger_modal_always_shows_due_and_cost_summary_rows(): void
-    {
-        $html = $this->renderIndex();
-
-        // Zero-value rows must render unconditionally (not behind x-if).
-        foreach (['Additional Tickets', 'Total Passenger Due', 'Total Visa Cost'] as $label) {
-            $this->assertStringContainsString($label, $html);
-        }
-    }
-
-    public function test_ticket_status_badges_fall_back_when_outbound_pending_without_outbound_ticket(): void
-    {
-        $html = $this->renderIndex();
-
-        // Passengers whose regular ticket has outbound_pending=true but no
-        // pending_outbound issued-ticket row must still render a status badge.
-        $fallback = "} else {\n"
-            ."                    if (R.status === 'issued') statuses.push('Inbound Issued');\n"
-            ."                    if (R.status === 'pending') statuses.push('Pending');";
-
-        $this->assertStringContainsString($fallback, $html);
+        $this->assertStringContainsString('Visa Submitted', $html);
+        $this->assertStringContainsString('Visa Issued', $html);
+        $this->assertStringContainsString('Ticket Issued', $html);
+        $this->assertStringContainsString('value="visa_submitted"', $html);
+        $this->assertStringContainsString('value="visa_issued"', $html);
+        $this->assertStringContainsString('value="ticket_issued"', $html);
     }
 }

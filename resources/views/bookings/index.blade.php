@@ -4560,28 +4560,36 @@ function bookingIndexApp() {
             if (row.is_ticket_held) statuses.push('Hold');
 
             if (OP) {
-                if (R.status === 'pending' && PO?.status === 'pending')
-                    statuses.push('Pending');
-                if (R.status === 'issued' && PO?.status === 'pending')
-                    statuses.push('Inbound Issued');
-                if (R.status === 'pending' && PO?.status === 'issued')
-                    statuses.push('Outbound Issued');
-                if (R.status === 'issued' && PO?.status === 'issued')
-                    statuses.push('Both Issued');
-                if (R.status === 'awaiting-group' && PO?.status !== 'awaiting-group')
-                    statuses.push('Awaiting Group Inbound');
-                if (R.status !== 'awaiting-group' && PO?.status === 'awaiting-group')
-                    statuses.push('Awaiting Group Outbound');
-                if (R.status === 'awaiting-group' && PO?.status === 'awaiting-group')
-                    statuses.push('Awaiting Group Both');
-                if (R.status === 're-issued' || PO?.status === 're-issued')
-                    statuses.push('Partial Re-Issued');
-                if (R.status === 're-issued' && PO?.status === 're-issued')
-                    statuses.push('Re-Issued');
-                if (R.status === 'refunded' || PO?.status === 'refunded')
-                    statuses.push('Partial Refunded');
-                if (R.status === 'refunded' && PO?.status === 'refunded')
-                    statuses.push('Refunded');
+                if (PO) {
+                    if (R.status === 'pending' && PO?.status === 'pending')
+                        statuses.push('Pending');
+                    if (R.status === 'issued' && PO?.status === 'pending')
+                        statuses.push('Inbound Issued');
+                    if (R.status === 'pending' && PO?.status === 'issued')
+                        statuses.push('Outbound Issued');
+                    if (R.status === 'issued' && PO?.status === 'issued')
+                        statuses.push('Both Issued');
+                    if (R.status === 'awaiting-group' && PO?.status !== 'awaiting-group')
+                        statuses.push('Awaiting Group Inbound');
+                    if (R.status !== 'awaiting-group' && PO?.status === 'awaiting-group')
+                        statuses.push('Awaiting Group Outbound');
+                    if (R.status === 'awaiting-group' && PO?.status === 'awaiting-group')
+                        statuses.push('Awaiting Group Both');
+                    if (R.status === 're-issued' || PO?.status === 're-issued')
+                        statuses.push('Partial Re-Issued');
+                    if (R.status === 're-issued' && PO?.status === 're-issued')
+                        statuses.push('Re-Issued');
+                    if (R.status === 'refunded' || PO?.status === 'refunded')
+                        statuses.push('Partial Refunded');
+                    if (R.status === 'refunded' && PO?.status === 'refunded')
+                        statuses.push('Refunded');
+                } else {
+                    if (R.status === 'issued') statuses.push('Inbound Issued');
+                    if (R.status === 'pending') statuses.push('Pending');
+                    if (R.status === 'awaiting-group') statuses.push('Awaiting Group Inbound');
+                    if (R.status === 're-issued') statuses.push('Re-Issued');
+                    if (R.status === 'refunded') statuses.push('Refunded');
+                }
             } else {
                 if (R.status === 'pending')
                     statuses.push('Pending');
