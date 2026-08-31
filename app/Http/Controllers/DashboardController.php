@@ -8,7 +8,6 @@ use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
 use App\Models\Booking;
 use App\Models\CurrencyRate;
-use App\Models\Fingerprint;
 use App\Models\FingerprintDetailLog;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
@@ -20,7 +19,6 @@ use App\Models\TicketRequest;
 use App\Models\VisaSubmission;
 use App\Models\VisaUpdateLog;
 use App\Models\Voucher;
-use App\Services\CostTrackingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\View\View;
 
@@ -68,20 +66,26 @@ class DashboardController extends Controller
             ->when($branchId, fn ($q) => $q->whereHas('fingerprintDetail.passenger.booking', $branchScope))
             ->count();
 
-        $fingerprintProfitRow = Fingerprint::query()
-            ->leftJoin('bookings', 'fingerprints.booking_id', '=', 'bookings.id')
-            ->leftJoin('fingerprint_charges', 'bookings.fingerprint_charge_id', '=', 'fingerprint_charges.id')
-            ->leftJoin('invoices', 'bookings.id', '=', 'invoices.booking_id')
-            ->leftJoin('currency_rates', 'bookings.currency_rate_id', '=', 'currency_rates.id')
-            ->where('invoices.created_at', '>=', now()->subDays(30))
-            ->when($branchId, fn ($q) => $q->where('bookings.booking_branch_id', $branchId))
-            ->selectRaw('
-                SUM(COALESCE(fingerprint_charges.fingerprint_charge, 0)) - SUM(COALESCE(fingerprints.cost, 0)) as sar_profit,
-                SUM(COALESCE(fingerprint_charges.fingerprint_charge, 0) * COALESCE(currency_rates.rate, ?)) - SUM(COALESCE(fingerprints.cost, 0) * COALESCE(currency_rates.rate, ?)) as bdt_profit
-            ', [$firstRate, $firstRate])
-            ->first();
-        $totalFingerprintProfit = $fingerprintProfitRow->sar_profit ?? 0;
-        $totalFingerprintProfitBdt = $fingerprintProfitRow->bdt_profit ?? 0;
+        $profitBookings = Booking::with(['fingerprint', 'currencyRate'])
+            ->where('is_cancelled', false)
+            ->whereHas('invoice')
+            ->where('created_at', '>=', now()->subDays(30))
+            ->when($branchId, fn ($q) => $q->where('booking_branch_id', $branchId))
+            ->get();
+
+        $totalProfit = 0;
+        $totalProfitBdt = 0;
+        $totalFingerprintProfit = 0;
+        $totalFingerprintProfitBdt = 0;
+        foreach ($profitBookings as $booking) {
+            $profit = (float) ($booking->profit ?? 0);
+            $fpProfit = (float) ($booking->fingerprint?->profit ?? 0);
+            $rate = (float) ($booking->currencyRate?->rate ?? $firstRate);
+            $totalProfit += $profit;
+            $totalProfitBdt += $profit * $rate;
+            $totalFingerprintProfit += $fpProfit;
+            $totalFingerprintProfitBdt += $fpProfit * $rate;
+        }
 
         $invoiceCount = Invoice::where('created_at', '>=', now()->subDays(30))
             ->when($branchId, fn ($q) => $q->where('branch_id', $branchId))->count();
@@ -201,23 +205,6 @@ class DashboardController extends Controller
         $initialPaymentCashBdt = $initialPaymentRow->cash_bdt ?? 0;
         $initialPaymentBank = $initialPaymentRow->bank_sar ?? 0;
         $initialPaymentBankBdt = $initialPaymentRow->bank_bdt ?? 0;
-
-        $profitBookings = Booking::with(['invoice', 'fingerprint', 'currencyRate', 'passengers.visaSubmission', 'passengers.allIssuedTickets'])
-            ->where('is_cancelled', false)
-            ->whereHas('invoice')
-            ->where('created_at', '>=', now()->subDays(30))
-            ->when($branchId, fn ($q) => $q->where('booking_branch_id', $branchId))
-            ->get();
-        $costService = app(CostTrackingService::class);
-        $totalProfit = 0;
-        $totalProfitBdt = 0;
-        foreach ($profitBookings as $booking) {
-            $costSummary = $costService->getBookingCostSummary($booking);
-            $profit = (float) $booking->invoice->total_amount - $costSummary['total_cost'];
-            $totalProfit += $profit;
-            $rate = (float) ($booking->currencyRate?->rate ?? $firstRate);
-            $totalProfitBdt += $profit * $rate;
-        }
 
         $paymentRow = Payment::where('payments.created_at', '>=', now()->subDays(30))
             ->when($branchId, fn ($q) => $q->where('payments.branch_id', $branchId))
