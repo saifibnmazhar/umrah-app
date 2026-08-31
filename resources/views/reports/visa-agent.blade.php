@@ -49,7 +49,7 @@ select {
     date_to: '{{ request('date_to') }}',
     visa_agent_id: '{{ request('visa_agent_id') }}',
 })">
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm no-print">
+    <div class="sticky top-0 z-20 bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm no-print">
         <div class="flex flex-wrap items-center gap-3">
             <div class="flex items-center gap-2">
                 <label class="text-sm font-semibold text-gray-700">SEARCH BOX</label>
@@ -92,10 +92,10 @@ select {
         <p class="sub"><span x-text="date_from || '...'"></span> – <span x-text="date_to || '...'"></span></p>
         <hr>
     </div>
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
-        <div class="overflow-x-auto">
+    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin flex flex-col" style="max-height: calc(100vh - 280px);">
+        <div class="overflow-auto flex-1 min-h-0">
             <table class="w-full min-w-[1400px] table-fixed">
-                <thead>
+                <thead class="sticky top-0 z-10">
                     <tr class="table-header">
                         <th class="w-56 px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Agent Name</th>
                         <th class="w-24 px-4 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Total<br>Submitted</th>
@@ -119,7 +119,7 @@ select {
                             <td colspan="9" class="px-4 py-8 text-center text-gray-500">No data found</td>
                         </tr>
                     </template>
-                    <template x-for="agent in filteredData" :key="agent.id">
+                    <template x-for="agent in paginatedData" :key="agent.id">
                         <tr class="table-row-agent">
                             <td class="px-2 py-3 text-sm text-left border-r border-gray-200 font-medium text-gray-800" x-text="agent.name"></td>
                             <td class="px-2 py-3 text-sm text-center border-r border-gray-200 font-medium" x-text="agent.totalSubmitted"></td>
@@ -162,6 +162,22 @@ select {
             </table>
         </div>
     </div>
+
+    <nav x-show="dataTotalPages > 1" class="flex justify-end" aria-label="Pagination Navigation">
+        <span class="inline-flex items-center gap-2">
+            <button @click="goToPage(currentPage - 1)" :disabled="currentPage <= 1"
+                    :class="currentPage <= 1 ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Prev
+            </button>
+            <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5">
+                <span x-text="currentPage"></span>/<span x-text="dataTotalPages"></span>
+            </span>
+            <button @click="goToPage(currentPage + 1)" :disabled="currentPage >= dataTotalPages"
+                    :class="currentPage >= dataTotalPages ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Next
+            </button>
+        </span>
+    </nav>
 
     <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm mt-0">
         <div class="flex flex-wrap gap-6">
@@ -394,6 +410,8 @@ function visaAgentReport(options = {}) {
         visa_agent_id: options.visa_agent_id || '',
         filteredData: [],
         loading: true,
+        currentPage: 1,
+        perPage: 25,
         summary: {
             totalAgents: 0,
             agentsWithDue: 0,
@@ -413,6 +431,15 @@ function visaAgentReport(options = {}) {
         modalDateFrom: '',
         modalDateTo: '',
 
+        get dataTotalPages() {
+            return Math.max(1, Math.ceil(this.filteredData.length / this.perPage));
+        },
+
+        get paginatedData() {
+            const start = (this.currentPage - 1) * this.perPage;
+            return this.filteredData.slice(start, start + this.perPage);
+        },
+
         init() {
             this.loadData();
             window.addEventListener('afterprint', () => {
@@ -423,6 +450,7 @@ function visaAgentReport(options = {}) {
 
         async loadData() {
             this.loading = true;
+            this.currentPage = 1;
             try {
                 const params = new URLSearchParams();
                 if (this.search) params.set('search', this.search);
@@ -445,6 +473,11 @@ function visaAgentReport(options = {}) {
 
         filterAgents() {
             this.loadData();
+        },
+
+        goToPage(page) {
+            if (page < 1 || page > this.dataTotalPages) return;
+            this.currentPage = page;
         },
 
         async openModal(agentId) {

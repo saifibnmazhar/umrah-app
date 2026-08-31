@@ -14,9 +14,7 @@ use App\Models\Fingerprint;
 use App\Models\FingerprintCharge;
 use App\Models\FlightDateGap;
 use App\Models\Invoice;
-use App\Models\IssuedTicket;
 use App\Models\Package;
-use App\Models\Passenger;
 use App\Models\Role;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
@@ -24,12 +22,11 @@ use App\Models\TicketFare;
 use App\Models\TravelClass;
 use App\Models\User;
 use App\Models\VisaSellingPrice;
-use App\Models\VisaSubmission;
+use App\Services\ProfitCalculationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
-use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
-class ProfitLossBreakdownDetailTest extends TestCase
+class BranchWiseReportProfitTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -113,9 +110,9 @@ class ProfitLossBreakdownDetailTest extends TestCase
         return compact('district', 'visaPrice', 'fare', 'package', 'fingerprintCharge', 'route');
     }
 
-    private function createBooking(User $user, array $deps): Booking
+    private function createBooking(User $user, array $deps, ?Branch $branch = null): Booking
     {
-        $branch = Branch::create([
+        $branch = $branch ?? Branch::create([
             'name' => 'Branch '.uniqid(),
             'address' => 'Addr',
             'contacts' => '0123',
@@ -125,7 +122,7 @@ class ProfitLossBreakdownDetailTest extends TestCase
         ]);
 
         $customer = Customer::create([
-            'name' => 'Customer',
+            'name' => 'Customer '.uniqid(),
             'passport_no' => 'P'.substr(uniqid(), -5),
             'iqama_type' => 'none',
             'mobile_no' => '0500000000',
@@ -142,7 +139,7 @@ class ProfitLossBreakdownDetailTest extends TestCase
             'booking_branch_id' => $branch->id,
             'invoice_id' => 'INV-'.substr(uniqid(), -8),
             'date_gap_id' => FlightDateGap::getOrCreate()->id,
-            'fingerprint_location' => 'office',
+            'fingerprint_location' => 'home',
             'pax_qty' => 1,
             'discount_type' => 'fixed_amount',
             'discount_value' => 0,
@@ -171,107 +168,63 @@ class ProfitLossBreakdownDetailTest extends TestCase
         return $booking;
     }
 
-    private function addPassenger(User $user, array $deps, Booking $booking): Passenger
+    private function applyProfit(Booking $booking, float $profit): void
     {
-        $passenger = Passenger::create([
-            'booking_id' => $booking->id,
-            'first_name' => 'Pax'.substr(uniqid(), -4),
-            'last_name' => 'Test',
-            'passport_no' => 'PP'.substr(uniqid(), -8),
-            'mobile_no' => '0500000000',
-            'date_of_birth' => '1990-01-01',
-            'passenger_type' => 'adult',
-            'passport_expiry' => '2030-12-31',
-            'stay_duration' => 14,
-            'service_required' => 'all',
-            'flight_date_from' => now()->addDays(5)->toDateString(),
-            'flight_date_to' => now()->addDays(15)->toDateString(),
-            'ticket_status' => 'pending',
-            'address' => 'Addr',
-            'package_value' => 25000.00,
-        ]);
-
-        VisaSubmission::create([
-            'passenger_id' => $passenger->id,
-            'visa_selling_price_id' => $deps['visaPrice']->id,
-            'agent_commission' => 100.00,
-            'net_visa_cost' => 1000.00,
-            'additional_cost' => 50.00,
-            'status' => 'issued',
-            'is_cancelled' => false,
-        ]);
-
-        IssuedTicket::create([
-            'passenger_id' => $passenger->id,
-            'booking_id' => $booking->id,
-            'user_id' => $user->id,
-            'ticket_fare_id' => $deps['fare']->id,
-            'selling_fare' => 28000.00,
-            'net_fare' => 27000.00,
-            'issue_type' => 'regular',
-            'status' => 'issued',
-            'issued_date' => now(),
-        ]);
-
-        IssuedTicket::create([
-            'passenger_id' => $passenger->id,
-            'booking_id' => $booking->id,
-            'user_id' => $user->id,
-            'ticket_fare_id' => $deps['fare']->id,
-            'selling_fare' => 20000.00,
-            'net_fare' => 10000.00,
-            'issue_type' => 'pending_outbound',
-            'status' => 'issued',
-            'issued_date' => now(),
-        ]);
-
-        return $passenger->refresh();
+        app(ProfitCalculationService::class)->recalculateBookingProfit($booking);
+        $booking->update(['profit' => $profit]);
     }
 
     /** @test */
-    public function profit_loss_payload_includes_detailed_breakdown_subsections(): void
+    public function test_branchwise_total_profit_card_sums_bookings_profit_like_profit_loss(): void
     {
         $user = $this->setupUser();
         $deps = $this->seedPrerequisites($user);
-        $booking = $this->createBooking($user, $deps);
-        $passenger = $this->addPassenger($user, $deps, $booking);
 
-        Auth::login($user);
+        // Two bookings whose persisted bookings.profit matches what the P&L
+        // "Per Customer" tab's total profit box would show.
+        $branch = Branch::create([
+            'name' => 'Sum Branch '.uniqid(),
+            'address' => 'Addr',
+            'contacts' => '0123',
+            'location' => 'KSA',
+            'fingerprint_operation' => true,
+            'branch_code' => 'BR'.substr(uniqid(), -6),
+        ]);
+        $bookingA = $this->createBooking($user, $deps, $branch);
+        $bookingB = $this->createBooking($user, $deps, $branch);
+        $this->applyProfit($bookingA, 4550.0);
+        $this->applyProfit($bookingB, 4050.0);
 
-        $response = $this->get(route('api.reports.profit-loss', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
-            'tab' => 'passenger',
-        ]));
+        $branchId = $branch->id;
 
-        $response->assertOk();
-        $data = $response->json('data');
-        $this->assertCount(1, $data);
+        $this->actingAs($user)
+            ->get(route('report.branch-wise', ['branch_id' => $branchId]))
+            ->assertOk()
+            ->assertSee('Total Profit')
+            // 4550 + 4050 = 8600 ; BDT = 8600 * 28 = 240800
+            ->assertSee('data-sar="8600.000000"', false)
+            ->assertSee('data-bdt="240800.000000"', false);
+    }
 
-        $breakdown = $data[0]['breakdown'];
+    /** @test */
+    public function test_branchwise_total_profit_card_excludes_other_branch_bookings(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
 
-        // Visa sub-section
-        $this->assertArrayHasKey('visa', $breakdown);
-        $this->assertEquals(2000.0, (float) $breakdown['visa']['selling_price']);
-        $this->assertEquals(1000.0, (float) $breakdown['visa']['net_visa_cost']);
-        $this->assertEquals(100.0, (float) $breakdown['visa']['agent_commission']);
-        $this->assertEquals(50.0, (float) $breakdown['visa']['additional_cost']);
-        $this->assertEquals(850.0, (float) $breakdown['visa']['profit']);
+        $bookingA = $this->createBooking($user, $deps);
+        $bookingB = $this->createBooking($user, $deps);
+        $this->applyProfit($bookingA, 4550.0);
+        $this->applyProfit($bookingB, 9999.0);
 
-        // Ticket sub-section with per-ticket net fares (regular + pending_outbound)
-        $this->assertArrayHasKey('ticket', $breakdown);
-        $this->assertCount(2, $breakdown['ticket']['net_fares']);
-        $this->assertEquals('regular', $breakdown['ticket']['net_fares'][0]['issue_type']);
-        $this->assertEquals(27000.0, (float) $breakdown['ticket']['net_fares'][0]['net_fare']);
-        $this->assertEquals('pending_outbound', $breakdown['ticket']['net_fares'][1]['issue_type']);
-        $this->assertEquals(10000.0, (float) $breakdown['ticket']['net_fares'][1]['net_fare']);
+        $branchId = $bookingA->booking_branch_id;
 
-        // Selling fare is the single package value (inbound + outbound)
-        $this->assertEquals(30000.0, (float) $breakdown['ticket']['selling_fare']);
-        $this->assertEquals(-7000.0, (float) $breakdown['ticket']['profit']);
-
-        // Additional tickets subsection present (empty here)
-        $this->assertArrayHasKey('additional_tickets', $breakdown);
-        $this->assertEmpty($breakdown['additional_tickets']['items']);
+        $this->actingAs($user)
+            ->get(route('report.branch-wise', ['branch_id' => $branchId]))
+            ->assertOk()
+            ->assertSee('Total Profit')
+            // Only bookingA belongs to branchId; bookingB is in another branch.
+            ->assertSee('data-sar="4550.000000"', false)
+            ->assertDontSee('data-sar="14549.000000"', false);
     }
 }
