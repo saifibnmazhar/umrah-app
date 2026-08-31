@@ -152,6 +152,7 @@ class FingerprintController extends Controller
                             ? $passenger->flight_date_from->format('d M Y').' → '.$passenger->flight_date_to->format('d M Y')
                             : ($passenger->flight_date_from?->format('d M Y') ?? $passenger->flight_date_to?->format('d M Y') ?? '-'),
                         'actual_flight_date' => $passenger->actual_flight_date?->format('d M Y') ?? '-',
+                        'approved_at' => $detail?->approvedLog?->created_at?->toISOString(),
                     ];
                 });
             })->flatten(1);
@@ -298,6 +299,7 @@ class FingerprintController extends Controller
                         'cancellation_status' => $booking->cancelledBooking?->status?->value,
                         'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
                         'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
+                        'approved_at' => $detail?->approvedLog?->created_at?->toISOString(),
                     ];
                 });
             })->flatten(1);
@@ -453,6 +455,18 @@ class FingerprintController extends Controller
             ], 422);
         }
 
+        if ($fingerprintDetail->status === FingerprintStatus::APPROVED
+            && ($user->hasRole('Fingerprint Admin') || $user->hasRole('Fingerprint Staff'))
+        ) {
+            $approvedLog = $fingerprintDetail->approvedLog;
+            if ($approvedLog && $approvedLog->created_at->diffInMinutes(now()) > 30) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot change status from Approved after 30 minutes. Only Super Admin or Co Admin can do this.',
+                ], 422);
+            }
+        }
+
         if ($validated['status'] === 'done') {
             $fingerprintDetail->update(['status' => FingerprintStatus::DONE]);
 
@@ -463,31 +477,48 @@ class FingerprintController extends Controller
                 ->each(fn (FingerprintDetail $detail) => $detail->update(['status' => FingerprintStatus::DONE]));
         } else {
             if ($validated['status'] === 'approved') {
-                $hasDone = $fingerprintDetail->fingerprint->fingerprintDetails()
-                    ->where('id', '!=', $fingerprintDetail->id)
-                    ->where('status', FingerprintStatus::DONE)
-                    ->exists();
-
-                $targetStatus = $hasDone ? FingerprintStatus::DONE : FingerprintStatus::APPROVED;
-                $fingerprintDetail->update(['status' => $targetStatus]);
+                $fingerprintDetail->update(['status' => FingerprintStatus::APPROVED]);
             } else {
                 $fingerprintDetail->update(['status' => $validated['status']]);
             }
         }
 
-        if ($fingerprintDetail->fingerprint->fingerprintDetails()
+        $allDone = $fingerprintDetail->fingerprint->fingerprintDetails()
             ->where('status', '!=', FingerprintStatus::DONE)
-            ->doesntExist()
-        ) {
-            $fingerprintDetail->fingerprint->fingerprintDetails()
-                ->where('status', FingerprintStatus::DONE)
-                ->get()
-                ->each(fn (FingerprintDetail $d) => $d->update(['status' => FingerprintStatus::APPROVED]));
-        }
+            ->doesntExist();
 
         return response()->json([
             'success' => true,
             'message' => 'Status updated successfully',
+            'all_done' => $allDone,
+        ]);
+    }
+
+    /**
+     * Batch-approve all fingerprint details for a fingerprint
+     * POST /api/fingerprints/{fingerprint}/approve-all
+     */
+    public function approveAll(Fingerprint $fingerprint): JsonResponse
+    {
+        $user = auth()->user();
+        if (! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin') && ! $user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+            abort(403);
+        }
+
+        if ($fingerprint->booking->is_cancelled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot approve for a cancelled booking',
+            ], 422);
+        }
+
+        $fingerprint->fingerprintDetails()
+            ->where('status', FingerprintStatus::DONE)
+            ->each(fn (FingerprintDetail $d) => $d->update(['status' => FingerprintStatus::APPROVED]));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'All fingerprints approved successfully',
         ]);
     }
 
@@ -515,6 +546,18 @@ class FingerprintController extends Controller
                 'success' => false,
                 'message' => 'Cannot update fingerprint for a cancelled passenger',
             ], 422);
+        }
+
+        if ($fingerprintDetail->status === FingerprintStatus::APPROVED
+            && ($user->hasRole('Fingerprint Admin') || $user->hasRole('Fingerprint Staff'))
+        ) {
+            $approvedLog = $fingerprintDetail->approvedLog;
+            if ($approvedLog && $approvedLog->created_at->diffInMinutes(now()) > 30) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot hold an Approved fingerprint after 30 minutes. Only Super Admin or Co Admin can do this.',
+                ], 422);
+            }
         }
 
         $validated = $request->validate([

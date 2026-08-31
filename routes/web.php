@@ -189,6 +189,7 @@ Route::middleware('auth')->group(function () {
     Route::get('/visas/admin', [VisaAdminController::class, 'index'])->name('visa.admin')->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::get('/fingerprints/admin', function () {
         $canAssignStaff = auth()->user()->roles->whereIn('name', ['Super Admin', 'Co Admin', 'Fingerprint Admin'])->isNotEmpty();
+        $approvalOverrideAllowed = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
         $divisions = District::distinct()->pluck('division')->sort()->values();
         $districts = District::orderBy('division')->orderBy('name')->get(['id', 'name', 'division']);
 
@@ -223,10 +224,11 @@ Route::middleware('auth')->group(function () {
             }
         }
 
-        return view('fingerprints.admin', compact('canAssignStaff', 'divisions', 'districts', 'fingerprintStatuses', 'flightDateRanges'));
+        return view('fingerprints.admin', compact('canAssignStaff', 'approvalOverrideAllowed', 'divisions', 'districts', 'fingerprintStatuses', 'flightDateRanges'));
     })->name('fingerprint.admin')->middleware('role:Super Admin,Co Admin,Fingerprint Admin');
     Route::get('/fingerprints/staff', function () {
         $isFingerprintStaff = auth()->user()->hasRole('Fingerprint Staff');
+        $approvalOverrideAllowed = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
 
         $fingerprintStatuses = FingerprintStatus::cases();
 
@@ -259,7 +261,7 @@ Route::middleware('auth')->group(function () {
             }
         }
 
-        return view('fingerprints.staff', compact('isFingerprintStaff', 'fingerprintStatuses', 'flightDateRanges'));
+        return view('fingerprints.staff', compact('isFingerprintStaff', 'approvalOverrideAllowed', 'fingerprintStatuses', 'flightDateRanges'));
     })->name('fingerprint.staff')->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
 
     Route::get('/api/fingerprints/admin', [FingerprintController::class, 'adminIndex'])
@@ -279,6 +281,9 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:Super Admin,Co Admin,Fingerprint Staff');
     Route::put('/api/fingerprints/detail/{fingerprintDetail}/status', [FingerprintController::class, 'updateStatus'])
         ->name('api.fingerprints.update-status')
+        ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
+    Route::post('/api/fingerprints/{fingerprint}/approve-all', [FingerprintController::class, 'approveAll'])
+        ->name('api.fingerprints.approve-all')
         ->middleware('role:Super Admin,Co Admin,Fingerprint Admin,Fingerprint Staff');
     Route::post('/api/fingerprints/detail/{fingerprintDetail}/hold', [FingerprintController::class, 'hold'])
         ->name('api.fingerprints.hold')
