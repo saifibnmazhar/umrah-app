@@ -70,10 +70,10 @@ class VisaSubmissionObserver
 
     protected function determineAction(array $oldValues, array $newValues): string
     {
-        if (isset($newValues['status'])) {
-            $oldStatus = $oldValues['status'] ?? null;
-            $newStatus = $newValues['status'];
+        $oldStatus = $this->statusValue($oldValues['status'] ?? null);
+        $newStatus = $this->statusValue($newValues['status'] ?? null);
 
+        if ($newStatus !== null) {
             if ($oldStatus === 'pending' && $newStatus === 'submitted') {
                 return 'submitted';
             }
@@ -86,6 +86,15 @@ class VisaSubmissionObserver
         }
 
         return 'edited';
+    }
+
+    protected function statusValue(mixed $status): ?string
+    {
+        if ($status instanceof \UnitEnum) {
+            return isset($status->value) ? (string) $status->value : $status->name;
+        }
+
+        return is_scalar($status) ? (string) $status : null;
     }
 
     protected function recalculateProfit(VisaSubmission $visaSubmission): void
