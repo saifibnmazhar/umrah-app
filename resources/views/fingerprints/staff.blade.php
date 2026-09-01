@@ -3,7 +3,7 @@
 @section('title', 'Fingerprint Staff')
 
 @section('content')
-<div class="w-full mx-auto pt-6" x-data='fingerprintStaff({ isFingerprintStaff: @json($isFingerprintStaff), flightDateRanges: @json($flightDateRanges) })'>
+<div class="w-full mx-auto pt-6" x-data='fingerprintStaff({ isFingerprintStaff: @json($isFingerprintStaff), flightDateRanges: @json($flightDateRanges), approvalOverrideAllowed: @json($approvalOverrideAllowed) })'>
     <div class="flex flex-col" style="max-height: calc(100vh - 168px);">
     <div class="bg-white rounded-xl shadow-lg p-6 mb-4 flex-shrink-0">
         <div>
@@ -105,7 +105,7 @@
       x-text="formatCost(row.cost, row.rate, currencyToggleCounter)"></span>
                             </td>
                             <td class="px-3 py-2">
-                                <select x-show="canEditStatus && !row.is_cancelled && row.passenger_status !== 'Hold' && row.passenger_status !== 'Cancel'"
+                                <select x-show="canEditStatus && !row.is_cancelled && row.passenger_status !== 'Hold' && row.passenger_status !== 'Cancel' && !isApprovedWindowExpired(row)"
                                         @change="handleStatusChange(row.fingerprint_detail_id, $event, row.cost, row.fingerprint_location)"
                                         class="text-xs border border-slate-300 rounded px-2 py-1 bg-white">
                                     <template x-for="opt in displayStatuses" :key="opt">
@@ -114,7 +114,7 @@
                                                 x-text="opt"></option>
                                     </template>
                                 </select>
-                                <span x-show="!canEditStatus || row.is_cancelled || ['Hold', 'Cancel'].includes(row.passenger_status)"
+                                <span x-show="!canEditStatus || row.is_cancelled || ['Hold', 'Cancel'].includes(row.passenger_status) || isApprovedWindowExpired(row)"
                                       class="inline-flex items-center gap-1">
                                     <span class="px-2 py-1 rounded-full text-xs font-medium"
                                           :class="getStatusClass(row.fingerprint_status_display)"
@@ -202,6 +202,30 @@
         </div>
     </div>
 
+    <div x-show="showApprovalConfirmModal" x-cloak
+         class="fixed inset-0 bg-black/50 z-50 flex items-center justify-center p-4"
+         style="display: none;">
+        <div class="bg-white rounded-xl shadow-2xl max-w-md w-full">
+            <div class="flex justify-between items-center px-6 py-4 border-b border-slate-200 bg-slate-50 rounded-t-xl">
+                <h3 class="text-lg font-bold text-slate-800">Approve All Fingerprints?</h3>
+                <button @click="showApprovalConfirmModal = false" class="text-slate-500 hover:text-slate-700">
+                    <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                        <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
+                    </svg>
+                </button>
+            </div>
+            <div class="p-6">
+                <p class="text-slate-600">All passengers' fingerprints are marked as Done. Do you want to approve all now?</p>
+            </div>
+            <div class="flex justify-end gap-3 px-6 py-4 border-t border-slate-200 bg-slate-50 rounded-b-xl">
+                <button @click="showApprovalConfirmModal = false"
+                        class="px-4 py-2 text-sm font-medium text-slate-700 bg-white border border-slate-300 rounded-lg hover:bg-slate-50">Later</button>
+                <button @click="confirmApproveAll()"
+                        class="px-4 py-2 text-sm font-medium text-white bg-green-600 rounded-lg hover:bg-green-700">Confirm Approve</button>
+            </div>
+        </div>
+    </div>
+
     <div x-show="toastVisible" x-cloak
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="translate-x-full opacity-0"
@@ -240,9 +264,12 @@ function fingerprintStaff(options = {}) {
             flight_date_to: '',
         },
         canEditStatus: options.isFingerprintStaff ?? false,
+        approvalOverrideAllowed: options.approvalOverrideAllowed ?? false,
         currencyToggleCounter: 0,
         showHoldModal: false,
         currentFingerprintDetailId: null,
+        showApprovalConfirmModal: false,
+        pendingApprovalFingerprintId: null,
         toastMessage: '',
         toastType: 'error',
         toastVisible: false,
@@ -376,6 +403,14 @@ function fingerprintStaff(options = {}) {
             return map[row.fingerprint_status] || 'None';
         },
 
+        isApprovedWindowExpired(row) {
+            if (this.approvalOverrideAllowed) return false;
+            if (row.fingerprint_status !== 'approved' || !row.approved_at) return false;
+            const approvedTime = new Date(row.approved_at);
+            const now = new Date();
+            return (now - approvedTime) > (30 * 60 * 1000);
+        },
+
         mapDisplayToBackend(displayValue) {
             const map = {
                 'None': 'none',
@@ -439,6 +474,11 @@ function fingerprintStaff(options = {}) {
                 const result = await response.json();
                 if (result.success) {
                     this.showToast('Status updated successfully');
+                    if (result.all_done) {
+                        const row = this.data.find(r => r.fingerprint_detail_id === fingerprintDetailId);
+                        this.pendingApprovalFingerprintId = row?.fingerprint_id;
+                        this.showApprovalConfirmModal = true;
+                    }
                     await this.loadData();
                 } else {
                     this.showToast(result.message || 'Failed to update status', 'error');
@@ -446,6 +486,30 @@ function fingerprintStaff(options = {}) {
             } catch (error) {
                 console.error('Failed to update status:', error);
                 this.showToast('Failed to update status', 'error');
+            }
+        },
+
+        async confirmApproveAll() {
+            try {
+                const response = await fetch(`/api/fingerprints/${this.pendingApprovalFingerprintId}/approve-all`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                });
+                const result = await response.json();
+                if (result.success) {
+                    this.showToast('All fingerprints approved successfully');
+                    this.showApprovalConfirmModal = false;
+                    this.pendingApprovalFingerprintId = null;
+                    await this.loadData();
+                } else {
+                    this.showToast(result.message || 'Failed to approve', 'error');
+                }
+            } catch (error) {
+                console.error('Failed to approve all:', error);
+                this.showToast('Failed to approve all fingerprints', 'error');
             }
         },
 
