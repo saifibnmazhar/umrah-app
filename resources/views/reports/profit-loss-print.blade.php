@@ -57,6 +57,8 @@
         $appliedFilters = array_filter([
             'Date From' => $dateFrom,
             'Date To' => $dateTo,
+            'Search' => $search ?? null,
+            'Profit/Loss' => isset($profitLossFilter) && $profitLossFilter !== 'all' ? ucfirst($profitLossFilter) : null,
         ]);
     @endphp
 
@@ -105,21 +107,16 @@
             @endforelse
             @if(count($customers) > 0)
             @php
-                $grandTotal = $customers->reduce(fn($acc, $r) => [
-                    'package_value' => $acc['package_value'] + $r['package_value'],
-                    'fingerprint_profit' => $acc['fingerprint_profit'] + $r['fingerprint_profit'],
-                    'passenger_profit_total' => $acc['passenger_profit_total'] + $r['passenger_profit_total'],
-                    'discount' => $acc['discount'] + $r['discount'],
-                    'total_profit' => $acc['total_profit'] + $r['total_profit'],
-                ], ['package_value' => 0, 'fingerprint_profit' => 0, 'passenger_profit_total' => 0, 'discount' => 0, 'total_profit' => 0]);
+                $gt = $summary['customer'] ?? [];
+                $gtCount = $gt['count'] ?? count($customers);
             @endphp
             <tr class="grand-total">
-                <td class="text-left" colspan="4">Grand Total</td>
-                <td class="text-right">{{ $fmtCurrency($grandTotal['package_value']) }}</td>
-                <td class="text-right {{ $grandTotal['fingerprint_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($grandTotal['fingerprint_profit'] >= 0 ? '+' : '') . $fmtCurrency($grandTotal['fingerprint_profit']) }}</td>
-                <td class="text-right {{ $grandTotal['passenger_profit_total'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($grandTotal['passenger_profit_total'] >= 0 ? '+' : '') . $fmtCurrency($grandTotal['passenger_profit_total']) }}</td>
-                <td class="text-right">{{ $fmtCurrency($grandTotal['discount']) }}</td>
-                <td class="text-right {{ $grandTotal['total_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($grandTotal['total_profit'] >= 0 ? '+' : '') . $fmtCurrency($grandTotal['total_profit']) }}</td>
+                <td class="text-left" colspan="4">Grand Total ({{ $gtCount }} {{ $gtCount == 1 ? 'Customer' : 'Customers' }})</td>
+                <td class="text-right">{{ $fmtCurrency($gt['package_value'] ?? 0) }}</td>
+                <td class="text-right {{ ($gt['fingerprint_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($gt['fingerprint_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($gt['fingerprint_profit'] ?? 0) }}</td>
+                <td class="text-right {{ ($gt['passenger_profit_total'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($gt['passenger_profit_total'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($gt['passenger_profit_total'] ?? 0) }}</td>
+                <td class="text-right">{{ $fmtCurrency($gt['discount'] ?? 0) }}</td>
+                <td class="text-right {{ ($gt['total_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($gt['total_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($gt['total_profit'] ?? 0) }}</td>
             </tr>
             @endif
         </tbody>
@@ -138,10 +135,6 @@
         </thead>
         <tbody>
             @forelse($passengers as $row)
-            @php
-                $bd = $row['breakdown'] ?? [];
-                $fmtSigned = fn($v) => ($v >= 0 ? '+' : '') . $fmtNum($v);
-            @endphp
             <tr>
                 <td class="text-left">{{ $row['invoice_id'] }}</td>
                 <td class="text-left">{{ $row['customer_name'] }}</td>
@@ -150,17 +143,6 @@
                 <td class="text-right">{{ $fmtCurrency($row['package_value']) }}</td>
                 <td class="text-right {{ $row['total_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($row['total_profit'] >= 0 ? '+' : '') . $fmtCurrency($row['total_profit']) }}</td>
             </tr>
-            <tr>
-                <td colspan="6" class="text-left" style="font-size: 10px; color: #555; border-top: none; padding-top: 0;">
-                    Visa: {{ $fmtSigned($bd['visa_profit'] ?? 0) }}
-                    &nbsp;|&nbsp; Ticket: {{ $fmtSigned($bd['ticket_profit'] ?? 0) }}
-                    &nbsp;|&nbsp; Additional: {{ $fmtSigned($bd['additional_ticket_profit'] ?? 0) }}
-                    &nbsp;|&nbsp; Re-Issue Profit: {{ $fmtSigned($bd['re_issue_profit'] ?? 0) }}
-                    &nbsp;|&nbsp; Refund Profit: {{ $fmtSigned($bd['refund_profit'] ?? 0) }}
-                    &nbsp;|&nbsp; Re-Issue Cost: -{{ $fmtNum($bd['re_issue_cost'] ?? 0) }}
-                    &nbsp;|&nbsp; Service Charge: {{ $fmtSigned($bd['service_charge'] ?? 0) }}
-                </td>
-            </tr>
             @empty
             <tr>
                 <td colspan="6" class="text-center" style="padding: 20px;">No records found.</td>
@@ -168,15 +150,13 @@
             @endforelse
             @if(count($passengers) > 0)
             @php
-                $grandTotal = $passengers->reduce(fn($acc, $r) => [
-                    'package_value' => $acc['package_value'] + $r['package_value'],
-                    'total_profit' => $acc['total_profit'] + $r['total_profit'],
-                ], ['package_value' => 0, 'total_profit' => 0]);
+                $gt = $summary['passenger'] ?? [];
+                $gtCount = $gt['count'] ?? count($passengers);
             @endphp
             <tr class="grand-total">
-                <td class="text-left" colspan="4">Grand Total</td>
-                <td class="text-right">{{ $fmtCurrency($grandTotal['package_value']) }}</td>
-                <td class="text-right {{ $grandTotal['total_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($grandTotal['total_profit'] >= 0 ? '+' : '') . $fmtCurrency($grandTotal['total_profit']) }}</td>
+                <td class="text-left" colspan="4">Grand Total ({{ $gtCount }} {{ $gtCount == 1 ? 'Passenger' : 'Passengers' }})</td>
+                <td class="text-right">{{ $fmtCurrency($gt['package_value'] ?? 0) }}</td>
+                <td class="text-right {{ ($gt['total_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($gt['total_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($gt['total_profit'] ?? 0) }}</td>
             </tr>
             @endif
         </tbody>

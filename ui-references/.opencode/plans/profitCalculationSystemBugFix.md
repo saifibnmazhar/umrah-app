@@ -322,3 +322,284 @@ ReIssuedTicket::where('total_cost', 0)->each(function ($reIssue) {
 - [ ] Backfill correctly computes `total_cost` for existing re-issued tickets
 - [ ] All tests pass
 - [ ] Pint formatting clean
+
+---
+
+## Appendix: Fingerprint Profit Effectiveness & Booking Discount Guard
+
+### Context
+
+Two additional rules were identified for the profit calculation system:
+
+1. **Fingerprint profit** should only be effective when the booking's fingerprint location is `HOME` **and** the fingerprint cost has been updated from its default zero value.
+
+2. **Booking-level discount** should only be deducted when **all** passengers in the booking have effective profits (i.e., their visa, ticket, and service charge profits are all effective). A passenger's individual profit calculation logic remains unchanged.
+
+---
+
+## Fix D: Fingerprint Profit — Location & Cost Guard
+
+### Problem
+
+`calculateFingerprintProfit()` always computes `charge - cost` regardless of fingerprint location or whether cost was explicitly set. The system requires fingerprint profit to be captured only when:
+- The booking's `fingerprint_location` is `HOME`
+- The fingerprint `cost` has been updated from zero (the default)
+
+When `fingerprint_location` is `OFFICE` or `cost` is `0`/`null`, fingerprint profit should be `0.0`.
+
+### Fix
+
+**File:** `app/Services/ProfitCalculationService.php`
+
+1. Add `use App\Enums\FingerprintLocation;` import at top of file.
+
+2. Update `calculateFingerprintProfit()` (lines 58–63):
+
+```php
+// BEFORE:
+public function calculateFingerprintProfit(Fingerprint $fingerprint): float
+{
+    $charge = (float) ($fingerprint->booking->fingerprintCharge?->fingerprint_charge ?? 0);
+
+    return $charge - (float) ($fingerprint->cost ?? 0);
+}
+
+// AFTER:
+public function calculateFingerprintProfit(Fingerprint $fingerprint): float
+{
+    $location = $fingerprint->booking->fingerprint_location;
+    $cost = (float) ($fingerprint->cost ?? 0);
+
+    if ($location !== FingerprintLocation::HOME || $cost <= 0) {
+        return 0.0;
+    }
+
+    $charge = (float) ($fingerprint->booking->fingerprintCharge?->fingerprint_charge ?? 0);
+
+    return $charge - $cost;
+}
+```
+
+### Behavioral Change
+
+| Scenario | Before | After |
+|---|---|---|
+| Location = `OFFICE`, any cost | `charge - cost` | `0.0` |
+| Location = `HOME`, cost = `0`/`null` | `charge - 0` = `charge` | `0.0` |
+| Location = `HOME`, cost > 0 | `charge - cost` | `charge - cost` (unchanged) |
+
+---
+
+## Fix E: Booking Profit — Effective Passenger Filter & Discount Guard
+
+### Problem
+
+`recalculateBookingProfit()` currently:
+1. Sums **all** passenger profits unconditionally
+2. Deducts `discount_amount` unconditionally
+
+Per the business rules:
+1. A passenger's profit should only count toward the booking total when that passenger's visa, ticket, **and** service charge profits are all effective
+2. The `discount_amount` should only be deducted when **every** passenger in the booking has effective profits
+
+### Fix
+
+**File:** `app/Services/ProfitCalculationService.php`
+
+1. Add new private method after `isTicketProfitEffective()` (~line 207):
+
+```php
+private function isPassengerProfitEffective(Passenger $passenger): bool
+{
+    return $this->isVisaProfitEffective($passenger)
+        && $this->isTicketProfitEffective($passenger);
+}
+```
+
+> **Note:** `calculateServiceCharge()` already returns `0.0` when either `isVisaProfitEffective()` or `isTicketProfitEffective()` is false (line 181). So checking both is sufficient — service charge is implicitly effective when both are true.
+
+2. Update `recalculateBookingProfit()` (lines 30–56):
+
+```php
+// BEFORE:
+public function recalculateBookingProfit(Booking $booking): float
+{
+    $booking->loadMissing('passengers', 'fingerprint', 'fingerprintCharge');
+
+    foreach ($booking->passengers as $passenger) {
+        $this->recalculatePassengerProfit($passenger);
+    }
+
+    $fingerprintProfit = 0;
+
+    if ($booking->fingerprint) {
+        $fingerprintProfit = $this->calculateFingerprintProfit($booking->fingerprint);
+
+        $booking->fingerprint->profit = round($fingerprintProfit, 6);
+        $booking->fingerprint->saveQuietly();
+    }
+
+    $booking->profit = round(
+        (float) $booking->passengers()->sum('profit')
+            + $fingerprintProfit
+            - (float) ($booking->discount_amount ?? 0),
+        6
+    );
+    $booking->saveQuietly();
+
+    return (float) $booking->profit;
+}
+
+// AFTER:
+public function recalculateBookingProfit(Booking $booking): float
+{
+    $booking->loadMissing('passengers', 'fingerprint', 'fingerprintCharge');
+
+    foreach ($booking->passengers as $passenger) {
+        $this->recalculatePassengerProfit($passenger);
+    }
+
+    $fingerprintProfit = 0;
+
+    if ($booking->fingerprint) {
+        $fingerprintProfit = $this->calculateFingerprintProfit($booking->fingerprint);
+
+        $booking->fingerprint->profit = round($fingerprintProfit, 6);
+        $booking->fingerprint->saveQuietly();
+    }
+
+    $effectivePassengerProfit = 0;
+    $allPassengersEffective = $booking->passengers->isNotEmpty();
+
+    foreach ($booking->passengers as $passenger) {
+        if ($this->isPassengerProfitEffective($passenger)) {
+            $effectivePassengerProfit += (float) $passenger->profit;
+        } else {
+            $allPassengersEffective = false;
+        }
+    }
+
+    $discount = $allPassengersEffective ? (float) ($booking->discount_amount ?? 0) : 0;
+
+    $booking->profit = round(
+        $effectivePassengerProfit + $fingerprintProfit - $discount,
+        6
+    );
+    $booking->saveQuietly();
+
+    return (float) $booking->profit;
+}
+```
+
+### Behavioral Change
+
+| Scenario | Before | After |
+|---|---|---|
+| Passenger visa not issued, ticket issued | Profit summed | Passenger excluded, `allPassengersEffective = false` |
+| Passenger visa issued, no tickets | Profit summed | Passenger excluded, `allPassengersEffective = false` |
+| `TICKET_ONLY` passenger, no tickets issued | Profit summed | Passenger excluded |
+| `VISA_ONLY` passenger, visa not issued | Profit summed | Passenger excluded |
+| Some passengers effective, some not | Discount deducted | Discount = `0` |
+| All passengers effective | Discount deducted | Discount deducted (unchanged) |
+| No passengers in booking | Discount deducted | Discount = `0` (changed — was `discount_amount`) |
+
+---
+
+## Backfill: Reset Mistakenly Stored Profits
+
+### Problem
+
+Existing bookings in the database have fingerprint profits calculated without the location/cost guard (e.g., `OFFICE` fingerprints with non-zero profit) and booking profits summed without the effective passenger filter (discount deducted even when some passengers are not effective). These need to be recalculated.
+
+### Fix
+
+**No new command needed.** The existing `profit:backfill` command (`app/Console/Commands/BackfillProfitData.php`) already:
+1. Loads all bookings with eager-loaded relations (lines 30–40)
+2. Calls `$profitService->recalculateBookingProfit($booking)` for each (line 43)
+3. Also backfills `total_cost` for re-issued tickets (lines 52–68)
+
+Since `recalculateBookingProfit()` and `calculateFingerprintProfit()` will contain the new logic after Fix D and Fix E are applied, re-running the command will automatically:
+
+- Reset fingerprint profit to `0.0` for all `OFFICE` fingerprints and `HOME` fingerprints with `cost = 0/null`
+- Recalculate fingerprint profit correctly for `HOME` fingerprints with `cost > 0`
+- Exclude non-effective passengers from the booking profit sum
+- Only deduct discount when all passengers are effective
+- Backfill any remaining `total_cost = 0` re-issued tickets
+
+### Command
+
+```bash
+php artisan profit:backfill
+```
+
+### Verification After Backfill
+
+```sql
+-- Fingerprint profits that should now be 0 (OFFICE location or zero cost)
+SELECT f.id, f.profit, b.fingerprint_location, f.cost
+FROM fingerprints f
+JOIN bookings b ON b.id = f.booking_id
+WHERE f.profit != 0
+  AND (b.fingerprint_location != 'home' OR f.cost = 0 OR f.cost IS NULL);
+
+-- Should return 0 rows
+
+-- Bookings where discount was deducted but not all passengers are effective
+SELECT b.id, b.profit, b.discount_amount
+FROM bookings b
+WHERE b.discount_amount > 0 AND b.discount_amount IS NOT NULL
+  AND b.id IN (
+    SELECT booking_id FROM passengers
+    WHERE id NOT IN (
+      SELECT p.id FROM passengers p
+      JOIN visa_submissions vs ON vs.id = p.visa_submission_id
+      WHERE vs.status = 'issued'
+    )
+);
+
+-- Should return 0 rows (or only bookings where all passengers have issued visas)
+```
+
+---
+
+## Files Changed
+
+| # | File | Change |
+|---|------|--------|
+| 1 | `app/Services/ProfitCalculationService.php` | Add `FingerprintLocation` import; update `calculateFingerprintProfit()`; add `isPassengerProfitEffective()`; update `recalculateBookingProfit()` |
+
+No changes to `BackfillProfitData.php` — it already calls `recalculateBookingProfit()` which will contain the updated logic.
+
+---
+
+## Implementation Order
+
+| Step | Task | Files |
+|------|------|-------|
+| 1 | Fix D: Update `calculateFingerprintProfit()` with location/cost guard | `app/Services/ProfitCalculationService.php` |
+| 2 | Fix E: Add `isPassengerProfitEffective()` method | `app/Services/ProfitCalculationService.php` |
+| 3 | Fix E: Update `recalculateBookingProfit()` with effective passenger filter & discount guard | `app/Services/ProfitCalculationService.php` |
+| 4 | Backfill: Run `php artisan profit:backfill` to reset all booking & fingerprint profits | — |
+| 5 | Verify: Run SQL checks to confirm no mistakenly stored profits remain | — |
+| 6 | Run: `php artisan test` | — |
+| 7 | Run: `vendor/bin/pint` | — |
+
+---
+
+## Verification Checklist
+
+- [ ] Fingerprint location = `HOME`, cost = `0` → fingerprint profit = `0`
+- [ ] Fingerprint location = `HOME`, cost > 0 → fingerprint profit = `charge - cost`
+- [ ] Fingerprint location = `OFFICE`, cost > 0 → fingerprint profit = `0`
+- [ ] Fingerprint location = `HOME`, cost = `null` → fingerprint profit = `0`
+- [ ] Passenger visa not issued → passenger excluded from booking profit sum
+- [ ] Passenger ticket not issued → passenger excluded from booking profit sum
+- [ ] `TICKET_ONLY` passenger, tickets issued → passenger included
+- [ ] `VISA_ONLY` passenger, visa issued → passenger included
+- [ ] All passengers effective → discount deducted
+- [ ] Any passenger not effective → discount = `0`
+- [ ] No passengers → discount = `0`
+- [ ] Backfill: no `OFFICE` fingerprints with non-zero profit
+- [ ] Backfill: no bookings with discount deducted when passengers not all effective
+- [ ] Existing 14 PHPUnit tests still pass
+- [ ] Pint formatting clean
