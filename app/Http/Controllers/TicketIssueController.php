@@ -261,7 +261,10 @@ class TicketIssueController extends Controller
                 $fareDifference = $validated['fare_difference'] ?? (float) $latestRe->fare_difference;
                 $otherCosts = $validated['other_costs'] ?? (float) $latestRe->other_costs;
                 $refundAdjustment = $validated['refund_adjustment_amount'] ?? (float) $latestRe->refund_adjustment_amount;
-                $totalCost = (float) $reIssueCharge + (float) $fareDifference + (float) $otherCosts - (float) $refundAdjustment;
+                $refundedNetFare = $issuedTicket->latestRefundedTicket
+                    ? (float) ($issuedTicket->latestRefundedTicket->net_fare ?? $issuedTicket->net_fare ?? 0)
+                    : 0;
+                $totalCost = (float) $reIssueCharge + (float) $fareDifference + (float) $otherCosts + $refundedNetFare - (float) $refundAdjustment;
 
                 $latestRe->update([
                     'reason_id' => array_key_exists('reason_id', $validated) ? $validated['reason_id'] : $latestRe->reason_id,

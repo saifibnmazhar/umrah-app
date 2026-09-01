@@ -5463,7 +5463,8 @@ function bookingIndexApp() {
                 ? Math.round(this.reIssueForm.refunded_net_fare * rate)
                 : '';
 
-            this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0);
+            const consumedAdjustment = (re.payment_option === 'refund_adjustment') ? (parseFloat(re.refund_adjustment_amount) || 0) : 0;
+            this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0) + consumedAdjustment;
             this.recalcReIssueTotals();
         },
 
