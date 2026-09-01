@@ -202,18 +202,10 @@ class ReIssueController extends Controller
                         ]);
                     }
 
-                    $remainingPayment = $totalCustomerPayment - $amount;
-                    if ($remainingPayment > 0) {
-                        $invoice = $booking->invoice;
-                        if ($invoice) {
-                            app(InvoiceService::class)->updateTotals(
-                                $invoice,
-                                (float) $invoice->total_amount + $remainingPayment,
-                                're_issue_cost_added'
-                            );
-                        }
-                    }
-                } elseif ($totalCustomerPayment > 0) {
+                }
+
+                // Add FULL totalCustomerPayment to invoice (was: remainingPayment = totalCustomerPayment - amount)
+                if ($totalCustomerPayment > 0) {
                     $invoice = $booking->invoice;
                     if ($invoice) {
                         app(InvoiceService::class)->updateTotals(

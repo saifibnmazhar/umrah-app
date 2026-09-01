@@ -2,10 +2,16 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PaymentMethod;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
+use App\Models\Payment;
 use App\Models\TicketFare;
+use App\Models\TransactionType;
+use App\Models\Voucher;
+use App\Services\InvoiceService;
+use App\Services\VoucherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -224,6 +230,15 @@ class TicketIssueController extends Controller
                 $oldData['log_source'] = 're_issued_tickets';
                 $oldData['re_issued_ticket_id'] = $latestRe->id;
 
+                // Capture OLD financial state (before update)
+                $oldPaymentBy = $latestRe->payment_by?->value;
+                $oldPaymentOption = $latestRe->payment_option?->value;
+                $oldTotalCustomerPayment = (float) $latestRe->total_customer_payment;
+                $oldRefundAdjustmentAmount = (float) $latestRe->refund_adjustment_amount;
+                if ($oldPaymentBy !== 'customer') {
+                    $oldTotalCustomerPayment = 0;
+                }
+
                 $latestRe->update([
                     'ticket_number' => $validated['ticket_number'] ?? $latestRe->ticket_number,
                     'pnr' => $validated['pnr'] ?? $latestRe->pnr,
@@ -254,7 +269,9 @@ class TicketIssueController extends Controller
                     'fare_difference' => $fareDifference,
                     'other_costs' => $otherCosts,
                     'service_charge' => array_key_exists('service_charge', $validated) ? (float) $validated['service_charge'] : $latestRe->service_charge,
-                    'total_customer_payment' => array_key_exists('total_customer_payment', $validated) ? (float) $validated['total_customer_payment'] : $latestRe->total_customer_payment,
+                    'total_customer_payment' => ($validated['payment_by'] ?? $latestRe->payment_by) === 'customer'
+                        ? (array_key_exists('total_customer_payment', $validated) ? (float) $validated['total_customer_payment'] : $latestRe->total_customer_payment)
+                        : 0,
                     'remarks' => array_key_exists('remarks', $validated) ? $validated['remarks'] : $latestRe->remarks,
                     'payment_by' => array_key_exists('payment_by', $validated) ? $validated['payment_by'] : $latestRe->payment_by,
                     'payment_option' => array_key_exists('payment_option', $validated) && $validated['payment_by'] === 'customer'
@@ -263,6 +280,93 @@ class TicketIssueController extends Controller
                     'refund_adjustment_amount' => $refundAdjustment,
                     'total_cost' => round($totalCost, 6),
                 ]);
+
+                // Determine NEW financial state
+                $newPaymentBy = array_key_exists('payment_by', $validated) ? $validated['payment_by'] : $oldPaymentBy;
+                $newPaymentOption = ($newPaymentBy === 'customer')
+                    ? (array_key_exists('payment_option', $validated) ? $validated['payment_option'] : $oldPaymentOption)
+                    : null;
+                $newTotalCustomerPayment = ($newPaymentBy === 'customer' && array_key_exists('total_customer_payment', $validated))
+                    ? (float) $validated['total_customer_payment']
+                    : (($newPaymentBy === 'customer') ? (float) $latestRe->total_customer_payment : 0);
+                $newRefundAdjustmentAmount = (float) $refundAdjustment;
+
+                // --- Calculate invoice impact ---
+                $oldImpact = $oldTotalCustomerPayment;
+                $newImpact = $newTotalCustomerPayment;
+                $impactDelta = $newImpact - $oldImpact;
+
+                // --- Handle refund_adjustment Payment/Voucher lifecycle changes ---
+                $passenger = $issuedTicket->passenger;
+                $bookingResolved = $passenger->booking;
+
+                // Reverse OLD refund_adjustment if it was present, and is being removed/changed
+                if ($oldPaymentBy === 'customer' && $oldPaymentOption === 'refund_adjustment' && $oldRefundAdjustmentAmount > 0) {
+                    $oldPayment = Payment::where('re_issued_ticket_id', $latestRe->id)->first();
+                    if ($oldPayment) {
+                        $passenger->increaseRefundPayable($oldRefundAdjustmentAmount);
+                        $oldVoucher = Voucher::where('payment_id', $oldPayment->id)->first();
+                        if ($oldVoucher) {
+                            $oldVoucher->delete();
+                        }
+                        $oldPayment->delete();
+                    }
+                }
+
+                // Create NEW refund_adjustment if applicable
+                if ($newPaymentBy === 'customer' && $newPaymentOption === 'refund_adjustment' && $newRefundAdjustmentAmount > 0) {
+                    if ($newRefundAdjustmentAmount > (float) $passenger->refund_payable) {
+                        DB::rollBack();
+
+                        return response()->json(['message' => 'Refund adjustment amount exceeds the available refund payable.'], 422);
+                    }
+
+                    $passenger->decreaseRefundPayable($newRefundAdjustmentAmount);
+
+                    $transactionType = TransactionType::where('name', 'Ticket Refund - Re-issue')->first();
+
+                    $payment = Payment::create([
+                        'invoice_id' => $bookingResolved->invoice?->id,
+                        'booking_id' => $bookingResolved->id,
+                        'branch_id' => $bookingResolved->booking_branch_id,
+                        'user_id' => auth()->id(),
+                        'currency_rate_id' => $bookingResolved->currency_rate_id,
+                        'payment_date' => now(),
+                        'payment_method' => PaymentMethod::CASH,
+                        'amount' => $newRefundAdjustmentAmount,
+                        'bdt_amount' => 0,
+                        'passenger_id' => $passenger->id,
+                        're_issued_ticket_id' => $latestRe->id,
+                        'remarks' => $validated['remarks'] ?? null,
+                    ]);
+
+                    app(VoucherService::class)->createVoucher([
+                        'invoice_id' => $bookingResolved->invoice?->id,
+                        'booking_id' => $bookingResolved->id,
+                        'payment_id' => $payment->id,
+                        'branch_id' => $bookingResolved->booking_branch_id,
+                        'user_id' => auth()->id(),
+                        'currency_rate_id' => $bookingResolved->currency_rate_id,
+                        'transaction_type_id' => $transactionType?->id,
+                        'payment_date' => now(),
+                        'payment_method' => PaymentMethod::CASH,
+                        'amount' => $newRefundAdjustmentAmount,
+                        'bdt_amount' => 0,
+                        'notes' => $validated['remarks'] ?? null,
+                    ]);
+                }
+
+                // --- Update invoice by the impact delta ---
+                if ($impactDelta != 0) {
+                    $invoice = $bookingResolved->invoice;
+                    if ($invoice) {
+                        app(InvoiceService::class)->updateTotals(
+                            $invoice,
+                            (float) $invoice->total_amount + $impactDelta,
+                            're_issue_edited'
+                        );
+                    }
+                }
 
                 $newData = $latestRe->toArray();
                 $newData['log_source'] = 're_issued_tickets';

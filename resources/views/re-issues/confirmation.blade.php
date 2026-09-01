@@ -892,9 +892,11 @@ function handlePaymentByChange() {
         paymentOptionEl.disabled = true;
         document.getElementById('inputServiceCharge').value = '';
         document.getElementById('inputServiceChargeBdt').value = '';
+        document.getElementById('inputTotalPayment').value = 0;
     } else if (isRefunded && !isCustomer) {
         paymentOptionEl.value = 'refund_adjustment';
         paymentOptionEl.disabled = true;
+        document.getElementById('inputTotalPayment').value = 0;
     } else {
         paymentOptionEl.disabled = false;
     }
