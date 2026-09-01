@@ -685,6 +685,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             $canViewPassengerIndex = true;
             $canCancelPassenger = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
             $canConfirmCancellation = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || auth()->user()->hasRole('Branch Manager') || auth()->user()->hasRole('Fingerprint Admin');
+            $canRevertVisa = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || auth()->user()->hasRole('Visa Admin');
         @endphp
         <h1 class="text-2xl font-bold text-slate-800">Booking</h1>
         @if($canCreateBooking)
@@ -1266,7 +1267,7 @@ if ($passenger->ticket_fare_inbound_id) {
                         class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
             </template>
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
-                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued'"
+                <button x-show="{{ $canRevertVisa ? 'true' : 'false' }} && passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued'"
                         @click="openVisaRevertModal({{ $loop->index }})"
                         class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Revert</button>
             </template>

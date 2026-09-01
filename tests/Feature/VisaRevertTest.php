@@ -334,4 +334,48 @@ class VisaRevertTest extends TestCase
 
         $this->assertNotSame('Visa Issued', $passenger->fresh()->computed_status);
     }
+
+    public function test_visa_staff_cannot_revert_issued_visa(): void
+    {
+        ['booking' => $booking, 'passenger' => $passenger] = $this->setupIssuedScenario();
+
+        $visaStaff = User::create([
+            'name' => 'Visa Staff',
+            'email' => uniqid().'@example.com',
+            'password' => bcrypt('password'),
+            'is_active' => true,
+        ]);
+        $visaStaff->roles()->attach(Role::create(['name' => 'Visa Staff']));
+
+        $this->actingAs($visaStaff)->postJson(route('bookings.passengers.visa-revert', [$booking->id, $passenger->id]))
+            ->assertForbidden();
+
+        $this->assertDatabaseHas('visa_submissions', [
+            'id' => $passenger->visaSubmission->id,
+            'status' => 'issued',
+        ]);
+    }
+
+    public function test_co_admin_and_visa_admin_can_revert_issued_visa(): void
+    {
+        foreach (['Co Admin', 'Visa Admin'] as $roleName) {
+            ['booking' => $booking, 'passenger' => $passenger] = $this->setupIssuedScenario();
+
+            $roleUser = User::create([
+                'name' => $roleName,
+                'email' => uniqid().'@example.com',
+                'password' => bcrypt('password'),
+                'is_active' => true,
+            ]);
+            $roleUser->roles()->attach(Role::create(['name' => $roleName]));
+
+            $this->actingAs($roleUser)->postJson(route('bookings.passengers.visa-revert', [$booking->id, $passenger->id]))
+                ->assertOk();
+
+            $this->assertDatabaseHas('visa_submissions', [
+                'id' => $passenger->visaSubmission->id,
+                'status' => 'submitted',
+            ]);
+        }
+    }
 }

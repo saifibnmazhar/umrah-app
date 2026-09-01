@@ -167,7 +167,7 @@ Route::middleware('auth')->group(function () {
         ->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
     Route::post('/bookings/{booking}/passengers/{passenger}/visa-revert', [VisaSubmissionController::class, 'revert'])
         ->name('bookings.passengers.visa-revert')
-        ->middleware('role:Super Admin,Co Admin,Visa Admin,Visa Staff');
+        ->middleware('role:Super Admin,Co Admin,Visa Admin');
 
     // Document routes
     Route::get('/bookings/{booking}/download-all-docs', [BookingController::class, 'downloadAllDocs'])->name('bookings.download-all-docs');
