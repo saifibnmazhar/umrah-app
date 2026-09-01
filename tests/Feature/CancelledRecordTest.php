@@ -13,6 +13,7 @@ use App\Models\Invoice;
 use App\Models\Passenger;
 use App\Models\Payment;
 use App\Models\Role;
+use App\Models\TransactionType;
 use App\Models\User;
 use App\Models\Voucher;
 use App\Services\CancellationService;
@@ -52,6 +53,7 @@ class CancelledRecordTest extends TestCase
         Schema::dropIfExists('cancelled_bookings');
         Schema::dropIfExists('vouchers');
         Schema::dropIfExists('payments');
+        Schema::dropIfExists('transaction_types');
         Schema::dropIfExists('passengers');
         Schema::dropIfExists('passenger_statuses');
         Schema::dropIfExists('invoices');
@@ -170,26 +172,34 @@ class CancelledRecordTest extends TestCase
             $table->foreignId('booking_id')->nullable()->constrained('bookings')->restrictOnDelete();
             $table->foreignId('branch_id')->nullable()->constrained('branches')->restrictOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->restrictOnDelete();
+            $table->unsignedBigInteger('currency_rate_id')->nullable();
+            $table->unsignedBigInteger('cancelled_booking_id')->nullable();
             $table->date('payment_date')->nullable();
             $table->enum('payment_method', ['cash', 'bank']);
             $table->string('transaction_id')->nullable();
             $table->decimal('amount', 14, 6)->default(0);
             $table->decimal('bdt_amount', 14, 6)->default(0);
+            $table->string('remarks')->nullable();
             $table->timestamps();
         });
 
         Schema::create('vouchers', function ($table) {
             $table->id();
             $table->string('voucher_id')->unique();
+            $table->unsignedBigInteger('invoice_id')->nullable();
             $table->foreignId('payment_id')->nullable()->constrained('payments')->restrictOnDelete();
             $table->foreignId('booking_id')->nullable()->constrained('bookings')->restrictOnDelete();
             $table->foreignId('branch_id')->nullable()->constrained('branches')->restrictOnDelete();
             $table->foreignId('user_id')->nullable()->constrained('users')->restrictOnDelete();
+            $table->unsignedBigInteger('currency_rate_id')->nullable();
+            $table->unsignedBigInteger('transaction_type_id')->nullable();
+            $table->unsignedBigInteger('cancelled_booking_id')->nullable();
             $table->date('payment_date')->nullable();
             $table->enum('payment_method', ['cash', 'bank']);
             $table->string('transaction_id')->nullable();
             $table->decimal('amount', 14, 6)->default(0);
             $table->decimal('bdt_amount', 14, 6)->default(0);
+            $table->string('notes')->nullable();
             $table->timestamps();
         });
 
@@ -240,6 +250,13 @@ class CancelledRecordTest extends TestCase
             $table->foreignId('reverted_by_id')->nullable()->constrained('users')->nullOnDelete();
             $table->timestamps();
             $table->softDeletes();
+        });
+
+        Schema::create('transaction_types', function ($table) {
+            $table->id();
+            $table->string('name')->unique();
+            $table->enum('type', ['debit', 'credit'])->default('credit');
+            $table->timestamps();
         });
 
         Schema::enableForeignKeyConstraints();
@@ -436,10 +453,11 @@ class CancelledRecordTest extends TestCase
         $this->makeCancelledBooking($canceller, $branch1, $b1);
         $this->makeCancelledBooking($canceller, $branch2, $b2);
 
-        $response = $this->actingAs($manager)->get(route('cancelled-bookings.index'));
-        $response->assertOk()->assertSee('BM-100');
-        // Branch 2 booking uses a distinct invoice id
-        $this->assertStringNotContainsString($b2->invoice_id, $response->getContent());
+        // Row data is loaded via the JSON endpoint (see
+        // test_booking_index_data_respects_branch_scope); assert the page shell renders.
+        $this->actingAs($manager)->get(route('cancelled-bookings.index'))
+            ->assertOk()
+            ->assertSee('cancelledIndex');
     }
 
     public function test_show_forbids_record_from_another_branch(): void
@@ -509,7 +527,8 @@ class CancelledRecordTest extends TestCase
         $response = $this->actingAs($canceller)->get(route('cancelled-bookings.print', $cb));
         $response->assertOk()
             ->assertSee('REFUND VOUCHER')
-            ->assertSee('BIN MISHAL GLOBAL SERVICES LTD.');
+            ->assertSee('BIN MISHAL GLOBAL SERVICES LTD.')
+            ->assertSee('data-sar="2500.000000"', false);    // refund_amount
     }
 
     public function test_passenger_show_renders_details(): void
@@ -539,7 +558,10 @@ class CancelledRecordTest extends TestCase
         $response = $this->actingAs($canceller)->get(route('cancelled-passengers.print', $cp));
         $response->assertOk()
             ->assertSee('REFUND VOUCHER')
-            ->assertSee('Adjustment from Due');
+            ->assertSee('Adjustment from Due')
+            ->assertSee('data-sar="300.000000"', false)       // service_charge_deduction
+            ->assertSee('data-sar="1200.000000"', false)      // balance_adjusted_amount
+            ->assertSee('data-sar="1500.000000"', false);     // refund_amount
     }
 
     // ------------------------------------------------------------------
@@ -571,6 +593,43 @@ class CancelledRecordTest extends TestCase
         $response->assertRedirect(route('cancelled-bookings.print', $cb));
     }
 
+    public function test_booking_confirm_sets_confirmed_by_and_renders_it_on_show(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $canceller = $this->createUserWithRole('Super Admin');
+        $confirmer = $this->createUserWithRole('Co Admin');
+
+        ['booking' => $booking, 'invoice' => $invoice] = $this->createBookingWithInvoice($branch);
+
+        $cb = CancelledBooking::create([
+            'booking_id' => $booking->id,
+            'invoice_id' => $invoice->id,
+            'user_id' => $canceller->id,
+            'total_paid' => 3000.00,
+            'service_charge_deduction' => 0,
+            'refund_amount' => 2500.00,
+            'cancellation_branch_id' => $branch->id,
+            'status' => CancelledBookingStatus::PROCESSING,
+        ]);
+
+        TransactionType::create(['name' => 'Service Charge Deduction', 'type' => 'debit']);
+        TransactionType::create(['name' => 'Customer Refund', 'type' => 'credit']);
+
+        $this->actingAs($confirmer);
+        app(CancellationService::class)->confirmCancellation($cb, [
+            'payment_method' => PaymentMethod::CASH->value,
+            'refund_amount' => 2500,
+        ]);
+
+        $this->assertEquals($confirmer->id, $cb->fresh()->confirmed_by_id);
+
+        $response = $this->actingAs($canceller)->get(route('cancelled-bookings.show', $cb->fresh()));
+        $response->assertOk()
+            ->assertSee('Confirmed By')
+            ->assertSee($confirmer->name);
+    }
+
     public function test_passenger_confirm_redirects_to_print_voucher(): void
     {
         $this->createRoles();
@@ -592,5 +651,137 @@ class CancelledRecordTest extends TestCase
             ]);
 
         $response->assertRedirect(route('cancelled-passengers.print', $cp));
+    }
+
+    // ------------------------------------------------------------------
+    // Index tab rendering (bookings vs passengers)
+    // ------------------------------------------------------------------
+
+    public function test_bookings_index_renders_bookings_tab(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $canceller = $this->createUserWithRole('Super Admin');
+
+        ['booking' => $booking] = $this->createBookingWithInvoice($branch, 'BM-TAB-1');
+        $this->makeCancelledBooking($canceller, $branch, $booking);
+
+        $response = $this->actingAs($canceller)->get(route('cancelled-bookings.index'));
+
+        $response->assertOk()
+            ->assertSee('Cancelled Bookings')
+            ->assertSee('cancelledIndex')
+            ->assertSee('api\\/cancelled-bookings');
+    }
+
+    public function test_passengers_index_renders_passengers_tab(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $canceller = $this->createUserWithRole('Super Admin');
+
+        ['booking' => $booking] = $this->createBookingWithInvoice($branch, 'BM-TAB-2');
+        $this->makeCancelledPassenger($canceller, $branch, $booking);
+
+        $response = $this->actingAs($canceller)->get(route('cancelled-passengers.index'));
+
+        $response->assertOk()
+            ->assertSee('Cancelled Passengers')
+            ->assertSee('cancelledIndex')
+            ->assertSee('api\\/cancelled-passengers');
+    }
+
+    public function test_passengers_tab_link_points_to_cancelled_passengers_route(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $canceller = $this->createUserWithRole('Super Admin');
+
+        ['booking' => $booking] = $this->createBookingWithInvoice($branch);
+        $this->makeCancelledPassenger($canceller, $branch, $booking);
+
+        $response = $this->actingAs($canceller)->get(route('cancelled-bookings.index'));
+
+        $response->assertOk();
+        $this->assertStringContainsString(route('cancelled-passengers.index'), $response->getContent());
+    }
+
+    // ------------------------------------------------------------------
+    // JSON index endpoints (live search)
+    // ------------------------------------------------------------------
+
+    public function test_booking_index_data_returns_json(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $canceller = $this->createUserWithRole('Super Admin');
+
+        ['booking' => $booking] = $this->createBookingWithInvoice($branch, 'BM-JSON-1');
+        $this->makeCancelledBooking($canceller, $branch, $booking);
+
+        $response = $this->actingAs($canceller)->getJson(route('api.cancelled-bookings.data'));
+
+        $response->assertOk()
+            ->assertJsonStructure(['data', 'pagination' => ['current_page', 'last_page', 'per_page', 'total']])
+            ->assertJsonPath('pagination.total', 1);
+        $this->assertEquals('BM-JSON-1', $response->json('data.0.invoice_id'));
+        $this->assertEquals(3000.00, (float) $response->json('data.0.total_paid'));
+    }
+
+    public function test_booking_index_data_filters_by_search(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $canceller = $this->createUserWithRole('Super Admin');
+
+        ['booking' => $b1] = $this->createBookingWithInvoice($branch, 'BM-AAA-1');
+        ['booking' => $b2] = $this->createBookingWithInvoice($branch, 'BM-BBB-2');
+        $this->makeCancelledBooking($canceller, $branch, $b1);
+        $this->makeCancelledBooking($canceller, $branch, $b2);
+
+        $response = $this->actingAs($canceller)->getJson(route('api.cancelled-bookings.data', ['search' => 'AAA']));
+
+        $response->assertOk()->assertJsonPath('pagination.total', 1);
+        $this->assertEquals('BM-AAA-1', $response->json('data.0.invoice_id'));
+    }
+
+    public function test_passenger_index_data_returns_json_and_searches(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $canceller = $this->createUserWithRole('Super Admin');
+
+        ['booking' => $booking] = $this->createBookingWithInvoice($branch, 'BM-PASS-1');
+        $this->makeCancelledPassenger($canceller, $branch, $booking);
+
+        $response = $this->actingAs($canceller)->getJson(route('api.cancelled-passengers.data'));
+        $response->assertOk()->assertJsonPath('pagination.total', 1);
+        $this->assertStringContainsString('John Doe', $response->json('data.0.passenger'));
+
+        $search = $this->actingAs($canceller)->getJson(route('api.cancelled-passengers.data', ['search' => 'Doe']));
+        $search->assertOk()->assertJsonPath('pagination.total', 1);
+
+        $noMatch = $this->actingAs($canceller)->getJson(route('api.cancelled-passengers.data', ['search' => 'NoSuchPassenger']));
+        $noMatch->assertOk()->assertJsonPath('pagination.total', 0);
+    }
+
+    public function test_booking_index_data_respects_branch_scope(): void
+    {
+        $this->createRoles();
+        $branch1 = Branch::create(['name' => 'Branch 1']);
+        $branch2 = Branch::create(['name' => 'Branch 2']);
+
+        $manager = $this->createUserWithRole('Branch Manager', $branch1->id);
+        $canceller = $this->createUserWithRole('Super Admin');
+
+        ['booking' => $b1] = $this->createBookingWithInvoice($branch1, 'BM-SCOPE-1');
+        ['booking' => $b2] = $this->createBookingWithInvoice($branch2, 'BM-SCOPE-2');
+        $this->makeCancelledBooking($canceller, $branch1, $b1);
+        $this->makeCancelledBooking($canceller, $branch2, $b2);
+
+        $response = $this->actingAs($manager)->getJson(route('api.cancelled-bookings.data'));
+
+        $response->assertOk()->assertJsonPath('pagination.total', 1);
+        $this->assertEquals('BM-SCOPE-1', $response->json('data.0.invoice_id'));
     }
 }

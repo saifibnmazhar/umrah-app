@@ -66,9 +66,9 @@
 </head>
 <body>
     @php $cb = $cancelledBooking; @endphp
-    <div x-data="voucherData()" class="voucher-wrap">
+    <div class="voucher-wrap">
         <div class="toolbar no-print">
-            <button @click="window.print()" class="btn btn-primary">Print Voucher</button>
+            <button onclick="window.print()" class="btn btn-primary">Print Voucher</button>
         </div>
 
         <div class="header">
@@ -117,19 +117,19 @@
                 <tbody>
                     <tr>
                         <td>Total Amount</td>
-                        <td class="text-right font-medium" x-text="$currency(totalAmount, 2)"></td>
+                        <td class="text-right font-medium">@currency($cb->booking?->invoice?->total_amount, 2)</td>
                     </tr>
                     <tr>
                         <td>Total Paid</td>
-                        <td class="text-right font-medium" x-text="$currency(totalPaid, 2)"></td>
+                        <td class="text-right font-medium">@currency($cb->total_paid, 2)</td>
                     </tr>
                     <tr>
                         <td>Service Charge Deduction</td>
-                        <td class="text-right font-medium" x-text="$currency(serviceCharge, 2)"></td>
+                        <td class="text-right font-medium">@currency($cb->service_charge_deduction, 2)</td>
                     </tr>
                     <tr class="summary-row">
                         <td>Refund Amount</td>
-                        <td class="text-right refund-cell" x-text="$currency(refundAmount, 2)"></td>
+                        <td class="text-right refund-cell">@currency($cb->refund_amount, 2)</td>
                     </tr>
                 </tbody>
             </table>
@@ -183,16 +183,5 @@
             This is a system-generated Refund Voucher and does not require physical signatures or company stamp.
         </div>
     </div>
-
-    <script>
-        function voucherData() {
-            return {
-                totalAmount: {{ (float) ($cb->booking?->invoice?->total_amount ?? 0) }},
-                totalPaid: {{ (float) ($cb->total_paid ?? 0) }},
-                serviceCharge: {{ (float) ($cb->service_charge_deduction ?? 0) }},
-                refundAmount: {{ (float) ($cb->refund_amount ?? 0) }},
-            };
-        }
-    </script>
 </body>
 </html>

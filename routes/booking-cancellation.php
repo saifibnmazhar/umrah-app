@@ -58,3 +58,9 @@ Route::get('/cancelled-passengers/{cancelledPassenger}', [CancelledRecordControl
     ->name('cancelled-passengers.show')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
 Route::get('/cancelled-passengers/{cancelledPassenger}/print', [CancelledRecordController::class, 'passengerPrint'])
     ->name('cancelled-passengers.print')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
+
+// ─── Cancelled Records Index JSON (live search) ───
+Route::get('/api/cancelled-bookings', [CancelledRecordController::class, 'bookingIndexData'])
+    ->name('api.cancelled-bookings.data')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');
+Route::get('/api/cancelled-passengers', [CancelledRecordController::class, 'passengerIndexData'])
+    ->name('api.cancelled-passengers.data')->middleware('role:Super Admin,Co Admin,Branch Manager,Fingerprint Admin');

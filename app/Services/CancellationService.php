@@ -167,6 +167,7 @@ class CancellationService
                 'refund_payment_id' => $refundPayment->id,
                 'refund_voucher_id' => $refundVoucher->id,
                 'refund_amount' => $refundAmount,
+                'confirmed_by_id' => auth()->id(),
                 'status' => CancelledBookingStatus::CANCELLED,
             ]);
 

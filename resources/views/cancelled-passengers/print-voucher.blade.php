@@ -69,9 +69,9 @@
 </head>
 <body>
     @php $cp = $cancelledPassenger; @endphp
-    <div x-data="voucherData()" class="voucher-wrap">
+    <div class="voucher-wrap">
         <div class="toolbar no-print">
-            <button @click="window.print()" class="btn btn-primary">Print Voucher</button>
+            <button onclick="window.print()" class="btn btn-primary">Print Voucher</button>
         </div>
 
         <div class="header">
@@ -117,7 +117,7 @@
         </div>
 
         <div class="adjustment-note">
-            Adjustment from Due: {{ '$' . number_format($cp->adjusted_from_due ?? 0, 2) }}
+            Adjustment from Due: @currency($cp->balance_adjusted_amount, 2)
         </div>
 
         <div class="section-title">Financial Summary</div>
@@ -125,24 +125,32 @@
             <table>
                 <tbody>
                     <tr>
-                        <td>Total Amount</td>
-                        <td class="text-right font-medium" x-text="$currency(totalAmount, 2)"></td>
+                        <td>Package Value</td>
+                        <td class="text-right font-medium">@currency($cp->package_value, 2)</td>
                     </tr>
                     <tr>
-                        <td>Total Paid</td>
-                        <td class="text-right font-medium" x-text="$currency(totalPaid, 2)"></td>
+                        <td>Additional Tickets</td>
+                        <td class="text-right font-medium">@currency($cp->additional_ticket_value, 2)</td>
+                    </tr>
+                    <tr>
+                        <td>Total Passenger Due</td>
+                        <td class="text-right font-medium">@currency($cp->total_passenger_due, 2)</td>
                     </tr>
                     <tr>
                         <td>Deduction</td>
-                        <td class="text-right font-medium" x-text="$currency(deduction, 2)"></td>
+                        <td class="text-right font-medium">@currency($cp->service_charge_deduction, 2)</td>
+                    </tr>
+                    <tr>
+                        <td>Refundable Amount</td>
+                        <td class="text-right font-medium">@currency($cp->refundable_amount, 2)</td>
                     </tr>
                     <tr>
                         <td>Adjusted from Due</td>
-                        <td class="text-right adjustment-cell" x-text="$currency(adjustedFromDue, 2)"></td>
+                        <td class="text-right adjustment-cell">@currency($cp->balance_adjusted_amount, 2)</td>
                     </tr>
                     <tr class="summary-row">
                         <td>Refund Amount</td>
-                        <td class="text-right refund-cell" x-text="$currency(refundAmount, 2)"></td>
+                        <td class="text-right refund-cell">@currency($cp->refund_amount, 2)</td>
                     </tr>
                 </tbody>
             </table>
@@ -196,17 +204,5 @@
             This is a system-generated Refund Voucher and does not require physical signatures or company stamp.
         </div>
     </div>
-
-    <script>
-        function voucherData() {
-            return {
-                totalAmount: {{ (float) ($cp->passenger?->booking?->invoice?->total_amount ?? 0) }},
-                totalPaid: {{ (float) ($cp->total_paid ?? 0) }},
-                deduction: {{ (float) ($cp->cancellation_deduction ?? 0) }},
-                adjustedFromDue: {{ (float) ($cp->adjusted_from_due ?? 0) }},
-                refundAmount: {{ (float) ($cp->refund_amount ?? 0) }},
-            };
-        }
-    </script>
 </body>
 </html>
