@@ -312,6 +312,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'outbound_pending' => $lit->outbound_pending ?? false,
         'issue_type' => $lit->issue_type,
         'status' => $lit->status,
+        'refunded_net_fare' => $lit->latestRefundedTicket
+            ? (float) ($lit->latestRefundedTicket->net_fare ?? $lit->net_fare ?? 0)
+            : 0,
+        'was_refunded' => (bool) $lit->latestRefundedTicket,
         'has_pending_request' => $lit->pendingRequests->isNotEmpty(),
         'ticket_type' => $lit->ticketFare?->ticket_type?->value ?? '',
         'airline' => $lit->ticketFare?->airline?->name ?? '',
@@ -554,9 +558,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'refunded'  => $t->refundedTickets->sortByDesc('id')->first()?->remarks ?? null,
             default     => null,
         },
-        'refunded_net_fare' => $t->status === 'refunded'
-            ? (float) ($t->latestRefundedTicket?->net_fare ?? $t->net_fare ?? 0)
+        'refunded_net_fare' => $t->latestRefundedTicket
+            ? (float) ($t->latestRefundedTicket->net_fare ?? $t->net_fare ?? 0)
             : 0,
+        'was_refunded' => (bool) $t->latestRefundedTicket,
     ])->values(),
     'pending_outbound_issued_ticket' => ($poit = $p->allIssuedTickets
         ->first(fn($t) => $t->issue_type === 'pending_outbound')) ? (function() use ($poit) {
@@ -595,6 +600,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'is_exchangeable' => $src->is_exchangeable ?? $poit->is_exchangeable ?? false,
             'baggage_outbound' => $src->baggage_outbound ?? $poit->baggage_outbound ?? '',
             'status' => $poit->status,
+            'refunded_net_fare' => $poit->latestRefundedTicket
+                ? (float) ($poit->latestRefundedTicket->net_fare ?? $poit->net_fare ?? 0)
+                : 0,
+            'was_refunded' => (bool) $poit->latestRefundedTicket,
             're_issue_details' => $poit->status === 're-issued' && $src !== $poit ? [
                 'reason_id' => $src->reason_id,
                 're_issue_charge' => (float)($src->re_issue_charge ?? 0),
@@ -2518,7 +2527,8 @@ if ($passenger->ticket_fare_inbound_id) {
                         <div x-show="reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
                             <select x-model="reIssueForm.payment_option" @change="handleReIssuePaymentOptionChange()"
-                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                    :disabled="reIssueForm.payment_by !== 'customer'"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed">
                                 <option value="customer_payment">Customer Payment</option>
                                 <option value="refund_adjustment">Refund Adjustment</option>
                             </select>
@@ -2562,6 +2572,10 @@ if ($passenger->ticket_fare_inbound_id) {
                                    :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                             <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                        <div x-show="reIssueForm.refunded_net_fare > 0">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (SAR)</label>
+                            <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
@@ -2809,7 +2823,7 @@ if ($passenger->ticket_fare_inbound_id) {
                         <div x-show="reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
                             <select x-model="reIssueForm.payment_option" @change="handleReIssuePaymentOptionChange()"
-                                    :disabled="reIssueForm.payment_by !== 'customer' && !reIssueForm.refunded_ticket"
+                                    :disabled="reIssueForm.payment_by !== 'customer'"
                                     class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed">
                                 <option value="customer_payment">Customer Payment</option>
                                 <option value="refund_adjustment">Refund Adjustment</option>
@@ -5100,7 +5114,7 @@ function bookingIndexApp() {
             this.handleTicketFareRouteTypeChange();
             this.isEditingReIssued = !!(poit.status === 're-issued' && poit.re_issue_details);
             if (this.isEditingReIssued) {
-                this.populateReIssueEditForm(poit.re_issue_details, poit.id, row, poit.status, poit.refunded_net_fare || 0);
+                this.populateReIssueEditForm(poit.re_issue_details, poit.id, row, poit.was_refunded, poit.refunded_net_fare || 0);
             } else {
                 this.resetReIssueEditFields();
             }
@@ -5120,7 +5134,7 @@ function bookingIndexApp() {
             this.isEditingReIssued = !!(lit && lit.status === 're-issued');
 
             if (this.isEditingReIssued) {
-                this.populateReIssueEditForm(lit.latest_re_issued_ticket || {}, lit.id || null, row, lit.status, lit.refunded_net_fare || 0);
+                this.populateReIssueEditForm(lit.latest_re_issued_ticket || {}, lit.id || null, row, lit.was_refunded, lit.refunded_net_fare || 0);
             } else {
                 this.resetReIssueEditFields();
             }
@@ -5427,7 +5441,7 @@ function bookingIndexApp() {
             this.editingPassengerIndex = null;
         },
 
-        populateReIssueEditForm(re, issuedTicketId, row, issuedTicketStatus, refundedNetFare) {
+        populateReIssueEditForm(re, issuedTicketId, row, wasRefunded, refundedNetFare) {
             this.reIssueForm.issued_ticket_id = issuedTicketId || null;
             this.reIssueForm.passenger_id = row.id;
             this.reIssueForm.booking_id = row.booking_id;
@@ -5441,8 +5455,8 @@ function bookingIndexApp() {
             this.reIssueForm.other_costs = re.other_costs || 0;
             this.reIssueForm.service_charge = re.service_charge || 0;
             this.reIssueForm.remarks = re.remarks || '';
-            this.reIssueForm.refunded_ticket = (issuedTicketStatus === 'refunded');
-            this.reIssueForm.refunded_net_fare = (issuedTicketStatus === 'refunded') ? (refundedNetFare || 0) : 0;
+            this.reIssueForm.refunded_ticket = !!wasRefunded;
+            this.reIssueForm.refunded_net_fare = !!wasRefunded ? (refundedNetFare || 0) : 0;
 
             const rate = window.__currencyRate || 0;
             this.reIssueForm.refunded_net_fare_bdt = this.reIssueForm.refunded_net_fare > 0 && rate > 0
