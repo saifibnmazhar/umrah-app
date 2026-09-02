@@ -157,6 +157,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                             <option value="loss">Loss</option>
                         </select>
                     </div>
+                    <div class="flex items-center gap-2">
+                        <label class="text-sm font-semibold text-gray-700">Branch:</label>
+                        <select x-model="branchId" @change="currentPage = 1; loadDataForTab(); loadSummary()" class="px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-300">
+                            <option value="">All Branches</option>
+                            <option value="central">Central</option>
+                            <template x-for="branch in branches" :key="branch.id">
+                                <option :value="branch.id" x-text="branch.name"></option>
+                            </template>
+                        </select>
+                    </div>
 
                 </div>
             </div>
@@ -174,8 +184,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         </button>
                     </div>
                     <div class="flex items-center gap-2 pr-1 pb-3">
-                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=customer&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-700">Customer Print</a>
-                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=passenger&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-700">Passenger Print</a>
+                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=customer&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter + '&branch_id=' + branchId" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-700">Customer Print</a>
+                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=passenger&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter + '&branch_id=' + branchId" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-700">Passenger Print</a>
                     </div>
                 </div>
             </div>
@@ -583,6 +593,8 @@ function profitLossReport() {
         date_to: '',
         search: '',
         profitLossFilter: 'all',
+        branchId: '',
+        branches: [],
         activeTab: 'customer',
         loading: false,
         customers: [],
@@ -610,12 +622,23 @@ function profitLossReport() {
 
         init() {
             this.setDefaultDates();
+            this.loadBranches();
             this.loadSummary();
             this.loadDataForTab();
             window.addEventListener('currency-toggled', () => {
                 this.customers = [...this.customers];
                 this.passengers = [...this.passengers];
             });
+        },
+
+        async loadBranches() {
+            try {
+                const res = await fetch('/api/reports/profit-loss/filters');
+                const json = await res.json();
+                this.branches = json.branches || [];
+            } catch (e) {
+                console.error('Failed to load branches', e);
+            }
         },
 
         setDefaultDates() {
@@ -641,6 +664,7 @@ function profitLossReport() {
                 if (this.date_to) params.set('date_to', this.date_to);
                 if (this.search) params.set('search', this.search);
                 if (this.profitLossFilter !== 'all') params.set('profit_loss_filter', this.profitLossFilter);
+                if (this.branchId) params.set('branch_id', this.branchId);
                 const res = await fetch(`/api/reports/profit-loss/summary?${params}`);
                 const json = await res.json();
                 this.summary = {
@@ -662,6 +686,7 @@ function profitLossReport() {
                 if (this.date_to) params.set('date_to', this.date_to);
                 if (this.search) params.set('search', this.search);
                 if (this.profitLossFilter !== 'all') params.set('profit_loss_filter', this.profitLossFilter);
+                if (this.branchId) params.set('branch_id', this.branchId);
                 params.set('tab', this.activeTab);
                 params.set('page', this.currentPage);
                 params.set('per_page', this.perPage);
