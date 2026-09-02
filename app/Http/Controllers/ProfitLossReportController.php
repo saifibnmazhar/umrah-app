@@ -80,12 +80,7 @@ class ProfitLossReportController extends Controller
     private function applyBranchFilter($query, Request $request)
     {
         if ($request->filled('branch_id')) {
-            $branchId = $request->branch_id;
-            if ($branchId === 'central') {
-                $query->whereNull('bookings.booking_branch_id');
-            } else {
-                $query->where('bookings.booking_branch_id', $branchId);
-            }
+            $query->where('bookings.booking_branch_id', $request->branch_id);
         }
 
         return $query;
@@ -342,12 +337,9 @@ class ProfitLossReportController extends Controller
 
         $summary = $this->summary($request)->getData(true);
 
-        $branchName = null;
-        if ($request->filled('branch_id')) {
-            $branchName = $request->branch_id === 'central'
-                ? 'Central'
-                : Branch::find($request->branch_id)?->name;
-        }
+        $branchName = $request->filled('branch_id')
+            ? Branch::find($request->branch_id)?->name
+            : null;
 
         return view('reports.profit-loss-print', compact(
             'type', 'currency', 'customers', 'passengers', 'dateFrom', 'dateTo',

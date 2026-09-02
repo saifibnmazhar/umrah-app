@@ -161,7 +161,6 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <label class="text-sm font-semibold text-gray-700">Branch:</label>
                         <select x-model="branchId" @change="currentPage = 1; loadDataForTab(); loadSummary()" class="px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 border border-gray-300">
                             <option value="">All Branches</option>
-                            <option value="central">Central</option>
                             <template x-for="branch in branches" :key="branch.id">
                                 <option :value="branch.id" x-text="branch.name"></option>
                             </template>
