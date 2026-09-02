@@ -36,13 +36,19 @@ class Passenger extends Model
         'address',
         'ticket_fare_id',
         'package_value',
+        'profit',
         'is_ticket_held',
         'ticket_held_by',
         'ticket_held_at',
+        'is_visa_held',
+        'visa_held_by',
+        'visa_held_at',
         'ticket_remarks',
         'ticket_fare_inbound_id',
         'ticket_fare_outbound_id',
         'refund_payable',
+        'is_cancelled',
+        'cancelled_at',
     ];
 
     protected $casts = [
@@ -57,9 +63,14 @@ class Passenger extends Model
         'service_required' => ServiceRequired::class,
         'ticket_status' => TicketStatus::class,
         'package_value' => 'decimal:6',
+        'profit' => 'decimal:6',
         'is_ticket_held' => 'boolean',
         'ticket_held_at' => 'datetime',
+        'is_visa_held' => 'boolean',
+        'visa_held_at' => 'datetime',
         'refund_payable' => 'decimal:6',
+        'is_cancelled' => 'boolean',
+        'cancelled_at' => 'datetime',
     ];
 
     public function booking(): BelongsTo
@@ -122,6 +133,11 @@ class Passenger extends Model
             'id',
             'id'
         );
+    }
+
+    public function cancelledPassengers(): HasMany
+    {
+        return $this->hasMany(CancelledPassenger::class);
     }
 
     public function reIssueSettlements(): HasMany
@@ -397,6 +413,11 @@ class Passenger extends Model
     public function isOnCancel(): bool
     {
         return $this->status?->name === 'Cancel';
+    }
+
+    public function isVisaOnHold(): bool
+    {
+        return (bool) $this->is_visa_held;
     }
 
     public function syncComputedStatus(): void

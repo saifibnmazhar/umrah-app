@@ -123,6 +123,7 @@
                             <option value="customer">Customer</option>
                             <option value="airline">Airline</option>
                             <option value="employee">Employee</option>
+                            <option value="company">Company</option>
                         </select>
                     </div>
                     {{-- payment method field is not needed now --}}

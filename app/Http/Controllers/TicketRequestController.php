@@ -8,6 +8,7 @@ use App\Enums\TicketType;
 use App\Models\BaggageAllowance;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
+use App\Models\Passenger;
 use App\Models\Payment;
 use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
@@ -62,6 +63,15 @@ class TicketRequestController extends Controller
                 ->exists()) {
                 return response()->json(['message' => 'A re-issue or refund request is already pending for one of the selected tickets.'], 422);
             }
+        }
+
+        $passengerIds = collect($validated['passengers'])->pluck('passenger_id');
+        $restrictedCount = Passenger::whereIn('id', $passengerIds)
+            ->whereHas('status', fn ($q) => $q->whereIn('name', ['Hold', 'Cancel']))
+            ->count();
+
+        if ($restrictedCount > 0) {
+            return response()->json(['message' => 'Requests cannot be created for passengers with Hold or Cancel status.'], 422);
         }
 
         if ($validated['request_type'] === 'refund' && $ticketIds->isNotEmpty()) {
@@ -136,6 +146,11 @@ class TicketRequestController extends Controller
             return response()->json(['message' => 'This request has already been processed.'], 400);
         }
 
+        $passenger = $ticketRequest->passenger;
+        if ($passenger && ($passenger->isOnHold() || $passenger->isOnCancel())) {
+            return response()->json(['message' => 'This request cannot be processed — the passenger has '.$passenger->status?->name.' status.'], 422);
+        }
+
         $validated = $request->validate([
             'reason_id' => 'required|exists:re_issue_refund_reasons,id',
             're_issue_charge' => 'required|numeric|min:0',
@@ -144,12 +159,11 @@ class TicketRequestController extends Controller
             'service_charge' => 'required|numeric|min:0',
             'total_customer_payment' => 'required_if:payment_by,customer|numeric|min:0',
             'remarks' => 'nullable|string',
-            'payment_by' => 'nullable|in:customer,airline,employee',
+            'payment_by' => 'nullable|in:customer,airline,employee,company',
             'payment_option' => 'nullable|required_if:payment_by,customer|in:customer_payment,refund_adjustment',
             'refund_adjustment_amount' => [
                 Rule::requiredIf(function () use ($request) {
-                    return $request->input('payment_by') === 'customer'
-                        && $request->input('payment_option') === 'refund_adjustment';
+                    return $request->input('payment_option') === 'refund_adjustment';
                 }),
                 'numeric',
                 'min:0',
@@ -178,6 +192,10 @@ class TicketRequestController extends Controller
         $wasRefunded = $issuedTicket->status === 'refunded';
 
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
+
+        $sellingFare = (float) ($validated['selling_fare'] ?? $selectedFare->selling_fare ?? $issuedTicket->selling_fare ?? 0);
+        $netFare = (float) ($validated['net_fare'] ?? $selectedFare->net_fare ?? $issuedTicket->net_fare ?? 0);
+        $offerPrice = (float) ($validated['offer_price'] ?? $selectedFare->offer_price ?? $issuedTicket->offer_price ?? 0);
 
         try {
             DB::beginTransaction();
@@ -221,9 +239,9 @@ class TicketRequestController extends Controller
                 're_issue_date' => $validated['travel_date'] ?? now(),
                 'inbound_date' => $validated['inbound_date'] ?? $issuedTicket->inbound_date,
                 'outbound_date' => $validated['outbound_date'] ?? $issuedTicket->outbound_date,
-                'selling_fare' => $validated['selling_fare'] ?? $selectedFare->selling_fare ?? $issuedTicket->selling_fare ?? 0,
-                'net_fare' => $validated['net_fare'] ?? $selectedFare->net_fare ?? $issuedTicket->net_fare ?? 0,
-                'offer_price' => $validated['offer_price'] ?? $selectedFare->offer_price ?? $issuedTicket->offer_price ?? 0,
+                'selling_fare' => $sellingFare,
+                'net_fare' => $netFare,
+                'offer_price' => $offerPrice,
                 'is_refundable' => $selectedFare->is_refundable ?? $issuedTicket->is_refundable,
                 'is_exchangeable' => $selectedFare->is_exchangeable ?? $issuedTicket->is_exchangeable,
                 'baggage_inbound' => BaggageAllowance::where('ticket_fare_id', $selectedFare->id)->where('passenger_type', $ticketRequest->passenger->passenger_type)->where('travel_direction', 'inbound')->value('allowance'),
@@ -235,10 +253,10 @@ class TicketRequestController extends Controller
                 'reason_id' => $validated['reason_id'],
                 'remarks' => $validated['remarks'] ?? null,
                 'payment_by' => $validated['payment_by'] ?? null,
-                'payment_option' => ($validated['payment_by'] ?? null) === 'customer'
+                'payment_option' => ($validated['payment_by'] ?? null) === 'customer' || $wasRefunded
                     ? $validated['payment_option']
                     : null,
-                'refund_adjustment_amount' => ($validated['payment_by'] ?? null) === 'customer'
+                'refund_adjustment_amount' => (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded)
                         && $validated['payment_option'] === 'refund_adjustment'
                     ? (float) $validated['refund_adjustment_amount']
                     : 0,
@@ -248,6 +266,19 @@ class TicketRequestController extends Controller
             ];
 
             $reIssuedTicket = ReIssuedTicket::create($reIssueData);
+
+            $refundedNetFare = $wasRefunded
+                ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
+                : 0;
+
+            $rawCost = (float) $reIssueData['re_issue_charge']
+                + (float) $reIssueData['fare_difference']
+                + (float) $reIssueData['other_costs']
+                + $refundedNetFare;
+
+            $totalCost = $rawCost - ($reIssueData['refund_adjustment_amount'] ?? 0);
+            $reIssuedTicket->update(['total_cost' => round($totalCost, 6)]);
+
             $issuedTicket->update(['status' => 're-issued']);
 
             $newData = $reIssuedTicket->toArray();
@@ -263,16 +294,7 @@ class TicketRequestController extends Controller
                 'result_re_issued_ticket_id' => $reIssuedTicket->id,
             ]);
 
-            if (($validated['payment_by'] ?? null) === 'customer') {
-                $refundedNetFare = $wasRefunded
-                    ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
-                    : 0;
-
-                $totalCost = (float) $validated['re_issue_charge']
-                    + (float) $validated['fare_difference']
-                    + (float) $validated['other_costs']
-                    + $refundedNetFare;
-
+            if (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded) {
                 $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
 
                 $passenger = $ticketRequest->passenger;
@@ -281,7 +303,7 @@ class TicketRequestController extends Controller
                 if ($validated['payment_option'] === 'refund_adjustment') {
                     $amount = (float) $validated['refund_adjustment_amount'];
 
-                    if ($amount > $totalCustomerPayment) {
+                    if ($amount > $rawCost) {
                         throw new \InvalidArgumentException('Refund adjustment amount exceeds the total customer payment.');
                     }
                     if ($amount > (float) $passenger->refund_payable) {
@@ -372,6 +394,11 @@ class TicketRequestController extends Controller
             return response()->json(['message' => 'This request has already been processed.'], 400);
         }
 
+        $passenger = $ticketRequest->passenger;
+        if ($passenger && ($passenger->isOnHold() || $passenger->isOnCancel())) {
+            return response()->json(['message' => 'This request cannot be processed — the passenger has '.$passenger->status?->name.' status.'], 422);
+        }
+
         $issuedTicket = $ticketRequest->issuedTicket;
         if (! $issuedTicket) {
             return response()->json(['message' => 'Issued ticket not found.'], 404);
@@ -388,7 +415,7 @@ class TicketRequestController extends Controller
             'customer_refund' => 'required|numeric|min:0|max:'.$refundNetFare,
             'service_charge' => 'required|numeric',
             'remarks' => 'nullable|string',
-            'payment_by' => 'nullable|in:customer,airline,employee',
+            'payment_by' => 'nullable|in:customer,airline,employee,company',
             'payment_method' => 'nullable|string|max:255',
             'bank_method' => 'nullable|string|max:255',
             'branch' => 'nullable|string|max:255',
@@ -476,6 +503,11 @@ class TicketRequestController extends Controller
             return response()->json(['message' => 'This request has already been processed.'], 400);
         }
 
+        $passenger = $ticketRequest->passenger;
+        if ($passenger && ($passenger->isOnHold() || $passenger->isOnCancel())) {
+            return response()->json(['message' => 'This request cannot be processed — the passenger has '.$passenger->status?->name.' status.'], 422);
+        }
+
         $validated = $request->validate([
             'ticket_number' => 'nullable|string|max:100',
             'pnr' => 'nullable|string|max:50',
@@ -494,6 +526,24 @@ class TicketRequestController extends Controller
 
         $selectedFare = TicketFare::findOrFail($validated['ticket_fare_id']);
 
+        $passengerType = $passenger->passenger_type?->value ?? 'adult';
+        $childPct = (float) ($selectedFare->child_fare_percentage ?: 70);
+        $infantPct = (float) ($selectedFare->infant_fare_percentage ?: 30);
+
+        $sellingFare = (float) ($selectedFare->selling_fare ?? 0);
+        $netFare = (float) ($selectedFare->net_fare ?? 0);
+        $offerPrice = (float) ($selectedFare->offer_price ?? 0);
+
+        if ($passengerType === 'child') {
+            $sellingFare = round($sellingFare * $childPct / 100, 6);
+            $netFare = round($netFare * $childPct / 100, 6);
+            $offerPrice = round($offerPrice * $childPct / 100, 6);
+        } elseif ($passengerType === 'infant') {
+            $sellingFare = round($sellingFare * $infantPct / 100, 6);
+            $netFare = round($netFare * $infantPct / 100, 6);
+            $offerPrice = round($offerPrice * $infantPct / 100, 6);
+        }
+
         try {
             DB::beginTransaction();
 
@@ -508,9 +558,9 @@ class TicketRequestController extends Controller
                 'issued_date' => $validated['issued_date'] ?? now(),
                 'inbound_date' => $validated['inbound_date'] ?? null,
                 'outbound_date' => $validated['outbound_date'] ?? null,
-                'selling_fare' => $selectedFare->selling_fare ?? 0,
-                'net_fare' => $selectedFare->net_fare ?? 0,
-                'offer_price' => $selectedFare->offer_price ?? 0,
+                'selling_fare' => $sellingFare,
+                'net_fare' => $netFare,
+                'offer_price' => $offerPrice,
                 'is_refundable' => $selectedFare->is_refundable ?? false,
                 'is_exchangeable' => $selectedFare->is_exchangeable ?? false,
                 'baggage_inbound' => BaggageAllowance::where('ticket_fare_id', $selectedFare->id)->where('passenger_type', $passenger->passenger_type)->where('travel_direction', 'inbound')->value('allowance'),
@@ -679,5 +729,25 @@ class TicketRequestController extends Controller
         ])->get();
 
         return response()->json($fares);
+    }
+
+    public function additionalTicketsByBooking(Booking $booking)
+    {
+        $tickets = IssuedTicket::where('booking_id', $booking->id)
+            ->where('issue_type', 'additional')
+            ->with([
+                'passenger',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
+                'ticketFare.route.returnCity',
+                'ticketFare.route.multiSegments.fromCity',
+                'ticketFare.route.multiSegments.toCity',
+                'ticketFare.airline',
+                'ticketFare.airlineClass.class',
+            ])
+            ->orderBy('issued_date', 'asc')
+            ->get();
+
+        return response()->json($tickets);
     }
 }

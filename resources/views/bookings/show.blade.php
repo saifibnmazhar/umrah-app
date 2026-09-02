@@ -33,6 +33,7 @@
                     || ($booking->created_at->diffInHours(now()) < 12
                         && (auth()->user()->branch_id || $booking->user_id === auth()->id())));
                 $canViewRequestButtons = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && (auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty());
+                $canViewHistory = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty();
                 $canAddPassenger = !$isFingerprintOnlyViewer && !$isCrossBranchViewer
                     && (auth()->user()->hasRole('Super Admin')
                     || auth()->user()->hasRole('Co Admin')
@@ -260,7 +261,7 @@
                 <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
                     Payment History
                 </button>
-                @if($canViewRequestButtons)
+                @if($canViewHistory)
                 <button onclick="switchTab('reissue')" id="tab-reissue" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
                     Re-issue History
                 </button>
@@ -325,12 +326,12 @@
             </div>
         </div>
 
-        @if($canViewRequestButtons)
+        @if($canViewHistory)
         {{-- Re-issue History Tab --}}
         <div id="content-reissue" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Re-issue History</h3>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1100px] text-sm">
+                <table class="w-full min-w-[900px] text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Date</th>
@@ -341,14 +342,11 @@
                             <th class="px-3 py-2 text-right font-medium">Total Reissue Cost</th>
                             <th class="px-3 py-2 text-right font-medium">Total Customer Payment</th>
                             <th class="px-3 py-2 text-right font-medium">Profit</th>
-                            <th class="px-3 py-2 text-left font-medium">Payment Method</th>
-                            <th class="px-3 py-2 text-left font-medium">Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Action</th>
                         </tr>
                     </thead>
                     <tbody id="reissueHistoryBody" class="divide-y divide-slate-200"></tbody>
                 </table>
-                <div id="reissueHistoryEmpty" class="text-center py-4 text-slate-500">No re-issue requests found</div>
+                <div id="reissueHistoryEmpty" class="text-center py-4 text-slate-500">No re-issue history found</div>
             </div>
         </div>
 
@@ -356,25 +354,23 @@
         <div id="content-addticket" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Additional Ticket History</h3>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1100px] text-sm">
+                <table class="w-full min-w-[900px] text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Date</th>
                             <th class="px-3 py-2 text-left font-medium">Passenger Name</th>
                             <th class="px-3 py-2 text-left font-medium">Passport No.</th>
+                            <th class="px-3 py-2 text-right font-medium">Price (Selling/Offer)</th>
+                            <th class="px-3 py-2 text-right font-medium">Net Fare</th>
                             <th class="px-3 py-2 text-left font-medium">PNR</th>
-                            <th class="px-3 py-2 text-left font-medium">Agent</th>
-                            <th class="px-3 py-2 text-right font-medium">Additional Ticket Cost</th>
-                            <th class="px-3 py-2 text-right font-medium">Total Customer Payment</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket Num</th>
+                            <th class="px-3 py-2 text-left font-medium">Route</th>
                             <th class="px-3 py-2 text-right font-medium">Profit</th>
-                            <th class="px-3 py-2 text-left font-medium">Payment Method</th>
-                            <th class="px-3 py-2 text-left font-medium">Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Action</th>
                         </tr>
                     </thead>
                     <tbody id="additionalTicketHistoryBody" class="divide-y divide-slate-200"></tbody>
                 </table>
-                <div id="additionalTicketHistoryEmpty" class="text-center py-4 text-slate-500">No additional ticket requests found</div>
+                <div id="additionalTicketHistoryEmpty" class="text-center py-4 text-slate-500">No additional ticket history found</div>
             </div>
         </div>
 
@@ -382,7 +378,7 @@
         <div id="content-refund" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Refund History</h3>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1100px] text-sm">
+                <table class="w-full min-w-[900px] text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Date</th>
@@ -390,12 +386,9 @@
                             <th class="px-3 py-2 text-left font-medium">Passport No.</th>
                             <th class="px-3 py-2 text-left font-medium">PNR</th>
                             <th class="px-3 py-2 text-left font-medium">Agent</th>
-                            <th class="px-3 py-2 text-right font-medium">Agent Refund Amount</th>
+                            <th class="px-3 py-2 text-right font-medium">Refund Amount (IATA)</th>
                             <th class="px-3 py-2 text-right font-medium">Customer Refund Amount</th>
                             <th class="px-3 py-2 text-right font-medium">Profit</th>
-                            <th class="px-3 py-2 text-left font-medium">Payment Method</th>
-                            <th class="px-3 py-2 text-left font-medium">Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Action</th>
                         </tr>
                     </thead>
                     <tbody id="refundHistoryBody" class="divide-y divide-slate-200"></tbody>
@@ -439,7 +432,7 @@
             <h3 class="text-xl font-semibold text-slate-800" x-text="editingPaymentId ? 'Edit Payment' : 'Payment Interface'"></h3>
             <p class="text-sm text-slate-500 mb-4" x-text="editingPaymentId ? 'Update payment details' : 'Booking Summary'"></p>
 
-            <div x-show="!editingPaymentId" class="mb-4">
+            <div x-show="!editingPaymentId" x-cloak class="mb-4">
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div class="flex justify-between">
                         <span class="text-slate-500">Total Package Value:</span>
@@ -498,7 +491,7 @@
                         <input type="number" x-model="paymentData.amount_bdt" @input="handleBdtAmountInput()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter BDT amount">
                     </div>
 
-                    <div x-show="paymentData.currency === 'BDT'" class="col-span-2 mt-2">
+                    <div x-show="paymentData.currency === 'BDT'" x-cloak class="col-span-2 mt-2">
                         <template x-if="exchangeRate > 0">
                             <p class="text-sm text-slate-500">1 SAR = <span x-text="exchangeRate"></span> BDT</p>
                         </template>
@@ -536,15 +529,19 @@
         <div id="reIssuePassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
             @foreach($booking->passengers as $index => $passenger)
             @php
+                $isRestricted = $passenger->isOnHold() || $passenger->isOnCancel();
                 $viewableTickets = collect($passenger->allIssuedTickets)
                     ->filter(fn($t) => in_array($t->status, ['issued', 're-issued', 'refunded']))
                     ->values();
             @endphp
-            <div class="border border-slate-200 rounded-lg p-4">
+            <div class="border border-slate-200 rounded-lg p-4 {{ $isRestricted ? 'opacity-50' : '' }}">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <input type="checkbox" id="reIssue_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('reIssue_{{ $index }}', 'reIssueTicketList_{{ $index }}')">
+                        <input type="checkbox" id="reIssue_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" @if($isRestricted) onchange="this.checked=false; showToast('Re-issue is not available for passengers with {{ addslashes($passenger->status?->name) }} status.', 'error')" @else onchange="toggleReIssueFields('reIssue_{{ $index }}', 'reIssueTicketList_{{ $index }}')" @endif>
                         <label for="reIssue_{{ $index }}" class="font-medium text-slate-800 whitespace-nowrap">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                        @if($isRestricted)
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600">{{ $passenger->status?->name }}</span>
+                        @endif
                     </div>
                 </div>
                 <div id="reIssueTicketList_{{ $index }}" class="hidden mt-3 pl-7">
@@ -654,14 +651,18 @@
         <div id="refundPassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
             @foreach($booking->passengers as $index => $passenger)
             @php
+                $isRestricted = $passenger->isOnHold() || $passenger->isOnCancel();
                 $viewableTickets = collect($passenger->allIssuedTickets)
                     ->filter(fn($t) => in_array($t->status, ['issued', 're-issued']))
                     ->values();
             @endphp
-            <div class="border border-slate-200 rounded-lg p-4">
+            <div class="border border-slate-200 rounded-lg p-4 {{ $isRestricted ? 'opacity-50' : '' }}">
                 <div class="flex items-center gap-3">
-                    <input type="checkbox" id="refund_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleRefundFields('refund_{{ $index }}', 'refundTicketList_{{ $index }}')">
+                    <input type="checkbox" id="refund_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" @if($isRestricted) onchange="this.checked=false; showToast('Refund is not available for passengers with {{ addslashes($passenger->status?->name) }} status.', 'error')" @else onchange="toggleRefundFields('refund_{{ $index }}', 'refundTicketList_{{ $index }}')" @endif>
                     <label for="refund_{{ $index }}" class="font-medium text-slate-800">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                    @if($isRestricted)
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600">{{ $passenger->status?->name }}</span>
+                    @endif
                 </div>
                 <div id="refundTicketList_{{ $index }}" class="hidden mt-3 pl-7">
                     @forelse($viewableTickets as $ticket)
@@ -720,22 +721,6 @@
     </div>
 </div>
 
-{{-- Refund Details Modal --}}
-<div id="refundDetailsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
-    <div class="fixed inset-0 bg-black/50" onclick="closeRefundDetailsModal()"></div>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-start mb-4">
-            <h3 class="text-xl font-semibold text-slate-800">Refund Details</h3>
-            <button onclick="closeRefundDetailsModal()" class="text-slate-400 hover:text-slate-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-        <div id="refundDetailsContent"></div>
-    </div>
-</div>
-
 {{-- Request Additional Ticket Modal --}}
 <div id="addTicketModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
     <div class="fixed inset-0 bg-black/50" onclick="closeAddTicketModal()"></div>
@@ -753,11 +738,17 @@
         </div>
         <div id="addTicketPassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
             @foreach($booking->passengers as $index => $passenger)
-            <div class="border border-slate-200 rounded-lg p-4">
+            @php
+                $isRestricted = $passenger->isOnHold() || $passenger->isOnCancel();
+            @endphp
+            <div class="border border-slate-200 rounded-lg p-4 {{ $isRestricted ? 'opacity-50' : '' }}">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <input type="checkbox" id="addTicket_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('addTicket_{{ $index }}', 'addTicketFields_{{ $index }}')">
+                        <input type="checkbox" id="addTicket_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" @if($isRestricted) onchange="this.checked=false; showToast('Additional ticket is not available for passengers with {{ addslashes($passenger->status?->name) }} status.', 'error')" @else onchange="toggleReIssueFields('addTicket_{{ $index }}', 'addTicketFields_{{ $index }}')" @endif>
                         <label for="addTicket_{{ $index }}" class="font-medium text-slate-800 whitespace-nowrap">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                        @if($isRestricted)
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600">{{ $passenger->status?->name }}</span>
+                        @endif
                     </div>
                     <div id="addTicketFields_{{ $index }}" class="hidden flex items-center gap-3">
                         <label for="addTicketOption_{{ $index }}" class="text-sm font-medium text-slate-700">Ticket Option</label>
@@ -1407,34 +1398,39 @@ function renderReissueHistory() {
     const emptyEl = document.getElementById('reissueHistoryEmpty');
     if (!tbody) return;
 
-    fetch('/bookings/{{ $booking->id }}/ticket-requests?type=re_issue', {
-        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    fetch('/bookings/{{ $booking->id }}/re-issued-tickets', {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
     })
     .then(res => res.json())
-    .then(requests => {
-        if (!requests.length) {
+    .then(tickets => {
+        if (!tickets.length) {
             tbody.innerHTML = '';
             if (emptyEl) emptyEl.classList.remove('hidden');
             return;
         }
         if (emptyEl) emptyEl.classList.add('hidden');
         tbody.innerHTML = '';
-        requests.forEach(r => {
+        tickets.forEach(r => {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50';
-            const p = r.passenger || {};
-            const statusMap = { pending: 'Pending', processed: 'Processed', rejected: 'Rejected' };
-            const badgeClass = r.status === 'processed' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+            const p = r.issued_ticket?.passenger || {};
+            const totalCost = (parseFloat(r.re_issue_charge) || 0)
+                + (parseFloat(r.fare_difference) || 0)
+                + (parseFloat(r.other_costs) || 0);
+            const customerPayment = parseFloat(r.total_customer_payment) || 0;
+            const profit = customerPayment - totalCost;
             tr.innerHTML = `
-                <td class="px-3 py-2 text-slate-600">${r.requested_at ? new Date(r.requested_at).toLocaleDateString('en-CA') : '-'}</td>
+                <td class="px-3 py-2 text-slate-600">${(r.re_issue_date || '').substring(0, 10) || '-'}</td>
                 <td class="px-3 py-2 text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</td>
                 <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport_no || '-')}</td>
-                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.issued_ticket ? r.issued_ticket.ticket_number || '-' : '-')}</td>
-                <td class="px-3 py-2 text-slate-800 text-right font-medium">${escapeHtml(r.issued_ticket ? r.issued_ticket.pnr || '-' : '-')}</td>
-                <td class="px-3 py-2"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusMap[r.status] || r.status}</span></td>
-                <td class="px-3 py-2">
-                    <a href="/re-issues/${r.booking_id}/confirm" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</a>
-                </td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.pnr || '-')}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(r.ticket_agent?.name || '-')}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${totalCost.toFixed(2)}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${customerPayment.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}">${profit.toFixed(2)}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -1635,100 +1631,41 @@ function renderRefundHistory() {
     const emptyEl = document.getElementById('refundHistoryEmpty');
     if (!tbody) return;
 
-    fetch('/bookings/{{ $booking->id }}/ticket-requests?type=refund', {
-        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    fetch('/bookings/{{ $booking->id }}/refunded-tickets', {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
     })
     .then(res => res.json())
-    .then(requests => {
-        if (!requests.length) {
+    .then(refunds => {
+        if (!refunds.length) {
             tbody.innerHTML = '';
             if (emptyEl) emptyEl.classList.remove('hidden');
             return;
         }
         if (emptyEl) emptyEl.classList.add('hidden');
         tbody.innerHTML = '';
-        requests.forEach(r => {
+        refunds.forEach(r => {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50';
-            const p = r.passenger || {};
-            const statusMap = { pending: 'Pending', processed: 'Processed', rejected: 'Rejected' };
-            const badgeClass = r.status === 'processed' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+            const p = r.issued_ticket?.passenger || {};
+            const iataRefund = parseFloat(r.iata_refunded_amount) || 0;
+            const customerRefund = parseFloat(r.refund_to_customer) || 0;
+            const profit = iataRefund - customerRefund;
             tr.innerHTML = `
-                <td class="px-3 py-2 text-slate-600">${r.requested_at ? new Date(r.requested_at).toLocaleDateString('en-CA') : '-'}</td>
+                <td class="px-3 py-2 text-slate-600">${(r.refund_date || '').substring(0, 10) || '-'}</td>
                 <td class="px-3 py-2 text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</td>
                 <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport_no || '-')}</td>
-                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.issued_ticket ? r.issued_ticket.pnr || '-' : '-')}</td>
-                <td class="px-3 py-2 text-slate-800 text-right font-medium">-</td>
-                <td class="px-3 py-2 text-slate-800 text-right font-medium">-</td>
-                <td class="px-3 py-2 text-green-600 text-right font-medium">-</td>
-                <td class="px-3 py-2 text-slate-600">-</td>
-                <td class="px-3 py-2"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusMap[r.status] || r.status}</span></td>
-                <td class="px-3 py-2">
-                    <a href="/refunds/${r.booking_id}/confirm" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</a>
-                </td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.pnr || '-')}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(r.ticket_agent?.name || '-')}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${iataRefund.toFixed(2)}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${customerRefund.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}">${profit.toFixed(2)}</td>
             `;
             tbody.appendChild(tr);
         });
     });
-}
-
-function openRefundDetails(id) {
-    const allRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-    const seedData = JSON.parse(localStorage.getItem('refundRequests_seed') || '[]');
-    const allItems = [...allRequests, ...seedData];
-    const item = allItems.find(r => r.id === id);
-    if (!item) return;
-
-    const content = document.getElementById('refundDetailsContent');
-    content.innerHTML = generateRefundDetailsHTML(item);
-    document.getElementById('refundDetailsModal').classList.remove('hidden');
-}
-
-function generateRefundDetailsHTML(item) {
-    const fmt = (val) => typeof Alpine !== 'undefined' ? Alpine.store('currency').format(val, 2, window.__bookingServerData?.currentCurrencyRate || 0) : (val || 0).toFixed(2);
-    return `
-        <div class="space-y-4">
-            <div class="bg-slate-50 rounded-lg p-4">
-                <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Summary</h4>
-                <div class="grid grid-cols-2 gap-3">
-                    <div><span class="text-xs text-slate-400">Passenger Name</span><p class="text-slate-800">${escapeHtml(item.passengerName || item.passengers?.[0]?.name || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
-                    <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${fmt(item.agentRefund || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${fmt(item.customerRefund || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${fmt(item.profit || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
-                    <div><span class="text-xs text-slate-400">Tickets</span><p class="text-slate-800">${(item.passengers || []).flatMap(p => p.tickets || []).map(t => escapeHtml(t.ticketNumber)).join(', ') || '-'}</p></div>
-                </div>
-            </div>
-            <div class="bg-slate-50 rounded-lg p-4">
-                <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Refund Breakdown</h4>
-                <div class="space-y-3">
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">Original Ticket Cost</span>
-                        <span class="text-slate-800 font-medium">2,500 SAR</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">Cancellation Charges</span>
-                        <span class="text-red-600 font-medium">-500 SAR</span>
-                    </div>
-                    <div class="flex justify-between pt-2 border-t border-slate-200">
-                        <span class="text-slate-500">Refund to Customer</span>
-                        <span class="text-blue-600 font-medium">2,000 SAR</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">Agent Refund to Company</span>
-                        <span class="text-green-600 font-medium">1,800 SAR</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function closeRefundDetailsModal() {
-    document.getElementById('refundDetailsModal').classList.add('hidden');
 }
 
 function renderAdditionalTicketHistory() {
@@ -1736,35 +1673,54 @@ function renderAdditionalTicketHistory() {
     const emptyEl = document.getElementById('additionalTicketHistoryEmpty');
     if (!tbody) return;
 
-    fetch('/bookings/{{ $booking->id }}/ticket-requests?type=additional', {
-        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content') }
+    fetch('/bookings/{{ $booking->id }}/additional-tickets', {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
     })
     .then(res => res.json())
-    .then(requests => {
-        if (!requests.length) {
+    .then(tickets => {
+        if (!tickets.length) {
             tbody.innerHTML = '';
             if (emptyEl) emptyEl.classList.remove('hidden');
             return;
         }
         if (emptyEl) emptyEl.classList.add('hidden');
         tbody.innerHTML = '';
-        requests.forEach(r => {
+        tickets.forEach(t => {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50';
-            const p = r.passenger || {};
-            const statusMap = { pending: 'Pending', processed: 'Processed', rejected: 'Rejected' };
-            const badgeClass = r.status === 'processed' ? 'bg-green-100 text-green-700' : r.status === 'rejected' ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+            const p = t.passenger || {};
+            const offerPrice = parseFloat(t.offer_price) || 0;
+            const displayPrice = offerPrice > 0 ? offerPrice : (parseFloat(t.selling_fare) || 0);
+            const netFare = parseFloat(t.net_fare) || 0;
+            const profit = displayPrice - netFare;
+            const route = t.ticket_fare?.route || {};
+            const routeType = route.route_type || '';
+            let routeDisplay = '';
+            if (routeType === 'multi_city' && route.multi_segments) {
+                routeDisplay = route.multi_segments.map(s =>
+                    (s.from_city?.code || '?') + '-' + (s.to_city?.code || '?')
+                ).join(', ');
+            } else {
+                const from = route.from_city?.code || '?';
+                const to = route.to_city?.code || '?';
+                const ret = route.return_city?.code || '';
+                routeDisplay = (routeType === 'round' && ret)
+                    ? from + '-' + to + '-' + ret
+                    : from + '-' + to;
+            }
             tr.innerHTML = `
-                <td class="px-3 py-2 text-slate-600">${r.requested_at ? new Date(r.requested_at).toLocaleDateString('en-CA') : '-'}</td>
+                <td class="px-3 py-2 text-slate-600">${(t.issued_date || '').substring(0, 10) || '-'}</td>
                 <td class="px-3 py-2 text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</td>
                 <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport_no || '-')}</td>
-                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.ticket_option || '-')}</td>
-                <td class="px-3 py-2 text-slate-600">${r.probable_date_up ? new Date(r.probable_date_up).toLocaleDateString('en-CA') : '-'}</td>
-                <td class="px-3 py-2 text-slate-600">${r.probable_date_down ? new Date(r.probable_date_down).toLocaleDateString('en-CA') : '-'}</td>
-                <td class="px-3 py-2"><span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusMap[r.status] || r.status}</span></td>
-                <td class="px-3 py-2">
-                    <a href="/tickets/${r.booking_id}/add-confirm" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</a>
-                </td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${displayPrice.toFixed(2)}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${netFare.toFixed(2)}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(t.pnr || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(t.ticket_number || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(routeDisplay || '-')}</td>
+                <td class="px-3 py-2 text-right font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}">${profit.toFixed(2)}</td>
             `;
             tbody.appendChild(tr);
         });

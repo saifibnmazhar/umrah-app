@@ -4,10 +4,12 @@ namespace App\Http\Controllers;
 
 use App\Enums\PassengerType;
 use App\Exceptions\DatabaseErrorHumanizer;
+use App\Models\CancelledPassenger;
 use App\Models\Document;
 use App\Models\FingerprintCharge;
 use App\Models\Package;
 use App\Models\Passenger;
+use App\Models\PassengerStatus;
 use App\Models\StayDurationLimit;
 use App\Models\TicketFare;
 use App\Models\VisaAgent;
@@ -718,12 +720,58 @@ class PassengerController extends Controller
         ]);
     }
 
+    public function toggleVisaHold(Passenger $passenger)
+    {
+        $this->ensureBranchAccess($passenger);
+
+        if ($passenger->is_visa_held) {
+            $passenger->update([
+                'is_visa_held' => false,
+                'visa_held_by' => null,
+                'visa_held_at' => null,
+            ]);
+            $message = 'Visa hold released';
+        } else {
+            $passenger->update([
+                'is_visa_held' => true,
+                'visa_held_by' => auth()->id(),
+                'visa_held_at' => now(),
+            ]);
+            $message = 'Visa hold applied';
+        }
+
+        return response()->json([
+            'success' => true,
+            'message' => $message,
+            'is_visa_held' => $passenger->fresh()->is_visa_held,
+        ]);
+    }
+
     public function updateStatus(Request $request, Passenger $passenger)
     {
 
         $validated = $request->validate([
             'passenger_status_id' => 'nullable|exists:passenger_statuses,id',
         ]);
+
+        $statusName = PassengerStatus::find($validated['passenger_status_id'])?->name;
+
+        if ($statusName === 'Cancel') {
+            return response()->json([
+                'success' => false,
+                'message' => 'Use the cancellation workflow to cancel a passenger.',
+            ], 422);
+        }
+
+        $hasActiveCancellation = CancelledPassenger::where('passenger_id', $passenger->id)
+            ->whereNull('deleted_at')->exists();
+
+        if ($hasActiveCancellation) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Passenger status is locked during cancellation.',
+            ], 422);
+        }
 
         try {
             $passenger->update(['passenger_status_id' => $validated['passenger_status_id']]);

@@ -8,12 +8,14 @@ return new class extends Migration
 {
     public function up(): void
     {
-        Schema::create('re_issue_refund_reasons', function (Blueprint $table) {
-            $table->id();
-            $table->enum('reason_of', ['re-issue', 'refund']);
-            $table->string('name');
-            $table->timestamps();
-        });
+        if (! Schema::hasTable('re_issue_refund_reasons')) {
+            Schema::create('re_issue_refund_reasons', function (Blueprint $table) {
+                $table->id();
+                $table->enum('reason_of', ['re-issue', 'refund']);
+                $table->string('name');
+                $table->timestamps();
+            });
+        }
     }
 
     public function down(): void

@@ -26,6 +26,7 @@ $passengersVisaData = ($passengers ?? collect())->map(function($p) {
         'id' => $p->id,
         'booking_id' => $p->booking_id,
         'rate' => $rate,
+        'is_visa_held' => (bool)($p->is_visa_held ?? false),
         'visa' => $p->visaSubmission ? [
             'id' => $p->visaSubmission->id,
             'agent_id' => $p->visaSubmission->visa_agent_id,
@@ -165,6 +166,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'ticket_remarks' => $p->ticket_remarks ?? '',
     'due' => $p->booking?->invoice?->balance ?? 0,
     'refund_payable' => (float) ($p->refund_payable ?? 0),
+    'profit' => (float) ($p->profit ?? 0),
+    'profit_breakdown' => app(\App\Services\ProfitCalculationService::class)->getPassengerProfitBreakdown($p),
     'required_flight_date' => $p->flight_date_from?->format('Y-m-d') ?? '',
     'actual_flight_date' => $p->actual_flight_date?->format('Y-m-d') ?? '',
     'fingerprint_location' => $p->booking?->fingerprint_location?->value ?? 'None',
@@ -667,7 +670,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'total_cost' => $passengerTotalCostMap[$p->id] ?? 0,
 ])->values();
 @endphp
-<div class="w-full mx-auto" x-data="bookingIndexApp()">
+<div id="bookingIndexApp" class="w-full mx-auto" x-data="bookingIndexApp()">
     <div x-show="requestPendingTooltip.visible" x-cloak class="fixed z-[100] px-2 py-1 text-xs whitespace-nowrap rounded bg-slate-900 text-white pointer-events-none" :style="'top:' + requestPendingTooltip.top + 'px; left:' + requestPendingTooltip.left + 'px;'">Request Pending</div>
     <div class="flex justify-between items-center mb-6">
         @php
@@ -681,6 +684,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             $canDeleteBooking = auth()->user()->roles->pluck('name')->intersect(['Super Admin'])->isNotEmpty();
             $canViewActionColumn = true;
             $canViewPassengerIndex = true;
+            $canCancelPassenger = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
+            $canConfirmCancellation = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || auth()->user()->hasRole('Branch Manager') || auth()->user()->hasRole('Fingerprint Admin');
         @endphp
         <h1 class="text-2xl font-bold text-slate-800">Booking</h1>
         @if($canCreateBooking)
@@ -723,7 +728,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     @endforeach
                 </select>
                 <select x-model="selectedBookingStatus" @change="onBookingStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                    <option value="">Booking Status</option>
+                    <option value="all">Booking Status</option>
                     <option value="active" {{ $selectedBookingStatus === 'active' ? 'selected' : '' }}>Active</option>
                     <option value="cancellation_processing" {{ $selectedBookingStatus === 'cancellation_processing' ? 'selected' : '' }}>Cancellation Processing</option>
                     <option value="cancelled" {{ $selectedBookingStatus === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
@@ -994,7 +999,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Booking Status</label>
                         <select x-model="selectedBookingStatus" @change="onBookingStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
-                            <option value="">All</option>
+                            <option value="all">All</option>
                             <option value="active" {{ $selectedBookingStatus === 'active' ? 'selected' : '' }}>Active</option>
                             <option value="cancellation_processing" {{ $selectedBookingStatus === 'cancellation_processing' ? 'selected' : '' }}>Cancellation Processing</option>
                             <option value="cancelled" {{ $selectedBookingStatus === 'cancelled' ? 'selected' : '' }}>Cancelled</option>
@@ -1037,9 +1042,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Return Date</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
                             @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Package Value</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Total Cost</th>@endif
-                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup (Profit)</th>@endif
-                            <th class="px-3 py-2 text-left font-medium">Due</th>
+                            @if($canViewFinancialColumns)<th class="px-3 py-2 text-left font-medium">Markup</th>@endif
+                            <th class="px-3 py-2 text-left font-medium">Invoice Info</th>
                             <th class="px-3 py-2 text-left font-medium">Stay Duration</th>
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa</th>@endif
                             @if($canViewVisaColumns)<th class="px-3 py-2 text-left font-medium">Visa Agent</th>@endif
@@ -1126,10 +1130,21 @@ if ($passenger->ticket_fare_inbound_id) {
         <select
             class="text-sm border border-slate-300 rounded px-2 py-1 bg-white focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none"
             x-bind:value="getComputedStatusId({{ $loop->index }})"
-            x-on:change="updatePassengerStatus({{ $passenger->id }}, $event.target.value)">
+            x-on:change="if ($event.target.value == {{ $passengerStatuses->firstWhere('name', 'Cancel')->id ?? 'null' }}) { openCancelPassengerModal({{ $passenger->id }}); $el.value = ''; } else { updatePassengerStatus({{ $passenger->id }}, $event.target.value, this) }">
             <option value="">None</option>
             @foreach($passengerStatuses as $status)
-                <option value="{{ $status->id }}" @if(in_array($status->name, ['Processing', 'Fingerprint Done', 'Visa Submitted', 'Visa Issued', 'Ticket Issued', 'Ticket Issued before Visa'])) disabled @endif>{{ $status->name }}</option>
+                @php
+                    $isCancelStatus = $status->name === 'Cancel';
+                    $isLocked = $passenger->cancelledPassengers()->exists();
+                @endphp
+                @if($isCancelStatus && !$canCancelPassenger)
+                    @continue
+                @endif
+                <option
+                    value="{{ $status->id }}"
+                    @if(in_array($status->name, ['Processing', 'Fingerprint Done', 'Visa Submitted', 'Visa Issued', 'Ticket Issued', 'Ticket Issued before Visa'])) disabled @endif
+                    @if($isCancelStatus && $isLocked) disabled title="Active cancellation in progress" @endif
+                >{{ $status->name }}</option>
             @endforeach
         </select>
         @else
@@ -1144,7 +1159,10 @@ if ($passenger->ticket_fare_inbound_id) {
             ->first(fn($t) => in_array($t->issue_type, [null, 'regular'], true) && in_array($t->status, ['issued', 're-issued']));
         $actualFlightDate = 'N/A';
         if ($regularTicket) {
-            $actualFlightDate = $regularTicket->inbound_date?->format('d M Y') ?? 'N/A';
+            $date = $regularTicket->status === 're-issued'
+                ? ($regularTicket->latestReIssuedTicket?->inbound_date ?? $regularTicket->inbound_date)
+                : $regularTicket->inbound_date;
+            $actualFlightDate = $date?->format('d M Y') ?? 'N/A';
         }
     @endphp
     <td class="px-3 py-2 text-slate-700">{{ $actualFlightDate }}</td>
@@ -1155,22 +1173,54 @@ if ($passenger->ticket_fare_inbound_id) {
                 ->first(fn($t) => $t->issue_type === 'pending_outbound'
                     && in_array($t->status, ['issued', 're-issued'], true));
             if ($pendingTicket) {
-                $returnDate = $pendingTicket->outbound_date?->format('d M Y') ?? 'N/A';
+                $d = $pendingTicket->status === 're-issued'
+                    ? ($pendingTicket->latestReIssuedTicket?->outbound_date ?? $pendingTicket->outbound_date)
+                    : $pendingTicket->outbound_date;
+                $returnDate = $d?->format('d M Y') ?? 'N/A';
             }
         } elseif ($regularTicket) {
-            $returnDate = $regularTicket->outbound_date?->format('d M Y') ?? 'N/A';
+            $d = $regularTicket->status === 're-issued'
+                ? ($regularTicket->latestReIssuedTicket?->outbound_date ?? $regularTicket->outbound_date)
+                : $regularTicket->outbound_date;
+            $returnDate = $d?->format('d M Y') ?? 'N/A';
         }
     @endphp
     <td class="px-3 py-2 text-slate-700">{{ $returnDate }}</td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->booking?->package?->package_name ?? '—' }}</td>
     @if($canViewFinancialColumns)<td class="px-3 py-2 text-slate-700">@if($passenger->package_value)@currency($passenger->package_value, 2, $passBookingRate)@else—@endif</td>@endif
     @if($canViewFinancialColumns)
-    <td class="px-3 py-2 text-slate-700" x-text="(passengersTicketData[{{ $loop->index }}]?.total_cost || 0) > 0 ? $currency(passengersTicketData[{{ $loop->index }}].total_cost, 2, {{ $passBookingRate }}) : '—'"></td>
+    <td class="px-3 py-2 text-slate-700 relative align-top"
+        x-data="{ tipOpen: false }"
+        @mouseenter="tipOpen = true" @mouseleave="tipOpen = false">
+        <span class="font-medium cursor-help"
+              :class="(passengersTicketData[{{ $loop->index }}]?.profit ?? 0) >= 0 ? 'text-green-600' : 'text-red-600'"
+              x-text="(passengersTicketData[{{ $loop->index }}]?.profit || 0) !== 0 ? $currency(passengersTicketData[{{ $loop->index }}].profit, 2, {{ $passBookingRate }}) : '—'">—</span>
+        <div x-show="tipOpen" x-cloak
+             class="absolute z-50 mt-1 left-0 w-52 bg-slate-900 text-white text-xs rounded-lg shadow-xl p-3 leading-relaxed">
+            <div class="flex justify-between"><span>Visa Profit</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.visa_profit ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between"><span>Ticket Profit</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.ticket_profit ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between"><span>Additional Ticket</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.additional_ticket_profit ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between"><span>Re-Issue Profit</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.re_issue_profit ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between"><span>Refund Profit</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.refund_profit ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between text-red-300"><span>Re-Issue Cost</span><span x-text="'-' + $currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.re_issue_cost ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="flex justify-between"><span>Service Charge</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.service_charge ?? 0, 2, {{ $passBookingRate }})"></span></div>
+            <div class="border-t border-slate-600 my-1 pt-1 flex justify-between font-semibold">
+                <span>Total</span><span x-text="$currency(passengersTicketData[{{ $loop->index }}]?.profit_breakdown?.total ?? 0, 2, {{ $passBookingRate }})"></span>
+            </div>
+        </div>
+    </td>
     @endif
-    @if($canViewFinancialColumns)
-    <td class="px-3 py-2 text-slate-700" x-text="({{ $passenger->package_value ?? 0 }} > 0 || (passengersTicketData[{{ $loop->index }}]?.total_cost || 0) > 0) ? $currency({{ $passenger->package_value ?? 0 }} - passengersTicketData[{{ $loop->index }}].total_cost, 2, {{ $passBookingRate }}) : '—'"></td>
-    @endif
-    <td class="px-3 py-2 text-slate-700">@if($isFirstRow)@if($passenger->booking?->invoice)<div class="font-medium">Total: @currency($passenger->booking->invoice->total_amount, 2, $passBookingRate)</div><div class="font-medium">Due: @currency($passenger->booking->invoice->balance, 2, $passBookingRate)</div>@else—@endif @endif</td>
+    <td class="px-3 py-2 text-slate-700 text-xs leading-relaxed">
+        @if($isFirstRow)
+            @if($passenger->booking?->invoice)
+                <div>Total: @currency($passenger->booking->invoice->total_amount, 2, $passBookingRate)</div>
+                <div>Due: @currency($passenger->booking->invoice->balance, 2, $passBookingRate)</div>
+                <div>Discount: @currency($passenger->booking->discount_amount ?? 0, 2, $passBookingRate)</div>
+            @else
+                —
+            @endif
+        @endif
+    </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->stay_duration ?? '—' }}</td>
     @if($canViewVisaColumns)
     <td class="px-3 py-2" x-init="$nextTick(() => console.log('P'+{{ $loop->index }}+': visa='+((passengersVisaData[{{ $loop->index }}]?.visa?.status)||'null')+' fp='+((passengersTicketData[{{ $loop->index }}]?.fingerprint_status)||'null')+' canc='+passengersTicketData[{{ $loop->index }}]?.is_cancelled))">
@@ -1191,27 +1241,38 @@ if ($passenger->ticket_fare_inbound_id) {
                       x-text="passengersTicketData[{{ $loop->index }}]?.status"></span>
             </template>
 
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+            @if($canEditVisa)
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <button @click="toggleVisaHold({{ $loop->index }})"
+                    :disabled="isTogglingVisaHold[{{ $loop->index }}]"
+                    class="px-2 py-1 text-xs font-medium rounded transition"
+                    :class="passengersVisaData[{{ $loop->index }}]?.is_visa_held ? 'text-yellow-600 bg-yellow-100 hover:bg-yellow-200' : 'text-orange-600 bg-orange-100 hover:bg-orange-200'"
+                    x-text="passengersVisaData[{{ $loop->index }}]?.is_visa_held ? 'Unhold' : 'Hold'">
+                </button>
+            </template>
+            @endif
+
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                 <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
                         @click="openVisaSubmitModal({{ $loop->index }})"
                         class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Submit</button>
             </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                 <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
                         @click="openVisaIssueModal({{ $loop->index }})"
                         class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
             </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                 <button x-show="(passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' || passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
                         @click="openVisaEditModal({{ $loop->index }})"
                         class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
             </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                 <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted'"
                         @click="openVisaCancelModal({{ $loop->index }})"
                         class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Cancel</button>
             </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                 <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
                         @click="openVisaResubmitModal({{ $loop->index }})"
                         class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
@@ -1234,7 +1295,10 @@ if ($passenger->ticket_fare_inbound_id) {
     </td>
     @endif
     <td class="px-3 py-2">
-        <template x-if="passengersVisaData[{{ $loop->index }}]?.visa">
+        <template x-if="passengersVisaData[{{ $loop->index }}]?.is_visa_held">
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Visa Hold</span>
+        </template>
+        <template x-if="passengersVisaData[{{ $loop->index }}]?.visa && !passengersVisaData[{{ $loop->index }}]?.is_visa_held">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                 :class="{
                     'bg-green-100 text-green-700': passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued',
@@ -1244,7 +1308,7 @@ if ($passenger->ticket_fare_inbound_id) {
                 x-text="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' ? 'Resubmission Pending' : (passengersVisaData[{{ $loop->index }}]?.visa?.status.charAt(0).toUpperCase() + passengersVisaData[{{ $loop->index }}]?.visa?.status.slice(1))">
             </span>
         </template>
-        <template x-if="!passengersVisaData[{{ $loop->index }}]?.visa">
+        <template x-if="!passengersVisaData[{{ $loop->index }}]?.visa && !passengersVisaData[{{ $loop->index }}]?.is_visa_held">
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-500">N/A</span>
         </template>
     </td>
@@ -1325,7 +1389,7 @@ if ($passenger->ticket_fare_inbound_id) {
             <div>
                 <div class="flex flex-wrap gap-1 mb-1">
                     <template x-for="status in getTicketStatuses({{ $loop->index }})" :key="status">
-                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
+                        <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium whitespace-nowrap"
                             :class="statusColorClass(status)"
                             x-text="status">
                         </span>
@@ -1333,7 +1397,7 @@ if ($passenger->ticket_fare_inbound_id) {
                 </div>
                 <template x-for="ticket in passengersTicketData[{{ $loop->index }}]?.all_issued_tickets || []">
                     <template x-if="ticket.pnr && (ticket.status === 'issued' || ticket.status === 're-issued')">
-                        <div class="text-xs leading-tight text-slate-500" x-text="ticketInfoSrc(ticket).pnr + (ticket.issue_type ? ' (' + ticket.issue_type + ')' : '')"></div>
+                        <div class="text-xs leading-tight text-slate-500" x-text="ticketInfoSrc(ticket).pnr + (ticket.issue_type ? ' (' + (ticket.issue_type === 'pending_outbound' ? 'outbound' : ticket.issue_type) + ')' : '')"></div>
                     </template>
                 </template>
             </div>
@@ -1364,7 +1428,16 @@ if ($passenger->ticket_fare_inbound_id) {
                 $displayStatus = 'Pending Pax Completion';
             }
         @endphp
-        @if(in_array($passenger->status?->name, ['Hold', 'Cancel']) && !$passenger->booking?->is_cancelled)
+        @php
+            $activeCancellation = $passenger->cancelledPassengers()->first();
+            $isConfirmedCancelled = $activeCancellation && $activeCancellation->status === 'cancelled' && $activeCancellation->confirmed_at;
+            $isProcessingCancellation = $activeCancellation && $activeCancellation->status === 'cancellation processing' && !$activeCancellation->confirmed_at;
+        @endphp
+        @if($isConfirmedCancelled)
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Cancelled</span>
+        @elseif($isProcessingCancellation)
+            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Cancellation Processing</span>
+        @elseif(in_array($passenger->status?->name, ['Hold', 'Cancel']) && !$passenger->booking?->is_cancelled)
             <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $passenger->status?->name === 'Cancel' ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700' }}">{{ $passenger->status?->name }}</span>
         @endif
         @if($displayStatus)
@@ -1884,10 +1957,10 @@ if ($passenger->ticket_fare_inbound_id) {
                                                     <button type="button" @click="ticket.issue_type === 'pending_outbound' ? openOutboundEditTicketFareModal(ticketInfoPassengerIndex) : openTicketFareModal(ticketInfoPassengerIndex, ticket)" class="px-3 py-1 text-xs font-medium text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition">Edit</button>
                                                 </template>
                                                 <template x-if="ticket.status === 'issued' || ticket.status === 'refunded' || ticket.status === 're-issued'">
-                                                    <button type="button" @click="openReIssueModal(ticketInfoPassengerIndex, ticket)" :disabled="ticket.has_pending_request" @mouseenter="ticket.has_pending_request && showRequestPendingTooltip($event)" @mouseleave="hideRequestPendingTooltip()" :class="ticket.has_pending_request ? 'opacity-40 cursor-not-allowed' : 'hover:bg-indigo-50'" class="px-3 py-1 text-xs font-medium text-indigo-600 border border-indigo-200 rounded-lg transition">Re-Issue</button>
+                                                    <button type="button" @click="(passengersTicketData[ticketInfoPassengerIndex]?.status === 'Hold' || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Cancel') ? showToast('Re-issue is not available for passengers with ' + passengersTicketData[ticketInfoPassengerIndex]?.status + ' status.') : openReIssueModal(ticketInfoPassengerIndex, ticket)" :disabled="ticket.has_pending_request" @mouseenter="ticket.has_pending_request && showRequestPendingTooltip($event)" @mouseleave="hideRequestPendingTooltip()" :class="(ticket.has_pending_request || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Hold' || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Cancel') ? 'opacity-40 cursor-not-allowed' : 'hover:bg-indigo-50'" class="px-3 py-1 text-xs font-medium text-indigo-600 border border-indigo-200 rounded-lg transition">Re-Issue</button>
                                                 </template>
                                                 <template x-if="ticket.status === 'issued' || ticket.status === 're-issued'">
-                                                    <button type="button" @click="openRefundModal(ticketInfoPassengerIndex, idx)" :disabled="ticket.has_pending_request" @mouseenter="ticket.has_pending_request && showRequestPendingTooltip($event)" @mouseleave="hideRequestPendingTooltip()" :class="ticket.has_pending_request ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-50'" class="px-3 py-1 text-xs font-medium text-red-600 border border-red-200 rounded-lg transition">Refund</button>
+                                                    <button type="button" @click="(passengersTicketData[ticketInfoPassengerIndex]?.status === 'Hold' || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Cancel') ? showToast('Refund is not available for passengers with ' + passengersTicketData[ticketInfoPassengerIndex]?.status + ' status.') : openRefundModal(ticketInfoPassengerIndex, idx)" :disabled="ticket.has_pending_request" @mouseenter="ticket.has_pending_request && showRequestPendingTooltip($event)" @mouseleave="hideRequestPendingTooltip()" :class="(ticket.has_pending_request || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Hold' || passengersTicketData[ticketInfoPassengerIndex]?.status === 'Cancel') ? 'opacity-40 cursor-not-allowed' : 'hover:bg-red-50'" class="px-3 py-1 text-xs font-medium text-red-600 border border-red-200 rounded-lg transition">Refund</button>
                                                 </template>
                                                 <template x-if="ticket.status === 'refunded'">
                                                     <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-slate-100 text-slate-400">Refunded</span>
@@ -1924,18 +1997,18 @@ if ($passenger->ticket_fare_inbound_id) {
                     <div class="grid grid-cols-2 md:grid-cols-4 gap-3">
                         <div x-show="refundForm.selling_fare > 0">
                             <label class="block text-xs font-medium text-slate-500 mb-1">Selling Fare</label>
-                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" class="text-sm text-slate-800">SAR <span x-text="refundForm.selling_fare.toLocaleString()"></span></p>
-                            <p x-show="$store.currency.mode === 'BDT'" class="text-sm text-slate-800">BDT <span x-text="refundForm.selling_fare_bdt.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak class="text-sm text-slate-800">SAR <span x-text="refundForm.selling_fare.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'BDT'" x-cloak class="text-sm text-slate-800">BDT <span x-text="refundForm.selling_fare_bdt.toLocaleString()"></span></p>
                         </div>
                         <div x-show="refundForm.net_fare > 0">
                             <label class="block text-xs font-medium text-slate-500 mb-1">Net Fare</label>
-                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" class="text-sm text-slate-800">SAR <span x-text="refundForm.net_fare.toLocaleString()"></span></p>
-                            <p x-show="$store.currency.mode === 'BDT'" class="text-sm text-slate-800">BDT <span x-text="refundForm.net_fare_bdt.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak class="text-sm text-slate-800">SAR <span x-text="refundForm.net_fare.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'BDT'" x-cloak class="text-sm text-slate-800">BDT <span x-text="refundForm.net_fare_bdt.toLocaleString()"></span></p>
                         </div>
                         <div x-show="refundForm.offer_price > 0">
                             <label class="block text-xs font-medium text-slate-500 mb-1">Offer Price</label>
-                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" class="text-sm text-slate-800">SAR <span x-text="refundForm.offer_price.toLocaleString()"></span></p>
-                            <p x-show="$store.currency.mode === 'BDT'" class="text-sm text-slate-800">BDT <span x-text="refundForm.offer_price_bdt.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak class="text-sm text-slate-800">SAR <span x-text="refundForm.offer_price.toLocaleString()"></span></p>
+                            <p x-show="$store.currency.mode === 'BDT'" x-cloak class="text-sm text-slate-800">BDT <span x-text="refundForm.offer_price_bdt.toLocaleString()"></span></p>
                         </div>
                     </div>
                 </div>
@@ -1964,13 +2037,13 @@ if ($passenger->ticket_fare_inbound_id) {
                             <p x-show="refundForm.errors.reason_id" x-text="refundForm.errors.reason_id" class="text-xs text-red-500 mt-1"></p>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (SAR) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund" :max="refundForm.net_fare"
                                        @input="handleRefundSarInput('iata_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (BDT) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.iata_refund_bdt" :max="refundForm.net_fare_bdt"
                                        @input="handleRefundBdtInput('iata_refund')"
@@ -1979,13 +2052,13 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (SAR) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund" :max="refundForm.net_fare"
                                        @input="handleRefundSarInput('customer_refund')"
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (BDT) *</label>
                                 <input type="number" min="0" step="0.01" x-model.number="refundForm.customer_refund_bdt" :max="refundForm.net_fare_bdt"
                                        @input="handleRefundBdtInput('customer_refund')"
@@ -1994,13 +2067,13 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR) (Auto: IATA Refund - Customer Refund)</label>
                                 <input type="number" step="0.01" x-model.number="refundForm.service_charge"
                                        readonly
                                        class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT) (Auto: IATA Refund - Customer Refund)</label>
                                 <input type="number" step="0.01" x-model.number="refundForm.service_charge_bdt"
                                        readonly
@@ -2009,13 +2082,13 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refund Compensation (SAR) (Auto: Net Fare - IATA Refund)</label>
                                 <input type="number" step="0.01" x-model.number="refundForm.refund_compensation"
                                        readonly
                                        class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refund Compensation (BDT) (Auto: Net Fare - IATA Refund)</label>
                                 <input type="number" step="0.01" x-model.number="refundForm.refund_compensation_bdt"
                                        readonly
@@ -2030,6 +2103,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                     <option value="customer">Customer</option>
                                     <option value="airline">Airline</option>
                                     <option value="employee">Employee</option>
+                                    <option value="company">Company</option>
                                 </select>
                         </div>
                         <div class="md:col-span-2">
@@ -2303,7 +2377,7 @@ if ($passenger->ticket_fare_inbound_id) {
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
                     <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR) *</label>
                                 <input type="number" x-model="ticketFareForm.selling_fare" min="0" step="0.000001"
                                        @input="handleTicketFareSarInput('selling_fare'); ticketFareForm.errors.selling_fare = ''"
@@ -2311,7 +2385,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="ticketFareForm.errors.selling_fare" x-text="ticketFareForm.errors.selling_fare" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT) *</label>
                                 <input type="number" x-model="ticketFareForm.selling_fare_bdt" min="0" step="0.000001"
                                        @input="handleTicketFareBdtInput('selling_fare'); ticketFareForm.errors.selling_fare = ''"
@@ -2322,7 +2396,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR) *</label>
                                 <input type="number" x-model="ticketFareForm.net_fare" min="0" step="0.000001"
                                        @input="handleTicketFareSarInput('net_fare'); ticketFareForm.errors.net_fare = ''"
@@ -2330,7 +2404,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="ticketFareForm.errors.net_fare" x-text="ticketFareForm.errors.net_fare" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT) *</label>
                                 <input type="number" x-model="ticketFareForm.net_fare_bdt" min="0" step="0.000001"
                                        @input="handleTicketFareBdtInput('net_fare'); ticketFareForm.errors.net_fare = ''"
@@ -2341,7 +2415,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div x-show="ticketFareForm.ticket_type === 'offer'">
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR) *</label>
                                 <input type="number" x-model="ticketFareForm.offer_price" min="0" step="0.000001"
                                        @input="handleTicketFareSarInput('offer_price'); ticketFareForm.errors.offer_price = ''"
@@ -2349,7 +2423,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="ticketFareForm.errors.offer_price" x-text="ticketFareForm.errors.offer_price" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT) *</label>
                                 <input type="number" x-model="ticketFareForm.offer_price_bdt" min="0" step="0.000001"
                                        @input="handleTicketFareBdtInput('offer_price'); ticketFareForm.errors.offer_price = ''"
@@ -2549,13 +2623,13 @@ if ($passenger->ticket_fare_inbound_id) {
                     <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Fare Calculation</h4>
                     <div class="grid grid-cols-1 md:grid-cols-3 gap-4">
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
                                 <input type="number" x-model="reIssueForm.selling_fare" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
                                 <input type="number" x-model="reIssueForm.selling_fare_bdt" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
@@ -2566,14 +2640,14 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
                                 <input type="number" x-model="reIssueForm.net_fare" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
                                        @input="recalcReIssueFareDifference()"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
                                 <input type="number" x-model="reIssueForm.net_fare_bdt" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
@@ -2584,13 +2658,13 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div x-show="reIssueForm.ticket_type === 'offer'">
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
                                 <input type="number" x-model="reIssueForm.offer_price" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
                                        :class="isReIssueDifferentTicket() ? 'w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none' : 'w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500'">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
                                 <input type="number" x-model="reIssueForm.offer_price_bdt" step="0.000001"
                                        :readonly="!isReIssueDifferentTicket()"
@@ -2627,22 +2701,24 @@ if ($passenger->ticket_fare_inbound_id) {
                                 <option value="customer">Customer</option>
                                 <option value="airline">Airline</option>
                                 <option value="employee">Employee</option>
+                                <option value="company">Company</option>
                             </select>
                         </div>
-                        <div x-show="reIssueForm.payment_by === 'customer'">
+                        <div x-show="reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
                             <select x-model="reIssueForm.payment_option" @change="handleReIssuePaymentOptionChange()"
-                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                    :disabled="reIssueForm.payment_by !== 'customer' && !reIssueForm.refunded_ticket"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed">
                                 <option value="customer_payment">Customer Payment</option>
                                 <option value="refund_adjustment">Refund Adjustment</option>
                             </select>
                         </div>
-                        <div x-show="reIssueForm.payment_by === 'customer' && reIssueForm.payment_option === 'refund_adjustment'">
+                        <div x-show="reIssueForm.payment_option === 'refund_adjustment' && (reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket)">
                             <div class="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-3 py-2 mb-2">
                                 <span class="text-sm font-medium text-emerald-700">Refund Payable (SAR)</span>
                                 <span class="text-sm font-semibold text-emerald-700" x-text="$currency(reIssueForm.refund_payable, 2)"></span>
                             </div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (SAR)</label>
                                 <input type="number" x-model="reIssueForm.refund_adjustment_amount" min="0" step="0.000001"
                                        @input="handleReIssueSarInput('refund_adjustment_amount'); reIssueForm.errors.refund_adjustment_amount = ''"
@@ -2650,7 +2726,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="reIssueForm.errors.refund_adjustment_amount" x-text="reIssueForm.errors.refund_adjustment_amount" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (BDT)</label>
                                 <input type="number" x-model="reIssueForm.refund_adjustment_amount_bdt" min="0" step="0.000001"
                                        @input="handleReIssueBdtInput('refund_adjustment_amount'); reIssueForm.errors.refund_adjustment_amount = ''"
@@ -2661,7 +2737,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR) *</label>
                                 <input type="number" x-model="reIssueForm.re_issue_charge" min="0" step="0.000001"
                                        @input="handleReIssueSarInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
@@ -2669,7 +2745,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT) *</label>
                                 <input type="number" x-model="reIssueForm.re_issue_charge_bdt" min="0" step="0.000001"
                                        @input="handleReIssueBdtInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
@@ -2680,7 +2756,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR) *</label>
                                 <input type="number" x-model="reIssueForm.fare_difference" step="0.000001"
                                        @input="handleReIssueSarInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
@@ -2688,7 +2764,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT) *</label>
                                 <input type="number" x-model="reIssueForm.fare_difference_bdt" step="0.000001"
                                        @input="handleReIssueBdtInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
@@ -2699,7 +2775,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (SAR)</label>
                                 <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001"
                                        @input="handleReIssueSarInput('other_costs'); reIssueForm.errors.other_costs = ''"
@@ -2707,7 +2783,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (BDT)</label>
                                 <input type="number" x-model="reIssueForm.other_costs_bdt" min="0" step="0.000001"
                                        @input="handleReIssueBdtInput('other_costs'); reIssueForm.errors.other_costs = ''"
@@ -2718,7 +2794,7 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer'">
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
                                 <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001"
                                        @input="handleReIssueSarInput('service_charge'); reIssueForm.errors.service_charge = ''"
@@ -2726,7 +2802,7 @@ if ($passenger->ticket_fare_inbound_id) {
                                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                                 <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
                                 <input type="number" x-model="reIssueForm.service_charge_bdt" min="0" step="0.000001"
                                        @input="handleReIssueBdtInput('service_charge'); reIssueForm.errors.service_charge = ''"
@@ -2737,33 +2813,33 @@ if ($passenger->ticket_fare_inbound_id) {
                             </div>
                         </div>
                         <div x-show="reIssueForm.refunded_net_fare > 0">
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (SAR)</label>
                                 <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (BDT)</label>
                                 <input type="number" x-model="reIssueForm.refunded_net_fare_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                                 <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                             </div>
                         </div>
                         <div>
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
                                 <input type="number" x-model="reIssueForm.total_cost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (BDT)</label>
                                 <input type="number" x-model="reIssueForm.total_cost_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                                 <input type="number" x-model="reIssueForm.total_cost" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
                             </div>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer'">
-                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR)</label>
                                 <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                             </div>
-                            <div x-show="$store.currency.mode === 'BDT'">
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
                                 <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (BDT)</label>
                                 <input type="number" x-model="reIssueForm.total_payment_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
                                 <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
@@ -2878,7 +2954,7 @@ if ($passenger->ticket_fare_inbound_id) {
                     </select>
                 </div>
                 <div>
-                    <div x-show="$store.currency.mode === 'BDT'" class="mb-3">
+                    <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mb-3">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
                         <input type="number" x-model="cancelServiceChargeBdt" min="0" step="0.01"
                             @input="cancelServiceCharge = parseFloat(((parseFloat(cancelServiceChargeBdt) || 0) / ($store.currency.rate || 1)).toFixed(6))"
@@ -2956,8 +3032,132 @@ if ($passenger->ticket_fare_inbound_id) {
                     </div>
                 </form>
             </template>
+
         </div>
     </div>
+
+{{-- Cancel Passenger Modal (Alpine.js) --}}
+<div x-show="cancelPassengerModalVisible" x-cloak
+     class="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4"
+     @click.self="closeCancelPassengerModal()">
+    <div class="bg-white rounded-xl shadow-2xl max-w-lg w-full p-6 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-semibold text-slate-800 mb-1">Cancel Passenger</h3>
+        <p class="text-sm text-slate-500 mb-4">This action initiates cancellation for the selected passenger only.</p>
+
+        <div class="space-y-2 text-sm mb-4 p-3 bg-slate-50 rounded-lg">
+            <div class="flex justify-between">
+                <span class="text-slate-500">Package Value</span>
+                <span class="font-medium text-slate-700" x-text="$currency(cancelPassengerData.package_value || 0, 2)"></span>
+            </div>
+
+            <div class="flex justify-between">
+                <span class="text-slate-500">Additional Tickets</span>
+                <span class="font-medium text-slate-700" x-text="$currency(cancelPassengerData.additional_ticket_value || 0, 2)"></span>
+            </div>
+
+            <div class="flex justify-between pt-1 border-t border-slate-200 font-semibold">
+                <span class="text-slate-700">Total Passenger Due</span>
+                <span class="text-slate-800" x-text="$currency((cancelPassengerData.total_passenger_due ?? ((cancelPassengerData.package_value || 0) + (cancelPassengerData.additional_ticket_value || 0))), 2)"></span>
+            </div>
+
+            <template x-if="cancelPassengerData.visa_cost && cancelPassengerData.visa_cost.total > 0">
+                <div class="pt-2 border-t border-slate-200">
+                    <p class="text-xs font-medium text-slate-500 uppercase mb-1">Visa Cost Breakdown</p>
+                    <div class="space-y-1 text-xs">
+                        <div class="flex justify-between"><span class="text-slate-400">Net Visa Cost</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.net_visa_cost || 0, 2)"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Agent Commission</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.agent_commission || 0, 2)"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Additional Cost</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.additional_cost || 0, 2)"></span></div>
+                        <div class="flex justify-between"><span class="text-slate-400">Cancellation Fee</span><span class="text-slate-600" x-text="$currency(cancelPassengerData.visa_cost.cancellation_fee || 0, 2)"></span></div>
+                    </div>
+                </div>
+            </template>
+
+            <div class="flex justify-between">
+                <span class="text-slate-500">Total Visa Cost</span>
+                <span class="font-medium text-red-600" x-text="$currency(cancelPassengerData.visa_cost?.total || 0, 2)"></span>
+            </div>
+
+            <template x-if="cancelPassengerData.ticket_cost && cancelPassengerData.ticket_cost.total > 0">
+                <div class="pt-2 border-t border-slate-200">
+                    <p class="text-xs font-medium text-slate-500 uppercase mb-1">Ticket Cost Breakdown</p>
+                    <div class="space-y-1 text-xs">
+                        <template x-for="(ticket, idx) in (cancelPassengerData.ticket_cost.tickets || [])" :key="idx">
+                            <div class="flex justify-between">
+                                <span class="text-slate-400" x-text="ticket.ticket_number || 'N/A'"></span>
+                                <span class="text-slate-600" x-text="$currency(ticket.net_fare || 0, 2)"></span>
+                            </div>
+                        </template>
+                    </div>
+                </div>
+            </template>
+
+            <div class="flex justify-between">
+                <span class="text-slate-500">Ticket Total</span>
+                <span class="font-medium text-red-600" x-text="$currency(cancelPassengerData.ticket_cost?.total || 0, 2)"></span>
+            </div>
+
+            <div class="flex justify-between pt-1 border-t border-slate-200 font-semibold">
+                <span class="text-slate-700">Total Cost</span>
+                <span class="text-red-600" x-text="$currency(cancelPassengerData.total_cost || 0, 2)"></span>
+            </div>
+
+            <template x-if="(cancelPassengerData.refund_payable || 0) > 0">
+                <div class="flex justify-between text-sm">
+                    <span class="text-slate-700 font-medium">Refund Payable</span>
+                    <span class="font-semibold text-blue-600" x-text="$currency(cancelPassengerData.refund_payable || 0, 2)"></span>
+                </div>
+            </template>
+        </div>
+
+        <div class="mb-4 p-3 bg-green-50 rounded-lg text-sm">
+            <div class="flex justify-between items-center">
+                <span class="text-slate-700 font-medium">Refundable Amount:</span>
+                <span class="font-bold text-green-700" x-text="$currency(cancelPassengerRefundableAmount, 2)"></span>
+            </div>
+        </div>
+
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Cancellation Branch *</label>
+                <select x-model="cancelPassengerBranchId" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none bg-white">
+                    <option value="">Select Branch</option>
+                    <template x-for="branch in (cancelPassengerData.branches || [])" :key="branch.id">
+                        <option :value="branch.id" x-text="branch.name"></option>
+                    </template>
+                </select>
+            </div>
+            <div>
+                <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mb-3">
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                    <input type="number" x-model="cancelPassengerServiceChargeBdt" min="0" step="0.01"
+                        @input="cancelPassengerServiceCharge = parseFloat(((parseFloat(cancelPassengerServiceChargeBdt) || 0) / ($store.currency.rate || 1)).toFixed(6))"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none"
+                        placeholder="Enter amount in BDT">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
+                    <input type="number" x-model.number="cancelPassengerServiceCharge" step="0.000001" min="0"
+                        :readonly="$store.currency.mode === 'BDT'"
+                        :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}"
+                        @input="if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { cancelPassengerServiceChargeBdt = Math.round((cancelPassengerServiceCharge || 0) * $store.currency.rate * 100) / 100; }"
+                        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 outline-none"
+                        placeholder="Enter amount in SAR">
+                </div>
+            </div>
+        </div>
+
+        <div class="flex gap-3">
+            <button @click="submitCancelPassenger()" :disabled="!cancelPassengerBranchId || cancelPassengerLoading"
+                class="flex-1 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium disabled:opacity-50">
+                <span x-show="!cancelPassengerLoading">Start Cancellation</span>
+                <span x-show="cancelPassengerLoading" x-cloak>Processing...</span>
+            </button>
+            <button @click="closeCancelPassengerModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
+                Cancel
+            </button>
+        </div>
+    </div>
+</div>
 </div>
 
 <style>
@@ -2989,7 +3189,7 @@ function bookingIndexApp() {
         selectedBookingDateFrom: '{{ $selectedBookingDateFrom ?? '' }}',
         selectedBookingDateTo: '{{ $selectedBookingDateTo ?? '' }}',
         selectedFingerprintLocation: '{{ $selectedFingerprintLocation ?? '' }}',
-        selectedBookingStatus: '{{ $selectedBookingStatus ?? '' }}',
+        selectedBookingStatus: '{{ $selectedBookingStatus }}',
         selectedPassengerStatus: '{{ $selectedPassengerStatus ?? '' }}',
         selectedRouteDisplay: '{{ $selectedRouteDisplay ?? '' }}',
         selectedPackageId: '{{ $selectedPackageId ?? '' }}',
@@ -3386,6 +3586,7 @@ function bookingIndexApp() {
         passengersVisaData: @json($passengersVisaData),
         passengersTicketData: @json($passengersTicketData),
         isTogglingTicketHold: [],
+        isTogglingVisaHold: [],
         passengerStatusMap: @json($passengerStatuses->pluck('id', 'name')),
 
         ticketAgents: @json($ticketAgents),
@@ -4194,6 +4395,7 @@ function bookingIndexApp() {
             refund_adjustment_amount: 0,
             refund_adjustment_amount_bdt: '',
             refund_payable: 0,
+            refunded_ticket: false,
             isRouteTypeLocked: false,
             errors: {
                 pnr: '',
@@ -4266,6 +4468,30 @@ function bookingIndexApp() {
             })
             .finally(() => {
                 this.isTogglingTicketHold[index] = false;
+            });
+        },
+
+        toggleVisaHold(index) {
+            const row = this.passengersVisaData[index];
+            if (!row) return;
+
+            this.isTogglingVisaHold[index] = true;
+
+            fetch(`/passengers/${row.id}/toggle-visa-hold`, {
+                method: 'PATCH',
+                headers: {
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.content,
+                    'Accept': 'application/json',
+                },
+            })
+            .then(res => res.json())
+            .then(data => {
+                if (data.success) {
+                    this.passengersVisaData[index].is_visa_held = data.is_visa_held;
+                }
+            })
+            .finally(() => {
+                this.isTogglingVisaHold[index] = false;
             });
         },
 
@@ -4374,28 +4600,36 @@ function bookingIndexApp() {
             if (row.is_ticket_held) statuses.push('Hold');
 
             if (OP) {
-                if (R.status === 'pending' && PO?.status === 'pending')
-                    statuses.push('Pending');
-                if (R.status === 'issued' && PO?.status === 'pending')
-                    statuses.push('Inbound Issued');
-                if (R.status === 'pending' && PO?.status === 'issued')
-                    statuses.push('Outbound Issued');
-                if (R.status === 'issued' && PO?.status === 'issued')
-                    statuses.push('Both Issued');
-                if (R.status === 'awaiting-group' && PO?.status !== 'awaiting-group')
-                    statuses.push('Awaiting Group Inbound');
-                if (R.status !== 'awaiting-group' && PO?.status === 'awaiting-group')
-                    statuses.push('Awaiting Group Outbound');
-                if (R.status === 'awaiting-group' && PO?.status === 'awaiting-group')
-                    statuses.push('Awaiting Group Both');
-                if (R.status === 're-issued' || PO?.status === 're-issued')
-                    statuses.push('Partial Re-Issued');
-                if (R.status === 're-issued' && PO?.status === 're-issued')
-                    statuses.push('Re-Issued');
-                if (R.status === 'refunded' || PO?.status === 'refunded')
-                    statuses.push('Partial Refunded');
-                if (R.status === 'refunded' && PO?.status === 'refunded')
-                    statuses.push('Refunded');
+                if (PO) {
+                    if (R.status === 'pending' && PO?.status === 'pending')
+                        statuses.push('Pending');
+                    if (R.status === 'issued' && PO?.status === 'pending')
+                        statuses.push('Inbound Issued');
+                    if (R.status === 'pending' && PO?.status === 'issued')
+                        statuses.push('Outbound Issued');
+                    if (R.status === 'issued' && PO?.status === 'issued')
+                        statuses.push('Both Issued');
+                    if (R.status === 'awaiting-group' && PO?.status !== 'awaiting-group')
+                        statuses.push('Awaiting Group Inbound');
+                    if (R.status !== 'awaiting-group' && PO?.status === 'awaiting-group')
+                        statuses.push('Awaiting Group Outbound');
+                    if (R.status === 'awaiting-group' && PO?.status === 'awaiting-group')
+                        statuses.push('Awaiting Group Both');
+                    if (R.status === 're-issued' || PO?.status === 're-issued')
+                        statuses.push('Partial Re-Issued');
+                    if (R.status === 're-issued' && PO?.status === 're-issued')
+                        statuses.push('Re-Issued');
+                    if (R.status === 'refunded' || PO?.status === 'refunded')
+                        statuses.push('Partial Refunded');
+                    if (R.status === 'refunded' && PO?.status === 'refunded')
+                        statuses.push('Refunded');
+                } else {
+                    if (R.status === 'issued') statuses.push('Inbound Issued');
+                    if (R.status === 'pending') statuses.push('Pending');
+                    if (R.status === 'awaiting-group') statuses.push('Awaiting Group Inbound');
+                    if (R.status === 're-issued') statuses.push('Re-Issued');
+                    if (R.status === 'refunded') statuses.push('Refunded');
+                }
             } else {
                 if (R.status === 'pending')
                     statuses.push('Pending');
@@ -5140,6 +5374,7 @@ function bookingIndexApp() {
             this.reIssueForm.refund_adjustment_amount = 0;
             this.reIssueForm.refund_adjustment_amount_bdt = '';
             this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0);
+            this.reIssueForm.refunded_ticket = ticket.status === 'refunded';
             this.reIssueForm.refunded_net_fare = (ticket.status === 'refunded') ? ((ticket.refunded_net_fare ?? 0) || 0) : 0;
             this.reIssueForm.refunded_net_fare_bdt = '';
 
@@ -5166,7 +5401,6 @@ function bookingIndexApp() {
                 this.reIssueForm.group_ticket_id = re.group_ticket_id || '';
                 this.reIssueForm.ticket_number = re.ticket_number || '';
                 this.reIssueForm.pnr = re.pnr || '';
-                this.reIssueForm.date = this.formatToDDMMMYY(re.re_issue_date) || today;
                 this.reIssueForm.ticket_agent_id = re.ticket_agent_id || '';
                 this.reIssueForm.inbound_date = this.formatToDDMMMYY(re.inbound_date) || '';
                 this.reIssueForm.outbound_date = this.formatToDDMMMYY(re.outbound_date) || '';
@@ -5440,30 +5674,31 @@ function bookingIndexApp() {
         recalcReIssueTotals() {
             const f = this.reIssueForm;
             const rate = window.__currencyRate || 0;
-            const totalCost = (parseFloat(f.re_issue_charge) || 0)
+            const rawCost = (parseFloat(f.re_issue_charge) || 0)
                             + (parseFloat(f.fare_difference) || 0)
                             + (parseFloat(f.other_costs) || 0)
                             + (parseFloat(f.refunded_net_fare) || 0);
-            f.total_cost = totalCost;
-            f.total_cost_bdt = rate > 0 ? Math.round(totalCost * rate) : '';
-            const totalPayment = totalCost + (parseFloat(f.service_charge) || 0);
 
             const adj = parseFloat(f.refund_adjustment_amount) || 0;
-            if (f.payment_by === 'customer' && f.payment_option === 'refund_adjustment' && adj > 0) {
-                if (adj > totalPayment) {
+            const canAdjust = (f.payment_by === 'customer' || f.refunded_ticket) && f.payment_option === 'refund_adjustment';
+
+            if (canAdjust && adj > 0) {
+                if (adj > rawCost) {
                     f.errors.refund_adjustment_amount = 'Refund adjustment amount exceeds the total customer payment.';
                 } else if (adj > f.refund_payable) {
                     f.errors.refund_adjustment_amount = 'Refund adjustment amount exceeds the available refund payable.';
                 } else {
                     f.errors.refund_adjustment_amount = '';
                 }
-                f.total_payment = totalPayment - adj;
-                f.total_payment_bdt = rate > 0 ? Math.round((totalPayment - adj) * rate) : '';
             } else {
                 f.errors.refund_adjustment_amount = '';
-                f.total_payment = totalPayment;
-                f.total_payment_bdt = rate > 0 ? Math.round(totalPayment * rate) : '';
             }
+
+            const totalCost = rawCost - adj;
+            f.total_cost = totalCost;
+            f.total_cost_bdt = rate > 0 ? Math.round(totalCost * rate) : '';
+            f.total_payment = totalCost + (parseFloat(f.service_charge) || 0);
+            f.total_payment_bdt = rate > 0 ? Math.round(f.total_payment * rate) : '';
         },
 
         recalcReIssueFareDifference() {
@@ -5485,9 +5720,7 @@ function bookingIndexApp() {
             if (this.reIssueForm.payment_by !== 'customer') {
                 this.reIssueForm.service_charge = 0;
                 this.reIssueForm.service_charge_bdt = '';
-                this.reIssueForm.payment_option = 'customer_payment';
-                this.reIssueForm.refund_adjustment_amount = 0;
-                this.reIssueForm.refund_adjustment_amount_bdt = '';
+                this.reIssueForm.payment_option = this.reIssueForm.refunded_ticket ? 'refund_adjustment' : 'customer_payment';
             }
             this.recalcReIssueTotals();
         },
@@ -5509,7 +5742,8 @@ function bookingIndexApp() {
         },
 
         handleReIssuePaymentOptionChange() {
-            if (this.reIssueForm.payment_option !== 'refund_adjustment') {
+            const canAdjust = this.reIssueForm.payment_by === 'customer' || this.reIssueForm.refunded_ticket;
+            if (this.reIssueForm.payment_option !== 'refund_adjustment' || !canAdjust) {
                 this.reIssueForm.refund_adjustment_amount = 0;
                 this.reIssueForm.refund_adjustment_amount_bdt = '';
             }
@@ -5548,12 +5782,12 @@ function bookingIndexApp() {
                 total_customer_payment: form.total_payment || 0,
                 remarks: form.remarks,
                 payment_by: form.payment_by,
-                payment_option: form.payment_by === 'customer' ? form.payment_option : undefined,
-                refund_adjustment_amount: form.payment_by === 'customer' && form.payment_option === 'refund_adjustment' ? (parseFloat(form.refund_adjustment_amount) || 0) : 0,
+                payment_option: (form.payment_by === 'customer' || form.refunded_ticket) ? form.payment_option : undefined,
+                refund_adjustment_amount: (form.payment_by === 'customer' || form.refunded_ticket) && form.payment_option === 'refund_adjustment' ? (parseFloat(form.refund_adjustment_amount) || 0) : 0,
             };
 
-            if (payload.payment_by === 'customer' && payload.payment_option === 'refund_adjustment') {
-                if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + payload.service_charge + (parseFloat(form.refunded_net_fare) || 0)) {
+            if ((payload.payment_by === 'customer' || form.refunded_ticket) && payload.payment_option === 'refund_adjustment') {
+                if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + (parseFloat(form.refunded_net_fare) || 0)) {
                     this.showToast('Refund adjustment amount exceeds the total customer payment.', 'error');
                     this.isSubmitting = false;
                     return;
@@ -6569,6 +6803,77 @@ function bookingIndexApp() {
             }
         },
 
+        // ── Passenger Cancellation State ──
+        cancelPassengerModalVisible: false,
+        cancelPassengerId: null,
+        cancelPassengerData: {},
+        cancelPassengerBranchId: '',
+        cancelPassengerServiceCharge: 0,
+        cancelPassengerServiceChargeBdt: '',
+        cancelPassengerLoading: false,
+
+        get cancelPassengerRefundableAmount() {
+            const totalDue = this.cancelPassengerData.total_passenger_due
+                          ?? ((this.cancelPassengerData.package_value || 0) + (this.cancelPassengerData.additional_ticket_value || 0));
+            const costs = (this.cancelPassengerData.visa_cost?.total || 0)
+                        + (this.cancelPassengerData.ticket_cost?.total || 0);
+            return Math.max(0, totalDue - costs - (this.cancelPassengerServiceCharge || 0) + (this.cancelPassengerData.refund_payable || 0));
+        },
+
+        async openCancelPassengerModal(passengerId) {
+            this.cancelPassengerId = passengerId;
+            this.cancelPassengerBranchId = '';
+            this.cancelPassengerServiceCharge = 0;
+            this.cancelPassengerServiceChargeBdt = '';
+            this.cancelPassengerLoading = false;
+            try {
+                const res = await fetch(`/passengers/${passengerId}/cancellation/preview`, {
+                    headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content }
+                });
+                const data = await res.json();
+                if (data.error) { alert(data.error); return; }
+                this.cancelPassengerData = data;
+                this.cancelPassengerModalVisible = true;
+            } catch (e) {
+                alert('Failed to load cancellation preview.');
+            }
+        },
+
+        closeCancelPassengerModal() {
+            this.cancelPassengerModalVisible = false;
+            this.cancelPassengerId = null;
+        },
+
+        async submitCancelPassenger() {
+            if (!this.cancelPassengerBranchId || this.cancelPassengerLoading) return;
+            this.cancelPassengerLoading = true;
+            try {
+                const res = await fetch(`/passengers/${this.cancelPassengerId}/cancellation/initiate`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        cancellation_branch_id: this.cancelPassengerBranchId,
+                        service_charge_deduction: this.cancelPassengerServiceCharge || null,
+                    }),
+                });
+                const result = await res.json();
+                if (result.success) {
+                    this.cancelPassengerModalVisible = false;
+                    window.location.reload();
+                } else {
+                    alert(result.message || 'Failed to initiate cancellation');
+                }
+            } catch (e) {
+                alert('Failed to initiate cancellation');
+            } finally {
+                this.cancelPassengerLoading = false;
+            }
+        },
+
         showToast(message) {
             const container = document.getElementById('toastContainer') || (() => {
                 const el = document.createElement('div');
@@ -6595,7 +6900,7 @@ function bookingIndexApp() {
     }
 }
 
-function updatePassengerStatus(passengerId, statusId) {
+function updatePassengerStatus(passengerId, statusId, selectEl) {
     fetch(`/passengers/${passengerId}/status`, {
         method: 'PATCH',
         headers: {
@@ -6609,7 +6914,7 @@ function updatePassengerStatus(passengerId, statusId) {
         if (data.success) {
             console.log('Status updated successfully');
         } else {
-            alert('Failed to update status');
+            alert(data.message || 'Failed to update status');
         }
     })
     .catch(error => {
@@ -6662,4 +6967,6 @@ window.addEventListener('pageshow', function(event) {
     }
 });
 </script>
+
+
 @endsection

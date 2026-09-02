@@ -21,6 +21,19 @@ set -Eeuo pipefail
 
 SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 
+# Auto-derive COMPOSE_PROJECT_NAME from the web directory path if not set
+# /var/www/umrah.binmishaltravels.com/web → umrah-binmishaltravels-com
+if [ -z "${COMPOSE_PROJECT_NAME:-}" ]; then
+    WEB_DIR="$SCRIPT_DIR"
+    DOMAIN_PATH=$(echo "$WEB_DIR" | sed 's|/var/www/||' | sed 's|/web$||')
+    if [ -n "$DOMAIN_PATH" ]; then
+        COMPOSE_PROJECT_NAME=$(echo "$DOMAIN_PATH" | sed 's|/|-|g')
+    else
+        COMPOSE_PROJECT_NAME=$(basename "$WEB_DIR")
+    fi
+    export COMPOSE_PROJECT_NAME
+fi
+
 COMPOSE_FILE="${SCRIPT_DIR}/docker-compose.prod.yml"
 ENV_FILE="${SCRIPT_DIR}/.env.production"
 
@@ -51,10 +64,17 @@ fi
 # Laravel .env files are not Bash scripts.
 # ------------------------------------------------------------
 
+# Read DB_TYPE from .env.production for profile selection
+DB_TYPE=$(grep -E '^DB_TYPE=' "$ENV_FILE" | tail -1 | cut -d'=' -f2- | tr -d '\r' || true)
+if [ -z "$DB_TYPE" ]; then
+    DB_TYPE=mysql
+fi
+
 compose() {
   docker compose \
     --env-file "$ENV_FILE" \
     -f "$COMPOSE_FILE" \
+    --profile "${DB_TYPE}" \
     "$@"
 }
 

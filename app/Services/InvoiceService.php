@@ -25,10 +25,27 @@ class InvoiceService
     {
         \Log::info('InvoiceService: Updating payment status for invoice ID: '.$invoice->id);
 
+        $auditReason = $invoice->audit_reason ?? null;
+
         $invoice = $invoice->fresh();
 
-        $invoice->paid_amount = $invoice->payments()->sum('amount');
-        $invoice->balance = $invoice->total_amount - $invoice->paid_amount;
+        if ($auditReason !== null) {
+            $invoice->audit_reason = $auditReason;
+        }
+
+        $invoice->paid_amount = $invoice->payments()
+            ->whereNull('cancelled_booking_id')
+            ->whereNull('cancelled_passenger_id')
+            ->whereNull('refunded_ticket_id')
+            ->whereNull('re_issued_ticket_id')
+            ->sum('amount');
+        $dueAdjustments = (float) $invoice->payments()
+            ->whereNotNull('cancelled_passenger_id')
+            ->whereHas('voucher.transactionType', function ($query) {
+                $query->where('name', 'Due Adjustment');
+            })
+            ->sum('amount');
+        $invoice->balance = max(0, (float) $invoice->total_amount - (float) $invoice->paid_amount - $dueAdjustments);
 
         \Log::info('InvoiceService: Paid amount calculated: '.$invoice->paid_amount.', Balance: '.$invoice->balance);
 
@@ -52,14 +69,29 @@ class InvoiceService
 
     public function calculateBalance(Invoice $invoice): float
     {
-        return $invoice->total_amount - $invoice->paid_amount;
+        $dueAdjustments = (float) $invoice->payments()
+            ->whereNotNull('cancelled_passenger_id')
+            ->whereHas('voucher.transactionType', function ($query) {
+                $query->where('name', 'Due Adjustment');
+            })
+            ->sum('amount');
+
+        return $invoice->total_amount - $invoice->paid_amount - $dueAdjustments;
     }
 
     public function updateTotals(Invoice $invoice, float $newTotal, ?string $reason = null): void
     {
         $invoice->audit_reason = $reason;
         $invoice->total_amount = $newTotal;
-        $invoice->balance = max(0, $newTotal - $invoice->paid_amount);
+
+        $dueAdjustments = (float) $invoice->payments()
+            ->whereNotNull('cancelled_passenger_id')
+            ->whereHas('voucher.transactionType', function ($query) {
+                $query->where('name', 'Due Adjustment');
+            })
+            ->sum('amount');
+
+        $invoice->balance = max(0, $newTotal - $invoice->paid_amount - $dueAdjustments);
 
         $invoice->status = match (true) {
             $invoice->balance <= 0 => InvoiceStatus::PAID,

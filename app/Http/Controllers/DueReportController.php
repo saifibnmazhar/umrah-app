@@ -30,10 +30,10 @@ class DueReportController extends Controller
             ->join('branches', 'invoices.branch_id', '=', 'branches.id')
             ->where('invoices.balance', '>', 0)
             ->whereNotIn('invoices.status', [
-            InvoiceStatus::PAID->value,
-            InvoiceStatus::CANCELLED->value,
-            InvoiceStatus::REFUNDED->value,
-        ])
+                InvoiceStatus::PAID->value,
+                InvoiceStatus::CANCELLED->value,
+                InvoiceStatus::REFUNDED->value,
+            ])
             ->groupBy('branches.id', 'branches.name')
             ->orderBy('branches.name');
 
@@ -121,10 +121,10 @@ class DueReportController extends Controller
             ->where('invoices.branch_id', $branchId)
             ->where('invoices.balance', '>', 0)
             ->whereNotIn('invoices.status', [
-            InvoiceStatus::PAID->value,
-            InvoiceStatus::CANCELLED->value,
-            InvoiceStatus::REFUNDED->value,
-        ])
+                InvoiceStatus::PAID->value,
+                InvoiceStatus::CANCELLED->value,
+                InvoiceStatus::REFUNDED->value,
+            ])
             ->when($dateFrom, fn ($q) => $q->whereDate('invoices.created_at', '>=', $dateFrom))
             ->when($dateTo, fn ($q) => $q->whereDate('invoices.created_at', '<=', $dateTo))
             ->groupBy(DB::raw('DATE(payments.payment_date)'))
@@ -228,10 +228,10 @@ class DueReportController extends Controller
             ->where('invoices.branch_id', $branchId)
             ->where('invoices.balance', '>', 0)
             ->whereNotIn('invoices.status', [
-            InvoiceStatus::PAID->value,
-            InvoiceStatus::CANCELLED->value,
-            InvoiceStatus::REFUNDED->value,
-        ])
+                InvoiceStatus::PAID->value,
+                InvoiceStatus::CANCELLED->value,
+                InvoiceStatus::REFUNDED->value,
+            ])
             ->when($dateFrom, fn ($q) => $q->whereDate('invoices.created_at', '>=', $dateFrom))
             ->when($dateTo, fn ($q) => $q->whereDate('invoices.created_at', '<=', $dateTo))
             ->groupBy(DB::raw('DATE(payments.payment_date)'))

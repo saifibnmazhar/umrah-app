@@ -17,6 +17,10 @@ class RefundController extends Controller
             abort(403, 'Passenger does not belong to this booking.');
         }
 
+        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
+            return response()->json(['message' => 'Refund is not allowed for passengers with Hold or Cancel status.'], 422);
+        }
+
         $issuedTicket = IssuedTicket::where('id', $request->input('issued_ticket_id'))
             ->where('passenger_id', $passenger->id)
             ->first();
@@ -54,7 +58,7 @@ class RefundController extends Controller
             'customer_refund' => 'required|numeric|min:0|max:'.$refundNetFare,
             'service_charge' => 'required|numeric',
             'remarks' => 'nullable|string',
-            'payment_by' => 'nullable|in:customer,airline,employee',
+            'payment_by' => 'nullable|in:customer,airline,employee,company',
         ]);
 
         if (! in_array($issuedTicket->status, ['issued', 're-issued'])) {
@@ -110,5 +114,20 @@ class RefundController extends Controller
 
             return response()->json(['message' => 'Failed to refund ticket.'], 500);
         }
+    }
+
+    public function byBooking(Booking $booking)
+    {
+        $refundedTickets = RefundedTicket::whereHas('issuedTicket', function ($q) use ($booking) {
+            $q->where('booking_id', $booking->id);
+        })
+            ->with([
+                'ticketAgent',
+                'issuedTicket.passenger',
+            ])
+            ->orderBy('refund_date', 'asc')
+            ->get();
+
+        return response()->json($refundedTickets);
     }
 }

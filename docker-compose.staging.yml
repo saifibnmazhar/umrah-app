@@ -1,4 +1,4 @@
-name: ${COMPOSE_PROJECT_NAME}
+name: ${COMPOSE_PROJECT_NAME:-umrah-app}
 # Staging environment — deploys to staging.umrah.binmishaltravels.com
 # Uses staging-<sha> image tags and a separate staging database (umrah_staging).
 
@@ -18,12 +18,15 @@ services:
     depends_on:
       db:
         condition: service_healthy
+        required: false
       redis:
         condition: service_healthy
+        required: false
 
-    # NOTE: No Watchtower label — staging is deployed
-    # manually via deploy-staging.sh or the GitHub Actions
-    # deploy-staging job over SSH.
+    # Auto-deploy via Watchtower (same as production)
+    labels:
+      - com.centurylinklabs.watchtower=true
+
     healthcheck:
       test: ["CMD-SHELL", "curl -fs http://localhost || exit 1"]
       interval: 10s
@@ -37,6 +40,7 @@ services:
       - backend
 
   db:
+    profiles: ["${DB_TYPE:-mysql}"]
     image: ${DB_IMAGE:-mysql:8.0}
 
     env_file:
@@ -61,6 +65,37 @@ services:
     networks:
       - backend
 
+  db-postgres:
+    profiles: ["postgresql"]
+    image: ${DB_IMAGE:-postgres:16-alpine}
+
+    env_file:
+      - .env.staging
+
+    environment:
+      - POSTGRES_DB=${DB_DATABASE:-umrah_staging}
+      - POSTGRES_USER=${DB_USERNAME:-stageuser}
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-${MYSQL_PASSWORD:-}}
+
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+
+    healthcheck:
+      test:
+        [
+          "CMD-SHELL",
+          "pg_isready -h 127.0.0.1 -p 5432 -U ${DB_USERNAME:-stageuser}",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+      start_period: 20s
+
+    restart: unless-stopped
+
+    networks:
+      - backend
+
   redis:
     image: ${REDIS_IMAGE:-redis:7-alpine}
 
@@ -71,12 +106,15 @@ services:
       [
         "sh",
         "-c",
-        'exec redis-server --requirepass "${REDIS_PASSWORD}" --maxmemory ${REDIS_MAX_MEMORY:-128mb} --maxmemory-policy allkeys-lru',
+        'exec redis-server --requirepass "$${REDIS_PASSWORD}" --maxmemory ${REDIS_MAX_MEMORY:-128mb} --maxmemory-policy allkeys-lru',
       ]
 
     healthcheck:
       test:
-        ["CMD-SHELL", 'redis-cli --pass "${REDIS_PASSWORD}" ping | grep PONG']
+        [
+          "CMD-SHELL",
+          'redis-cli --pass "$${REDIS_PASSWORD}" ping | grep PONG',
+        ]
       interval: 5s
       timeout: 3s
       retries: 10
@@ -90,6 +128,7 @@ services:
 volumes:
   app_storage:
   db_data:
+  postgres_data:
 
 networks:
   backend:

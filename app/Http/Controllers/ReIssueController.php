@@ -24,6 +24,10 @@ class ReIssueController extends Controller
             abort(403, 'Passenger does not belong to this booking.');
         }
 
+        if ($passenger->isOnHold() || $passenger->isOnCancel()) {
+            return response()->json(['message' => 'Re-issue is not allowed for passengers with Hold or Cancel status.'], 422);
+        }
+
         $validated = $request->validate([
             'issued_ticket_id' => 'required|exists:issued_tickets,id',
             'ticket_number' => 'nullable|string|max:100',
@@ -50,12 +54,11 @@ class ReIssueController extends Controller
             'service_charge' => 'required|numeric|min:0',
             'total_customer_payment' => 'required_if:payment_by,customer|numeric|min:0',
             'remarks' => 'nullable|string',
-            'payment_by' => 'nullable|in:customer,airline,employee',
+            'payment_by' => 'nullable|in:customer,airline,employee,company',
             'payment_option' => 'nullable|required_if:payment_by,customer|in:customer_payment,refund_adjustment',
             'refund_adjustment_amount' => [
                 Rule::requiredIf(function () use ($request) {
-                    return $request->input('payment_by') === 'customer'
-                        && $request->input('payment_option') === 'refund_adjustment';
+                    return $request->input('payment_option') === 'refund_adjustment';
                 }),
                 'numeric',
                 'min:0',
@@ -115,10 +118,10 @@ class ReIssueController extends Controller
                 'selling_fare' => $validated['selling_fare'] ?? $issuedTicket->selling_fare ?? 0,
                 'net_fare' => $validated['net_fare'] ?? $issuedTicket->net_fare ?? 0,
                 'offer_price' => $validated['offer_price'] ?? $issuedTicket->offer_price ?? 0,
-                'payment_option' => ($validated['payment_by'] ?? null) === 'customer'
+                'payment_option' => ($validated['payment_by'] ?? null) === 'customer' || $wasRefunded
                     ? $validated['payment_option']
                     : null,
-                'refund_adjustment_amount' => ($validated['payment_by'] ?? null) === 'customer'
+                'refund_adjustment_amount' => (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded)
                         && $validated['payment_option'] === 'refund_adjustment'
                     ? (float) $validated['refund_adjustment_amount']
                     : 0,
@@ -129,6 +132,18 @@ class ReIssueController extends Controller
 
             $reIssuedTicket = ReIssuedTicket::create($reIssueData);
 
+            $refundedNetFare = $wasRefunded
+                ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
+                : 0;
+
+            $rawCost = (float) $reIssueData['re_issue_charge']
+                + (float) $reIssueData['fare_difference']
+                + (float) $reIssueData['other_costs']
+                + $refundedNetFare;
+
+            $totalCost = $rawCost - ($reIssueData['refund_adjustment_amount'] ?? 0);
+            $reIssuedTicket->update(['total_cost' => round($totalCost, 6)]);
+
             $issuedTicket->update(['status' => 're-issued']);
 
             $newData = $reIssuedTicket->toArray();
@@ -138,22 +153,13 @@ class ReIssueController extends Controller
 
             $issuedTicket->logAction('re-issued', $oldData, $newData);
 
-            if (($validated['payment_by'] ?? null) === 'customer') {
-                $refundedNetFare = $wasRefunded
-                    ? (float) ($issuedTicket->latestRefundedTicket?->net_fare ?? $issuedTicket->net_fare ?? 0)
-                    : 0;
-
-                $totalCost = (float) $validated['re_issue_charge']
-                    + (float) $validated['fare_difference']
-                    + (float) $validated['other_costs']
-                    + $refundedNetFare;
-
+            if (($validated['payment_by'] ?? null) === 'customer' || $wasRefunded) {
                 $totalCustomerPayment = $totalCost + (float) $validated['service_charge'];
 
                 if ($validated['payment_option'] === 'refund_adjustment') {
                     $amount = (float) $validated['refund_adjustment_amount'];
 
-                    if ($amount > $totalCustomerPayment) {
+                    if ($amount > $rawCost) {
                         throw new \InvalidArgumentException('Refund adjustment amount exceeds the total customer payment.');
                     }
                     if ($amount > (float) $passenger->refund_payable) {
@@ -236,5 +242,28 @@ class ReIssueController extends Controller
 
             return response()->json(['message' => 'Failed to re-issue ticket.'], 500);
         }
+    }
+
+    public function byBooking(Booking $booking)
+    {
+        $reIssuedTickets = ReIssuedTicket::whereHas('issuedTicket', function ($q) use ($booking) {
+            $q->where('booking_id', $booking->id);
+        })
+            ->with([
+                'ticketAgent',
+                'ticketFare.airline',
+                'ticketFare.airlineClass.class',
+                'ticketFare.route.fromCity',
+                'ticketFare.route.toCity',
+                'ticketFare.route.returnCity',
+                'ticketFare.route.multiSegments.fromCity',
+                'ticketFare.route.multiSegments.toCity',
+                'reason',
+                'issuedTicket.passenger',
+            ])
+            ->orderBy('re_issue_date', 'asc')
+            ->get();
+
+        return response()->json($reIssuedTickets);
     }
 }

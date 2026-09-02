@@ -13,7 +13,7 @@
 On your ISPConfig server:
 
 ```bash
-git clone https://github.com/mostafiz-8bits/umrah-app.git /var/www/clients/client0/web1/umrah-app
+git clone https://github.com/saifibnmazhar/umrah-app.git /var/www/clients/client0/web1/umrah-app
 cd /var/www/clients/client0/web1/umrah-app
 ```
 
@@ -129,7 +129,7 @@ docker compose -f docker-compose.prod.yml pull app
 docker compose -f docker-compose.prod.yml down
 
 # List available images
-docker images ghcr.io/mostafiz-8bits/umrah-app
+docker images ghcr.io/${{ github.repository }}
 
 # Force recreate with specific tag (if available)
 docker compose -f docker-compose.prod.yml up -d --no-deps --force-recreate
@@ -146,7 +146,7 @@ Per-site checklist:
 
 1. Clone the repo into a site-specific directory:
    ```bash
-   git clone https://github.com/mostafiz-8bits/umrah-app.git /var/www/clients/client0/web1/<site-name>
+   git clone https://github.com/saifibnmazhar/umrah-app.git /var/www/clients/client0/web1/<site-name>
    ```
 2. Run `bash docker/scripts/setup-env.sh` and configure `.env.production` for this site.
 3. Set site-specific naming/port variables before deploying — export them (or edit

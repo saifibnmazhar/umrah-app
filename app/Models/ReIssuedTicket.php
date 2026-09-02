@@ -2,9 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentBy;
+use App\Enums\ReIssuePaymentOption;
 use Illuminate\Database\Eloquent\Model;
-use Illuminate\Database\Eloquent\SoftDeletes;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class ReIssuedTicket extends Model
 {
@@ -17,7 +19,7 @@ class ReIssuedTicket extends Model
         'selling_fare', 'net_fare', 'offer_price',
         'is_refundable', 'is_exchangeable',
         'baggage_inbound', 'baggage_outbound',
-        're_issue_charge', 'fare_difference', 'other_costs', 'service_charge',
+        're_issue_charge', 'fare_difference', 'other_costs', 'service_charge', 'total_cost',
         'payment_by',
         'payment_option',
         'refund_adjustment_amount',
@@ -36,9 +38,11 @@ class ReIssuedTicket extends Model
         'fare_difference' => 'decimal:6',
         'other_costs' => 'decimal:6',
         'service_charge' => 'decimal:6',
+        'total_cost' => 'decimal:6',
         'is_refundable' => 'boolean',
         'is_exchangeable' => 'boolean',
-        'payment_option' => \App\Enums\ReIssuePaymentOption::class,
+        'payment_by' => PaymentBy::class,
+        'payment_option' => ReIssuePaymentOption::class,
         'refund_adjustment_amount' => 'decimal:6',
         'total_customer_payment' => 'decimal:6',
     ];

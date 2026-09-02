@@ -11,20 +11,22 @@ class InvoiceObserver
     public function created(Invoice $invoice): void
     {
         InvoiceUpdateLog::create([
-            'invoice_id'         => $invoice->id,
-            'user_id'            => Auth::id(),
+            'invoice_id' => $invoice->id,
+            'user_id' => Auth::id(),
             'booking_invoice_id' => $invoice->booking?->invoice_id,
-            'action'             => 'created',
-            'reason'             => $invoice->audit_reason ?? 'created',
-            'old_values'         => null,
-            'new_values'         => $invoice->attributesToArray(),
+            'action' => 'created',
+            'reason' => $invoice->audit_reason ?? 'created',
+            'old_values' => null,
+            'new_values' => $invoice->attributesToArray(),
         ]);
     }
 
     public function updated(Invoice $invoice): void
     {
         $dirty = $invoice->getDirty();
-        if (empty($dirty)) return;
+        if (empty($dirty)) {
+            return;
+        }
 
         $original = $invoice->getOriginal();
         $old = $new = [];
@@ -34,26 +36,26 @@ class InvoiceObserver
         }
 
         InvoiceUpdateLog::create([
-            'invoice_id'         => $invoice->id,
-            'user_id'            => Auth::id(),
+            'invoice_id' => $invoice->id,
+            'user_id' => Auth::id(),
             'booking_invoice_id' => $invoice->booking?->invoice_id,
-            'action'             => 'updated',
-            'reason'             => $invoice->audit_reason ?? 'updated',
-            'old_values'         => $old,
-            'new_values'         => $new,
+            'action' => 'updated',
+            'reason' => $invoice->audit_reason ?? 'updated',
+            'old_values' => $old,
+            'new_values' => $new,
         ]);
     }
 
     public function deleting(Invoice $invoice): void
     {
         InvoiceUpdateLog::create([
-            'invoice_id'         => $invoice->id,
-            'user_id'            => Auth::id(),
+            'invoice_id' => $invoice->id,
+            'user_id' => Auth::id(),
             'booking_invoice_id' => $invoice->booking?->invoice_id,
-            'action'             => 'deleted',
-            'reason'             => 'deleted',
-            'old_values'         => collect($invoice->attributesToArray())->except(['created_at', 'updated_at'])->toArray(),
-            'new_values'         => null,
+            'action' => 'deleted',
+            'reason' => 'deleted',
+            'old_values' => collect($invoice->attributesToArray())->except(['created_at', 'updated_at'])->toArray(),
+            'new_values' => null,
         ]);
     }
 }

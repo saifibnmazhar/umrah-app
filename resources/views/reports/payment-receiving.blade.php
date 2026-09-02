@@ -5,14 +5,14 @@
     [x-cloak] { display: none !important; }
 </style>
 <div class="max-w-[1600px] mx-auto" x-data="paymentReceivingReport({ vouchersByDate: {{ $vouchersByDateJson }}, branches: {{ $branchesJson }}, banks: {{ $banksJson }} })">
-    <div class="mb-3">
+    <div class="sticky top-0 z-30 bg-white py-2 mb-3">
         <span class="text-sm text-gray-500 font-medium">Reports</span>
         <span class="text-sm text-gray-400 mx-1">›</span>
         <span class="text-sm text-gray-700 font-semibold">Payment Receiving Report</span>
     </div>
 
     <form method="GET" action="{{ route('report.payment-receiving') }}">
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 mb-4">
+    <div class="sticky top-[40px] z-20 bg-white border-x-2 border-b-2 border-gray-400 p-4 mb-4">
         <div class="flex flex-wrap items-center justify-between gap-3">
             <div class="flex items-center gap-3">
                 <div class="flex items-center gap-2">
@@ -42,10 +42,10 @@
     </div>
     </form>
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden mb-4">
-        <div class="overflow-x-auto">
+    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm flex flex-col" style="max-height: calc(100vh - 280px);">
+        <div class="overflow-auto flex-1 min-h-0">
             <table class="w-full min-w-[900px] table-fixed">
-                <thead>
+                <thead class="sticky top-0 z-10">
                     <tr class="table-header">
                         <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Date</th>
                         <th class="w-40 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Cash Received</th>
@@ -72,6 +72,8 @@
             </table>
         </div>
     </div>
+
+    {{ $dailyPayments->links() }}
 
     <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 mb-4">
         <div class="rounded-lg overflow-hidden border border-green-500 bg-gradient-to-b from-green-50 to-green-100">
@@ -193,15 +195,15 @@
                         </div>
                     </template>
                 </div>
-                <div x-show="totalPages > 1" class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50 shrink-0">
+                <div x-show="totalPages > 1" x-cloak class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50 shrink-0">
                     <span class="text-sm text-gray-500">
                         Showing <span x-text="((currentPage - 1) * perPage) + 1"></span>-<span x-text="Math.min(currentPage * perPage, filteredVouchers.length)"></span> of <span x-text="filteredVouchers.length"></span>
                     </span>
                     <span class="inline-flex items-center gap-2">
                         <span x-show="currentPage === 1" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Previous</span>
-                        <button x-show="currentPage > 1" @click="goToPage(currentPage - 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Previous</button>
+                        <button x-show="currentPage > 1" x-cloak @click="goToPage(currentPage - 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Previous</button>
                         <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5" x-text="currentPage"></span>
-                        <button x-show="currentPage < totalPages" @click="goToPage(currentPage + 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Next</button>
+                        <button x-show="currentPage < totalPages" x-cloak @click="goToPage(currentPage + 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Next</button>
                         <span x-show="currentPage === totalPages" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Next</span>
                     </span>
                 </div>

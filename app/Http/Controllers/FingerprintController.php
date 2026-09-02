@@ -23,6 +23,7 @@ class FingerprintController extends Controller
         $query = Fingerprint::with([
             'booking.customer',
             'booking.district',
+            'booking.currencyRate',
             'booking.passengers',
             'booking.cancelledBooking',
             'fingerprintDetails.passenger',
@@ -99,14 +100,15 @@ class FingerprintController extends Controller
 
         $fingerprints = $query->paginate(10);
 
+        $currencyRateService = app(CurrencyRateService::class);
+        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
+
         $items = collect($fingerprints->items())
-            ->map(function ($fingerprint) {
+            ->map(function ($fingerprint) use ($firstRate) {
                 $booking = $fingerprint->booking;
                 $passengers = $booking->passengers;
 
-                $currencyRateService = app(CurrencyRateService::class);
-
-                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $currencyRateService) {
+                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $firstRate) {
                     $detail = $fingerprint->fingerprintDetails
                         ->where('passenger_id', $passenger->id)
                         ->first();
@@ -117,10 +119,7 @@ class FingerprintController extends Controller
                         ->sortByDesc('created_at')
                         ->first()?->next_date?->format('Y-m-d');
 
-                    $rate = $booking?->currencyRate?->rate
-                        ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
-                        ?? $currencyRateService->getFirstRate()?->rate
-                        ?? 0;
+                    $rate = $booking?->currencyRate?->rate ?? $firstRate;
 
                     return [
                         'fingerprint_id' => $fingerprint->id,
@@ -153,6 +152,7 @@ class FingerprintController extends Controller
                             ? $passenger->flight_date_from->format('d M Y').' → '.$passenger->flight_date_to->format('d M Y')
                             : ($passenger->flight_date_from?->format('d M Y') ?? $passenger->flight_date_to?->format('d M Y') ?? '-'),
                         'actual_flight_date' => $passenger->actual_flight_date?->format('d M Y') ?? '-',
+                        'approved_at' => $detail?->approvedLog?->created_at?->toISOString(),
                     ];
                 });
             })->flatten(1);
@@ -178,6 +178,7 @@ class FingerprintController extends Controller
             'firstCostLog',
             'booking.customer',
             'booking.district',
+            'booking.currencyRate',
             'booking.fingerprintBranch',
             'booking.passengers',
             'booking.cancelledBooking',
@@ -241,16 +242,17 @@ class FingerprintController extends Controller
 
         $fingerprints = $query->paginate(10);
 
+        $currencyRateService = app(CurrencyRateService::class);
+        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
+
         $items = collect($fingerprints->items())
-            ->map(function ($fingerprint) use ($isSuperOrCoAdmin, $isFingerprintStaffRole, $twentyFourHoursAgo) {
+            ->map(function ($fingerprint) use ($isSuperOrCoAdmin, $isFingerprintStaffRole, $twentyFourHoursAgo, $firstRate) {
                 $booking = $fingerprint->booking;
                 if (! $booking) {
                     return collect([]);
                 }
 
                 $passengers = $booking->passengers;
-
-                $currencyRateService = app(CurrencyRateService::class);
 
                 $firstLog = $fingerprint->firstCostLog;
                 $canEditCost = $isSuperOrCoAdmin
@@ -259,7 +261,7 @@ class FingerprintController extends Controller
                         || $firstLog->created_at >= $twentyFourHoursAgo
                     ));
 
-                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $currencyRateService, $canEditCost) {
+                return $passengers->map(function ($passenger) use ($fingerprint, $booking, $passengers, $canEditCost, $firstRate) {
                     $detail = $fingerprint->fingerprintDetails()
                         ->where('passenger_id', $passenger->id)
                         ->first();
@@ -270,10 +272,7 @@ class FingerprintController extends Controller
                     $lastName = $passenger->last_name ?? '';
                     $passengerName = trim($firstName.' '.$lastName) ?: '-';
 
-                    $rate = $booking?->currencyRate?->rate
-                        ?? $currencyRateService->getRateForDate($booking?->created_at)?->rate
-                        ?? $currencyRateService->getFirstRate()?->rate
-                        ?? 0;
+                    $rate = $booking?->currencyRate?->rate ?? $firstRate;
 
                     return [
                         'fingerprint_id' => $fingerprint->id,
@@ -300,6 +299,7 @@ class FingerprintController extends Controller
                         'cancellation_status' => $booking->cancelledBooking?->status?->value,
                         'flight_date_from' => $passenger->flight_date_from?->format('Y-m-d'),
                         'flight_date_to' => $passenger->flight_date_to?->format('Y-m-d'),
+                        'approved_at' => $detail?->approvedLog?->created_at?->toISOString(),
                     ];
                 });
             })->flatten(1);
@@ -352,10 +352,10 @@ class FingerprintController extends Controller
         }
 
         $passengers = $fingerprint->booking->passengers;
-        if ($passengers->isNotEmpty() && $passengers->every(fn ($p) => $p->isOnHold() || $p->isOnCancel())) {
+        if ($passengers->isNotEmpty() && $passengers->every(fn ($p) => $p->isOnHold() || $p->isOnCancel() || $p->is_cancelled)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot update fingerprint for a passenger on Hold or Cancel',
+                'message' => 'Cannot update fingerprint for a cancelled passenger',
             ], 422);
         }
 
@@ -385,10 +385,10 @@ class FingerprintController extends Controller
         }
 
         $passengers = $fingerprint->booking->passengers;
-        if ($passengers->isNotEmpty() && $passengers->every(fn ($p) => $p->isOnHold() || $p->isOnCancel())) {
+        if ($passengers->isNotEmpty() && $passengers->every(fn ($p) => $p->isOnHold() || $p->isOnCancel() || $p->is_cancelled)) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot update fingerprint for a passenger on Hold or Cancel',
+                'message' => 'Cannot update fingerprint for a cancelled passenger',
             ], 422);
         }
 
@@ -436,10 +436,10 @@ class FingerprintController extends Controller
             ], 422);
         }
 
-        if ($fingerprintDetail->passenger?->isOnHold() || $fingerprintDetail->passenger?->isOnCancel()) {
+        if ($fingerprintDetail->passenger?->isOnHold() || $fingerprintDetail->passenger?->isOnCancel() || $fingerprintDetail->passenger?->is_cancelled) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot update fingerprint for a passenger on Hold or Cancel',
+                'message' => 'Cannot update fingerprint for a cancelled passenger',
             ], 422);
         }
 
@@ -455,6 +455,18 @@ class FingerprintController extends Controller
             ], 422);
         }
 
+        if ($fingerprintDetail->status === FingerprintStatus::APPROVED
+            && ($user->hasRole('Fingerprint Admin') || $user->hasRole('Fingerprint Staff'))
+        ) {
+            $approvedLog = $fingerprintDetail->approvedLog;
+            if ($approvedLog && $approvedLog->created_at->diffInMinutes(now()) > 30) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot change status from Approved after 30 minutes. Only Super Admin or Co Admin can do this.',
+                ], 422);
+            }
+        }
+
         if ($validated['status'] === 'done') {
             $fingerprintDetail->update(['status' => FingerprintStatus::DONE]);
 
@@ -465,31 +477,48 @@ class FingerprintController extends Controller
                 ->each(fn (FingerprintDetail $detail) => $detail->update(['status' => FingerprintStatus::DONE]));
         } else {
             if ($validated['status'] === 'approved') {
-                $hasDone = $fingerprintDetail->fingerprint->fingerprintDetails()
-                    ->where('id', '!=', $fingerprintDetail->id)
-                    ->where('status', FingerprintStatus::DONE)
-                    ->exists();
-
-                $targetStatus = $hasDone ? FingerprintStatus::DONE : FingerprintStatus::APPROVED;
-                $fingerprintDetail->update(['status' => $targetStatus]);
+                $fingerprintDetail->update(['status' => FingerprintStatus::APPROVED]);
             } else {
                 $fingerprintDetail->update(['status' => $validated['status']]);
             }
         }
 
-        if ($fingerprintDetail->fingerprint->fingerprintDetails()
+        $allDone = $fingerprintDetail->fingerprint->fingerprintDetails()
             ->where('status', '!=', FingerprintStatus::DONE)
-            ->doesntExist()
-        ) {
-            $fingerprintDetail->fingerprint->fingerprintDetails()
-                ->where('status', FingerprintStatus::DONE)
-                ->get()
-                ->each(fn (FingerprintDetail $d) => $d->update(['status' => FingerprintStatus::APPROVED]));
-        }
+            ->doesntExist();
 
         return response()->json([
             'success' => true,
             'message' => 'Status updated successfully',
+            'all_done' => $allDone,
+        ]);
+    }
+
+    /**
+     * Batch-approve all fingerprint details for a fingerprint
+     * POST /api/fingerprints/{fingerprint}/approve-all
+     */
+    public function approveAll(Fingerprint $fingerprint): JsonResponse
+    {
+        $user = auth()->user();
+        if (! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin') && ! $user->hasRole('Fingerprint Admin') && $fingerprint->assigned_staff_id !== $user->id) {
+            abort(403);
+        }
+
+        if ($fingerprint->booking->is_cancelled) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Cannot approve for a cancelled booking',
+            ], 422);
+        }
+
+        $fingerprint->fingerprintDetails()
+            ->where('status', FingerprintStatus::DONE)
+            ->each(fn (FingerprintDetail $d) => $d->update(['status' => FingerprintStatus::APPROVED]));
+
+        return response()->json([
+            'success' => true,
+            'message' => 'All fingerprints approved successfully',
         ]);
     }
 
@@ -512,11 +541,23 @@ class FingerprintController extends Controller
             ], 422);
         }
 
-        if ($fingerprintDetail->passenger?->isOnHold() || $fingerprintDetail->passenger?->isOnCancel()) {
+        if ($fingerprintDetail->passenger?->isOnHold() || $fingerprintDetail->passenger?->isOnCancel() || $fingerprintDetail->passenger?->is_cancelled) {
             return response()->json([
                 'success' => false,
-                'message' => 'Cannot update fingerprint for a passenger on Hold or Cancel',
+                'message' => 'Cannot update fingerprint for a cancelled passenger',
             ], 422);
+        }
+
+        if ($fingerprintDetail->status === FingerprintStatus::APPROVED
+            && ($user->hasRole('Fingerprint Admin') || $user->hasRole('Fingerprint Staff'))
+        ) {
+            $approvedLog = $fingerprintDetail->approvedLog;
+            if ($approvedLog && $approvedLog->created_at->diffInMinutes(now()) > 30) {
+                return response()->json([
+                    'success' => false,
+                    'message' => 'Cannot hold an Approved fingerprint after 30 minutes. Only Super Admin or Co Admin can do this.',
+                ], 422);
+            }
         }
 
         $validated = $request->validate([
