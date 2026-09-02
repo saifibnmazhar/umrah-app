@@ -1278,7 +1278,7 @@ if ($passenger->ticket_fare_inbound_id) {
                         @click="openVisaResubmitModal({{ $loop->index }})"
                         class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
             </template>
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !['Hold', 'Cancel', 'Delivered'].includes(passengersTicketData[{{ $loop->index }}]?.status)">
                 <button x-show="{{ $canRevertVisa ? 'true' : 'false' }} && passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued'"
                         @click="openVisaRevertModal({{ $loop->index }})"
                         class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Revert</button>
