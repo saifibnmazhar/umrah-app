@@ -1243,7 +1243,7 @@ if ($passenger->ticket_fare_inbound_id) {
             </template>
 
             @if($canEditVisa)
-            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+            <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !['Hold', 'Cancel', 'Delivered'].includes(passengersTicketData[{{ $loop->index }}]?.status)">
                 <button @click="toggleVisaHold({{ $loop->index }})"
                     :disabled="isTogglingVisaHold[{{ $loop->index }}]"
                     class="px-2 py-1 text-xs font-medium rounded transition"
