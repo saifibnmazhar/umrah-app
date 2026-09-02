@@ -59,6 +59,7 @@
             'Date To' => $dateTo,
             'Search' => $search ?? null,
             'Profit/Loss' => isset($profitLossFilter) && $profitLossFilter !== 'all' ? ucfirst($profitLossFilter) : null,
+            'Booking Branch' => $branchName ?? null,
         ]);
     @endphp
 
