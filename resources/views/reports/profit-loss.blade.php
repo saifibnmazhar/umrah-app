@@ -137,13 +137,35 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     <p class="text-sm text-gray-500 mt-1">Overview of profitability by customer and passenger</p>
                 </div>
                 <div class="flex flex-wrap items-center gap-3">
-                    <div class="flex items-center gap-2">
-                        <label class="text-sm font-semibold text-gray-700">From:</label>
-                        <input type="date" x-model="date_from" @change="currentPage = 1; loadDataForTab(); loadSummary()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    <div class="flex gap-1">
+                        <button @click="switchDateFilter('booking')"
+                            :class="activeDateFilter === 'booking'
+                                ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 border border-gray-300'"
+                            class="px-3 py-2 text-sm font-medium rounded-md transition-colors">
+                            Booking Date
+                        </button>
+                        <button @click="switchDateFilter('effective')"
+                            :class="activeDateFilter === 'effective'
+                                ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 border border-gray-300'"
+                            class="px-3 py-2 text-sm font-medium rounded-md transition-colors">
+                            Effective Date
+                        </button>
                     </div>
-                    <div class="flex items-center gap-2">
+                    <div x-show="activeDateFilter === 'booking'" class="flex items-center gap-2">
+                        <label class="text-sm font-semibold text-gray-700">From:</label>
+                        <input type="date" x-model="booking_date_from" @change="resetAndLoad()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div x-show="activeDateFilter === 'booking'" class="flex items-center gap-2">
                         <label class="text-sm font-semibold text-gray-700">To:</label>
-                        <input type="date" x-model="date_to" @change="currentPage = 1; loadDataForTab(); loadSummary()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="date" x-model="booking_date_to" @change="resetAndLoad()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div x-show="activeDateFilter === 'effective'" class="flex items-center gap-2">
+                        <label class="text-sm font-semibold text-gray-700">From:</label>
+                        <input type="date" x-model="effective_date_from" @change="resetAndLoad()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                    </div>
+                    <div x-show="activeDateFilter === 'effective'" class="flex items-center gap-2">
+                        <label class="text-sm font-semibold text-gray-700">To:</label>
+                        <input type="date" x-model="effective_date_to" @change="resetAndLoad()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
                     </div>
                     <div class="flex items-center gap-2">
                         <input type="text" x-model="search" @input="clearSearchTimeout(); searchTimeout = setTimeout(() => { currentPage = 1; loadDataForTab(); loadSummary(); }, 300)" placeholder="Search by Invoice ID, Customer Name, Passenger Name, Passport, Iqama"
@@ -175,16 +197,16 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <div class="border-b border-gray-300 bg-gray-50 px-4 pt-3 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <div class="flex gap-0" id="tabButtons">
-                        <button @click="activeTab = 'customer'; currentPage = 1; loadDataForTab()" :class="activeTab === 'customer' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
+                        <button @click="activeTab = 'customer'; currentPage = 1; if (!booking_date_from && !booking_date_to) { const today = new Date(); const d = new Date(today); d.setDate(today.getDate() - 30); booking_date_from = d.toISOString().split('T')[0]; booking_date_to = today.toISOString().split('T')[0]; activeDateFilter = 'booking'; } loadDataForTab(); loadSummary()" :class="activeTab === 'customer' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
                             Per Customer
                         </button>
-                        <button @click="activeTab = 'passenger'; currentPage = 1; loadDataForTab()" :class="activeTab === 'passenger' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
+                        <button @click="activeTab = 'passenger'; currentPage = 1; loadDataForTab(); loadSummary()" :class="activeTab === 'passenger' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
                             Per Passenger
                         </button>
                     </div>
                     <div class="flex items-center gap-2 pr-1 pb-3">
-                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=customer&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter + '&branch_id=' + branchId" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-700">Customer Print</a>
-                        <a :href="'/reports/profit-loss/print?date_from=' + date_from + '&date_to=' + date_to + '&type=passenger&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter + '&branch_id=' + branchId" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-700">Passenger Print</a>
+                        <a :href="'/reports/profit-loss/print?booking_date_from=' + booking_date_from + '&booking_date_to=' + booking_date_to + '&type=customer&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter + '&branch_id=' + branchId" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-700">Customer Print</a>
+                        <a :href="'/reports/profit-loss/print?booking_date_from=' + booking_date_from + '&booking_date_to=' + booking_date_to + '&type=passenger&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter + '&branch_id=' + branchId" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-700">Passenger Print</a>
                     </div>
                 </div>
             </div>
@@ -216,7 +238,7 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                 </div>
 
                 <div x-show="activeTab === 'passenger'" x-cloak class="animate-fade mb-4">
-                    <div class="grid grid-cols-2 md:grid-cols-3 gap-4">
+                    <div class="grid grid-cols-2 md:grid-cols-5 gap-4">
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Passengers</div>
                             <div class="mt-1 text-lg font-bold text-gray-800" x-text="summary.passenger.count"></div>
@@ -224,6 +246,14 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Package Value</div>
                             <div class="mt-1 text-lg font-bold text-gray-800" x-text="formatCurrency(summary.passenger.package_value)"></div>
+                        </div>
+                        <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Visa Profit</div>
+                            <div class="mt-1 text-lg font-bold" :class="bdClass(summary.passenger.total_visa_profit)" x-text="formatProfitLoss(summary.passenger.total_visa_profit)"></div>
+                        </div>
+                        <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
+                            <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Ticket Profit</div>
+                            <div class="mt-1 text-lg font-bold" :class="bdClass(summary.passenger.total_ticket_profit)" x-text="formatProfitLoss(summary.passenger.total_ticket_profit)"></div>
                         </div>
                         <div class="bg-gray-50 border border-gray-300 rounded-xl shadow-sm p-4">
                             <div class="text-xs font-medium text-gray-500 uppercase tracking-wide">Total Profit</div>
@@ -301,26 +331,28 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 
                 <div x-show="activeTab === 'passenger'" x-cloak class="animate-fade flex flex-col flex-1 min-h-0">
                     <div class="overflow-auto flex-1 min-h-0 scrollbar-thin">
-                        <table class="w-full min-w-[1000px] table-fixed">
+                        <table class="w-full min-w-[1200px] table-fixed">
                             <thead class="sticky top-0 z-10">
                                 <tr class="table-header">
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
                                     <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Customer Name</th>
                                     <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-center border-r border-gray-300">Mobile</th>
                                     <th class="w-36 px-4 py-3 text-sm font-bold text-gray-700 text-left border-r border-gray-300">Passenger Name</th>
-                                    <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Package Value (<span x-text="$store.currency.mode"></span>)</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Package Value (<span x-text="$store.currency.mode"></span>)</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Visa Profit (<span x-text="$store.currency.mode"></span>)</th>
+                                    <th class="w-28 px-4 py-3 text-sm font-bold text-gray-700 text-right border-r border-gray-300">Ticket Profit (<span x-text="$store.currency.mode"></span>)</th>
                                     <th class="w-32 px-4 py-3 text-sm font-bold text-gray-700 text-right">Total Profit (<span x-text="$store.currency.mode"></span>)</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 <template x-if="loading">
                                     <tr>
-                                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
+                                        <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">Loading...</td>
                                     </tr>
                                 </template>
                                 <template x-if="!loading && filteredPassengers.length === 0">
                                     <tr>
-                                        <td colspan="6" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
+                                        <td colspan="8" class="px-4 py-8 text-center text-sm text-gray-500">No data found</td>
                                     </tr>
                                 </template>
                                 <template x-for="(row, index) in paginatedPassengers" :key="index">
@@ -330,6 +362,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-center text-gray-600" x-text="row.mobile"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-gray-700" x-text="row.passenger_name"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium text-gray-700" x-text="formatCurrency(row.package_value)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium" :class="bdClass(row.breakdown?.visa_profit)" x-text="formatProfitLoss(row.breakdown?.visa_profit || 0)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium" :class="bdClass(row.breakdown?.ticket_profit)" x-text="formatProfitLoss(row.breakdown?.ticket_profit || 0)"></td>
                                         <td class="px-4 py-3 text-sm text-right cursor-pointer hover:bg-blue-50 transition-colors"
                                             :class="row.total_profit >= 0 ? 'amount-profit' : 'amount-loss'"
                                             @click="openBreakdown(row)" x-text="formatProfitLoss(row.total_profit)"></td>
@@ -588,8 +622,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
 <script>
 function profitLossReport() {
     return {
-        date_from: '',
-        date_to: '',
+        booking_date_from: '',
+        booking_date_to: '',
+        effective_date_from: '',
+        effective_date_to: '',
+        activeDateFilter: 'effective',
         search: '',
         profitLossFilter: 'all',
         branchId: '',
@@ -602,7 +639,7 @@ function profitLossReport() {
         perPage: 25,
         summary: {
             customer: { count: 0, package_value: 0, fingerprint_profit: 0, passenger_profit_total: 0, discount: 0, total_profit: 0 },
-            passenger: { count: 0, package_value: 0, total_profit: 0 }
+            passenger: { count: 0, package_value: 0, total_visa_profit: 0, total_ticket_profit: 0, total_profit: 0 }
         },
         summaryLoading: false,
         searchTimeout: null,
@@ -642,10 +679,31 @@ function profitLossReport() {
 
         setDefaultDates() {
             const today = new Date();
-            const firstDay = new Date(today);
-            firstDay.setDate(today.getDate() - 30);
-            this.date_from = firstDay.toISOString().split('T')[0];
-            this.date_to = today.toISOString().split('T')[0];
+            const thirtyDaysAgo = new Date(today);
+            thirtyDaysAgo.setDate(today.getDate() - 30);
+            this.effective_date_from = thirtyDaysAgo.toISOString().split('T')[0];
+            this.effective_date_to = today.toISOString().split('T')[0];
+            this.activeDateFilter = 'effective';
+        },
+
+        switchDateFilter(mode) {
+            this.activeDateFilter = mode;
+            if (mode === 'booking') {
+                this.effective_date_from = '';
+                this.effective_date_to = '';
+            } else {
+                this.booking_date_from = '';
+                this.booking_date_to = '';
+            }
+            this.currentPage = 1;
+            this.loadDataForTab();
+            this.loadSummary();
+        },
+
+        resetAndLoad() {
+            this.currentPage = 1;
+            this.loadDataForTab();
+            this.loadSummary();
         },
 
         clearSearchTimeout() {
@@ -659,8 +717,13 @@ function profitLossReport() {
             this.summaryLoading = true;
             try {
                 const params = new URLSearchParams();
-                if (this.date_from) params.set('date_from', this.date_from);
-                if (this.date_to) params.set('date_to', this.date_to);
+                if (this.activeDateFilter === 'booking') {
+                    if (this.booking_date_from) params.set('booking_date_from', this.booking_date_from);
+                    if (this.booking_date_to) params.set('booking_date_to', this.booking_date_to);
+                } else {
+                    if (this.effective_date_from) params.set('effective_date_from', this.effective_date_from);
+                    if (this.effective_date_to) params.set('effective_date_to', this.effective_date_to);
+                }
                 if (this.search) params.set('search', this.search);
                 if (this.profitLossFilter !== 'all') params.set('profit_loss_filter', this.profitLossFilter);
                 if (this.branchId) params.set('branch_id', this.branchId);
@@ -681,8 +744,13 @@ function profitLossReport() {
             this.loading = true;
             try {
                 const params = new URLSearchParams();
-                if (this.date_from) params.set('date_from', this.date_from);
-                if (this.date_to) params.set('date_to', this.date_to);
+                if (this.activeDateFilter === 'booking') {
+                    if (this.booking_date_from) params.set('booking_date_from', this.booking_date_from);
+                    if (this.booking_date_to) params.set('booking_date_to', this.booking_date_to);
+                } else {
+                    if (this.effective_date_from) params.set('effective_date_from', this.effective_date_from);
+                    if (this.effective_date_to) params.set('effective_date_to', this.effective_date_to);
+                }
                 if (this.search) params.set('search', this.search);
                 if (this.profitLossFilter !== 'all') params.set('profit_loss_filter', this.profitLossFilter);
                 if (this.branchId) params.set('branch_id', this.branchId);
@@ -822,8 +890,8 @@ function profitLossReport() {
 
         exportPDF() {
             const params = new URLSearchParams();
-            if (this.date_from) params.set('date_from', this.date_from);
-            if (this.date_to) params.set('date_to', this.date_to);
+            if (this.booking_date_from) params.set('booking_date_from', this.booking_date_from);
+            if (this.booking_date_to) params.set('booking_date_to', this.booking_date_to);
             window.open(`/reports/profit-loss/pdf?${params}`, '_blank');
         }
     };

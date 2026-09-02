@@ -12,6 +12,7 @@ use App\Models\Booking;
 use App\Models\Fingerprint;
 use App\Models\Passenger;
 use App\Models\TicketFare;
+use App\Models\VisaUpdateLog;
 
 class ProfitCalculationService
 {
@@ -22,8 +23,21 @@ class ProfitCalculationService
 
         $breakdown = $this->getPassengerProfitBreakdown($passenger);
 
-        $passenger->profit = round($breakdown['total'], 6);
-        $passenger->saveQuietly();
+        $visaEffectiveAt = $this->determineVisaEffectiveDate($passenger);
+        $ticketEffectiveAt = $this->determineTicketEffectiveDate($passenger);
+        $serviceChargeEffectiveAt = ($visaEffectiveAt && $ticketEffectiveAt)
+            ? max($visaEffectiveAt, $ticketEffectiveAt)
+            : null;
+
+        $passenger->updateQuietly(array_merge(
+            $breakdown,
+            [
+                'profit' => $breakdown['total'],
+                'visa_profit_effective_at' => $visaEffectiveAt,
+                'ticket_profit_effective_at' => $ticketEffectiveAt,
+                'service_charge_effective_at' => $serviceChargeEffectiveAt,
+            ]
+        ));
 
         return (float) $passenger->profit;
     }
@@ -91,6 +105,12 @@ class ProfitCalculationService
         $reIssueCost = $this->calculateReIssueCost($passenger);
         $serviceCharge = $this->calculateServiceCharge($passenger);
 
+        $visaEffectiveAt = $this->determineVisaEffectiveDate($passenger);
+        $ticketEffectiveAt = $this->determineTicketEffectiveDate($passenger);
+        $serviceChargeEffectiveAt = ($visaEffectiveAt && $ticketEffectiveAt)
+            ? max($visaEffectiveAt, $ticketEffectiveAt)
+            : null;
+
         return [
             'visa_profit' => round($visaProfit, 6),
             'ticket_profit' => round($ticketProfit, 6),
@@ -109,6 +129,9 @@ class ProfitCalculationService
                     - $reIssueCost,
                 6
             ),
+            'visa_profit_effective_at' => $visaEffectiveAt,
+            'ticket_profit_effective_at' => $ticketEffectiveAt,
+            'service_charge_effective_at' => $serviceChargeEffectiveAt,
         ];
     }
 
@@ -402,6 +425,43 @@ class ProfitCalculationService
         }
 
         return (float) ($passenger->booking->package->service_charge ?? 0);
+    }
+
+    private function determineVisaEffectiveDate(Passenger $passenger): ?string
+    {
+        if (! $this->isVisaProfitEffective($passenger)) {
+            return null;
+        }
+
+        $visa = $passenger->visaSubmission;
+        if (! $visa) {
+            return null;
+        }
+
+        $log = VisaUpdateLog::where('visa_submission_id', $visa->id)
+            ->where('new_values->status', 'issued')
+            ->latest('created_at')
+            ->first();
+
+        if ($log) {
+            return $log->created_at->toDateTimeString();
+        }
+
+        return $visa->created_at?->toDateTimeString();
+    }
+
+    private function determineTicketEffectiveDate(Passenger $passenger): ?string
+    {
+        if (! $this->isTicketProfitEffective($passenger)) {
+            return null;
+        }
+
+        $tickets = $this->regularTickets($passenger);
+        if ($tickets->isEmpty()) {
+            return null;
+        }
+
+        return $tickets->max('issued_date')?->toDateTimeString();
     }
 
     private function isVisaProfitEffective(Passenger $passenger): bool

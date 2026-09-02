@@ -27,8 +27,10 @@ use App\Models\TravelClass;
 use App\Models\User;
 use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
+use App\Models\VisaUpdateLog;
 use App\Services\ProfitCalculationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Tests\TestCase;
 
 class ProfitCalculationServiceTest extends TestCase
@@ -915,5 +917,88 @@ class ProfitCalculationServiceTest extends TestCase
         $this->service->backfillAllBookings();
 
         $this->assertDatabaseHas('bookings', ['id' => $booking->id, 'profit' => 4550.0]);
+    }
+
+    /** @test */
+    public function test_visa_profit_effective_date_comes_from_visa_update_log(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $passenger = $this->addPassenger($user, $deps, $booking);
+        $visa = $passenger->visaSubmission;
+
+        $createdAt = now()->subDays(5);
+        $log = VisaUpdateLog::create([
+            'visa_submission_id' => $visa->id,
+            'user_id' => $user->id,
+            'action' => 'update',
+            'new_values' => ['status' => 'issued'],
+            'created_at' => $createdAt,
+        ]);
+
+        $breakdown = $this->service->getPassengerProfitBreakdown($passenger->refresh());
+
+        $this->assertNotNull($breakdown['visa_profit_effective_at']);
+        $this->assertSame($log->refresh()->created_at->toDateTimeString(), $breakdown['visa_profit_effective_at']);
+    }
+
+    /** @test */
+    public function test_visa_not_issued_means_effective_at_null(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $passenger = $this->addPassenger($user, $deps, $booking);
+
+        $passenger->visaSubmission->update(['status' => 'submitted']);
+
+        $breakdown = $this->service->getPassengerProfitBreakdown($passenger->refresh());
+
+        $this->assertNull($breakdown['visa_profit_effective_at']);
+    }
+
+    /** @test */
+    public function test_ticket_profit_effective_date_uses_latest_issued_date(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $passenger = $this->addPassenger($user, $deps, $booking);
+
+        $oldDate = now()->subDays(10)->toDateString();
+        $newDate = now()->subDays(3)->toDateString();
+
+        $this->addRegularTicket($user, $deps, $passenger, ['issued_date' => $oldDate]);
+        $passenger->allIssuedTickets()->first()->update(['issued_date' => $newDate]);
+
+        $breakdown = $this->service->getPassengerProfitBreakdown($passenger->refresh());
+
+        $this->assertSame($newDate, Carbon::parse($breakdown['ticket_profit_effective_at'])->toDateString());
+    }
+
+    /** @test */
+    public function test_recalculate_stores_component_profits_and_effective_dates(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $passenger = $this->addPassenger($user, $deps, $booking);
+
+        $this->service->recalculatePassengerProfit($passenger->refresh());
+
+        $this->assertDatabaseHas('passengers', [
+            'id' => $passenger->id,
+            'visa_profit' => 850.0,
+            'ticket_profit' => 3000.0,
+            'service_charge' => 500.0,
+            'profit' => 4350.0,
+        ]);
+
+        $fresh = $passenger->refresh();
+
+        $this->assertNotNull($fresh->visa_profit_effective_at);
+        $this->assertNotNull($fresh->ticket_profit_effective_at);
+        $this->assertNotNull($fresh->service_charge_effective_at);
     }
 }

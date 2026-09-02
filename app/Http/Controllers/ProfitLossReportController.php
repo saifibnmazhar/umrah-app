@@ -32,26 +32,67 @@ class ProfitLossReportController extends Controller
             ->where('is_cancelled', false)
             ->whereHas('invoice');
 
-        if ($request->date_from) {
-            $query->whereDate('created_at', '>=', $request->date_from);
+        if ($request->booking_date_from) {
+            $query->whereDate('created_at', '>=', $request->booking_date_from);
         }
-        if ($request->date_to) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+        if ($request->booking_date_to) {
+            $query->whereDate('created_at', '<=', $request->booking_date_to);
         }
 
         return $query->get();
     }
 
-    private function applyDateFilters($query, Request $request)
+    private function applyDateFilters($query, Request $request): void
     {
-        if ($request->date_from) {
-            $query->whereDate('bookings.created_at', '>=', $request->date_from);
+        if ($request->booking_date_from) {
+            $query->whereDate('bookings.created_at', '>=', $request->booking_date_from);
         }
-        if ($request->date_to) {
-            $query->whereDate('bookings.created_at', '<=', $request->date_to);
+        if ($request->booking_date_to) {
+            $query->whereDate('bookings.created_at', '<=', $request->booking_date_to);
+        }
+    }
+
+    private function applyEffectiveDateFilter($query, Request $request): void
+    {
+        if ($request->effective_date_from || $request->effective_date_to) {
+            $query->where(function ($q) use ($request) {
+                if ($request->effective_date_from) {
+                    $q->where('passengers.visa_profit_effective_at', '>=', $request->effective_date_from)
+                        ->orWhere('passengers.ticket_profit_effective_at', '>=', $request->effective_date_from)
+                        ->orWhere('passengers.service_charge_effective_at', '>=', $request->effective_date_from);
+                }
+                if ($request->effective_date_to) {
+                    $q->where('passengers.visa_profit_effective_at', '<=', $request->effective_date_to)
+                        ->orWhere('passengers.ticket_profit_effective_at', '<=', $request->effective_date_to)
+                        ->orWhere('passengers.service_charge_effective_at', '<=', $request->effective_date_to);
+                }
+            });
+        }
+    }
+
+    private function calculateEffectiveDateProfit(Passenger $passenger, string $dateFrom, string $dateTo): float
+    {
+        $total = 0.0;
+
+        if ($passenger->visa_profit_effective_at
+            && $passenger->visa_profit_effective_at->toDateTimeString() >= $dateFrom
+            && $passenger->visa_profit_effective_at->toDateTimeString() <= $dateTo) {
+            $total += (float) $passenger->visa_profit;
         }
 
-        return $query;
+        if ($passenger->ticket_profit_effective_at
+            && $passenger->ticket_profit_effective_at->toDateTimeString() >= $dateFrom
+            && $passenger->ticket_profit_effective_at->toDateTimeString() <= $dateTo) {
+            $total += (float) $passenger->ticket_profit;
+        }
+
+        if ($passenger->service_charge_effective_at
+            && $passenger->service_charge_effective_at->toDateTimeString() >= $dateFrom
+            && $passenger->service_charge_effective_at->toDateTimeString() <= $dateTo) {
+            $total += (float) $passenger->service_charge;
+        }
+
+        return round($total, 6);
     }
 
     private function applyCustomerSearch($query, string $search)
@@ -132,13 +173,36 @@ class ProfitLossReportController extends Controller
             ->whereNotNull('bookings.invoice_id')
             ->when($search, fn ($q) => $this->applyPassengerSearch($q, $search))
             ->when($filter === 'profit', fn ($q) => $q->where('passengers.profit', '>=', 0))
-            ->when($filter === 'loss', fn ($q) => $q->where('passengers.profit', '<', 0))
-            ->selectRaw('
+            ->when($filter === 'loss', fn ($q) => $q->where('passengers.profit', '<', 0));
+
+        $isEffectiveMode = $request->filled('effective_date_from') || $request->filled('effective_date_to');
+
+        if ($isEffectiveMode) {
+            $this->applyEffectiveDateFilter($passenger, $request);
+            $dateFrom = $request->effective_date_from ?? '1970-01-01';
+            $dateTo = $request->effective_date_to ?? now()->toDateTimeString();
+            $passenger->selectRaw('
                 COUNT(*) as count,
                 COALESCE(SUM(passengers.package_value), 0) as package_value,
+                COALESCE(SUM(CASE WHEN passengers.visa_profit_effective_at BETWEEN ? AND ? THEN passengers.visa_profit ELSE 0 END), 0) as total_visa_profit,
+                COALESCE(SUM(CASE WHEN passengers.ticket_profit_effective_at BETWEEN ? AND ? THEN passengers.ticket_profit ELSE 0 END), 0) as total_ticket_profit,
+                COALESCE(SUM(CASE WHEN (
+                    (passengers.visa_profit_effective_at BETWEEN ? AND ?)
+                    OR (passengers.ticket_profit_effective_at BETWEEN ? AND ?)
+                    OR (passengers.service_charge_effective_at BETWEEN ? AND ?)
+                ) THEN passengers.profit ELSE 0 END), 0) as total_profit
+            ', [$dateFrom, $dateTo, $dateFrom, $dateTo, $dateFrom, $dateTo, $dateFrom, $dateTo, $dateFrom, $dateTo]);
+        } else {
+            $this->applyDateFilters($passenger, $request);
+            $passenger->selectRaw('
+                COUNT(*) as count,
+                COALESCE(SUM(passengers.package_value), 0) as package_value,
+                COALESCE(SUM(passengers.visa_profit), 0) as total_visa_profit,
+                COALESCE(SUM(passengers.ticket_profit), 0) as total_ticket_profit,
                 COALESCE(SUM(passengers.profit), 0) as total_profit
             ');
-        $this->applyDateFilters($passenger, $request);
+        }
+
         $this->applyBranchFilter($passenger, $request);
         $passenger = $passenger->first();
 
@@ -154,6 +218,8 @@ class ProfitLossReportController extends Controller
             'passenger' => [
                 'count' => (int) $passenger->count,
                 'package_value' => (float) $passenger->package_value,
+                'total_visa_profit' => (float) $passenger->total_visa_profit,
+                'total_ticket_profit' => (float) $passenger->total_ticket_profit,
                 'total_profit' => (float) $passenger->total_profit,
             ],
         ]);
@@ -212,12 +278,19 @@ class ProfitLossReportController extends Controller
         $profitService = app(ProfitCalculationService::class);
 
         if ($tab === 'passenger') {
+            $isEffectiveMode = $request->filled('effective_date_from') || $request->filled('effective_date_to');
+
             $query = Passenger::query()
                 ->join('bookings', 'passengers.booking_id', '=', 'bookings.id')
                 ->leftJoin('customers', 'customers.id', '=', 'bookings.customer_id')
                 ->where('bookings.is_cancelled', false)
                 ->whereNotNull('bookings.invoice_id');
-            $this->applyDateFilters($query, $request);
+
+            if ($isEffectiveMode) {
+                $this->applyEffectiveDateFilter($query, $request);
+            } else {
+                $this->applyDateFilters($query, $request);
+            }
 
             if ($search) {
                 $this->applyPassengerSearch($query, $search);
@@ -239,7 +312,21 @@ class ProfitLossReportController extends Controller
                 ->get();
 
             $passengerMap = $bookings->flatMap->passengers->keyBy('id');
-            $rows = $ids->map(fn ($id) => $this->mapPassenger($passengerMap->get($id), $profitService))->values();
+
+            $rows = $ids->map(function ($id) use ($passengerMap, $profitService, $isEffectiveMode, $request) {
+                $passenger = $passengerMap->get($id);
+                $row = $this->mapPassenger($passenger, $profitService);
+
+                if ($isEffectiveMode) {
+                    $row['total_profit'] = $this->calculateEffectiveDateProfit(
+                        $passenger,
+                        $request->effective_date_from ?? '1970-01-01',
+                        $request->effective_date_to ?? now()->toDateTimeString()
+                    );
+                }
+
+                return $row;
+            })->values();
 
             return response()->json([
                 'data' => $rows->toArray(),
@@ -287,8 +374,8 @@ class ProfitLossReportController extends Controller
     {
         $type = $request->get('type', 'customer');
         $currency = $request->get('currency', 'SAR');
-        $dateFrom = $request->date_from;
-        $dateTo = $request->date_to;
+        $dateFrom = $request->booking_date_from;
+        $dateTo = $request->booking_date_to;
         $search = trim((string) $request->search);
         $profitLossFilter = $request->profit_loss_filter;
 
@@ -296,11 +383,11 @@ class ProfitLossReportController extends Controller
             ->where('is_cancelled', false)
             ->whereHas('invoice');
 
-        if ($request->date_from) {
-            $query->whereDate('created_at', '>=', $request->date_from);
+        if ($request->booking_date_from) {
+            $query->whereDate('created_at', '>=', $request->booking_date_from);
         }
-        if ($request->date_to) {
-            $query->whereDate('created_at', '<=', $request->date_to);
+        if ($request->booking_date_to) {
+            $query->whereDate('created_at', '<=', $request->booking_date_to);
         }
         $this->applyBranchFilter($query, $request);
         $bookings = $query->get();
