@@ -573,3 +573,138 @@ WHERE bookings.created_at BETWEEN :booking_date_from AND :booking_date_to
 - [ ] All existing tests pass
 - [ ] New tests for effective dates and date filtering
 - [ ] Pint clean
+
+---
+
+## Appendix A: Post-Implementation Bugs
+
+### Bug 1: `applyEffectiveDateFilter()` — Incorrect OR Logic (HIGH)
+
+**File:** `app/Http/Controllers/ProfitLossReportController.php:55-71`
+
+**Current (broken):**
+```php
+$query->where(function ($q) use ($request) {
+    if ($request->effective_date_from) {
+        $q->where('passengers.visa_profit_effective_at', '>=', $request->effective_date_from)
+            ->orWhere('passengers.ticket_profit_effective_at', '>=', $request->effective_date_from)
+            ->orWhere('passengers.service_charge_effective_at', '>=', $request->effective_date_from);
+    }
+    if ($request->effective_date_to) {
+        $q->where('passengers.visa_profit_effective_at', '<=', $request->effective_date_to)
+            ->orWhere('passengers.ticket_profit_effective_at', '<=', $request->effective_date_to)
+            ->orWhere('passengers.service_charge_effective_at', '<=', $request->effective_date_to);
+    }
+});
+```
+
+**Problem:** The from-block and to-block are wrapped in the same `where()` closure with implicit AND between them. But the OR inside each block means a passenger can match `visa_profit_effective_at >= from` (true) via the first block, then match `ticket_profit_effective_at <= to` (true) via the second block — even if the ticket's effective date is far outside the range. Cross-column false positives.
+
+**Example:** `from=2024-03-01, to=2024-06-30`. Passenger has `visa_profit_effective_at = 2024-01-15` (before from) and `ticket_profit_effective_at = 2024-08-15` (after to). Block 1: `ticket >= 2024-03-01` (true, 8月 ≥ 3月). Block 2: `visa <= 2024-06-30` (true, 1月 ≤ 6月). WHERE evaluates true. **False positive** — no component is actually in range.
+
+**Fix:** Use `whereBetween` per column with OR between columns:
+```php
+private function applyEffectiveDateFilter($query, Request $request): void
+{
+    if ($request->effective_date_from || $request->effective_date_to) {
+        $from = $request->effective_date_from ?? '1970-01-01';
+        $to = $request->effective_date_to ?? now()->toDateTimeString();
+        $query->where(function ($q) use ($from, $to) {
+            $q->whereBetween('passengers.visa_profit_effective_at', [$from, $to])
+              ->orWhereBetween('passengers.ticket_profit_effective_at', [$from, $to])
+              ->orWhereBetween('passengers.service_charge_effective_at', [$from, $to]);
+        });
+    }
+}
+```
+
+---
+
+### Bug 2: `summary()` — Redundant CASE WHEN with WHERE (LOW)
+
+**File:** `app/Http/Controllers/ProfitLossReportController.php:180-194`
+
+The effective date branch calls `applyEffectiveDateFilter($passenger, $request)` to add a WHERE clause, then uses CASE WHEN with the same conditions in SELECT. Since WHERE already filters rows, the CASE WHEN is always true for surviving rows.
+
+**Impact:** No incorrect results — just dead code. The CASE WHEN could be simplified to always return the profit value since rows are already filtered.
+
+**Fix:** Remove the CASE WHEN and just sum the columns directly:
+```php
+$passenger->selectRaw('
+    COUNT(*) as count,
+    COALESCE(SUM(passengers.package_value), 0) as package_value,
+    COALESCE(SUM(passengers.visa_profit), 0) as total_visa_profit,
+    COALESCE(SUM(passengers.ticket_profit), 0) as total_ticket_profit,
+    COALESCE(SUM(passengers.profit), 0) as total_profit
+');
+```
+
+**Or** remove `applyEffectiveDateFilter()` from summary and keep the CASE WHEN (the CASE WHEN becomes the filter). Either approach works — just be consistent.
+
+---
+
+### Bug 3: `print()` — Ignores Effective Date Filter (MEDIUM)
+
+**File:** `app/Http/Controllers/ProfitLossReportController.php:373-435` + `resources/views/reports/profit-loss.blade.php:208-209`
+
+The `print()` method only handles `booking_date_from`/`booking_date_to`. The print links don't pass effective date parameters. When a user is in effective date mode, print shows all data or booking-date-filtered data, not what they see on screen.
+
+**Fix in controller:**
+```php
+public function print(Request $request)
+{
+    // ... existing code ...
+    if ($request->booking_date_from) {
+        $query->whereDate('created_at', '>=', $request->booking_date_from);
+    }
+    if ($request->booking_date_to) {
+        $query->whereDate('created_at', '<=', $request->booking_date_to);
+    }
+    // ADD: effective date handling for passenger type
+    // (customer type always uses booking date per plan)
+}
+```
+
+**Fix in Blade (lines 208-209):** Pass effective date params in print links:
+```html
+<a :href="'/reports/profit-loss/print?...&effective_date_from=' + effective_date_from + '&effective_date_to=' + effective_date_to + '...'">
+```
+
+---
+
+### Bug 4: Customer Tab — No Default Dates on Page Load (MEDIUM)
+
+**File:** `resources/views/reports/profit-loss.blade.php:680-687`
+
+`setDefaultDates()` only sets effective date defaults. On page load, `activeTab` is `'customer'` (line 634) but `booking_date_from`/`booking_date_to` are empty. The customer tab shows all data instead of the last 30 days.
+
+**Fix:** Set booking date defaults in `setDefaultDates()`:
+```javascript
+setDefaultDates() {
+    const today = new Date();
+    const thirtyDaysAgo = new Date(today);
+    thirtyDaysAgo.setDate(today.getDate() - 30);
+
+    // Effective date defaults (for passenger tab)
+    this.effective_date_from = thirtyDaysAgo.toISOString().split('T')[0];
+    this.effective_date_to = today.toISOString().split('T')[0];
+    this.activeDateFilter = 'effective';
+
+    // Booking date defaults (for customer tab)
+    this.booking_date_from = thirtyDaysAgo.toISOString().split('T')[0];
+    this.booking_date_to = today.toISOString().split('T')[0];
+},
+```
+
+---
+
+## Appendix B: Bug Fix Implementation Order
+
+| Step | Task | File | Bug # |
+|---|---|---|---|
+| 1 | Fix `applyEffectiveDateFilter()` — use `whereBetween` per column | `ProfitLossReportController.php` | #1 |
+| 2 | Fix `summary()` — remove redundant CASE WHEN | `ProfitLossReportController.php` | #2 |
+| 3 | Fix `print()` — add effective date support | `ProfitLossReportController.php` | #3 |
+| 4 | Fix print links — pass effective date params | `profit-loss.blade.php` | #3 |
+| 5 | Fix `setDefaultDates()` — set booking date defaults | `profit-loss.blade.php` | #4 |
+| 6 | Run Pint | `vendor/bin/pint` | — |
