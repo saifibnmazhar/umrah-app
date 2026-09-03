@@ -4,6 +4,7 @@ namespace App\Observers;
 
 use App\Models\VisaSubmission;
 use App\Models\VisaUpdateLog;
+use App\Services\ProfitCalculationService;
 use Illuminate\Support\Facades\Auth;
 
 class VisaSubmissionObserver
@@ -20,24 +21,36 @@ class VisaSubmissionObserver
         'status',
     ];
 
+    protected array $profitFields = [
+        'status',
+        'net_visa_cost',
+        'agent_commission',
+        'additional_cost',
+        'visa_selling_price_id',
+    ];
+
     public function created(VisaSubmission $visaSubmission): void
     {
+        $this->recalculateProfit($visaSubmission);
+
         $visaSubmission->passenger->syncComputedStatus();
     }
 
     public function updated(VisaSubmission $visaSubmission): void
     {
+        $changedTracked = array_intersect_key(
+            $visaSubmission->getDirty(),
+            array_flip($this->trackedFields)
+        );
+
+        if ($visaSubmission->wasChanged($this->profitFields)) {
+            $this->recalculateProfit($visaSubmission);
+        }
+
         $visaSubmission->passenger->syncComputedStatus();
 
         $user = Auth::user();
-        if (!$user) {
-            return;
-        }
-
-        $dirty = $visaSubmission->getDirty();
-        $changedTracked = array_intersect_key($dirty, array_flip($this->trackedFields));
-
-        if (empty($changedTracked)) {
+        if (! $user || empty($changedTracked)) {
             return;
         }
 
@@ -57,10 +70,10 @@ class VisaSubmissionObserver
 
     protected function determineAction(array $oldValues, array $newValues): string
     {
-        if (isset($newValues['status'])) {
-            $oldStatus = $oldValues['status'] ?? null;
-            $newStatus = $newValues['status'];
+        $oldStatus = $this->statusValue($oldValues['status'] ?? null);
+        $newStatus = $this->statusValue($newValues['status'] ?? null);
 
+        if ($newStatus !== null) {
             if ($oldStatus === 'pending' && $newStatus === 'submitted') {
                 return 'submitted';
             }
@@ -70,8 +83,29 @@ class VisaSubmissionObserver
             if ($newStatus === 'cancelled') {
                 return 'cancelled';
             }
+            if ($oldStatus === 'issued' && $newStatus === 'submitted') {
+                return 'reverted';
+            }
         }
 
         return 'edited';
+    }
+
+    protected function statusValue(mixed $status): ?string
+    {
+        if ($status instanceof \UnitEnum) {
+            return isset($status->value) ? (string) $status->value : $status->name;
+        }
+
+        return is_scalar($status) ? (string) $status : null;
+    }
+
+    protected function recalculateProfit(VisaSubmission $visaSubmission): void
+    {
+        $passenger = $visaSubmission->passenger;
+
+        if ($passenger?->booking) {
+            app(ProfitCalculationService::class)->recalculateBookingProfit($passenger->booking);
+        }
     }
 }

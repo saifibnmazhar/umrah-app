@@ -2,18 +2,18 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Payment;
-use App\Models\User;
-use App\Models\CurrencyRate;
 use App\Models\Bank;
 use App\Models\Branch;
-use App\Models\TicketAgent;
-use App\Models\VisaAgent;
-use App\Models\CommissionAgent;
 use App\Models\CancelledSubmission;
-use App\Models\VisaSubmission;
+use App\Models\CommissionAgent;
+use App\Models\CurrencyRate;
 use App\Models\IssuedTicket;
+use App\Models\Payment;
+use App\Models\TicketAgent;
 use App\Models\TransactionType;
+use App\Models\User;
+use App\Models\VisaAgent;
+use App\Models\VisaSubmission;
 use App\Models\Voucher;
 use App\Services\VoucherService;
 use Illuminate\Http\Request;
@@ -58,7 +58,7 @@ class PaymentController extends Controller
         $ticketAgents = TicketAgent::orderBy('name')->get();
         $visaAgents = VisaAgent::orderBy('name')->get();
         $commissionAgents = CommissionAgent::orderBy('name')->get();
-        
+
         return view('payments.create', compact(
             'currentCurrencyRate', 'banks', 'branches', 'transactionTypes',
             'ticketPaymentTypeId', 'visaPaymentTypeId', 'commissionPaymentTypeId',
@@ -131,6 +131,7 @@ class PaymentController extends Controller
     {
         $payment->load(['user', 'currencyRate', 'bank', 'senderBank', 'ticketAgent', 'visaAgent', 'commissionAgent', 'branch']);
         $rate = $payment->currencyRate?->rate ?? 0;
+
         return view('payments.show', compact('payment', 'rate'));
     }
 
@@ -182,17 +183,17 @@ class PaymentController extends Controller
         if ($payment->visa_agent_id) {
             $previousPayments = Payment::where('visa_agent_id', $payment->visa_agent_id)
                 ->where('id', '!=', $payment->id)
-                ->whereHas('voucher.transactionType', fn($q) => $q->where('name', 'Visa Agent Payment'))
+                ->whereHas('voucher.transactionType', fn ($q) => $q->where('name', 'Visa Agent Payment'))
                 ->sum('amount');
         } elseif ($payment->ticket_agent_id) {
             $previousPayments = Payment::where('ticket_agent_id', $payment->ticket_agent_id)
                 ->where('id', '!=', $payment->id)
-                ->whereHas('voucher.transactionType', fn($q) => $q->where('name', 'Ticket Agent Payment'))
+                ->whereHas('voucher.transactionType', fn ($q) => $q->where('name', 'Ticket Agent Payment'))
                 ->sum('amount');
         } elseif ($payment->commission_agent_id) {
             $previousPayments = Payment::where('commission_agent_id', $payment->commission_agent_id)
                 ->where('id', '!=', $payment->id)
-                ->whereHas('voucher.transactionType', fn($q) => $q->where('name', 'Commission Agent Payment'))
+                ->whereHas('voucher.transactionType', fn ($q) => $q->where('name', 'Commission Agent Payment'))
                 ->sum('amount');
         }
 
@@ -200,7 +201,7 @@ class PaymentController extends Controller
         $dueAmount = $previousDueAmount - $paidAmount;
 
         $currencyRate = $rate;
-        $lineItemsBdt = collect($lineItems)->map(fn($item) => [
+        $lineItemsBdt = collect($lineItems)->map(fn ($item) => [
             'description' => $item['description'],
             'amount' => $item['amount'],
             'bdt_amount' => $item['amount'] * ($rate > 0 ? $rate : 0),
@@ -231,7 +232,7 @@ class PaymentController extends Controller
         $ticketAgents = TicketAgent::orderBy('name')->get();
         $visaAgents = VisaAgent::orderBy('name')->get();
         $commissionAgents = CommissionAgent::orderBy('name')->get();
-        
+
         return view('payments.edit', compact(
             'payment', 'currentCurrencyRate', 'banks', 'branches', 'transactionTypes',
             'ticketPaymentTypeId', 'visaPaymentTypeId', 'commissionPaymentTypeId',
@@ -302,6 +303,7 @@ class PaymentController extends Controller
     {
         try {
             $payment->delete();
+
             return redirect()->route('payments.index')->with('success', 'Payment deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete payment.');

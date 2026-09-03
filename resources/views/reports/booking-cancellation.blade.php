@@ -68,7 +68,7 @@
         </div>
     </div>
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 shadow-sm flex flex-col">
+    <div class="bg-white border-x-2 border-b-2 border-gray-400 shadow-sm flex flex-col" style="max-height: calc(100vh - 280px);">
         <div class="overflow-auto flex-1 min-h-0">
             <table class="w-full min-w-[1600px] text-sm">
                 <thead class="sticky top-0 z-10 bg-gray-100">
@@ -142,18 +142,22 @@
             </table>
         </div>
 
-        <div class="flex items-center justify-between px-4 py-3 border-t border-gray-200" x-show="!loading && pagination.last_page > 1">
-            <span class="text-xs text-gray-600" x-text="`Page ${pagination.current_page} of ${pagination.last_page} (${pagination.total} records)`"></span>
-            <div class="flex gap-2">
-                <button @click="goToPage(pagination.current_page - 1)" :disabled="pagination.current_page <= 1"
-                        class="px-3 py-1 text-xs rounded border border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100">
-                    Previous
-                </button>
-                <button @click="goToPage(pagination.current_page + 1)" :disabled="pagination.current_page >= pagination.last_page"
-                        class="px-3 py-1 text-xs rounded border border-gray-300 disabled:opacity-40 disabled:cursor-not-allowed hover:bg-gray-100">
-                    Next
-                </button>
-            </div>
+        <div class="px-4 py-3 border-t border-gray-200 flex-shrink-0" x-show="!loading && pagination.last_page > 1">
+            <nav class="flex justify-end" aria-label="Pagination Navigation">
+                <span class="inline-flex items-center gap-2">
+                    <button @click="goToPage(pagination.current_page - 1)" :disabled="pagination.current_page <= 1"
+                            :class="pagination.current_page <= 1 ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                        Prev
+                    </button>
+                    <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5">
+                        <span x-text="pagination.current_page"></span>/<span x-text="pagination.last_page"></span>
+                    </span>
+                    <button @click="goToPage(pagination.current_page + 1)" :disabled="pagination.current_page >= pagination.last_page"
+                            :class="pagination.current_page >= pagination.last_page ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                        Next
+                    </button>
+                </span>
+            </nav>
         </div>
     </div>
 </div>

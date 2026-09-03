@@ -1,0 +1,220 @@
+# Plan: Reason-Based Form Behaviour (Re-Issue & Refund "Payment By" auto-selection)
+
+## Goal
+When a user selects a **Reason** in any re-issue/refund form, the **Payment By** field auto-selects a default based on the reason. `default_payment_by` is stored in the `re_issue_refund_reasons` table (nullable — some reasons have no default). Applies to all 4 forms. Payment By starts empty until a reason is chosen.
+
+## Mapping (seeded defaults)
+| Reason | reason_of | default_payment_by |
+|---|---|---|
+| Voluntary Reissue | re-issue | customer |
+| Involuntary Reissue | re-issue | airline |
+| Schedule Change | re-issue | airline |
+| Mistake Reissue | re-issue | employee |
+| Sector Change Re-Issue | re-issue | `null` |
+| Agent Change | re-issue | `null` |
+| Additional Net Fare | re-issue | customer |
+| Voluntary Refund | refund | customer |
+| Involuntary Refund | refund | airline |
+| Mistake Refund | refund | employee |
+
+---
+
+## Backend Changes
+
+### 1. Migration — NEW file `database/migrations/2026_08_14_000001_add_default_payment_by_to_re_issue_refund_reasons_table.php`
+
+```php
+<?php
+
+use Illuminate\Database\Migrations\Migration;
+use Illuminate\Database\Schema\Blueprint;
+use Illuminate\Support\Facades\Schema;
+
+return new class extends Migration
+{
+    public function up(): void
+    {
+        Schema::table('re_issue_refund_reasons', function (Blueprint $table) {
+            $table->enum('default_payment_by', ['customer', 'airline', 'employee'])
+                ->nullable()
+                ->after('name');
+        });
+    }
+
+    public function down(): void
+    {
+        Schema::table('re_issue_refund_reasons', function (Blueprint $table) {
+            $table->dropColumn('default_payment_by');
+        });
+    }
+};
+```
+
+### 2. Model — `app/Models/ReIssueRefundReason.php`
+Add `'default_payment_by'` to `$fillable` (line 11-14):
+
+```php
+protected $fillable = [
+    'reason_of',
+    'name',
+    'default_payment_by',
+];
+```
+
+### 3. Seeder — `database/seeders/ReIssueRefundReasonSeeder.php`
+Replace the `$reasons` array (lines 12-23):
+
+```php
+$reasons = [
+    ['name' => 'Voluntary Reissue', 'reason_of' => 're-issue', 'default_payment_by' => 'customer'],
+    ['name' => 'Involuntary Reissue', 'reason_of' => 're-issue', 'default_payment_by' => 'airline'],
+    ['name' => 'Voluntary Refund', 'reason_of' => 'refund', 'default_payment_by' => 'customer'],
+    ['name' => 'Involuntary Refund', 'reason_of' => 'refund', 'default_payment_by' => 'airline'],
+    ['name' => 'Schedule Change', 'reason_of' => 're-issue', 'default_payment_by' => 'airline'],
+    ['name' => 'Mistake Reissue', 'reason_of' => 're-issue', 'default_payment_by' => 'employee'],
+    ['name' => 'Mistake Refund', 'reason_of' => 'refund', 'default_payment_by' => 'employee'],
+    ['name' => 'Sector Change Re-Issue', 'reason_of' => 're-issue', 'default_payment_by' => null],
+    ['name' => 'Agent Change', 'reason_of' => 're-issue', 'default_payment_by' => null],
+    ['name' => 'Additional Net Fare', 'reason_of' => 're-issue', 'default_payment_by' => 'customer'],
+];
+```
+
+Note: `updateOrCreate` matches by `name`, so re-running the seeder backfills existing rows.
+
+### 4. API — `app/Http/Controllers/TicketRequestController.php` → `reasons()` (line 518)
+Change:
+```php
+return response()->json($query->get(['id', 'name']));
+```
+To:
+```php
+return response()->json($query->get(['id', 'name', 'default_payment_by']));
+```
+
+(No change needed in `BookingController` — it passes full Eloquent models via `@json`.)
+
+---
+
+## Frontend Changes
+
+### 5. Refund Confirmation — `resources/views/refunds/confirmation.blade.php`
+
+**a. Payment By select (lines 120-126)** — add empty placeholder, remove `selected` from Customer:
+```html
+<select id="inputPaymentBy" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+    <option value="">Select</option>
+    <option value="customer">Customer</option>
+    <option value="airline">Airline</option>
+    <option value="employee">Employee</option>
+</select>
+```
+
+**b. Reason select (line 87)** — add `onchange="handleReasonChange()"`:
+```html
+<select id="inputReason" onchange="handleReasonChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+```
+
+**c. `loadReasons()` (line 303-304)** — render `data-default-payment-by`:
+```js
+select.innerHTML = '<option value="">Select Reason</option>' +
+    reasons.map(r => '<option value="' + r.id + '" data-default-payment-by="' + (r.default_payment_by || '') + '">' + escapeHtml(r.name) + '</option>').join('');
+```
+
+**d. `processConfirmation()` (line 425)** — reset to empty:
+```js
+document.getElementById('inputPaymentBy').value = '';
+```
+
+**e. Add new function** (after `loadReasons`):
+```js
+function handleReasonChange() {
+    var opt = document.getElementById('inputReason').selectedOptions[0];
+    var val = opt ? opt.getAttribute('data-default-payment-by') || '' : '';
+    document.getElementById('inputPaymentBy').value = val;
+}
+```
+
+### 6. Re-Issue Confirmation — `resources/views/re-issues/confirmation.blade.php`
+
+**a. Reason select (line 87)** — add `onchange="handleReasonChange()"`:
+```html
+<select id="inputReason" onchange="handleReasonChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+```
+
+**b. `loadReasons()` (lines 441-442)** — render `data-default-payment-by`:
+```js
+select.innerHTML = '<option value="">Select Reason</option>' +
+    reasons.map(r => '<option value="' + r.id + '" data-default-payment-by="' + (r.default_payment_by || '') + '">' + escapeHtml(r.name) + '</option>').join('');
+```
+
+**c. Add new function** (after `loadReasons`) — also re-runs `handlePaymentByChange()` to show/hide customer-only fields:
+```js
+function handleReasonChange() {
+    var opt = document.getElementById('inputReason').selectedOptions[0];
+    var val = opt ? opt.getAttribute('data-default-payment-by') || '' : '';
+    document.getElementById('inputPaymentBy').value = val;
+    handlePaymentByChange();
+}
+```
+
+(`processConfirmation()` already resets `inputPaymentBy` to `''` at line 653 — no change.)
+
+### 7. Booking Request Forms — `resources/views/bookings/index.blade.php` (Alpine.js)
+
+**a. Refund Reason select (lines 1712-1715)** — add `@change` handler:
+```html
+<select x-model="refundForm.reason_id"
+        @input="refundForm.errors.reason_id = ''"
+        @change="handleRefundReasonChange()"
+        :class="refundForm.errors.reason_id ? 'border-red-500' : ''"
+        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+```
+
+**b. Refund Payment By select (lines 1784-1789)** — add empty placeholder:
+```html
+<select x-model="refundForm.payment_by" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+    <option value="">Select Payment</option>
+    <option value="customer">Customer</option>
+    <option value="airline">Airline</option>
+    <option value="employee">Employee</option>
+</select>
+```
+
+**c. Refund initial `payment_by`** — `'customer'` → `''` at both:
+- Line 3820 (data definition): `payment_by: '',`
+- Line 4867 (`openRefundModal` reset): `f.payment_by = '';`
+
+**d. Re-Issue Reason select (lines 2356-2359)** — add `@change` handler:
+```html
+<select x-model="reIssueForm.reason_id"
+        @change="reIssueForm.errors.reason_id = ''; handleReIssueReasonChange()"
+        :class="reIssueForm.errors.reason_id ? 'border-red-500' : ''"
+        class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" required>
+```
+
+**e. Re-Issue initial `payment_by`** — `'customer'` → `''` at both:
+- Line 3916 (data definition): `payment_by: '',`
+- Line 4805 (`openReIssueModal` reset): `this.reIssueForm.payment_by = '';`
+
+**f. Add new Alpine methods** (near `handleReIssuePaymentByChange`, ~line 5040):
+```js
+handleRefundReasonChange() {
+    const reason = this.refundReasons.find(r => String(r.id) === String(this.refundForm.reason_id));
+    this.refundForm.payment_by = (reason && reason.default_payment_by) ? reason.default_payment_by : '';
+},
+
+handleReIssueReasonChange() {
+    const reason = this.reIssueReasons.find(r => String(r.id) === String(this.reIssueForm.reason_id));
+    this.reIssueForm.payment_by = (reason && reason.default_payment_by) ? reason.default_payment_by : '';
+    this.handleReIssuePaymentByChange();
+},
+```
+
+The Re-Issue Payment By select already has a `Select Payment` placeholder (line 2371) — no change. `handleReIssuePaymentByChange()` clears Service Charge / Payment Option / Refund Adjustment when `payment_by` isn't `customer`.
+
+---
+
+## Verification
+1. `php artisan migrate`
+2. `php artisan db:seed --class=ReIssueRefundReasonSeeder`
+3. Test each of the 4 forms: select each reason and confirm Payment By auto-fills (or stays empty for Sector Change Re-Issue / Agent Change). Confirm Re-Issue customer-only fields (Service Charge, Payment Option, Refund Adjustment) show for customer defaults and hide otherwise.

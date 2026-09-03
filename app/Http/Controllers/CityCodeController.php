@@ -10,6 +10,7 @@ class CityCodeController extends Controller
     public function index()
     {
         $cityCodes = CityCode::orderBy('city_name')->paginate(10)->withQueryString();
+
         return view('city-codes.index', compact('cityCodes'));
     }
 
@@ -31,11 +32,13 @@ class CityCodeController extends Controller
             if ($request->wantsJson()) {
                 return response()->json(['success' => true, 'city' => $cityCode], 201);
             }
+
             return redirect()->route('city-codes.index')->with('success', 'City code created successfully.');
         } catch (\Exception $e) {
             if ($request->wantsJson()) {
                 return response()->json(['success' => false, 'message' => 'Failed to create city code.'], 500);
             }
+
             return redirect()->back()->with('error', 'Failed to create city code.')->withInput();
         }
     }
@@ -49,12 +52,13 @@ class CityCodeController extends Controller
     {
         $validated = $request->validate([
             'city_name' => 'required|string|max:255',
-            'code' => 'required|string|max:50|unique:city_codes,code,' . $cityCode->id,
+            'code' => 'required|string|max:50|unique:city_codes,code,'.$cityCode->id,
             'country' => 'required|string|max:255',
         ]);
 
         try {
             $cityCode->update($validated);
+
             return redirect()->route('city-codes.index')->with('success', 'City code updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update city code.')->withInput();
@@ -65,6 +69,7 @@ class CityCodeController extends Controller
     {
         try {
             $cityCode->delete();
+
             return redirect()->route('city-codes.index')->with('success', 'City code deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete city code.');

@@ -175,7 +175,7 @@
                 <div class="space-y-4">
                     {{-- Refund Amount --}}
                     <div>
-                        <div x-show="$store.currency.mode === 'BDT'" class="mb-3">
+                        <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mb-3">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Refund Amount (BDT)</label>
                             <input type="number" x-model="refundAmountBdt" min="0" step="0.01"
                                 @input="
@@ -256,7 +256,7 @@
     </div>
 
     {{-- Toast Notification --}}
-    <div x-show="toastVisible"
+    <div x-show="toastVisible" x-cloak
          x-transition:enter="transition ease-out duration-300"
          x-transition:enter-start="translate-x-full opacity-0"
          x-transition:enter-end="translate-x-0 opacity-100"

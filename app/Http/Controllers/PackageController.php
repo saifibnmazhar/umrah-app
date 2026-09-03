@@ -30,7 +30,7 @@ class PackageController extends Controller
             'ticketFareOutbound.route.fromCity',
             'ticketFareOutbound.route.toCity',
             'ticketFareOutbound.groupTicket',
-            'visaSellingPrice'
+            'visaSellingPrice',
         ])->withCount('bookings');
 
         if ($request->has('status') && $request->status === 'inactive') {
@@ -43,7 +43,7 @@ class PackageController extends Controller
 
         $packages = $query->orderBy('id')->paginate(10);
 
-        $packagesArray = $packages->map(fn($p) => [
+        $packagesArray = $packages->map(fn ($p) => [
             'id' => $p->id,
             'package_name' => $p->package_name,
             'ticket_fare_id' => $p->ticket_fare_id,
@@ -79,14 +79,14 @@ class PackageController extends Controller
             'route.returnCity',
             'route.multiSegments.fromCity',
             'route.multiSegments.toCity',
-            'groupTicket'
+            'groupTicket',
         ])->where('is_active', true);
 
         if ($routeType) {
-            $query->whereHas('route', fn($q) => $q->where('route_type', $routeType->value));
+            $query->whereHas('route', fn ($q) => $q->where('route_type', $routeType->value));
         }
 
-        return $query->orderBy('id')->get()->map(fn($f) => [
+        return $query->orderBy('id')->get()->map(fn ($f) => [
             'id' => $f->id,
             'ticket_type' => $f->ticket_type?->value,
             'selling_fare' => $f->selling_fare,
@@ -99,22 +99,23 @@ class PackageController extends Controller
     private function buildRouteDisplay($fare)
     {
         $route = $fare->route;
-        
+
         if ($route->multiSegments && $route->multiSegments->count() > 0) {
-            $segments = $route->multiSegments->map(fn($s) => 
-                ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?')
+            $segments = $route->multiSegments->map(fn ($s) => ($s->fromCity?->code ?? '?').'-'.($s->toCity?->code ?? '?')
             );
+
             return $segments->implode(', ');
         }
-        
+
         if ($route->returnCity) {
             $from = $route->fromCity?->code ?? '?';
             $to = $route->toCity?->code ?? '?';
             $return = $route->returnCity?->code ?? '?';
+
             return "$from - $to - $return";
         }
-        
-        return ($route->fromCity?->code ?? '?') . ' → ' . ($route->toCity?->code ?? '?');
+
+        return ($route->fromCity?->code ?? '?').' → '.($route->toCity?->code ?? '?');
     }
 
     public function create()
@@ -163,7 +164,7 @@ class PackageController extends Controller
 
         $validated['is_double_ticket'] = $isDoubleTicket;
 
-        if (!$isDoubleTicket) {
+        if (! $isDoubleTicket) {
             $validated['ticket_fare_inbound_id'] = null;
             $validated['ticket_fare_outbound_id'] = null;
         } else {
@@ -174,7 +175,7 @@ class PackageController extends Controller
             $validated['offer_price'] = null;
         }
 
-        if (!$isDoubleTicket) {
+        if (! $isDoubleTicket) {
             $ticketFare = TicketFare::find($validated['ticket_fare_id']);
             if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {
                 $validated['offer_price'] = $validated['regular_price'];
@@ -198,7 +199,7 @@ class PackageController extends Controller
             'ticketFareOutbound.route.fromCity',
             'ticketFareOutbound.route.toCity',
             'ticketFareOutbound.groupTicket',
-            'visaSellingPrice'
+            'visaSellingPrice',
         ]);
         $package->loadCount('bookings');
 
@@ -259,7 +260,7 @@ class PackageController extends Controller
 
         $validated['is_double_ticket'] = $isDoubleTicket;
 
-        if (!$isDoubleTicket) {
+        if (! $isDoubleTicket) {
             $validated['ticket_fare_inbound_id'] = null;
             $validated['ticket_fare_outbound_id'] = null;
         } else {
@@ -270,7 +271,7 @@ class PackageController extends Controller
             $validated['offer_price'] = null;
         }
 
-        if (!$isDoubleTicket) {
+        if (! $isDoubleTicket) {
             $ticketFare = TicketFare::find($validated['ticket_fare_id']);
             if ($ticketFare && $ticketFare->ticket_type === TicketType::OFFER && empty($validated['offer_price'])) {
                 $validated['offer_price'] = $validated['regular_price'];
@@ -284,10 +285,11 @@ class PackageController extends Controller
 
     public function toggleActive(Package $package)
     {
-        $package->is_active = !$package->is_active;
+        $package->is_active = ! $package->is_active;
         $package->save();
 
         $status = $package->is_active ? 'activated' : 'deactivated';
+
         return back()->with('success', "Package {$status} successfully.");
     }
 
@@ -299,6 +301,7 @@ class PackageController extends Controller
 
         try {
             $package->delete();
+
             return redirect()->route('packages.index')->with('success', 'Package deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->route('packages.index')->with('error', 'Cannot delete package. It may be in use by bookings.');

@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\VisaSubmission;
 use App\Models\VisaAgent;
+use App\Models\VisaSubmission;
 use App\Services\CurrencyRateService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class VisaReportController extends Controller
@@ -23,22 +24,23 @@ class VisaReportController extends Controller
     public function data(Request $request): JsonResponse
     {
         $query = $this->buildQuery($request);
+
         $submissions = $query->paginate(self::PER_PAGE);
         $items = $this->mapReportData($submissions->items());
 
-        $allQuery = $this->buildQuery($request);
-        $allSubmissions = $allQuery->get();
-        $allItems = $this->mapReportData($allSubmissions->all());
-        $summary = $this->computeSummary($allItems);
+        // Compute summary from aggregate queries on a base query with only
+        // scalar filters applied, avoiding the previous second full-model
+        // hydration pass (which re-ran per-row currency-rate lookups).
+        $summary = $this->computeSummaryFromQuery($request);
 
         return response()->json([
             'data' => $items,
             'summary' => $summary,
             'pagination' => [
                 'current_page' => $submissions->currentPage(),
-                'last_page'    => $submissions->lastPage(),
-                'per_page'     => $submissions->perPage(),
-                'total'        => $submissions->total(),
+                'last_page' => $submissions->lastPage(),
+                'per_page' => $submissions->perPage(),
+                'total' => $submissions->total(),
             ],
         ]);
     }
@@ -48,6 +50,7 @@ class VisaReportController extends Controller
         $query = VisaSubmission::query()
             ->with([
                 'passenger.booking.customer',
+                'passenger.booking.currencyRate',
                 'passenger.booking',
                 'visaAgent',
             ]);
@@ -56,9 +59,9 @@ class VisaReportController extends Controller
             $query->where(function ($q) use ($search) {
                 $q->whereHas('passenger', function ($pq) use ($search) {
                     $pq->where('first_name', 'like', "%{$search}%")
-                       ->orWhere('last_name', 'like', "%{$search}%")
-                       ->orWhere('mobile_no', 'like', "%{$search}%")
-                       ->orWhere('passport_no', 'like', "%{$search}%");
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('mobile_no', 'like', "%{$search}%")
+                        ->orWhere('passport_no', 'like', "%{$search}%");
                 })->orWhereHas('passenger.booking', function ($bq) use ($search) {
                     $bq->where('invoice_id', 'like', "%{$search}%");
                 })->orWhereHas('passenger.booking.customer', function ($cq) use ($search) {
@@ -75,10 +78,10 @@ class VisaReportController extends Controller
         }
 
         if ($request->flight_date_from) {
-            $query->whereHas('passenger', fn($q) => $q->whereDate('flight_date_from', '>=', $request->flight_date_from));
+            $query->whereHas('passenger', fn ($q) => $q->whereDate('flight_date_from', '>=', $request->flight_date_from));
         }
         if ($request->flight_date_to) {
-            $query->whereHas('passenger', fn($q) => $q->whereDate('flight_date_to', '<=', $request->flight_date_to));
+            $query->whereHas('passenger', fn ($q) => $q->whereDate('flight_date_to', '<=', $request->flight_date_to));
         }
 
         if ($request->status && $request->status !== 'all') {
@@ -110,7 +113,7 @@ class VisaReportController extends Controller
                 'invoice_no' => $booking?->invoice_id ?? '-',
                 'customer_name' => $customer?->name ?? '-',
                 'customer_iqama' => $iqama ? "IQAMA: {$iqama}" : 'N/A',
-                'pax_name' => $passenger ? trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')) : '-',
+                'pax_name' => $passenger ? trim(($passenger->first_name ?? '').' '.($passenger->last_name ?? '')) : '-',
                 'pax_passport' => $passport ? "Passport: {$passport}" : 'N/A',
                 'mobile' => $passenger?->mobile_no ?? '-',
                 'customer_mobile' => $customer?->mobile_no ?? '-',
@@ -119,11 +122,85 @@ class VisaReportController extends Controller
                 'flight_date' => $passenger?->flight_date_display ?? '-',
                 'visa_number' => $submission->visa_number ?? '-',
                 'visa_agent' => $submission->visaAgent?->name ?? '-',
-                'agent_cost' => (float)($submission->final_cost ?? 0),
+                'agent_cost' => (float) ($submission->final_cost ?? 0),
                 'rate' => $rate,
             ];
         }
+
         return $result;
+    }
+
+    /**
+     * Compute report summary via aggregate queries on the base query,
+     * avoiding full-model hydration of every submission in the date range.
+     *
+     * Uses a fresh query that re-applies only the scalar filters (date range,
+     * status, visa number search) directly on visa_submissions, so it does not
+     * carry the heavy whereHas('passenger...') relation joins that conflict
+     * with explicit JOINs for the invoice-count subquery.
+     */
+    protected function computeSummaryFromQuery(Request $request): array
+    {
+        $base = VisaSubmission::query();
+
+        if ($search = $request->search) {
+            $base->where(function ($q) use ($search) {
+                $q->whereHas('passenger', function ($pq) use ($search) {
+                    $pq->where('first_name', 'like', "%{$search}%")
+                        ->orWhere('last_name', 'like', "%{$search}%")
+                        ->orWhere('mobile_no', 'like', "%{$search}%")
+                        ->orWhere('passport_no', 'like', "%{$search}%");
+                })->orWhereHas('passenger.booking', function ($bq) use ($search) {
+                    $bq->where('invoice_id', 'like', "%{$search}%");
+                })->orWhereHas('passenger.booking.customer', function ($cq) use ($search) {
+                    $cq->where('name', 'like', "%{$search}%");
+                })->orWhere('visa_number', 'like', "%{$search}%");
+            });
+        }
+        if ($request->visa_submit_date_from) {
+            $base->whereDate('created_at', '>=', $request->visa_submit_date_from);
+        }
+        if ($request->visa_submit_date_to) {
+            $base->whereDate('created_at', '<=', $request->visa_submit_date_to);
+        }
+        if ($request->flight_date_from) {
+            $base->whereHas('passenger', fn ($q) => $q->whereDate('flight_date_from', '>=', $request->flight_date_from));
+        }
+        if ($request->flight_date_to) {
+            $base->whereHas('passenger', fn ($q) => $q->whereDate('flight_date_to', '<=', $request->flight_date_to));
+        }
+        if ($request->status && $request->status !== 'all') {
+            $base->where('status', $request->status);
+        }
+
+        // Single query for total records + total agent cost + per-status counts.
+        $aggregates = (clone $base)
+            ->select(
+                DB::raw('SUM(COALESCE(final_cost, 0)) as total_agent_cost'),
+                DB::raw('COUNT(*) as total_records'),
+                DB::raw("SUM(CASE WHEN status = 'pending' THEN 1 ELSE 0 END) as pending"),
+                DB::raw("SUM(CASE WHEN status = 'submitted' THEN 1 ELSE 0 END) as submitted"),
+                DB::raw("SUM(CASE WHEN status = 'issued' THEN 1 ELSE 0 END) as issued"),
+                DB::raw("SUM(CASE WHEN status = 'cancelled' THEN 1 ELSE 0 END) as cancelled")
+            )
+            ->first();
+
+        $uniqueInvoices = (clone $base)
+            ->join('passengers', 'visa_submissions.passenger_id', '=', 'passengers.id')
+            ->join('bookings', 'passengers.booking_id', '=', 'bookings.id')
+            ->whereNotNull('bookings.invoice_id')
+            ->distinct('bookings.invoice_id')
+            ->count('bookings.invoice_id');
+
+        return [
+            'total_records' => (int) ($aggregates->total_records ?? 0),
+            'total_invoices' => $uniqueInvoices,
+            'total_agent_cost' => (float) ($aggregates->total_agent_cost ?? 0),
+            'pending' => (int) ($aggregates->pending ?? 0),
+            'submitted' => (int) ($aggregates->submitted ?? 0),
+            'issued' => (int) ($aggregates->issued ?? 0),
+            'cancelled' => (int) ($aggregates->cancelled ?? 0),
+        ];
     }
 
     protected function computeSummary(array $items): array

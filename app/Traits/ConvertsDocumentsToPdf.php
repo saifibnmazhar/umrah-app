@@ -10,17 +10,22 @@ trait ConvertsDocumentsToPdf
 {
     private function convertToPdf(string $filePath, string $outputPath): string
     {
+        $outputDir = dirname($outputPath);
+        if (! is_dir($outputDir)) {
+            mkdir($outputDir, 0755, true);
+        }
         $ext = strtolower(pathinfo($filePath, PATHINFO_EXTENSION));
 
         if ($ext === 'pdf') {
             copy($filePath, $outputPath);
+
             return $outputPath;
         }
 
         if (in_array($ext, ['jpg', 'jpeg', 'png'])) {
-            $pdf = new \FPDF();
+            $pdf = new \FPDF;
             $pdf->AddPage();
-            list($imgW, $imgH) = getimagesize($filePath);
+            [$imgW, $imgH] = getimagesize($filePath);
             $scale = min($pdf->GetPageWidth() / $imgW, $pdf->GetPageHeight() / $imgH);
             $w = $imgW * $scale;
             $h = $imgH * $scale;
@@ -28,10 +33,11 @@ trait ConvertsDocumentsToPdf
             $y = ($pdf->GetPageHeight() - $h) / 2;
             $pdf->Image($filePath, $x, $y, $w, $h);
             $pdf->Output('F', $outputPath);
+
             return $outputPath;
         }
 
-        throw new \RuntimeException('Unsupported file type: ' . $ext);
+        throw new \RuntimeException('Unsupported file type: '.$ext);
     }
 
     private function resolveDocumentPath(Document $doc): ?string
@@ -42,12 +48,17 @@ trait ConvertsDocumentsToPdf
         if (Storage::exists($doc->file_path)) {
             return Storage::path($doc->file_path);
         }
+
         return null;
     }
 
     private function mergePdfs(array $pdfFiles, string $outputPath): void
     {
-        $pdf = new Fpdi();
+        $outputDir = dirname($outputPath);
+        if (! is_dir($outputDir)) {
+            mkdir($outputDir, 0755, true);
+        }
+        $pdf = new Fpdi;
 
         foreach ($pdfFiles as $file) {
             $pageCount = $pdf->setSourceFile($file);

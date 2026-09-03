@@ -146,9 +146,10 @@
         });
     }
 }">
-    <h1 class="text-2xl font-bold text-slate-800 mb-6">Ticket Admin</h1>
+    <div class="flex flex-col" style="max-height: calc(100vh - 168px);">
+    <h1 class="text-2xl font-bold text-slate-800 mb-6 flex-shrink-0">Ticket Admin</h1>
 
-    <div class="border-b border-slate-200 mb-6">
+    <div class="border-b border-slate-200 mb-6 flex-shrink-0">
         <nav class="-mb-px flex gap-6">
             <button @click="activeTab = 'agents'; updateUrlTab('agents')" :class="{ 'border-blue-500 text-blue-600': activeTab === 'agents', 'border-transparent text-slate-500 hover:text-slate-700 hover:border-slate-300': activeTab !== 'agents' }" class="py-4 px-1 border-b-2 font-medium text-sm whitespace-nowrap">
                 Ticket Agents
@@ -163,19 +164,19 @@
     </div>
 
     @if(session('success'))
-        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-4">
+        <div class="bg-emerald-50 border border-emerald-200 text-emerald-700 px-4 py-3 rounded-lg mb-4 flex-shrink-0">
             {{ session('success') }}
         </div>
     @endif
 
     @if(session('error'))
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex-shrink-0">
             {{ session('error') }}
         </div>
     @endif
 
     @if($errors->any())
-        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4">
+        <div class="bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg mb-4 flex-shrink-0">
             <ul class="list-disc list-inside">
                 @foreach($errors->all() as $error)
                     <li>{{ $error }}</li>
@@ -184,18 +185,18 @@
         </div>
     @endif
 
-    <div x-show="activeTab === 'agents'" x-cloak>
-        <div class="flex justify-between items-center mb-4">
+    <div x-show="activeTab === 'agents'" x-cloak class="flex flex-col flex-1 min-h-0">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
             <h2 class="text-lg font-semibold text-slate-700">Ticket Agents</h2>
             <button @click="editAgentMode = false; agent = { id: null, name: '', address: '', contacts: '' }; showAgentModal = true" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition text-sm font-medium">
                 Add New
             </button>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-            <div class="overflow-x-auto">
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col flex-1 min-h-0">
+            <div class="overflow-auto flex-1 min-h-0">
                 <table class="w-full text-sm">
-                    <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
+                    <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider sticky top-0 z-10">
                         <tr>
                             <th class="px-6 py-4 text-left">Name</th>
                             <th class="px-6 py-4 text-left">Address</th>
@@ -232,7 +233,7 @@
             </div>
         </div>
 
-        <div class="mt-4 flex justify-center"
+        <div class="mt-4 flex justify-center flex-shrink-0"
              @click.prevent="
                  const el = $event.target.closest('a');
                  if (el && el.href) {
@@ -245,15 +246,15 @@
         </div>
     </div>
 
-    <div x-show="activeTab === 'fares'" x-cloak>
-        <div class="flex justify-between items-center mb-4">
+    <div x-show="activeTab === 'fares'" x-cloak class="flex flex-col flex-1 min-h-0">
+        <div class="flex justify-between items-center mb-4 flex-shrink-0">
             <h2 class="text-lg font-semibold text-slate-700">Ticket Fares</h2>
             <a href="{{ route('ticket-fares.create') }}" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition text-sm font-medium">
                 Add New
             </a>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mb-6">
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden mb-6 flex-shrink-0">
             <form method="GET" action="{{ route('fare.admin') }}" id="filter-form" class="p-4 flex flex-wrap gap-4 items-end">
                 <input type="hidden" name="tab" value="fares">
                 <div class="flex-1 min-w-[200px]">
@@ -296,11 +297,11 @@
             </form>
         </div>
 
-        <div id="ticket-fare-table-container">
-            <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-                <div class="overflow-x-auto">
+        <div id="ticket-fare-table-container" class="flex flex-col flex-1 min-h-0">
+            <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col flex-1 min-h-0">
+                <div class="overflow-auto flex-1 min-h-0">
                     <table class="w-full text-sm">
-                        <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
+                        <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider sticky top-0 z-10">
                             <tr>
                                 <th class="px-4 py-3 text-left">#</th>
                                 <th class="px-4 py-3 text-left">Airline</th>
@@ -418,7 +419,7 @@
                 </div>
             </div>
 
-            <div class="mt-4 flex justify-center"
+            <div class="mt-4 flex justify-center flex-shrink-0"
                  @click.prevent="
                      const el = $event.target.closest('a');
                      if (el && el.href) {
@@ -432,18 +433,18 @@
         </div>
     </div>
 
-    <div x-show="activeTab === 'routes'" x-cloak>
-        <div class="flex justify-between items-center mb-6">
+    <div x-show="activeTab === 'routes'" x-cloak class="flex flex-col flex-1 min-h-0">
+        <div class="flex justify-between items-center mb-6 flex-shrink-0">
             <h1 class="text-2xl font-bold text-slate-800">Routes</h1>
             <a href="#" @click.prevent="editRouteMode = false; route = { id: null, airline_id: '', route_type: '', flight_type: '', from_city_id: '', to_city_id: '', return_city_id: '', additional_gap: '', transits: [{ transit_city_id: '', transit_hours: '', transit_minutes: '' }, { transit_city_id: '', transit_hours: '', transit_minutes: '' }] }; showRouteModal = true" class="px-4 py-2 bg-slate-800 text-white rounded-md hover:bg-slate-700 transition">
                 Add New
             </a>
         </div>
 
-        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
-            <div class="overflow-x-auto">
+        <div class="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden flex flex-col flex-1 min-h-0">
+            <div class="overflow-auto flex-1 min-h-0">
                 <table class="w-full text-sm">
-                    <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider">
+                    <thead class="bg-slate-50 text-slate-600 text-xs font-medium uppercase tracking-wider sticky top-0 z-10">
                         <tr>
                             <th class="px-4 py-3 text-left">ID</th>
                             <th class="px-4 py-3 text-left">Airline</th>
@@ -524,7 +525,7 @@
             </div>
         </div>
 
-        <div class="mt-4 flex justify-center"
+        <div class="mt-4 flex justify-center flex-shrink-0"
              @click.prevent="
                  const el = $event.target.closest('a');
                  if (el && el.href) {
@@ -536,8 +537,9 @@
             {{ $routes->appends(request()->query())->links() }}
         </div>
     </div>
+    </div>
 
-    <div x-show="showAgentModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+    <div x-show="showAgentModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4">
             <div x-show="showAgentModal" x-transition.opacity class="fixed inset-0 bg-black/50" @click="showAgentModal = false"></div>
             <div x-show="showAgentModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-md p-6 z-10">
@@ -572,7 +574,7 @@
 
 
 
-    <div x-show="showRouteModal" class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
+    <div x-show="showRouteModal" x-cloak class="fixed inset-0 z-50 overflow-y-auto" style="display: none;">
         <div class="flex items-center justify-center min-h-screen px-4">
             <div x-show="showRouteModal" x-transition.opacity class="fixed inset-0 bg-black/50" @click="showRouteModal = false"></div>
             <div x-show="showRouteModal" x-transition class="relative bg-white rounded-lg shadow-xl w-full max-w-3xl p-6 z-10">

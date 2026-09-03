@@ -2,16 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Fingerprint;
-use App\Models\FingerprintDetail;
+use App\Enums\FingerprintStatus;
 use App\Models\Branch;
 use App\Models\District;
+use App\Models\FingerprintDetail;
 use App\Models\User;
 use App\Queries\FingerprintReportQuery;
-use App\Enums\FingerprintStatus;
-use App\Services\CurrencyRateService;
-use Illuminate\Http\Request;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\View\View;
 
 class FingerprintReportController extends Controller
@@ -25,7 +23,7 @@ class FingerprintReportController extends Controller
         $fingerprintBranches = Branch::where('fingerprint_operation', true)
             ->orderBy('name')
             ->get(['id', 'name']);
-        $staffUsers = User::whereHas('roles', fn($q) => $q->where('name', 'Fingerprint Staff'))
+        $staffUsers = User::whereHas('roles', fn ($q) => $q->where('name', 'Fingerprint Staff'))
             ->orderBy('name')
             ->get(['id', 'name']);
 
@@ -39,29 +37,25 @@ class FingerprintReportController extends Controller
         $query = (new FingerprintReportQuery($request))->getQuery();
         $branchId = $this->getFingerprintBranchFilter();
         if ($branchId) {
-            $query->whereHas('booking', fn($q) => $q->where('fingerprint_branch_id', $branchId));
+            $query->whereHas('booking', fn ($q) => $q->where('fingerprint_branch_id', $branchId));
         }
         $fingerprints = $query->paginate(self::PER_PAGE);
 
         $canViewFinancials = $this->canViewFinancials();
         $items = $this->mapReportData($fingerprints->items(), $canViewFinancials);
 
-        $allQuery = (new FingerprintReportQuery($request))->getQuery();
-        if ($branchId) {
-            $allQuery->whereHas('booking', fn($q) => $q->where('fingerprint_branch_id', $branchId));
-        }
-        $allFingerprints = $allQuery->get();
-        $allItems = $this->mapReportData($allFingerprints->all(), $canViewFinancials);
-        $summary = $this->computeTotals($allItems);
+        // Compute totals via aggregate queries on a fresh base query,
+        // avoiding the previous second full-model hydration pass.
+        $totals = $this->computeTotalsFromQuery($request, $branchId);
 
         return response()->json([
             'data' => $items,
-            'summary' => $summary,
+            'summary' => $totals,
             'pagination' => [
                 'current_page' => $fingerprints->currentPage(),
-                'last_page'    => $fingerprints->lastPage(),
-                'per_page'     => $fingerprints->perPage(),
-                'total'        => $fingerprints->total(),
+                'last_page' => $fingerprints->lastPage(),
+                'per_page' => $fingerprints->perPage(),
+                'total' => $fingerprints->total(),
             ],
         ]);
     }
@@ -73,7 +67,7 @@ class FingerprintReportController extends Controller
         $query = (new FingerprintReportQuery($request))->getQuery();
         $branchId = $this->getFingerprintBranchFilter();
         if ($branchId) {
-            $query->whereHas('booking', fn($q) => $q->where('fingerprint_branch_id', $branchId));
+            $query->whereHas('booking', fn ($q) => $q->where('fingerprint_branch_id', $branchId));
         }
         $fingerprints = $query->get();
 
@@ -90,9 +84,10 @@ class FingerprintReportController extends Controller
         $fingerprintDetail->load([
             'fingerprint.booking.customer',
             'fingerprint.booking.fingerprintCharge',
+            'fingerprint.booking.currencyRate',
             'fingerprint.assignedStaff',
             'passenger',
-            'rescheduledFingerprints' => fn($q) => $q->orderBy('occurrence'),
+            'rescheduledFingerprints' => fn ($q) => $q->orderBy('occurrence'),
         ]);
 
         $fingerprint = $fingerprintDetail->fingerprint;
@@ -108,6 +103,7 @@ class FingerprintReportController extends Controller
 
         $rescheduleHistory = $fingerprintDetail->rescheduledFingerprints->map(function ($r) use ($fingerprint, $rescheduledBy) {
             $reasonLabel = $this->mapRescheduleReasonLabel($r->reason->value, $r->other_reason);
+
             return [
                 'previous_date' => $fingerprint->deadline?->format('Y-m-d'),
                 'new_date' => $r->next_date?->format('Y-m-d'),
@@ -122,9 +118,7 @@ class FingerprintReportController extends Controller
 
         $canViewFinancials = $this->canViewFinancials();
 
-        $rate = $booking?->currencyRate?->rate
-            ?? app(CurrencyRateService::class)->getRateForDate($booking?->created_at)?->rate
-            ?? 0;
+        $rate = $booking?->currencyRate?->rate ?? 0;
 
         return response()->json([
             'rate' => $rate,
@@ -132,12 +126,12 @@ class FingerprintReportController extends Controller
             'customer_name' => $booking->customer?->name ?? '-',
             'booking_date' => $booking->created_at?->format('Y-m-d'),
             'fingerprint_deadline' => $fingerprint->deadline?->format('Y-m-d'),
-            'fingerprint_charge' => $canViewFinancials ? (float)($booking->fingerprintCharge?->fingerprint_charge ?? 0) : null,
-            'fingerprint_cost' => (float)($fingerprint->cost ?? 0),
-            'profit' => $canViewFinancials ? max(0, (float)($booking->fingerprintCharge?->fingerprint_charge ?? 0) - (float)($fingerprint->cost ?? 0)) : null,
-            'loss' => $canViewFinancials ? abs(min(0, (float)($booking->fingerprintCharge?->fingerprint_charge ?? 0) - (float)($fingerprint->cost ?? 0))) : null,
+            'fingerprint_charge' => $canViewFinancials ? (float) ($booking->fingerprintCharge?->fingerprint_charge ?? 0) : null,
+            'fingerprint_cost' => (float) ($fingerprint->cost ?? 0),
+            'profit' => $canViewFinancials ? max(0, (float) ($booking->fingerprintCharge?->fingerprint_charge ?? 0) - (float) ($fingerprint->cost ?? 0)) : null,
+            'loss' => $canViewFinancials ? abs(min(0, (float) ($booking->fingerprintCharge?->fingerprint_charge ?? 0) - (float) ($fingerprint->cost ?? 0))) : null,
             'passenger' => [
-                'name' => trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')),
+                'name' => trim(($passenger->first_name ?? '').' '.($passenger->last_name ?? '')),
                 'passport_no' => $passenger->passport_no ?? '-',
                 'mobile' => $passenger->mobile_no ?? '-',
                 'address' => $passenger->address ?? '-',
@@ -164,7 +158,9 @@ class FingerprintReportController extends Controller
 
         foreach ($fingerprintCollection as $fingerprint) {
             $booking = $fingerprint->booking;
-            if (!$booking) continue;
+            if (! $booking) {
+                continue;
+            }
 
             $passengers = $booking->passengers;
             $fingerprintCharge = $booking->fingerprintCharge?->fingerprint_charge ?? 0;
@@ -173,7 +169,7 @@ class FingerprintReportController extends Controller
 
             $allDetails = $fingerprint->fingerprintDetails;
             $allApproved = $allDetails->isNotEmpty() && $allDetails->every(
-                fn($d) => $d->status === FingerprintStatus::APPROVED
+                fn ($d) => $d->status === FingerprintStatus::APPROVED
             );
 
             $isNewInvoice = $booking->invoice_id !== $lastInvoiceId;
@@ -192,42 +188,88 @@ class FingerprintReportController extends Controller
                         ->first()?->remarks
                     : null;
 
-                    $rate = $booking?->currencyRate?->rate
-                        ?? app(CurrencyRateService::class)->getRateForDate($booking?->created_at)?->rate
-                        ?? 0;
+                $rate = $booking?->currencyRate?->rate ?? 0;
 
-                    $result[] = [
-                        '_isFirstPassenger' => $pIdx === 0,
-                        '_isLastPassenger' => $pIdx === $passengers->count() - 1,
-                        '_isOddInvoice' => $invoiceIndex % 2 === 1,
-                        'fingerprint_id' => $fingerprint->id,
-                        'fingerprint_detail_id' => $detail?->id,
-                        'invoice_id' => $booking->invoice_id,
-                        'booking_date' => $booking->created_at?->format('Y-m-d'),
-                        'customer_name' => $booking->customer?->name ?? '-',
-                        'customer_mobile' => $booking->customer?->mobile_no ?? '-',
-                        'passenger_name' => trim(($passenger->first_name ?? '') . ' ' . ($passenger->last_name ?? '')),
-                        'passport_no' => $passenger->passport_no ?? '-',
-                        'passenger_mobile' => $passenger->mobile_no ?? '-',
-                        'district' => $booking->district?->name ?? '-',
-                        'fingerprint_charge' => $canViewFinancials ? (float)$fingerprintCharge : null,
-                        'fingerprint_cost' => (float)$cost,
-                        'fingerprint_deadline' => $fingerprint->deadline?->format('Y-m-d'),
-                        'completed_date' => $detail && $detail->status === FingerprintStatus::APPROVED
-                            ? $detail->updated_at?->format('Y-m-d')
-                            : '-',
-                        'status_display' => $statusDisplay,
-                        'required_flight' => $passenger->flight_date_display ?? '-',
-                        'actual_flight' => $passenger->actual_flight_date?->format('Y-m-d') ?? '-',
-                        'remarks' => $remarks ?? '-',
-                        'profit' => $canViewFinancials ? max(0, (float)$profitLoss) : null,
-                        'loss' => $canViewFinancials ? abs(min(0, (float)$profitLoss)) : null,
-                        'rate' => $rate,
-                    ];
+                $result[] = [
+                    '_isFirstPassenger' => $pIdx === 0,
+                    '_isLastPassenger' => $pIdx === $passengers->count() - 1,
+                    '_isOddInvoice' => $invoiceIndex % 2 === 1,
+                    'fingerprint_id' => $fingerprint->id,
+                    'fingerprint_detail_id' => $detail?->id,
+                    'invoice_id' => $booking->invoice_id,
+                    'booking_date' => $booking->created_at?->format('Y-m-d'),
+                    'customer_name' => $booking->customer?->name ?? '-',
+                    'customer_mobile' => $booking->customer?->mobile_no ?? '-',
+                    'passenger_name' => trim(($passenger->first_name ?? '').' '.($passenger->last_name ?? '')),
+                    'passport_no' => $passenger->passport_no ?? '-',
+                    'passenger_mobile' => $passenger->mobile_no ?? '-',
+                    'district' => $booking->district?->name ?? '-',
+                    'fingerprint_charge' => $canViewFinancials ? (float) $fingerprintCharge : null,
+                    'fingerprint_cost' => (float) $cost,
+                    'fingerprint_deadline' => $fingerprint->deadline?->format('Y-m-d'),
+                    'completed_date' => $detail && $detail->status === FingerprintStatus::APPROVED
+                        ? $detail->updated_at?->format('Y-m-d')
+                        : '-',
+                    'status_display' => $statusDisplay,
+                    'required_flight' => $passenger->flight_date_display ?? '-',
+                    'actual_flight' => $passenger->actual_flight_date?->format('Y-m-d') ?? '-',
+                    'remarks' => $remarks ?? '-',
+                    'profit' => $canViewFinancials ? max(0, (float) $profitLoss) : null,
+                    'loss' => $canViewFinancials ? abs(min(0, (float) $profitLoss)) : null,
+                    'rate' => $rate,
+                ];
             }
         }
 
         return $result;
+    }
+
+    /**
+     * Compute report totals via aggregate queries on the base query,
+     * avoiding the full-model hydration pass used by the legacy
+     * computeTotals() which maps every row just to sum scalar fields.
+     */
+    protected function computeTotalsFromQuery(Request $request, ?int $branchId): array
+    {
+        $query = (new FingerprintReportQuery($request))->getBaseQueryForAggregates();
+        if ($branchId) {
+            $query->whereHas('booking', fn ($q) => $q->where('fingerprint_branch_id', $branchId));
+        }
+        // Strip the base query's orderBy('created_at') which becomes ambiguous
+        // once we join additional tables with their own created_at columns.
+        $query->getQuery()->orders = [];
+        $canViewFinancials = $this->canViewFinancials();
+
+        $base = $query->join('bookings', 'fingerprints.booking_id', '=', 'bookings.id');
+
+        $paxAndInvoices = (clone $base)
+            ->selectRaw('COUNT(DISTINCT fingerprints.id) as total_pax')
+            ->selectRaw('COUNT(DISTINCT bookings.invoice_id) as total_invoices')
+            ->selectRaw('SUM(COALESCE(bookings.pax_qty, 0)) as total_pax_qty')
+            ->first();
+
+        $financials = $canViewFinancials
+            ? (clone $base)
+                ->leftJoin('fingerprint_charges', 'bookings.fingerprint_charge_id', '=', 'fingerprint_charges.id')
+                ->selectRaw('SUM(COALESCE(fingerprint_charges.fingerprint_charge, 0)) as total_fingerprint_charge')
+                ->selectRaw('SUM(COALESCE(fingerprints.cost, 0)) as total_fingerprint_cost')
+                ->first()
+            : null;
+
+        $totalFingerprintCharge = $canViewFinancials ? (float) ($financials->total_fingerprint_charge ?? 0) : 0;
+        $totalFingerprintCost = $canViewFinancials ? (float) ($financials->total_fingerprint_cost ?? 0) : 0;
+        $totalProfit = max(0, $totalFingerprintCharge - $totalFingerprintCost);
+        $totalLoss = abs(min(0, $totalFingerprintCharge - $totalFingerprintCost));
+
+        return [
+            'total_invoices' => (int) ($paxAndInvoices->total_invoices ?? 0),
+            'total_pax' => (int) ($paxAndInvoices->total_pax_qty ?? 0),
+            'total_fingerprint_charge' => $totalFingerprintCharge,
+            'total_fingerprint_cost' => $totalFingerprintCost,
+            'total_profit' => $totalProfit,
+            'total_loss' => $totalLoss,
+            'total_profit_loss' => $totalProfit - $totalLoss,
+        ];
     }
 
     protected function computeTotals(array $items): array
@@ -235,7 +277,7 @@ class FingerprintReportController extends Controller
         $uniqueInvoices = collect($items)->pluck('invoice_id')->unique();
         $totalPAX = count($items);
 
-        $firstRows = collect($items)->filter(fn($r) => $r['_isFirstPassenger']);
+        $firstRows = collect($items)->filter(fn ($r) => $r['_isFirstPassenger']);
 
         $totalProfit = $firstRows->sum('profit');
         $totalLoss = $firstRows->sum('loss');
@@ -253,7 +295,9 @@ class FingerprintReportController extends Controller
 
     protected function computeStatusDisplay(?FingerprintDetail $detail): string
     {
-        if (!$detail) return 'None';
+        if (! $detail) {
+            return 'None';
+        }
 
         $status = $detail->status;
         $reschedules = $detail->rescheduledFingerprints;
@@ -275,11 +319,14 @@ class FingerprintReportController extends Controller
     protected function isAllApproved(FingerprintDetail $detail): bool
     {
         $fingerprint = $detail->fingerprint;
-        if (!$fingerprint) return false;
+        if (! $fingerprint) {
+            return false;
+        }
 
         $allDetails = $fingerprint->fingerprintDetails;
+
         return $allDetails->isNotEmpty() && $allDetails->every(
-            fn($d) => $d->status === FingerprintStatus::APPROVED
+            fn ($d) => $d->status === FingerprintStatus::APPROVED
         );
     }
 
@@ -300,7 +347,7 @@ class FingerprintReportController extends Controller
             return $fingerprint->assignedStaff->name;
         }
 
-        $fingerprintAdmin = User::whereHas('roles', fn($q) => $q->where('name', 'Fingerprint Admin'))
+        $fingerprintAdmin = User::whereHas('roles', fn ($q) => $q->where('name', 'Fingerprint Admin'))
             ->where('branch_id', $booking->fingerprint_branch_id)
             ->first();
 
@@ -310,6 +357,7 @@ class FingerprintReportController extends Controller
     protected function canViewFinancials(): bool
     {
         $user = auth()->user();
+
         return $user && (
             $user->hasRole('Super Admin') ||
             $user->hasRole('Co Admin') ||
@@ -320,9 +368,10 @@ class FingerprintReportController extends Controller
     protected function getFingerprintBranchFilter(): ?int
     {
         $user = auth()->user();
-        if ($user->branch?->fingerprint_operation && !$user->hasRole('Super Admin') && !$user->hasRole('Co Admin')) {
+        if ($user->branch?->fingerprint_operation && ! $user->hasRole('Super Admin') && ! $user->hasRole('Co Admin')) {
             return $user->branch_id;
         }
+
         return null;
     }
 }
