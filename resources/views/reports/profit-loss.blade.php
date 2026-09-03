@@ -205,8 +205,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                         </button>
                     </div>
                     <div class="flex items-center gap-2 pr-1 pb-3">
-                        <a :href="'/reports/profit-loss/print?booking_date_from=' + booking_date_from + '&booking_date_to=' + booking_date_to + '&type=customer&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter + '&branch_id=' + branchId" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-700">Customer Print</a>
-                        <a :href="'/reports/profit-loss/print?booking_date_from=' + booking_date_from + '&booking_date_to=' + booking_date_to + '&type=passenger&currency=' + $store.currency.mode + '&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter + '&branch_id=' + branchId" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-700">Passenger Print</a>
+                        <a :href="printUrl('customer')" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-blue-600 hover:bg-blue-700 border border-blue-700">Customer Print</a>
+                        <a :href="printUrl('passenger')" target="_blank" class="px-3 py-1.5 rounded-md text-xs font-medium text-white bg-emerald-600 hover:bg-emerald-700 border border-emerald-700">Passenger Print</a>
                     </div>
                 </div>
             </div>
@@ -684,6 +684,8 @@ function profitLossReport() {
             this.effective_date_from = thirtyDaysAgo.toISOString().split('T')[0];
             this.effective_date_to = today.toISOString().split('T')[0];
             this.activeDateFilter = 'effective';
+            this.booking_date_from = thirtyDaysAgo.toISOString().split('T')[0];
+            this.booking_date_to = today.toISOString().split('T')[0];
         },
 
         switchDateFilter(mode) {
@@ -886,6 +888,23 @@ function profitLossReport() {
         formatProfitLoss(amount) {
             const sign = amount >= 0 ? '+' : '';
             return sign + this.formatCurrency(amount);
+        },
+
+        printUrl(type) {
+            const params = new URLSearchParams();
+            if (this.activeDateFilter === 'booking') {
+                if (this.booking_date_from) params.set('booking_date_from', this.booking_date_from);
+                if (this.booking_date_to) params.set('booking_date_to', this.booking_date_to);
+            } else {
+                if (this.effective_date_from) params.set('effective_date_from', this.effective_date_from);
+                if (this.effective_date_to) params.set('effective_date_to', this.effective_date_to);
+            }
+            params.set('type', type);
+            params.set('currency', this.$store.currency.mode);
+            if (this.search) params.set('search', this.search);
+            if (this.profitLossFilter !== 'all') params.set('profit_loss_filter', this.profitLossFilter);
+            if (this.branchId) params.set('branch_id', this.branchId);
+            return '/reports/profit-loss/print?' + params.toString();
         },
 
         exportPDF() {

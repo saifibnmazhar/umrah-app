@@ -26,14 +26,14 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
-class ProfitLossReportBranchFilterTest extends TestCase
+class ProfitLossEffectiveDateFilterTest extends TestCase
 {
     use RefreshDatabase;
 
     private function setupUser(): User
     {
         $user = User::create([
-            'name' => 'Branch Filter Test User',
+            'name' => 'Effective Filter User',
             'email' => uniqid().'@example.com',
             'password' => bcrypt('password'),
             'is_active' => true,
@@ -92,7 +92,7 @@ class ProfitLossReportBranchFilterTest extends TestCase
         ]);
 
         $package = Package::create([
-            'package_name' => 'Branch Filter Package',
+            'package_name' => 'Effective Filter Package',
             'ticket_fare_id' => $fare->id,
             'visa_selling_price_id' => $visaPrice->id,
             'regular_price' => 40000.00,
@@ -107,11 +107,16 @@ class ProfitLossReportBranchFilterTest extends TestCase
             'fingerprint_charge' => 300.00,
         ]);
 
-        return compact('district', 'visaPrice', 'fare', 'package', 'fingerprintCharge');
+        return compact('district', 'fare', 'package', 'fingerprintCharge');
     }
 
-    private function createBooking(User $user, array $deps, Branch $branch, string $invoice, float $profit = 100.00): Booking
-    {
+    private function createBookingWithPassenger(
+        User $user,
+        array $deps,
+        Branch $branch,
+        string $invoice,
+        array $passengerOverrides = []
+    ): array {
         $customer = Customer::create([
             'name' => 'Customer '.$invoice,
             'passport_no' => 'P'.$invoice,
@@ -138,7 +143,7 @@ class ProfitLossReportBranchFilterTest extends TestCase
             'total_value' => 40000.00,
             'remarks' => '',
             'is_cancelled' => false,
-            'profit' => $profit,
+            'profit' => 100.00,
             'created_at' => now(),
         ]);
 
@@ -152,7 +157,7 @@ class ProfitLossReportBranchFilterTest extends TestCase
             'status' => 'pending',
         ]);
 
-        Passenger::create([
+        $attrs = array_merge([
             'booking_id' => $booking->id,
             'first_name' => 'Pax'.$invoice,
             'last_name' => 'Test',
@@ -168,10 +173,12 @@ class ProfitLossReportBranchFilterTest extends TestCase
             'ticket_status' => 'pending',
             'address' => 'Addr',
             'package_value' => 25000.00,
-            'profit' => 50.00,
-        ]);
+            'profit' => 100.00,
+        ], $passengerOverrides);
 
-        return $booking;
+        $passenger = Passenger::create($attrs);
+
+        return [$booking, $passenger];
     }
 
     private function createBranch(string $name): Branch
@@ -187,144 +194,157 @@ class ProfitLossReportBranchFilterTest extends TestCase
     }
 
     /** @test */
-    public function filters_endpoint_returns_all_branches(): void
-    {
-        $user = $this->setupUser();
-        $this->createBranch('Branch Alpha');
-        $this->createBranch('Branch Beta');
-        Auth::login($user);
-
-        $response = $this->get(route('api.reports.profit-loss.filters'));
-
-        $response->assertOk();
-        $branches = $response->json('branches');
-        $this->assertCount(2, $branches);
-    }
-
-    /** @test */
-    public function data_customer_tab_filters_by_branch(): void
+    public function data_passenger_tab_excludes_passengers_with_no_component_in_effective_range(): void
     {
         $user = $this->setupUser();
         $deps = $this->seedPrerequisites($user);
-        $branchA = $this->createBranch('Branch A');
-        $branchB = $this->createBranch('Branch B');
-        $this->createBooking($user, $deps, $branchA, 'INV-A');
-        $this->createBooking($user, $deps, $branchB, 'INV-B');
+        $branch = $this->createBranch('Branch');
+
+        // Passenger A: visa effective 2024-01-15 (before from), ticket effective 2024-08-15 (after to)
+        // No component in [2024-03-01, 2024-06-30] -> should NOT appear (Bug 1 false positive regression).
+        $this->createBookingWithPassenger($user, $deps, $branch, 'INV-A', [
+            'visa_profit' => 100.00,
+            'visa_profit_effective_at' => '2024-01-15 10:00:00',
+            'ticket_profit' => 50.00,
+            'ticket_profit_effective_at' => '2024-08-15 10:00:00',
+        ]);
+
+        // Passenger B: visa effective 2024-04-10 (in range) -> should appear.
+        $this->createBookingWithPassenger($user, $deps, $branch, 'INV-B', [
+            'visa_profit' => 200.00,
+            'visa_profit_effective_at' => '2024-04-10 10:00:00',
+        ]);
+
         Auth::login($user);
 
         $response = $this->get(route('api.reports.profit-loss', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
-            'tab' => 'customer',
-            'branch_id' => $branchA->id,
-        ]));
-
-        $response->assertOk();
-        $data = $response->json('data');
-        $this->assertCount(1, $data);
-        $this->assertEquals('INV-A', $data[0]['invoice_id']);
-        $this->assertEquals(1, $response->json('total'));
-    }
-
-    /** @test */
-    public function data_passenger_tab_filters_by_branch(): void
-    {
-        $user = $this->setupUser();
-        $deps = $this->seedPrerequisites($user);
-        $branchA = $this->createBranch('Branch A');
-        $branchB = $this->createBranch('Branch B');
-        $this->createBooking($user, $deps, $branchA, 'INV-A');
-        $this->createBooking($user, $deps, $branchB, 'INV-B');
-        Auth::login($user);
-
-        $response = $this->get(route('api.reports.profit-loss', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
             'tab' => 'passenger',
-            'branch_id' => $branchA->id,
+            'effective_date_from' => '2024-03-01',
+            'effective_date_to' => '2024-06-30',
         ]));
 
         $response->assertOk();
-        $data = $response->json('data');
-        $this->assertCount(1, $data);
-        $this->assertEquals('INV-A', $data[0]['invoice_id']);
-        $this->assertEquals(1, $response->json('total'));
+        $invoices = collect($response->json('data'))->pluck('invoice_id');
+        $this->assertCount(1, $invoices);
+        $this->assertNotContains('INV-A', $invoices);
+        $this->assertContains('INV-B', $invoices);
     }
 
     /** @test */
-    public function summary_filters_by_branch(): void
+    public function data_passenger_tab_recomputes_total_profit_to_in_range_components(): void
     {
         $user = $this->setupUser();
         $deps = $this->seedPrerequisites($user);
-        $branchA = $this->createBranch('Branch A');
-        $branchB = $this->createBranch('Branch B');
-        $this->createBooking($user, $deps, $branchA, 'INV-A');
-        $this->createBooking($user, $deps, $branchB, 'INV-B');
+        $branch = $this->createBranch('Branch');
+
+        // Passenger: visa effective in range (200), ticket effective out of range (50).
+        $this->createBookingWithPassenger($user, $deps, $branch, 'INV-C', [
+            'visa_profit' => 200.00,
+            'visa_profit_effective_at' => '2024-04-10 10:00:00',
+            'ticket_profit' => 50.00,
+            'ticket_profit_effective_at' => '2024-09-01 10:00:00',
+            'profit' => 250.00,
+        ]);
+
+        Auth::login($user);
+
+        $response = $this->get(route('api.reports.profit-loss', [
+            'tab' => 'passenger',
+            'effective_date_from' => '2024-03-01',
+            'effective_date_to' => '2024-06-30',
+        ]));
+
+        $response->assertOk();
+        $rows = $response->json('data');
+        $this->assertCount(1, $rows);
+        $this->assertEquals(200.0, (float) $rows[0]['total_profit']);
+    }
+
+    /** @test */
+    public function summary_recomputes_passenger_total_profit_from_in_range_components(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $branch = $this->createBranch('Branch');
+
+        // Two passengers, visa profit in range, ticket profit out of range.
+        $this->createBookingWithPassenger($user, $deps, $branch, 'INV-D', [
+            'visa_profit' => 100.00,
+            'visa_profit_effective_at' => '2024-04-10 10:00:00',
+            'ticket_profit' => 1000.00,
+            'ticket_profit_effective_at' => '2024-09-01 10:00:00',
+            'profit' => 1100.00,
+        ]);
+        $this->createBookingWithPassenger($user, $deps, $branch, 'INV-E', [
+            'visa_profit' => 50.00,
+            'visa_profit_effective_at' => '2024-05-01 10:00:00',
+            'ticket_profit' => 0.00,
+            'ticket_profit_effective_at' => null,
+            'profit' => 50.00,
+        ]);
+
         Auth::login($user);
 
         $response = $this->get(route('api.reports.profit-loss.summary', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
-            'branch_id' => $branchA->id,
+            'effective_date_from' => '2024-03-01',
+            'effective_date_to' => '2024-06-30',
         ]));
 
         $response->assertOk();
-        $this->assertEquals(1, $response->json('customer.count'));
-        $this->assertEquals(1, $response->json('passenger.count'));
+        $passengerSummary = $response->json('passenger');
+        $this->assertEquals(2, (int) $passengerSummary['count']);
+        // Option B: total_profit = in-range visa profits (150), not the stored full profits (1150).
+        $this->assertEquals(150.0, (float) $passengerSummary['total_profit']);
+        $this->assertEquals(150.0, (float) $passengerSummary['total_visa_profit']);
+        $this->assertEquals(0.0, (float) $passengerSummary['total_ticket_profit']);
     }
 
     /** @test */
-    public function without_branch_filter_returns_all(): void
+    public function print_filters_and_recomputes_passenger_totals_in_effective_mode(): void
     {
         $user = $this->setupUser();
         $deps = $this->seedPrerequisites($user);
-        $branchA = $this->createBranch('Branch A');
-        $branchB = $this->createBranch('Branch B');
-        $this->createBooking($user, $deps, $branchA, 'INV-A');
-        $this->createBooking($user, $deps, $branchB, 'INV-B');
-        Auth::login($user);
+        $branch = $this->createBranch('Branch');
 
-        $response = $this->get(route('api.reports.profit-loss', [
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
-            'tab' => 'customer',
-        ]));
+        $this->createBookingWithPassenger($user, $deps, $branch, 'INV-F', [
+            'visa_profit' => 100.00,
+            'visa_profit_effective_at' => '2024-01-15 10:00:00',
+            'ticket_profit' => 50.00,
+            'ticket_profit_effective_at' => '2024-08-15 10:00:00',
+            'profit' => 150.00,
+        ]);
+        $this->createBookingWithPassenger($user, $deps, $branch, 'INV-G', [
+            'visa_profit' => 300.00,
+            'visa_profit_effective_at' => '2024-04-10 10:00:00',
+            'ticket_profit' => 40.00,
+            'ticket_profit_effective_at' => '2024-09-01 10:00:00',
+            'profit' => 340.00,
+        ]);
 
-        $response->assertOk();
-        $this->assertEquals(2, $response->json('total'));
-    }
-
-    public function test_view_renders_branch_filter_dropdown_and_passs_branch_to_print(): void
-    {
-        $html = view('reports.profit-loss')->render();
-
-        $this->assertStringContainsString('All Branches', $html);
-        $this->assertStringContainsString('x-model="branchId"', $html);
-        $this->assertStringContainsString('loadBranches', $html);
-        $this->assertStringContainsString('/api/reports/profit-loss/filters', $html);
-        $this->assertStringContainsString("params.set('branch_id', this.branchId)", $html);
-    }
-
-    public function test_print_filters_and_displays_branch_name(): void
-    {
-        $user = $this->setupUser();
-        $deps = $this->seedPrerequisites($user);
-        $branchA = $this->createBranch('Branch Alfa Print');
-        $branchB = $this->createBranch('Branch Beta Print');
-        $this->createBooking($user, $deps, $branchA, 'INV-A');
-        $this->createBooking($user, $deps, $branchB, 'INV-B');
         Auth::login($user);
 
         $response = $this->get(route('report.profit-loss.print', [
-            'type' => 'customer',
-            'date_from' => now()->subDays(60)->toDateString(),
-            'date_to' => now()->addDays(1)->toDateString(),
-            'branch_id' => $branchA->id,
+            'type' => 'passenger',
+            'effective_date_from' => '2024-03-01',
+            'effective_date_to' => '2024-06-30',
         ]));
 
         $response->assertOk();
-        $response->assertSee('Booking Branch: Branch Alfa Print');
-        $response->assertSee('INV-A');
-        $response->assertDontSee('INV-B');
+        $response->assertDontSee('INV-F');
+        $response->assertSee('INV-G');
+        // INV-G total should show only in-range visa profit (300), not the stored 340.
+        $response->assertSeeText('SAR 300');
+        $response->assertDontSeeText('SAR 340');
+    }
+
+    /** @test */
+    public function view_sets_booking_date_defaults_on_load(): void
+    {
+        $html = view('reports.profit-loss')->render();
+
+        $this->assertStringContainsString('booking_date_from = thirtyDaysAgo', $html);
+        $this->assertStringContainsString('booking_date_to = today', $html);
+        $this->assertStringContainsString('effective_date_from = thirtyDaysAgo', $html);
+        $this->assertStringContainsString("activeDateFilter = 'effective'", $html);
     }
 }
