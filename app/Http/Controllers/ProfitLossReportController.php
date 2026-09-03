@@ -56,13 +56,22 @@ class ProfitLossReportController extends Controller
     {
         if ($request->effective_date_from || $request->effective_date_to) {
             $from = $request->effective_date_from ?? '1970-01-01';
-            $to = $request->effective_date_to ?? now()->toDateTimeString();
+            $to = $this->effectiveDateTo($request);
             $query->where(function ($q) use ($from, $to) {
                 $q->whereBetween('passengers.visa_profit_effective_at', [$from, $to])
                     ->orWhereBetween('passengers.ticket_profit_effective_at', [$from, $to])
                     ->orWhereBetween('passengers.service_charge_effective_at', [$from, $to]);
             });
         }
+    }
+
+    private function effectiveDateTo(Request $request): string
+    {
+        if (! $request->effective_date_to) {
+            return now()->toDateTimeString();
+        }
+
+        return $request->effective_date_to.' 23:59:59';
     }
 
     private function calculateEffectiveDateProfit(Passenger $passenger, string $dateFrom, string $dateTo): float
@@ -201,7 +210,7 @@ class ProfitLossReportController extends Controller
         if ($isEffectiveMode) {
             $this->applyEffectiveDateFilter($passenger, $request);
             $dateFrom = $request->effective_date_from ?? '1970-01-01';
-            $dateTo = $request->effective_date_to ?? now()->toDateTimeString();
+            $dateTo = $this->effectiveDateTo($request);
             $passenger->selectRaw('
                 COUNT(*) as count,
                 COALESCE(SUM(passengers.package_value), 0) as package_value,
@@ -341,7 +350,7 @@ class ProfitLossReportController extends Controller
 
                 if ($isEffectiveMode) {
                     $from = $request->effective_date_from ?? '1970-01-01';
-                    $to = $request->effective_date_to ?? now()->toDateTimeString();
+                    $to = $this->effectiveDateTo($request);
 
                     $row['total_profit'] = $this->calculateEffectiveDateProfit($passenger, $from, $to);
                     $row['visa_profit'] = $this->effectiveComponentValue(
@@ -426,7 +435,7 @@ class ProfitLossReportController extends Controller
         $isEffectiveMode = $request->filled('effective_date_from') || $request->filled('effective_date_to');
         if ($type === 'passenger' && $isEffectiveMode) {
             $dateFrom = $request->effective_date_from ?? '1970-01-01';
-            $dateTo = $request->effective_date_to ?? now()->toDateTimeString();
+            $dateTo = $this->effectiveDateTo($request);
 
             $passengerModels = $bookings->flatMap->passengers;
             $passengerById = $passengerModels->keyBy('id');

@@ -334,6 +334,68 @@ class ProfitLossEffectiveDateFilterTest extends TestCase
     }
 
     /** @test */
+    public function summary_includes_component_effective_on_the_to_date(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $branch = $this->createBranch('Branch');
+
+        // Ticket profit is effective on the exact "to" day at a non-midnight time.
+        $this->createBookingWithPassenger($user, $deps, $branch, 'INV-J', [
+            'visa_profit' => 0.00,
+            'visa_profit_effective_at' => null,
+            'ticket_profit' => 90.00,
+            'ticket_profit_effective_at' => '2024-06-30 18:00:00',
+            'profit' => 90.00,
+        ]);
+
+        Auth::login($user);
+
+        $response = $this->get(route('api.reports.profit-loss.summary', [
+            'effective_date_from' => '2024-03-01',
+            'effective_date_to' => '2024-06-30',
+        ]));
+
+        $response->assertOk();
+        $passengerSummary = $response->json('passenger');
+        $this->assertEquals(1, (int) $passengerSummary['count']);
+        $this->assertEquals(90.0, (float) $passengerSummary['total_ticket_profit']);
+        $this->assertEquals(90.0, (float) $passengerSummary['total_profit']);
+    }
+
+    /** @test */
+    public function data_passenger_tab_includes_component_effective_on_the_to_date(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $branch = $this->createBranch('Branch');
+
+        // Passenger ticket profit is effective on the exact "to" day at a
+        // non-midnight time; it must still be counted in the range.
+        $this->createBookingWithPassenger($user, $deps, $branch, 'INV-I', [
+            'visa_profit' => 0.00,
+            'visa_profit_effective_at' => null,
+            'ticket_profit' => 120.00,
+            'ticket_profit_effective_at' => '2024-06-30 14:30:00',
+            'profit' => 120.00,
+        ]);
+
+        Auth::login($user);
+
+        $response = $this->get(route('api.reports.profit-loss', [
+            'tab' => 'passenger',
+            'effective_date_from' => '2024-03-01',
+            'effective_date_to' => '2024-06-30',
+        ]));
+
+        $response->assertOk();
+        $rows = $response->json('data');
+        $this->assertCount(1, $rows);
+        $this->assertEquals(120.0, (float) $rows[0]['ticket_profit']);
+        $this->assertEquals(120.0, (float) $rows[0]['total_profit']);
+    }
+
+    /** @test */
     public function print_filters_and_recomputes_passenger_totals_in_effective_mode(): void
     {
         $user = $this->setupUser();
@@ -381,7 +443,9 @@ class ProfitLossEffectiveDateFilterTest extends TestCase
         $this->assertStringContainsString('booking_date_from = thirtyDaysAgo', $html);
         $this->assertStringContainsString('booking_date_to = today', $html);
         $this->assertStringContainsString('effective_date_from = thirtyDaysAgo', $html);
-        $this->assertStringContainsString("activeDateFilter = 'effective'", $html);
+        // The default tab is customer, where the effective-date filter is read-only,
+        // so the initial filter mode defaults to booking date.
+        $this->assertStringContainsString("activeDateFilter = 'booking'", $html);
     }
 
     /** @test */

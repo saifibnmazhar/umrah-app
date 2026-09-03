@@ -686,7 +686,7 @@ function profitLossReport() {
             thirtyDaysAgo.setDate(today.getDate() - 30);
             this.effective_date_from = thirtyDaysAgo.toISOString().split('T')[0];
             this.effective_date_to = today.toISOString().split('T')[0];
-            this.activeDateFilter = 'effective';
+            this.activeDateFilter = 'booking';
             this.booking_date_from = thirtyDaysAgo.toISOString().split('T')[0];
             this.booking_date_to = today.toISOString().split('T')[0];
         },
@@ -724,6 +724,7 @@ function profitLossReport() {
             this.activeTab = 'passenger';
             this.currentPage = 1;
             this.ensureEffectiveDates();
+            this.activeDateFilter = 'effective';
             this.loadDataForTab();
             this.loadSummary();
         },
