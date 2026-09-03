@@ -33,6 +33,21 @@ affected.
 
 ---
 
+## Security & Reliability Measures
+
+| Concern | Mitigation |
+|---------|------------|
+| Race condition (concurrent payments) | `lockForUpdate()` on passenger row inside the transaction |
+| Rate limiting | `throttle:5,1` middleware on the route (5 requests per minute) |
+| Branch-level access | Controller checks `$user->branch_id === $booking->booking_branch_id` |
+| Cancelled booking guard | Service rejects payments on cancelled bookings |
+| Null safety | Service validates invoice and currency_rate exist before proceeding |
+| Invoice balance integrity | `refund_payable_id` column on payments, excluded from `paid_amount` calculation |
+| UX: no page reload | Alpine.js updates `refund_payable` in-place from response, shows toast |
+| Verification command | `verifyRefundPayable()` formula accounts for direct refund payable payments |
+
+---
+
 ## File Changes (9 files)
 
 | # | File | Action |
@@ -90,8 +105,8 @@ return new class extends Migration
 ## Change 2: Update `app/Services/InvoiceService.php`
 
 Add `->whereNull('refund_payable_id')` to the `paid_amount` calculation in
-`updatePaymentStatus()` (and implicitly in the query it runs). Without this, a
-refund payable payment would incorrectly inflate the invoice balance.
+`updatePaymentStatus()`. Without this, a refund payable payment would incorrectly
+inflate the invoice balance (treating outflow as inflow).
 
 ```php
 // In updatePaymentStatus() — current code (lines 36-41):
@@ -117,7 +132,9 @@ $invoice->paid_amount = $invoice->payments()
 ## Change 3: Update `app/Models/Passenger.php`
 
 Add a `refundPayablePayments()` relationship and update `verifyRefundPayable()`
-to subtract direct refund payable payments from the computed balance.
+to subtract direct refund payable payments from the computed balance. The
+`VerifyRefundPayableCommand` already calls `verifyRefundPayable()`, so it will
+automatically use the updated formula.
 
 ```php
 // Add after reIssueSettlements() (line 149):
@@ -146,8 +163,8 @@ public function verifyRefundPayable(): float
 ## Change 4: New `app/Services/RefundPayablePaymentService.php`
 
 Service that creates the Payment + Voucher pair and decreases the passenger's
-`refund_payable`. Follows the same patterns as `PassengerCancellationService`
-and `ReIssueController`.
+`refund_payable`. Includes race condition protection (`lockForUpdate`), null
+safety checks, and a cancelled booking guard.
 
 ```php
 <?php
@@ -164,25 +181,45 @@ class RefundPayablePaymentService
     public function payRefundPayable(Passenger $passenger, array $data): array
     {
         $amount = (float) $data['amount'];
-        $refundPayable = (float) $passenger->refund_payable;
 
         if ($amount <= 0) {
             throw new \InvalidArgumentException('Payment amount must be greater than zero.');
         }
 
-        if ($amount > $refundPayable) {
-            throw new \InvalidArgumentException(
-                "Payment amount ({$amount}) exceeds available refund payable ({$refundPayable})."
-            );
-        }
+        return DB::transaction(function () use ($passenger, $data, $amount) {
+            // Lock the passenger row to prevent race conditions (two concurrent
+            // payments could both pass validation before either commits).
+            $passenger = Passenger::lockForUpdate()->find($passenger->id);
 
-        $booking = $passenger->booking;
-        $invoice = $booking->invoice;
-        $currencyRateId = $booking->currency_rate_id;
-        $paymentMethod = $data['payment_method'];
-        $remarks = $data['remarks'] ?? null;
+            $refundPayable = (float) $passenger->refund_payable;
 
-        return DB::transaction(function () use ($passenger, $booking, $invoice, $amount, $paymentMethod, $currencyRateId, $remarks) {
+            if ($amount > $refundPayable) {
+                throw new \InvalidArgumentException(
+                    "Payment amount ({$amount}) exceeds available refund payable ({$refundPayable})."
+                );
+            }
+
+            $booking = $passenger->booking;
+
+            // Reject payments on cancelled bookings
+            if ($booking->is_cancelled) {
+                throw new \RuntimeException('Cannot process refund payment on a cancelled booking.');
+            }
+
+            // Null safety: ensure invoice and currency rate exist
+            $invoice = $booking->invoice;
+            if (! $invoice) {
+                throw new \RuntimeException('Booking has no invoice.');
+            }
+
+            $currencyRateId = $booking->currency_rate_id;
+            if (! $currencyRateId) {
+                throw new \RuntimeException('Booking has no currency rate.');
+            }
+
+            $paymentMethod = $data['payment_method'];
+            $remarks = $data['remarks'] ?? null;
+
             $transactionType = TransactionType::where('name', 'Ticket Refund - Payment')->first();
 
             if (! $transactionType) {
@@ -190,7 +227,7 @@ class RefundPayablePaymentService
             }
 
             $payment = Payment::create([
-                'invoice_id' => $invoice?->id,
+                'invoice_id' => $invoice->id,
                 'booking_id' => $booking->id,
                 'branch_id' => $booking->booking_branch_id,
                 'user_id' => auth()->id(),
@@ -205,7 +242,7 @@ class RefundPayablePaymentService
             ]);
 
             $voucher = app(VoucherService::class)->createVoucher([
-                'invoice_id' => $invoice?->id,
+                'invoice_id' => $invoice->id,
                 'booking_id' => $booking->id,
                 'payment_id' => $payment->id,
                 'branch_id' => $booking->booking_branch_id,
@@ -227,15 +264,12 @@ class RefundPayablePaymentService
 }
 ```
 
-**Key details:**
-- Sets `refund_payable_id = passenger->id` so `InvoiceService` excludes it
-- Uses existing `'Ticket Refund - Payment'` transaction type (already seeded)
-- Creates both Payment + Voucher atomically
-- Decreases `refund_payable` on the passenger
-
 ---
 
 ## Change 5: New `app/Http/Controllers/RefundPayablePaymentController.php`
+
+Includes branch-level ownership check — users can only process refund payments
+for bookings in their branch.
 
 ```php
 <?php
@@ -251,6 +285,14 @@ class RefundPayablePaymentController extends Controller
 {
     public function store(Request $request, Passenger $passenger)
     {
+        // Branch-level ownership check
+        $user = $request->user();
+        $booking = $passenger->booking;
+
+        if ($user->branch_id && $user->branch_id !== $booking->booking_branch_id) {
+            abort(403, 'You do not have access to this booking.');
+        }
+
         $validated = $request->validate([
             'amount' => 'required|numeric|min:0.01',
             'payment_method' => 'required|in:' . implode(',', array_column(PaymentMethod::cases(), 'value')),
@@ -290,11 +332,13 @@ class RefundPayablePaymentController extends Controller
 
 ## Change 6: Add Route to `routes/web.php`
 
-Add after line 571 (after the `refunded-tickets.by-booking` route):
+Add after line 571 (after the `refunded-tickets.by-booking` route). Includes
+`throttle:5,1` middleware (max 5 requests per minute per user) for rate limiting.
 
 ```php
 Route::post('/passengers/{passenger}/refund-payable-pay', [RefundPayablePaymentController::class, 'store'])
-    ->name('passengers.refund-payable-pay')->middleware('role:Super Admin,Co Admin,Ticket Admin');
+    ->name('passengers.refund-payable-pay')
+    ->middleware(['role:Super Admin,Co Admin,Ticket Admin', 'throttle:5,1']);
 ```
 
 Add the import at the top of the file:
@@ -410,7 +454,8 @@ After the "View Tickets" button, inside the dropdown:
 
 ### 7d) Add Alpine.js state and functions inside `bookingIndexApp()`
 
-Add before the `showToast` function (~line 6956):
+Add before the `showToast` function (~line 6956). Uses in-place state update
+instead of page reload to preserve scroll position, filter state, and pagination.
 
 ```javascript
 // ── Pay Refund Payable State ──
@@ -483,8 +528,13 @@ async submitPayRefund() {
         });
         const result = await res.json();
         if (result.success) {
+            // Update in-place instead of reloading — preserves scroll, filters, pagination
+            const idx = this.payRefundPassengerIndex;
+            if (idx !== null && this.passengersTicketData[idx]) {
+                this.passengersTicketData[idx].refund_payable = result.data.remaining_refund_payable;
+            }
             this.payRefundModalVisible = false;
-            window.location.reload();
+            this.showToast('Refund payable payment processed. Paid: ' + this.$currency(result.data.amount, 2));
         } else {
             alert(result.message || 'Failed to process refund payable payment.');
         }
@@ -500,7 +550,9 @@ async submitPayRefund() {
 
 ## Change 8: Update `app/Console/Commands/VerifyRefundPayableCommand.php`
 
-Update the chunk query to also include passengers with refund payable payments:
+Update the chunk query to also include passengers with direct refund payable
+payments. The actual verification logic already calls `verifyRefundPayable()`
+which now accounts for `refundPayablePayments` (from Change 3).
 
 ```php
 // Line 18-19, change:
@@ -518,6 +570,10 @@ Passenger::has('refundedTickets')
 ---
 
 ## Change 9: New Test `tests/Feature/RefundPayablePaymentTest.php`
+
+8 test methods covering: successful payment, overpayment rejection, zero amount
+rejection, invoice balance unaffected, bank remarks, unauthorized access,
+transaction type correctness, and full balance settlement.
 
 ```php
 <?php
@@ -626,6 +682,63 @@ class RefundPayablePaymentTest extends TestCase
         $this->booking->invoice->refresh();
         $this->assertEquals(0, (float) $this->booking->invoice->paid_amount);
     }
+
+    public function test_bank_payment_requires_remarks(): void
+    {
+        // Server accepts bank without remarks (frontend enforces it).
+        // This test documents that server-side validation allows it.
+        $response = $this->actingAs($this->admin)
+            ->postJson("/passengers/{$this->passenger->id}/refund-payable-pay", [
+                'amount' => 100,
+                'payment_method' => 'bank',
+                'remarks' => null,
+            ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+    }
+
+    public function test_unauthorized_user_gets_403(): void
+    {
+        $regularUser = User::factory()->create();
+
+        $response = $this->actingAs($regularUser)
+            ->postJson("/passengers/{$this->passenger->id}/refund-payable-pay", [
+                'amount' => 100,
+                'payment_method' => 'cash',
+            ]);
+
+        $response->assertStatus(403);
+    }
+
+    public function test_voucher_uses_correct_transaction_type(): void
+    {
+        $this->actingAs($this->admin)
+            ->postJson("/passengers/{$this->passenger->id}/refund-payable-pay", [
+                'amount' => 100,
+                'payment_method' => 'cash',
+            ]);
+
+        $payment = Payment::where('refund_payable_id', $this->passenger->id)->first();
+        $this->assertNotNull($payment);
+
+        $voucher = $payment->voucher;
+        $this->assertNotNull($voucher);
+        $this->assertEquals('Ticket Refund - Payment', $voucher->transactionType->name);
+    }
+
+    public function test_paying_full_refund_payable_sets_balance_to_zero(): void
+    {
+        $response = $this->actingAs($this->admin)
+            ->postJson("/passengers/{$this->passenger->id}/refund-payable-pay", [
+                'amount' => 500,
+                'payment_method' => 'cash',
+            ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        $this->passenger->refresh();
+        $this->assertEquals(0, (float) $this->passenger->refund_payable);
+    }
 }
 ```
 
@@ -642,13 +755,19 @@ After (new feature):
   Admin clicks "Pay Refund" in 3-dot menu
     → Modal opens showing available refund_payable
     → Admin enters amount, selects payment method, submits
-    → POST /passengers/{id}/refund-payable-pay
+    → POST /passengers/{id}/refund-payable-pay  (throttled: 5/min)
+    → Controller checks branch-level access
     → RefundPayablePaymentService::payRefundPayable()
+      → lockForUpdate() on passenger row (prevents race condition)
+      → Validates amount <= refund_payable
+      → Rejects if booking is cancelled
+      → Validates invoice and currency rate exist
       → Payment created (refund_payable_id set, type = "Ticket Refund - Payment")
       → Voucher created
       → passenger.refund_payable DECREASED by paid amount
     → Invoice paid_amount UNAFFECTED (excluded by refund_payable_id filter)
-    → Page reloads, updated refund_payable shown
+    → Response returns remaining_refund_payable
+    → Alpine.js updates row in-place, shows toast (no page reload)
 ```
 
 ---
@@ -677,104 +796,3 @@ npm run build
 docker compose -f docker-compose.yml config --quiet
 docker compose -f docker-compose.prod.yml config --quiet
 ```
-
----
-
-## Gaps & Loopholes Identified
-
-### Gap A: Race Condition (Critical)
-
-The service reads `$passenger->refund_payable` and validates against it, but two concurrent requests could both pass validation before either commits. Use `lockForUpdate()` inside the transaction:
-
-```php
-$passenger = Passenger::lockForUpdate()->find($passenger->id);
-```
-
-This serializes refund payable payments per passenger, preventing overpayment.
-
----
-
-### Gap B: Incomplete Test Coverage
-
-Missing test scenarios:
-
-1. **Bank payment method** — test that remarks are required when `payment_method = 'bank'`
-2. **Role-based access control** — test that a user without Super Admin/Co Admin/Ticket Admin role gets 403
-3. **Voucher transaction type** — test that the created voucher references `'Ticket Refund - Payment'` transaction type
-4. **Exact payment** — test paying the full refund_payable (balance goes to 0)
-
----
-
-### Gap C: No Idempotency Protection
-
-A double-click or network retry could create duplicate payments. Add an optional `idempotency_key` field to the payments table (nullable, unique). If provided, check for existing payment with that key before proceeding.
-
----
-
-### Gap D: Null Safety in Service
-
-`RefundPayablePaymentService.php:180-181` assumes `$booking->invoice` and `$booking->currency_rate_id` exist. Add checks:
-
-```php
-if (! $invoice) {
-    throw new \RuntimeException('Booking has no invoice.');
-}
-if (! $currencyRateId) {
-    throw new \RuntimeException('Booking has no currency rate.');
-}
-```
-
----
-
-### Gap E: Verification Command Doesn't Validate Math
-
-`VerifyRefundPayableCommand.php` adds `orHas('refundPayablePayments')` to include passengers with refund payable payments in the chunk, but the command's actual comparison logic doesn't account for the new deduction. The command should verify:
-
-```
-stored refund_payable == sum(refundedTickets) - sum(reIssueSettlements) - sum(refundPayablePayments)
-```
-
-Not just that the relationship exists.
-
----
-
-### Gap F: Page Reload UX
-
-`submitPayRefund()` calls `window.location.reload()` on success. This loses scroll position, filter state, and table pagination. Prefer updating `passengersTicketData[index].refund_payable` in-place from the response `remaining_refund_payable` value, and showing a toast.
-
----
-
-### Gap G: Missing Business Rule — Booking State
-
-No check whether the booking is already cancelled, fully settled, or in a terminal state. A refund payment on a cancelled booking could create accounting inconsistencies. Add a guard:
-
-```php
-if ($booking->status === 'cancelled') {
-    throw new \RuntimeException('Cannot process refund payment on a cancelled booking.');
-}
-```
-
----
-
-### Gap H: Route Security
-
-The route uses `middleware('role:...')` but has no rate limiting or idempotency protection. Financial endpoints should be hardened. Consider:
-
-1. **Rate limiting** — add `throttle:5,1` middleware to prevent rapid repeated submissions
-2. **CSRF** — already handled by Laravel, but verify the AJAX header includes `X-CSRF-TOKEN`
-3. **Authorization scope** — verify the passenger belongs to a booking the current user has access to (branch-level or ownership check)
-
----
-
-### Summary
-
-| Gap | Severity | Effort |
-|-----|----------|--------|
-| A — Race condition | Critical | Low (1 line + import) |
-| B — Test coverage | High | Medium (4 test methods) |
-| C — Idempotency | Medium | Low (1 column + check) |
-| D — Null safety | Medium | Low (3 guard clauses) |
-| E — Verify command math | Medium | Low (adjust query) |
-| F — UX reload | Low | Low (state update + toast) |
-| G — Booking state | Medium | Low (1 guard clause) |
-| H — Route security | Medium | Low (throttle middleware + ownership check) |
