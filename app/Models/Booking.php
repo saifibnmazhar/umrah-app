@@ -2,13 +2,13 @@
 
 namespace App\Models;
 
+use App\Enums\DiscountType;
+use App\Enums\FingerprintLocation;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\MorphMany;
-use App\Enums\FingerprintLocation;
-use App\Enums\DiscountType;
 
 class Booking extends Model
 {
@@ -28,6 +28,7 @@ class Booking extends Model
         'discount_value',
         'discount_amount',
         'total_value',
+        'profit',
         'remarks',
         'currency_rate_id',
         'is_cancelled',
@@ -39,6 +40,7 @@ class Booking extends Model
         'discount_value' => 'decimal:6',
         'discount_amount' => 'decimal:6',
         'total_value' => 'decimal:6',
+        'profit' => 'decimal:6',
         'pax_qty' => 'integer',
         'is_cancelled' => 'boolean',
     ];

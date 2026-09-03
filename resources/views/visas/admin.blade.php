@@ -373,7 +373,7 @@
                     <label class="block text-sm font-medium text-slate-700 mb-1">Agent Name</label>
                     <select id="visaAgentSelect" name="visa_agent_id" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                         <option value="">Select Agent</option>
-                        @foreach($visaAgents as $agent)
+                        @foreach($allVisaAgents as $agent)
                             <option value="{{ $agent->id }}">{{ $agent->name }}</option>
                         @endforeach
                     </select>

@@ -12,7 +12,7 @@ class CheckRole
     {
         $user = $request->user();
 
-        if (!$user || !$user->roles()->whereIn('name', $roles)->exists()) {
+        if (! $user || ! $user->roles()->whereIn('name', $roles)->exists()) {
             abort(403, 'Unauthorized action.');
         }
 

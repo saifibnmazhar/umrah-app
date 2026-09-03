@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -76,14 +76,22 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE payments ADD CONSTRAINT payments_amount_check CHECK (amount >= 0)');
-        DB::statement('ALTER TABLE payments ADD CONSTRAINT payments_bdt_amount_check CHECK (bdt_amount >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE payments ADD CONSTRAINT payments_amount_check CHECK (amount >= 0)');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE payments ADD CONSTRAINT payments_bdt_amount_check CHECK (bdt_amount >= 0)');
+        }
     }
 
     public function down(): void
     {
-        DB::statement('ALTER TABLE payments DROP CHECK IF EXISTS payments_amount_check');
-        DB::statement('ALTER TABLE payments DROP CHECK IF EXISTS payments_bdt_amount_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE payments DROP CHECK IF EXISTS payments_amount_check');
+        }
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE payments DROP CHECK IF EXISTS payments_bdt_amount_check');
+        }
 
         if (Schema::hasTable('payments')) {
             Schema::table('payments', function (Blueprint $table) {

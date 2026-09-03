@@ -31,6 +31,7 @@ class PassengerStatusController extends Controller
 
         try {
             PassengerStatus::create($validated);
+
             return redirect()->route('passenger-statuses.index')->with('success', 'Passenger status created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create passenger status.')->withInput();
@@ -56,6 +57,7 @@ class PassengerStatusController extends Controller
 
         try {
             $passengerStatus->update($validated);
+
             return redirect()->route('passenger-statuses.index')->with('success', 'Passenger status updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update passenger status.')->withInput();
@@ -66,6 +68,7 @@ class PassengerStatusController extends Controller
     {
         try {
             $passengerStatus->delete();
+
             return redirect()->route('passenger-statuses.index')->with('success', 'Passenger status deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete passenger status.');

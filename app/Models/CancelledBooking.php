@@ -5,9 +5,12 @@ namespace App\Models;
 use App\Enums\CancelledBookingStatus;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
+use Illuminate\Database\Eloquent\SoftDeletes;
 
 class CancelledBooking extends Model
 {
+    use SoftDeletes;
+
     protected $fillable = [
         'booking_id',
         'invoice_id',
@@ -21,6 +24,8 @@ class CancelledBooking extends Model
         'deduction_voucher_id',
         'refund_payment_id',
         'refund_voucher_id',
+        'confirmed_by_id',
+        'reverted_by_id',
     ];
 
     protected $casts = [
@@ -68,5 +73,15 @@ class CancelledBooking extends Model
     public function refundVoucher(): BelongsTo
     {
         return $this->belongsTo(Voucher::class, 'refund_voucher_id');
+    }
+
+    public function confirmedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'confirmed_by_id');
+    }
+
+    public function revertedBy(): BelongsTo
+    {
+        return $this->belongsTo(User::class, 'reverted_by_id');
     }
 }

@@ -2,8 +2,8 @@
 
 use Illuminate\Database\Migrations\Migration;
 use Illuminate\Database\Schema\Blueprint;
-use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Schema;
 
 return new class extends Migration
 {
@@ -22,7 +22,9 @@ return new class extends Migration
             $table->timestamps();
         });
 
-        DB::statement('ALTER TABLE visa_selling_prices ADD CONSTRAINT visa_selling_prices_selling_price_check CHECK (selling_price >= 0)');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE visa_selling_prices ADD CONSTRAINT visa_selling_prices_selling_price_check CHECK (selling_price >= 0)');
+        }
     }
 
     /**
@@ -30,7 +32,9 @@ return new class extends Migration
      */
     public function down(): void
     {
-        DB::statement('ALTER TABLE visa_selling_prices DROP CHECK IF EXISTS visa_selling_prices_selling_price_check');
+        if (Schema::getConnection()->getDriverName() !== 'sqlite') {
+            DB::statement('ALTER TABLE visa_selling_prices DROP CHECK IF EXISTS visa_selling_prices_selling_price_check');
+        }
 
         if (Schema::hasTable('visa_selling_prices')) {
             Schema::table('visa_selling_prices', function (Blueprint $table) {

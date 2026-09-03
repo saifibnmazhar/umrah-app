@@ -10,6 +10,7 @@ use Illuminate\Console\Command;
 class BackfillVisaSubmissions extends Command
 {
     protected $signature = 'umrah:backfill-visa-submissions';
+
     protected $description = 'Create a pending VisaSubmission for every passenger that does not have one';
 
     public function handle(): void

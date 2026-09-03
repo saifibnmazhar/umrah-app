@@ -2,13 +2,13 @@
 @section('title', 'Ticket Agent Report')
 @section('content')
 <div class="max-w-[1600px] mx-auto p-4" x-data="ticketAgentReport()">
-    <div class="mb-3">
+    <div class="sticky top-0 z-30 bg-white py-2 mb-3">
         <span class="text-sm text-gray-500 font-medium">Report</span>
         <span class="text-sm text-gray-400 mx-1">></span>
         <span class="text-sm text-gray-700 font-semibold">Ticket Agent Report</span>
     </div>
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
+    <div class="sticky top-[40px] z-20 bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
         <div class="flex flex-wrap items-center gap-3">
             {{-- Search box commented out per requirement
             <div class="flex items-center gap-2">
@@ -55,10 +55,10 @@
         </div>
     </div>
 
-    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin">
-        <div class="overflow-x-auto">
+    <div class="bg-white border-x-2 border-b-2 border-gray-400 overflow-hidden shadow-sm scrollbar-thin flex flex-col" style="max-height: calc(100vh - 280px);">
+        <div class="overflow-auto flex-1 min-h-0">
             <table class="w-full min-w-[1200px] table-fixed">
-                <thead>
+                <thead class="sticky top-0 z-10">
                     <tr class="table-header">
                         <th class="w-56 px-4 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Agent Name</th>
                         <th class="w-32 px-4 py-3 text-xs font-bold text-gray-700 text-right border-r border-gray-300">Payable</th>
@@ -82,7 +82,7 @@
                             <td colspan="5" class="px-4 py-8 text-sm text-center text-gray-500">No agents found matching your criteria.</td>
                         </tr>
                     </template>
-                    <template x-for="agent in filteredAgents" :key="agent.id">
+                    <template x-for="agent in paginatedAgents" :key="agent.id">
                         <tr class="table-row-agent">
                             <td class="px-4 py-3 text-sm text-left border-r border-gray-200 font-medium text-gray-800" x-text="agent.name"></td>
                             <td class="px-4 py-3 text-sm text-right border-r border-gray-200 font-medium" x-text="$currency(agent.payable, 2)"></td>
@@ -107,6 +107,22 @@
             </table>
         </div>
     </div>
+
+    <nav x-show="agentTotalPages > 1" class="flex justify-end" aria-label="Pagination Navigation">
+        <span class="inline-flex items-center gap-2">
+            <button @click="goToPage(currentPage - 1)" :disabled="currentPage <= 1"
+                    :class="currentPage <= 1 ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Prev
+            </button>
+            <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5">
+                <span x-text="currentPage"></span>/<span x-text="agentTotalPages"></span>
+            </span>
+            <button @click="goToPage(currentPage + 1)" :disabled="currentPage >= agentTotalPages"
+                    :class="currentPage >= agentTotalPages ? 'px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5' : 'px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100'">
+                Next
+            </button>
+        </span>
+    </nav>
 
     <div class="bg-white border-x-2 border-b-2 border-gray-400 p-4 shadow-sm">
         <div class="flex flex-wrap gap-6">
@@ -211,8 +227,8 @@
          x-transition:leave-end="opacity-0">
         <div class="absolute inset-0" style="background-color: rgba(0,0,0,0.5);" @click="closeModal()"></div>
         <div class="relative z-10 min-h-screen flex items-center justify-center p-4">
-            <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden">
-                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
+            <div class="modal-content relative bg-white rounded-lg shadow-2xl w-full max-w-5xl max-h-[90vh] overflow-hidden flex flex-col">
+                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center shrink-0">
                     <h2 class="text-xl font-bold text-white">Agent Details</h2>
                     <button @click="closeModal()" class="text-white hover:text-gray-300 transition-colors">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -221,7 +237,7 @@
                     </button>
                 </div>
 
-                <div class="p-6 overflow-y-auto max-h-[calc(90vh-180px)] scrollbar-thin">
+                <div class="p-6 overflow-y-auto flex-1 min-h-0 scrollbar-thin">
                     <template x-if="selectedAgent">
                         <div>
                             <div class="mb-6">
@@ -259,7 +275,7 @@
                                 </div>
                             </div>
 
-                            <div x-show="activeTab === 'payment'">
+                            <div x-show="activeTab === 'payment'" x-cloak>
                                 <div class="border-2 border-gray-200 rounded-lg overflow-hidden">
                                     <table class="w-full">
                                         <thead>
@@ -347,7 +363,7 @@
                     </template>
                 </div>
 
-                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end">
+                <div class="bg-gray-50 px-6 py-4 border-t border-gray-200 flex justify-end shrink-0">
                     <button @click="closeModal()" class="filter-btn px-6 py-2 rounded-md text-sm font-medium text-gray-700 flex items-center gap-2">
                         <svg class="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                             <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12"/>
@@ -375,6 +391,8 @@ function ticketAgentReport() {
         agents: [],
         filteredAgents: [],
         loading: false,
+        currentPage: 1,
+        perPage: 25,
 
         get summary() {
             const a = this.filteredAgents;
@@ -391,6 +409,15 @@ function ticketAgentReport() {
             };
         },
 
+        get agentTotalPages() {
+            return Math.max(1, Math.ceil(this.filteredAgents.length / this.perPage));
+        },
+
+        get paginatedAgents() {
+            const start = (this.currentPage - 1) * this.perPage;
+            return this.filteredAgents.slice(start, start + this.perPage);
+        },
+
         init() {
             this.loadData();
             const now = new Date();
@@ -401,6 +428,7 @@ function ticketAgentReport() {
 
         async loadData() {
             this.loading = true;
+            this.currentPage = 1;
             const params = new URLSearchParams();
             if (this.date_from) params.set('date_from', this.date_from);
             if (this.date_to) params.set('date_to', this.date_to);
@@ -431,6 +459,11 @@ function ticketAgentReport() {
             this.showModal = false;
             this.selectedAgent = null;
             document.body.style.overflow = 'auto';
+        },
+
+        goToPage(page) {
+            if (page < 1 || page > this.agentTotalPages) return;
+            this.currentPage = page;
         },
 
         switchTab(tab) {

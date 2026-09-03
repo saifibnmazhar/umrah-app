@@ -2,10 +2,9 @@
 
 namespace App\Services;
 
-use App\Models\Payment;
+use App\Models\Booking;
 use App\Models\Invoice;
-use App\Models\TransactionType;
-use App\Models\CurrencyRate;
+use App\Models\Payment;
 use Illuminate\Support\Facades\DB;
 
 class PaymentService
@@ -17,18 +16,18 @@ class PaymentService
 
     public function createCustomerPayment(Invoice $invoice, array $data): array
     {
-        \Log::info('PaymentService: Creating payment for invoice ID: ' . $invoice->id . ', booking ID: ' . $invoice->booking_id);
+        \Log::info('PaymentService: Creating payment for invoice ID: '.$invoice->id.', booking ID: '.$invoice->booking_id);
         \Log::info('PaymentService: Payment data received:', $data);
 
         $bookingCreatedAt = $invoice->booking?->created_at;
         $processedData = $this->processCurrencyConversion($data, $bookingCreatedAt);
         \Log::info('PaymentService: Processed data:', $processedData);
 
-        if (!$this->invoiceService->canAcceptPayment($invoice, $processedData['amount'])) {
+        if (! $this->invoiceService->canAcceptPayment($invoice, $processedData['amount'])) {
             throw new \Exception('Payment exceeds invoice balance');
         }
 
-        return DB::transaction(function () use ($invoice, $data, $processedData) {
+        return DB::transaction(function () use ($invoice, $processedData) {
             \Log::info('PaymentService: Creating Payment record...');
 
             $payment = Payment::create([
@@ -66,7 +65,7 @@ class PaymentService
                 'notes' => $processedData['notes'] ?? null,
             ]);
 
-            \Log::info('PaymentService: Payment created with ID: ' . $payment->id);
+            \Log::info('PaymentService: Payment created with ID: '.$payment->id);
             \Log::info('PaymentService: Creating Voucher record...');
 
             return [$payment, $voucher];
@@ -80,13 +79,13 @@ class PaymentService
 
     public function createCustomerPaymentAndUpdateInvoice(Invoice $invoice, array $data): array
     {
-        \Log::info('PaymentService: Starting createCustomerPaymentAndUpdateInvoice for invoice ID: ' . $invoice->id);
+        \Log::info('PaymentService: Starting createCustomerPaymentAndUpdateInvoice for invoice ID: '.$invoice->id);
 
         $bookingCreatedAt = $invoice->booking?->created_at;
         $processedData = $this->processCurrencyConversion($data, $bookingCreatedAt);
         \Log::info('PaymentService: Processed data:', $processedData);
 
-        if (!$this->invoiceService->canAcceptPayment($invoice, $processedData['amount'])) {
+        if (! $this->invoiceService->canAcceptPayment($invoice, $processedData['amount'])) {
             throw new \Exception('Payment exceeds invoice balance');
         }
 
@@ -113,7 +112,7 @@ class PaymentService
                 'remarks' => $processedData['remarks'] ?? null,
             ]);
 
-            \Log::info('PaymentService: Payment created with ID: ' . $payment->id);
+            \Log::info('PaymentService: Payment created with ID: '.$payment->id);
 
             $voucher = $this->voucherService->createVoucher([
                 'invoice_id' => $invoice->id,
@@ -132,7 +131,7 @@ class PaymentService
                 'notes' => $processedData['notes'] ?? null,
             ]);
 
-            \Log::info('PaymentService: Voucher created with ID: ' . $voucher->id);
+            \Log::info('PaymentService: Voucher created with ID: '.$voucher->id);
             \Log::info('PaymentService: Transaction complete, returning payment and voucher');
 
             return ['payment' => $payment, 'voucher' => $voucher];
@@ -143,7 +142,7 @@ class PaymentService
         $invoice->refresh();
         $this->invoiceService->updatePaymentStatus($invoice);
 
-        \Log::info('PaymentService: Invoice updated successfully. Paid: ' . $invoice->paid_amount . ', Balance: ' . $invoice->balance);
+        \Log::info('PaymentService: Invoice updated successfully. Paid: '.$invoice->paid_amount.', Balance: '.$invoice->balance);
 
         return [$result['payment'], $result['voucher']];
     }
@@ -151,14 +150,14 @@ class PaymentService
     public function createAgentPayment(string $agentType, array $data): array
     {
         $bookingCreatedAt = null;
-        if (!empty($data['booking_id'])) {
-            $booking = \App\Models\Booking::find($data['booking_id']);
+        if (! empty($data['booking_id'])) {
+            $booking = Booking::find($data['booking_id']);
             $bookingCreatedAt = $booking?->created_at;
         }
         $processedData = $this->processCurrencyConversion($data, $bookingCreatedAt);
-        $agentIdField = $agentType . '_id';
+        $agentIdField = $agentType.'_id';
 
-        return DB::transaction(function () use ($agentType, $agentIdField, $data, $processedData) {
+        return DB::transaction(function () use ($agentIdField, $processedData) {
             $payment = Payment::create([
                 'invoice_id' => null,
                 'booking_id' => $processedData['booking_id'] ?? null,
