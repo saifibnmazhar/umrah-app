@@ -31,6 +31,7 @@ use App\Models\VisaUpdateLog;
 use App\Services\ProfitCalculationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Carbon;
+use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
 
 class ProfitCalculationServiceTest extends TestCase
@@ -985,6 +986,13 @@ class ProfitCalculationServiceTest extends TestCase
         $booking = $this->createBooking($user, $deps);
         $passenger = $this->addPassenger($user, $deps, $booking);
 
+        VisaUpdateLog::create([
+            'visa_submission_id' => $passenger->visaSubmission->id,
+            'user_id' => $user->id,
+            'action' => 'issued',
+            'new_values' => ['status' => 'issued'],
+        ]);
+
         $this->service->recalculatePassengerProfit($passenger->refresh());
 
         $this->assertDatabaseHas('passengers', [
@@ -1000,5 +1008,76 @@ class ProfitCalculationServiceTest extends TestCase
         $this->assertNotNull($fresh->visa_profit_effective_at);
         $this->assertNotNull($fresh->ticket_profit_effective_at);
         $this->assertNotNull($fresh->service_charge_effective_at);
+    }
+
+    /** @test */
+    public function test_effective_date_falls_back_to_submitted_log_when_no_issued_log(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $passenger = $this->addPassenger($user, $deps, $booking);
+
+        $submittedLog = VisaUpdateLog::create([
+            'visa_submission_id' => $passenger->visaSubmission->id,
+            'user_id' => $user->id,
+            'action' => 'submitted',
+            'new_values' => ['status' => 'submitted'],
+        ]);
+
+        $this->service->recalculatePassengerProfit($passenger->refresh());
+
+        $fresh = $passenger->refresh();
+        $this->assertSame(
+            $submittedLog->refresh()->created_at->toDateTimeString(),
+            $fresh->visa_profit_effective_at->toDateTimeString()
+        );
+    }
+
+    /** @test */
+    public function test_effective_date_is_null_when_no_visa_update_logs_exist(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $passenger = $this->addPassenger($user, $deps, $booking);
+
+        $this->assertSame(0, VisaUpdateLog::where(
+            'visa_submission_id',
+            $passenger->visaSubmission->id
+        )->count());
+
+        $this->service->recalculatePassengerProfit($passenger->refresh());
+
+        $this->assertNull($passenger->refresh()->visa_profit_effective_at);
+    }
+
+    /** @test */
+    public function test_observer_creates_issued_log_before_recalculate(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $passenger = $this->addPassenger($user, $deps, $booking, ['service_required' => 'visa_only']);
+
+        $visa = $passenger->visaSubmission;
+
+        Auth::login($user);
+
+        $visa->update(['status' => 'submitted']);
+        $visa->update(['status' => 'issued']);
+
+        $issuedLog = VisaUpdateLog::where('visa_submission_id', $visa->id)
+            ->where('new_values->status', 'issued')
+            ->latest('created_at')
+            ->first();
+
+        $this->assertNotNull($issuedLog);
+
+        $fresh = $passenger->refresh();
+        $this->assertSame(
+            $issuedLog->refresh()->created_at->toDateTimeString(),
+            $fresh->visa_profit_effective_at->toDateTimeString()
+        );
     }
 }

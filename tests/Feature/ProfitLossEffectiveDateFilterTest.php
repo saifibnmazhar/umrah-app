@@ -347,4 +347,41 @@ class ProfitLossEffectiveDateFilterTest extends TestCase
         $this->assertStringContainsString('effective_date_from = thirtyDaysAgo', $html);
         $this->assertStringContainsString("activeDateFilter = 'effective'", $html);
     }
+
+    /** @test */
+    public function view_disables_effective_date_filter_on_customer_tab(): void
+    {
+        $html = view('reports.profit-loss')->render();
+
+        $this->assertStringContainsString(':disabled="activeTab === \'customer\'"', $html);
+        $this->assertStringContainsString("activeTab === 'customer' ? null : switchDateFilter('effective')", $html);
+        $this->assertStringContainsString('opacity-50 cursor-not-allowed', $html);
+    }
+
+    /** @test */
+    public function view_defaults_effective_dates_to_last_30_days_on_passenger_tab(): void
+    {
+        $html = view('reports.profit-loss')->render();
+
+        $this->assertStringContainsString('switchToPassengerTab()', $html);
+        $this->assertStringContainsString('ensureEffectiveDates()', $html);
+        $this->assertStringContainsString("this.activeDateFilter = 'effective'", $html);
+        $this->assertStringContainsString('setDate(today.getDate() - 30)', $html);
+    }
+
+    /** @test */
+    public function view_preserves_date_ranges_when_switching_filter_mode(): void
+    {
+        $html = view('reports.profit-loss')->render();
+
+        $this->assertStringContainsString('switchDateFilter(mode)', $html);
+        $this->assertStringContainsString('this.activeDateFilter = mode', $html);
+
+        // Switching filter mode must NOT wipe the other mode's date range,
+        // so the default/set range persists until changed manually.
+        $this->assertStringNotContainsString('this.effective_date_from = \'\'', $html);
+        $this->assertStringNotContainsString('this.effective_date_to = \'\'', $html);
+        $this->assertStringNotContainsString('this.booking_date_from = \'\'', $html);
+        $this->assertStringNotContainsString('this.booking_date_to = \'\'', $html);
+    }
 }

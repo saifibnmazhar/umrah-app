@@ -438,16 +438,21 @@ class ProfitCalculationService
             return null;
         }
 
-        $log = VisaUpdateLog::where('visa_submission_id', $visa->id)
+        $issuedLog = VisaUpdateLog::where('visa_submission_id', $visa->id)
             ->where('new_values->status', 'issued')
             ->latest('created_at')
             ->first();
 
-        if ($log) {
-            return $log->created_at->toDateTimeString();
+        if ($issuedLog) {
+            return $issuedLog->created_at->toDateTimeString();
         }
 
-        return $visa->created_at?->toDateTimeString();
+        $submittedLog = VisaUpdateLog::where('visa_submission_id', $visa->id)
+            ->where('new_values->status', 'submitted')
+            ->latest('created_at')
+            ->first();
+
+        return $submittedLog?->created_at?->toDateTimeString();
     }
 
     private function determineTicketEffectiveDate(Passenger $passenger): ?string

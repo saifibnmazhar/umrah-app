@@ -144,9 +144,12 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                             class="px-3 py-2 text-sm font-medium rounded-md transition-colors">
                             Booking Date
                         </button>
-                        <button @click="switchDateFilter('effective')"
+                        <button @click="activeTab === 'customer' ? null : switchDateFilter('effective')"
+                            :disabled="activeTab === 'customer'"
                             :class="activeDateFilter === 'effective'
-                                ? 'bg-slate-700 text-white' : 'bg-white text-slate-700 border border-gray-300'"
+                                ? 'bg-slate-700 text-white' : (activeTab === 'customer'
+                                    ? 'bg-gray-100 text-gray-400 border border-gray-200 cursor-not-allowed'
+                                    : 'bg-white text-slate-700 border border-gray-300')"
                             class="px-3 py-2 text-sm font-medium rounded-md transition-colors">
                             Effective Date
                         </button>
@@ -161,11 +164,11 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                     </div>
                     <div x-show="activeDateFilter === 'effective'" class="flex items-center gap-2">
                         <label class="text-sm font-semibold text-gray-700">From:</label>
-                        <input type="date" x-model="effective_date_from" @change="resetAndLoad()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="date" x-model="effective_date_from" :disabled="activeTab === 'customer'" @change="resetAndLoad()" :class="activeTab === 'customer' ? 'date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 opacity-50 cursor-not-allowed' : 'date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'">
                     </div>
                     <div x-show="activeDateFilter === 'effective'" class="flex items-center gap-2">
                         <label class="text-sm font-semibold text-gray-700">To:</label>
-                        <input type="date" x-model="effective_date_to" @change="resetAndLoad()" class="date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500">
+                        <input type="date" x-model="effective_date_to" :disabled="activeTab === 'customer'" @change="resetAndLoad()" :class="activeTab === 'customer' ? 'date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 opacity-50 cursor-not-allowed' : 'date-input px-3 py-2 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500'">
                     </div>
                     <div class="flex items-center gap-2">
                         <input type="text" x-model="search" @input="clearSearchTimeout(); searchTimeout = setTimeout(() => { currentPage = 1; loadDataForTab(); loadSummary(); }, 300)" placeholder="Search by Invoice ID, Customer Name, Passenger Name, Passport, Iqama"
@@ -197,10 +200,10 @@ input[type="date"]::-webkit-calendar-picker-indicator {
             <div class="border-b border-gray-300 bg-gray-50 px-4 pt-3 flex-shrink-0">
                 <div class="flex items-center justify-between">
                     <div class="flex gap-0" id="tabButtons">
-                        <button @click="activeTab = 'customer'; currentPage = 1; if (!booking_date_from && !booking_date_to) { const today = new Date(); const d = new Date(today); d.setDate(today.getDate() - 30); booking_date_from = d.toISOString().split('T')[0]; booking_date_to = today.toISOString().split('T')[0]; activeDateFilter = 'booking'; } loadDataForTab(); loadSummary()" :class="activeTab === 'customer' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
+                        <button @click="switchToCustomerTab()" :class="activeTab === 'customer' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
                             Per Customer
                         </button>
-                        <button @click="activeTab = 'passenger'; currentPage = 1; loadDataForTab(); loadSummary()" :class="activeTab === 'passenger' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
+                        <button @click="switchToPassengerTab()" :class="activeTab === 'passenger' ? 'tab-btn active' : 'tab-btn'" class="px-6 py-3 rounded-t-md text-sm font-medium text-gray-600">
                             Per Passenger
                         </button>
                     </div>
@@ -688,15 +691,45 @@ function profitLossReport() {
             this.booking_date_to = today.toISOString().split('T')[0];
         },
 
+        ensureEffectiveDates() {
+            if (!this.effective_date_from && !this.effective_date_to) {
+                const today = new Date();
+                const thirtyDaysAgo = new Date(today);
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+                this.effective_date_from = thirtyDaysAgo.toISOString().split('T')[0];
+                this.effective_date_to = today.toISOString().split('T')[0];
+            }
+        },
+
+        ensureBookingDates() {
+            if (!this.booking_date_from && !this.booking_date_to) {
+                const today = new Date();
+                const thirtyDaysAgo = new Date(today);
+                thirtyDaysAgo.setDate(today.getDate() - 30);
+                this.booking_date_from = thirtyDaysAgo.toISOString().split('T')[0];
+                this.booking_date_to = today.toISOString().split('T')[0];
+            }
+        },
+
+        switchToCustomerTab() {
+            this.activeTab = 'customer';
+            this.currentPage = 1;
+            this.ensureBookingDates();
+            this.activeDateFilter = 'booking';
+            this.loadDataForTab();
+            this.loadSummary();
+        },
+
+        switchToPassengerTab() {
+            this.activeTab = 'passenger';
+            this.currentPage = 1;
+            this.ensureEffectiveDates();
+            this.loadDataForTab();
+            this.loadSummary();
+        },
+
         switchDateFilter(mode) {
             this.activeDateFilter = mode;
-            if (mode === 'booking') {
-                this.effective_date_from = '';
-                this.effective_date_to = '';
-            } else {
-                this.booking_date_from = '';
-                this.booking_date_to = '';
-            }
             this.currentPage = 1;
             this.loadDataForTab();
             this.loadSummary();
