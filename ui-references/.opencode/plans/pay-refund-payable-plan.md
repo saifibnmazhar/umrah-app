@@ -677,3 +677,104 @@ npm run build
 docker compose -f docker-compose.yml config --quiet
 docker compose -f docker-compose.prod.yml config --quiet
 ```
+
+---
+
+## Gaps & Loopholes Identified
+
+### Gap A: Race Condition (Critical)
+
+The service reads `$passenger->refund_payable` and validates against it, but two concurrent requests could both pass validation before either commits. Use `lockForUpdate()` inside the transaction:
+
+```php
+$passenger = Passenger::lockForUpdate()->find($passenger->id);
+```
+
+This serializes refund payable payments per passenger, preventing overpayment.
+
+---
+
+### Gap B: Incomplete Test Coverage
+
+Missing test scenarios:
+
+1. **Bank payment method** — test that remarks are required when `payment_method = 'bank'`
+2. **Role-based access control** — test that a user without Super Admin/Co Admin/Ticket Admin role gets 403
+3. **Voucher transaction type** — test that the created voucher references `'Ticket Refund - Payment'` transaction type
+4. **Exact payment** — test paying the full refund_payable (balance goes to 0)
+
+---
+
+### Gap C: No Idempotency Protection
+
+A double-click or network retry could create duplicate payments. Add an optional `idempotency_key` field to the payments table (nullable, unique). If provided, check for existing payment with that key before proceeding.
+
+---
+
+### Gap D: Null Safety in Service
+
+`RefundPayablePaymentService.php:180-181` assumes `$booking->invoice` and `$booking->currency_rate_id` exist. Add checks:
+
+```php
+if (! $invoice) {
+    throw new \RuntimeException('Booking has no invoice.');
+}
+if (! $currencyRateId) {
+    throw new \RuntimeException('Booking has no currency rate.');
+}
+```
+
+---
+
+### Gap E: Verification Command Doesn't Validate Math
+
+`VerifyRefundPayableCommand.php` adds `orHas('refundPayablePayments')` to include passengers with refund payable payments in the chunk, but the command's actual comparison logic doesn't account for the new deduction. The command should verify:
+
+```
+stored refund_payable == sum(refundedTickets) - sum(reIssueSettlements) - sum(refundPayablePayments)
+```
+
+Not just that the relationship exists.
+
+---
+
+### Gap F: Page Reload UX
+
+`submitPayRefund()` calls `window.location.reload()` on success. This loses scroll position, filter state, and table pagination. Prefer updating `passengersTicketData[index].refund_payable` in-place from the response `remaining_refund_payable` value, and showing a toast.
+
+---
+
+### Gap G: Missing Business Rule — Booking State
+
+No check whether the booking is already cancelled, fully settled, or in a terminal state. A refund payment on a cancelled booking could create accounting inconsistencies. Add a guard:
+
+```php
+if ($booking->status === 'cancelled') {
+    throw new \RuntimeException('Cannot process refund payment on a cancelled booking.');
+}
+```
+
+---
+
+### Gap H: Route Security
+
+The route uses `middleware('role:...')` but has no rate limiting or idempotency protection. Financial endpoints should be hardened. Consider:
+
+1. **Rate limiting** — add `throttle:5,1` middleware to prevent rapid repeated submissions
+2. **CSRF** — already handled by Laravel, but verify the AJAX header includes `X-CSRF-TOKEN`
+3. **Authorization scope** — verify the passenger belongs to a booking the current user has access to (branch-level or ownership check)
+
+---
+
+### Summary
+
+| Gap | Severity | Effort |
+|-----|----------|--------|
+| A — Race condition | Critical | Low (1 line + import) |
+| B — Test coverage | High | Medium (4 test methods) |
+| C — Idempotency | Medium | Low (1 column + check) |
+| D — Null safety | Medium | Low (3 guard clauses) |
+| E — Verify command math | Medium | Low (adjust query) |
+| F — UX reload | Low | Low (state update + toast) |
+| G — Booking state | Medium | Low (1 guard clause) |
+| H — Route security | Medium | Low (throttle middleware + ownership check) |
