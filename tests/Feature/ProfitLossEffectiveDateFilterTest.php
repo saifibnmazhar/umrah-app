@@ -300,6 +300,40 @@ class ProfitLossEffectiveDateFilterTest extends TestCase
     }
 
     /** @test */
+    public function data_passenger_tab_filters_row_visa_and_ticket_profit_by_effective_date(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $branch = $this->createBranch('Branch');
+
+        // Passenger: visa effective in range (200), ticket effective out of range (50).
+        $this->createBookingWithPassenger($user, $deps, $branch, 'INV-H', [
+            'visa_profit' => 200.00,
+            'visa_profit_effective_at' => '2024-04-10 10:00:00',
+            'ticket_profit' => 50.00,
+            'ticket_profit_effective_at' => '2024-09-01 10:00:00',
+            'profit' => 250.00,
+        ]);
+
+        Auth::login($user);
+
+        $response = $this->get(route('api.reports.profit-loss', [
+            'tab' => 'passenger',
+            'effective_date_from' => '2024-03-01',
+            'effective_date_to' => '2024-06-30',
+        ]));
+
+        $response->assertOk();
+        $rows = $response->json('data');
+        $this->assertCount(1, $rows);
+
+        // Row columns must reflect the effective range, not the full breakdown.
+        $this->assertEquals(200.0, (float) $rows[0]['visa_profit']);
+        $this->assertEquals(0.0, (float) $rows[0]['ticket_profit']);
+        $this->assertEquals(200.0, (float) $rows[0]['total_profit']);
+    }
+
+    /** @test */
     public function print_filters_and_recomputes_passenger_totals_in_effective_mode(): void
     {
         $user = $this->setupUser();
@@ -335,6 +369,8 @@ class ProfitLossEffectiveDateFilterTest extends TestCase
         // INV-G total should show only in-range visa profit (300), not the stored 340.
         $response->assertSeeText('SAR 300');
         $response->assertDontSeeText('SAR 340');
+        // INV-G ticket profit (40) is out of range so the Ticket Profit column shows 0.
+        $response->assertDontSeeText('SAR 40');
     }
 
     /** @test */

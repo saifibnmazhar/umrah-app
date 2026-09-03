@@ -144,8 +144,8 @@
                 <td class="text-center">{{ $row['mobile'] }}</td>
                 <td class="text-left">{{ $row['passenger_name'] }}</td>
                 <td class="text-right">{{ $fmtCurrency($row['package_value']) }}</td>
-                <td class="text-right {{ ($row['breakdown']['visa_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($row['breakdown']['visa_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($row['breakdown']['visa_profit'] ?? 0) }}</td>
-                <td class="text-right {{ ($row['breakdown']['ticket_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($row['breakdown']['ticket_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($row['breakdown']['ticket_profit'] ?? 0) }}</td>
+                <td class="text-right {{ ($row['visa_profit'] ?? $row['breakdown']['visa_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($row['visa_profit'] ?? $row['breakdown']['visa_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($row['visa_profit'] ?? $row['breakdown']['visa_profit'] ?? 0) }}</td>
+                <td class="text-right {{ ($row['ticket_profit'] ?? $row['breakdown']['ticket_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($row['ticket_profit'] ?? $row['breakdown']['ticket_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($row['ticket_profit'] ?? $row['breakdown']['ticket_profit'] ?? 0) }}</td>
                 <td class="text-right {{ $row['total_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($row['total_profit'] >= 0 ? '+' : '') . $fmtCurrency($row['total_profit']) }}</td>
             </tr>
             @empty

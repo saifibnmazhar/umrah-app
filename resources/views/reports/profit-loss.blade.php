@@ -365,8 +365,8 @@ input[type="date"]::-webkit-calendar-picker-indicator {
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-center text-gray-600" x-text="row.mobile"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-gray-700" x-text="row.passenger_name"></td>
                                         <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium text-gray-700" x-text="formatCurrency(row.package_value)"></td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium" :class="bdClass(row.breakdown?.visa_profit)" x-text="formatProfitLoss(row.breakdown?.visa_profit || 0)"></td>
-                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium" :class="bdClass(row.breakdown?.ticket_profit)" x-text="formatProfitLoss(row.breakdown?.ticket_profit || 0)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium" :class="bdClass(row.visa_profit ?? row.breakdown?.visa_profit)" x-text="formatProfitLoss((row.visa_profit ?? row.breakdown?.visa_profit) || 0)"></td>
+                                        <td class="px-4 py-3 text-sm border-r border-gray-200 text-right font-medium" :class="bdClass(row.ticket_profit ?? row.breakdown?.ticket_profit)" x-text="formatProfitLoss((row.ticket_profit ?? row.breakdown?.ticket_profit) || 0)"></td>
                                         <td class="px-4 py-3 text-sm text-right cursor-pointer hover:bg-blue-50 transition-colors"
                                             :class="row.total_profit >= 0 ? 'amount-profit' : 'amount-loss'"
                                             @click="openBreakdown(row)" x-text="formatProfitLoss(row.total_profit)"></td>

@@ -90,6 +90,18 @@ class ProfitLossReportController extends Controller
         return round($total, 6);
     }
 
+    private function effectiveComponentValue(Passenger $passenger, string $profitColumn, string $effectiveColumn, string $dateFrom, string $dateTo): float
+    {
+        $effectiveAt = $passenger->{$effectiveColumn};
+        if (! $effectiveAt
+            || $effectiveAt->toDateTimeString() < $dateFrom
+            || $effectiveAt->toDateTimeString() > $dateTo) {
+            return 0.0;
+        }
+
+        return (float) ($passenger->{$profitColumn} ?? 0);
+    }
+
     private function passengerHasEffectiveComponentInRange(Passenger $passenger, string $dateFrom, string $dateTo): bool
     {
         foreach (['visa_profit_effective_at', 'ticket_profit_effective_at', 'service_charge_effective_at'] as $column) {
@@ -328,10 +340,15 @@ class ProfitLossReportController extends Controller
                 $row = $this->mapPassenger($passenger, $profitService);
 
                 if ($isEffectiveMode) {
-                    $row['total_profit'] = $this->calculateEffectiveDateProfit(
-                        $passenger,
-                        $request->effective_date_from ?? '1970-01-01',
-                        $request->effective_date_to ?? now()->toDateTimeString()
+                    $from = $request->effective_date_from ?? '1970-01-01';
+                    $to = $request->effective_date_to ?? now()->toDateTimeString();
+
+                    $row['total_profit'] = $this->calculateEffectiveDateProfit($passenger, $from, $to);
+                    $row['visa_profit'] = $this->effectiveComponentValue(
+                        $passenger, 'visa_profit', 'visa_profit_effective_at', $from, $to
+                    );
+                    $row['ticket_profit'] = $this->effectiveComponentValue(
+                        $passenger, 'ticket_profit', 'ticket_profit_effective_at', $from, $to
                     );
                 }
 
@@ -420,6 +437,12 @@ class ProfitLossReportController extends Controller
                     return null;
                 }
                 $row['total_profit'] = $this->calculateEffectiveDateProfit($passenger, $dateFrom, $dateTo);
+                $row['visa_profit'] = $this->effectiveComponentValue(
+                    $passenger, 'visa_profit', 'visa_profit_effective_at', $dateFrom, $dateTo
+                );
+                $row['ticket_profit'] = $this->effectiveComponentValue(
+                    $passenger, 'ticket_profit', 'ticket_profit_effective_at', $dateFrom, $dateTo
+                );
 
                 return $row;
             })->filter(fn ($row) => $row !== null)->values();
