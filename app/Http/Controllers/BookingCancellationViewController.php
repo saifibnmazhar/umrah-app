@@ -3,10 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CancelledBookingStatus;
+use App\Enums\RefundPaymentStatus;
 use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\CancelledBooking;
 use App\Models\CancelledPassenger;
+use App\Models\Passenger as PassengerModel;
 use App\Services\CostTrackingService;
 use Illuminate\Http\Request;
 
@@ -97,9 +99,28 @@ class BookingCancellationViewController extends Controller
 
         $cancelledPassengers = $passengerQuery->latest()->paginate(20)->withQueryString();
 
+        $ticketRefundQuery = PassengerModel::with([
+            'booking.customer',
+            'booking.bookingBranch',
+            'refundPaymentBranch',
+        ])->where('refund_payment_status', RefundPaymentStatus::PROCESSING)
+            ->where('refund_payable', '>', 0);
+
+        if (auth()->user()->branch_id) {
+            $ticketRefundQuery->where('refund_payment_branch_id', auth()->user()->branch_id);
+        }
+
+        if ($request->filled('branch_id')) {
+            $ticketRefundQuery->where('refund_payment_branch_id', $request->branch_id);
+        }
+
+        $ticketRefunds = $ticketRefundQuery->latest()->paginate(20)->withQueryString();
+
         $branches = Branch::select('id', 'name')->orderBy('name')->get();
 
-        return view('pending-refunds.index', compact('cancelledBookings', 'cancelledPassengers', 'branches', 'tab'));
+        return view('pending-refunds.index', compact(
+            'cancelledBookings', 'cancelledPassengers', 'ticketRefunds', 'branches', 'tab'
+        ));
     }
 
     public function report()

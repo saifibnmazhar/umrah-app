@@ -17,6 +17,7 @@ class VerifyRefundPayableCommand extends Command
 
         Passenger::has('refundedTickets')
             ->orHas('reIssueSettlements')
+            ->orHas('refundPayablePayments')
             ->chunkById(200, function ($passengers) use (&$mismatches) {
                 foreach ($passengers as $passenger) {
                     $computed = $passenger->verifyRefundPayable();

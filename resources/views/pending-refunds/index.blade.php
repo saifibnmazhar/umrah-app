@@ -28,6 +28,10 @@
            class="px-4 py-2 text-sm font-medium border-b-2 transition {{ $tab === 'passengers' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700' }}">
             Passenger Cancellations
         </a>
+        <a href="?tab=tickets{{ request('branch_id') ? '&branch_id=' . request('branch_id') : '' }}"
+           class="px-4 py-2 text-sm font-medium border-b-2 transition {{ $tab === 'tickets' ? 'border-blue-600 text-blue-600' : 'border-transparent text-slate-500 hover:text-slate-700' }}">
+            Ticket Refunds
+        </a>
     </div>
 
     <div class="bg-white rounded-xl shadow-lg p-6">
@@ -121,7 +125,7 @@
             {{ $cancelledBookings->links() }}
         </div>
 
-        @else
+        @elseif($tab === 'passengers')
         <div class="overflow-x-auto">
             <table class="w-full min-w-[1000px] text-sm">
                 <thead class="bg-slate-50 text-slate-600">
@@ -189,6 +193,120 @@
             {{ $cancelledPassengers->links() }}
         </div>
         @endif
+        @if($tab === 'tickets')
+        <div class="overflow-auto flex-1 min-h-0" style="max-height: calc(95vh - 260px);">
+            <table class="w-full min-w-[900px] text-sm">
+                <thead class="bg-slate-50 text-slate-600 sticky top-0 z-10">
+                    <tr>
+                        <th class="px-3 py-2 text-left font-medium">Invoice ID</th>
+                        <th class="px-3 py-2 text-left font-medium">Customer</th>
+                        <th class="px-3 py-2 text-left font-medium">Passenger</th>
+                        <th class="px-3 py-2 text-left font-medium">Booking Branch</th>
+                        <th class="px-3 py-2 text-left font-medium">Refund Branch</th>
+                        <th class="px-3 py-2 text-right font-medium">Refund Payable</th>
+                        <th class="px-3 py-2 text-center font-medium">Actions</th>
+                    </tr>
+                </thead>
+                <tbody class="divide-y divide-slate-200">
+                    @forelse($ticketRefunds as $tp)
+                    <tr>
+                        <td class="px-3 py-2 text-slate-700">{{ $tp->booking?->invoice_id ?? '—' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ $tp->booking?->customer?->name ?? 'N/A' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ trim(($tp->first_name ?? '') . ' ' . ($tp->last_name ?? '')) ?: '—' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ $tp->booking?->bookingBranch?->name ?? '—' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ $tp->refundPaymentBranch?->name ?? '—' }}</td>
+                        <td class="px-3 py-2 text-slate-800 font-medium text-right">@currency($tp->refund_payable, 2)</td>
+                        <td class="px-3 py-2 text-center whitespace-nowrap">
+                            <form method="POST" action="{{ route('passengers.refund-pay-revert', $tp->id) }}"
+                                  onsubmit="return confirm('Revert this refund payment? Status will return to pending.')" class="inline">
+                                @csrf
+                                <button type="submit" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-600 px-2 py-1 rounded font-medium">
+                                    Revert
+                                </button>
+                            </form>
+                            <button onclick="openConfirmRefundModal({{ $tp->id }}, '{{ addslashes(trim(($tp->first_name ?? '') . ' ' . ($tp->last_name ?? ''))) }}', {{ $tp->refund_payable }})"
+                                class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium ml-1">
+                                Confirm
+                            </button>
+                        </td>
+                    </tr>
+                    @empty
+                    <tr>
+                        <td colspan="7" class="px-3 py-4 text-center text-slate-500">No pending ticket refunds found</td>
+                    </tr>
+                    @endforelse
+                </tbody>
+            </table>
+        </div>
+        <div class="mt-4">{{ $ticketRefunds->links() }}</div>
+        @endif
     </div>
 </div>
+<div id="confirmRefundModal" class="hidden fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4"
+     onclick="if(event.target===this)this.classList.add('hidden')">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6">
+        <h3 class="text-xl font-semibold text-slate-800 mb-1">Confirm Refund Payment</h3>
+        <p class="text-sm text-slate-500 mb-4">Process refund payment for this passenger.</p>
+        <div class="space-y-2 text-sm mb-4 p-3 bg-slate-50 rounded-lg">
+            <div class="flex justify-between">
+                <span class="text-slate-500">Passenger</span>
+                <span class="font-medium text-slate-700" id="confirmRefundPassengerName"></span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-500">Refund Payable</span>
+                <span class="font-semibold text-blue-600" id="confirmRefundAmount"></span>
+            </div>
+        </div>
+        <form id="confirmRefundForm" onsubmit="submitConfirmRefund(event)" class="space-y-4">
+            <input type="hidden" name="passenger_id" id="confirmRefundPassengerId">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method *</label>
+                <select name="payment_method" required class="w-full px-4 py-2 border border-slate-300 rounded-lg">
+                    <option value="cash">Cash</option>
+                    <option value="bank">Bank</option>
+                </select>
+            </div>
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                <textarea name="remarks" rows="2" class="w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="Enter remarks"></textarea>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="submit" class="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Confirm Payment</button>
+                <button type="button" onclick="document.getElementById('confirmRefundModal').classList.add('hidden')" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 font-medium">Cancel</button>
+            </div>
+        </form>
+    </div>
+</div>
+<script>
+function openConfirmRefundModal(passengerId, name, amount) {
+    document.getElementById('confirmRefundPassengerId').value = passengerId;
+    document.getElementById('confirmRefundPassengerName').textContent = name;
+    document.getElementById('confirmRefundAmount').textContent = new Intl.NumberFormat('en-SA', { minimumFractionDigits: 2 }).format(amount);
+    document.getElementById('confirmRefundModal').classList.remove('hidden');
+}
+async function submitConfirmRefund(e) {
+    e.preventDefault();
+    const form = e.target;
+    const passengerId = form.passenger_id.value;
+    if (!confirm('Confirm this refund payment?')) return;
+    const res = await fetch(`/passengers/${passengerId}/refund-pay-confirm`, {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+        },
+        body: JSON.stringify({
+            payment_method: form.payment_method.value,
+            remarks: form.remarks.value || null,
+        }),
+    });
+    const result = await res.json();
+    if (result.success) {
+        window.location.reload();
+    } else {
+        alert(result.message || 'Failed to confirm refund payment.');
+    }
+}
+</script>
 @endsection

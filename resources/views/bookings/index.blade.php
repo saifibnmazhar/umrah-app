@@ -166,6 +166,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'ticket_remarks' => $p->ticket_remarks ?? '',
     'due' => $p->booking?->invoice?->balance ?? 0,
     'refund_payable' => (float) ($p->refund_payable ?? 0),
+    'refund_payment_status' => $p->refund_payment_status?->value ?? null,
     'profit' => (float) ($p->profit ?? 0),
     'profit_breakdown' => app(\App\Services\ProfitCalculationService::class)->getPassengerProfitBreakdown($p),
     'required_flight_date' => $p->flight_date_from?->format('Y-m-d') ?? '',
@@ -686,6 +687,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             $canViewPassengerIndex = true;
             $canCancelPassenger = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
             $canConfirmCancellation = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || auth()->user()->hasRole('Branch Manager') || auth()->user()->hasRole('Fingerprint Admin');
+            $canPayRefundPayable = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty();
             $canRevertVisa = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || auth()->user()->hasRole('Visa Admin');
         @endphp
         <h1 class="text-2xl font-bold text-slate-800">Booking</h1>
@@ -1484,6 +1486,14 @@ if ($passenger->ticket_fare_inbound_id) {
             <div x-ref="ddMenu" x-show="open" @click.outside="open = false" :style="'position:fixed;top:' + ddTop + 'px;right:' + ddRight + 'px;z-index:9999'" class="bg-white border border-slate-200 rounded-lg shadow-lg flex flex-col whitespace-nowrap" x-transition:enter="transition ease-out duration-100" x-transition:enter-start="opacity-0 scale-95" x-transition:enter-end="opacity-100 scale-100">
                 <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">View Passenger</a>
                 <button x-show="hasViewableTickets({{ $loop->index }})" @click="open = false; openTicketInfoModal({{ $loop->index }})" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition text-left">View Tickets</button>
+                @if($canPayRefundPayable)
+                    <template x-if="passengersTicketData[{{ $loop->index }}]?.refund_payable > 0 && (!passengersTicketData[{{ $loop->index }}]?.refund_payment_status || passengersTicketData[{{ $loop->index }}]?.refund_payment_status === 'pending')">
+                        <button @click="open = false; openPayRefundModal({{ $loop->index }})"
+                            class="px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-slate-50 transition text-left">
+                            Pay Refund
+                        </button>
+                    </template>
+                @endif
                 @if($passenger->documents_count > 0)
                     <a href="{{ route('passengers.download-all-docs', $passenger->id) }}" class="px-3 py-1.5 text-xs font-medium text-green-600 hover:bg-slate-50 transition">Download</a>
                 @else
@@ -3188,6 +3198,48 @@ if ($passenger->ticket_fare_inbound_id) {
                 Cancel
             </button>
         </div>
+    </div>
+</div>
+<div x-show="payRefundModalVisible" x-cloak
+     class="fixed inset-0 z-[9999] bg-black/50 flex items-center justify-center p-4"
+     @click.self="closePayRefundModal()"
+     @keydown.escape.window="closePayRefundModal()">
+    <div class="bg-white rounded-xl shadow-2xl max-w-md w-full p-6 max-h-[90vh] overflow-y-auto">
+        <h3 class="text-xl font-semibold text-slate-800 mb-1">Pay Refund</h3>
+        <p class="text-sm text-slate-500 mb-4">Assign a branch for refund payment processing.</p>
+        <div class="space-y-2 text-sm mb-4 p-3 bg-slate-50 rounded-lg">
+            <div class="flex justify-between">
+                <span class="text-slate-500">Passenger</span>
+                <span class="font-medium text-slate-700" x-text="payRefundPassengerName"></span>
+            </div>
+            <div class="flex justify-between">
+                <span class="text-slate-500">Refund Payable</span>
+                <span class="font-semibold text-blue-600" x-text="$currency(payRefundMaxAmount, 2)"></span>
+            </div>
+        </div>
+        <form @submit.prevent="submitPayRefund()" class="space-y-4">
+            <div>
+                <label class="block text-sm font-medium text-slate-700 mb-1">Refund Branch *</label>
+                <select x-model="payRefundBranchId" required
+                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-400 outline-none bg-white">
+                    <option value="">Select Branch</option>
+                    @foreach($bookingBranches as $branch)
+                        <option value="{{ $branch->id }}">{{ $branch->name }}</option>
+                    @endforeach
+                </select>
+            </div>
+            <div class="flex gap-3 pt-2">
+                <button type="submit" :disabled="payRefundLoading || !payRefundBranchId"
+                    class="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium disabled:opacity-50">
+                    <span x-show="!payRefundLoading">Pay Refund</span>
+                    <span x-show="payRefundLoading" x-cloak>Processing...</span>
+                </button>
+                <button type="button" @click="closePayRefundModal()"
+                    class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
+                    Cancel
+                </button>
+            </div>
+        </form>
     </div>
 </div>
 </div>
@@ -6953,6 +7005,66 @@ function bookingIndexApp() {
             }
         },
 
+        payRefundModalVisible: false,
+        payRefundPassengerIndex: null,
+        payRefundPassengerId: null,
+        payRefundPassengerName: '',
+        payRefundMaxAmount: 0,
+        payRefundBranchId: '',
+        payRefundLoading: false,
+        openPayRefundModal(index) {
+            const row = this.passengersTicketData[index];
+            if (!row) return;
+            this.payRefundPassengerIndex = index;
+            this.payRefundPassengerId = row.id;
+            this.payRefundPassengerName = row.passenger_name || '';
+            this.payRefundMaxAmount = parseFloat(row.refund_payable || 0);
+            this.payRefundBranchId = '';
+            this.payRefundLoading = false;
+            this.payRefundModalVisible = true;
+        },
+        closePayRefundModal() {
+            this.payRefundModalVisible = false;
+            this.payRefundPassengerIndex = null;
+            this.payRefundPassengerId = null;
+        },
+        async submitPayRefund() {
+            if (this.payRefundLoading) return;
+            if (!this.payRefundBranchId) {
+                alert('Please select a branch.');
+                return;
+            }
+            if (!confirm('Assign this branch for refund payment processing?')) return;
+            this.payRefundLoading = true;
+            try {
+                const res = await fetch(`/passengers/${this.payRefundPassengerId}/refund-pay-assign-branch`, {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content,
+                    },
+                    body: JSON.stringify({
+                        branch_id: this.payRefundBranchId,
+                    }),
+                });
+                const result = await res.json();
+                if (result.success) {
+                    const idx = this.payRefundPassengerIndex;
+                    if (idx !== null && this.passengersTicketData[idx]) {
+                        this.passengersTicketData[idx].refund_payment_status = 'processing';
+                    }
+                    this.payRefundModalVisible = false;
+                    this.showToast('Refund payment branch assigned successfully.');
+                } else {
+                    alert(result.message || 'Failed to assign branch.');
+                }
+            } catch (e) {
+                alert('Failed to assign branch.');
+            } finally {
+                this.payRefundLoading = false;
+            }
+        },
         showToast(message) {
             const container = document.getElementById('toastContainer') || (() => {
                 const el = document.createElement('div');

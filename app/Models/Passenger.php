@@ -5,6 +5,7 @@ namespace App\Models;
 use App\Enums\FingerprintStatus;
 use App\Enums\Gender;
 use App\Enums\PassengerType;
+use App\Enums\RefundPaymentStatus;
 use App\Enums\ServiceRequired;
 use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
@@ -47,6 +48,8 @@ class Passenger extends Model
         'ticket_fare_inbound_id',
         'ticket_fare_outbound_id',
         'refund_payable',
+        'refund_payment_branch_id',
+        'refund_payment_status',
         'is_cancelled',
         'cancelled_at',
     ];
@@ -69,6 +72,7 @@ class Passenger extends Model
         'is_visa_held' => 'boolean',
         'visa_held_at' => 'datetime',
         'refund_payable' => 'decimal:6',
+        'refund_payment_status' => RefundPaymentStatus::class,
         'is_cancelled' => 'boolean',
         'cancelled_at' => 'datetime',
     ];
@@ -148,12 +152,26 @@ class Passenger extends Model
             });
     }
 
+    public function refundPaymentBranch(): BelongsTo
+    {
+        return $this->belongsTo(Branch::class, 'refund_payment_branch_id');
+    }
+
+    public function refundPayablePayments(): HasMany
+    {
+        return $this->hasMany(Payment::class)
+            ->whereHas('vouchers.transactionType', function ($q) {
+                $q->where('name', 'Ticket Refund - Payment');
+            });
+    }
+
     public function verifyRefundPayable(): float
     {
         $refunds = (float) $this->refundedTickets()->sum('refund_to_customer');
         $settlements = (float) $this->reIssueSettlements()->sum('amount');
+        $refundPayablePayments = (float) $this->refundPayablePayments()->sum('amount');
 
-        return max(0, $refunds - $settlements);
+        return max(0, $refunds - $settlements - $refundPayablePayments);
     }
 
     public function assertRefundPayableInSync(?float &$computed = null): bool
