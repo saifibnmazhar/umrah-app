@@ -47,6 +47,12 @@ class ProfitCalculationService
         $booking->loadMissing('passengers', 'fingerprint', 'fingerprintCharge');
 
         foreach ($booking->passengers as $passenger) {
+            if ($passenger->is_cancelled) {
+                $passenger->profit = 0;
+                $passenger->saveQuietly();
+
+                continue;
+            }
             $this->recalculatePassengerProfit($passenger);
         }
 
@@ -60,9 +66,10 @@ class ProfitCalculationService
         }
 
         $effectivePassengerProfit = 0;
-        $allPassengersEffective = $booking->passengers->isNotEmpty();
+        $activePassengers = $booking->passengers->where('is_cancelled', false);
+        $allPassengersEffective = $activePassengers->isNotEmpty();
 
-        foreach ($booking->passengers as $passenger) {
+        foreach ($activePassengers as $passenger) {
             if ($this->isPassengerProfitEffective($passenger)) {
                 $effectivePassengerProfit += (float) $passenger->profit;
             } else {
@@ -140,9 +147,13 @@ class ProfitCalculationService
         $booking->loadMissing('passengers', 'fingerprint', 'fingerprintCharge');
 
         $passengers = [];
-        $allPassengersEffective = $booking->passengers->isNotEmpty();
+        $allPassengersEffective = $booking->passengers->where('is_cancelled', false)->isNotEmpty();
 
         foreach ($booking->passengers as $passenger) {
+            if ($passenger->is_cancelled) {
+                continue;
+            }
+
             $effective = $this->isPassengerProfitEffective($passenger);
 
             $passengers[] = [
@@ -216,6 +227,9 @@ class ProfitCalculationService
         $total = 0.0;
 
         foreach ($booking->passengers as $passenger) {
+            if ($passenger->is_cancelled) {
+                continue;
+            }
             if ($this->isPassengerProfitEffective($passenger)) {
                 $total += (float) $passenger->profit;
             }
@@ -227,8 +241,9 @@ class ProfitCalculationService
             ? (float) ($booking->fingerprint?->profit ?? 0)
             : 0.0;
 
-        $allPassengersEffective = $booking->passengers->isNotEmpty();
-        foreach ($booking->passengers as $passenger) {
+        $activePassengers = $booking->passengers->where('is_cancelled', false);
+        $allPassengersEffective = $activePassengers->isNotEmpty();
+        foreach ($activePassengers as $passenger) {
             if (! $this->isPassengerProfitEffective($passenger)) {
                 $allPassengersEffective = false;
                 break;
@@ -245,6 +260,7 @@ class ProfitCalculationService
     public function backfillAllBookings(): void
     {
         Booking::query()
+            ->where('is_cancelled', false)
             ->with([
                 'passengers.visaSubmission.cancelledSubmissions',
                 'passengers.allIssuedTickets.ticketFare',

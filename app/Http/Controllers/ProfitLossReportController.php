@@ -174,7 +174,7 @@ class ProfitLossReportController extends Controller
             ->leftJoin('fingerprints', 'fingerprints.booking_id', '=', 'bookings.id')
             ->leftJoin('invoices', 'invoices.booking_id', '=', 'bookings.id')
             ->leftJoin(
-                DB::raw('(SELECT p.booking_id, SUM(p.profit) as ptotal FROM passengers p GROUP BY p.booking_id) AS psum'),
+                DB::raw('(SELECT p.booking_id, SUM(p.profit) as ptotal FROM passengers p WHERE p.is_cancelled = 0 GROUP BY p.booking_id) AS psum'),
                 'psum.booking_id',
                 '=',
                 'bookings.id'
@@ -200,6 +200,7 @@ class ProfitLossReportController extends Controller
             ->join('bookings', 'passengers.booking_id', '=', 'bookings.id')
             ->leftJoin('customers', 'customers.id', '=', 'bookings.customer_id')
             ->where('bookings.is_cancelled', false)
+            ->where('passengers.is_cancelled', false)
             ->whereNotNull('bookings.invoice_id')
             ->when($search, fn ($q) => $this->applyPassengerSearch($q, $search))
             ->when($filter === 'profit', fn ($q) => $q->where('passengers.profit', '>=', 0))
@@ -266,7 +267,7 @@ class ProfitLossReportController extends Controller
             'pax_qty' => $booking->pax_qty,
             'package_value' => (float) ($booking->invoice->total_amount ?? 0),
             'fingerprint_profit' => (float) ($booking->fingerprint?->profit ?? 0),
-            'passenger_profit_total' => (float) $booking->passengers->sum('profit'),
+            'passenger_profit_total' => (float) $booking->passengers->where('is_cancelled', false)->sum('profit'),
             'discount' => (float) ($booking->discount_amount ?? 0),
             'total_profit' => (float) ($booking->profit ?? 0),
             'breakdown' => $profitService->getCustomerProfitBreakdown($booking),
@@ -275,7 +276,7 @@ class ProfitLossReportController extends Controller
 
     private function mapPassengers($bookings, ProfitCalculationService $profitService): array
     {
-        return $bookings->flatMap(fn (Booking $booking) => $booking->passengers->map(
+        return $bookings->flatMap(fn (Booking $booking) => $booking->passengers->where('is_cancelled', false)->map(
             fn ($passenger) => $this->mapPassenger($passenger, $profitService)
         ))->values()->toArray();
     }
@@ -315,6 +316,7 @@ class ProfitLossReportController extends Controller
                 ->join('bookings', 'passengers.booking_id', '=', 'bookings.id')
                 ->leftJoin('customers', 'customers.id', '=', 'bookings.customer_id')
                 ->where('bookings.is_cancelled', false)
+                ->where('passengers.is_cancelled', false)
                 ->whereNotNull('bookings.invoice_id');
 
             if ($isEffectiveMode) {

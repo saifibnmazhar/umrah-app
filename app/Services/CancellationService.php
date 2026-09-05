@@ -170,6 +170,10 @@ class CancellationService
                 'status' => CancelledBookingStatus::CANCELLED,
             ]);
 
+            // Zero out profit for all passengers in this booking
+            $booking->passengers()->update(['profit' => 0]);
+            $booking->update(['profit' => 0]);
+
             $invoice->audit_reason = 'refund';
             $invoice->update([
                 'status' => InvoiceStatus::REFUNDED,

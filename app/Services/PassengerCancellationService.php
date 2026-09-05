@@ -110,6 +110,7 @@ class PassengerCancellationService
                 'passenger_status_id' => $holdStatus->id,
                 'is_cancelled' => true,
                 'cancelled_at' => now(),
+                'profit' => 0,
             ]);
 
             return $cancelledPassenger;
@@ -294,6 +295,7 @@ class PassengerCancellationService
             $cancelStatus = PassengerStatus::firstOrCreate(['name' => 'Cancel']);
             $passenger->update([
                 'passenger_status_id' => $cancelStatus->id,
+                'profit' => 0,
             ]);
 
             // 8. Update cancelled_passengers record

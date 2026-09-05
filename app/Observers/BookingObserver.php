@@ -30,7 +30,7 @@ class BookingObserver
     {
         $dirty = $booking->getDirty();
 
-        if (! empty(array_intersect_key($dirty, array_flip(['discount_amount', 'discount_value'])))) {
+        if (! empty(array_intersect_key($dirty, array_flip(['discount_amount', 'discount_value', 'is_cancelled'])))) {
             app(ProfitCalculationService::class)->recalculateBookingProfit($booking);
         }
 
