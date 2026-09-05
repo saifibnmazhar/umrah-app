@@ -25,7 +25,7 @@ class PaymentController extends Controller
     {
         $typeNames = ['Ticket Agent Payment', 'Visa Agent Payment', 'Commission Agent Payment'];
 
-        $query = Payment::with(['user', 'bank', 'senderBank', 'voucher.transactionType'])
+        $query = Payment::with(['user', 'bank', 'senderBank', 'branch', 'ticketAgent', 'visaAgent', 'commissionAgent', 'voucher.transactionType'])
             ->whereHas('voucher.transactionType', function ($q) use ($typeNames) {
                 $q->whereIn('name', $typeNames);
             })
@@ -37,11 +37,42 @@ class PaymentController extends Controller
             });
         }
 
+        if ($request->filled('branch_id')) {
+            if ($request->branch_id === 'other') {
+                $query->whereNull('branch_id');
+            } else {
+                $query->where('branch_id', $request->branch_id);
+            }
+        }
+
+        $selectedType = $request->filled('transaction_type_id')
+            ? TransactionType::find($request->transaction_type_id)
+            : null;
+
+        $agentColumn = match ($selectedType?->name) {
+            'Ticket Agent Payment' => 'ticket_agent_id',
+            'Visa Agent Payment' => 'visa_agent_id',
+            'Commission Agent Payment' => 'commission_agent_id',
+            default => null,
+        };
+
+        if ($agentColumn && $request->filled('agent_id')) {
+            $query->where($agentColumn, $request->agent_id);
+        }
+
         $payments = $query->paginate(10)->withQueryString();
 
         $transactionTypes = TransactionType::whereIn('name', $typeNames)->orderBy('name')->get();
+        $branches = Branch::orderBy('name')->get(['id', 'name']);
 
-        return view('payments.index', compact('payments', 'transactionTypes'));
+        $agentOptions = match ($selectedType?->name) {
+            'Ticket Agent Payment' => TicketAgent::orderBy('name')->get(['id', 'name']),
+            'Visa Agent Payment' => VisaAgent::orderBy('name')->get(['id', 'name']),
+            'Commission Agent Payment' => CommissionAgent::orderBy('name')->get(['id', 'name']),
+            default => collect(),
+        };
+
+        return view('payments.index', compact('payments', 'transactionTypes', 'branches', 'agentOptions'));
     }
 
     public function create()
