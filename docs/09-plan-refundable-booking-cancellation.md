@@ -170,3 +170,201 @@ protected $casts = [
 - **Editable refund amount:** Kept editable on the confirm page (existing `updateRefundAmount` endpoint unchanged). The Branch Manager can override the final payout.
 - **Breakdown level:** Aggregate total only (no per-passenger table) in both the modal and confirm page.
 - **Display locations:** Both the initiate (modal) and the confirm page.
+
+---
+
+## Gap Fixes (identified during review)
+
+### A. Fix `effectiveServiceCharge` getter on confirm page (Critical)
+
+**File:** `resources/views/cancelled-bookings/confirm.blade.php`
+
+The `effectiveServiceCharge` Alpine.js getter currently computes `paid - cost - refund`, which is the inverse of the **old** formula. With the new formula (`refund = paid - cost - charge + passengerRefundable`), this getter must be updated to account for `totalPassengerRefundable`.
+
+Add `totalPassengerRefundable` as an Alpine.js data property:
+```php
+totalPassengerRefundable: '{{ $cancelledBooking->total_passenger_refundable ?? 0 }}',
+```
+
+Update the getter:
+```js
+get effectiveServiceCharge() {
+    const paid = parseFloat(this.totalPaid) || 0;
+    const cost = parseFloat(this.totalCost) || 0;
+    const refund = parseFloat(this.refundAmount) || 0;
+    const passengerRefundable = parseFloat(this.totalPassengerRefundable) || 0;
+    const result = paid - cost + passengerRefundable - refund;
+    return result > 0 ? result.toFixed(6) : '0.000000';
+},
+```
+
+### B. Enforce minimum refund = total_passenger_refundable (Major)
+
+**Files:**
+- `app/Services/CancellationService.php` — `initiateCancellation()`
+- `app/Http/Controllers/BookingCancellationActionController.php` — `updateRefundAmount()`
+- `resources/views/cancelled-bookings/confirm.blade.php` — refund input `:min` attribute
+
+The minimum refund value will be `sum(refund_payable)` of all (active) passengers — money already owed back to customers from ticket refunds. When a booking is cancelled, all passengers must be refunded, so `refund_payable` is always settled to 0. This invariant holds regardless of the Branch Manager's editable refund override.
+
+**1. `initiateCancellation()`** — after computing `$refundAmount`, enforce the minimum:
+```php
+$totalPassengerRefundable = $booking->getTotalPassengerRefundable();
+$refundAmount = max($totalPassengerRefundable, $totalPaid - $totalCost - ($serviceCharge ?? 0));
+```
+
+Store the snapshot:
+```php
+'total_passenger_refundable' => $totalPassengerRefundable,
+```
+
+**2. `updateRefundAmount()`** — add a server-side check that refund_amount is not less than `$cancelledBooking->total_passenger_refundable`:
+```php
+if ($validated['refund_amount'] < (float) $cancelledBooking->total_passenger_refundable) {
+    return response()->json([
+        'success' => false,
+        'message' => 'Refund amount cannot be less than the total passenger refundable amount (' . $cancelledBooking->total_passenger_refundable . ').',
+    ], 422);
+}
+```
+
+**3. Confirm page refund input** — set `:min` to `totalPassengerRefundable`:
+```html
+<input type="number" x-model="refundAmount" step="0.000001"
+    :min="totalPassengerRefundable"
+    :max="originalRefundAmount" ...>
+```
+
+Update the BDT input similarly with a computed min in BDT.
+
+Update the toast warning to fire if the user tries to type below the minimum:
+```js
+if (val < parseFloat(this.totalPassengerRefundable)) {
+    refundAmount = this.totalPassengerRefundable;
+    showToast('Refund cannot be less than total passenger refundable', 'warning');
+    return;
+}
+```
+
+### C. Restore `refund_payable` on revert (Major)
+
+**File:** `app/Services/CancellationService.php` — `revertCancellation()`
+
+When a cancellation is confirmed, `refund_payable` is zeroed on each active passenger. If the cancellation is later reverted, these values must be restored from each passenger's ticket refund data.
+
+```php
+public function revertCancellation(CancelledBooking $cancelledBooking): void
+{
+    if ($cancelledBooking->status !== CancelledBookingStatus::PROCESSING) {
+        throw new \Exception('Only processing cancellations can be reverted.');
+    }
+
+    DB::transaction(function () use ($cancelledBooking) {
+        $booking = $cancelledBooking->booking;
+        $invoice = $cancelledBooking->invoice;
+
+        // Restore refund_payable on each active passenger from ticket refund data
+        $booking->passengers()
+            ->where('is_cancelled', false)
+            ->each(fn ($passenger) => $passenger->update([
+                'refund_payable' => $passenger->verifyRefundPayable(),
+            ]));
+
+        $booking->update(['is_cancelled' => false]);
+
+        $invoiceService = app(InvoiceService::class);
+        $invoice->refresh();
+        $invoiceService->updatePaymentStatus($invoice);
+
+        $cancelledBooking->delete();
+    });
+}
+```
+
+**Note:** This only applies to `revertCancellation()` (status = PROCESSING). If a cancellation is already confirmed (status = CANCELLED), it cannot be reverted via this path — the refund payments/vouchers already exist and `refund_payable` is legitimately zeroed.
+
+### D. Update `getCostBreakdown()` potential_refund (Minor)
+
+**File:** `app/Services/CancellationService.php` — `getCostBreakdown()`
+
+Update `potential_refund` to include `totalPassengerRefundable`:
+```php
+'potential_refund' => $invoice->paid_amount - $costSummary['total_cost'] + $booking->getTotalPassengerRefundable(),
+```
+
+Also add `total_passenger_refundable` to the returned array for consistency:
+```php
+'total_passenger_refundable' => $booking->getTotalPassengerRefundable(),
+```
+
+### E. Update `BookingCancellationViewController::initiate()` potential_refund (Minor)
+
+**File:** `app/Http/Controllers/BookingCancellationViewController.php` — `initiate()`
+
+The controller's JSON response currently computes `potential_refund` inline without including `totalPassengerRefundable`. Update:
+```php
+$totalPassengerRefundable = (float) $booking->getTotalPassengerRefundable();
+// ...
+'potential_refund' => (float) (($invoice?->paid_amount ?? 0) - $costSummary['total_cost']) + $totalPassengerRefundable,
+```
+
+### F. Update confirm page hint text (Minor)
+
+**File:** `resources/views/cancelled-bookings/confirm.blade.php` — line 208
+
+Change:
+```
+Default: {{ $cancelledBooking->refund_amount }} SAR (Total Paid − Total Cost − Service Charge)
+```
+To:
+```
+Default: {{ $cancelledBooking->refund_amount }} SAR (Total Paid − Total Cost − Service Charge + Total Passenger Refundable)
+```
+
+### G. Update initiate modal hint text (Minor)
+
+**File:** `resources/views/bookings/index.blade.php` — near line 3015
+
+Change:
+```
+Refund = Total Paid − Total Cost − Service Charge
+```
+To:
+```
+Refund = Total Paid − Total Cost − Service Charge + Total Passenger Refundable
+```
+
+### H. Add `total_passenger_refundable` display row to confirm page (Minor)
+
+**File:** `resources/views/cancelled-bookings/confirm.blade.php` — Financial Summary section (between Service Charge Deduction and Refund Amount)
+
+Insert a new row:
+```html
+<div class="flex justify-between text-sm">
+    <span class="text-slate-500">Total Passenger Refundable</span>
+    <span class="font-medium text-slate-800" x-text="$currency(totalPassengerRefundable, 2)"></span>
+</div>
+```
+
+### I. Bulk zero `refund_payable` instead of N+1 (Trivial)
+
+**File:** `app/Services/CancellationService.php` — `confirmCancellation()`
+
+Replace the `foreach` loop with a single query:
+```php
+$booking->passengers()
+    ->where('is_cancelled', false)
+    ->where('refund_payable', '>', 0)
+    ->update(['refund_payable' => 0]);
+```
+
+This avoids N individual `save()` calls for bookings with many passengers.
+
+### J. Additional tests
+
+Add to the Testing section:
+
+7. `revertCancellation()` restores each active passenger's `refund_payable` to their computed value from `verifyRefundPayable()`.
+8. `updateRefundAmount()` rejects amounts below `total_passenger_refundable` with a 422 response.
+9. `initiateCancellation()` clamps the refund to a minimum of `total_passenger_refundable`.
+10. The confirm page's `effectiveServiceCharge` getter accounts for `totalPassengerRefundable`.
