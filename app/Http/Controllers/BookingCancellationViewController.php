@@ -2,11 +2,12 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Booking;
-use App\Models\CancelledBooking;
-use App\Models\Branch;
-use App\Services\CostTrackingService;
 use App\Enums\CancelledBookingStatus;
+use App\Models\Booking;
+use App\Models\Branch;
+use App\Models\CancelledBooking;
+use App\Models\CancelledPassenger;
+use App\Services\CostTrackingService;
 use Illuminate\Http\Request;
 
 class BookingCancellationViewController extends Controller
@@ -17,22 +18,22 @@ class BookingCancellationViewController extends Controller
         $invoice = $booking->invoice;
 
         return response()->json([
-            'total_amount'       => (float) ($invoice?->total_amount ?? 0),
-            'total_paid'         => (float) ($invoice?->paid_amount ?? 0),
-            'balance'            => (float) ($invoice?->balance ?? 0),
-            'costs'              => [
+            'total_amount' => (float) ($invoice?->total_amount ?? 0),
+            'total_paid' => (float) ($invoice?->paid_amount ?? 0),
+            'balance' => (float) ($invoice?->balance ?? 0),
+            'costs' => [
                 'fingerprint_cost' => $costSummary['fingerprint_cost'],
-                'visa_cost'        => $costSummary['visa_cost'],
-                'ticket_cost'      => $costSummary['ticket_cost'],
-                'total_cost'       => $costSummary['total_cost'],
+                'visa_cost' => $costSummary['visa_cost'],
+                'ticket_cost' => $costSummary['ticket_cost'],
+                'total_cost' => $costSummary['total_cost'],
             ],
-            'passenger_costs'    => $costSummary['passengers'],
-            'service_charge'     => 0,
-            'potential_refund'   => (float) (($invoice?->paid_amount ?? 0) - $costSummary['total_cost']),
-            'currency_rate_id'   => $booking->currency_rate_id,
-            'booking_branch_id'  => $booking->booking_branch_id,
-            'booking_branch_name'=> $booking->bookingBranch?->name,
-            'booking_location'   => $booking->bookingBranch?->location,
+            'passenger_costs' => $costSummary['passengers'],
+            'service_charge' => 0,
+            'potential_refund' => (float) (($invoice?->paid_amount ?? 0) - $costSummary['total_cost']),
+            'currency_rate_id' => $booking->currency_rate_id,
+            'booking_branch_id' => $booking->booking_branch_id,
+            'booking_branch_name' => $booking->bookingBranch?->name,
+            'booking_location' => $booking->bookingBranch?->location,
         ]);
     }
 
@@ -62,6 +63,8 @@ class BookingCancellationViewController extends Controller
     {
         $this->ensureFingerprintAdminHasBranch();
 
+        $tab = $request->get('tab', 'bookings');
+
         $query = CancelledBooking::with([
             'booking.customer',
             'booking.bookingBranch',
@@ -69,8 +72,7 @@ class BookingCancellationViewController extends Controller
             'cancellationBranch',
         ])->where('status', CancelledBookingStatus::PROCESSING);
 
-        $query->when(auth()->user()->branch_id, fn ($q) =>
-            $q->where('cancellation_branch_id', auth()->user()->branch_id)
+        $query->when(auth()->user()->branch_id, fn ($q) => $q->where('cancellation_branch_id', auth()->user()->branch_id)
         );
 
         if ($request->filled('branch_id')) {
@@ -78,14 +80,32 @@ class BookingCancellationViewController extends Controller
         }
 
         $cancelledBookings = $query->latest()->paginate(20)->withQueryString();
+
+        $passengerQuery = CancelledPassenger::with([
+            'booking.customer',
+            'booking.bookingBranch',
+            'passenger',
+            'user',
+            'cancellationBranch',
+        ])->where('status', CancelledBookingStatus::PROCESSING);
+
+        $passengerQuery->when(auth()->user()->branch_id, fn ($q) => $q->where('cancellation_branch_id', auth()->user()->branch_id));
+
+        if ($request->filled('branch_id')) {
+            $passengerQuery->where('cancellation_branch_id', $request->branch_id);
+        }
+
+        $cancelledPassengers = $passengerQuery->latest()->paginate(20)->withQueryString();
+
         $branches = Branch::select('id', 'name')->orderBy('name')->get();
 
-        return view('pending-refunds.index', compact('cancelledBookings', 'branches'));
+        return view('pending-refunds.index', compact('cancelledBookings', 'cancelledPassengers', 'branches', 'tab'));
     }
 
     public function report()
     {
         $branches = Branch::select('id', 'name')->orderBy('name')->get();
+
         return view('reports.booking-cancellation', compact('branches'));
     }
 
@@ -102,7 +122,7 @@ class BookingCancellationViewController extends Controller
     private function ensureFingerprintAdminHasBranch(): void
     {
         if (auth()->user()->roles->pluck('name')->intersect(['Fingerprint Admin'])->isNotEmpty()
-            && !auth()->user()->branch_id) {
+            && ! auth()->user()->branch_id) {
             abort(403);
         }
     }

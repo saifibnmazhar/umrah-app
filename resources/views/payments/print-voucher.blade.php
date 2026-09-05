@@ -103,7 +103,7 @@
             </div>
             <div class="info-row">
                 <span class="label">Date:</span>
-                <span class="value">{{ $payment->payment_date->format('d-M-Y') }} ({{ $payment->created_at->format('h:i A') }})</span>
+                <span class="value">{{ $payment->payment_date->format('d-M-Y') }} (<span class="local-time" data-utc="{{ $payment->created_at->toIso8601String() }}"></span>)</span>
             </div>
             <div class="info-row">
                 <span class="label">Ref:</span>
@@ -259,7 +259,16 @@
             };
         }
 
-
+        document.addEventListener('DOMContentLoaded', function() {
+            document.querySelectorAll('.local-time').forEach(function(el) {
+                var d = new Date(el.getAttribute('data-utc'));
+                if (!isNaN(d)) {
+                    el.textContent = d.toLocaleTimeString('en-US', {
+                        hour: '2-digit', minute: '2-digit', hour12: true
+                    });
+                }
+            });
+        });
     </script>
 </body>
 </html>

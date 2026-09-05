@@ -33,6 +33,7 @@
                     || ($booking->created_at->diffInHours(now()) < 12
                         && (auth()->user()->branch_id || $booking->user_id === auth()->id())));
                 $canViewRequestButtons = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && (auth()->user()->branch_id || auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin', 'Ticket Staff'])->isNotEmpty());
+                $canViewHistory = !$isFingerprintOnlyViewer && !$isCrossBranchViewer && auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Ticket Admin'])->isNotEmpty();
                 $canAddPassenger = !$isFingerprintOnlyViewer && !$isCrossBranchViewer
                     && (auth()->user()->hasRole('Super Admin')
                     || auth()->user()->hasRole('Co Admin')
@@ -89,7 +90,7 @@
 
             <div class="grid grid-cols-2 md:grid-cols-4 gap-4 mt-6 pt-4 border-t border-slate-200">
                 <div>
-                    <span class="text-slate-500 text-sm">Original Total</span>
+                    <span class="text-slate-500 text-sm">Booking Total</span>
                     <p id="financialOriginalTotal" class="text-xl font-bold text-slate-800">@currency($originalTotal, 2, $rateVal)</p>
                     <p id="financialDiscountIndicator" class="text-xs text-orange-600 mt-1 {{ ($booking->discount_amount ?? 0) > 0 ? '' : 'hidden' }}">
                         −@currency($booking->discount_amount ?? 0, 2, $rateVal) discount
@@ -99,7 +100,7 @@
                     </p>
                 </div>
                 <div>
-                    <span class="text-slate-500 text-sm">Discounted Total</span>
+                    <span class="text-slate-500 text-sm">Invoice Total</span>
                     <p id="financialTotalValue" class="text-xl font-bold text-slate-800">@currency($booking->invoice?->total_amount ?? 0, 2, $rateVal)</p>
                 </div>
                 <div>
@@ -260,7 +261,7 @@
                 <button onclick="switchTab('payment')" id="tab-payment" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-blue-600 text-blue-600">
                     Payment History
                 </button>
-                @if($canViewRequestButtons)
+                @if($canViewHistory)
                 <button onclick="switchTab('reissue')" id="tab-reissue" class="tab-btn px-6 py-3 text-sm font-medium border-b-2 border-transparent text-slate-500 hover:text-slate-700">
                     Re-issue History
                 </button>
@@ -325,12 +326,12 @@
             </div>
         </div>
 
-        @if($canViewRequestButtons)
+        @if($canViewHistory)
         {{-- Re-issue History Tab --}}
         <div id="content-reissue" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Re-issue History</h3>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1100px] text-sm">
+                <table class="w-full min-w-[900px] text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Date</th>
@@ -341,14 +342,11 @@
                             <th class="px-3 py-2 text-right font-medium">Total Reissue Cost</th>
                             <th class="px-3 py-2 text-right font-medium">Total Customer Payment</th>
                             <th class="px-3 py-2 text-right font-medium">Profit</th>
-                            <th class="px-3 py-2 text-left font-medium">Payment Method</th>
-                            <th class="px-3 py-2 text-left font-medium">Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Action</th>
                         </tr>
                     </thead>
                     <tbody id="reissueHistoryBody" class="divide-y divide-slate-200"></tbody>
                 </table>
-                <div id="reissueHistoryEmpty" class="text-center py-4 text-slate-500">No re-issue requests found</div>
+                <div id="reissueHistoryEmpty" class="text-center py-4 text-slate-500">No re-issue history found</div>
             </div>
         </div>
 
@@ -356,25 +354,23 @@
         <div id="content-addticket" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Additional Ticket History</h3>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1100px] text-sm">
+                <table class="w-full min-w-[900px] text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Date</th>
                             <th class="px-3 py-2 text-left font-medium">Passenger Name</th>
                             <th class="px-3 py-2 text-left font-medium">Passport No.</th>
+                            <th class="px-3 py-2 text-right font-medium">Price (Selling/Offer)</th>
+                            <th class="px-3 py-2 text-right font-medium">Net Fare</th>
                             <th class="px-3 py-2 text-left font-medium">PNR</th>
-                            <th class="px-3 py-2 text-left font-medium">Agent</th>
-                            <th class="px-3 py-2 text-right font-medium">Additional Ticket Cost</th>
-                            <th class="px-3 py-2 text-right font-medium">Total Customer Payment</th>
+                            <th class="px-3 py-2 text-left font-medium">Ticket Num</th>
+                            <th class="px-3 py-2 text-left font-medium">Route</th>
                             <th class="px-3 py-2 text-right font-medium">Profit</th>
-                            <th class="px-3 py-2 text-left font-medium">Payment Method</th>
-                            <th class="px-3 py-2 text-left font-medium">Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Action</th>
                         </tr>
                     </thead>
                     <tbody id="additionalTicketHistoryBody" class="divide-y divide-slate-200"></tbody>
                 </table>
-                <div id="additionalTicketHistoryEmpty" class="text-center py-4 text-slate-500">No additional ticket requests found</div>
+                <div id="additionalTicketHistoryEmpty" class="text-center py-4 text-slate-500">No additional ticket history found</div>
             </div>
         </div>
 
@@ -382,7 +378,7 @@
         <div id="content-refund" class="tab-content hidden bg-white rounded-xl shadow-lg p-6">
             <h3 class="text-lg font-semibold text-slate-700 mb-4">Refund History</h3>
             <div class="overflow-x-auto">
-                <table class="w-full min-w-[1100px] text-sm">
+                <table class="w-full min-w-[900px] text-sm">
                     <thead class="bg-slate-50 text-slate-600">
                         <tr>
                             <th class="px-3 py-2 text-left font-medium">Date</th>
@@ -390,12 +386,9 @@
                             <th class="px-3 py-2 text-left font-medium">Passport No.</th>
                             <th class="px-3 py-2 text-left font-medium">PNR</th>
                             <th class="px-3 py-2 text-left font-medium">Agent</th>
-                            <th class="px-3 py-2 text-right font-medium">Agent Refund Amount</th>
+                            <th class="px-3 py-2 text-right font-medium">Refund Amount (IATA)</th>
                             <th class="px-3 py-2 text-right font-medium">Customer Refund Amount</th>
                             <th class="px-3 py-2 text-right font-medium">Profit</th>
-                            <th class="px-3 py-2 text-left font-medium">Payment Method</th>
-                            <th class="px-3 py-2 text-left font-medium">Status</th>
-                            <th class="px-3 py-2 text-left font-medium">Action</th>
                         </tr>
                     </thead>
                     <tbody id="refundHistoryBody" class="divide-y divide-slate-200"></tbody>
@@ -439,7 +432,7 @@
             <h3 class="text-xl font-semibold text-slate-800" x-text="editingPaymentId ? 'Edit Payment' : 'Payment Interface'"></h3>
             <p class="text-sm text-slate-500 mb-4" x-text="editingPaymentId ? 'Update payment details' : 'Booking Summary'"></p>
 
-            <div x-show="!editingPaymentId" class="mb-4">
+            <div x-show="!editingPaymentId" x-cloak class="mb-4">
                 <div class="grid grid-cols-2 gap-3 text-sm">
                     <div class="flex justify-between">
                         <span class="text-slate-500">Total Package Value:</span>
@@ -498,7 +491,7 @@
                         <input type="number" x-model="paymentData.amount_bdt" @input="handleBdtAmountInput()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter BDT amount">
                     </div>
 
-                    <div x-show="paymentData.currency === 'BDT'" class="col-span-2 mt-2">
+                    <div x-show="paymentData.currency === 'BDT'" x-cloak class="col-span-2 mt-2">
                         <template x-if="exchangeRate > 0">
                             <p class="text-sm text-slate-500">1 SAR = <span x-text="exchangeRate"></span> BDT</p>
                         </template>
@@ -535,37 +528,84 @@
         </div>
         <div id="reIssuePassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
             @foreach($booking->passengers as $index => $passenger)
-            <div class="border border-slate-200 rounded-lg p-4">
+            @php
+                $isRestricted = $passenger->isOnHold() || $passenger->isOnCancel();
+                $viewableTickets = collect($passenger->allIssuedTickets)
+                    ->filter(fn($t) => in_array($t->status, ['issued', 're-issued', 'refunded']))
+                    ->values();
+            @endphp
+            <div class="border border-slate-200 rounded-lg p-4 {{ $isRestricted ? 'opacity-50' : '' }}">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <input type="checkbox" id="reIssue_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('reIssue_{{ $index }}', 'reIssueFields_{{ $index }}')">
+                        <input type="checkbox" id="reIssue_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" @if($isRestricted) onchange="this.checked=false; showToast('Re-issue is not available for passengers with {{ addslashes($passenger->status?->name) }} status.', 'error')" @else onchange="toggleReIssueFields('reIssue_{{ $index }}', 'reIssueTicketList_{{ $index }}')" @endif>
                         <label for="reIssue_{{ $index }}" class="font-medium text-slate-800 whitespace-nowrap">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
-                    </div>
-                    <div id="reIssueFields_{{ $index }}" class="hidden flex items-center gap-3">
-                        <label for="ticketOption_{{ $index }}" class="text-sm font-medium text-slate-700">Ticket Option</label>
-                        <select id="ticketOption_{{ $index }}" onchange="toggleTicketOptionFields('{{ $index }}')" class="px-3 py-1.5 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                            <option value="">Select</option>
-                            <option value="up">Inbound</option>
-                            <option value="down">Outbound</option>
-                            <option value="both">Both</option>
-                        </select>
+                        @if($isRestricted)
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600">{{ $passenger->status?->name }}</span>
+                        @endif
                     </div>
                 </div>
-                <div id="reIssueDateFields_{{ $index }}" class="hidden mt-3 pl-7">
-                    <div class="flex gap-6 mb-2">
-                        <div id="probableDateUp_{{ $index }}" class="hidden flex flex-col">
-                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Inbound):</label>
-                            <input type="date" id="probableDateUp_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                        </div>
-                        <div id="probableDateDown_{{ $index }}" class="hidden flex flex-col">
-                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Outbound):</label>
-                            <input type="date" id="probableDateDown_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                        </div>
-                        <div id="visaExpiry_{{ $index }}" class="flex flex-col">
-                            <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Visa Expiry Date:</label>
-                            <input type="date" id="visaExpiry_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                <div id="reIssueTicketList_{{ $index }}" class="hidden mt-3 pl-7">
+                    @forelse($viewableTickets as $ticket)
+                    @php
+                        $tIndex = $loop->index;
+                        $src = $ticket;
+                        if ($ticket->status === 're-issued' && $ticket->latestReIssuedTicket) {
+                            $src = $ticket->latestReIssuedTicket;
+                        } elseif ($ticket->status === 'refunded' && $ticket->latestRefundedTicket) {
+                            $src = $ticket->latestRefundedTicket;
+                        }
+                        $hasPendingRequest = $ticket->pendingRequests->isNotEmpty();
+                        $tRoute = '';
+                        $tRouteRaw = $src->ticketFare?->route;
+                        $tRouteType = $tRouteRaw?->route_type?->value ?? '';
+                        if ($tRouteRaw) {
+                            if ($tRouteType === 'multi_city') {
+                                $tRoute = $tRouteRaw->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                            } else {
+                                $tFrom = $tRouteRaw->fromCity?->code ?? '?';
+                                $tTo = $tRouteRaw->toCity?->code ?? '?';
+                                $tReturn = $tRouteRaw->returnCity?->code ?? '';
+                                $tRoute = ($tRouteType === 'round' && $tReturn) ? "{$tFrom}-{$tTo}-{$tReturn}" : "{$tFrom}-{$tTo}";
+                            }
+                        }
+                        $tStatus = $ticket->status ?? '';
+                        $statusClass = $tStatus === 'issued' ? 'bg-green-100 text-green-700' : ($tStatus === 're-issued' ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700');
+                    @endphp
+                    <div class="border border-slate-100 rounded-lg p-3 mb-2">
+                        <label for="reIssueTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer" @if($hasPendingRequest) onmouseenter="showRequestPendingTooltip(this)" onmouseleave="hideRequestPendingTooltip()" @endif>
+                            <input type="checkbox" id="reIssueTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $src->ticket_number ?? '' }}" data-pnr="{{ $src->pnr ?? '' }}" data-route="{{ $tRoute }}" data-route-type="{{ $tRouteType }}" data-issue-type="{{ $ticket->issue_type }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded {{ $hasPendingRequest ? 'opacity-40' : '' }}" onchange="toggleReIssueTicketFields('{{ $index }}', '{{ $tIndex }}')" {{ $hasPendingRequest ? 'disabled' : '' }}>
+                            <span class="text-sm text-slate-700">
+                                <span class="font-medium">#{{ $loop->iteration }}</span>
+                                <span class="mx-1">|</span>
+                                <span class="font-mono text-slate-800">{{ $src->ticket_number }}</span>
+                                <span class="mx-1">|</span>
+                                <span class="font-mono">{{ $src->pnr }}</span>
+                                <span class="block mt-1 text-xs text-slate-500">
+                                    {{ $tRoute }} | {{ $src->ticketFare?->airline?->name ?? '-' }} | {{ $src->ticketFare?->airlineClass?->class?->name ?? '-' }} | {{ $src->re_issue_date?->format('d-m-Y') ?? $src->refund_date?->format('d-m-Y') ?? $src->issued_date?->format('d-m-Y') ?? '-' }}
+                                </span>
+                            </span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $statusClass }} ml-auto">{{ $tStatus }}</span>
+                        </label>
+                        <div id="reIssueTicketDateFields_{{ $index }}_{{ $tIndex }}" class="hidden mt-3">
+                            <div class="flex flex-wrap gap-6">
+                                <div id="probableDateUp_{{ $index }}_{{ $tIndex }}" class="hidden flex flex-col">
+                                    <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Inbound):</label>
+                                    <input type="date" id="probableDateUpInput_{{ $index }}_{{ $tIndex }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                                <div id="probableDateDown_{{ $index }}_{{ $tIndex }}" class="hidden flex flex-col">
+                                    <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Re-issue Date (Outbound):</label>
+                                    <input type="date" id="probableDateDownInput_{{ $index }}_{{ $tIndex }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                                <div id="visaExpiry_{{ $index }}_{{ $tIndex }}" class="flex flex-col">
+                                    <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Visa Expiry Date:</label>
+                                    <input type="date" id="visaExpiryInput_{{ $index }}_{{ $tIndex }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                </div>
+                            </div>
                         </div>
                     </div>
+                    @empty
+                    <p class="text-sm text-slate-500">No issued tickets found for this passenger.</p>
+                    @endforelse
                 </div>
             </div>
             @endforeach
@@ -610,10 +650,66 @@
         </div>
         <div id="refundPassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
             @foreach($booking->passengers as $index => $passenger)
-            <div class="border border-slate-200 rounded-lg p-4">
+            @php
+                $isRestricted = $passenger->isOnHold() || $passenger->isOnCancel();
+                $viewableTickets = collect($passenger->allIssuedTickets)
+                    ->filter(fn($t) => in_array($t->status, ['issued', 're-issued']))
+                    ->values();
+            @endphp
+            <div class="border border-slate-200 rounded-lg p-4 {{ $isRestricted ? 'opacity-50' : '' }}">
                 <div class="flex items-center gap-3">
-                    <input type="checkbox" id="refund_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded">
+                    <input type="checkbox" id="refund_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" @if($isRestricted) onchange="this.checked=false; showToast('Refund is not available for passengers with {{ addslashes($passenger->status?->name) }} status.', 'error')" @else onchange="toggleRefundFields('refund_{{ $index }}', 'refundTicketList_{{ $index }}')" @endif>
                     <label for="refund_{{ $index }}" class="font-medium text-slate-800">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                    @if($isRestricted)
+                        <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600">{{ $passenger->status?->name }}</span>
+                    @endif
+                </div>
+                <div id="refundTicketList_{{ $index }}" class="hidden mt-3 pl-7">
+                    @forelse($viewableTickets as $ticket)
+                    @php
+                        $tIndex = $loop->index;
+                        $src = $ticket;
+                        if ($ticket->status === 're-issued' && $ticket->latestReIssuedTicket) {
+                            $src = $ticket->latestReIssuedTicket;
+                        } elseif ($ticket->status === 'refunded' && $ticket->latestRefundedTicket) {
+                            $src = $ticket->latestRefundedTicket;
+                        }
+                        $hasPendingRequest = $ticket->pendingRequests->isNotEmpty();
+                        $tRoute = '';
+                        $tRouteRaw = $src->ticketFare?->route;
+                        $tRouteType = $tRouteRaw?->route_type?->value ?? '';
+                        if ($tRouteRaw) {
+                            if ($tRouteType === 'multi_city') {
+                                $tRoute = $tRouteRaw->multiSegments->map(fn($s) => ($s->fromCity?->code ?? '?') . '-' . ($s->toCity?->code ?? '?'))->implode(', ');
+                            } else {
+                                $tFrom = $tRouteRaw->fromCity?->code ?? '?';
+                                $tTo = $tRouteRaw->toCity?->code ?? '?';
+                                $tReturn = $tRouteRaw->returnCity?->code ?? '';
+                                $tRoute = ($tRouteType === 'round' && $tReturn) ? "{$tFrom}-{$tTo}-{$tReturn}" : "{$tFrom}-{$tTo}";
+                            }
+                        }
+                        $tStatus = $ticket->status ?? '';
+                        $statusClass = $tStatus === 'issued' ? 'bg-green-100 text-green-700' : ($tStatus === 're-issued' ? 'bg-purple-100 text-purple-700' : 'bg-red-100 text-red-700');
+                    @endphp
+                    <div class="border border-slate-100 rounded-lg p-3 mb-2">
+                        <label for="refundTicket_{{ $index }}_{{ $tIndex }}" class="flex items-start gap-3 cursor-pointer" @if($hasPendingRequest) onmouseenter="showRequestPendingTooltip(this)" onmouseleave="hideRequestPendingTooltip()" @endif>
+                            <input type="checkbox" id="refundTicket_{{ $index }}_{{ $tIndex }}" data-issued-ticket-id="{{ $ticket->id }}" data-ticket-number="{{ $src->ticket_number ?? '' }}" data-pnr="{{ $src->pnr ?? '' }}" data-route="{{ $tRoute }}" class="mt-0.5 w-4 h-4 text-slate-600 rounded {{ $hasPendingRequest ? 'opacity-40' : '' }}" {{ $hasPendingRequest ? 'disabled' : '' }}>
+                            <span class="text-sm text-slate-700">
+                                <span class="font-medium">#{{ $loop->iteration }}</span>
+                                <span class="mx-1">|</span>
+                                <span class="font-mono text-slate-800">{{ $src->ticket_number }}</span>
+                                <span class="mx-1">|</span>
+                                <span class="font-mono">{{ $src->pnr }}</span>
+                                <span class="block mt-1 text-xs text-slate-500">
+                                    {{ $tRoute }} | {{ $src->ticketFare?->airline?->name ?? '-' }} | {{ $src->ticketFare?->airlineClass?->class?->name ?? '-' }} | {{ $src->re_issue_date?->format('d-m-Y') ?? $src->refund_date?->format('d-m-Y') ?? $src->issued_date?->format('d-m-Y') ?? '-' }}
+                                </span>
+                            </span>
+                            <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium {{ $statusClass }} ml-auto">{{ $tStatus }}</span>
+                        </label>
+                    </div>
+                    @empty
+                    <p class="text-sm text-slate-500">No issued tickets found for this passenger.</p>
+                    @endforelse
                 </div>
             </div>
             @endforeach
@@ -622,22 +718,6 @@
             <button onclick="submitRefundRequest()" class="flex-1 px-6 py-2 bg-orange-500 text-white rounded-lg hover:bg-orange-600 transition font-medium">Submit Request</button>
             <button onclick="closeRefundModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
         </div>
-    </div>
-</div>
-
-{{-- Refund Details Modal --}}
-<div id="refundDetailsModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
-    <div class="fixed inset-0 bg-black/50" onclick="closeRefundDetailsModal()"></div>
-    <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-2xl mx-4 p-6 max-h-[90vh] overflow-y-auto">
-        <div class="flex justify-between items-start mb-4">
-            <h3 class="text-xl font-semibold text-slate-800">Refund Details</h3>
-            <button onclick="closeRefundDetailsModal()" class="text-slate-400 hover:text-slate-600">
-                <svg xmlns="http://www.w3.org/2000/svg" class="h-6 w-6" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                    <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
-                </svg>
-            </button>
-        </div>
-        <div id="refundDetailsContent"></div>
     </div>
 </div>
 
@@ -658,11 +738,17 @@
         </div>
         <div id="addTicketPassengers" class="space-y-4 mb-6 max-h-80 overflow-y-auto">
             @foreach($booking->passengers as $index => $passenger)
-            <div class="border border-slate-200 rounded-lg p-4">
+            @php
+                $isRestricted = $passenger->isOnHold() || $passenger->isOnCancel();
+            @endphp
+            <div class="border border-slate-200 rounded-lg p-4 {{ $isRestricted ? 'opacity-50' : '' }}">
                 <div class="flex items-center justify-between gap-3">
                     <div class="flex items-center gap-3">
-                        <input type="checkbox" id="addTicket_{{ $index }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" onchange="toggleReIssueFields('addTicket_{{ $index }}', 'addTicketFields_{{ $index }}')">
+                        <input type="checkbox" id="addTicket_{{ $index }}" data-passenger-id="{{ $passenger->id }}" data-name="{{ $passenger->first_name }} {{ $passenger->last_name }}" data-passport="{{ $passenger->passport_no }}" class="w-4 h-4 text-slate-600 rounded" @if($isRestricted) onchange="this.checked=false; showToast('Additional ticket is not available for passengers with {{ addslashes($passenger->status?->name) }} status.', 'error')" @else onchange="toggleReIssueFields('addTicket_{{ $index }}', 'addTicketFields_{{ $index }}')" @endif>
                         <label for="addTicket_{{ $index }}" class="font-medium text-slate-800 whitespace-nowrap">{{ $passenger->first_name }} {{ $passenger->last_name }} <span class="text-slate-500 text-sm">({{ $passenger->passport_no }})</span></label>
+                        @if($isRestricted)
+                            <span class="inline-flex items-center px-1.5 py-0.5 rounded text-xs font-medium bg-red-100 text-red-600">{{ $passenger->status?->name }}</span>
+                        @endif
                     </div>
                     <div id="addTicketFields_{{ $index }}" class="hidden flex items-center gap-3">
                         <label for="addTicketOption_{{ $index }}" class="text-sm font-medium text-slate-700">Ticket Option</label>
@@ -678,15 +764,15 @@
                     <div class="flex gap-6 mb-2">
                         <div id="addTicketProbableDateUp_{{ $index }}" class="hidden flex flex-col">
                             <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Date (Inbound):</label>
-                            <input type="date" id="addTicketProbableDateUp_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="date" id="addTicketProbableDateUpInput_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div id="addTicketProbableDateDown_{{ $index }}" class="hidden flex flex-col">
                             <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Probable Date (Outbound):</label>
-                            <input type="date" id="addTicketProbableDateDown_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="date" id="addTicketProbableDateDownInput_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                         <div id="addTicketVisaExpiry_{{ $index }}" class="flex flex-col">
                             <label class="text-xs font-medium text-slate-700 whitespace-nowrap">Visa Expiry Date:</label>
-                            <input type="date" id="addTicketVisaExpiry_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                            <input type="date" id="addTicketVisaExpiryInput_{{ $index }}" class="mt-1 px-2 py-1 text-sm border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                         </div>
                     </div>
                 </div>
@@ -791,6 +877,8 @@
 .modal-content { transition: transform 0.2s ease, opacity 0.2s ease; }
 .toast { transition: transform 0.3s ease, opacity 0.3s ease; }
 </style>
+
+<div id="requestPendingTooltip" class="hidden fixed z-[100] px-2 py-1 text-xs whitespace-nowrap rounded bg-slate-900 text-white pointer-events-none">Request Pending</div>
 
 @push('scripts')
 <script>
@@ -1122,55 +1210,80 @@ function switchTab(tabName) {
     activeTab.classList.add('border-blue-600', 'text-blue-600');
 }
 
-function toggleReIssueFields(checkboxId, fieldsId) {
+function toggleReIssueFields(checkboxId, ticketListId) {
     const checkbox = document.getElementById(checkboxId);
-    const fields = document.getElementById(fieldsId);
+    const list = document.getElementById(ticketListId);
+    if (!checkbox || !list) return;
+
     if (checkbox.checked) {
-        fields.classList.remove('hidden');
+        list.classList.remove('hidden');
     } else {
-        fields.classList.add('hidden');
+        list.classList.add('hidden');
         const idx = checkboxId.replace('reIssue_', '');
-        document.getElementById('reIssueDateFields_' + idx)?.classList.add('hidden');
+        list.querySelectorAll('input[type="checkbox"][id^="reIssueTicket_"]').forEach(tcb => {
+            tcb.checked = false;
+            const tIdx = tcb.id.replace('reIssueTicket_' + idx + '_', '');
+            const dateFields = document.getElementById('reIssueTicketDateFields_' + idx + '_' + tIdx);
+            if (dateFields) {
+                dateFields.classList.add('hidden');
+                document.getElementById('probableDateUp_' + idx + '_' + tIdx)?.classList.add('hidden');
+                document.getElementById('probableDateDown_' + idx + '_' + tIdx)?.classList.add('hidden');
+                document.getElementById('visaExpiry_' + idx + '_' + tIdx)?.classList.add('hidden');
+            }
+        });
     }
 }
 
-function toggleTicketOptionFields(pIndex) {
-    const ticketOption = document.getElementById('ticketOption_' + pIndex);
-    const dateFields = document.getElementById('reIssueDateFields_' + pIndex);
-    const probableDateUp = document.getElementById('probableDateUp_' + pIndex);
-    const probableDateDown = document.getElementById('probableDateDown_' + pIndex);
-    const visaExpiry = document.getElementById('visaExpiry_' + pIndex);
+function toggleReIssueTicketFields(pIndex, tIndex) {
+    const checkbox = document.getElementById('reIssueTicket_' + pIndex + '_' + tIndex);
+    const dateFields = document.getElementById('reIssueTicketDateFields_' + pIndex + '_' + tIndex);
+    if (!checkbox || !dateFields) return;
 
-    if (!ticketOption || !dateFields) return;
+    const probableDateUp = document.getElementById('probableDateUp_' + pIndex + '_' + tIndex);
+    const probableDateDown = document.getElementById('probableDateDown_' + pIndex + '_' + tIndex);
+    const visaExpiry = document.getElementById('visaExpiry_' + pIndex + '_' + tIndex);
 
-    dateFields.classList.remove('hidden');
-    probableDateUp.classList.add('hidden');
-    probableDateDown.classList.add('hidden');
-    visaExpiry.classList.add('hidden');
+    if (checkbox.checked) {
+        dateFields.classList.remove('hidden');
+        probableDateUp.classList.add('hidden');
+        probableDateDown.classList.add('hidden');
+        visaExpiry.classList.remove('hidden');
 
-    if (ticketOption.value === 'up') {
-        probableDateUp.classList.remove('hidden');
-        visaExpiry.classList.remove('hidden');
-    } else if (ticketOption.value === 'down') {
-        probableDateDown.classList.remove('hidden');
-        visaExpiry.classList.remove('hidden');
-    } else if (ticketOption.value === 'both') {
-        probableDateUp.classList.remove('hidden');
-        probableDateDown.classList.remove('hidden');
-        visaExpiry.classList.remove('hidden');
+        const routeType = checkbox.dataset.routeType || '';
+        const issueType = checkbox.dataset.issueType || '';
+
+        if (routeType === 'oneway_inbound') {
+            probableDateUp.classList.remove('hidden');
+        } else if (routeType === 'oneway_outbound' || issueType === 'pending_outbound') {
+            probableDateDown.classList.remove('hidden');
+        } else {
+            probableDateUp.classList.remove('hidden');
+            probableDateDown.classList.remove('hidden');
+        }
+    } else {
+        dateFields.classList.add('hidden');
+        probableDateUp.classList.add('hidden');
+        probableDateDown.classList.add('hidden');
+        visaExpiry.classList.add('hidden');
     }
 }
 
 function openReIssueModal() {
     document.getElementById('reIssueModal').classList.remove('hidden');
-    const checkboxes = document.querySelectorAll('#reIssuePassengers input[type="checkbox"]');
-    checkboxes.forEach((cb, idx) => {
-        cb.checked = false;
-        document.getElementById('reIssueFields_' + idx)?.classList.add('hidden');
-        document.getElementById('reIssueDateFields_' + idx)?.classList.add('hidden');
-        document.getElementById('probableDateUp_' + idx)?.classList.add('hidden');
-        document.getElementById('probableDateDown_' + idx)?.classList.add('hidden');
+    document.querySelectorAll('#reIssuePassengers > div').forEach((row, idx) => {
+        const cb = document.getElementById('reIssue_' + idx);
+        if (cb) cb.checked = false;
+        document.getElementById('reIssueTicketList_' + idx)?.classList.add('hidden');
     });
+    document.querySelectorAll('#reIssuePassengers input[type="checkbox"][id^="reIssueTicket_"]').forEach(tcb => {
+        tcb.checked = false;
+    });
+    document.querySelectorAll('#reIssuePassengers [id^="reIssueTicketDateFields_"]').forEach(el => {
+        el.classList.add('hidden');
+    });
+    document.querySelectorAll('#reIssuePassengers [id^="probableDateUp_"]').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('#reIssuePassengers [id^="probableDateDown_"]').forEach(el => el.classList.add('hidden'));
+    document.querySelectorAll('#reIssuePassengers [id^="visaExpiry_"]').forEach(el => el.classList.add('hidden'));
 }
 
 function closeReIssueModal() {
@@ -1186,13 +1299,26 @@ function submitReIssueRequest() {
         const checkbox = document.getElementById('reIssue_' + pIndex);
         if (checkbox && checkbox.checked) {
             foundChecked = true;
+            const tickets = [];
+            row.querySelectorAll('input[type="checkbox"][id^="reIssueTicket_"]').forEach(tcb => {
+                if (!tcb.checked) return;
+                const tIndex = tcb.id.replace('reIssueTicket_' + pIndex + '_', '');
+                tickets.push({
+                    issued_ticket_id: parseInt(tcb.dataset.issuedTicketId) || null,
+                    ticket_number: tcb.dataset.ticketNumber || '',
+                    pnr: tcb.dataset.pnr || '',
+                    route: tcb.dataset.route || '',
+                    route_type: tcb.dataset.routeType || '',
+                    probable_date_up: document.getElementById('probableDateUpInput_' + pIndex + '_' + tIndex)?.value || '',
+                    probable_date_down: document.getElementById('probableDateDownInput_' + pIndex + '_' + tIndex)?.value || '',
+                    visa_expiry: document.getElementById('visaExpiryInput_' + pIndex + '_' + tIndex)?.value || '',
+                });
+            });
             selectedPassengers.push({
+                passenger_id: parseInt(checkbox.dataset.passengerId),
                 name: checkbox.dataset.name,
                 passport: checkbox.dataset.passport,
-                ticketOption: document.getElementById('ticketOption_' + pIndex)?.value || '',
-                probableDateUp: document.getElementById('probableDateUp_' + pIndex)?.value || '',
-                probableDateDown: document.getElementById('probableDateDown_' + pIndex)?.value || '',
-                visaExpiry: document.getElementById('visaExpiry_' + pIndex)?.value || '',
+                tickets: tickets,
             });
         }
     });
@@ -1202,21 +1328,31 @@ function submitReIssueRequest() {
         return;
     }
 
-    const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-    requests.push({
-        id: Date.now(),
-        invoiceId: {{ $booking->id }},
-        invoiceNo: @json($booking->invoice_id ?? ''),
-        customerName: @json($booking->customer->name ?? ''),
-        passengers: selectedPassengers,
-        status: 'Pending',
-        requestedAt: new Date().toISOString(),
+    fetch('{{ route("ticket-requests.store") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            request_type: 're_issue',
+            booking_id: {{ $booking->id }},
+            passengers: selectedPassengers,
+        }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Re-issue request submitted successfully!', 'success');
+            closeReIssueModal();
+        } else {
+            showToast(data.message || 'Failed to submit request', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error submitting request', 'error');
     });
-    localStorage.setItem('reIssueRequests', JSON.stringify(requests));
-
-    showToast('Re-issue request submitted successfully!', 'success');
-    closeReIssueModal();
-    renderReissueHistory();
 }
 
 function openReissueDetails(requestId) {
@@ -1262,44 +1398,39 @@ function renderReissueHistory() {
     const emptyEl = document.getElementById('reissueHistoryEmpty');
     if (!tbody) return;
 
-    const allRequests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-    const bookingRequests = allRequests.filter(r => r.invoiceId === {{ $booking->id }});
-
-    if (bookingRequests.length === 0) {
+    fetch('/bookings/{{ $booking->id }}/re-issued-tickets', {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
+        }
+    })
+    .then(res => res.json())
+    .then(tickets => {
+        if (!tickets.length) {
+            tbody.innerHTML = '';
+            if (emptyEl) emptyEl.classList.remove('hidden');
+            return;
+        }
+        if (emptyEl) emptyEl.classList.add('hidden');
         tbody.innerHTML = '';
-        if (emptyEl) emptyEl.classList.remove('hidden');
-        return;
-    }
-
-    if (emptyEl) emptyEl.classList.add('hidden');
-    tbody.innerHTML = '';
-
-    bookingRequests.forEach((request) => {
-        request.passengers.forEach((p) => {
-            let statusBadge = '';
-            switch(request.status) {
-                case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
-                case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
-                case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
-                default: statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>';
-            }
-
+        tickets.forEach(r => {
             const tr = document.createElement('tr');
             tr.className = 'hover:bg-slate-50';
+            const p = r.issued_ticket?.passenger || {};
+            const totalCost = (parseFloat(r.re_issue_charge) || 0)
+                + (parseFloat(r.fare_difference) || 0)
+                + (parseFloat(r.other_costs) || 0);
+            const customerPayment = parseFloat(r.total_customer_payment) || 0;
+            const profit = customerPayment - totalCost;
             tr.innerHTML = `
-                <td class="px-3 py-2 text-slate-600">${new Date(request.requestedAt).toLocaleDateString('en-CA')}</td>
-                <td class="px-3 py-2 text-slate-800">${escapeHtml(p.name)}</td>
-                <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport)}</td>
-                <td class="px-3 py-2 text-slate-600">-</td>
-                <td class="px-3 py-2 text-slate-800">-</td>
-                <td class="px-3 py-2 text-slate-800 text-right font-medium">-</td>
-                <td class="px-3 py-2 text-slate-800 text-right font-medium">-</td>
-                <td class="px-3 py-2 text-green-600 text-right font-medium">-</td>
-                <td class="px-3 py-2 text-slate-600">-</td>
-                <td class="px-3 py-2">${statusBadge}</td>
-                <td class="px-3 py-2">
-                    <button onclick="openReissueDetails(${request.id})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
-                </td>
+                <td class="px-3 py-2 text-slate-600">${(r.re_issue_date || '').substring(0, 10) || '-'}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport_no || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.pnr || '-')}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(r.ticket_agent?.name || '-')}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${totalCost.toFixed(2)}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${customerPayment.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}">${profit.toFixed(2)}</td>
             `;
             tbody.appendChild(tr);
         });
@@ -1359,12 +1490,13 @@ function submitAddTicketRequest() {
         if (checkbox && checkbox.checked) {
             foundChecked = true;
             selectedPassengers.push({
+                passenger_id: parseInt(checkbox.dataset.passengerId),
                 name: checkbox.dataset.name,
                 passport: checkbox.dataset.passport,
-                ticketOption: document.getElementById('addTicketOption_' + pIndex)?.value || '',
-                probableDateUp: document.getElementById('addTicketProbableDateUp_' + pIndex)?.value || '',
-                probableDateDown: document.getElementById('addTicketProbableDateDown_' + pIndex)?.value || '',
-                visaExpiry: document.getElementById('addTicketVisaExpiry_' + pIndex)?.value || '',
+                ticket_option: document.getElementById('addTicketOption_' + pIndex)?.value || '',
+                probable_date_up: document.getElementById('addTicketProbableDateUpInput_' + pIndex)?.value || '',
+                probable_date_down: document.getElementById('addTicketProbableDateDownInput_' + pIndex)?.value || '',
+                visa_expiry: document.getElementById('addTicketVisaExpiryInput_' + pIndex)?.value || '',
             });
         }
     });
@@ -1374,33 +1506,56 @@ function submitAddTicketRequest() {
         return;
     }
 
-    const requests = JSON.parse(localStorage.getItem('addTicketRequests') || '[]');
-    requests.push({
-        id: Date.now(),
-        invoiceId: {{ $booking->id }},
-        invoiceNo: @json($booking->invoice_id ?? ''),
-        customerName: @json($booking->customer->name ?? ''),
-        passengers: selectedPassengers,
-        status: 'Pending',
-        paymentMethod: '-',
-        additionalTicketCost: 0,
-        customerPayment: 0,
-        profit: 0,
-        pnr: '-',
-        agent: '-',
-        requestedAt: new Date().toISOString(),
+    fetch('{{ route("ticket-requests.store") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            request_type: 'additional',
+            booking_id: {{ $booking->id }},
+            passengers: selectedPassengers,
+        }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Additional ticket request submitted successfully!', 'success');
+            closeAddTicketModal();
+        } else {
+            showToast(data.message || 'Failed to submit request', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error submitting request', 'error');
     });
-    localStorage.setItem('addTicketRequests', JSON.stringify(requests));
+}
 
-    showToast('Additional ticket request submitted successfully!', 'success');
-    closeAddTicketModal();
-    renderAdditionalTicketHistory();
+function toggleRefundFields(checkboxId, ticketListId) {
+    const checkbox = document.getElementById(checkboxId);
+    const list = document.getElementById(ticketListId);
+    if (!checkbox || !list) return;
+
+    if (checkbox.checked) {
+        list.classList.remove('hidden');
+    } else {
+        list.classList.add('hidden');
+        list.querySelectorAll('input[type="checkbox"][id^="refundTicket_"]').forEach(tcb => {
+            tcb.checked = false;
+        });
+    }
 }
 
 function openRefundModal() {
     document.getElementById('refundModal').classList.remove('hidden');
-    const checkboxes = document.querySelectorAll('#refundPassengers input[type="checkbox"]');
-    checkboxes.forEach(cb => cb.checked = false);
+    document.querySelectorAll('#refundPassengers > div').forEach(row => {
+        const cb = row.querySelector('input[type="checkbox"][id^="refund_"]');
+        if (cb) cb.checked = false;
+        row.querySelectorAll('[id^="refundTicketList_"]').forEach(el => el.classList.add('hidden'));
+        row.querySelectorAll('input[type="checkbox"][id^="refundTicket_"]').forEach(tcb => tcb.checked = false);
+    });
 }
 
 function closeRefundModal() {
@@ -1415,9 +1570,21 @@ function submitRefundRequest() {
         const checkbox = document.getElementById('refund_' + pIndex);
         if (checkbox && checkbox.checked) {
             foundChecked = true;
+            const tickets = [];
+            row.querySelectorAll('input[type="checkbox"][id^="refundTicket_"]').forEach(tcb => {
+                if (!tcb.checked) return;
+                tickets.push({
+                    issued_ticket_id: parseInt(tcb.dataset.issuedTicketId) || null,
+                    ticket_number: tcb.dataset.ticketNumber || '',
+                    pnr: tcb.dataset.pnr || '',
+                    route: tcb.dataset.route || '',
+                });
+            });
             selectedPassengers.push({
+                passenger_id: parseInt(checkbox.dataset.passengerId),
                 name: checkbox.dataset.name,
                 passport: checkbox.dataset.passport,
+                tickets: tickets,
             });
         }
     });
@@ -1427,27 +1594,36 @@ function submitRefundRequest() {
         return;
     }
 
-    const requests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-    requests.push({
-        id: Date.now(),
-        invoiceId: {{ $booking->id }},
-        invoiceNo: @json($booking->invoice_id ?? ''),
-        customerName: @json($booking->customer->name ?? ''),
-        passengers: selectedPassengers,
-        status: 'Pending',
-        paymentMethod: '-',
-        agentRefund: 0,
-        customerRefund: 0,
-        profit: 0,
-        pnr: '-',
-        agent: '-',
-        requestedAt: new Date().toISOString(),
-    });
-    localStorage.setItem('refundRequests', JSON.stringify(requests));
+    if (selectedPassengers.some(p => p.tickets.length === 0)) {
+        showToast('Please select at least one ticket for each passenger', 'error');
+        return;
+    }
 
-    showToast('Refund request submitted successfully!', 'success');
-    closeRefundModal();
-    renderRefundHistory();
+    fetch('{{ route("ticket-requests.store") }}', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content'),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify({
+            request_type: 'refund',
+            booking_id: {{ $booking->id }},
+            passengers: selectedPassengers,
+        }),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Refund request submitted successfully!', 'success');
+            closeRefundModal();
+        } else {
+            showToast(data.message || 'Failed to submit request', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error submitting request', 'error');
+    });
 }
 
 function renderRefundHistory() {
@@ -1455,123 +1631,41 @@ function renderRefundHistory() {
     const emptyEl = document.getElementById('refundHistoryEmpty');
     if (!tbody) return;
 
-    let allRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-
-    if (allRequests.length === 0) {
-        const seedData = [
-            { id: 'seed_1', date: '2026-03-22', passengerName: 'Rahim Uddin', passport: 'P3344556', pnr: 'STU901', agent: 'Al-Reem', agentRefund: 400, customerRefund: 450, profit: 50, paymentMethod: 'Bank', status: 'Approved' },
-            { id: 'seed_2', date: '2026-03-19', passengerName: 'Nadia Islam', passport: 'P7788990', pnr: 'VWX234', agent: 'Nasser', agentRefund: 550, customerRefund: 600, profit: 50, paymentMethod: 'Cash', status: 'Pending' },
-            { id: 'seed_3', date: '2026-03-16', passengerName: 'Karim Hussein', passport: 'P1122445', pnr: 'YZA567', agent: 'Al-Masria', agentRefund: 300, customerRefund: 300, profit: 0, paymentMethod: 'Bank', status: 'Rejected' },
-            { id: 'seed_4', date: '2026-03-12', passengerName: 'Laila Mohamed', passport: 'P6677889', pnr: 'BCD890', agent: 'Umrah Plus', agentRefund: 700, customerRefund: 800, profit: 100, paymentMethod: 'Bank', status: 'Approved' },
-            { id: 'seed_5', date: '2026-03-08', passengerName: 'Tariq Ahmed', passport: 'P9900112', pnr: 'EFG123', agent: 'Al-Reem', agentRefund: 500, customerRefund: 550, profit: 50, paymentMethod: 'Cash', status: 'Approved' },
-            { id: 'seed_6', date: '2026-03-01', passengerName: 'Sabrina Khan', passport: 'P2233445', pnr: 'HIJ456', agent: 'Nasser', agentRefund: 650, customerRefund: 650, profit: 0, paymentMethod: 'Bank', status: 'Pending' },
-        ];
-
-        const refundRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-        if (refundRequests.length === 0) {
-            allRequests = seedData;
-            localStorage.setItem('refundRequests_seed', JSON.stringify(seedData));
+    fetch('/bookings/{{ $booking->id }}/refunded-tickets', {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         }
-    }
-
-    const bookingRequests = allRequests.filter(r => r.invoiceId === {{ $booking->id }} || !r.invoiceId);
-
-    if (bookingRequests.length === 0) {
+    })
+    .then(res => res.json())
+    .then(refunds => {
+        if (!refunds.length) {
+            tbody.innerHTML = '';
+            if (emptyEl) emptyEl.classList.remove('hidden');
+            return;
+        }
+        if (emptyEl) emptyEl.classList.add('hidden');
         tbody.innerHTML = '';
-        if (emptyEl) emptyEl.classList.remove('hidden');
-        return;
-    }
-
-    if (emptyEl) emptyEl.classList.add('hidden');
-    const fmt = (val) => typeof Alpine !== 'undefined' ? Alpine.store('currency').format(val, 2, window.__bookingServerData?.currentCurrencyRate || 0) : (val || 0).toFixed(2);
-    tbody.innerHTML = '';
-
-    bookingRequests.forEach((item, index) => {
-        let statusBadge = '';
-        switch(item.status) {
-            case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
-            case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
-            case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
-            default: statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">' + item.status + '</span>';
-        }
-
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50';
-        tr.innerHTML = `
-            <td class="px-3 py-2 text-slate-600">${item.date || new Date(item.requestedAt).toLocaleDateString('en-CA')}</td>
-            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.passengerName || item.passengers?.[0]?.name || '-')}</td>
-            <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
-            <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
-            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.agentRefund || 0)}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.customerRefund || 0)}</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${fmt(item.profit || 0)}</td>
-            <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
-            <td class="px-3 py-2">${statusBadge}</td>
-            <td class="px-3 py-2">
-                <button onclick="openRefundDetails(${item.id || index})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
+        refunds.forEach(r => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50';
+            const p = r.issued_ticket?.passenger || {};
+            const iataRefund = parseFloat(r.iata_refunded_amount) || 0;
+            const customerRefund = parseFloat(r.refund_to_customer) || 0;
+            const profit = iataRefund - customerRefund;
+            tr.innerHTML = `
+                <td class="px-3 py-2 text-slate-600">${(r.refund_date || '').substring(0, 10) || '-'}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport_no || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(r.pnr || '-')}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(r.ticket_agent?.name || '-')}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${iataRefund.toFixed(2)}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${customerRefund.toFixed(2)}</td>
+                <td class="px-3 py-2 text-right font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}">${profit.toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
     });
-}
-
-function openRefundDetails(id) {
-    const allRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-    const seedData = JSON.parse(localStorage.getItem('refundRequests_seed') || '[]');
-    const allItems = [...allRequests, ...seedData];
-    const item = allItems.find(r => r.id === id);
-    if (!item) return;
-
-    const content = document.getElementById('refundDetailsContent');
-    content.innerHTML = generateRefundDetailsHTML(item);
-    document.getElementById('refundDetailsModal').classList.remove('hidden');
-}
-
-function generateRefundDetailsHTML(item) {
-    const fmt = (val) => typeof Alpine !== 'undefined' ? Alpine.store('currency').format(val, 2, window.__bookingServerData?.currentCurrencyRate || 0) : (val || 0).toFixed(2);
-    return `
-        <div class="space-y-4">
-            <div class="bg-slate-50 rounded-lg p-4">
-                <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Summary</h4>
-                <div class="grid grid-cols-2 gap-3">
-                    <div><span class="text-xs text-slate-400">Passenger Name</span><p class="text-slate-800">${escapeHtml(item.passengerName || item.passengers?.[0]?.name || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Passport No.</span><p class="text-slate-800">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">PNR</span><p class="text-slate-800">${item.pnr || '-'}</p></div>
-                    <div><span class="text-xs text-slate-400">Agent</span><p class="text-slate-800">${escapeHtml(item.agent || '-')}</p></div>
-                    <div><span class="text-xs text-slate-400">Agent Refund Amount</span><p class="text-slate-800 font-medium">${fmt(item.agentRefund || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Customer Refund Amount</span><p class="text-slate-800 font-medium">${fmt(item.customerRefund || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Profit</span><p class="text-green-600 font-medium">${fmt(item.profit || 0)}</p></div>
-                    <div><span class="text-xs text-slate-400">Payment Method</span><p class="text-slate-800">${item.paymentMethod || '-'}</p></div>
-                </div>
-            </div>
-            <div class="bg-slate-50 rounded-lg p-4">
-                <h4 class="text-sm font-medium text-slate-500 mb-3 pb-2 border-b border-slate-200">Refund Breakdown</h4>
-                <div class="space-y-3">
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">Original Ticket Cost</span>
-                        <span class="text-slate-800 font-medium">2,500 SAR</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">Cancellation Charges</span>
-                        <span class="text-red-600 font-medium">-500 SAR</span>
-                    </div>
-                    <div class="flex justify-between pt-2 border-t border-slate-200">
-                        <span class="text-slate-500">Refund to Customer</span>
-                        <span class="text-blue-600 font-medium">2,000 SAR</span>
-                    </div>
-                    <div class="flex justify-between">
-                        <span class="text-slate-500">Agent Refund to Company</span>
-                        <span class="text-green-600 font-medium">1,800 SAR</span>
-                    </div>
-                </div>
-            </div>
-        </div>
-    `;
-}
-
-function closeRefundDetailsModal() {
-    document.getElementById('refundDetailsModal').classList.add('hidden');
 }
 
 function renderAdditionalTicketHistory() {
@@ -1579,62 +1673,57 @@ function renderAdditionalTicketHistory() {
     const emptyEl = document.getElementById('additionalTicketHistoryEmpty');
     if (!tbody) return;
 
-    let allRequests = JSON.parse(localStorage.getItem('addTicketRequests') || '[]');
-
-    if (allRequests.length === 0) {
-        const seedData = [
-            { id: 'at_seed_1', date: '2026-03-25', passengerName: 'Ahmed Hassan', passport: 'P1234567', pnr: 'ABC123', agent: 'Al-Reem', additionalTicketCost: 450, customerPayment: 500, profit: 50, paymentMethod: 'Bank', status: 'Approved' },
-            { id: 'at_seed_2', date: '2026-03-22', passengerName: 'Fatima Rahman', passport: 'P7654321', pnr: 'DEF456', agent: 'Nasser', additionalTicketCost: 600, customerPayment: 650, profit: 50, paymentMethod: 'Cash', status: 'Pending' },
-            { id: 'at_seed_3', date: '2026-03-18', passengerName: 'Mohammed Ali', passport: 'P1122334', pnr: 'GHI789', agent: 'Al-Masria', additionalTicketCost: 350, customerPayment: 350, profit: 0, paymentMethod: 'Bank', status: 'Approved' },
-            { id: 'at_seed_4', date: '2026-03-14', passengerName: 'Sara Ahmed', passport: 'P9988776', pnr: 'JKL012', agent: 'Umrah Plus', additionalTicketCost: 800, customerPayment: 900, profit: 100, paymentMethod: 'Bank', status: 'Pending' },
-        ];
-
-        const addTicketRequests = JSON.parse(localStorage.getItem('addTicketRequests') || '[]');
-        if (addTicketRequests.length === 0) {
-            allRequests = seedData;
-            localStorage.setItem('addTicketRequests_seed', JSON.stringify(seedData));
+    fetch('/bookings/{{ $booking->id }}/additional-tickets', {
+        headers: {
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
         }
-    }
-
-    const bookingRequests = allRequests.filter(r => r.invoiceId === {{ $booking->id }} || !r.invoiceId);
-
-    if (bookingRequests.length === 0) {
+    })
+    .then(res => res.json())
+    .then(tickets => {
+        if (!tickets.length) {
+            tbody.innerHTML = '';
+            if (emptyEl) emptyEl.classList.remove('hidden');
+            return;
+        }
+        if (emptyEl) emptyEl.classList.add('hidden');
         tbody.innerHTML = '';
-        if (emptyEl) emptyEl.classList.remove('hidden');
-        return;
-    }
-
-    if (emptyEl) emptyEl.classList.add('hidden');
-    const fmt = (val) => typeof Alpine !== 'undefined' ? Alpine.store('currency').format(val, 2, window.__bookingServerData?.currentCurrencyRate || 0) : (val || 0).toFixed(2);
-    tbody.innerHTML = '';
-
-    bookingRequests.forEach((item, index) => {
-        let statusBadge = '';
-        switch(item.status) {
-            case 'Pending': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">Pending</span>'; break;
-            case 'Approved': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700">Approved</span>'; break;
-            case 'Rejected': statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700">Rejected</span>'; break;
-            default: statusBadge = '<span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700">' + item.status + '</span>';
-        }
-
-        const tr = document.createElement('tr');
-        tr.className = 'hover:bg-slate-50';
-        tr.innerHTML = `
-            <td class="px-3 py-2 text-slate-600">${item.date || new Date(item.requestedAt).toLocaleDateString('en-CA')}</td>
-            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.passengerName || item.passengers?.[0]?.name || '-')}</td>
-            <td class="px-3 py-2 text-slate-600">${escapeHtml(item.passport || item.passengers?.[0]?.passport || '-')}</td>
-            <td class="px-3 py-2 text-slate-600">${item.pnr || '-'}</td>
-            <td class="px-3 py-2 text-slate-800">${escapeHtml(item.agent || '-')}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.additionalTicketCost || 0)}</td>
-            <td class="px-3 py-2 text-slate-800 text-right font-medium">${fmt(item.customerPayment || 0)}</td>
-            <td class="px-3 py-2 text-green-600 text-right font-medium">${fmt(item.profit || 0)}</td>
-            <td class="px-3 py-2 text-slate-600">${item.paymentMethod || '-'}</td>
-            <td class="px-3 py-2">${statusBadge}</td>
-            <td class="px-3 py-2">
-                <button onclick="openAddTicketDetails(${item.id || index})" class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded">View</button>
-            </td>
-        `;
-        tbody.appendChild(tr);
+        tickets.forEach(t => {
+            const tr = document.createElement('tr');
+            tr.className = 'hover:bg-slate-50';
+            const p = t.passenger || {};
+            const offerPrice = parseFloat(t.offer_price) || 0;
+            const displayPrice = offerPrice > 0 ? offerPrice : (parseFloat(t.selling_fare) || 0);
+            const netFare = parseFloat(t.net_fare) || 0;
+            const profit = displayPrice - netFare;
+            const route = t.ticket_fare?.route || {};
+            const routeType = route.route_type || '';
+            let routeDisplay = '';
+            if (routeType === 'multi_city' && route.multi_segments) {
+                routeDisplay = route.multi_segments.map(s =>
+                    (s.from_city?.code || '?') + '-' + (s.to_city?.code || '?')
+                ).join(', ');
+            } else {
+                const from = route.from_city?.code || '?';
+                const to = route.to_city?.code || '?';
+                const ret = route.return_city?.code || '';
+                routeDisplay = (routeType === 'round' && ret)
+                    ? from + '-' + to + '-' + ret
+                    : from + '-' + to;
+            }
+            tr.innerHTML = `
+                <td class="px-3 py-2 text-slate-600">${(t.issued_date || '').substring(0, 10) || '-'}</td>
+                <td class="px-3 py-2 text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(p.passport_no || '-')}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${displayPrice.toFixed(2)}</td>
+                <td class="px-3 py-2 text-slate-800 text-right font-medium">${netFare.toFixed(2)}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(t.pnr || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(t.ticket_number || '-')}</td>
+                <td class="px-3 py-2 text-slate-600">${escapeHtml(routeDisplay || '-')}</td>
+                <td class="px-3 py-2 text-right font-medium ${profit >= 0 ? 'text-green-600' : 'text-red-600'}">${profit.toFixed(2)}</td>
+            `;
+            tbody.appendChild(tr);
+        });
     });
 }
 
@@ -1804,6 +1893,18 @@ function deleteDocument(docId) {
 
 function downloadDoc(docId) {
     window.open('/documents/' + docId + '/download', '_blank');
+}
+
+function showRequestPendingTooltip(el) {
+    const tip = document.getElementById('requestPendingTooltip');
+    const rect = el.getBoundingClientRect();
+    tip.style.top = (rect.bottom + 6) + 'px';
+    tip.style.left = rect.left + 'px';
+    tip.classList.remove('hidden');
+}
+
+function hideRequestPendingTooltip() {
+    document.getElementById('requestPendingTooltip').classList.add('hidden');
 }
 </script>
 @endpush

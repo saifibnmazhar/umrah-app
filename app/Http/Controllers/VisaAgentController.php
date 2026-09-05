@@ -12,6 +12,7 @@ class VisaAgentController extends Controller
         $visaAgents = VisaAgent::orderBy('name')
             ->paginate(10)
             ->withQueryString();
+
         return view('visa-agents.index', compact('visaAgents'));
     }
 
@@ -30,6 +31,7 @@ class VisaAgentController extends Controller
 
         try {
             VisaAgent::create($validated);
+
             return redirect()->route('visa.admin', ['tab' => 'visa-agents'])->with('success', 'Visa agent created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create visa agent.')->withInput();
@@ -51,6 +53,7 @@ class VisaAgentController extends Controller
 
         try {
             $visaAgent->update($validated);
+
             return redirect()->route('visa.admin', ['tab' => 'visa-agents'])->with('success', 'Visa agent updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update visa agent.')->withInput();
@@ -61,6 +64,7 @@ class VisaAgentController extends Controller
     {
         try {
             $visaAgent->delete();
+
             return redirect()->route('visa.admin', ['tab' => 'visa-agents'])->with('success', 'Visa agent deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete visa agent.');

@@ -1,5 +1,5 @@
 @props(['open' => false, 'title' => ''])
-<div x-show="{{ $open }}"
+<div x-show="{{ $open }}" x-cloak
 x-transition:enter="transition ease-out duration-200"
 x-transition:enter-start="opacity-0"
 x-transition:enter-end="opacity-100"
@@ -12,7 +12,7 @@ aria-modal="true">
     <div class="flex min-h-full items-center justify-center p-4">
         <div class="fixed inset-0 bg-slate-900/50 modal-overlay" @click="{{ $attributes->get('close') ?? 'false' }}"></div>
         
-        <div x-show="{{ $open }}"
+        <div x-show="{{ $open }}" x-cloak
         x-transition:enter="transition ease-out duration-200"
         x-transition:enter-start="opacity-0 translate-y-4"
         x-transition:enter-end="opacity-100 translate-y-0"

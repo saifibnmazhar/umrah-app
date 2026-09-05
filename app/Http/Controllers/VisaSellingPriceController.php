@@ -15,6 +15,7 @@ class VisaSellingPriceController extends Controller
             ->orderBy('created_at', 'desc')
             ->paginate(10)
             ->withQueryString();
+
         return view('visa-selling-prices.index', compact('visaSellingPrices'));
     }
 
@@ -32,12 +33,13 @@ class VisaSellingPriceController extends Controller
         try {
             $userId = auth()->id() ?? User::first()?->id;
 
-            if (!$userId) {
+            if (! $userId) {
                 return redirect()->back()->with('error', 'No users found. Please create a user first.')->withInput();
             }
 
             $validated['user_id'] = $userId;
             VisaSellingPrice::create($validated);
+
             return redirect()->route('visa.admin', ['tab' => 'visa-selling-prices'])->with('success', 'Visa selling price created successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to create visa selling price.')->withInput();
@@ -66,12 +68,13 @@ class VisaSellingPriceController extends Controller
         try {
             $userId = auth()->id() ?? User::first()?->id;
 
-            if (!$userId) {
+            if (! $userId) {
                 return redirect()->back()->with('error', 'No users found. Please create a user first.')->withInput();
             }
 
             $validated['user_id'] = $userId;
             $visaSellingPrice->update($validated);
+
             return redirect()->route('visa.admin', ['tab' => 'visa-selling-prices'])->with('success', 'Visa selling price updated successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to update visa selling price.')->withInput();
@@ -86,6 +89,7 @@ class VisaSellingPriceController extends Controller
 
         try {
             $visaSellingPrice->delete();
+
             return redirect()->route('visa.admin', ['tab' => 'visa-selling-prices'])->with('success', 'Visa selling price deleted successfully.');
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Failed to delete visa selling price.');

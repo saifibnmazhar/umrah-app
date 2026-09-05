@@ -3,12 +3,15 @@
 namespace App\Observers;
 
 use App\Models\IssuedTicket;
+use App\Services\ProfitCalculationService;
 
 class IssuedTicketObserver
 {
     public function created(IssuedTicket $issuedTicket): void
     {
         $issuedTicket->passenger->syncComputedStatus();
+
+        $this->recalculateProfit($issuedTicket);
     }
 
     public function updated(IssuedTicket $issuedTicket): void
@@ -18,5 +21,28 @@ class IssuedTicketObserver
         }
 
         $issuedTicket->passenger->syncComputedStatus();
+
+        if ($issuedTicket->wasChanged(['net_fare', 'issue_type'])) {
+            $this->recalculateProfit($issuedTicket);
+        }
+    }
+
+    public function deleted(IssuedTicket $issuedTicket): void
+    {
+        $this->recalculateProfit($issuedTicket);
+    }
+
+    public function restored(IssuedTicket $issuedTicket): void
+    {
+        $this->recalculateProfit($issuedTicket);
+    }
+
+    protected function recalculateProfit(IssuedTicket $issuedTicket): void
+    {
+        $passenger = $issuedTicket->passenger;
+
+        if ($passenger?->booking) {
+            app(ProfitCalculationService::class)->recalculateBookingProfit($passenger->booking);
+        }
     }
 }

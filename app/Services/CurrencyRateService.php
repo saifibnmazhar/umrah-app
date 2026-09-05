@@ -3,14 +3,31 @@
 namespace App\Services;
 
 use App\Models\CurrencyRate;
+use Illuminate\Support\Carbon;
 
 class CurrencyRateService
 {
+    /**
+     * In-request cache keyed by date string, so repeated lookups for the
+     * same rate date (e.g. one-per-row in report loops) don't hit the DB.
+     */
+    protected array $cache = [];
+
     public function getRateForDate($date): ?CurrencyRate
     {
-        return CurrencyRate::where('created_at', '<=', $date)
+        $key = $date instanceof Carbon
+            ? $date->toDateTimeString()
+            : (string) $date;
+
+        if (array_key_exists($key, $this->cache)) {
+            return $this->cache[$key];
+        }
+
+        $rate = CurrencyRate::where('created_at', '<=', $date)
             ->orderBy('created_at', 'desc')
             ->first();
+
+        return $this->cache[$key] = $rate;
     }
 
     public function getCurrentRate(): ?CurrencyRate
@@ -26,6 +43,7 @@ class CurrencyRateService
     public function getCurrentRateValue(): float
     {
         $rate = $this->getCurrentRate();
+
         return $rate ? (float) $rate->rate : 0;
     }
 
@@ -34,6 +52,7 @@ class CurrencyRateService
         $rate = $date
             ? ((float) ($this->getRateForDate($date)?->rate ?? 0))
             : $this->getCurrentRateValue();
+
         return $sarAmount * $rate;
     }
 
@@ -45,6 +64,7 @@ class CurrencyRateService
         if ($rate <= 0) {
             return 0;
         }
+
         return $bdtAmount / $rate;
     }
 

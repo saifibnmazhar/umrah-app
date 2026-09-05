@@ -18,7 +18,6 @@
                 <div><span class="text-slate-500 text-sm">Customer</span><p class="text-slate-800 font-medium" id="customerName">-</p></div>
                 <div><span class="text-slate-500 text-sm">Mobile</span><p class="text-slate-800 font-medium" id="customerMobile">-</p></div>
                 <div><span class="text-slate-500 text-sm">Branch</span><p class="text-slate-800 font-medium" id="branch">-</p></div>
-                <div><span class="text-slate-500 text-sm">Requested Date</span><p class="text-slate-800 font-medium" id="requestedDate">-</p></div>
                 <div><span class="text-slate-500 text-sm">Passengers</span><p class="text-slate-800 font-medium" id="passengerCount">-</p></div>
             </div>
         </div>
@@ -73,74 +72,233 @@
                 </div>
             </div>
 
+            <div id="fieldRefundPayable" class="mb-6">
+                <div class="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3">
+                    <span class="text-sm font-medium text-emerald-700">Refund Payable (SAR)</span>
+                    <span class="text-lg font-semibold text-emerald-700" id="infoRefundPayable">0.00</span>
+                </div>
+            </div>
+
             <div class="mb-6">
                 <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Re-Issue Details</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
-                        <input type="date" id="inputUpDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Reason</label>
+                        <select id="inputReason" onchange="handleReasonChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Reason</option>
+                        </select>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date</label>
-                        <input type="date" id="inputDownDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                    </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Re-issue Date</label>
-                        <input type="date" id="inputTravelDate" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                    </div>
-                    <div>
+                    <div id="fieldRoute" class="hidden">
                         <label class="block text-sm font-medium text-slate-700 mb-1">Route</label>
                         <select id="inputRoute" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Route</option>
-                            <option value="DAC-JED-DAC">DAC-JED-DAC</option>
-                            <option value="DAC-MED-DAC">DAC-MED-DAC</option>
                         </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
+                        <select id="inputPaymentBy" onchange="handlePaymentByChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="customer">Customer</option>
+                            <option value="airline">Airline</option>
+                            <option value="employee">Employee</option>
+                            <option value="company">Company</option>
+                        </select>
+                    </div>
+                    <div id="fieldPaymentOption" class="hidden">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
+                        <select id="inputPaymentOption" onchange="handlePaymentOptionChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="customer_payment">Customer Payment</option>
+                            <option value="refund_adjustment">Refund Adjustment</option>
+                        </select>
+                    </div>
+                    <div id="fieldRefundAdjustment" class="hidden">
+                        <div id="fieldRefundAdjustmentSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (SAR)</label>
+                            <input type="number" min="0" step="0.000001" id="inputRefundAdjustment" oninput="updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldRefundAdjustmentBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (BDT)</label>
+                            <input type="number" min="0" step="0.000001" id="inputRefundAdjustmentBdt" oninput="handleFieldBdtInput('inputRefundAdjustment','inputRefundAdjustmentBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputRefundAdjustmentBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Route Type</label>
+                        <select id="inputRouteType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="oneway_inbound">One Way-Inbound</option>
+                            <option value="oneway_outbound">One Way-Outbound</option>
+                            <option value="round">Round</option>
+                            <option value="multi_city">Multi City</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket Type</label>
+                        <select id="inputTicketType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">All</option>
+                            <option value="regular">Regular</option>
+                            <option value="offer">Offer</option>
+                            <option value="group">Group</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Flight Type</label>
+                        <select id="inputFlightType" onchange="handleFilterChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">All</option>
+                            <option value="direct">Direct</option>
+                            <option value="transit">Transit</option>
+                        </select>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket</label>
+                        <select id="inputTicketFare" onchange="handleTicketSelect()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Ticket</option>
+                        </select>
+                    </div>
+                    <div>
+                        <div id="fieldSellingFareSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (SAR)</label>
+                            <input type="number" id="inputSellingFare" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                        </div>
+                        <div id="fieldSellingFareBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Selling Fare (BDT)</label>
+                            <input type="number" id="inputSellingFareBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputSellingFareBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
+                    </div>
+                    <div>
+                        <div id="fieldNetFareSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (SAR)</label>
+                            <input type="number" id="inputNetFare" readonly oninput="handleFieldSarInput('inputNetFare','inputNetFareBdt'); recalcFareDifference()" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                        </div>
+                        <div id="fieldNetFareBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Net Fare (BDT)</label>
+                            <input type="number" id="inputNetFareBdt" readonly oninput="handleFieldBdtInput('inputNetFare','inputNetFareBdt'); recalcFareDifference()" class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputNetFareBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
+                    </div>
+                    <div id="fieldOfferPrice" class="hidden">
+                        <div id="fieldOfferPriceSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (SAR)</label>
+                            <input type="number" id="inputOfferPrice" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                        </div>
+                        <div id="fieldOfferPriceBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Offer Price (BDT)</label>
+                            <input type="number" id="inputOfferPriceBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputOfferPriceBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
+                    </div>
+                    <div id="fieldUpDate">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date</label>
+                        <input type="text" id="inputUpDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div id="fieldDownDate">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Outbound Date</label>
+                        <input type="text" id="inputDownDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Re-issue Date</label>
+                        <input type="text" id="inputTravelDate" placeholder="DD-MMM-YY" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                     </div>
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
                         <select id="inputAgent" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Agent</option>
-                            <option value="Agent A">Agent A</option>
-                            <option value="Agent B">Agent B</option>
-                            <option value="Agent C">Agent C</option>
                         </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge</label>
-                        <input type="number" id="inputReIssueCharge" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <div id="fieldReIssueChargeSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR)</label>
+                            <input type="number" id="inputReIssueCharge" oninput="handleFieldSarInput('inputReIssueCharge','inputReIssueChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldReIssueChargeBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT)</label>
+                            <input type="number" id="inputReIssueChargeBdt" oninput="handleFieldBdtInput('inputReIssueCharge','inputReIssueChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputReIssueChargeBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference</label>
-                        <input type="number" id="inputFareDifference" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <div id="fieldFareDifferenceSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR)</label>
+                            <input type="number" id="inputFareDifference" oninput="handleFieldSarInput('inputFareDifference','inputFareDifferenceBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldFareDifferenceBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT)</label>
+                            <input type="number" id="inputFareDifferenceBdt" oninput="handleFieldBdtInput('inputFareDifference','inputFareDifferenceBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputFareDifferenceBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs</label>
-                        <input type="number" id="inputOtherCosts" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <div id="fieldOtherCostsSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (SAR)</label>
+                            <input type="number" id="inputOtherCosts" oninput="handleFieldSarInput('inputOtherCosts','inputOtherCostsBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldOtherCostsBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (BDT)</label>
+                            <input type="number" id="inputOtherCostsBdt" oninput="handleFieldBdtInput('inputOtherCosts','inputOtherCostsBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputOtherCostsBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
+                    </div>
+                    <div id="fieldRefundedTicketFare" class="hidden">
+                        <div id="fieldRefundedTicketFareSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (SAR)</label>
+                            <input type="number" id="inputRefundedTicketFare" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                        </div>
+                        <div id="fieldRefundedTicketFareBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (BDT)</label>
+                            <input type="number" id="inputRefundedTicketFareBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputRefundedTicketFareBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost</label>
-                        <input type="number" id="inputTotalCost" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <div id="fieldTotalCostSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
+                            <input type="number" id="inputTotalCost" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                        </div>
+                        <div id="fieldTotalCostBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (BDT)</label>
+                            <input type="number" id="inputTotalCostBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputTotalCostBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge</label>
-                        <input type="number" id="inputServiceCharge" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                    <div id="fieldServiceCharge">
+                        <div id="fieldServiceChargeSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
+                            <input type="number" id="inputServiceCharge" oninput="handleFieldSarInput('inputServiceCharge','inputServiceChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        </div>
+                        <div id="fieldServiceChargeBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                            <input type="number" id="inputServiceChargeBdt" oninput="handleFieldBdtInput('inputServiceCharge','inputServiceChargeBdt'); updateTotals()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                            <input type="number" id="inputServiceChargeBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
-                    <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment</label>
-                        <input type="number" id="inputTotalPayment" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                    <div id="fieldTotalPayment">
+                        <div id="fieldTotalPaymentSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR)</label>
+                            <input type="number" id="inputTotalPayment" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                        </div>
+                        <div id="fieldTotalPaymentBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (BDT)</label>
+                            <input type="number" id="inputTotalPaymentBdt" readonly class="w-full px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500" placeholder="0">
+                            <input type="number" id="inputTotalPaymentBdtSar" readonly class="w-full mt-1 px-3 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="0">
+                        </div>
                     </div>
+                    {{--
                     <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
                         <select id="inputPaymentMethod" onchange="handlePaymentMethodChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Payment Method</option>
-                            <option value="Pay to Branch">Pay to Branch</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
                         </select>
+                    </div>
+                    --}}
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                        <textarea id="inputRemarks" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none resize-none" placeholder="Enter remarks..."></textarea>
                     </div>
                 </div>
             </div>
 
-            <div id="bankMethodSection" class="hidden mb-4">
+            {{--<div id="bankMethodSection" class="hidden mb-4">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Bank Method</label>
                 <select id="inputBankMethod" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                     <option value="">Select Bank Method</option>
@@ -159,15 +317,10 @@
                     <option value="Jeddah Branch">Jeddah Branch</option>
                     <option value="Madinah Branch">Madinah Branch</option>
                 </select>
-            </div>
+            </div>--}}
 
-            <div class="flex gap-3" id="confirmButtons">
+            <div class="flex gap-3">
                 <button onclick="confirmProcess()" id="btnConfirm" class="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 transition font-medium">Confirm</button>
-                <button onclick="closeProcessConfirmationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
-            </div>
-
-            <div class="flex gap-3 hidden" id="holdButtons">
-                <button onclick="holdProcess()" id="btnHold" class="flex-1 px-6 py-2 bg-orange-600 text-white rounded-lg hover:bg-orange-700 transition font-medium">Hold</button>
                 <button onclick="closeProcessConfirmationModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
             </div>
         </div>
@@ -182,167 +335,593 @@
 
 @push('scripts')
 <script>
-let currentRequest = null;
-let currentPassengerIndex = null;
+const bookingId = {{ $id }};
+const allRoutes = @json($allRoutes);
+let allRequests = [];
+let currentTicketRequestId = null;
+let currentRefundPayable = 0;
+let currentRefundedNetFare = 0;
+let currentTicketStatus = '';
+let currentTicketAirlineId = null;
+let allTicketFares = [];
+let selectedTicketFareId = null;
+let originalTicketFareId = null;
+let originalTicketNetFare = 0;
+let sourceFares = { selling_fare: 0, net_fare: 0, offer_price: 0 };
+let currentPassengerType = 'adult';
+
+function getCurrencyMode() {
+    return (typeof Alpine !== 'undefined' && Alpine.store('currency')) ? Alpine.store('currency').mode : 'SAR';
+}
+function sarToBdt(sar) {
+    var r = window.__currencyRate || 0;
+    return r > 0 ? Math.round(sar * r) : '';
+}
+function bdtToSar(bdt) {
+    var r = window.__currencyRate || 0;
+    return r > 0 ? (Math.round(bdt / r * 1e6) / 1e6) : '';
+}
+function handleFieldSarInput(sarId, bdtId) {
+    var sar = parseFloat(document.getElementById(sarId).value) || 0;
+    var bdtEl = document.getElementById(bdtId);
+    if (bdtEl) bdtEl.value = sarToBdt(sar);
+    var mirror = document.getElementById(bdtId + 'Sar');
+    if (mirror) mirror.value = sar || '';
+}
+function handleFieldBdtInput(sarId, bdtId) {
+    var bdt = parseFloat(document.getElementById(bdtId).value) || 0;
+    var sarEl = document.getElementById(sarId);
+    if (sarEl && sarEl.hasAttribute('readonly')) return;
+    var sarVal = bdt > 0 ? bdtToSar(bdt) : '';
+    if (sarEl) sarEl.value = sarVal;
+    var mirror = document.getElementById(bdtId + 'Sar');
+    if (mirror) mirror.value = sarVal;
+}
+function syncCurrencyFields() {
+    var mode = getCurrencyMode();
+    var isBdt = mode === 'BDT';
+    var wrappers = [
+        ['fieldSellingFareSar', 'fieldSellingFareBdt'],
+        ['fieldNetFareSar', 'fieldNetFareBdt'],
+        ['fieldOfferPriceSar', 'fieldOfferPriceBdt'],
+        ['fieldReIssueChargeSar', 'fieldReIssueChargeBdt'],
+        ['fieldFareDifferenceSar', 'fieldFareDifferenceBdt'],
+        ['fieldOtherCostsSar', 'fieldOtherCostsBdt'],
+        ['fieldRefundedTicketFareSar', 'fieldRefundedTicketFareBdt'],
+        ['fieldTotalCostSar', 'fieldTotalCostBdt'],
+        ['fieldServiceChargeSar', 'fieldServiceChargeBdt'],
+        ['fieldTotalPaymentSar', 'fieldTotalPaymentBdt'],
+        ['fieldRefundAdjustmentSar', 'fieldRefundAdjustmentBdt'],
+    ];
+    wrappers.forEach(function(w) {
+        var sarEl = document.getElementById(w[0]);
+        var bdtEl = document.getElementById(w[1]);
+        if (sarEl) sarEl.classList.toggle('hidden', isBdt);
+        if (bdtEl) bdtEl.classList.toggle('hidden', !isBdt);
+    });
+    updateTotals();
+    syncReadonlyMirrors();
+}
+function syncReadonlyMirrors() {
+    var rate = window.__currencyRate || 0;
+    var pairs = [
+        ['inputSellingFare', 'inputSellingFareBdtSar'],
+        ['inputNetFare', 'inputNetFareBdtSar'],
+        ['inputOfferPrice', 'inputOfferPriceBdtSar'],
+        ['inputReIssueCharge', 'inputReIssueChargeBdtSar'],
+        ['inputFareDifference', 'inputFareDifferenceBdtSar'],
+        ['inputOtherCosts', 'inputOtherCostsBdtSar'],
+        ['inputRefundedTicketFare', 'inputRefundedTicketFareBdtSar'],
+        ['inputServiceCharge', 'inputServiceChargeBdtSar'],
+        ['inputTotalCost', 'inputTotalCostBdtSar'],
+        ['inputTotalPayment', 'inputTotalPaymentBdtSar'],
+        ['inputRefundAdjustment', 'inputRefundAdjustmentBdtSar'],
+    ];
+    pairs.forEach(function(p) {
+        var sarEl = document.getElementById(p[0]);
+        var mirrorEl = document.getElementById(p[1]);
+        if (sarEl && mirrorEl) mirrorEl.value = sarEl.value;
+    });
+}
+
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+}
 
 function loadConfirmation() {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id') || '{{ $id }}';
+    fetch('/bookings/' + bookingId + '/ticket-requests?type=re_issue', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(requests => {
+        allRequests = requests;
+        if (!requests.length) {
+            showNotFound();
+            return;
+        }
+        const first = requests[0];
+        const booking = first.booking || {};
+        const customer = booking.customer || {};
+        const branch = booking.booking_branch || booking.bookingBranch || {};
 
-    if (id === null || id === '') {
-        showNotFound();
-        return;
-    }
+        document.getElementById('invoiceId').textContent = booking.id || '-';
+        document.getElementById('invoiceNo').textContent = booking.invoice_id || '-';
+        document.getElementById('customerName').textContent = customer.name || '-';
+        document.getElementById('customerMobile').textContent = customer.mobile_no || '-';
+        document.getElementById('branch').textContent = branch.name || '-';
+        document.getElementById('passengerCount').textContent = [...new Set(requests.map(r => r.passenger_id))].length;
 
-    const requestId = parseInt(id);
-    let reIssueRequests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-
-    if (reIssueRequests.length === 0) {
-        const seedData = [
-            {
-                id: 1,
-                invoiceId: 1001,
-                invoiceNo: 'INV-2024-001',
-                customerName: 'Ahmed Al-Rashid',
-                customerMobile: '0501234567',
-                branch: 'Riyadh Branch',
-                requestedAt: new Date(Date.now() - 86400000 * 3).toISOString(),
-                status: 'Pending',
-                passengers: [
-                    { name: 'Ahmed Al-Rashid', passport: 'P123456', ticketOption: 'up', probableDateUp: '2026-05-20', probableDateDown: '', visaExpiry: '2026-08-15', pnr: 'ABC123' },
-                    { name: 'Sara Khan', passport: 'P654321', ticketOption: 'both', probableDateUp: '2026-05-22', probableDateDown: '2026-06-10', visaExpiry: '2026-08-15', pnr: 'DEF456' },
-                ]
-            }
-        ];
-        reIssueRequests = seedData;
-        localStorage.setItem('reIssueRequests', JSON.stringify(seedData));
-        localStorage.setItem('reIssueRequests_seed', JSON.stringify(seedData));
-    }
-
-    const request = reIssueRequests.find(r => r.id === requestId) || reIssueRequests[0];
-
-    if (!request) {
-        showNotFound();
-        return;
-    }
-
-    currentRequest = request;
-    renderConfirmation(request);
+        renderConfirmation(requests);
+        loadReasons();
+        loadAgents();
+        // loadPaymentMethods();
+    });
 }
 
-function renderConfirmation(request) {
-    document.getElementById('invoiceId').textContent = request.invoiceId;
-    document.getElementById('invoiceNo').textContent = request.invoiceNo;
-    document.getElementById('customerName').textContent = request.customerName || '-';
-    document.getElementById('customerMobile').textContent = request.customerMobile || '-';
-    document.getElementById('branch').textContent = request.branch || '-';
-    document.getElementById('requestedDate').textContent = new Date(request.requestedAt).toLocaleDateString();
-    document.getElementById('passengerCount').textContent = request.passengers.length;
+function loadReasons() {
+    fetch('/ticket-requests/reasons?type=re_issue', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(reasons => {
+        const select = document.getElementById('inputReason');
+        select.innerHTML = '<option value="">Select Reason</option>' +
+            reasons.map(r => '<option value="' + r.id + '" data-default-payment-by="' + (r.default_payment_by || '') + '">' + escapeHtml(r.name) + '</option>').join('');
+    });
+}
 
-    const statusBadge = document.getElementById('statusBadge');
-    statusBadge.textContent = request.status === 'Pending' ? 'Pending' : request.status;
-    statusBadge.className = `inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${
-        request.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-        request.status === 'Approved' || request.status === 'Processed' ? 'bg-green-100 text-green-700' :
-        request.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-        'bg-yellow-100 text-yellow-700'
-    }`;
+function handleReasonChange() {
+    var opt = document.getElementById('inputReason').selectedOptions[0];
+    var val = opt ? opt.getAttribute('data-default-payment-by') || '' : '';
+    document.getElementById('inputPaymentBy').value = val;
+    var isSector = opt && (opt.text || '').toLowerCase().indexOf('sector') !== -1;
+    document.getElementById('fieldRoute').classList.toggle('hidden', !isSector);
+    if (!isSector) {
+        document.getElementById('inputRoute').value = '';
+    } else {
+        populateRouteOptions();
+    }
+    handlePaymentByChange();
+}
 
+function loadAgents() {
+    fetch('/ticket-requests/agents', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(agents => {
+        const select = document.getElementById('inputAgent');
+        select.innerHTML = '<option value="">Select Agent</option>' +
+            agents.map(a => '<option value="' + a.id + '">' + escapeHtml(a.name) + '</option>').join('');
+    });
+}
+
+/*
+function loadPaymentMethods() {
+    fetch('/ticket-requests/payment-methods', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(methods => {
+        const select = document.getElementById('inputPaymentMethod');
+        select.innerHTML = '<option value="">Select Payment Method</option>' +
+            methods.map(m => '<option value="' + m.value + '">' + escapeHtml(m.label) + '</option>').join('');
+    });
+}
+*/
+
+function loadTicketFares(filters = {}) {
+    const params = new URLSearchParams();
+    if (filters.route_type) params.append('route_type', filters.route_type);
+    if (filters.ticket_type) params.append('ticket_type', filters.ticket_type);
+    if (filters.flight_type) params.append('flight_type', filters.flight_type);
+
+    fetch('/ticket-fares/options?' + params.toString(), {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(fares => {
+        allTicketFares = fares;
+        const select = document.getElementById('inputTicketFare');
+        const currentVal = select.value || selectedTicketFareId;
+        select.innerHTML = '<option value="">Select Ticket</option>' +
+            fares.map(f => {
+                const route = f.route || {};
+                const airline = f.airline || {};
+                const cls = f.airline_class?.class || {};
+                const routeLabel = formatRoute(route);
+                return '<option value="' + f.id + '">' +
+                    escapeHtml(f.ticket_type || '') + ' - ' +
+                    escapeHtml(routeLabel) + ' - ' +
+                    escapeHtml(airline.name || '') + ' - ' +
+                    escapeHtml(cls.name || '') +
+                    '</option>';
+            }).join('');
+        if (currentVal) select.value = currentVal;
+    });
+}
+
+function populateRouteOptions() {
+    const select = document.getElementById('inputRoute');
+    if (!select) return;
+    const rt = document.getElementById('inputRouteType').value;
+    const ft = document.getElementById('inputFlightType').value;
+    let routes = allRoutes;
+    if (rt) {
+        routes = routes.filter(r => r.route_type === rt);
+    }
+    if (ft) {
+        routes = routes.filter(r => r.flight_type === ft);
+    }
+    if (currentTicketAirlineId) {
+        routes = routes.filter(r => r.airline_id === currentTicketAirlineId);
+    }
+    select.innerHTML = '<option value="">Select Route</option>' +
+        routes.map(r => '<option value="' + r.id + '">' + escapeHtml(r.display) + '</option>').join('');
+}
+
+function handleFilterChange() {
+    const filters = {
+        route_type: document.getElementById('inputRouteType').value,
+        ticket_type: document.getElementById('inputTicketType').value,
+        flight_type: document.getElementById('inputFlightType').value,
+    };
+    loadTicketFares(filters);
+    populateRouteOptions();
+    applyRouteType();
+    applyFareType();
+}
+
+function handleTicketSelect() {
+    const fareId = document.getElementById('inputTicketFare').value;
+    selectedTicketFareId = fareId || null;
+    syncFareFields();
+}
+
+function updateNetFareEditable() {
+    var selected = document.getElementById('inputTicketFare').value;
+    var editable = selected && originalTicketFareId && String(selected) !== String(originalTicketFareId);
+    ['inputNetFare', 'inputNetFareBdt'].forEach(function(id) {
+        var el = document.getElementById(id);
+        if (!el) return;
+        if (editable) {
+            el.removeAttribute('readonly');
+            el.classList.remove('border-slate-200', 'bg-slate-50', 'text-slate-500');
+            el.classList.add('border-slate-300', 'focus:ring-2', 'focus:ring-slate-400', 'focus:border-slate-400', 'outline-none');
+        } else {
+            el.setAttribute('readonly', 'readonly');
+            el.classList.remove('border-slate-300', 'focus:ring-2', 'focus:ring-slate-400', 'focus:border-slate-400', 'outline-none');
+            el.classList.add('border-slate-200', 'bg-slate-50', 'text-slate-500');
+        }
+    });
+}
+
+function syncFareFields() {
+    var fareId = document.getElementById('inputTicketFare').value;
+    var f = allTicketFares.find(function(x) { return String(x.id) === String(fareId); });
+
+    var sf, nf, ofp;
+    if (f) {
+        var childPct = f.child_fare_percentage || 70;
+        var infantPct = f.infant_fare_percentage || 30;
+        sf = f.selling_fare ?? sourceFares.selling_fare;
+        nf = f.net_fare ?? sourceFares.net_fare;
+        ofp = f.offer_price ?? sourceFares.offer_price;
+        if (currentPassengerType === 'child') {
+            sf = Math.round((parseFloat(sf) || 0) * childPct / 100);
+            nf = Math.round((parseFloat(nf) || 0) * childPct / 100);
+            if (ofp) ofp = Math.round((parseFloat(ofp) || 0) * childPct / 100);
+        } else if (currentPassengerType === 'infant') {
+            sf = Math.round((parseFloat(sf) || 0) * infantPct / 100);
+            nf = Math.round((parseFloat(nf) || 0) * infantPct / 100);
+            if (ofp) ofp = Math.round((parseFloat(ofp) || 0) * infantPct / 100);
+        }
+    } else {
+        sf = sourceFares.selling_fare;
+        nf = sourceFares.net_fare;
+        ofp = sourceFares.offer_price;
+    }
+    document.getElementById('inputSellingFare').value = sf;
+    document.getElementById('inputNetFare').value = nf;
+    document.getElementById('inputOfferPrice').value = ofp;
+    var rate = window.__currencyRate || 0;
+    if (rate > 0) {
+        document.getElementById('inputSellingFareBdt').value = sarToBdt(parseFloat(sf) || 0);
+        document.getElementById('inputNetFareBdt').value = sarToBdt(parseFloat(nf) || 0);
+        document.getElementById('inputOfferPriceBdt').value = ofp ? sarToBdt(parseFloat(ofp) || 0) : '';
+    } else {
+        document.getElementById('inputSellingFareBdt').value = '';
+        document.getElementById('inputNetFareBdt').value = '';
+        document.getElementById('inputOfferPriceBdt').value = '';
+    }
+    syncReadonlyMirrors();
+    updateNetFareEditable();
+    recalcFareDifference();
+}
+
+function recalcFareDifference() {
+    var newNetFare = parseFloat(document.getElementById('inputNetFare').value) || 0;
+    var diff = Math.round((newNetFare - originalTicketNetFare) * 1e6) / 1e6;
+    document.getElementById('inputFareDifference').value = diff || '';
+    handleFieldSarInput('inputFareDifference', 'inputFareDifferenceBdt');
+    updateTotals();
+}
+
+function applyFareType() {
+    const tt = document.getElementById('inputTicketType').value;
+    document.getElementById('fieldOfferPrice').classList.toggle('hidden', tt !== 'offer');
+}
+
+function renderConfirmation(requests) {
     const passengerListEl = document.getElementById('passengerList');
-    passengerListEl.innerHTML = request.passengers.map((p, pIndex) => `
-        <div class="flex justify-between items-center p-4 bg-slate-50 rounded-lg cursor-pointer" onclick="selectPassenger(${pIndex})">
-            <div class="flex flex-col items-start gap-1">
-                <div>
-                    <span class="font-medium text-slate-800">${escapeHtml(p.name)}</span>
+    const grouped = {};
+    requests.forEach(r => {
+        if (!grouped[r.passenger_id]) {
+            grouped[r.passenger_id] = { passenger: r.passenger, tickets: [] };
+        }
+        grouped[r.passenger_id].tickets.push(r);
+    });
+
+    const statusCounts = { pending: 0, processed: 0, rejected: 0 };
+    requests.forEach(r => statusCounts[r.status] = (statusCounts[r.status] || 0) + 1);
+    const statusBadge = document.getElementById('statusBadge');
+    if (statusCounts.pending === 0 && statusCounts.processed > 0) {
+        statusBadge.textContent = 'Processed';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700';
+    } else if (statusCounts.pending === 0 && statusCounts.rejected > 0) {
+        statusBadge.textContent = 'Rejected';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700';
+    } else {
+        statusBadge.textContent = 'Pending';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700';
+    }
+
+    passengerListEl.innerHTML = Object.values(grouped).map(g => {
+        const p = g.passenger || {};
+        return `
+            <div class="bg-slate-50 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <span class="font-medium text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</span>
+                        <span class="text-slate-500 text-sm ml-2">(${escapeHtml(p.passport_no || '-')})</span>
+                    </div>
+                    <span class="text-sm text-slate-500">${g.tickets.length} ticket(s)</span>
                 </div>
-                <div>
-                    <span class="text-slate-500 text-sm">(${escapeHtml(p.passport)}${p.pnr ? ' | PNR: ' + escapeHtml(p.pnr) : ''})</span>
+                <div class="space-y-3">
+                    ${g.tickets.map(r => {
+                        const t = r.issued_ticket || {};
+                        const route = t.ticket_fare?.route || {};
+                        const isProcessed = r.status === 'processed';
+                        const isRejected = r.status === 'rejected';
+                        const badgeClass = isProcessed ? 'bg-green-100 text-green-700' : isRejected ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+                        const statusLabel = isProcessed ? 'Processed' : isRejected ? 'Rejected' : 'Pending';
+                        return `
+                        <div class="bg-white rounded-lg border border-slate-200 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusLabel}</span>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                                <div class="text-sm"><span class="text-slate-500">Ticket No: </span><span class="text-slate-800 font-medium">${escapeHtml(t.ticket_number) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">PNR: </span><span class="text-slate-800 font-medium">${escapeHtml(t.pnr) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Probable (Inbound): </span><span class="text-slate-800 font-medium">${formatDate(r.probable_date_up)}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Probable (Outbound): </span><span class="text-slate-800 font-medium">${formatDate(r.probable_date_down)}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Visa Expiry: </span><span class="text-slate-800 font-medium">${formatDate(r.visa_expiry_date)}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Requested: </span><span class="text-slate-800 font-medium">${formatDate(r.requested_at)}</span></div>
+                            </div>
+                            <div class="flex gap-3">
+                                <button onclick="rejectReIssue(${r.id})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Reject</button>
+                                <button onclick="processConfirmation(${r.id})" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Process Confirmation</button>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
                 </div>
             </div>
-            <div class="flex items-center gap-6">
-                <div class="text-sm">
-                    <span class="text-slate-500">Ticket Option: </span>
-                    <span class="text-slate-800 font-medium">${p.ticketOption || '-'}</span>
-                </div>
-                <div class="text-sm">
-                    <span class="text-slate-500">Probable (Inbound): </span>
-                    <span class="text-slate-800 font-medium">${p.probableDateUp || '-'}</span>
-                </div>
-                <div class="text-sm">
-                    <span class="text-slate-500">Probable (Outbound): </span>
-                    <span class="text-slate-800 font-medium">${p.probableDateDown || '-'}</span>
-                </div>
-                <div class="text-sm">
-                    <span class="text-slate-500">Visa Expiry: </span>
-                    <span class="text-slate-800 font-medium">${p.visaExpiry || '-'}</span>
-                </div>
-                <button onclick="event.stopPropagation(); rejectReIssue(${pIndex})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium">Reject</button>
-                <button onclick="event.stopPropagation(); processConfirmation(${pIndex})" class="px-4 py-2 bg-blue-600 text-white text-sm rounded-lg hover:bg-blue-700 transition font-medium">Process Confirmation</button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
-function selectPassenger(index) {
-    currentPassengerIndex = index;
-}
+function processConfirmation(ticketRequestId) {
+    currentTicketRequestId = ticketRequestId;
+    const r = allRequests.find(req => req.id === ticketRequestId);
+    if (!r) return;
 
-function processConfirmation(passengerIndex) {
-    const passenger = currentRequest.passengers[passengerIndex];
-    if (!passenger) return;
+    const p = r.passenger || {};
+    currentPassengerType = p.passenger_type || 'adult';
+    const t = r.issued_ticket || {};
+    currentTicketStatus = t.status || '';
+    const src = (t.status === 're-issued' && t.latest_re_issued_ticket) ? t.latest_re_issued_ticket : t;
 
-    currentPassengerIndex = passengerIndex;
+    document.getElementById('modalPassengerName').textContent = (p.first_name || '') + ' ' + (p.last_name || '') + ' (' + (p.passport_no || '-') + ')';
+    document.getElementById('infoPassport').textContent = p.passport_no || '-';
+    document.getElementById('infoMobile').textContent = p.mobile_no || '-';
+    document.getElementById('infoPnr').textContent = src.pnr || '-';
+    document.getElementById('infoFlightDate').textContent = formatDate(src.outbound_date || src.inbound_date) || '-';
+    document.getElementById('infoRoute').textContent = formatRoute(src.ticket_fare?.route) || '-';
+    document.getElementById('infoAirline').textContent = src.ticket_fare?.airline?.name || '-';
+    document.getElementById('infoClass').textContent = src.ticket_fare?.airline_class?.class?.name || '-';
+    document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
 
-    document.getElementById('modalPassengerName').textContent = passenger.name + ' (' + passenger.passport + ')';
-    document.getElementById('infoPassport').textContent = passenger.passport;
-    document.getElementById('infoMobile').textContent = passenger.mobile || '-';
-    document.getElementById('infoPnr').textContent = passenger.pnr || 'ABCD1234';
-    document.getElementById('infoFlightDate').textContent = passenger.probableDateUp || '2026-05-15';
-    document.getElementById('infoRoute').textContent = 'DAC-JED-DAC';
-    document.getElementById('infoAirline').textContent = 'Saudi Arabian Airlines';
-    document.getElementById('infoClass').textContent = 'Economy';
-    document.getElementById('infoType').textContent = 'Adult';
+    currentRefundPayable = parseFloat(p.refund_payable) || 0;
+    document.getElementById('infoRefundPayable').textContent = currentRefundPayable.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 6 });
 
-    document.getElementById('inputUpDate').value = passenger.probableDateUp || '';
-    document.getElementById('inputDownDate').value = passenger.probableDateDown || '';
-    document.getElementById('inputTravelDate').value = '';
+    currentRefundedNetFare = parseFloat((t.status === 'refunded')
+        ? ((t.latest_refunded_ticket && t.latest_refunded_ticket.net_fare) || src.net_fare || 0)
+        : 0) || 0;
+    document.getElementById('fieldRefundedTicketFare').classList.toggle('hidden', currentRefundedNetFare <= 0);
+    document.getElementById('inputRefundedTicketFare').value = currentRefundedNetFare;
+    document.getElementById('inputRefundedTicketFareBdt').value = sarToBdt(currentRefundedNetFare);
+    document.getElementById('inputRefundedTicketFareBdtSar').value = currentRefundedNetFare || '';
+
+    document.getElementById('inputUpDate').value = formatToDDMMMYY(r.probable_date_up) || '';
+    document.getElementById('inputDownDate').value = formatToDDMMMYY(r.probable_date_down) || '';
+    document.getElementById('inputReason').value = '';
+    document.getElementById('fieldRoute').classList.add('hidden');
     document.getElementById('inputRoute').value = '';
-    document.getElementById('inputAgent').value = '';
+    const todayDD = (() => { const d = new Date(); const ms = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec']; return d.getDate() + '-' + ms[d.getMonth()] + '-' + String(d.getFullYear()).slice(-2); })();
+    document.getElementById('inputTravelDate').value = todayDD;
     document.getElementById('inputReIssueCharge').value = '';
     document.getElementById('inputFareDifference').value = '';
     document.getElementById('inputOtherCosts').value = '';
-    document.getElementById('inputTotalCost').value = '';
     document.getElementById('inputServiceCharge').value = '';
-    document.getElementById('inputTotalPayment').value = '';
-    document.getElementById('inputPaymentMethod').value = '';
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
-    document.getElementById('confirmButtons').classList.remove('hidden');
-    document.getElementById('holdButtons').classList.add('hidden');
+    // document.getElementById('inputPaymentMethod').value = '';
+    document.getElementById('inputAgent').value = src.ticket_agent_id || '';
+    // document.getElementById('bankMethodSection').classList.add('hidden');
+    // document.getElementById('branchSection').classList.add('hidden');
+    // document.getElementById('confirmButtons').classList.remove('hidden');
+    // document.getElementById('holdButtons').classList.add('hidden');
+    document.getElementById('inputRemarks').value = '';
+    document.getElementById('inputPaymentBy').value = '';
+    document.getElementById('inputPaymentOption').value = 'customer_payment';
+    document.getElementById('inputRefundAdjustment').value = '';
+    document.getElementById('inputRefundAdjustmentBdt').value = '';
+    document.getElementById('inputRefundAdjustmentBdtSar').value = '';
+    handlePaymentByChange();
+    handlePaymentOptionChange();
+    updateTotals();
+
+    sourceFares = {
+        selling_fare: src.selling_fare ?? 0,
+        net_fare: src.net_fare ?? 0,
+        offer_price: src.offer_price ?? 0,
+    };
+    document.getElementById('inputSellingFare').value = sourceFares.selling_fare;
+    document.getElementById('inputNetFare').value = sourceFares.net_fare;
+    document.getElementById('inputOfferPrice').value = sourceFares.offer_price;
+    var rate = window.__currencyRate || 0;
+    document.getElementById('inputSellingFareBdt').value = rate > 0 ? sarToBdt(sourceFares.selling_fare) : '';
+    document.getElementById('inputNetFareBdt').value = rate > 0 ? sarToBdt(sourceFares.net_fare) : '';
+    document.getElementById('inputOfferPriceBdt').value = rate > 0 ? sarToBdt(sourceFares.offer_price) : '';
+
+    const originalRt = src.ticket_fare?.route?.route_type || '';
+    const originalTt = src.ticket_fare?.ticket_type || '';
+    const originalFt = src.ticket_fare?.route?.flight_type || '';
+    currentTicketAirlineId = src.ticket_fare?.airline?.id || null;
+
+    const rtSelect = document.getElementById('inputRouteType');
+    rtSelect.value = originalRt;
+    rtSelect.disabled = originalRt === 'oneway_outbound';
+
+    const ttSelect = document.getElementById('inputTicketType');
+    ttSelect.value = originalTt;
+
+    const ftSelect = document.getElementById('inputFlightType');
+    ftSelect.value = originalFt;
+
+    selectedTicketFareId = src.ticket_fare_id || null;
+    originalTicketFareId = src.ticket_fare_id || null;
+    originalTicketNetFare = parseFloat(src.net_fare) || 0;
+
+    loadTicketFares({
+        route_type: originalRt,
+        ticket_type: originalTt,
+        flight_type: originalFt,
+    });
+
+    applyRouteType();
+    applyFareType();
+    syncCurrencyFields();
 
     document.getElementById('processConfirmationModal').classList.remove('hidden');
 }
 
 function closeProcessConfirmationModal() {
     document.getElementById('processConfirmationModal').classList.add('hidden');
-    document.getElementById('inputUpDate').value = '';
-    document.getElementById('inputDownDate').value = '';
-    document.getElementById('inputTravelDate').value = '';
-    document.getElementById('inputRoute').value = '';
-    document.getElementById('inputAgent').value = '';
-    document.getElementById('inputReIssueCharge').value = '';
-    document.getElementById('inputFareDifference').value = '';
-    document.getElementById('inputOtherCosts').value = '';
-    document.getElementById('inputTotalCost').value = '';
-    document.getElementById('inputServiceCharge').value = '';
-    document.getElementById('inputTotalPayment').value = '';
-    document.getElementById('inputPaymentMethod').value = '';
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
-    document.getElementById('confirmButtons').classList.remove('hidden');
-    document.getElementById('holdButtons').classList.add('hidden');
+    currentTicketRequestId = null;
+    currentTicketAirlineId = null;
 }
 
+function applyRouteType() {
+    const rt = document.getElementById('inputRouteType').value;
+    document.getElementById('fieldUpDate').classList.toggle('hidden', rt === 'oneway_outbound');
+    document.getElementById('fieldDownDate').classList.toggle('hidden', rt === 'oneway_inbound');
+}
+
+function updateTotals() {
+    var reIssue = parseFloat(document.getElementById('inputReIssueCharge').value) || 0;
+    var difference = parseFloat(document.getElementById('inputFareDifference').value) || 0;
+    var other = parseFloat(document.getElementById('inputOtherCosts').value) || 0;
+    var service = parseFloat(document.getElementById('inputServiceCharge').value) || 0;
+
+    var rawCost = reIssue + difference + other + (parseFloat(currentRefundedNetFare) || 0);
+
+    var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
+    var isRefunded = currentTicketStatus === 'refunded';
+    var isAdjustment = document.getElementById('inputPaymentOption').value === 'refund_adjustment';
+    var refundAdj = ((isCustomer || isRefunded) && isAdjustment)
+        ? (parseFloat(document.getElementById('inputRefundAdjustment').value) || 0)
+        : 0;
+
+    if (refundAdj > 0) {
+        if (refundAdj > rawCost) {
+            document.getElementById('inputRefundAdjustment').setCustomValidity('Refund adjustment amount exceeds the total customer payment.');
+        } else if (refundAdj > currentRefundPayable) {
+            document.getElementById('inputRefundAdjustment').setCustomValidity('Refund adjustment amount exceeds the available refund payable.');
+        } else {
+            document.getElementById('inputRefundAdjustment').setCustomValidity('');
+        }
+    } else {
+        document.getElementById('inputRefundAdjustment').setCustomValidity('');
+    }
+
+    var totalCost = rawCost - refundAdj;
+    document.getElementById('inputTotalCost').value = totalCost;
+
+    var totalPayment = totalCost + service;
+    document.getElementById('inputTotalPayment').value = totalPayment;
+
+    var rate = window.__currencyRate || 0;
+    if (rate > 0) {
+        document.getElementById('inputTotalCostBdt').value = sarToBdt(totalCost);
+        document.getElementById('inputTotalPaymentBdt').value = sarToBdt(totalPayment);
+    } else {
+        document.getElementById('inputTotalCostBdt').value = '';
+        document.getElementById('inputTotalPaymentBdt').value = '';
+    }
+
+    syncReadonlyMirrors();
+}
+
+function handlePaymentByChange() {
+    var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
+    var isRefunded = currentTicketStatus === 'refunded';
+    var paymentOptionEl = document.getElementById('inputPaymentOption');
+
+    if (!isCustomer && !isRefunded) {
+        paymentOptionEl.value = 'customer_payment';
+        paymentOptionEl.disabled = true;
+        document.getElementById('inputServiceCharge').value = '';
+        document.getElementById('inputServiceChargeBdt').value = '';
+    } else if (isRefunded && !isCustomer) {
+        paymentOptionEl.value = 'refund_adjustment';
+        paymentOptionEl.disabled = true;
+    } else {
+        paymentOptionEl.disabled = false;
+    }
+
+    document.getElementById('fieldServiceCharge').classList.toggle('hidden', !isCustomer);
+    document.getElementById('fieldTotalPayment').classList.toggle('hidden', !isCustomer);
+    document.getElementById('fieldRefundPayable').classList.toggle('hidden', !isCustomer && !isRefunded);
+    document.getElementById('fieldPaymentOption').classList.toggle('hidden', !isCustomer && !isRefunded);
+    handlePaymentOptionChange();
+    updateTotals();
+}
+
+function handlePaymentOptionChange() {
+    var isAdjustment = document.getElementById('inputPaymentOption').value === 'refund_adjustment';
+    var isCustomer = document.getElementById('inputPaymentBy').value === 'customer';
+    var isRefunded = currentTicketStatus === 'refunded';
+    document.getElementById('fieldRefundAdjustment').classList.toggle('hidden', !(isAdjustment && (isCustomer || isRefunded)));
+
+    if (!isAdjustment || (!isCustomer && !isRefunded)) {
+        document.getElementById('inputRefundAdjustment').value = '';
+        document.getElementById('inputRefundAdjustmentBdt').value = '';
+        document.getElementById('inputRefundAdjustmentBdtSar').value = '';
+        updateTotals();
+    }
+}
+
+/*
 function handlePaymentMethodChange() {
     const paymentMethod = document.getElementById('inputPaymentMethod').value;
     const bankMethodSection = document.getElementById('bankMethodSection');
@@ -368,62 +947,152 @@ function holdProcess() {
     showToast('Process held successfully!', 'info');
     closeProcessConfirmationModal();
 }
+*/
 
 function confirmProcess() {
-    const reIssueData = {
-        upDate: document.getElementById('inputUpDate').value,
-        downDate: document.getElementById('inputDownDate').value,
-        travelDate: document.getElementById('inputTravelDate').value,
-        route: document.getElementById('inputRoute').value,
-        agent: document.getElementById('inputAgent').value,
-        reIssueCharge: parseFloat(document.getElementById('inputReIssueCharge').value) || 0,
-        fareDifference: parseFloat(document.getElementById('inputFareDifference').value) || 0,
-        otherCosts: parseFloat(document.getElementById('inputOtherCosts').value) || 0,
-        totalCost: parseFloat(document.getElementById('inputTotalCost').value) || 0,
-        serviceCharge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
-        totalPayment: parseFloat(document.getElementById('inputTotalPayment').value) || 0,
-        paymentMethod: document.getElementById('inputPaymentMethod').value,
-        bankMethod: document.getElementById('inputBankMethod')?.value || '',
-        branch: document.getElementById('inputBranch')?.value || '',
+    if (!currentTicketRequestId) return;
+
+    const payload = {
+        reason_id: document.getElementById('inputReason').value,
+        route_id: document.getElementById('inputRoute').value || null,
+        ticket_fare_id: document.getElementById('inputTicketFare').value || selectedTicketFareId,
+        re_issue_charge: parseFloat(document.getElementById('inputReIssueCharge').value) || 0,
+        fare_difference: parseFloat(document.getElementById('inputFareDifference').value) || 0,
+        other_costs: parseFloat(document.getElementById('inputOtherCosts').value) || 0,
+        service_charge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
+        total_customer_payment: parseFloat(document.getElementById('inputTotalPayment').value) || 0,
+        travel_date: parseDDMMMYY(document.getElementById('inputTravelDate').value) || null,
+        inbound_date: parseDDMMMYY(document.getElementById('inputUpDate').value) || null,
+        outbound_date: parseDDMMMYY(document.getElementById('inputDownDate').value) || null,
+        ticket_agent_id: document.getElementById('inputAgent').value || null,
+        remarks: document.getElementById('inputRemarks').value || null,
+        payment_by: document.getElementById('inputPaymentBy').value || null,
+        payment_option: (document.getElementById('inputPaymentBy').value === 'customer' || currentTicketStatus === 'refunded') ? document.getElementById('inputPaymentOption').value : undefined,
+        refund_adjustment_amount: (document.getElementById('inputPaymentBy').value === 'customer' || currentTicketStatus === 'refunded') && document.getElementById('inputPaymentOption').value === 'refund_adjustment' ? (parseFloat(document.getElementById('inputRefundAdjustment').value) || 0) : 0,
+        selling_fare: parseFloat(document.getElementById('inputSellingFare').value) || null,
+        net_fare: parseFloat(document.getElementById('inputNetFare').value) || null,
+        offer_price: parseFloat(document.getElementById('inputOfferPrice').value) || null,
     };
 
-    if (currentRequest && currentPassengerIndex !== null) {
-        const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-        const idx = requests.findIndex(r => r.id === currentRequest.id);
-        if (idx !== -1) {
-            requests[idx].passengers[currentPassengerIndex].reIssueData = reIssueData;
-            requests[idx].status = 'Processed';
-            localStorage.setItem('reIssueRequests', JSON.stringify(requests));
-            currentRequest = requests[idx];
-            renderConfirmation(currentRequest);
+    if (!payload.reason_id) {
+        showToast('Please select a reason', 'error');
+        return;
+    }
+
+    if (!payload.ticket_fare_id) {
+        showToast('Please select a ticket', 'error');
+        return;
+    }
+
+    if ((payload.payment_by === 'customer' || currentTicketStatus === 'refunded') && payload.payment_option === 'refund_adjustment') {
+        if (payload.refund_adjustment_amount > payload.re_issue_charge + payload.fare_difference + payload.other_costs + (parseFloat(currentRefundedNetFare) || 0)) {
+            showToast('Refund adjustment amount exceeds the total customer payment.', 'error');
+            return;
+        }
+        if (payload.refund_adjustment_amount > currentRefundPayable) {
+            showToast('Refund adjustment amount exceeds the available refund payable.', 'error');
+            return;
         }
     }
 
-    showToast('Process confirmed successfully!', 'success');
-    closeProcessConfirmationModal();
+    fetch('/ticket-requests/' + currentTicketRequestId + '/process-reissue', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Re-issue processed successfully!', 'success');
+            closeProcessConfirmationModal();
+            loadConfirmation();
+        } else {
+            showToast(data.message || 'Failed to process', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error processing request', 'error');
+    });
 }
 
-function rejectReIssue(passengerIndex) {
-    if (!currentRequest) return;
-    if (!confirm('Are you sure you want to reject this passenger\'s re-issue request?')) return;
+function rejectReIssue(ticketRequestId) {
+    if (!confirm('Are you sure you want to reject this ticket\'s re-issue request?')) return;
 
-    const requests = JSON.parse(localStorage.getItem('reIssueRequests') || '[]');
-    const idx = requests.findIndex(r => r.id === currentRequest.id);
-    if (idx !== -1) {
-        requests[idx].passengers.splice(passengerIndex, 1);
-        if (requests[idx].passengers.length === 0) {
-            requests[idx].status = 'Rejected';
+    fetch('/ticket-requests/' + ticketRequestId + '/reject', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Re-issue request rejected', 'info');
+            loadConfirmation();
+        } else {
+            showToast(data.message || 'Failed to reject', 'error');
         }
-        localStorage.setItem('reIssueRequests', JSON.stringify(requests));
-        currentRequest = requests[idx];
-        renderConfirmation(currentRequest);
-        showToast('Re-issue request rejected', 'info');
-    }
+    });
 }
 
 function showNotFound() {
     document.getElementById('confirmationContent').classList.add('hidden');
     document.getElementById('notFound').classList.remove('hidden');
+}
+
+function formatToDDMMMYY(dateStr) {
+    if (!dateStr) return '';
+    const parts = dateStr.split('T')[0].split('-');
+    if (parts.length !== 3) return dateStr;
+    const months = ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'];
+    const y = parseInt(parts[0]), m = parseInt(parts[1]), d = parseInt(parts[2]);
+    if (isNaN(d) || isNaN(m) || m < 1 || m > 12) return dateStr;
+    return d + '-' + months[m - 1] + '-' + String(y).slice(-2);
+}
+
+function parseDDMMMYY(input) {
+    if (!input) return '';
+    if (/^\d{4}-\d{2}-\d{2}$/.test(input)) return input;
+    const parts = input.split('-');
+    if (parts.length !== 3) return null;
+    const months = ['jan','feb','mar','apr','may','jun','jul','aug','sep','oct','nov','dec'];
+    const d = parseInt(parts[0]), mmm = parts[1].toLowerCase().slice(0, 3), yy = parts[2];
+    const mi = months.indexOf(mmm);
+    if (isNaN(d) || mi === -1 || !/^\d{2}$/.test(yy)) return null;
+    const year = 2000 + parseInt(yy), month = mi + 1;
+    if (d < 1 || d > new Date(year, month, 0).getDate()) return null;
+    return year + '-' + String(month).padStart(2, '0') + '-' + String(d).padStart(2, '0');
+}
+
+function formatDate(val) {
+    if (!val) return '-';
+    const parts = val.split('T')[0].split('-');
+    if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    return val;
+}
+
+function formatRoute(route) {
+    if (!route) return '-';
+    const rt = route.route_type || '';
+    if (rt === 'multi_city' && route.multi_segments?.length) {
+        return route.multi_segments.map(s => (s.from_city?.code || '?') + '-' + (s.to_city?.code || '?')).join(', ');
+    }
+    const from = route.from_city?.code || '?';
+    const to = route.to_city?.code || '?';
+    const ret = route.return_city?.code || '';
+    if (rt === 'round' && ret) return from + '-' + to + '-' + ret;
+    return from + '-' + to;
 }
 
 function escapeHtml(str) {
@@ -440,11 +1109,18 @@ function showToast(message, type = 'info') {
     toast.className = 'toast px-4 py-3 rounded-lg shadow-lg text-white ' + (
         type === 'success' ? 'bg-green-600' :
         type === 'error' ? 'bg-red-600' :
-        type === 'info' ? 'bg-slate-700' : 'bg-slate-700'
+        'bg-slate-700'
     );
     toast.textContent = message;
     container.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+window.addEventListener('currency-toggled', function() { syncCurrencyFields(); });
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { syncCurrencyFields(); });
+} else {
+    syncCurrencyFields();
 }
 
 loadConfirmation();

@@ -4,7 +4,7 @@
 
 @section('content')
 <style>[x-cloak] { display: none !important; }</style>
-<div class="max-w-7xl mx-auto pt-6" x-data="branchWiseReport({ vouchersByDate: {{ $vouchersByDateJson }}, dateFrom: '{{ $dateFrom->format('Y-m-d') }}', dateTo: '{{ $dateTo->format('Y-m-d') }}', branchId: '{{ $selectedBranch }}' })">
+<div class="max-w-7xl mx-auto pt-6" x-data="branchWiseReport({ vouchersByDate: {{ $vouchersByDateJson }}, dateFrom: '{{ $dateFrom->format('Y-m-d') }}', dateTo: '{{ $dateTo->format('Y-m-d') }}', branchId: '{{ $selectedBranch }}', banks: {{ $banksJson }} })">
     <h1 class="text-2xl font-bold text-slate-800 mb-6">Branch Wise Report</h1>
 
     <form method="GET" action="{{ route('report.branch-wise') }}" class="flex flex-wrap items-end gap-4 mb-6 bg-white rounded-lg border border-slate-200 shadow-sm p-4">
@@ -41,6 +41,7 @@
     $dateLabel = $dateFrom->format('d M Y') . ' - ' . $dateTo->format('d M Y');
     $showProfitCards = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin', 'Auditor'])->isNotEmpty();
 
+    if (! function_exists('cascadeRound')) {
     function cascadeRound($value): int {
         $parts = explode('.', number_format((float) $value, 6, '.', ''));
         if (count($parts) !== 2) return (int) round($value);
@@ -49,6 +50,7 @@
             $carry = ((int) $parts[1][$i] + ($carry ? 1 : 0)) >= 5;
         }
         return (int) $parts[0] + ($carry ? 1 : 0);
+    }
     }
     @endphp
 
@@ -206,6 +208,19 @@
             </div>
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-600">Total Ticket Refunds</h3>
+                    <div class="w-10 h-10 rounded-full bg-orange-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-orange-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-orange-600 mb-1">@currency(cascadeRound($totalTicketRefund), 0, null, cascadeRound($totalTicketRefundBdt)) <span x-text="$store.currency.mode"></span></div>
+                <div class="text-xs text-slate-500 mt-1">{{ $dateLabel }}</div>
+            </div>
+
+        <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
             <div class="flex justify-between items-center mb-2">
                 <h3 class="text-sm font-semibold text-slate-600">Fingerprint</h3>
                 <div class="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
@@ -319,8 +334,8 @@
     <div x-show="modalOpen" x-cloak class="fixed inset-0 z-50">
         <div class="fixed inset-0 bg-transparent" @click="closeModal()"></div>
         <div class="flex items-center justify-center min-h-screen px-4">
-            <div class="relative bg-white rounded-lg shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden">
-                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center">
+            <div class="relative bg-white rounded-lg shadow-2xl w-full max-w-7xl max-h-[95vh] overflow-hidden flex flex-col">
+                <div class="bg-slate-700 px-6 py-4 flex justify-between items-center shrink-0">
                     <h2 class="text-xl font-bold text-white">Payment History</h2>
                     <button @click="closeModal()" class="text-white hover:text-gray-300">
                         <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -328,11 +343,27 @@
                         </svg>
                     </button>
                 </div>
-                <div class="p-6 overflow-y-auto max-h-[calc(95vh-130px)]">
-                    <template x-if="selectedVouchers.length === 0">
+                <div class="p-6 overflow-y-auto flex-1 min-h-0">
+                    <div class="mb-4 flex items-center gap-2 flex-wrap">
+                        <label class="text-sm font-semibold text-gray-700">Method:</label>
+                        <select x-model="selectedMethod" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">All Methods</option>
+                            <option value="Cash">Cash</option>
+                            <option value="Bank">Bank</option>
+                        </select>
+                        <label class="text-sm font-semibold text-gray-700">Bank:</label>
+                        <select x-model="selectedBank" class="search-input px-3 py-1.5 text-sm rounded-md focus:outline-none focus:ring-2 focus:ring-green-500">
+                            <option value="">Select Bank</option>
+                            <option value="all">All Banks</option>
+                            <template x-for="b in banks" :key="b.id">
+                                <option :value="b.id" x-text="b.name"></option>
+                            </template>
+                        </select>
+                    </div>
+                    <template x-if="filteredVouchers.length === 0">
                         <p class="text-center text-gray-500 py-8">No records found.</p>
                     </template>
-                    <template x-if="selectedVouchers.length > 0">
+                    <template x-if="filteredVouchers.length > 0">
                         <div class="overflow-x-auto">
                             <table class="w-full min-w-[1100px]">
                                 <thead>
@@ -340,6 +371,7 @@
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Invoice ID</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Voucher No</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-center border-r border-gray-300">Method</th>
+                                        <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Bank Name</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Transaction Type</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Trx ID</th>
                                         <th class="px-3 py-3 text-xs font-bold text-gray-700 text-left border-r border-gray-300">Receive By</th>
@@ -358,6 +390,7 @@
                                                       :class="v.method === 'Bank' ? 'bg-blue-100 text-blue-700' : 'bg-green-100 text-green-700'"
                                                       x-text="v.method"></span>
                                             </td>
+                                            <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.bank || '-'"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.transaction_type"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.trx_id"></td>
                                             <td class="px-3 py-2 text-sm text-left border-r border-gray-200" x-text="v.receive_by"></td>
@@ -371,19 +404,19 @@
                         </div>
                     </template>
                 </div>
-                <div x-show="totalPages > 1" class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50">
+                <div x-show="totalPages > 1" x-cloak class="flex justify-between items-center px-6 py-3 border-t border-gray-200 bg-gray-50 shrink-0">
                     <span class="text-sm text-gray-500">
-                        Showing <span x-text="((currentPage - 1) * perPage) + 1"></span>-<span x-text="Math.min(currentPage * perPage, selectedVouchers.length)"></span> of <span x-text="selectedVouchers.length"></span>
+                        Showing <span x-text="((currentPage - 1) * perPage) + 1"></span>-<span x-text="Math.min(currentPage * perPage, filteredVouchers.length)"></span> of <span x-text="filteredVouchers.length"></span>
                     </span>
                     <span class="inline-flex items-center gap-2">
                         <span x-show="currentPage === 1" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Previous</span>
-                        <button x-show="currentPage > 1" @click="goToPage(currentPage - 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Previous</button>
+                        <button x-show="currentPage > 1" x-cloak @click="goToPage(currentPage - 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Previous</button>
                         <span class="px-4 py-2 text-sm font-medium text-gray-700 bg-gray-200 border border-gray-300 rounded-md leading-5" x-text="currentPage"></span>
-                        <button x-show="currentPage < totalPages" @click="goToPage(currentPage + 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Next</button>
+                        <button x-show="currentPage < totalPages" x-cloak @click="goToPage(currentPage + 1)" class="px-4 py-2 text-sm font-medium text-gray-700 bg-white border border-gray-300 rounded-md leading-5 hover:bg-gray-100">Next</button>
                         <span x-show="currentPage === totalPages" class="px-4 py-2 text-sm font-medium text-gray-500 bg-white border border-gray-300 rounded-md cursor-not-allowed leading-5">Next</span>
                     </span>
                 </div>
-                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center">
+                <div class="bg-gray-50 px-6 py-3 border-t border-gray-200 flex justify-between items-center shrink-0">
                     <div class="flex gap-6 text-sm">
                         <span class="font-medium text-green-700">
                             Cash: <span x-text="formatAmount(totalCash, totalCashBdt, null)"></span>
@@ -419,18 +452,29 @@
             dateFrom: options.dateFrom || '',
             dateTo: options.dateTo || '',
             branchId: options.branchId || '',
+            banks: options.banks || [],
+            selectedBank: '',
+            selectedMethod: '',
             modalOpen: false,
             selectedVouchers: [],
             currentPage: 1,
             perPage: 50,
 
+            get filteredVouchers() {
+                return this.selectedVouchers.filter(v => {
+                    const methodOk = this.selectedMethod === '' || v.method === this.selectedMethod;
+                    const bankOk = this.selectedBank === '' || (v.method === 'Bank' && (this.selectedBank === 'all' || v.bank_id == this.selectedBank));
+                    return methodOk && bankOk;
+                });
+            },
+
             get paginatedVouchers() {
                 const start = (this.currentPage - 1) * this.perPage;
-                return this.selectedVouchers.slice(start, start + this.perPage);
+                return this.filteredVouchers.slice(start, start + this.perPage);
             },
 
             get totalPages() {
-                return Math.ceil(this.selectedVouchers.length / this.perPage);
+                return Math.ceil(this.filteredVouchers.length / this.perPage);
             },
 
             goToPage(page) {
@@ -441,6 +485,8 @@
 
             openModal() {
                 this.selectedVouchers = Object.values(this.vouchersByDate).flat();
+                this.selectedBank = '';
+                this.selectedMethod = '';
                 this.currentPage = 1;
                 this.modalOpen = true;
             },
@@ -454,27 +500,29 @@
                 if (this.dateFrom) params.set('date_from', this.dateFrom);
                 if (this.dateTo) params.set('date_to', this.dateTo);
                 if (this.branchId) params.set('branch_id', this.branchId);
+                if (this.selectedBank) params.set('bank_id', this.selectedBank);
+                if (this.selectedMethod) params.set('method', this.selectedMethod);
                 params.set('currency', Alpine.store('currency').mode);
                 return `/reports/branch-wise/payment-history/print?${params.toString()}`;
             },
 
             get totalCash() {
-                return this.selectedVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + v.amount, 0);
+                return this.filteredVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + v.amount, 0);
             },
             get totalCashBdt() {
-                return this.selectedVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
+                return this.filteredVouchers.filter(v => v.method === 'Cash').reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
             },
             get totalBank() {
-                return this.selectedVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + v.amount, 0);
+                return this.filteredVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + v.amount, 0);
             },
             get totalBankBdt() {
-                return this.selectedVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
+                return this.filteredVouchers.filter(v => v.method === 'Bank').reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
             },
             get totalAmount() {
-                return this.selectedVouchers.reduce((s, v) => s + v.amount, 0);
+                return this.filteredVouchers.reduce((s, v) => s + v.amount, 0);
             },
             get totalAmountBdt() {
-                return this.selectedVouchers.reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
+                return this.filteredVouchers.reduce((s, v) => s + (v.bdt_amount > 0 ? v.bdt_amount : v.amount * v.currency_rate), 0);
             },
 
             formatAmount(amount, bdtAmount, currencyRate) {

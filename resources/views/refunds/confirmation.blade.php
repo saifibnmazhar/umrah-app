@@ -18,7 +18,6 @@
                 <div><span class="text-slate-500 text-sm">Customer</span><p class="text-slate-800 font-medium" id="customerName">-</p></div>
                 <div><span class="text-slate-500 text-sm">Mobile</span><p class="text-slate-800 font-medium" id="customerMobile">-</p></div>
                 <div><span class="text-slate-500 text-sm">Branch</span><p class="text-slate-800 font-medium" id="branch">-</p></div>
-                <div><span class="text-slate-500 text-sm">Requested Date</span><p class="text-slate-800 font-medium" id="requestedDate">-</p></div>
                 <div><span class="text-slate-500 text-sm">Passengers</span><p class="text-slate-800 font-medium" id="passengerCount">-</p></div>
             </div>
         </div>
@@ -74,22 +73,64 @@
             </div>
 
             <div class="mb-6">
+                <div class="flex items-center justify-between rounded-lg bg-emerald-50 border border-emerald-200 px-4 py-3">
+                    <span class="text-sm font-medium text-emerald-700">Refund Payable (SAR)</span>
+                    <span class="text-lg font-semibold text-emerald-700" id="infoRefundPayable">0.00</span>
+                </div>
+            </div>
+
+            <div class="mb-6">
                 <h4 class="text-sm font-medium text-slate-700 mb-3 pb-2 border-b border-slate-200">Refund Details</h4>
                 <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent Refund Amount</label>
-                        <input type="number" id="inputAgentRefundAmount" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Reason</label>
+                        <select id="inputReason" onchange="handleReasonChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select Reason</option>
+                        </select>
                     </div>
                     <div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund Amount</label>
-                        <input type="number" id="inputCustomerRefundAmount" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0">
+                        <div id="fieldAgentRefundSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (SAR) *</label>
+                            <input type="number" min="0" step="0.01" id="inputAgentRefundAmount" oninput="handleFieldSarInput('inputAgentRefundAmount','inputAgentRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                        </div>
+                        <div id="fieldAgentRefundBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">IATA Refund (BDT) *</label>
+                            <input type="number" min="0" step="0.01" id="inputAgentRefundAmountBdt" oninput="handleFieldBdtInput('inputAgentRefundAmount','inputAgentRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                            <input type="number" id="inputAgentRefundAmountBdtSar" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
+                        </div>
                     </div>
                     <div>
+                        <div id="fieldCustomerRefundSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (SAR) *</label>
+                            <input type="number" min="0" step="0.01" id="inputCustomerRefundAmount" oninput="handleFieldSarInput('inputCustomerRefundAmount','inputCustomerRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                        </div>
+                        <div id="fieldCustomerRefundBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Customer Refund (BDT) *</label>
+                            <input type="number" min="0" step="0.01" id="inputCustomerRefundAmountBdt" oninput="handleFieldBdtInput('inputCustomerRefundAmount','inputCustomerRefundAmountBdt'); updateServiceCharge()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="0.00">
+                            <input type="number" id="inputCustomerRefundAmountBdtSar" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
+                        </div>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
+                        <select id="inputAgent" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white" disabled>
+                            <option value="">Select Agent</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
+                        <select id="inputPaymentBy" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <option value="">Select</option>
+                            <option value="customer">Customer</option>
+                            <option value="airline">Airline</option>
+                            <option value="employee">Employee</option>
+                            <option value="company">Company</option>
+                        </select>
+                    </div>
+                    {{-- payment method field is not needed now --}}
+                    {{-- <div>
                         <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method</label>
                         <select id="inputPaymentMethod" onchange="handlePaymentMethodChange()" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Payment Method</option>
-                            <option value="Pay from Branch">Pay from Branch</option>
-                            <option value="Bank Transfer">Bank Transfer</option>
                         </select>
                     </div>
                     <div id="bankMethodSection" class="hidden">
@@ -110,6 +151,32 @@
                             <option value="Jeddah Branch">Jeddah Branch</option>
                             <option value="Madinah Branch">Madinah Branch</option>
                         </select>
+                    </div> --}}
+                    <div>
+                        <div id="fieldServiceChargeSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR) (Auto: IATA Refund - Customer Refund)</label>
+                            <input type="number" id="inputServiceCharge" step="0.01" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
+                        </div>
+                        <div id="fieldServiceChargeBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT) (Auto: IATA Refund - Customer Refund)</label>
+                            <input type="number" id="inputServiceChargeBdt" step="0.01" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
+                            <input type="number" id="inputServiceChargeBdtSar" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
+                        </div>
+                    </div>
+                    <div>
+                        <div id="fieldRefundCompensationSar">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refund Compensation (SAR) (Auto: Net Fare - IATA Refund)</label>
+                            <input type="number" id="inputRefundCompensation" step="0.01" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
+                        </div>
+                        <div id="fieldRefundCompensationBdt" class="hidden">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Refund Compensation (BDT) (Auto: Net Fare - IATA Refund)</label>
+                            <input type="number" id="inputRefundCompensationBdt" step="0.01" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 outline-none" placeholder="0.00">
+                            <input type="number" id="inputRefundCompensationBdtSar" step="0.01" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm" placeholder="SAR 0.00">
+                        </div>
+                    </div>
+                    <div class="md:col-span-2">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                        <textarea id="inputRemarks" rows="3" class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none resize-none" placeholder="Enter remarks..."></textarea>
                     </div>
                 </div>
             </div>
@@ -130,179 +197,391 @@
 
 @push('scripts')
 <script>
-let currentRequest = null;
+const bookingId = {{ $id }};
+let allRequests = [];
+let currentTicketRequestId = null;
+let currentRefundNetFare = 0;
+
+function getCurrencyMode() {
+    return (typeof Alpine !== 'undefined' && Alpine.store('currency')) ? Alpine.store('currency').mode : 'SAR';
+}
+function sarToBdt(sar) {
+    var r = window.__currencyRate || 0;
+    return r > 0 ? Math.round(sar * r) : '';
+}
+function bdtToSar(bdt) {
+    var r = window.__currencyRate || 0;
+    return r > 0 ? (Math.round(bdt / r * 1e6) / 1e6) : '';
+}
+function handleFieldSarInput(sarId, bdtId) {
+    var sar = parseFloat(document.getElementById(sarId).value) || 0;
+    var bdtEl = document.getElementById(bdtId);
+    if (bdtEl) bdtEl.value = sarToBdt(sar);
+    var mirror = document.getElementById(bdtId + 'Sar');
+    if (mirror) mirror.value = sar || '';
+}
+function handleFieldBdtInput(sarId, bdtId) {
+    var bdt = parseFloat(document.getElementById(bdtId).value) || 0;
+    var sarEl = document.getElementById(sarId);
+    if (sarEl && sarEl.hasAttribute('readonly')) return;
+    var sarVal = bdt > 0 ? bdtToSar(bdt) : '';
+    if (sarEl) sarEl.value = sarVal;
+    var mirror = document.getElementById(bdtId + 'Sar');
+    if (mirror) mirror.value = sarVal;
+}
+function syncCurrencyFields() {
+    var mode = getCurrencyMode();
+    var isBdt = mode === 'BDT';
+    var wrappers = [
+        ['fieldAgentRefundSar', 'fieldAgentRefundBdt'],
+        ['fieldCustomerRefundSar', 'fieldCustomerRefundBdt'],
+        ['fieldServiceChargeSar', 'fieldServiceChargeBdt'],
+        ['fieldRefundCompensationSar', 'fieldRefundCompensationBdt'],
+    ];
+    wrappers.forEach(function(w) {
+        var sarEl = document.getElementById(w[0]);
+        var bdtEl = document.getElementById(w[1]);
+        if (sarEl) sarEl.classList.toggle('hidden', isBdt);
+        if (bdtEl) bdtEl.classList.toggle('hidden', !isBdt);
+    });
+    updateServiceCharge();
+    syncReadonlyMirrors();
+}
+function syncReadonlyMirrors() {
+    var pairs = [
+        ['inputAgentRefundAmount', 'inputAgentRefundAmountBdtSar'],
+        ['inputCustomerRefundAmount', 'inputCustomerRefundAmountBdtSar'],
+        ['inputServiceCharge', 'inputServiceChargeBdtSar'],
+        ['inputRefundCompensation', 'inputRefundCompensationBdtSar'],
+    ];
+    pairs.forEach(function(p) {
+        var sarEl = document.getElementById(p[0]);
+        var mirrorEl = document.getElementById(p[1]);
+        if (sarEl && mirrorEl) mirrorEl.value = sarEl.value;
+    });
+}
+
+function getCsrfToken() {
+    return document.querySelector('meta[name="csrf-token"]').getAttribute('content');
+}
 
 function loadConfirmation() {
-    const params = new URLSearchParams(window.location.search);
-    const id = params.get('id') || '{{ $id }}';
+    fetch('/bookings/' + bookingId + '/ticket-requests?type=refund', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(requests => {
+        allRequests = requests;
+        if (!requests.length) {
+            showNotFound();
+            return;
+        }
+        const first = requests[0];
+        const booking = first.booking || {};
+        const customer = booking.customer || {};
+        const branch = booking.booking_branch || booking.bookingBranch || {};
 
-    if (id === null || id === '') {
-        showNotFound();
-        return;
-    }
+        document.getElementById('invoiceId').textContent = booking.id || '-';
+        document.getElementById('invoiceNo').textContent = booking.invoice_id || '-';
+        document.getElementById('customerName').textContent = customer.name || '-';
+        document.getElementById('customerMobile').textContent = customer.mobile_no || '-';
+        document.getElementById('branch').textContent = branch.name || '-';
+        document.getElementById('passengerCount').textContent = [...new Set(requests.map(r => r.passenger_id))].length;
 
-    const requestId = parseInt(id);
-    let refundRequests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-
-    if (refundRequests.length === 0) {
-        const seedData = [
-            {
-                id: 1,
-                invoiceId: 1001,
-                invoiceNo: 'INV-2024-001',
-                customerName: 'Karim Hussein',
-                customerMobile: '0551234567',
-                branch: 'Madinah Branch',
-                requestedAt: new Date(Date.now() - 86400000 * 4).toISOString(),
-                status: 'Pending',
-                passengers: [
-                    { name: 'Karim Hussein', passport: 'P1122445', pnr: 'YZA567' },
-                    { name: 'Laila Mohamed', passport: 'P6677889', pnr: 'BCD890' },
-                ]
-            }
-        ];
-        refundRequests = seedData;
-        localStorage.setItem('refundRequests', JSON.stringify(seedData));
-        localStorage.setItem('refundRequests_seed', JSON.stringify(seedData));
-    }
-
-    const request = refundRequests.find(r => r.id === requestId) || refundRequests[0];
-
-    if (!request) {
-        showNotFound();
-        return;
-    }
-
-    currentRequest = request;
-    renderConfirmation(request);
+        renderConfirmation(requests);
+        loadReasons();
+        loadAgents();
+        // loadPaymentMethods();
+    });
 }
 
-function renderConfirmation(request) {
-    document.getElementById('invoiceId').textContent = request.invoiceId;
-    document.getElementById('invoiceNo').textContent = request.invoiceNo;
-    document.getElementById('customerName').textContent = request.customerName || '-';
-    document.getElementById('customerMobile').textContent = request.customerMobile || '-';
-    document.getElementById('branch').textContent = request.branch || '-';
-    document.getElementById('requestedDate').textContent = new Date(request.requestedAt).toLocaleDateString();
-    document.getElementById('passengerCount').textContent = request.passengers.length;
+function loadReasons() {
+    fetch('/ticket-requests/reasons?type=refund', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(reasons => {
+        const select = document.getElementById('inputReason');
+        select.innerHTML = '<option value="">Select Reason</option>' +
+            reasons.map(r => '<option value="' + r.id + '" data-default-payment-by="' + (r.default_payment_by || '') + '">' + escapeHtml(r.name) + '</option>').join('');
+    });
+}
 
-    const statusBadge = document.getElementById('statusBadge');
-    statusBadge.textContent = request.status === 'Pending' ? 'Pending' : request.status;
-    statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ' + (
-        request.status === 'Pending' ? 'bg-yellow-100 text-yellow-700' :
-        request.status === 'Approved' || request.status === 'Processed' ? 'bg-green-100 text-green-700' :
-        request.status === 'Rejected' ? 'bg-red-100 text-red-700' :
-        'bg-yellow-100 text-yellow-700'
-    );
+function handleReasonChange() {
+    var opt = document.getElementById('inputReason').selectedOptions[0];
+    var val = opt ? opt.getAttribute('data-default-payment-by') || '' : '';
+    document.getElementById('inputPaymentBy').value = val;
+}
 
+function loadAgents() {
+    fetch('/ticket-requests/agents', {
+        headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+    })
+    .then(res => res.json())
+    .then(agents => {
+        const select = document.getElementById('inputAgent');
+        select.innerHTML = '<option value="">Select Agent</option>' +
+            agents.map(a => '<option value="' + a.id + '">' + escapeHtml(a.name) + '</option>').join('');
+    });
+}
+
+// function loadPaymentMethods() {
+//     fetch('/ticket-requests/payment-methods', {
+//         headers: { 'Accept': 'application/json', 'X-CSRF-TOKEN': getCsrfToken() }
+//     })
+//     .then(res => res.json())
+//     .then(methods => {
+//         const select = document.getElementById('inputPaymentMethod');
+//         select.innerHTML = '<option value="">Select Payment Method</option>' +
+//             methods.map(m => '<option value="' + m.value + '">' + escapeHtml(m.label) + '</option>').join('');
+//     });
+// }
+
+function renderConfirmation(requests) {
     const passengerListEl = document.getElementById('passengerList');
-    passengerListEl.innerHTML = request.passengers.map((p, pIndex) => `
-        <div class="flex justify-between items-center p-4 bg-slate-50 rounded-lg">
-            <div class="flex items-center gap-3">
-                <span class="font-medium text-slate-800">${escapeHtml(p.name)}</span>
-                <span class="text-slate-500 text-sm ml-2">(${escapeHtml(p.passport)}${p.pnr ? ' | PNR: ' + escapeHtml(p.pnr) : ''})</span>
+    const grouped = {};
+    requests.forEach(r => {
+        if (!grouped[r.passenger_id]) {
+            grouped[r.passenger_id] = { passenger: r.passenger, tickets: [] };
+        }
+        grouped[r.passenger_id].tickets.push(r);
+    });
+
+    const statusCounts = { pending: 0, processed: 0, rejected: 0 };
+    requests.forEach(r => statusCounts[r.status] = (statusCounts[r.status] || 0) + 1);
+    const statusBadge = document.getElementById('statusBadge');
+    if (statusCounts.pending === 0 && statusCounts.processed > 0) {
+        statusBadge.textContent = 'Processed';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-green-100 text-green-700';
+    } else if (statusCounts.pending === 0 && statusCounts.rejected > 0) {
+        statusBadge.textContent = 'Rejected';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-red-100 text-red-700';
+    } else {
+        statusBadge.textContent = 'Pending';
+        statusBadge.className = 'inline-flex items-center px-2 py-0.5 rounded text-xs font-medium bg-yellow-100 text-yellow-700';
+    }
+
+    passengerListEl.innerHTML = Object.values(grouped).map(g => {
+        const p = g.passenger || {};
+        return `
+            <div class="bg-slate-50 rounded-lg p-4">
+                <div class="flex items-center justify-between mb-3">
+                    <div>
+                        <span class="font-medium text-slate-800">${escapeHtml(p.first_name ? p.first_name + ' ' + p.last_name : '-')}</span>
+                        <span class="text-slate-500 text-sm ml-2">(${escapeHtml(p.passport_no || '-')})</span>
+                    </div>
+                    <span class="text-sm text-slate-500">${g.tickets.length} ticket(s)</span>
+                </div>
+                <div class="space-y-3">
+                    ${g.tickets.map(r => {
+                        const t = r.issued_ticket || {};
+                        const isProcessed = r.status === 'processed';
+                        const isRejected = r.status === 'rejected';
+                        const badgeClass = isProcessed ? 'bg-green-100 text-green-700' : isRejected ? 'bg-red-100 text-red-700' : 'bg-yellow-100 text-yellow-700';
+                        const statusLabel = isProcessed ? 'Processed' : isRejected ? 'Rejected' : 'Pending';
+                        return `
+                        <div class="bg-white rounded-lg border border-slate-200 p-4">
+                            <div class="flex items-center justify-between mb-3">
+                                <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium ${badgeClass}">${statusLabel}</span>
+                            </div>
+                            <div class="grid grid-cols-2 md:grid-cols-3 gap-3 mb-3">
+                                <div class="text-sm"><span class="text-slate-500">Ticket No: </span><span class="text-slate-800 font-medium">${escapeHtml(t.ticket_number) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">PNR: </span><span class="text-slate-800 font-medium">${escapeHtml(t.pnr) || '-'}</span></div>
+                                <div class="text-sm"><span class="text-slate-500">Requested: </span><span class="text-slate-800 font-medium">${formatDate(r.requested_at)}</span></div>
+                            </div>
+                            <div class="flex gap-3">
+                                <button onclick="rejectRefund(${r.id})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Reject</button>
+                                <button onclick="processConfirmation(${r.id})" class="px-4 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition font-medium" ${isProcessed || isRejected ? 'disabled style="opacity:50;cursor:not-allowed"' : ''}>Process Confirmation</button>
+                            </div>
+                        </div>
+                        `;
+                    }).join('')}
+                </div>
             </div>
-            <div class="flex items-center gap-3">
-                <button onclick="rejectRefund(${pIndex})" class="px-4 py-2 bg-red-600 text-white text-sm rounded-lg hover:bg-red-700 transition font-medium">Reject</button>
-                <button onclick="processConfirmation(${pIndex})" class="px-4 py-2 bg-orange-500 text-white text-sm rounded-lg hover:bg-orange-600 transition font-medium">Process Confirmation</button>
-            </div>
-        </div>
-    `).join('');
+        `;
+    }).join('');
 }
 
-function processConfirmation(passengerIndex) {
-    const passenger = currentRequest.passengers[passengerIndex];
-    if (!passenger) return;
+function processConfirmation(ticketRequestId) {
+    currentTicketRequestId = ticketRequestId;
+    const r = allRequests.find(req => req.id === ticketRequestId);
+    if (!r) return;
+    const p = r.passenger || {};
+    const t = r.issued_ticket || {};
+    const src = (t.status === 're-issued' && t.latest_re_issued_ticket) ? t.latest_re_issued_ticket : t;
 
-    document.getElementById('modalPassengerName').textContent = passenger.name + ' (' + passenger.passport + ')';
-    document.getElementById('infoPassport').textContent = passenger.passport;
-    document.getElementById('infoMobile').textContent = passenger.mobile || '-';
-    document.getElementById('infoPnr').textContent = passenger.pnr || 'ABCD1234';
-    document.getElementById('infoFlightDate').textContent = '2026-05-15';
-    document.getElementById('infoRoute').textContent = 'DAC-JED-DAC';
-    document.getElementById('infoAirline').textContent = 'Saudi Arabian Airlines';
-    document.getElementById('infoClass').textContent = 'Economy';
-    document.getElementById('infoType').textContent = 'Adult';
+    document.getElementById('modalPassengerName').textContent = (p.first_name || '') + ' ' + (p.last_name || '') + ' (' + (p.passport_no || '-') + ')';
+    document.getElementById('infoPassport').textContent = p.passport_no || '-';
+    document.getElementById('infoMobile').textContent = p.mobile_no || '-';
+    document.getElementById('infoPnr').textContent = src.pnr || '-';
+    document.getElementById('infoFlightDate').textContent = formatDate(src.outbound_date || src.inbound_date) || '-';
+    document.getElementById('infoRoute').textContent = formatRoute(src.ticket_fare?.route) || '-';
+    document.getElementById('infoAirline').textContent = src.ticket_fare?.airline?.name || '-';
+    document.getElementById('infoClass').textContent = src.ticket_fare?.airline_class?.class?.name || '-';
+    document.getElementById('infoType').textContent = ({ adult: 'Adult', child: 'Child', infant: 'Infant' })[p.passenger_type] || '-';
+
+    document.getElementById('infoRefundPayable').textContent = (parseFloat(p.refund_payable) || 0).toFixed(2);
+
+    currentRefundNetFare = parseFloat(src.net_fare) || 0;
+
+    document.getElementById('inputAgentRefundAmount').max = currentRefundNetFare || '';
+    document.getElementById('inputAgentRefundAmountBdt').max = sarToBdt(currentRefundNetFare) || '';
+    document.getElementById('inputCustomerRefundAmount').max = currentRefundNetFare || '';
+    document.getElementById('inputCustomerRefundAmountBdt').max = sarToBdt(currentRefundNetFare) || '';
 
     document.getElementById('inputAgentRefundAmount').value = '';
+    document.getElementById('inputAgentRefundAmountBdt').value = '';
+    document.getElementById('inputAgentRefundAmountBdtSar').value = '';
     document.getElementById('inputCustomerRefundAmount').value = '';
-    document.getElementById('inputPaymentMethod').value = '';
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
+    document.getElementById('inputCustomerRefundAmountBdt').value = '';
+    document.getElementById('inputCustomerRefundAmountBdtSar').value = '';
+    document.getElementById('inputReason').value = '';
+    document.getElementById('inputPaymentBy').value = '';
+    // document.getElementById('inputPaymentMethod').value = '';
+    document.getElementById('inputServiceCharge').value = '';
+    document.getElementById('inputServiceChargeBdt').value = '';
+    document.getElementById('inputServiceChargeBdtSar').value = '';
+    document.getElementById('inputRefundCompensation').value = '';
+    document.getElementById('inputRefundCompensationBdt').value = '';
+    document.getElementById('inputRefundCompensationBdtSar').value = '';
+    document.getElementById('inputRemarks').value = '';
+    // document.getElementById('bankMethodSection').classList.add('hidden');
+    // document.getElementById('branchSection').classList.add('hidden');
+
+    syncCurrencyFields();
+
+    const agentSelect = document.getElementById('inputAgent');
+    agentSelect.value = src.ticket_agent_id || '';
 
     document.getElementById('processConfirmationModal').classList.remove('hidden');
 }
 
 function closeProcessConfirmationModal() {
     document.getElementById('processConfirmationModal').classList.add('hidden');
-    document.getElementById('inputAgentRefundAmount').value = '';
-    document.getElementById('inputCustomerRefundAmount').value = '';
-    document.getElementById('inputPaymentMethod').value = '';
-    document.getElementById('bankMethodSection').classList.add('hidden');
-    document.getElementById('branchSection').classList.add('hidden');
+    currentTicketRequestId = null;
 }
 
-function handlePaymentMethodChange() {
-    const paymentMethod = document.getElementById('inputPaymentMethod').value;
-    const bankMethodSection = document.getElementById('bankMethodSection');
-    const branchSection = document.getElementById('branchSection');
-
-    bankMethodSection.classList.add('hidden');
-    branchSection.classList.add('hidden');
-
-    if (paymentMethod === 'Bank Transfer') {
-        bankMethodSection.classList.remove('hidden');
-    } else if (paymentMethod === 'Pay from Branch') {
-        branchSection.classList.remove('hidden');
-    }
+function updateServiceCharge() {
+    const iata = parseFloat(document.getElementById('inputAgentRefundAmount').value) || 0;
+    const customer = parseFloat(document.getElementById('inputCustomerRefundAmount').value) || 0;
+    document.getElementById('inputServiceCharge').value = iata - customer;
+    document.getElementById('inputServiceChargeBdt').value = sarToBdt(iata - customer);
+    const compensation = currentRefundNetFare - iata;
+    document.getElementById('inputRefundCompensation').value = compensation;
+    document.getElementById('inputRefundCompensationBdt').value = sarToBdt(compensation);
+    syncReadonlyMirrors();
 }
+
+// function handlePaymentMethodChange() {
+//     const paymentMethod = document.getElementById('inputPaymentMethod').value;
+//     document.getElementById('bankMethodSection').classList.add('hidden');
+//     document.getElementById('branchSection').classList.add('hidden');
+//     if (paymentMethod === 'Bank Transfer') {
+//         document.getElementById('bankMethodSection').classList.remove('hidden');
+//     } else if (paymentMethod === 'Pay from Branch') {
+//         document.getElementById('branchSection').classList.remove('hidden');
+//     }
+// }
 
 function confirmProcess() {
-    const refundData = {
-        agentRefundAmount: parseFloat(document.getElementById('inputAgentRefundAmount').value) || 0,
-        customerRefundAmount: parseFloat(document.getElementById('inputCustomerRefundAmount').value) || 0,
-        paymentMethod: document.getElementById('inputPaymentMethod').value,
-        bankMethod: document.getElementById('inputBankMethod')?.value || '',
-        branch: document.getElementById('inputBranch')?.value || '',
+    if (!currentTicketRequestId) return;
+
+    const payload = {
+        reason_id: document.getElementById('inputReason').value,
+        iata_refund: parseFloat(document.getElementById('inputAgentRefundAmount').value) || 0,
+        customer_refund: parseFloat(document.getElementById('inputCustomerRefundAmount').value) || 0,
+        service_charge: parseFloat(document.getElementById('inputServiceCharge').value) || 0,
+        remarks: document.getElementById('inputRemarks').value || null,
+        payment_by: document.getElementById('inputPaymentBy').value || null,
+        // payment_method: document.getElementById('inputPaymentMethod').value || null,
+        // bank_method: document.getElementById('inputBankMethod')?.value || null,
+        // branch: document.getElementById('inputBranch')?.value || null,
     };
 
-    if (currentRequest) {
-        const requests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-        const idx = requests.findIndex(r => r.id === currentRequest.id);
-        if (idx !== -1) {
-            requests[idx].refundData = refundData;
-            requests[idx].status = 'Processed';
-            localStorage.setItem('refundRequests', JSON.stringify(requests));
-            currentRequest = requests[idx];
-            renderConfirmation(currentRequest);
-        }
+    if (!payload.reason_id) {
+        showToast('Please select a reason', 'error');
+        return;
     }
 
-    showToast('Refund process confirmed successfully!', 'success');
-    closeProcessConfirmationModal();
+    if (payload.iata_refund > currentRefundNetFare || payload.customer_refund > currentRefundNetFare) {
+        showToast('Refund amounts cannot exceed the net fare.', 'error');
+        return;
+    }
+
+    fetch('/ticket-requests/' + currentTicketRequestId + '/process-refund', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+        body: JSON.stringify(payload),
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Refund processed successfully!', 'success');
+            closeProcessConfirmationModal();
+            loadConfirmation();
+        } else {
+            showToast(data.message || 'Failed to process', 'error');
+        }
+    })
+    .catch(err => {
+        showToast('Error processing request', 'error');
+    });
 }
 
-function rejectRefund(passengerIndex) {
-    if (!currentRequest) return;
-    if (!confirm('Are you sure you want to reject this passenger\'s refund request?')) return;
+function rejectRefund(ticketRequestId) {
+    if (!confirm('Are you sure you want to reject this ticket\'s refund request?')) return;
 
-    const requests = JSON.parse(localStorage.getItem('refundRequests') || '[]');
-    const idx = requests.findIndex(r => r.id === currentRequest.id);
-    if (idx !== -1) {
-        requests[idx].passengers.splice(passengerIndex, 1);
-        if (requests[idx].passengers.length === 0) {
-            requests[idx].status = 'Rejected';
+    fetch('/ticket-requests/' + ticketRequestId + '/reject', {
+        method: 'PUT',
+        headers: {
+            'Content-Type': 'application/json',
+            'X-CSRF-TOKEN': getCsrfToken(),
+            'Accept': 'application/json',
+        },
+    })
+    .then(res => res.json())
+    .then(data => {
+        if (data.success) {
+            showToast('Refund request rejected', 'info');
+            loadConfirmation();
+        } else {
+            showToast(data.message || 'Failed to reject', 'error');
         }
-        localStorage.setItem('refundRequests', JSON.stringify(requests));
-        currentRequest = requests[idx];
-        renderConfirmation(currentRequest);
-        showToast('Refund request rejected', 'info');
-    }
+    });
 }
 
 function showNotFound() {
     document.getElementById('confirmationContent').classList.add('hidden');
     document.getElementById('notFound').classList.remove('hidden');
+}
+
+function formatDate(val) {
+    if (!val) return '-';
+    const parts = val.split('T')[0].split('-');
+    if (parts.length === 3) {
+        const d = new Date(parseInt(parts[0]), parseInt(parts[1]) - 1, parseInt(parts[2]));
+        if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    }
+    const d = new Date(val);
+    if (!isNaN(d.getTime())) return d.toLocaleDateString();
+    return val;
+}
+
+function formatRoute(route) {
+    if (!route) return '-';
+    const rt = route.route_type || '';
+    if (rt === 'multi_city' && route.multi_segments?.length) {
+        return route.multi_segments.map(s => (s.from_city?.code || '?') + '-' + (s.to_city?.code || '?')).join(', ');
+    }
+    const from = route.from_city?.code || '?';
+    const to = route.to_city?.code || '?';
+    const ret = route.return_city?.code || '';
+    if (rt === 'round' && ret) return from + '-' + to + '-' + ret;
+    return from + '-' + to;
 }
 
 function escapeHtml(str) {
@@ -324,6 +603,13 @@ function showToast(message, type = 'info') {
     toast.textContent = message;
     container.appendChild(toast);
     setTimeout(() => { toast.style.opacity = '0'; setTimeout(() => toast.remove(), 300); }, 3000);
+}
+
+window.addEventListener('currency-toggled', function() { syncCurrencyFields(); });
+if (document.readyState === 'loading') {
+    document.addEventListener('DOMContentLoaded', function() { syncCurrencyFields(); });
+} else {
+    syncCurrencyFields();
 }
 
 loadConfirmation();

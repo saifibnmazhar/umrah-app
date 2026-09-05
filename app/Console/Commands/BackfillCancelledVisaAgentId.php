@@ -8,6 +8,7 @@ use Illuminate\Support\Facades\DB;
 class BackfillCancelledVisaAgentId extends Command
 {
     protected $signature = 'visa:backfill-cancelled-agent';
+
     protected $description = 'Backfill visa_agent_id in cancelled_submissions from visa_update_logs';
 
     public function handle(): int
@@ -43,6 +44,7 @@ class BackfillCancelledVisaAgentId extends Command
         ");
 
         $this->info("Backfilled {$affected} cancelled_submission records.");
+
         return Command::SUCCESS;
     }
 }

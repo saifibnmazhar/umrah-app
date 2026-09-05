@@ -2,10 +2,11 @@
 
 namespace App\Models;
 
+use App\Enums\PaymentMethod;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasOne;
 
 class Payment extends Model
 {
@@ -31,13 +32,17 @@ class Payment extends Model
         'remarks',
         'payment_referral',
         'cancelled_booking_id',
+        'passenger_id',
+        'refunded_ticket_id',
+        're_issued_ticket_id',
+        'cancelled_passenger_id',
     ];
 
     protected $casts = [
         'payment_date' => 'date',
         'amount' => 'decimal:6',
         'bdt_amount' => 'decimal:6',
-        'payment_method' => \App\Enums\PaymentMethod::class,
+        'payment_method' => PaymentMethod::class,
     ];
 
     public function invoice(): BelongsTo
@@ -103,5 +108,25 @@ class Payment extends Model
     public function cancelledBooking(): BelongsTo
     {
         return $this->belongsTo(CancelledBooking::class);
+    }
+
+    public function cancelledPassenger(): BelongsTo
+    {
+        return $this->belongsTo(CancelledPassenger::class);
+    }
+
+    public function passenger(): BelongsTo
+    {
+        return $this->belongsTo(Passenger::class);
+    }
+
+    public function refundedTicket(): BelongsTo
+    {
+        return $this->belongsTo(RefundedTicket::class);
+    }
+
+    public function reIssuedTicket(): BelongsTo
+    {
+        return $this->belongsTo(ReIssuedTicket::class);
     }
 }

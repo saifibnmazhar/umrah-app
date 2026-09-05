@@ -42,10 +42,10 @@
                         <option value="referral">Referral</option>
                     </select>
                 </div>
-                <div x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''">
+                <div x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" x-cloak>
                     <label class="block text-sm font-medium text-slate-600 mb-1">Iqama No. (Self)</label>
                     <input type="text" x-model="newCustomer.iqama_no"
-                           x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''"
+                           x-show="newCustomer.iqama_type !== 'none' && newCustomer.iqama_type !== ''" x-cloak
                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
                 </div>
                 <div>
