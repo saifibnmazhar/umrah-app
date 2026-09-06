@@ -10,6 +10,7 @@ use App\Enums\TicketType;
 use App\Enums\VisaStatus;
 use App\Models\Booking;
 use App\Models\Fingerprint;
+use App\Models\IssuedTicketLog;
 use App\Models\Passenger;
 use App\Models\TicketFare;
 use App\Models\VisaUpdateLog;
@@ -339,6 +340,127 @@ class ProfitCalculationService
         return (float) $passenger->allIssuedTickets
             ->flatMap(fn ($t) => $t->refundedTickets)
             ->sum('service_charge');
+    }
+
+    public function additionalTicketEffectiveDate($ticket): ?string
+    {
+        if ($ticket->issued_date) {
+            return $ticket->issued_date instanceof \DateTimeInterface
+                ? $ticket->issued_date->format('Y-m-d H:i:s')
+                : (string) $ticket->issued_date;
+        }
+
+        $log = IssuedTicketLog::where('issued_ticket_id', $ticket->id)
+            ->where('new_data->status', 'issued')
+            ->latest('created_at')
+            ->first();
+
+        return $log?->created_at?->format('Y-m-d H:i:s');
+    }
+
+    private function dateInRange(?string $date, string $from, string $to): bool
+    {
+        return $date !== null && $date >= $from && $date <= $to;
+    }
+
+    private function createdInRange($model, string $from, string $to): bool
+    {
+        $created = $model->created_at;
+
+        if (! $created) {
+            return false;
+        }
+
+        $date = $created instanceof \DateTimeInterface
+            ? $created->format('Y-m-d H:i:s')
+            : (string) $created;
+
+        return $this->dateInRange($date, $from, $to);
+    }
+
+    public function effectiveAdditionalTicketProfit(Passenger $passenger, string $from, string $to): float
+    {
+        return (float) $passenger->allIssuedTickets
+            ->sum(fn ($t) => $this->additionalTicketEffectiveValue($t, $passenger, $from, $to));
+    }
+
+    public function additionalTicketEffectiveValue($ticket, Passenger $passenger, string $from, string $to): float
+    {
+        if ($ticket->issue_type !== 'additional'
+            || ! in_array($ticket->status, ['issued', 're-issued', 'refunded'], true)) {
+            return 0.0;
+        }
+
+        if (! $this->dateInRange($this->additionalTicketEffectiveDate($ticket), $from, $to)) {
+            return 0.0;
+        }
+
+        return $this->fareSellingPrice($ticket->ticketFare, $passenger) - (float) ($ticket->net_fare ?? 0);
+    }
+
+    public function effectiveReIssueProfit(Passenger $passenger, string $from, string $to): float
+    {
+        return (float) $this->passengerReIssues($passenger)
+            ->filter(fn ($r) => $r->payment_by === PaymentBy::CUSTOMER)
+            ->filter(fn ($r) => $this->createdInRange($r, $from, $to))
+            ->sum('service_charge');
+    }
+
+    public function effectiveReIssueCost(Passenger $passenger, string $from, string $to): float
+    {
+        return (float) $this->passengerReIssues($passenger)
+            ->filter(fn ($r) => $r->payment_by === PaymentBy::COMPANY)
+            ->filter(fn ($r) => $this->createdInRange($r, $from, $to))
+            ->sum('total_cost');
+    }
+
+    public function effectiveRefundProfit(Passenger $passenger, string $from, string $to): float
+    {
+        return (float) $passenger->allIssuedTickets
+            ->flatMap(fn ($t) => $t->refundedTickets)
+            ->filter(fn ($r) => $this->createdInRange($r, $from, $to))
+            ->sum('service_charge');
+    }
+
+    public function calculateEffectiveDateProfitDetailed(Passenger $passenger, string $from, string $to): array
+    {
+        $visa = $this->effectiveComponentValue($passenger, 'visa_profit', 'visa_profit_effective_at', $from, $to);
+        $ticket = $this->effectiveComponentValue($passenger, 'ticket_profit', 'ticket_profit_effective_at', $from, $to);
+        $service = $this->effectiveComponentValue($passenger, 'service_charge', 'service_charge_effective_at', $from, $to);
+        $additional = $this->effectiveAdditionalTicketProfit($passenger, $from, $to);
+        $reIssueProfit = $this->effectiveReIssueProfit($passenger, $from, $to);
+        $refundProfit = $this->effectiveRefundProfit($passenger, $from, $to);
+        $reIssueCost = $this->effectiveReIssueCost($passenger, $from, $to);
+
+        return [
+            'visa_profit' => round($visa, 6),
+            'ticket_profit' => round($ticket, 6),
+            'service_charge' => round($service, 6),
+            'additional_ticket_profit' => round($additional, 6),
+            're_issue_profit' => round($reIssueProfit, 6),
+            'refund_profit' => round($refundProfit, 6),
+            're_issue_cost' => round($reIssueCost, 6),
+            'total' => round($visa + $ticket + $service + $additional + $reIssueProfit + $refundProfit - $reIssueCost, 6),
+        ];
+    }
+
+    private function effectiveComponentValue(Passenger $passenger, string $profitColumn, string $effectiveColumn, string $from, string $to): float
+    {
+        $effectiveAt = $passenger->{$effectiveColumn};
+
+        if (! $effectiveAt) {
+            return 0.0;
+        }
+
+        $date = $effectiveAt instanceof \DateTimeInterface
+            ? $effectiveAt->format('Y-m-d H:i:s')
+            : (string) $effectiveAt;
+
+        if (! $this->dateInRange($date, $from, $to)) {
+            return 0.0;
+        }
+
+        return (float) ($passenger->{$profitColumn} ?? 0);
     }
 
     private function visaBreakdown(Passenger $passenger): ?array

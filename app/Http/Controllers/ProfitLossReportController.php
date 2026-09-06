@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Booking;
 use App\Models\Branch;
+use App\Models\IssuedTicket;
 use App\Models\Passenger;
 use App\Services\ProfitCalculationService;
 use Illuminate\Http\Request;
@@ -60,7 +61,37 @@ class ProfitLossReportController extends Controller
             $query->where(function ($q) use ($from, $to) {
                 $q->whereBetween('passengers.visa_profit_effective_at', [$from, $to])
                     ->orWhereBetween('passengers.ticket_profit_effective_at', [$from, $to])
-                    ->orWhereBetween('passengers.service_charge_effective_at', [$from, $to]);
+                    ->orWhereBetween('passengers.service_charge_effective_at', [$from, $to])
+                    ->orWhereExists(function ($exists) use ($from, $to) {
+                        $exists->select(DB::raw(1))
+                            ->from('issued_tickets as it')
+                            ->whereColumn('it.passenger_id', 'passengers.id')
+                            ->whereNull('it.deleted_at')
+                            ->where('it.issue_type', 'additional')
+                            ->whereIn('it.status', ['issued', 're-issued', 'refunded'])
+                            ->whereRaw(
+                                'COALESCE(it.issued_date, (SELECT itl.created_at FROM issued_ticket_logs itl WHERE itl.issued_ticket_id = it.id AND itl.new_data LIKE ? ORDER BY itl.created_at DESC LIMIT 1)) BETWEEN ? AND ?',
+                                ['%"status":"issued"%', $from, $to]
+                            );
+                    })
+                    ->orWhereExists(function ($exists) use ($from, $to) {
+                        $exists->select(DB::raw(1))
+                            ->from('re_issued_tickets as rit')
+                            ->join('issued_tickets as it', 'it.id', '=', 'rit.issued_ticket_id')
+                            ->whereColumn('it.passenger_id', 'passengers.id')
+                            ->whereNull('it.deleted_at')
+                            ->whereNull('rit.deleted_at')
+                            ->whereBetween('rit.created_at', [$from, $to]);
+                    })
+                    ->orWhereExists(function ($exists) use ($from, $to) {
+                        $exists->select(DB::raw(1))
+                            ->from('refunded_tickets as rft')
+                            ->join('issued_tickets as it', 'it.id', '=', 'rft.issued_ticket_id')
+                            ->whereColumn('it.passenger_id', 'passengers.id')
+                            ->whereNull('it.deleted_at')
+                            ->whereNull('rft.deleted_at')
+                            ->whereBetween('rft.created_at', [$from, $to]);
+                    });
             });
         }
     }
@@ -76,27 +107,14 @@ class ProfitLossReportController extends Controller
 
     private function calculateEffectiveDateProfit(Passenger $passenger, string $dateFrom, string $dateTo): float
     {
-        $total = 0.0;
+        return (float) app(ProfitCalculationService::class)
+            ->calculateEffectiveDateProfitDetailed($passenger, $dateFrom, $dateTo)['total'];
+    }
 
-        if ($passenger->visa_profit_effective_at
-            && $passenger->visa_profit_effective_at->toDateTimeString() >= $dateFrom
-            && $passenger->visa_profit_effective_at->toDateTimeString() <= $dateTo) {
-            $total += (float) $passenger->visa_profit;
-        }
-
-        if ($passenger->ticket_profit_effective_at
-            && $passenger->ticket_profit_effective_at->toDateTimeString() >= $dateFrom
-            && $passenger->ticket_profit_effective_at->toDateTimeString() <= $dateTo) {
-            $total += (float) $passenger->ticket_profit;
-        }
-
-        if ($passenger->service_charge_effective_at
-            && $passenger->service_charge_effective_at->toDateTimeString() >= $dateFrom
-            && $passenger->service_charge_effective_at->toDateTimeString() <= $dateTo) {
-            $total += (float) $passenger->service_charge;
-        }
-
-        return round($total, 6);
+    private function calculateEffectiveDateBreakdown(Passenger $passenger, string $dateFrom, string $dateTo): array
+    {
+        return app(ProfitCalculationService::class)
+            ->calculateEffectiveDateProfitDetailed($passenger, $dateFrom, $dateTo);
     }
 
     private function effectiveComponentValue(Passenger $passenger, string $profitColumn, string $effectiveColumn, string $dateFrom, string $dateTo): float
@@ -122,7 +140,12 @@ class ProfitLossReportController extends Controller
             }
         }
 
-        return false;
+        $breakdown = $this->calculateEffectiveDateBreakdown($passenger, $dateFrom, $dateTo);
+
+        return (float) $breakdown['additional_ticket_profit'] !== 0.0
+            || (float) $breakdown['re_issue_profit'] !== 0.0
+            || (float) $breakdown['refund_profit'] !== 0.0
+            || (float) $breakdown['re_issue_cost'] !== 0.0;
     }
 
     private function applyCustomerSearch($query, string $search)
@@ -235,6 +258,22 @@ class ProfitLossReportController extends Controller
         }
 
         $this->applyBranchFilter($passenger, $request);
+
+        $extras = [
+            'additional_ticket_profit' => 0.0,
+            're_issue_profit' => 0.0,
+            'refund_profit' => 0.0,
+            're_issue_cost' => 0.0,
+        ];
+
+        if ($isEffectiveMode) {
+            $extras = $this->effectiveComponentTotals(
+                (clone $passenger)->select('passengers.id'),
+                $request->effective_date_from ?? '1970-01-01',
+                $this->effectiveDateTo($request)
+            );
+        }
+
         $passenger = $passenger->first();
 
         return response()->json([
@@ -251,9 +290,95 @@ class ProfitLossReportController extends Controller
                 'package_value' => (float) $passenger->package_value,
                 'total_visa_profit' => (float) $passenger->total_visa_profit,
                 'total_ticket_profit' => (float) $passenger->total_ticket_profit,
-                'total_profit' => (float) $passenger->total_profit,
+                'total_profit' => round(
+                    (float) $passenger->total_profit
+                        + $extras['additional_ticket_profit']
+                        + $extras['re_issue_profit']
+                        + $extras['refund_profit']
+                        - $extras['re_issue_cost'],
+                    6
+                ),
+                'total_additional_ticket_profit' => $extras['additional_ticket_profit'],
+                'total_re_issue_profit' => $extras['re_issue_profit'],
+                'total_refund_profit' => $extras['refund_profit'],
+                'total_re_issue_cost' => $extras['re_issue_cost'],
             ],
         ]);
+    }
+
+    private function effectiveComponentTotals($passengerIds, string $from, string $to): array
+    {
+        $reissueProfit = (float) DB::table('re_issued_tickets as rit')
+            ->join('issued_tickets as it', 'it.id', '=', 'rit.issued_ticket_id')
+            ->whereIn('it.passenger_id', $passengerIds)
+            ->whereNull('it.deleted_at')
+            ->whereNull('rit.deleted_at')
+            ->where('rit.payment_by', 'customer')
+            ->whereBetween('rit.created_at', [$from, $to])
+            ->sum('rit.service_charge');
+
+        $reissueCost = (float) DB::table('re_issued_tickets as rit')
+            ->join('issued_tickets as it', 'it.id', '=', 'rit.issued_ticket_id')
+            ->whereIn('it.passenger_id', $passengerIds)
+            ->whereNull('it.deleted_at')
+            ->whereNull('rit.deleted_at')
+            ->where('rit.payment_by', 'company')
+            ->whereBetween('rit.created_at', [$from, $to])
+            ->sum('rit.total_cost');
+
+        $refundProfit = (float) DB::table('refunded_tickets as rft')
+            ->join('issued_tickets as it', 'it.id', '=', 'rft.issued_ticket_id')
+            ->whereIn('it.passenger_id', $passengerIds)
+            ->whereNull('it.deleted_at')
+            ->whereNull('rft.deleted_at')
+            ->whereBetween('rft.created_at', [$from, $to])
+            ->sum('rft.service_charge');
+
+        return [
+            'additional_ticket_profit' => $this->effectiveAdditionalTotal($passengerIds, $from, $to),
+            're_issue_profit' => round($reissueProfit, 6),
+            'refund_profit' => round($refundProfit, 6),
+            're_issue_cost' => round($reissueCost, 6),
+        ];
+    }
+
+    private function effectiveAdditionalTotal($passengerIds, string $from, string $to): float
+    {
+        $tickets = IssuedTicket::with(['ticketFare', 'logs'])
+            ->whereIn('passenger_id', $passengerIds)
+            ->where('issue_type', 'additional')
+            ->whereIn('status', ['issued', 're-issued', 'refunded'])
+            ->where(function ($q) use ($from, $to) {
+                $q->whereBetween('issued_date', [$from, $to])->orWhereNull('issued_date');
+            })
+            ->get();
+
+        if ($tickets->isEmpty()) {
+            return 0.0;
+        }
+
+        $passengerMap = Passenger::whereIn('id', $tickets->pluck('passenger_id')->unique())
+            ->with([
+                'booking.package.ticketFare',
+                'booking.package.ticketFareInbound',
+                'booking.package.ticketFareOutbound',
+            ])
+            ->get(['id', 'passenger_type', 'booking_id'])
+            ->keyBy('id');
+
+        $service = app(ProfitCalculationService::class);
+        $total = 0.0;
+
+        foreach ($tickets as $ticket) {
+            $owner = $passengerMap->get($ticket->passenger_id);
+            if (! $owner || ! $owner->booking || ! $owner->booking->package) {
+                continue;
+            }
+            $ticket->setRelation('ticketFare', $ticket->ticketFare);
+            $total += $service->additionalTicketEffectiveValue($ticket, $owner, $from, $to);
+        }
+
+        return round($total, 6);
     }
 
     private function mapCustomers($bookings, ProfitCalculationService $profitService): array
@@ -340,11 +465,19 @@ class ProfitLossReportController extends Controller
 
             $ids = collect($paginator->items())->pluck('id');
 
-            $bookings = Booking::with(self::BOOKING_WITHS)
+            $bookings = Booking::with(array_merge(self::BOOKING_WITHS, [
+                'passengers.allIssuedTickets.logs',
+            ]))
                 ->whereHas('passengers', fn ($q) => $q->whereIn('id', $ids))
                 ->get();
 
-            $passengerMap = $bookings->flatMap->passengers->keyBy('id');
+            $passengerMap = collect();
+            foreach ($bookings as $bookingModel) {
+                foreach ($bookingModel->passengers as $passengerModel) {
+                    $passengerModel->setRelation('booking', $bookingModel);
+                    $passengerMap->put($passengerModel->id, $passengerModel);
+                }
+            }
 
             $rows = $ids->map(function ($id) use ($passengerMap, $profitService, $isEffectiveMode, $request) {
                 $passenger = $passengerMap->get($id);
@@ -354,13 +487,15 @@ class ProfitLossReportController extends Controller
                     $from = $request->effective_date_from ?? '1970-01-01';
                     $to = $this->effectiveDateTo($request);
 
-                    $row['total_profit'] = $this->calculateEffectiveDateProfit($passenger, $from, $to);
-                    $row['visa_profit'] = $this->effectiveComponentValue(
-                        $passenger, 'visa_profit', 'visa_profit_effective_at', $from, $to
-                    );
-                    $row['ticket_profit'] = $this->effectiveComponentValue(
-                        $passenger, 'ticket_profit', 'ticket_profit_effective_at', $from, $to
-                    );
+                    $breakdown = $this->calculateEffectiveDateBreakdown($passenger, $from, $to);
+                    $row['total_profit'] = $breakdown['total'];
+                    $row['visa_profit'] = $breakdown['visa_profit'];
+                    $row['ticket_profit'] = $breakdown['ticket_profit'];
+                    $row['service_charge'] = $breakdown['service_charge'];
+                    $row['additional_ticket_profit'] = $breakdown['additional_ticket_profit'];
+                    $row['re_issue_profit'] = $breakdown['re_issue_profit'];
+                    $row['refund_profit'] = $breakdown['refund_profit'];
+                    $row['re_issue_cost'] = $breakdown['re_issue_cost'];
                 }
 
                 return $row;
@@ -417,7 +552,9 @@ class ProfitLossReportController extends Controller
         $search = trim((string) $request->search);
         $profitLossFilter = $request->profit_loss_filter;
 
-        $query = Booking::with(self::BOOKING_WITHS)
+        $query = Booking::with(array_merge(self::BOOKING_WITHS, [
+            'passengers.allIssuedTickets.logs',
+        ]))
             ->where('is_cancelled', false)
             ->whereHas('invoice');
 
@@ -439,21 +576,28 @@ class ProfitLossReportController extends Controller
             $dateFrom = $request->effective_date_from ?? '1970-01-01';
             $dateTo = $this->effectiveDateTo($request);
 
-            $passengerModels = $bookings->flatMap->passengers;
-            $passengerById = $passengerModels->keyBy('id');
+            $passengerById = collect();
+            foreach ($bookings as $bookingModel) {
+                foreach ($bookingModel->passengers as $passengerModel) {
+                    $passengerModel->setRelation('booking', $bookingModel);
+                    $passengerById->put($passengerModel->id, $passengerModel);
+                }
+            }
 
             $passengers = $passengers->map(function ($row) use ($passengerById, $dateFrom, $dateTo) {
                 $passenger = $passengerById->get($row['id'] ?? null);
                 if (! $passenger || ! $this->passengerHasEffectiveComponentInRange($passenger, $dateFrom, $dateTo)) {
                     return null;
                 }
-                $row['total_profit'] = $this->calculateEffectiveDateProfit($passenger, $dateFrom, $dateTo);
-                $row['visa_profit'] = $this->effectiveComponentValue(
-                    $passenger, 'visa_profit', 'visa_profit_effective_at', $dateFrom, $dateTo
-                );
-                $row['ticket_profit'] = $this->effectiveComponentValue(
-                    $passenger, 'ticket_profit', 'ticket_profit_effective_at', $dateFrom, $dateTo
-                );
+                $breakdown = $this->calculateEffectiveDateBreakdown($passenger, $dateFrom, $dateTo);
+                $row['total_profit'] = $breakdown['total'];
+                $row['visa_profit'] = $breakdown['visa_profit'];
+                $row['ticket_profit'] = $breakdown['ticket_profit'];
+                $row['service_charge'] = $breakdown['service_charge'];
+                $row['additional_ticket_profit'] = $breakdown['additional_ticket_profit'];
+                $row['re_issue_profit'] = $breakdown['re_issue_profit'];
+                $row['refund_profit'] = $breakdown['refund_profit'];
+                $row['re_issue_cost'] = $breakdown['re_issue_cost'];
 
                 return $row;
             })->filter(fn ($row) => $row !== null)->values();
