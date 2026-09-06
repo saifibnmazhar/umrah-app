@@ -128,7 +128,11 @@ class CancellationService
                 $deductionVoucherId = $deductionVoucher->id;
             }
 
-            $refundAmount = (float) $data['refund_amount'];
+            $refundAmount = app(RefundCapService::class)->normalizeToSar((float) $data['refund_amount'], $data['currency'] ?? null);
+            $capInvoice = $invoice ?? $booking->invoice;
+            if ($capInvoice) {
+                app(RefundCapService::class)->assertRefundAllowed($capInvoice, $refundAmount);
+            }
             $refundType = TransactionType::where('name', 'Customer Refund')->first();
 
             $refundPayment = Payment::create([

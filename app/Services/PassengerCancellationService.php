@@ -151,8 +151,12 @@ class PassengerCancellationService
             $passenger = $cancelledPassenger->passenger;
 
             $refundable = (float) $cancelledPassenger->refundable_amount;
-            $adjusted = (float) $data['balance_adjusted_amount'];
+            $adjusted = app(RefundCapService::class)->normalizeToSar((float) $data['balance_adjusted_amount'], $data['currency'] ?? null);
             $refund = max(0, $refundable - $adjusted);
+            $capInvoice = $invoice ?? $booking->invoice;
+            if ($capInvoice) {
+                app(RefundCapService::class)->assertRefundAllowed($capInvoice, $refund, 'balance_adjusted_amount');
+            }
             $serviceCharge = (float) ($cancelledPassenger->service_charge_deduction ?? 0);
             $currencyRateId = $booking->currency_rate_id;
             $paymentMethod = $data['payment_method'];

@@ -6,6 +6,7 @@ use App\Enums\PaymentMethod;
 use App\Models\CancelledPassenger;
 use App\Models\Passenger;
 use App\Services\PassengerCancellationService;
+use App\Services\RefundCapService;
 use Illuminate\Http\Request;
 
 class PassengerCancellationActionController extends Controller
@@ -66,8 +67,22 @@ class PassengerCancellationActionController extends Controller
         $validated = $request->validate([
             'balance_adjusted_amount' => 'required|numeric|min:0|max:'.$maxAdjustable,
             'payment_method' => 'required|in:'.implode(',', array_column(PaymentMethod::cases(), 'value')),
+            'currency' => 'nullable|in:SAR,BDT',
             'remarks' => 'nullable|string|max:500',
         ]);
+
+        $capService = app(RefundCapService::class);
+        $adjustedSar = $capService->normalizeToSar((float) $validated['balance_adjusted_amount'], $validated['currency'] ?? null);
+        $validated['balance_adjusted_amount'] = $adjustedSar;
+        $validated['currency'] = 'SAR';
+        $invoice = $cancelledPassenger->invoice ?? $cancelledPassenger->booking?->invoice;
+        if ($invoice) {
+            $capService->assertRefundAllowed(
+                $invoice,
+                max(0, $refundable - $adjustedSar),
+                'balance_adjusted_amount'
+            );
+        }
 
         try {
             $service = app(PassengerCancellationService::class);

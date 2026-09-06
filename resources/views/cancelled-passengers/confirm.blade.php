@@ -6,6 +6,7 @@
     $invoice = $cancelledPassenger->invoice;
     $passenger = $cancelledPassenger->passenger;
     $maxAdjustable = min((float) $cancelledPassenger->refundable_amount, max(0, (float) ($invoice->balance ?? 0)));
+    $refundCap = $refundCap ?? ['paid' => 0, 'refunded' => 0, 'remaining' => 0];
 @endphp
 
 {{-- Cancellation timestamp ISO string for client-side local-time conversion --}}
@@ -19,6 +20,7 @@
     adjustedAmountBdt: Math.round(parseFloat('{{ $maxAdjustable }}') * (window.__currencyRate || 1) * 100) / 100,
     paymentMethod: 'cash',
     remarks: '',
+    remainingRefundable: {{ (float) ($refundCap['remaining'] ?? 0) }},
 
     get maxAdjustment() {
         return Math.max(0, Math.min(parseFloat(this.refundableAmount), parseFloat('{{ $invoice->balance ?? 0 }}')));
@@ -37,6 +39,10 @@
         this.adjustedAmount = Math.min(Math.max(parseFloat(this.adjustedAmount) || 0, 0), this.maxAdjustment);
     },
     validate() {
+        if (this.customerRefund - parseFloat(this.remainingRefundable) > 0.000001) {
+            alert('Customer refund cannot exceed remaining refundable (paid minus already refunded).');
+            return false;
+        }
         if (this.customerRefund > 0 && this.paymentMethod === 'bank' && !this.remarks.trim()) {
             alert('Remarks are required when payment method is Bank.');
             return false;
@@ -86,6 +92,14 @@
                     <div class="flex justify-between p-3 bg-slate-50 rounded-lg">
                         <span class="text-slate-700 font-medium">Invoice Due</span>
                         <span class="font-semibold text-slate-800">@currency($invoice->balance ?? 0, 2)</span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-slate-700 font-medium">Already Refunded (this invoice)</span>
+                        <span class="font-semibold text-slate-800">@currency($refundCap['refunded'] ?? 0, 2)</span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-slate-700 font-medium">Remaining Refundable</span>
+                        <span class="font-semibold text-slate-800">@currency($refundCap['remaining'] ?? 0, 2)</span>
                     </div>
                 </div>
             </div>
@@ -177,6 +191,7 @@
             <form method="POST" action="{{ route('cancelled-passengers.confirm.submit', $cancelledPassenger->id) }}" @submit.prevent="if(validate()) $el.submit()">
                 @csrf
                 <input type="hidden" name="balance_adjusted_amount" :value="adjustedAmount || 0">
+                <input type="hidden" name="currency" value="SAR">
                 <input type="hidden" name="payment_method" :value="paymentMethod">
                 <input type="hidden" name="remarks" :value="remarks">
 
