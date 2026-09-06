@@ -293,4 +293,69 @@ class ProfitCalculationCancellationTest extends TestCase
         $this->assertEqualsWithDelta(4350.0 + 200.0, $after, 0.001);
         $this->assertEqualsWithDelta(0.0, (float) $p1->refresh()->profit - 4350.0, 0.001);
     }
+
+    public function test_discount_stays_effective_after_passenger_cancelled(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $booking->update(['discount_amount' => 500.00, 'discount_value' => 500.00]);
+        $p1 = $this->addPassenger($user, $deps, $booking);
+        $p2 = $this->addPassenger($user, $deps, $booking);
+
+        $before = $this->service->recalculateBookingProfit($booking->refresh());
+        $this->assertEqualsWithDelta(4350.0 * 2 + 200.0 - 500.0, $before, 0.001);
+
+        $p2->update(['is_cancelled' => true]);
+
+        // Observer recalculates automatically; full discount still deducted.
+        $this->assertEqualsWithDelta(4350.0 + 200.0 - 500.0, (float) $booking->refresh()->profit, 0.001);
+        $this->assertEqualsWithDelta(0.0, (float) $p2->refresh()->profit, 0.001);
+        $this->assertEqualsWithDelta(500.00, (float) $booking->refresh()->discount_amount, 0.001);
+    }
+
+    public function test_package_service_charge_update_propagates_to_profits(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $passenger = $this->addPassenger($user, $deps, $booking);
+        $this->service->recalculateBookingProfit($booking->refresh());
+        $this->assertEqualsWithDelta(500.0, (float) $passenger->refresh()->service_charge, 0.001);
+
+        $deps['package']->update(['service_charge' => 800.00]);
+
+        // 850 visa + 3000 ticket + 800 service charge
+        $this->assertEqualsWithDelta(800.0, (float) $passenger->refresh()->service_charge, 0.001);
+        $this->assertEqualsWithDelta(4650.0, (float) $passenger->refresh()->profit, 0.001);
+        $this->assertEqualsWithDelta(4650.0 + 200.0, (float) $booking->refresh()->profit, 0.001);
+    }
+
+    public function test_package_non_profit_change_leaves_profits_untouched(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $this->addPassenger($user, $deps, $booking);
+        $this->service->recalculateBookingProfit($booking->refresh());
+        $profitBefore = (float) $booking->refresh()->profit;
+
+        $deps['package']->update(['package_name' => 'Renamed']);
+
+        $this->assertEqualsWithDelta($profitBefore, (float) $booking->refresh()->profit, 0.001);
+    }
+
+    public function test_package_update_skips_cancelled_bookings(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $booking = $this->createBooking($user, $deps);
+        $this->addPassenger($user, $deps, $booking);
+        $booking->update(['is_cancelled' => true]);
+        DB::table('bookings')->where('id', $booking->id)->update(['profit' => 1234.00]);
+
+        $deps['package']->update(['service_charge' => 800.00]);
+
+        $this->assertEqualsWithDelta(1234.00, (float) $booking->refresh()->profit, 0.001);
+    }
 }
