@@ -26,7 +26,6 @@
         .summary-row td { font-weight: 700; border-top: 2px solid #94a3b8; background: #f8fafc; }
         .refund-cell { color: #16a34a; font-weight: 800; }
         .adjustment-cell { color: #2563eb; font-weight: 800; }
-        .adjustment-note { background: #eff6ff; border: 1px solid #bfdbfe; border-radius: 6px; color: #1e40af; font-weight: 700; padding: 10px 14px; margin-bottom: 16px; font-size: 14px; text-align: center; }
         .received-section { margin-bottom: 18px; }
         .form-block { display: grid; grid-template-columns: 1fr 1fr; gap: 20px 40px; }
         .form-label { font-weight: 700; font-size: 13px; color: #475569; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
@@ -44,6 +43,8 @@
         .btn { padding: 10px 28px; font-size: 14px; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
         .btn-primary { background: #1e293b; color: #fff; }
         .btn-primary:hover { background: #0f172a; }
+        .btn-secondary { background: #e2e8f0; color: #0f172a; text-decoration: none; display: inline-block; }
+        .btn-secondary:hover { background: #cbd5e1; }
         .no-print { display: block; }
         @media print {
             body { background: #fff; }
@@ -54,7 +55,6 @@
             .info-grid { gap: 2px 16px; margin-bottom: 6px; }
             .section-title { margin-bottom: 4px; }
             th { background: #e2e8f0 !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
-            .adjustment-note { background: #dbeafe !important; -webkit-print-color-adjust: exact; print-color-adjust: exact; }
             td { padding: 4px 8px; }
             .table-wrap { margin-bottom: 8px; }
             .received-section { margin-bottom: 4px; }
@@ -71,6 +71,7 @@
     @php $cp = $cancelledPassenger; @endphp
     <div class="voucher-wrap">
         <div class="toolbar no-print">
+            <a href="{{ route('cancelled-passengers.index') }}" class="btn btn-secondary">Back</a>
             <button onclick="window.print()" class="btn btn-primary">Print Voucher</button>
         </div>
 
@@ -98,12 +99,39 @@
             </div>
         </div>
 
+        <div class="section-title">Customer Information</div>
+        <div class="info-grid" style="margin-bottom: 18px;">
+            <div class="info-row">
+                <span class="label">Customer:</span>
+                <span class="value">{{ $cp->booking?->customer?->name ?? '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Mobile:</span>
+                <span class="value">{{ $cp->booking?->customer?->mobile_no ?? '—' }}</span>
+            </div>
+            @php
+                $custId = $cp->booking?->customer;
+                $custIdLabel = 'Iqama No:';
+                $custIdValue = $custId?->iqama_no ?: null;
+                if (! $custIdValue && ($custId?->ref_iqama_no ?? null)) {
+                    $custIdLabel = 'Referral Iqama No:';
+                    $custIdValue = $custId->ref_iqama_no;
+                } elseif (! $custIdValue && ($custId?->passport_no ?? null)) {
+                    $custIdLabel = 'Passport No:';
+                    $custIdValue = $custId->passport_no;
+                }
+                $custIdValue ??= '—';
+            @endphp
+            <div class="info-row">
+                <span class="label">{{ $custIdLabel }}</span>
+                <span class="value">{{ $custIdValue }}</span>
+            </div>
+        </div>
+
         <div class="section-title">Cancellation Information</div>
         <div class="info-grid" style="margin-bottom: 18px;">
             <div class="info-row">
-                <span class="label">Cancelled By:</span>
-                <span class="value">{{ $cp->user?->name ?? '—' }}</span>
-                <span class="label" style="margin-left: 30px;">Cancellation Branch:</span>
+                <span class="label">Cancellation Branch:</span>
                 <span class="value">{{ $cp->cancellationBranch?->name ?? '—' }}</span>
             </div>
             <div class="info-row">
@@ -114,10 +142,6 @@
                 <span class="label">Confirmed By:</span>
                 <span class="value">{{ $cp->confirmedBy?->name ?? '—' }}</span>
             </div>
-        </div>
-
-        <div class="adjustment-note">
-            Adjustment from Due: @currency($cp->balance_adjusted_amount, 2)
         </div>
 
         <div class="section-title">Financial Summary</div>
@@ -204,5 +228,11 @@
             This is a system-generated Refund Voucher and does not require physical signatures or company stamp.
         </div>
     </div>
+    <script>
+        history.pushState(null, '', location.href);
+        window.addEventListener('popstate', function () {
+            location.replace("{{ route('cancelled-passengers.index') }}");
+        });
+    </script>
 </body>
 </html>

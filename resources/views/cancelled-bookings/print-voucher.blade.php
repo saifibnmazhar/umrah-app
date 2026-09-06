@@ -104,9 +104,22 @@
                 <span class="label">Mobile:</span>
                 <span class="value">{{ $cb->booking?->customer?->mobile_no ?? '—' }}</span>
             </div>
+            @php
+                $custId = $cb->booking?->customer;
+                $custIdLabel = 'Iqama No:';
+                $custIdValue = $custId?->iqama_no ?: null;
+                if (! $custIdValue && ($custId?->ref_iqama_no ?? null)) {
+                    $custIdLabel = 'Referral Iqama No:';
+                    $custIdValue = $custId->ref_iqama_no;
+                } elseif (! $custIdValue && ($custId?->passport_no ?? null)) {
+                    $custIdLabel = 'Passport No:';
+                    $custIdValue = $custId->passport_no;
+                }
+                $custIdValue ??= '—';
+            @endphp
             <div class="info-row">
-                <span class="label">Iqama No:</span>
-                <span class="value">{{ $cb->booking?->customer?->iqama_no ?? '—' }}</span>
+                <span class="label">{{ $custIdLabel }}</span>
+                <span class="value">{{ $custIdValue }}</span>
             </div>
         </div>
 

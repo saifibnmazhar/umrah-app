@@ -52,7 +52,6 @@
                     <span class="font-semibold text-green-600 text-right">@currency($cp->refund_amount, 2)</span>
                 </div>
                 <div class="border-t border-slate-200 pt-2 mt-2 space-y-3">
-                    <div class="flex justify-between"><span class="text-slate-500">Cancelled By:</span><span class="font-medium text-slate-700">{{ $cp->user?->name ?? '—' }}</span></div>
                     <div class="flex justify-between"><span class="text-slate-500">Cancel Date:</span><span class="font-medium text-slate-700">{{ $cp->created_at?->format('d-M-Y') ?? '—' }}</span></div>
                     <div class="flex justify-between"><span class="text-slate-500">Cancellation Branch:</span><span class="font-medium text-slate-700">{{ $cp->cancellationBranch?->name ?? '—' }}</span></div>
                     <div class="flex justify-between"><span class="text-slate-500">Confirmed By:</span><span class="font-medium text-slate-700">{{ $cp->confirmedBy?->name ?? '—' }}</span></div>
@@ -68,11 +67,7 @@
                     <div class="mt-2 space-y-1 text-slate-600">
                         <div>Amount: <span class="font-medium text-slate-700">@currency($cp->deductionPayment?->amount, 2)</span></div>
                         <div>Method: {{ ucfirst($cp->deductionPayment?->payment_method?->value ?? '—') }}</div>
-                        <div>Voucher: {{ $cp->deductionVoucher?->voucher_id ?? '—' }}
-                            @if($cp->deductionVoucher)
-                            <a href="{{ route('payments.print-voucher', $cp->deduction_payment_id) }}" class="text-blue-600 hover:text-blue-800 ml-1">[Print]</a>
-                            @endif
-                        </div>
+                        <div>Voucher: {{ $cp->deductionVoucher?->voucher_id ?? '—' }}</div>
                     </div>
                 </div>
                 <div class="border border-blue-200 bg-blue-50 rounded-lg p-3">
@@ -80,11 +75,7 @@
                     <div class="mt-2 space-y-1 text-blue-800/70">
                         <div>Amount: <span class="font-medium">@currency($cp->adjustmentPayment?->amount, 2)</span></div>
                         <div>Method: {{ ucfirst($cp->adjustmentPayment?->payment_method?->value ?? '—') }}</div>
-                        <div>Voucher: {{ $cp->adjustmentVoucher?->voucher_id ?? '—' }}
-                            @if($cp->adjustmentVoucher)
-                            <a href="{{ route('payments.print-voucher', $cp->adjustment_payment_id) }}" class="text-blue-700 hover:text-blue-900 ml-1">[Print]</a>
-                            @endif
-                        </div>
+                        <div>Voucher: {{ $cp->adjustmentVoucher?->voucher_id ?? '—' }}</div>
                     </div>
                 </div>
                 <div class="border border-slate-200 rounded-lg p-3">
@@ -92,11 +83,7 @@
                     <div class="mt-2 space-y-1 text-slate-600">
                         <div>Amount: <span class="font-medium text-slate-700">@currency($cp->refundPayment?->amount, 2)</span></div>
                         <div>Method: {{ ucfirst($cp->refundPayment?->payment_method?->value ?? '—') }}</div>
-                        <div>Voucher: {{ $cp->refundVoucher?->voucher_id ?? '—' }}
-                            @if($cp->refundVoucher)
-                            <a href="{{ route('payments.print-voucher', $cp->refund_payment_id) }}" class="text-blue-600 hover:text-blue-800 ml-1">[Print]</a>
-                            @endif
-                        </div>
+                        <div>Voucher: {{ $cp->refundVoucher?->voucher_id ?? '—' }}</div>
                     </div>
                 </div>
             </div>

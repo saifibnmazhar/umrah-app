@@ -73,7 +73,6 @@
                     <span class="font-semibold text-green-600 text-right">@currency($cb->refund_amount, 2)</span>
                 </div>
                 <div class="border-t border-slate-200 pt-2 mt-2 space-y-3">
-                    <div class="flex justify-between"><span class="text-slate-500">Cancelled By:</span><span class="font-medium text-slate-700">{{ $cb->user?->name ?? '—' }}</span></div>
                     <div class="flex justify-between"><span class="text-slate-500">Cancel Date:</span><span class="font-medium text-slate-700">{{ $cb->created_at?->format('d-M-Y') ?? '—' }}</span></div>
                     <div class="flex justify-between"><span class="text-slate-500">Cancellation Branch:</span><span class="font-medium text-slate-700">{{ $cb->cancellationBranch?->name ?? '—' }}</span></div>
                     <div class="flex justify-between"><span class="text-slate-500">Confirmed By:</span><span class="font-medium text-slate-700">{{ $cb->confirmedBy?->name ?? '—' }}</span></div>
@@ -90,11 +89,7 @@
                         <div>Amount: <span class="font-medium text-slate-700">@currency($cb->deductionPayment?->amount, 2)</span></div>
                         <div>Method: {{ ucfirst($cb->deductionPayment?->payment_method?->value ?? '—') }}</div>
                         <div>Date: {{ $cb->deductionPayment?->payment_date?->format('d-M-Y') ?? '—' }}</div>
-                        <div>Voucher: {{ $cb->deductionVoucher?->voucher_id ?? '—' }}
-                            @if($cb->deductionVoucher)
-                            <a href="{{ route('payments.print-voucher', $cb->deduction_payment_id) }}" class="text-blue-600 hover:text-blue-800 ml-1">[Print]</a>
-                            @endif
-                        </div>
+                        <div>Voucher: {{ $cb->deductionVoucher?->voucher_id ?? '—' }}</div>
                     </div>
                 </div>
                 <div class="border border-slate-200 rounded-lg p-3">
@@ -103,11 +98,7 @@
                         <div>Amount: <span class="font-medium text-slate-700">@currency($cb->refundPayment?->amount, 2)</span></div>
                         <div>Method: {{ ucfirst($cb->refundPayment?->payment_method?->value ?? '—') }}</div>
                         <div>Date: {{ $cb->refundPayment?->payment_date?->format('d-M-Y') ?? '—' }}</div>
-                        <div>Voucher: {{ $cb->refundVoucher?->voucher_id ?? '—' }}
-                            @if($cb->refundVoucher)
-                            <a href="{{ route('payments.print-voucher', $cb->refund_payment_id) }}" class="text-blue-600 hover:text-blue-800 ml-1">[Print]</a>
-                            @endif
-                        </div>
+                        <div>Voucher: {{ $cb->refundVoucher?->voucher_id ?? '—' }}</div>
                     </div>
                 </div>
             </div>

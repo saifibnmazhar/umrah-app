@@ -565,10 +565,75 @@ class CancelledRecordTest extends TestCase
         $response->assertOk()
             ->assertSee('REFUND VOUCHER')
             ->assertSee('REFUND VOUCHER (passenger cancellation)', false)
-            ->assertSee('Adjustment from Due')
+            ->assertDontSee('Adjustment from Due')
+            ->assertSee('Adjusted from Due')
+            ->assertDontSee('Cancelled By')
+            ->assertSee('Customer Information')
+            ->assertSee('Test Customer')
+            ->assertSee('0123456789')
+            ->assertSee('>Back<', false)
+            ->assertSee(route('cancelled-passengers.index'), false)
             ->assertSee('data-sar="300.000000"', false)       // service_charge_deduction
             ->assertSee('data-sar="1200.000000"', false)      // balance_adjusted_amount
             ->assertSee('data-sar="1500.000000"', false);     // refund_amount
+    }
+
+    public function test_booking_voucher_customer_id_falls_back_with_dynamic_label(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $canceller = $this->createUserWithRole('Super Admin');
+        $this->actingAs($canceller);
+
+        ['booking' => $booking] = $this->createBookingWithInvoice($branch);
+        $cb = $this->makeCancelledBooking($canceller, $branch, $booking);
+
+        $customer = $cb->booking->customer;
+        $customer->iqama_no = 'IQ-111';
+        $customer->ref_iqama_no = 'REF-222';
+        $customer->passport_no = 'P-333';
+        $html = view('cancelled-bookings.print-voucher', ['cancelledBooking' => $cb])->render();
+        $this->assertStringContainsString('Iqama No:', $html);
+        $this->assertStringContainsString('IQ-111', $html);
+
+        $customer->iqama_no = null;
+        $html = view('cancelled-bookings.print-voucher', ['cancelledBooking' => $cb])->render();
+        $this->assertStringContainsString('Referral Iqama No:', $html);
+        $this->assertStringContainsString('REF-222', $html);
+
+        $customer->ref_iqama_no = null;
+        $html = view('cancelled-bookings.print-voucher', ['cancelledBooking' => $cb])->render();
+        $this->assertStringContainsString('Passport No:', $html);
+        $this->assertStringContainsString('P-333', $html);
+    }
+
+    public function test_passenger_voucher_customer_id_falls_back_with_dynamic_label(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $canceller = $this->createUserWithRole('Super Admin');
+        $this->actingAs($canceller);
+
+        ['booking' => $booking] = $this->createBookingWithInvoice($branch);
+        $cp = $this->makeCancelledPassenger($canceller, $branch, $booking);
+
+        $customer = $cp->booking->customer;
+        $customer->iqama_no = 'IQ-111';
+        $customer->ref_iqama_no = 'REF-222';
+        $customer->passport_no = 'P-333';
+        $html = view('cancelled-passengers.print-voucher', ['cancelledPassenger' => $cp])->render();
+        $this->assertStringContainsString('Iqama No:', $html);
+        $this->assertStringContainsString('IQ-111', $html);
+
+        $customer->iqama_no = null;
+        $html = view('cancelled-passengers.print-voucher', ['cancelledPassenger' => $cp])->render();
+        $this->assertStringContainsString('Referral Iqama No:', $html);
+        $this->assertStringContainsString('REF-222', $html);
+
+        $customer->ref_iqama_no = null;
+        $html = view('cancelled-passengers.print-voucher', ['cancelledPassenger' => $cp])->render();
+        $this->assertStringContainsString('Passport No:', $html);
+        $this->assertStringContainsString('P-333', $html);
     }
 
     // ------------------------------------------------------------------
