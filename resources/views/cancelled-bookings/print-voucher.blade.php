@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Refund Voucher - BM Umrah</title>
+    <title>Refund Voucher (booking cancellation) - BM Umrah</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -42,6 +42,8 @@
         .btn { padding: 10px 28px; font-size: 14px; font-weight: 700; border: none; border-radius: 6px; cursor: pointer; transition: background 0.15s; }
         .btn-primary { background: #1e293b; color: #fff; }
         .btn-primary:hover { background: #0f172a; }
+        .btn-secondary { background: #e2e8f0; color: #0f172a; text-decoration: none; display: inline-block; }
+        .btn-secondary:hover { background: #cbd5e1; }
         .no-print { display: block; }
         @media print {
             body { background: #fff; }
@@ -68,12 +70,13 @@
     @php $cb = $cancelledBooking; @endphp
     <div class="voucher-wrap">
         <div class="toolbar no-print">
+            <a href="{{ route('cancelled-bookings.index') }}" class="btn btn-secondary">Back</a>
             <button onclick="window.print()" class="btn btn-primary">Print Voucher</button>
         </div>
 
         <div class="header">
             <h1>BIN MISHAL GLOBAL SERVICES LTD.</h1>
-            <div class="title">REFUND VOUCHER</div>
+            <div class="title">REFUND VOUCHER (booking cancellation)</div>
         </div>
 
         <div class="info-grid">
@@ -91,12 +94,26 @@
             </div>
         </div>
 
+        <div class="section-title">Customer Information</div>
+        <div class="info-grid" style="margin-bottom: 18px;">
+            <div class="info-row">
+                <span class="label">Customer:</span>
+                <span class="value">{{ $cb->booking?->customer?->name ?? '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Mobile:</span>
+                <span class="value">{{ $cb->booking?->customer?->mobile_no ?? '—' }}</span>
+            </div>
+            <div class="info-row">
+                <span class="label">Iqama No:</span>
+                <span class="value">{{ $cb->booking?->customer?->iqama_no ?? '—' }}</span>
+            </div>
+        </div>
+
         <div class="section-title">Cancellation Information</div>
         <div class="info-grid" style="margin-bottom: 18px;">
             <div class="info-row">
-                <span class="label">Cancelled By:</span>
-                <span class="value">{{ $cb->user?->name ?? '—' }}</span>
-                <span class="label" style="margin-left: 30px;">Cancellation Branch:</span>
+                <span class="label">Cancellation Branch:</span>
                 <span class="value">{{ $cb->cancellationBranch?->name ?? '—' }}</span>
             </div>
             <div class="info-row">
@@ -183,5 +200,11 @@
             This is a system-generated Refund Voucher and does not require physical signatures or company stamp.
         </div>
     </div>
+    <script>
+        history.pushState(null, '', location.href);
+        window.addEventListener('popstate', function () {
+            location.replace("{{ route('cancelled-bookings.index') }}");
+        });
+    </script>
 </body>
 </html>

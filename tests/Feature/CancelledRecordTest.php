@@ -527,7 +527,13 @@ class CancelledRecordTest extends TestCase
         $response = $this->actingAs($canceller)->get(route('cancelled-bookings.print', $cb));
         $response->assertOk()
             ->assertSee('REFUND VOUCHER')
+            ->assertSee('REFUND VOUCHER (booking cancellation)', false)
+            ->assertSee('Customer Information')
+            ->assertSee('Test Customer')
+            ->assertSee('0123456789')
             ->assertSee('BIN MISHAL GLOBAL SERVICES LTD.')
+            ->assertSee('>Back<', false)
+            ->assertSee(route('cancelled-bookings.index'), false)
             ->assertSee('data-sar="2500.000000"', false);    // refund_amount
     }
 
@@ -558,6 +564,7 @@ class CancelledRecordTest extends TestCase
         $response = $this->actingAs($canceller)->get(route('cancelled-passengers.print', $cp));
         $response->assertOk()
             ->assertSee('REFUND VOUCHER')
+            ->assertSee('REFUND VOUCHER (passenger cancellation)', false)
             ->assertSee('Adjustment from Due')
             ->assertSee('data-sar="300.000000"', false)       // service_charge_deduction
             ->assertSee('data-sar="1200.000000"', false)      // balance_adjusted_amount

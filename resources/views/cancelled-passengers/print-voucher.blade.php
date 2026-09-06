@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Refund Voucher - BM Umrah</title>
+    <title>Refund Voucher (passenger cancellation) - BM Umrah</title>
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <style>
         * { margin: 0; padding: 0; box-sizing: border-box; }
@@ -76,7 +76,7 @@
 
         <div class="header">
             <h1>BIN MISHAL GLOBAL SERVICES LTD.</h1>
-            <div class="title">REFUND VOUCHER</div>
+            <div class="title">REFUND VOUCHER (passenger cancellation)</div>
         </div>
 
         <div class="info-grid">
