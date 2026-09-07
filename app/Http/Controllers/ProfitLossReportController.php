@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Booking;
+use App\Models\Branch;
 use App\Models\Passenger;
 use App\Services\ProfitCalculationService;
 use Illuminate\Http\Request;
@@ -76,6 +77,22 @@ class ProfitLossReportController extends Controller
         });
     }
 
+    private function applyBranchFilter($query, Request $request)
+    {
+        if ($request->filled('branch_id')) {
+            $query->where('bookings.booking_branch_id', $request->branch_id);
+        }
+
+        return $query;
+    }
+
+    public function getFilters()
+    {
+        $branches = Branch::orderBy('name')->get(['id', 'name']);
+
+        return response()->json(['branches' => $branches]);
+    }
+
     public function summary(Request $request)
     {
         $search = trim((string) $request->search);
@@ -105,6 +122,7 @@ class ProfitLossReportController extends Controller
                 COALESCE(SUM(bookings.profit), 0) as total_profit
             ');
         $this->applyDateFilters($customer, $request);
+        $this->applyBranchFilter($customer, $request);
         $customer = $customer->first();
 
         $passenger = Passenger::query()
@@ -121,6 +139,7 @@ class ProfitLossReportController extends Controller
                 COALESCE(SUM(passengers.profit), 0) as total_profit
             ');
         $this->applyDateFilters($passenger, $request);
+        $this->applyBranchFilter($passenger, $request);
         $passenger = $passenger->first();
 
         return response()->json([
@@ -209,6 +228,7 @@ class ProfitLossReportController extends Controller
             if ($filter === 'loss') {
                 $query->where('passengers.profit', '<', 0);
             }
+            $this->applyBranchFilter($query, $request);
 
             $paginator = $query->select('passengers.*')->paginate($perPage, ['*'], 'page', $page);
 
@@ -245,6 +265,7 @@ class ProfitLossReportController extends Controller
         if ($filter === 'loss') {
             $query->where('bookings.profit', '<', 0);
         }
+        $this->applyBranchFilter($query, $request);
 
         $bookingIds = $query->pluck('bookings.id');
         $total = $bookingIds->count();
@@ -281,6 +302,7 @@ class ProfitLossReportController extends Controller
         if ($request->date_to) {
             $query->whereDate('created_at', '<=', $request->date_to);
         }
+        $this->applyBranchFilter($query, $request);
         $bookings = $query->get();
 
         $profitService = app(ProfitCalculationService::class);
@@ -315,9 +337,13 @@ class ProfitLossReportController extends Controller
 
         $summary = $this->summary($request)->getData(true);
 
+        $branchName = $request->filled('branch_id')
+            ? Branch::find($request->branch_id)?->name
+            : null;
+
         return view('reports.profit-loss-print', compact(
             'type', 'currency', 'customers', 'passengers', 'dateFrom', 'dateTo',
-            'search', 'profitLossFilter', 'summary'
+            'search', 'profitLossFilter', 'summary', 'branchName'
         ));
     }
 }

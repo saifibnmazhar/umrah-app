@@ -83,6 +83,9 @@ class VisaSubmissionObserver
             if ($newStatus === 'cancelled') {
                 return 'cancelled';
             }
+            if ($oldStatus === 'issued' && $newStatus === 'submitted') {
+                return 'reverted';
+            }
         }
 
         return 'edited';
