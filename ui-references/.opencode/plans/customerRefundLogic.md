@@ -112,3 +112,98 @@ In `confirmSubmit(Request $request, CancelledPassenger $cancelledPassenger)`:
 - Customer refund cannot exceed `total paid − total customer refund` (RefundCapService).
 - The confirmation page auto-settles and does not allow a smaller adjustment.
 - All relevant tests pass; Pint formatting and `npm run build` are green.
+
+---
+
+# Part 2: Booking-cancellation refund vs. prior passenger-level customer refunds
+
+## Problem
+
+If a Customer Refund was already given during a **passenger** cancellation, the booking
+cancellation refund (which can only happen while at least one passenger remains) must not
+payout the same money twice. Two issues found:
+
+1. **Snapshot overstates the refund.** `CancellationService::initiateCancellation()` stores
+   `refund_amount = totalPaid − totalCost − serviceCharge` *without* subtracting prior
+   passenger-level refunds. The actual payout is still safe at confirm time because
+   `RefundCapService::assertRefundAllowed()` caps it at `paid − refunded` (all `Customer
+   Refund` vouchers on the invoice), but the pending record's stored amount is misleading
+   until confirm clamps it.
+
+2. **Double-counted costs.** `CostTrackingService::getBookingCostSummary()` sums costs
+   across **all** passengers including already-cancelled ones. After a passenger
+   cancellation, that passenger's visa/ticket costs still sit in `totalCost`, wrongly
+   shrinking the remaining seats' booking-cancel refund.
+
+Confirmed decisions: keep `paid_amount` as full collections (does **not** get netted down
+by prior refunds), cap the booking snapshot against already-refunded amounts, **and**
+exclude already-cancelled passengers from the booking total-cost.
+
+## Changes
+
+### 1. `app/Services/CostTrackingService.php`
+
+In `getPassengerCosts()`:
+- Exclude cancelled passengers: `$booking->passengers->reject(fn ($p) => $p->is_cancelled)`.
+- Use the **active** passenger count as the fingerprint-cost denominator
+  (`$fingerprintCost / activePassengers->count()` when > 0).
+
+Flow-through (all booking-cancellation contexts — safe scope):
+- `CancellationService::initiateCancellation()` refund calc
+- `CancellationService::getCostBreakdown()` (initiate modal / detail)
+- `BookingCancellationViewController::initiate()` `potential_refund`
+- `BookingCancellationViewController::confirm()` `costSummary`
+- `BookingController::store()` recompute of a processing cancellation's `refund_amount`
+
+### 2. `app/Services/CancellationService.php`
+
+In `initiateCancellation()` — clamp the stored snapshot against the existing cap:
+
+```php
+$rawRefund = max(0, $totalPaid - $totalCost - ($serviceCharge ?? 0));
+$remaining = app(RefundCapService::class)->getCap($invoice)['remaining'];
+$refundAmount = min($rawRefund, $remaining);
+```
+
+### 3. `app/Http/Controllers/BookingController.php` (~line 2068-2075)
+
+Apply the same `remaining` clamp when recomputing a processing cancellation's
+`refund_amount` after a late payment:
+
+```php
+$rawRefund = max(0, $invoice->paid_amount - $totalCost - $serviceCharge);
+$remaining = app(RefundCapService::class)->getCap($invoice)['remaining'];
+$refundAmount = min($rawRefund, $remaining);
+```
+
+### 4. Tests (TDD-first)
+
+- `tests/Unit/CostTrackingServiceTest.php`:
+  - Cost summary excludes a cancelled passenger's visa/ticket/fingerprint share and uses
+    the active passenger count for the fingerprint split.
+- `tests/Feature/CancellationServiceTest.php` (or new):
+  - Initiating a booking cancellation after a passenger-level Customer Refund stores
+    `refund_amount = min(raw, paid − refunded)`; no over-refund.
+- Booking-cancel controller/confirm: booking refund stays within `paid − already refunded`.
+
+### 5. Verification
+
+- `vendor/bin/pint`
+- `php artisan test`
+- `npm run build`
+
+## Notes / open points
+
+- `paid_amount` is kept as full Initial + Due collections; prior customer refunds only
+  affect the refund cap, never the `paid_amount` figure.
+- `RefundCapService::getCap()` already counts every `Customer Refund` voucher on the
+  invoice (passenger- and booking-level), so `remaining = paid − refunded` is the correct
+  shared ceiling.
+
+## Acceptance criteria (Part 2)
+
+- `passenger refunds + booking refund ≤ total paid` — no double payout.
+- Booking-cancel snapshot `refund_amount` is clamped to `paid − already refunded` at
+  initiate and on late-payment recompute.
+- Booking `total_cost` excludes already-cancelled passengers.
+- All relevant tests pass; Pint formatting and `npm run build` are green.
