@@ -2566,56 +2566,132 @@ if ($passenger->ticket_fare_inbound_id) {
                             </select>
                         </div>
                         <div x-show="reIssueForm.payment_option === 'refund_adjustment' && (reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket)">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (SAR)</label>
-                            <input type="number" x-model="reIssueForm.refund_adjustment_amount" min="0" step="0.000001"
-                                   @input="handleReIssueSarInput('refund_adjustment_amount'); reIssueForm.errors.refund_adjustment_amount = ''"
-                                   :class="reIssueForm.errors.refund_adjustment_amount ? 'border-red-500' : ''"
-                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                            <p x-show="reIssueForm.errors.refund_adjustment_amount" x-text="reIssueForm.errors.refund_adjustment_amount" class="text-xs text-red-500 mt-1"></p>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (SAR)</label>
+                                <input type="number" x-model="reIssueForm.refund_adjustment_amount" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('refund_adjustment_amount'); reIssueForm.errors.refund_adjustment_amount = ''"
+                                       :class="reIssueForm.errors.refund_adjustment_amount ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.refund_adjustment_amount" x-text="reIssueForm.errors.refund_adjustment_amount" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (BDT)</label>
+                                <input type="number" x-model="reIssueForm.refund_adjustment_amount_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('refund_adjustment_amount'); reIssueForm.errors.refund_adjustment_amount = ''"
+                                       :class="reIssueForm.errors.refund_adjustment_amount ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.refund_adjustment_amount" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.refund_adjustment_amount" x-text="reIssueForm.errors.refund_adjustment_amount" class="text-xs text-red-500 mt-1"></p>
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR)</label>
-                            <input type="number" x-model="reIssueForm.re_issue_charge" min="0" step="0.000001"
-                                   @input="handleReIssueSarInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
-                                   :class="reIssueForm.errors.re_issue_charge ? 'border-red-500' : ''"
-                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                            <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR)</label>
+                                <input type="number" x-model="reIssueForm.re_issue_charge" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
+                                       :class="reIssueForm.errors.re_issue_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT)</label>
+                                <input type="number" x-model="reIssueForm.re_issue_charge_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
+                                       :class="reIssueForm.errors.re_issue_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.re_issue_charge" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR)</label>
-                            <input type="number" x-model="reIssueForm.fare_difference" step="0.000001"
-                                   @input="handleReIssueSarInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
-                                   :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
-                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                            <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR)</label>
+                                <input type="number" x-model="reIssueForm.fare_difference" step="0.000001"
+                                       @input="handleReIssueSarInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
+                                       :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT)</label>
+                                <input type="number" x-model="reIssueForm.fare_difference_bdt" step="0.000001"
+                                       @input="handleReIssueBdtInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
+                                       :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.fare_difference" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (SAR)</label>
-                            <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001"
-                                   @input="handleReIssueSarInput('other_costs'); reIssueForm.errors.other_costs = ''"
-                                   :class="reIssueForm.errors.other_costs ? 'border-red-500' : ''"
-                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                            <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (SAR)</label>
+                                <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('other_costs'); reIssueForm.errors.other_costs = ''"
+                                       :class="reIssueForm.errors.other_costs ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (BDT)</label>
+                                <input type="number" x-model="reIssueForm.other_costs_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('other_costs'); reIssueForm.errors.other_costs = ''"
+                                       :class="reIssueForm.errors.other_costs ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
+                            </div>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer'">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
-                            <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001"
-                                   @input="handleReIssueSarInput('service_charge'); reIssueForm.errors.service_charge = ''"
-                                   :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
-                                   class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
-                            <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
+                                <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('service_charge'); reIssueForm.errors.service_charge = ''"
+                                       :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                                <input type="number" x-model="reIssueForm.service_charge_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('service_charge'); reIssueForm.errors.service_charge = ''"
+                                       :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
                         </div>
                         <div x-show="reIssueForm.refunded_net_fare > 0">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (SAR)</label>
-                            <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (SAR)</label>
+                                <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (BDT)</label>
+                                <input type="number" x-model="reIssueForm.refunded_net_fare_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
                         </div>
                         <div>
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
-                            <input type="number" x-model="reIssueForm.total_cost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
+                                <input type="number" x-model="reIssueForm.total_cost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (BDT)</label>
+                                <input type="number" x-model="reIssueForm.total_cost_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.total_cost" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
                         </div>
                         <div x-show="reIssueForm.payment_by === 'customer'">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR)</label>
-                            <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR)</label>
+                                <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (BDT)</label>
+                                <input type="number" x-model="reIssueForm.total_payment_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
@@ -5541,6 +5617,13 @@ function bookingIndexApp() {
             this.reIssueForm.refunded_net_fare_bdt = this.reIssueForm.refunded_net_fare > 0 && rate > 0
                 ? Math.round(this.reIssueForm.refunded_net_fare * rate)
                 : '';
+            if (rate > 0) {
+                this.reIssueForm.refund_adjustment_amount_bdt = Math.round((parseFloat(this.reIssueForm.refund_adjustment_amount) || 0) * rate);
+                this.reIssueForm.re_issue_charge_bdt = Math.round((parseFloat(this.reIssueForm.re_issue_charge) || 0) * rate);
+                this.reIssueForm.fare_difference_bdt = Math.round((parseFloat(this.reIssueForm.fare_difference) || 0) * rate);
+                this.reIssueForm.other_costs_bdt = Math.round((parseFloat(this.reIssueForm.other_costs) || 0) * rate);
+                this.reIssueForm.service_charge_bdt = Math.round((parseFloat(this.reIssueForm.service_charge) || 0) * rate);
+            }
 
             const consumedAdjustment = (re.payment_option === 'refund_adjustment') ? (parseFloat(re.refund_adjustment_amount) || 0) : 0;
             this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0) + consumedAdjustment;
