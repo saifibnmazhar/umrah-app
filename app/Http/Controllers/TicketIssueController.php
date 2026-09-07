@@ -239,6 +239,8 @@ class TicketIssueController extends Controller
                     $oldTotalCustomerPayment = 0;
                 }
 
+                $wasRefunded = (bool) $issuedTicket->latestRefundedTicket;
+
                 $latestRe->update([
                     'ticket_number' => $validated['ticket_number'] ?? $latestRe->ticket_number,
                     'pnr' => $validated['pnr'] ?? $latestRe->pnr,
@@ -266,6 +268,20 @@ class TicketIssueController extends Controller
                     : 0;
                 $totalCost = (float) $reIssueCharge + (float) $fareDifference + (float) $otherCosts + $refundedNetFare - (float) $refundAdjustment;
 
+                $effectivePaymentBy = array_key_exists('payment_by', $validated) ? $validated['payment_by'] : $oldPaymentBy;
+
+                if ($effectivePaymentBy === 'customer') {
+                    $resolvedPaymentOption = array_key_exists('payment_option', $validated)
+                        ? $validated['payment_option']
+                        : $latestRe->payment_option?->value;
+                } elseif ($wasRefunded) {
+                    $resolvedPaymentOption = 'refund_adjustment';
+                } elseif (array_key_exists('payment_by', $validated) && $validated['payment_by'] !== 'customer') {
+                    $resolvedPaymentOption = null;
+                } else {
+                    $resolvedPaymentOption = $latestRe->payment_option?->value;
+                }
+
                 $latestRe->update([
                     'reason_id' => array_key_exists('reason_id', $validated) ? $validated['reason_id'] : $latestRe->reason_id,
                     're_issue_charge' => $reIssueCharge,
@@ -277,18 +293,14 @@ class TicketIssueController extends Controller
                         : 0,
                     'remarks' => array_key_exists('remarks', $validated) ? $validated['remarks'] : $latestRe->remarks,
                     'payment_by' => array_key_exists('payment_by', $validated) ? $validated['payment_by'] : $latestRe->payment_by,
-                    'payment_option' => array_key_exists('payment_option', $validated) && $validated['payment_by'] === 'customer'
-                        ? $validated['payment_option']
-                        : (array_key_exists('payment_by', $validated) && $validated['payment_by'] !== 'customer' ? null : $latestRe->payment_option),
+                    'payment_option' => $resolvedPaymentOption,
                     'refund_adjustment_amount' => $refundAdjustment,
                     'total_cost' => round($totalCost, 6),
                 ]);
 
                 // Determine NEW financial state
-                $newPaymentBy = array_key_exists('payment_by', $validated) ? $validated['payment_by'] : $oldPaymentBy;
-                $newPaymentOption = ($newPaymentBy === 'customer')
-                    ? (array_key_exists('payment_option', $validated) ? $validated['payment_option'] : $oldPaymentOption)
-                    : null;
+                $newPaymentBy = $effectivePaymentBy;
+                $newPaymentOption = $resolvedPaymentOption;
                 $newTotalCustomerPayment = ($newPaymentBy === 'customer' && array_key_exists('total_customer_payment', $validated))
                     ? (float) $validated['total_customer_payment']
                     : (($newPaymentBy === 'customer') ? (float) $latestRe->total_customer_payment : 0);

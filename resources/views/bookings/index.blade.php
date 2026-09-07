@@ -5526,7 +5526,7 @@ function bookingIndexApp() {
             this.reIssueForm.booking_id = row.booking_id;
             this.reIssueForm.reason_id = re.reason_id || '';
             this.reIssueForm.payment_by = re.payment_by || '';
-            this.reIssueForm.payment_option = re.payment_option || 'customer_payment';
+            this.reIssueForm.payment_option = re.payment_option || (!!wasRefunded && this.reIssueForm.payment_by !== 'customer' ? 'refund_adjustment' : 'customer_payment');
             this.reIssueForm.refund_adjustment_amount = re.refund_adjustment_amount || 0;
             this.reIssueForm.refund_adjustment_amount_bdt = '';
             this.reIssueForm.re_issue_charge = re.re_issue_charge || 0;
