@@ -165,9 +165,12 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
-                            <select id="passengerFlightDateRange" x-model="passengerData.flight_date_range" @change="onFlightDateRangeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="">Select Date Range</option>
-                            </select>
+                            <div class="flex gap-2">
+                                <select id="passengerFlightDateRange" x-model="passengerData.flight_date_range" disabled class="flex-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed outline-none">
+                                    <option value="">Select Date Range</option>
+                                </select>
+                                <button type="button" @click="openFlightDateModal()" class="shrink-0 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">Edit</button>
+                            </div>
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Baggage Allowance</label>
@@ -202,9 +205,12 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date Range *</label>
-                            <select id="passengerFlightDateRangeDouble" x-model="passengerData.flight_date_range" @change="onFlightDateRangeChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
-                                <option value="">Select Date Range</option>
-                            </select>
+                            <div class="flex gap-2">
+                                <select id="passengerFlightDateRangeDouble" x-model="passengerData.flight_date_range" disabled class="flex-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed outline-none">
+                                    <option value="">Select Date Range</option>
+                                </select>
+                                <button type="button" @click="openFlightDateModal()" class="shrink-0 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">Edit</button>
+                            </div>
                         </div>
                     </div>
 
@@ -275,6 +281,29 @@
             </div>
         </div>
     </div>
+
+    {{-- Flight Date Edit Modal --}}
+    <div x-show="flightDateModalVisible" x-cloak class="fixed inset-0 z-[60] flex items-center justify-center">
+        <div class="fixed inset-0 bg-black/50" @click="closeFlightDateModal()"></div>
+        <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+            <h3 class="text-xl font-semibold text-slate-800 mb-4">Edit Flight Dates</h3>
+            <div class="grid grid-cols-1 md:grid-cols-2 gap-4 mb-4">
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date From *</label>
+                    <input type="text" x-model="flightDateModalFrom" placeholder="DD-MMM-YY" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                </div>
+                <div>
+                    <label class="block text-sm font-medium text-slate-700 mb-1">Flight Date To *</label>
+                    <input type="text" x-model="flightDateModalTo" placeholder="DD-MMM-YY" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                </div>
+            </div>
+            <p x-show="flightDateModalError" x-text="flightDateModalError" class="text-xs text-red-500 mb-3"></p>
+            <div class="flex gap-3">
+                <button type="button" @click="saveFlightDateModal()" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">Save</button>
+                <button type="button" @click="closeFlightDateModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
+            </div>
+        </div>
+    </div>
 </div>
 
 @push('scripts')
@@ -324,6 +353,10 @@
         packages: [],
         allPackages: [],
         customDurationModalVisible: false,
+        flightDateModalVisible: false,
+        flightDateModalFrom: '',
+        flightDateModalTo: '',
+        flightDateModalError: '',
         passenger: null,
 
         init() {
@@ -979,6 +1012,74 @@
 
             this.closeCustomDurationModal();
             this.calculatePassengerType();
+        },
+
+        openFlightDateModal() {
+            this.flightDateModalError = '';
+            this.flightDateModalFrom = this.formatToDDMMMYY(this.passengerData.flight_date_from);
+            this.flightDateModalTo = this.formatToDDMMMYY(this.passengerData.flight_date_to);
+            this.flightDateModalVisible = true;
+        },
+
+        closeFlightDateModal() {
+            this.flightDateModalVisible = false;
+            this.flightDateModalError = '';
+        },
+
+        saveFlightDateModal() {
+            const from = this.parseDDMMMYY(this.flightDateModalFrom);
+            const to = this.parseDDMMMYY(this.flightDateModalTo);
+            if (!from || !to) {
+                this.flightDateModalError = 'Both dates must be in DD-MMM-YY format';
+                return;
+            }
+            if (from > to) {
+                this.flightDateModalError = 'Flight date from must be before flight date to';
+                return;
+            }
+            this.passengerData.flight_date_from = from;
+            this.passengerData.flight_date_to = to;
+            this.generateFlightDateRangeForEdit(from, to);
+            ['passengerFlightDateRange', 'passengerFlightDateRangeDouble'].forEach((id) => {
+                const select = document.getElementById(id);
+                if (!select) return;
+                const rangeStr = this.passengerData.flight_date_range;
+                if (!Array.from(select.options).some((opt) => opt.value === rangeStr)) {
+                    const option = document.createElement('option');
+                    option.value = rangeStr;
+                    option.textContent = rangeStr;
+                    select.appendChild(option);
+                }
+                select.value = rangeStr;
+            });
+            this.closeFlightDateModal();
+        },
+
+        parseDDMMMYY(value) {
+            if (!value) return '';
+            const months = { JAN: 0, FEB: 1, MAR: 2, APR: 3, MAY: 4, JUN: 5, JUL: 6, AUG: 7, SEP: 8, OCT: 9, NOV: 10, DEC: 11 };
+            const match = String(value).trim().match(/^(\d{1,2})-([A-Za-z]{3})-(\d{2})$/);
+            if (!match) return '';
+            const day = parseInt(match[1], 10);
+            const month = months[match[2].toUpperCase()];
+            let year = parseInt(match[3], 10);
+            if (month === undefined || isNaN(day) || isNaN(year)) return '';
+            year += year < 70 ? 2000 : 1900;
+            const date = new Date(year, month, day);
+            if (date.getDate() !== day || date.getMonth() !== month || date.getFullYear() !== year) return '';
+            return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        },
+
+        formatToDDMMMYY(value) {
+            if (!value) return '';
+            const parts = String(value).split(' ')[0].split('T')[0].split('-');
+            if (parts.length < 3) return '';
+            const year = parseInt(parts[0], 10);
+            const month = parseInt(parts[1], 10) - 1;
+            const day = parseInt(parts[2], 10);
+            if (isNaN(year) || isNaN(month) || isNaN(day)) return '';
+            const months = ['JAN', 'FEB', 'MAR', 'APR', 'MAY', 'JUN', 'JUL', 'AUG', 'SEP', 'OCT', 'NOV', 'DEC'];
+            return `${String(day).padStart(2, '0')}-${months[month]}-${String(year).slice(-2)}`;
         },
 
         async savePassenger() {
