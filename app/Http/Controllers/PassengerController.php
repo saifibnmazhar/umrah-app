@@ -53,6 +53,35 @@ class PassengerController extends Controller
             && ! $user->hasRole('Co Admin');
     }
 
+    private function isFlightDateAdmin(): bool
+    {
+        $user = auth()->user();
+
+        return $user->hasRole('Super Admin') || $user->hasRole('Co Admin');
+    }
+
+    private function isValidFlightDateGroup(?string $from, ?string $to): bool
+    {
+        if (! $from || ! $to) {
+            return false;
+        }
+
+        $fromDate = \DateTime::createFromFormat('Y-m-d', $from);
+        $toDate = \DateTime::createFromFormat('Y-m-d', $to);
+
+        if (! $fromDate || ! $toDate || $fromDate->format('Y-m') !== $toDate->format('Y-m')) {
+            return false;
+        }
+
+        $fromDay = (int) $fromDate->format('j');
+        $toDay = (int) $toDate->format('j');
+        $lastDay = (int) $fromDate->format('t');
+
+        return ($fromDay === 1 && $toDay === 10)
+            || ($fromDay === 11 && $toDay === 20)
+            || ($fromDay === 21 && $toDay === $lastDay);
+    }
+
     public function show(Passenger $passenger)
     {
         $this->ensureBranchAccess($passenger);
@@ -533,6 +562,11 @@ class PassengerController extends Controller
             abort(403);
         }
 
+        if (! $this->isFlightDateAdmin()) {
+            $request->request->remove('flight_date_from');
+            $request->request->remove('flight_date_to');
+        }
+
         $validated = $request->validate([
             'first_name' => 'required|string|max:255',
             'last_name' => 'required|string|max:255',
@@ -542,7 +576,12 @@ class PassengerController extends Controller
             'passport_expiry' => 'nullable|date',
             'service_required' => 'nullable|in:all,visa_only,ticket_only',
             'stay_duration' => 'nullable|integer|min:'.($limits = StayDurationLimit::getOrCreate())->min_days.'|max:'.$limits->max_days,
-            'flight_date_from' => 'nullable|date',
+            'flight_date_from' => ['nullable', 'date', function ($attribute, $value, $fail) use ($request) {
+                if ($value && $request->input('flight_date_to')
+                    && ! $this->isValidFlightDateGroup($value, $request->input('flight_date_to'))) {
+                    $fail('Invalid flight date range. Use 1-10, 11-20, or 21-last day of the same month.');
+                }
+            }],
             'flight_date_to' => 'nullable|date',
             'address' => 'nullable|string|max:500',
             'passenger_type' => 'nullable|in:adult,child,infant',
