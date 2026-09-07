@@ -16,6 +16,7 @@ class BookingCancellationViewController extends Controller
     {
         $costSummary = app(CostTrackingService::class)->getBookingCostSummary($booking);
         $invoice = $booking->invoice;
+        $totalPassengerRefundable = (float) $booking->getTotalPassengerRefundable();
 
         return response()->json([
             'total_amount' => (float) ($invoice?->total_amount ?? 0),
@@ -29,7 +30,8 @@ class BookingCancellationViewController extends Controller
             ],
             'passenger_costs' => $costSummary['passengers'],
             'service_charge' => 0,
-            'potential_refund' => (float) (($invoice?->paid_amount ?? 0) - $costSummary['total_cost']),
+            'total_passenger_refundable' => $totalPassengerRefundable,
+            'potential_refund' => (float) (($invoice?->paid_amount ?? 0) - $costSummary['total_cost']) + $totalPassengerRefundable,
             'currency_rate_id' => $booking->currency_rate_id,
             'booking_branch_id' => $booking->booking_branch_id,
             'booking_branch_name' => $booking->bookingBranch?->name,

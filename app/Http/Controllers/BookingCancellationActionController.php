@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Enums\PaymentMethod;
 use App\Models\Booking;
 use App\Models\CancelledBooking;
+use App\Models\Voucher;
 use App\Services\CancellationService;
 use Illuminate\Http\Request;
 
@@ -115,7 +116,7 @@ class BookingCancellationActionController extends Controller
             'cancellation_branch' => $cb->cancellationBranch?->name ?? '-',
             'total_paid' => $cb->total_paid,
             'service_charge_deduction' => $cb->service_charge_deduction,
-            'refund_amount' => $cb->refund_amount,
+            'refund_amount' => (float) ($cb->refundVoucher?->amount ?? 0),
             'method' => $cb->refundPayment?->payment_method?->value ?? '-',
             'remarks' => $cb->refundPayment?->remarks ?? '-',
             'cancelled_at' => $cb->created_at->format('Y-m-d H:i'),
@@ -124,10 +125,15 @@ class BookingCancellationActionController extends Controller
             'status' => $cb->status->value,
         ]);
 
+        $cbIds = $query->clone()->pluck('cancelled_bookings.id');
+        $totalRefund = (float) Voucher::whereIn('cancelled_booking_id', $cbIds)
+            ->whereHas('transactionType', fn ($q) => $q->where('name', 'Customer Refund'))
+            ->sum('amount');
+
         $summary = [
             'total_paid' => (float) $query->clone()->sum('total_paid'),
             'total_deduction' => (float) $query->clone()->sum('service_charge_deduction'),
-            'total_refund' => (float) $query->clone()->sum('refund_amount'),
+            'total_refund' => $totalRefund,
         ];
 
         return response()->json([

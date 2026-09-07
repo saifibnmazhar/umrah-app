@@ -2953,6 +2953,14 @@ if ($passenger->ticket_fare_inbound_id) {
                 </div>
             </div>
 
+            <div class="mb-4 p-3 bg-amber-50 rounded-lg text-sm">
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-600">Total Passenger Refundable</span>
+                    <span class="font-bold text-amber-700" x-text="$currency(cancelTotalPassengerRefundable, 2)"></span>
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Sum of passenger ticket refund amounts owed back to customers</p>
+            </div>
+
             {{-- Cost Breakdown --}}
             <div class="mb-4">
                 <h4 class="text-sm font-medium text-slate-600 mb-2">Costs Incurred</h4>
@@ -3013,7 +3021,7 @@ if ($passenger->ticket_fare_inbound_id) {
                     <span class="text-sm font-medium text-slate-700">Refund Amount:</span>
                     <span class="text-lg font-bold text-blue-700" x-text="$currency(computedRefundAmount, 2)"></span>
                 </div>
-                <p class="text-xs text-slate-500 mt-1">Refund = Total Paid &minus; Total Cost &minus; Service Charge</p>
+                <p class="text-xs text-slate-500 mt-1">Refund = Total Paid &minus; Total Cost &minus; Service Charge + Total Passenger Refundable</p>
             </div>
 
             {{-- Actions --}}
@@ -6827,6 +6835,7 @@ function bookingIndexApp() {
         cancelServiceCharge: null,
         cancelServiceChargeBdt: '',
         cancelTotalPaid: 0,
+        cancelTotalPassengerRefundable: 0,
         cancelCosts: { fingerprint_cost: 0, visa_cost: 0, ticket_cost: 0, total_cost: 0 },
         cancelLoading: false,
 
@@ -6840,6 +6849,7 @@ function bookingIndexApp() {
                 const data = await res.json();
                 this.cancelTotalPaid = data.total_paid;
                 this.cancelCosts = data.costs;
+                this.cancelTotalPassengerRefundable = data.total_passenger_refundable;
                 if (data.booking_branch_id) this.cancelBranchId = data.booking_branch_id;
             } catch (e) {
                 alert('Failed to load cancellation data');
@@ -6856,7 +6866,8 @@ function bookingIndexApp() {
             const paid = this.cancelTotalPaid;
             const cost = this.cancelCosts.total_cost;
             const charge = parseFloat(this.cancelServiceCharge) || 0;
-            return (paid - cost - charge).toFixed(2);
+            const refundable = parseFloat(this.cancelTotalPassengerRefundable) || 0;
+            return (paid - cost - charge + refundable).toFixed(2);
         },
 
         async handleCancelSubmit() {
