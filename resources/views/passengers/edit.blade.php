@@ -398,7 +398,7 @@
             if (stayDuration !== null && stayDuration !== undefined && stayDuration !== '') {
                 const sd = parseInt(stayDuration);
                 if (!isNaN(sd)) {
-                    if (sd === 14 || sd === 85) {
+                    if (sd === 14) {
                         this.passengerData.stay_duration = String(sd);
                         this.passengerData.stay_duration_int = sd;
                     } else if (sd >= 1) {
