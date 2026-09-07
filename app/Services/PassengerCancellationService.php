@@ -150,8 +150,10 @@ class PassengerCancellationService
             $invoice = $cancelledPassenger->invoice;
             $passenger = $cancelledPassenger->passenger;
 
+            $invoice = $cancelledPassenger->invoice ?? $cancelledPassenger->booking?->invoice;
             $refundable = (float) $cancelledPassenger->refundable_amount;
-            $adjusted = app(RefundCapService::class)->normalizeToSar((float) $data['balance_adjusted_amount'], $data['currency'] ?? null);
+            $balance = max(0, (float) ($invoice->balance ?? 0));
+            $adjusted = min($refundable, $balance);
             $refund = max(0, $refundable - $adjusted);
             $capInvoice = $invoice ?? $booking->invoice;
             if ($capInvoice) {

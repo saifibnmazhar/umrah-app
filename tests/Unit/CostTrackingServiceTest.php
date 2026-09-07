@@ -268,6 +268,27 @@ class CostTrackingServiceTest extends TestCase
     }
 
     /** @test */
+    public function test_cost_summary_excludes_cancelled_passengers(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        $booking = $this->createBookingWithPassengers($user, $deps, 9, 2);
+        $booking->passengers->first()->update(['is_cancelled' => true]);
+        $booking->refresh();
+
+        $service = new CostTrackingService;
+
+        $summary = $service->getBookingCostSummary($booking->load('passengers'));
+
+        $expectedTotal = 100.0 + (1000.0 + 28000.0) * 1;
+
+        $this->assertCount(1, $summary['passengers']);
+        $this->assertEqualsWithDelta($expectedTotal, (float) $summary['total_cost'], 0.01);
+        $this->assertEqualsWithDelta(100.0, (float) $summary['passengers']->first()['fingerprint_cost'], 0.01);
+    }
+
+    /** @test */
     public function test_cost_tracking_does_not_nplus_one_with_eager_loaded_relations(): void
     {
         $user = $this->setupUser();

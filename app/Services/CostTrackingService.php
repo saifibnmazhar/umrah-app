@@ -10,11 +10,12 @@ class CostTrackingService
     public function getPassengerCosts(Booking $booking): Collection
     {
         $fingerprintCost = $booking->fingerprint?->cost ?? 0;
-        $perPassengerFpCost = $booking->passengers->count() > 0
-            ? $fingerprintCost / $booking->passengers->count()
+        $activePassengers = $booking->passengers->reject(fn ($p) => $p->is_cancelled);
+        $perPassengerFpCost = $activePassengers->count() > 0
+            ? $fingerprintCost / $activePassengers->count()
             : 0;
 
-        return $booking->passengers->map(fn ($p) => [
+        return $activePassengers->map(fn ($p) => [
             'passenger_id' => $p->id,
             'passenger_name' => $p->first_name.' '.$p->last_name,
             'fingerprint_cost' => $fingerprintCost > 0 ? $perPassengerFpCost : 0,

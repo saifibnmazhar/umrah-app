@@ -353,16 +353,17 @@ class PassengerCancellationServiceTest extends TestCase
         TransactionType::create(['name' => 'Due Adjustment', 'type' => 'credit']);
         ['passengers' => $passengers, 'invoice' => $invoice, 'branch' => $branch] = $this->createBookingWithPassengers();
         $passenger = $passengers->first();
+        $invoice->update(['balance' => 3000]);
 
         $cancelled = $this->service->initiateCancellation($passenger, [
             'cancellation_branch_id' => $branch->id,
         ]);
 
         $this->service->confirmCancellation($cancelled, [
-            'balance_adjusted_amount' => 2500,
             'payment_method' => 'cash',
         ]);
 
+        $this->assertEquals(2500.00, (float) $cancelled->fresh()->balance_adjusted_amount);
         $this->assertEquals(0.00, (float) $cancelled->fresh()->refund_amount);
         $this->assertNull($cancelled->fresh()->refund_payment_id);
     }
@@ -379,13 +380,54 @@ class PassengerCancellationServiceTest extends TestCase
         ]);
 
         $this->service->confirmCancellation($cancelled, [
-            'balance_adjusted_amount' => 1000,
             'payment_method' => 'cash',
         ]);
 
-        $this->assertEquals(1500.00, (float) $cancelled->fresh()->refund_amount);
+        $this->assertEquals(2000.00, (float) $cancelled->fresh()->balance_adjusted_amount);
+        $this->assertEquals(500.00, (float) $cancelled->fresh()->refund_amount);
         $this->assertNotNull($cancelled->fresh()->refund_payment_id);
         $this->assertNotNull($cancelled->fresh()->refund_voucher_id);
+    }
+
+    public function test_confirm_ignores_smaller_adjustment_enforces_full_settlement(): void
+    {
+        TransactionType::create(['name' => 'Due Adjustment', 'type' => 'credit']);
+        TransactionType::create(['name' => 'Customer Refund', 'type' => 'debit']);
+        ['passengers' => $passengers, 'branch' => $branch] = $this->createBookingWithPassengers();
+        $passenger = $passengers->first();
+
+        $cancelled = $this->service->initiateCancellation($passenger, [
+            'cancellation_branch_id' => $branch->id,
+        ]);
+
+        $this->service->confirmCancellation($cancelled, [
+            'balance_adjusted_amount' => 100,
+            'payment_method' => 'cash',
+        ]);
+
+        $this->assertEquals(2000.00, (float) $cancelled->fresh()->balance_adjusted_amount);
+        $this->assertEquals(500.00, (float) $cancelled->fresh()->refund_amount);
+    }
+
+    public function test_confirm_zero_balance_full_refund(): void
+    {
+        TransactionType::create(['name' => 'Customer Refund', 'type' => 'debit']);
+        ['passengers' => $passengers, 'invoice' => $invoice, 'branch' => $branch] = $this->createBookingWithPassengers();
+        $passenger = $passengers->first();
+        $invoice->update(['balance' => 0]);
+
+        $cancelled = $this->service->initiateCancellation($passenger, [
+            'cancellation_branch_id' => $branch->id,
+        ]);
+
+        $this->service->confirmCancellation($cancelled, [
+            'payment_method' => 'cash',
+        ]);
+
+        $this->assertEquals(0.00, (float) $cancelled->fresh()->balance_adjusted_amount);
+        $this->assertEquals(2500.00, (float) $cancelled->fresh()->refund_amount);
+        $this->assertNull($cancelled->fresh()->adjustment_payment_id);
+        $this->assertNotNull($cancelled->fresh()->refund_payment_id);
     }
 
     public function test_confirm_creates_deduction_when_service_charge(): void
@@ -413,6 +455,7 @@ class PassengerCancellationServiceTest extends TestCase
 
     public function test_confirm_sets_permanent_status(): void
     {
+        TransactionType::create(['name' => 'Due Adjustment', 'type' => 'credit']);
         TransactionType::create(['name' => 'Customer Refund', 'type' => 'debit']);
         ['passengers' => $passengers, 'branch' => $branch] = $this->createBookingWithPassengers();
         $passenger = $passengers->first();

@@ -17,11 +17,15 @@ class BookingCancellationViewController extends Controller
     {
         $costSummary = app(CostTrackingService::class)->getBookingCostSummary($booking);
         $invoice = $booking->invoice;
+        $refundCapRemaining = $invoice
+            ? (float) app(RefundCapService::class)->getCap($invoice)['remaining']
+            : 0.0;
 
         return response()->json([
             'total_amount' => (float) ($invoice?->total_amount ?? 0),
             'total_paid' => (float) ($invoice?->paid_amount ?? 0),
             'balance' => (float) ($invoice?->balance ?? 0),
+            'refund_cap_remaining' => $refundCapRemaining,
             'costs' => [
                 'fingerprint_cost' => $costSummary['fingerprint_cost'],
                 'visa_cost' => $costSummary['visa_cost'],

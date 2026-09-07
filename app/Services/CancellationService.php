@@ -31,7 +31,9 @@ class CancellationService
         $totalPaid = (float) $invoice->paid_amount;
         $totalCost = $costSummary['total_cost'];
         $serviceCharge = isset($data['service_charge_deduction']) ? (float) $data['service_charge_deduction'] : null;
-        $refundAmount = $totalPaid - $totalCost - ($serviceCharge ?? 0);
+        $rawRefund = max(0, $totalPaid - $totalCost - ($serviceCharge ?? 0));
+        $remaining = app(RefundCapService::class)->getCap($invoice)['remaining'];
+        $refundAmount = min($rawRefund, $remaining);
 
         return DB::transaction(function () use ($booking, $invoice, $data, $totalPaid, $serviceCharge, $refundAmount) {
             $cancelledBooking = CancelledBooking::create([

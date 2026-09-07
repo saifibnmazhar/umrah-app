@@ -3011,7 +3011,7 @@ if ($passenger->ticket_fare_inbound_id) {
                     <span class="text-sm font-medium text-slate-700">Refund Amount:</span>
                     <span class="text-lg font-bold text-blue-700" x-text="$currency(computedRefundAmount, 2)"></span>
                 </div>
-                <p class="text-xs text-slate-500 mt-1">Refund = Total Paid &minus; Total Cost &minus; Service Charge</p>
+                <p class="text-xs text-slate-500 mt-1">Refund = Total Paid &minus; Total Cost &minus; Service Charge, capped at paid &minus; already refunded</p>
             </div>
 
             {{-- Actions --}}
@@ -6826,6 +6826,7 @@ function bookingIndexApp() {
         cancelServiceChargeBdt: '',
         cancelTotalPaid: 0,
         cancelCosts: { fingerprint_cost: 0, visa_cost: 0, ticket_cost: 0, total_cost: 0 },
+        cancelCapRemaining: null,
         cancelLoading: false,
 
         async openCancelModal(bookingId) {
@@ -6833,11 +6834,13 @@ function bookingIndexApp() {
             this.cancelModalVisible = true;
             this.cancelServiceCharge = null;
             this.cancelServiceChargeBdt = '';
+            this.cancelCapRemaining = null;
             try {
                 const res = await fetch(`/bookings/${bookingId}/cancellation/initiate`);
                 const data = await res.json();
                 this.cancelTotalPaid = data.total_paid;
                 this.cancelCosts = data.costs;
+                this.cancelCapRemaining = data.refund_cap_remaining ?? null;
                 if (data.booking_branch_id) this.cancelBranchId = data.booking_branch_id;
             } catch (e) {
                 alert('Failed to load cancellation data');
@@ -6851,10 +6854,13 @@ function bookingIndexApp() {
         },
 
         get computedRefundAmount() {
-            const paid = this.cancelTotalPaid;
-            const cost = this.cancelCosts.total_cost;
+            const paid = parseFloat(this.cancelTotalPaid) || 0;
+            const cost = parseFloat(this.cancelCosts.total_cost) || 0;
             const charge = parseFloat(this.cancelServiceCharge) || 0;
-            return (paid - cost - charge).toFixed(2);
+            const raw = Math.max(0, paid - cost - charge);
+            const remaining = parseFloat(this.cancelCapRemaining);
+            if (isNaN(remaining)) return raw.toFixed(2);
+            return Math.min(raw, Math.max(0, remaining)).toFixed(2);
         },
 
         async handleCancelSubmit() {

@@ -41,6 +41,7 @@ use App\Services\CostTrackingService;
 use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
 use App\Services\PaymentService;
+use App\Services\RefundCapService;
 use App\Support\DiagnosticLogger;
 use App\Traits\ConvertsDocumentsToPdf;
 use Illuminate\Database\QueryException;
@@ -2068,7 +2069,9 @@ class BookingController extends Controller
                 $costSummary = app(CostTrackingService::class)->getBookingCostSummary($booking);
                 $totalCost = $costSummary['total_cost'];
                 $serviceCharge = $booking->cancelledBooking->service_charge_deduction ?? 0;
-                $refundAmount = $invoice->paid_amount - $totalCost - $serviceCharge;
+                $rawRefund = max(0, $invoice->paid_amount - $totalCost - $serviceCharge);
+                $remaining = app(RefundCapService::class)->getCap($invoice)['remaining'];
+                $refundAmount = min($rawRefund, $remaining);
                 $booking->cancelledBooking->update([
                     'total_paid' => $invoice->paid_amount,
                     'refund_amount' => $refundAmount,
