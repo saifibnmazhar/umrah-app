@@ -1876,12 +1876,16 @@ Alpine.data('createBookingApp', () => ({
             return;
         }
 
-        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass);
+        const ticketFareId = this.passengerData.ticket_fare_id || this.passengerData.ticket_fare_inbound_id;
+        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId);
     },
 
-    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass) {
+    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId) {
         try {
             const params = new URLSearchParams({ route, airline, travel_class: travelClass });
+            if (ticketFareId) {
+                params.set('ticket_fare_id', String(ticketFareId));
+            }
             console.log('[DateRange] Calling API:', `/api/ticket-fares/flight-date-gap?${params}`);
             const response = await fetch(`/api/ticket-fares/flight-date-gap?${params}`);
             const data = await response.json();
@@ -3250,12 +3254,16 @@ Alpine.data('editBookingApp', () => ({
             return;
         }
 
-        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass);
+        const ticketFareId = this.passengerData.ticket_fare_id || this.passengerData.ticket_fare_inbound_id;
+        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId);
     },
 
-    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass) {
+    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId) {
         try {
             const params = new URLSearchParams({ route, airline, travel_class: travelClass });
+            if (ticketFareId) {
+                params.set('ticket_fare_id', String(ticketFareId));
+            }
             const response = await fetch(`/api/ticket-fares/flight-date-gap?${params}`);
             const data = await response.json();
 
@@ -4562,12 +4570,16 @@ Alpine.data('showBookingApp', () => ({
             return;
         }
 
-        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass);
+        const ticketFareId = this.passengerData.ticket_fare_id || this.passengerData.ticket_fare_inbound_id;
+        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId);
     },
 
-    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass) {
+    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId) {
         try {
             const params = new URLSearchParams({ route, airline, travel_class: travelClass });
+            if (ticketFareId) {
+                params.set('ticket_fare_id', String(ticketFareId));
+            }
             const response = await fetch(`/api/ticket-fares/flight-date-gap?${params}`);
             const data = await response.json();
 
