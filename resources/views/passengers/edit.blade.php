@@ -169,7 +169,9 @@
                                 <select id="passengerFlightDateRange" x-model="passengerData.flight_date_range" disabled class="flex-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed outline-none">
                                     <option value="">Select Date Range</option>
                                 </select>
-                                <button type="button" @click="openFlightDateModal()" class="shrink-0 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">Edit</button>
+                                @if(auth()->user()?->hasRole('Super Admin') || auth()->user()?->hasRole('Co Admin'))
+                                    <button type="button" @click="openFlightDateModal()" class="shrink-0 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">Edit</button>
+                                @endif
                             </div>
                         </div>
                         <div>
@@ -209,7 +211,9 @@
                                 <select id="passengerFlightDateRangeDouble" x-model="passengerData.flight_date_range" disabled class="flex-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-600 cursor-not-allowed outline-none">
                                     <option value="">Select Date Range</option>
                                 </select>
-                                <button type="button" @click="openFlightDateModal()" class="shrink-0 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">Edit</button>
+                                @if(auth()->user()?->hasRole('Super Admin') || auth()->user()?->hasRole('Co Admin'))
+                                    <button type="button" @click="openFlightDateModal()" class="shrink-0 px-4 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium text-sm">Edit</button>
+                                @endif
                             </div>
                         </div>
                     </div>
@@ -1037,6 +1041,10 @@
                 this.flightDateModalError = 'Flight date from must be before flight date to';
                 return;
             }
+            if (!this.isValidFlightDateGroup(from, to)) {
+                this.flightDateModalError = 'Invalid flight date range. Use 1-10, 11-20, or 21-last day of the same month.';
+                return;
+            }
             this.passengerData.flight_date_from = from;
             this.passengerData.flight_date_to = to;
             this.generateFlightDateRangeForEdit(from, to);
@@ -1068,6 +1076,21 @@
             const date = new Date(year, month, day);
             if (date.getDate() !== day || date.getMonth() !== month || date.getFullYear() !== year) return '';
             return `${year}-${String(month + 1).padStart(2, '0')}-${String(day).padStart(2, '0')}`;
+        },
+
+        isValidFlightDateGroup(fromDate, toDate) {
+            const from = new Date(fromDate);
+            const to = new Date(toDate);
+            if (isNaN(from.getTime()) || isNaN(to.getTime())) return false;
+            if (from.getFullYear() !== to.getFullYear() || from.getMonth() !== to.getMonth()) return false;
+            const fromDay = from.getDate();
+            const toDay = to.getDate();
+            const lastDay = new Date(from.getFullYear(), from.getMonth() + 1, 0).getDate();
+            return (
+                (fromDay === 1 && toDay === 10) ||
+                (fromDay === 11 && toDay === 20) ||
+                (fromDay === 21 && toDay === lastDay)
+            );
         },
 
         formatToDDMMMYY(value) {
