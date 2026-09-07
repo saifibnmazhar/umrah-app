@@ -315,11 +315,14 @@ class TicketIssueController extends Controller
                 $passenger = $issuedTicket->passenger;
                 $bookingResolved = $passenger->booking;
 
-                // Reverse OLD refund_adjustment if it was present, and is being removed/changed
-                if ($oldPaymentBy === 'customer' && $oldPaymentOption === 'refund_adjustment' && $oldRefundAdjustmentAmount > 0) {
+                // Reverse OLD refund_adjustment if it was present, and is being removed/changed.
+                // Mirrors creation (ReIssueController/TicketRequestController): balance moves
+                // whenever payment_by was 'customer' OR the ticket was refunded. The restore is
+                // driven by old state so a missing Payment row never blocks it.
+                if ($oldPaymentOption === 'refund_adjustment' && $oldRefundAdjustmentAmount > 0 && ($oldPaymentBy === 'customer' || $wasRefunded)) {
+                    $passenger->increaseRefundPayable($oldRefundAdjustmentAmount);
                     $oldPayment = Payment::where('re_issued_ticket_id', $latestRe->id)->first();
                     if ($oldPayment) {
-                        $passenger->increaseRefundPayable($oldRefundAdjustmentAmount);
                         $oldVoucher = Voucher::where('payment_id', $oldPayment->id)->first();
                         if ($oldVoucher) {
                             $oldVoucher->delete();
@@ -328,8 +331,8 @@ class TicketIssueController extends Controller
                     }
                 }
 
-                // Create NEW refund_adjustment if applicable
-                if ($newPaymentBy === 'customer' && $newPaymentOption === 'refund_adjustment' && $newRefundAdjustmentAmount > 0) {
+                // Create NEW refund_adjustment if applicable (mirrors creation conditions)
+                if (($newPaymentBy === 'customer' || $wasRefunded) && $newPaymentOption === 'refund_adjustment' && $newRefundAdjustmentAmount > 0) {
                     if ($newRefundAdjustmentAmount > (float) $passenger->refund_payable) {
                         DB::rollBack();
 

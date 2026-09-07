@@ -2,20 +2,25 @@
 
 namespace Tests\Feature;
 
+use App\Enums\PaymentMethod;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
+use App\Models\Payment;
 use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
 use App\Models\Role;
+use App\Models\TransactionType;
 use App\Models\User;
+use App\Models\Voucher;
+use App\Services\VoucherService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Foundation\Testing\RefreshDatabaseState;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schema;
 use Tests\TestCase;
 
-class ReIssueEditRefundedNonCustomerTest extends TestCase
+class ReIssueEditRefundPayableAdjustTest extends TestCase
 {
     use RefreshDatabase;
 
@@ -39,6 +44,10 @@ class ReIssueEditRefundedNonCustomerTest extends TestCase
         parent::setUp();
 
         Schema::disableForeignKeyConstraints();
+        // payments/vouchers come from full migrations and would otherwise leak
+        // rows across tests (re_issued_ticket_id auto-increment restarts).
+        Voucher::truncate();
+        Payment::truncate();
         Schema::dropIfExists('issued_ticket_logs');
         Schema::dropIfExists('re_issued_tickets');
         Schema::dropIfExists('refunded_tickets');
@@ -141,7 +150,7 @@ class ReIssueEditRefundedNonCustomerTest extends TestCase
 
         Schema::enableForeignKeyConstraints();
 
-        \App\Models\TransactionType::firstOrCreate(
+        TransactionType::firstOrCreate(
             ['name' => 'Ticket Refund - Re-issue'],
             ['type' => 'debit']
         );
@@ -156,10 +165,8 @@ class ReIssueEditRefundedNonCustomerTest extends TestCase
         return $user;
     }
 
-    public function test_edit_refunded_reissue_with_non_customer_payment_keeps_refund_adjustment(): void
+    private function makeRefundedReIssue(User $staff, array $overrides = []): array
     {
-        $staff = $this->makeStaff();
-
         $booking = Booking::create([
             'user_id' => $staff->id,
             'pax_qty' => 1,
@@ -171,7 +178,7 @@ class ReIssueEditRefundedNonCustomerTest extends TestCase
             'booking_id' => $booking->id,
             'first_name' => 'Test',
             'last_name' => 'Passenger',
-            'refund_payable' => 500,
+            'refund_payable' => $overrides['refund_payable'] ?? 400,
         ]);
 
         $issuedTicket = IssuedTicket::create([
@@ -182,38 +189,164 @@ class ReIssueEditRefundedNonCustomerTest extends TestCase
             'net_fare' => 1000,
         ]);
 
-        RefundedTicket::create([
-            'issued_ticket_id' => $issuedTicket->id,
-            'user_id' => $staff->id,
-            'net_fare' => 1000,
-        ]);
+        if (! ($overrides['skip_refund'] ?? false)) {
+            RefundedTicket::create([
+                'issued_ticket_id' => $issuedTicket->id,
+                'user_id' => $staff->id,
+                'net_fare' => 1000,
+            ]);
+        }
 
         $reIssued = ReIssuedTicket::create([
             'issued_ticket_id' => $issuedTicket->id,
             'user_id' => $staff->id,
-            'payment_by' => 'airline',
+            'payment_by' => $overrides['payment_by'] ?? 'airline',
             'payment_option' => 'refund_adjustment',
-            'refund_adjustment_amount' => 100,
+            'refund_adjustment_amount' => $overrides['adjustment'] ?? 100,
             'total_customer_payment' => 0,
         ]);
 
-        $response = $this->actingAs($staff)->putJson(
+        $payment = null;
+        if (! ($overrides['skip_payment'] ?? false)) {
+            $payment = Payment::create([
+                'booking_id' => $booking->id,
+                'user_id' => $staff->id,
+                'payment_date' => now(),
+                'payment_method' => PaymentMethod::CASH,
+                'amount' => $overrides['adjustment'] ?? 100,
+                'bdt_amount' => 0,
+                'passenger_id' => $passenger->id,
+                're_issued_ticket_id' => $reIssued->id,
+            ]);
+
+            app(VoucherService::class)->createVoucher([
+                'booking_id' => $booking->id,
+                'payment_id' => $payment->id,
+                'user_id' => $staff->id,
+                'transaction_type_id' => TransactionType::where('name', 'Ticket Refund - Re-issue')->first()->id,
+                'payment_date' => now(),
+                'payment_method' => PaymentMethod::CASH,
+                'amount' => $overrides['adjustment'] ?? 100,
+                'bdt_amount' => 0,
+            ]);
+        }
+
+        return compact('booking', 'passenger', 'issuedTicket', 'reIssued', 'payment');
+    }
+
+    private function editReIssue(User $staff, Booking $booking, Passenger $passenger, IssuedTicket $issuedTicket, array $payload)
+    {
+        return $this->actingAs($staff)->putJson(
             route('bookings.passengers.ticket-edit', [$booking->id, $passenger->id]),
-            [
-                'issued_ticket_id' => $issuedTicket->id,
-                'payment_by' => 'airline',
-                'payment_option' => 'refund_adjustment',
-                'refund_adjustment_amount' => 100,
-            ]
+            array_merge(['issued_ticket_id' => $issuedTicket->id], $payload)
         );
+    }
+
+    public function test_refunded_non_customer_amount_change_adjusts_balance(): void
+    {
+        $staff = $this->makeStaff();
+        ['booking' => $booking, 'passenger' => $passenger, 'issuedTicket' => $issuedTicket, 'reIssued' => $reIssued, 'payment' => $payment] = $this->makeRefundedReIssue($staff);
+
+        $response = $this->editReIssue($staff, $booking, $passenger, $issuedTicket, [
+            'payment_by' => 'airline',
+            'payment_option' => 'refund_adjustment',
+            'refund_adjustment_amount' => 150,
+        ]);
 
         $response->assertOk()->assertJson(['success' => true]);
 
+        // 400 + 100 (restored) - 150 (consumed) = 350
+        $this->assertDatabaseHas('passengers', [
+            'id' => $passenger->id,
+            'refund_payable' => 350,
+        ]);
+        // Old payment/voucher replaced with fresh rows for the new amount
+        $this->assertDatabaseMissing('payments', ['id' => $payment->id]);
+        $this->assertDatabaseMissing('vouchers', ['payment_id' => $payment->id]);
+        $this->assertDatabaseHas('payments', [
+            're_issued_ticket_id' => $reIssued->id,
+            'amount' => 150,
+        ]);
         $this->assertDatabaseHas('re_issued_tickets', [
             'id' => $reIssued->id,
             'payment_by' => 'airline',
             'payment_option' => 'refund_adjustment',
-            'total_customer_payment' => 0,
+            'refund_adjustment_amount' => 150,
         ]);
+    }
+
+    public function test_refunded_customer_to_airline_keeps_balance_with_replaced_rows(): void
+    {
+        $staff = $this->makeStaff();
+        ['booking' => $booking, 'passenger' => $passenger, 'issuedTicket' => $issuedTicket, 'reIssued' => $reIssued, 'payment' => $payment] = $this->makeRefundedReIssue($staff, ['payment_by' => 'customer']);
+
+        $response = $this->editReIssue($staff, $booking, $passenger, $issuedTicket, [
+            'payment_by' => 'airline',
+            'payment_option' => 'refund_adjustment',
+            'refund_adjustment_amount' => 100,
+        ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        // 400 + 100 (restored) - 100 (consumed) = 400
+        $this->assertDatabaseHas('passengers', [
+            'id' => $passenger->id,
+            'refund_payable' => 400,
+        ]);
+        $this->assertDatabaseMissing('payments', ['id' => $payment->id]);
+        $this->assertDatabaseMissing('vouchers', ['payment_id' => $payment->id]);
+        $this->assertDatabaseHas('payments', [
+            're_issued_ticket_id' => $reIssued->id,
+            'amount' => 100,
+        ]);
+        $this->assertDatabaseHas('re_issued_tickets', [
+            'id' => $reIssued->id,
+            'payment_by' => 'airline',
+            'payment_option' => 'refund_adjustment',
+        ]);
+    }
+
+    public function test_refunded_missing_payment_row_still_restores_and_reconsumes(): void
+    {
+        $staff = $this->makeStaff();
+        ['booking' => $booking, 'passenger' => $passenger, 'issuedTicket' => $issuedTicket, 'reIssued' => $reIssued] = $this->makeRefundedReIssue($staff, ['payment_by' => 'customer', 'skip_payment' => true]);
+
+        $response = $this->editReIssue($staff, $booking, $passenger, $issuedTicket, [
+            'payment_by' => 'airline',
+            'payment_option' => 'refund_adjustment',
+            'refund_adjustment_amount' => 100,
+        ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        // 400 + 100 (restored despite missing row) - 100 (re-consumed) = 400
+        $this->assertDatabaseHas('passengers', [
+            'id' => $passenger->id,
+            'refund_payable' => 400,
+        ]);
+        $this->assertDatabaseHas('payments', [
+            're_issued_ticket_id' => $reIssued->id,
+            'amount' => 100,
+        ]);
+    }
+
+    public function test_non_refunded_non_customer_amount_change_leaves_balance(): void
+    {
+        $staff = $this->makeStaff();
+        ['booking' => $booking, 'passenger' => $passenger, 'issuedTicket' => $issuedTicket, 'reIssued' => $reIssued] = $this->makeRefundedReIssue($staff, ['skip_refund' => true, 'skip_payment' => true, 'refund_payable' => 0]);
+
+        $response = $this->editReIssue($staff, $booking, $passenger, $issuedTicket, [
+            'payment_by' => 'airline',
+            'payment_option' => 'refund_adjustment',
+            'refund_adjustment_amount' => 150,
+        ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        $this->assertDatabaseHas('passengers', [
+            'id' => $passenger->id,
+            'refund_payable' => 0,
+        ]);
+        $this->assertDatabaseMissing('payments', ['re_issued_ticket_id' => $reIssued->id]);
     }
 }
