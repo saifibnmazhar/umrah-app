@@ -241,6 +241,30 @@ class BookingController extends Controller
                         });
                 }
             })
+            ->when($request->filled('payment_wise'), function ($q) use ($request) {
+                $paymentWise = $request->input('payment_wise');
+                $rate = (float) (app(CurrencyRateService::class)->getCurrentRateValue() ?? 0);
+                $q->whereHas('invoice', function ($iq) use ($paymentWise, $rate) {
+                    if ($paymentWise === 'clear') {
+                        $iq->where('balance', '<=', 0);
+                    } elseif ($paymentWise === 'due') {
+                        $iq->where('balance', '>', 0);
+                    } elseif ($paymentWise === 'due_below_1000') {
+                        $iq->where('balance', '>', 0);
+                        if ($rate > 0) {
+                            $iq->whereRaw('balance * ? < 1000', [$rate]);
+                        } else {
+                            $iq->where('balance', '<', 1000);
+                        }
+                    } elseif ($paymentWise === 'due_above_1000') {
+                        if ($rate > 0) {
+                            $iq->whereRaw('balance * ? >= 1000', [$rate]);
+                        } else {
+                            $iq->where('balance', '>=', 1000);
+                        }
+                    }
+                });
+            })
             ->orderBy('created_at', 'desc');
 
         $totalBookingCount = (clone $bookingQuery)->count();

@@ -745,6 +745,13 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     @endforeach
                 </select>
                 @endunless
+                <select x-model="selectedPaymentWise" @change="onPaymentWiseChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <option value="">Payment Wise</option>
+                    <option value="clear">Payment Clear</option>
+                    <option value="due">Payment Due</option>
+                    <option value="due_below_1000">Due (Below BDT 1000)</option>
+                    <option value="due_above_1000">Due (Above BDT 1000)</option>
+                </select>
                 <button @click="clearBookingFilters" class="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 transition text-sm">Clear</button>
                 <span class="flex-1 min-w-0"></span>
                 <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm" x-text="'Total Booking - ' + totalBookingCount">Total Booking - {{ $totalBookingCount }}</span>
@@ -3450,7 +3457,7 @@ function bookingIndexApp() {
         clearBookingFilters() {
             const url = new URL(window.location);
             ['search', 'booking_date_from', 'booking_date_to',
-             'fingerprint_location', 'booking_status', 'booking_branch_id', 'page'
+             'fingerprint_location', 'booking_status', 'booking_branch_id', 'payment_wise', 'page'
             ].forEach(p => url.searchParams.delete(p));
             window.location.href = url.toString();
         },
