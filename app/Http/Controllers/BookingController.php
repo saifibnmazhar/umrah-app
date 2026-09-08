@@ -695,7 +695,7 @@ class BookingController extends Controller
             ->withQueryString();
 
         $passengerStatuses = PassengerStatus::all();
-        $statusChangeOptions = $passengerStatuses->filter(fn ($s) => in_array($s->name, ['Cancel', 'Delivered', 'Hold'])
+        $statusChangeOptions = $passengerStatuses->filter(fn ($s) => in_array($s->name, ['Cancel', 'Delivered', 'Hold', 'Ticket Refund Done', 'Departure Done'])
         )->values();
         $statusChangeOptions = $statusChangeOptions->concat(collect([
             (object) ['id' => 'visa_submitted', 'name' => 'Visa Submitted'],

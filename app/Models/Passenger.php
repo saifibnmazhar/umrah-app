@@ -405,6 +405,8 @@ class Passenger extends Model
         return $this->hasMany(PassengerUpdateLog::class);
     }
 
+    public const MANUAL_STATUSES = ['Hold', 'Cancel', 'Delivered', 'Ticket Refund Done', 'Departure Done'];
+
     public function isOnHold(): bool
     {
         return $this->status?->name === 'Hold';
@@ -415,6 +417,20 @@ class Passenger extends Model
         return $this->status?->name === 'Cancel';
     }
 
+    public function isManualStatus(): bool
+    {
+        return in_array($this->status?->name, self::MANUAL_STATUSES, true);
+    }
+
+    public function getDisplayStatusAttribute(): ?string
+    {
+        if ($this->isManualStatus()) {
+            return $this->status?->name;
+        }
+
+        return $this->computed_status;
+    }
+
     public function isVisaOnHold(): bool
     {
         return (bool) $this->is_visa_held;
@@ -422,15 +438,12 @@ class Passenger extends Model
 
     public function syncComputedStatus(): void
     {
-        $statusName = $this->computed_status;
-
-        $statusId = null;
-        if ($statusName) {
-            $statusId = PassengerStatus::firstOrCreate(['name' => $statusName])->id;
+        if ($this->isManualStatus()) {
+            return;
         }
 
-        if ($this->passenger_status_id !== $statusId) {
-            $this->passenger_status_id = $statusId;
+        if ($this->passenger_status_id !== null) {
+            $this->passenger_status_id = null;
             $this->saveQuietly();
         }
     }

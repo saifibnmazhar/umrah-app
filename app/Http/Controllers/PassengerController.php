@@ -793,12 +793,21 @@ class PassengerController extends Controller
             'passenger_status_id' => 'nullable|exists:passenger_statuses,id',
         ]);
 
-        $statusName = PassengerStatus::find($validated['passenger_status_id'])?->name;
+        $statusName = $validated['passenger_status_id']
+            ? PassengerStatus::find($validated['passenger_status_id'])?->name
+            : null;
 
         if ($statusName === 'Cancel') {
             return response()->json([
                 'success' => false,
                 'message' => 'Use the cancellation workflow to cancel a passenger.',
+            ], 422);
+        }
+
+        if ($statusName !== null && ! in_array($statusName, Passenger::MANUAL_STATUSES, true)) {
+            return response()->json([
+                'success' => false,
+                'message' => 'Only manual statuses can be set. Computed status is shown automatically.',
             ], 422);
         }
 

@@ -1151,7 +1151,7 @@ if ($passenger->ticket_fare_inbound_id) {
             @endforeach
         </select>
         @else
-        <span class="text-slate-700" x-text="getComputedStatusName({{ $loop->index }})">{{ $passenger->status?->name ?? $passenger->computed_status ?? 'None' }}</span>
+        <span class="text-slate-700" x-text="getComputedStatusName({{ $loop->index }})">{{ $passenger->display_status ?? 'None' }}</span>
         @endif
     </td>
     <td class="px-3 py-2 text-slate-700">{{ $passenger->passport_no ?? '—' }}</td>
@@ -3718,7 +3718,8 @@ function bookingIndexApp() {
             const row = this.passengersTicketData[index];
             if (!row) return '';
 
-            if (row.status && row.status !== 'None') {
+            const manualStatuses = ['Hold', 'Cancel', 'Delivered', 'Ticket Refund Done', 'Departure Done'];
+            if (row.status && manualStatuses.includes(row.status)) {
                 return this.passengerStatusMap[row.status] ?? '';
             }
 
@@ -3753,7 +3754,8 @@ function bookingIndexApp() {
             const row = this.passengersTicketData[index];
             if (!row) return 'None';
 
-            if (row.status && row.status !== 'None') {
+            const manualStatuses = ['Hold', 'Cancel', 'Delivered', 'Ticket Refund Done', 'Departure Done'];
+            if (row.status && manualStatuses.includes(row.status)) {
                 return row.status;
             }
 

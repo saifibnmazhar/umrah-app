@@ -26,7 +26,6 @@ use App\Models\Invoice;
 use App\Models\IssuedTicket;
 use App\Models\Package;
 use App\Models\Passenger;
-use App\Models\PassengerStatus;
 use App\Models\Payment;
 use App\Models\TicketAgent;
 use App\Models\User;
@@ -155,7 +154,7 @@ class BookingSeeder extends Seeder
         // Passengers for Booking #1
         $passenger1 = Passenger::create([
             'booking_id' => $booking1->id,
-            'passenger_status_id' => PassengerStatus::where('name', 'Processing')->first()?->id,
+            'passenger_status_id' => null,
             'first_name' => 'Mohammed',
             'last_name' => 'Siddique',
             'passport_no' => 'PB1234567',
@@ -175,7 +174,7 @@ class BookingSeeder extends Seeder
 
         $passenger2 = Passenger::create([
             'booking_id' => $booking1->id,
-            'passenger_status_id' => PassengerStatus::where('name', 'Processing')->first()?->id,
+            'passenger_status_id' => null,
             'first_name' => 'Fatima',
             'last_name' => 'Siddique',
             'passport_no' => 'PB7654321',
@@ -355,7 +354,7 @@ class BookingSeeder extends Seeder
         // Passenger for Booking #2
         $passenger3 = Passenger::create([
             'booking_id' => $booking2->id,
-            'passenger_status_id' => PassengerStatus::where('name', 'Processing')->first()?->id,
+            'passenger_status_id' => null,
             'first_name' => 'Yusuf',
             'last_name' => 'Siddique',
             'passport_no' => 'PB9988776',
