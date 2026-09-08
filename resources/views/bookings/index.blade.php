@@ -707,6 +707,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             $canCancelPassenger = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin');
             $canConfirmCancellation = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || auth()->user()->hasRole('Branch Manager') || auth()->user()->hasRole('Fingerprint Admin');
             $canRevertVisa = auth()->user()->hasRole('Super Admin') || auth()->user()->hasRole('Co Admin') || auth()->user()->hasRole('Visa Admin');
+            $canApplyDiscount = auth()->user()->roles->pluck('name')->intersect(['Super Admin', 'Co Admin'])->isNotEmpty();
         @endphp
         <h1 class="text-2xl font-bold text-slate-800">Booking</h1>
         @if($canCreateBooking)
@@ -765,6 +766,13 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     @endforeach
                 </select>
                 @endunless
+                <select x-model="selectedPaymentWise" @change="onPaymentWiseChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                    <option value="">Payment Wise</option>
+                    <option value="clear">Payment Clear</option>
+                    <option value="due">Payment Due</option>
+                    <option value="due_below_1000">Due (Below BDT 1000)</option>
+                    <option value="due_above_1000">Due (Above BDT 1000)</option>
+                </select>
                 <button @click="clearBookingFilters" class="px-3 py-2 border border-slate-300 rounded-lg hover:bg-slate-100 text-slate-600 transition text-sm">Clear</button>
                 <span class="flex-1 min-w-0"></span>
                 <span class="inline-flex items-center gap-2 px-4 py-2 bg-slate-700 text-white font-semibold rounded-lg whitespace-nowrap shadow-sm" x-text="'Total Booking - ' + totalBookingCount">Total Booking - {{ $totalBookingCount }}</span>
@@ -784,7 +792,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <th class="px-3 py-2 text-left font-medium">Fingerprint Branch</th>
                             <th class="px-3 py-2 text-left font-medium">District</th>
                             <th class="px-3 py-2 text-left font-medium">Package</th>
-                            <th class="px-3 py-2 text-left font-medium">Total</th>
+                            <th class="px-3 py-2 text-center font-medium">Total</th>
                             <th class="px-3 py-2 text-left font-medium">Paid</th>
                             <th class="px-3 py-2 text-left font-medium">Due</th>
                             <th class="px-3 py-2 text-left font-medium">Status</th>
@@ -818,9 +826,9 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <td class="px-3 py-2 text-slate-700">{{ $booking->fingerprintBranch->name ?? '—' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->district->name ?? 'N/A' }}</td>
                             <td class="px-3 py-2 text-slate-700">{{ $booking->package->package_name ?? 'N/A' }}</td>
-                            <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->total_amount ?? 0, 2, $bookingCurrencyRate)</td>
-                            <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->paid_amount ?? 0, 2, $bookingCurrencyRate)</td>
-                            <td class="px-3 py-2 text-slate-700">@currency($booking->invoice?->balance ?? 0, 2, $bookingCurrencyRate)</td>
+                            <td class="px-3 py-2 text-slate-700"><div class="flex items-center justify-center gap-3">@php $indexDiscountTypeRaw = $booking->discount_type instanceof \BackedEnum ? $booking->discount_type->value : ($booking->discount_type ?? 'fixed_amount'); $indexDiscountType = $indexDiscountTypeRaw === 'percentage' ? 'percentage' : 'fixed'; @endphp<span class="inline-block w-[140px] text-right tabular-nums shrink-0" data-role="index-total-value" data-booking-id="{{ $booking->id }}">@currency($booking->invoice?->total_amount ?? 0, 2, $bookingCurrencyRate)</span>@if($canApplyDiscount)<button type="button" data-role="index-discount-btn" data-booking-id="{{ $booking->id }}" data-discount-type="{{ $indexDiscountType }}" data-discount-value="{{ $booking->discount_value ?? 0 }}" data-rate="{{ $bookingCurrencyRate }}" onclick="openIndexDiscountModal({{ $booking->id }}, '{{ $indexDiscountType }}', {{ (float) ($booking->discount_value ?? 0) }}, {{ (float) $bookingCurrencyRate }})" class="shrink-0 text-sm bg-slate-200 hover:bg-slate-300 text-slate-600 px-3 py-1 rounded">Discount</button>@endif</div></td>
+                            <td class="px-3 py-2 text-slate-700"><span data-role="index-paid-value" data-booking-id="{{ $booking->id }}">@currency($booking->invoice?->paid_amount ?? 0, 2, $bookingCurrencyRate)</span></td>
+                            <td class="px-3 py-2 text-slate-700"><span data-role="index-due-value" data-booking-id="{{ $booking->id }}">@currency($booking->invoice?->balance ?? 0, 2, $bookingCurrencyRate)</span></td>
                             <td class="px-3 py-2">
                                 @if($booking->is_cancelled)
                                     @php $cb = $booking->cancelledBooking; @endphp
@@ -869,6 +877,62 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                 {{ $bookings->links() }}
             </div>
         </div>
+        @if($canApplyDiscount)
+        <div id="indexDiscountModal" class="hidden fixed inset-0 z-50 flex items-center justify-center">
+            <div class="fixed inset-0 bg-black/50" onclick="closeIndexDiscountModal()"></div>
+            <div class="relative bg-white rounded-xl shadow-2xl w-full max-w-md mx-4 p-6">
+                <div class="flex justify-between items-start mb-4">
+                    <h3 class="text-xl font-semibold text-slate-800">Apply Discount</h3>
+                    <button onclick="closeIndexDiscountModal()" class="text-slate-400 hover:text-slate-600">
+                        <svg xmlns="http://www.w3.org/2000/svg" class="h-5 w-5" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M6 18L18 6M6 6l12 12" />
+                        </svg>
+                    </button>
+                </div>
+                <div class="mb-4">
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Discount Type</label>
+                    <select id="indexDiscountType" onchange="onIndexDiscountTypeChange()"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <option value="fixed">Fixed</option>
+                        <option value="percentage">Percentage (%)</option>
+                    </select>
+                </div>
+                <div id="indexFixedDiscountFields" class="mb-4">
+                    <div id="indexFixedBdtField" class="mb-3">
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Fixed (BDT)</label>
+                        <input type="number" id="indexDiscountValueBdt"
+                            min="0" step="0.01"
+                            oninput="onIndexFixedBdtInput()"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                    <div>
+                        <label class="block text-sm font-medium text-slate-600 mb-1">Fixed (SAR)</label>
+                        <input type="number" id="indexDiscountValueSar"
+                            min="0" step="any"
+                            oninput="onIndexFixedSarInput()"
+                            class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                    </div>
+                </div>
+                <div id="indexPercentageDiscountField" class="mb-4">
+                    <label class="block text-sm font-medium text-slate-600 mb-1">Discount Value (%)</label>
+                    <input type="number" id="indexDiscountValuePct"
+                        min="0" max="100" step="0.01"
+                        oninput="onIndexPercentageInput()"
+                        class="w-full px-3 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                </div>
+                <div class="flex gap-3 pt-4 border-t border-slate-200">
+                    <button type="button" onclick="applyIndexDiscount()"
+                        class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium">
+                        Apply
+                    </button>
+                    <button type="button" onclick="closeIndexDiscountModal()"
+                        class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">
+                        Cancel
+                    </button>
+                </div>
+            </div>
+        </div>
+        @endif
     </div>
 
     @if($canViewPassengerIndex)
@@ -3642,7 +3706,7 @@ function bookingIndexApp() {
         clearBookingFilters() {
             const url = new URL(window.location);
             ['search', 'booking_date_from', 'booking_date_to',
-             'fingerprint_location', 'booking_status', 'booking_branch_id', 'page'
+             'fingerprint_location', 'booking_status', 'booking_branch_id', 'payment_wise', 'page'
             ].forEach(p => url.searchParams.delete(p));
             window.location.href = url.toString();
         },
@@ -7324,6 +7388,154 @@ function updateFingerprintLocation(bookingId, location, select) {
         console.error('Error:', error);
         alert('Failed to update fingerprint location');
         selectEl.value = originalValue;
+    });
+}
+
+var activeIndexDiscountBookingId = null;
+var activeIndexDiscountRate = 0;
+
+function indexDiscountCurrencyMode() {
+    return (typeof Alpine !== 'undefined' && Alpine.store('currency')) ? (Alpine.store('currency').mode || 'SAR') : 'SAR';
+}
+
+function indexDiscountRound2(n) {
+    return Math.round(n * 100) / 100;
+}
+
+function indexDiscountToast(message, isError) {
+    const container = document.getElementById('toastContainer') || (() => {
+        const el = document.createElement('div');
+        el.id = 'toastContainer';
+        el.className = 'fixed top-4 right-4 z-[70] space-y-2';
+        document.body.appendChild(el);
+        return el;
+    })();
+    const toast = document.createElement('div');
+    toast.className = 'px-4 py-2 rounded shadow text-white ' + (isError ? 'bg-red-600' : 'bg-slate-700');
+    toast.textContent = message;
+    container.appendChild(toast);
+    setTimeout(() => toast.remove(), 3000);
+}
+
+function updateIndexDiscountFieldsVisibility() {
+    const type = document.getElementById('indexDiscountType').value;
+    const mode = indexDiscountCurrencyMode();
+    document.getElementById('indexFixedDiscountFields').classList.toggle('hidden', type !== 'fixed');
+    document.getElementById('indexPercentageDiscountField').classList.toggle('hidden', type !== 'percentage');
+    if (type === 'fixed') {
+        const showBdt = mode === 'BDT';
+        const bdtField = document.getElementById('indexFixedBdtField');
+        const sarInput = document.getElementById('indexDiscountValueSar');
+        bdtField.classList.toggle('hidden', !showBdt);
+        sarInput.readOnly = showBdt;
+        if (showBdt) {
+            sarInput.classList.add('bg-slate-100', 'cursor-not-allowed');
+        } else {
+            sarInput.classList.remove('bg-slate-100', 'cursor-not-allowed');
+        }
+    }
+}
+
+function openIndexDiscountModal(bookingId, type, value, rate) {
+    activeIndexDiscountBookingId = bookingId;
+    activeIndexDiscountRate = parseFloat(rate) || 0;
+    const mode = indexDiscountCurrencyMode();
+    document.getElementById('indexDiscountType').value = type === 'percentage' ? 'percentage' : 'fixed';
+    document.getElementById('indexDiscountValueSar').value = parseFloat(value || 0).toFixed(6);
+    if (type === 'fixed' && mode === 'BDT' && activeIndexDiscountRate > 0) {
+        document.getElementById('indexDiscountValueBdt').value = indexDiscountRound2((parseFloat(value) || 0) * activeIndexDiscountRate).toFixed(2);
+    } else {
+        document.getElementById('indexDiscountValueBdt').value = '';
+    }
+    document.getElementById('indexDiscountValuePct').value = type === 'percentage' ? indexDiscountRound2(parseFloat(value) || 0) : '';
+    updateIndexDiscountFieldsVisibility();
+    document.getElementById('indexDiscountModal').classList.remove('hidden');
+}
+
+function closeIndexDiscountModal() {
+    document.getElementById('indexDiscountModal').classList.add('hidden');
+    activeIndexDiscountBookingId = null;
+}
+
+function onIndexDiscountTypeChange() {
+    document.getElementById('indexDiscountValueSar').value = '';
+    document.getElementById('indexDiscountValueBdt').value = '';
+    document.getElementById('indexDiscountValuePct').value = '';
+    updateIndexDiscountFieldsVisibility();
+}
+
+function onIndexFixedBdtInput() {
+    const bdtValue = parseFloat(document.getElementById('indexDiscountValueBdt').value) || 0;
+    const sarValue = activeIndexDiscountRate > 0 ? bdtValue / activeIndexDiscountRate : 0;
+    document.getElementById('indexDiscountValueSar').value = sarValue ? sarValue.toFixed(6) : '';
+}
+
+function onIndexFixedSarInput() {
+    const mode = indexDiscountCurrencyMode();
+    if (mode === 'BDT' && activeIndexDiscountRate > 0) {
+        const sarValue = parseFloat(document.getElementById('indexDiscountValueSar').value) || 0;
+        document.getElementById('indexDiscountValueBdt').value = sarValue ? indexDiscountRound2(sarValue * activeIndexDiscountRate).toFixed(2) : '';
+    }
+}
+
+function onIndexPercentageInput() {
+    const input = document.getElementById('indexDiscountValuePct');
+    const val = parseFloat(input.value);
+    if (!isNaN(val) && val > 100) {
+        input.value = 100;
+        indexDiscountToast('Percentage cannot exceed 100%', true);
+    }
+    if (!isNaN(val) && val < 0) {
+        input.value = 0;
+    }
+}
+
+function getIndexDiscountValue() {
+    const type = document.getElementById('indexDiscountType').value;
+    if (type === 'percentage') {
+        return parseFloat(document.getElementById('indexDiscountValuePct').value) || 0;
+    }
+    return parseFloat(document.getElementById('indexDiscountValueSar').value) || 0;
+}
+
+function applyIndexDiscount() {
+    if (!activeIndexDiscountBookingId) return;
+    const discountType = document.getElementById('indexDiscountType').value;
+    const discountValue = getIndexDiscountValue();
+    fetch(`/bookings/${activeIndexDiscountBookingId}`, {
+        method: 'PATCH',
+        headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]')?.getAttribute('content') || '{{ csrf_token() }}'
+        },
+        body: JSON.stringify({ discount_type: discountType, discount_value: discountValue })
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success && data.invoice) {
+            const rate = activeIndexDiscountRate;
+            const totalEl = document.querySelector(`[data-role="index-total-value"][data-booking-id="${activeIndexDiscountBookingId}"]`);
+            const paidEl = document.querySelector(`[data-role="index-paid-value"][data-booking-id="${activeIndexDiscountBookingId}"]`);
+            const dueEl = document.querySelector(`[data-role="index-due-value"][data-booking-id="${activeIndexDiscountBookingId}"]`);
+            if (totalEl) totalEl.textContent = Alpine.store('currency').format(data.invoice.total_amount, 2, rate);
+            if (paidEl) paidEl.textContent = Alpine.store('currency').format(data.invoice.paid_amount, 2, rate);
+            if (dueEl) dueEl.textContent = Alpine.store('currency').format(data.invoice.balance, 2, rate);
+            const btn = document.querySelector(`[data-role="index-discount-btn"][data-booking-id="${activeIndexDiscountBookingId}"]`);
+            if (btn && data.discount) {
+                const shortType = data.discount.type === 'percentage' ? 'percentage' : 'fixed';
+                btn.dataset.discountType = shortType;
+                btn.dataset.discountValue = data.discount.value;
+                btn.setAttribute('onclick', `openIndexDiscountModal(${activeIndexDiscountBookingId}, '${shortType}', ${parseFloat(data.discount.value) || 0}, ${rate})`);
+            }
+            closeIndexDiscountModal();
+            indexDiscountToast('Discount applied successfully');
+        } else {
+            indexDiscountToast(data.message || 'Failed to apply discount', true);
+        }
+    })
+    .catch(error => {
+        indexDiscountToast('Error: ' + error.message, true);
     });
 }
 
