@@ -452,32 +452,16 @@ class TicketFareController extends Controller
 
     public function getFlightDateGap(Request $request)
     {
-        $route = $request->input('route');
-        $airline = $request->input('airline');
-        $travelClass = $request->input('travel_class');
+        $ticketFareId = $request->input('ticket_fare_id') ?? $request->input('ticket_fare_inbound_id');
 
         $flightDateGap = FlightDateGap::first();
         $defaultGap = $flightDateGap?->gap ?? 30;
 
         $additionalGap = 0;
 
-        if ($route && $airline) {
-            $ticketFare = TicketFare::whereHas('airline', function ($query) use ($airline) {
-                $query->where('name', $airline);
-            })
-                ->whereHas('route', function ($query) use ($route) {
-                    $query->whereRaw("CONCAT(
-                        (SELECT code FROM city_codes WHERE city_codes.id = routes.from_city_id),
-                        '-',
-                        (SELECT code FROM city_codes WHERE city_codes.id = routes.to_city_id)
-                    ) = ?", [$route]);
-                })
-                ->with('route')
-                ->first();
-
-            if ($ticketFare && $ticketFare->route) {
-                $additionalGap = $ticketFare->route->additional_gap ?? 0;
-            }
+        if ($ticketFareId) {
+            $ticketFare = TicketFare::with('route')->find($ticketFareId);
+            $additionalGap = $ticketFare?->route?->additional_gap ?? 0;
         }
 
         return response()->json([

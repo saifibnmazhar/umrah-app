@@ -27,11 +27,11 @@
     @endif
 
     <div class="bg-white rounded-lg shadow-lg p-6 mb-4">
-        <form method="GET" action="{{ route('payments.index') }}" id="payment-filter-form" class="flex items-end gap-4">
+        <form method="GET" action="{{ route('payments.index') }}" id="payment-filter-form" class="flex flex-wrap items-end gap-4">
             <div class="min-w-[220px]">
                 <label class="block text-sm font-medium text-slate-700 mb-1">Transaction Type</label>
-                <select name="transaction_type_id"
-                        onchange="document.getElementById('payment-filter-form').submit()"
+                <select name="transaction_type_id" id="transaction-type-filter"
+                        onchange="document.getElementById('agent-filter').value='';document.getElementById('payment-filter-form').submit()"
                         class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
                     <option value="">All Transaction Types</option>
                     @foreach($transactionTypes as $type)
@@ -39,6 +39,38 @@
                             {{ $type->name }}
                         </option>
                     @endforeach
+                </select>
+            </div>
+            <div class="min-w-[200px]">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Agent</label>
+                <select name="agent_id" id="agent-filter"
+                        onchange="document.getElementById('payment-filter-form').submit()"
+                        {{ $agentOptions->isEmpty() ? 'disabled' : '' }}
+                        class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm disabled:bg-slate-100 disabled:text-slate-400">
+                    @if($agentOptions->isEmpty())
+                        <option value="">Select transaction type first</option>
+                    @else
+                        <option value="">All Agents</option>
+                        @foreach($agentOptions as $agent)
+                            <option value="{{ $agent->id }}" {{ request('agent_id') == $agent->id ? 'selected' : '' }}>
+                                {{ $agent->name }}
+                            </option>
+                        @endforeach
+                    @endif
+                </select>
+            </div>
+            <div class="min-w-[200px]">
+                <label class="block text-sm font-medium text-slate-700 mb-1">Branch</label>
+                <select name="branch_id"
+                        onchange="document.getElementById('payment-filter-form').submit()"
+                        class="w-full border border-slate-300 rounded-md px-3 py-2 text-sm">
+                    <option value="">All Branches</option>
+                    @foreach($branches as $branch)
+                        <option value="{{ $branch->id }}" {{ request('branch_id') == $branch->id ? 'selected' : '' }}>
+                            {{ $branch->name }}
+                        </option>
+                    @endforeach
+                    <option value="other" {{ request('branch_id') === 'other' ? 'selected' : '' }}>Other</option>
                 </select>
             </div>
             <div>
@@ -61,6 +93,7 @@
                         <th class="px-3 py-2 text-left font-medium">Created At</th>
                         <th class="px-3 py-2 text-left font-medium">Transaction Type</th>
                         <th class="px-3 py-2 text-left font-medium">Agent Name</th>
+                        <th class="px-3 py-2 text-left font-medium">Branch</th>
                         <th class="px-3 py-2 text-left font-medium">Method</th>
                         <th class="px-3 py-2 text-right font-medium">Amount (SAR)</th>
                         <th class="px-3 py-2 text-right font-medium">Amount (BDT)</th>
@@ -101,6 +134,9 @@
                                     <span class="text-slate-400">-</span>
                                 @endif
                             </td>
+                            <td class="px-3 py-2 text-slate-600">
+                                {{ $payment->branch->name ?? $payment->payment_referral ?? '-' }}
+                            </td>
                             <td class="px-3 py-2">
                                 @if($payment->payment_method->value === 'cash')
                                     <span class="px-2 py-1 text-xs font-medium rounded-full bg-amber-100 text-amber-700">Cash</span>
@@ -123,7 +159,7 @@
                         </tr>
                     @empty
                         <tr>
-                            <td colspan="12" class="px-3 py-8 text-center text-slate-500">
+                            <td colspan="13" class="px-3 py-8 text-center text-slate-500">
                                 No payments yet. Click "Add Payment" to create a new one.
                             </td>
                         </tr>

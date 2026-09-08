@@ -221,6 +221,19 @@
             </div>
 
         <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
+                <div class="flex items-center justify-between mb-3">
+                    <h3 class="text-sm font-semibold text-slate-600">Total Service Charge Deduction</h3>
+                    <div class="w-10 h-10 rounded-full bg-rose-100 flex items-center justify-center">
+                        <svg class="w-5 h-5 text-rose-600" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M20 12H4"/>
+                        </svg>
+                    </div>
+                </div>
+                <div class="text-3xl font-bold text-rose-600 mb-1">@currency(cascadeRound($totalServiceChargeDeduction), 0, null, cascadeRound($totalServiceChargeDeductionBdt)) <span x-text="$store.currency.mode"></span></div>
+                <div class="text-xs text-slate-500 mt-1">{{ $dateLabel }}</div>
+            </div>
+
+        <div class="bg-white rounded-lg border border-slate-200 shadow-sm hover:shadow-md hover:-translate-y-0.5 transition-all duration-200 p-5">
             <div class="flex justify-between items-center mb-2">
                 <h3 class="text-sm font-semibold text-slate-600">Fingerprint</h3>
                 <div class="w-10 h-10 rounded-full bg-teal-100 flex items-center justify-center">
