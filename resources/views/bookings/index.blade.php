@@ -312,6 +312,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
         'outbound_pending' => $lit->outbound_pending ?? false,
         'issue_type' => $lit->issue_type,
         'status' => $lit->status,
+        'refunded_net_fare' => $lit->latestRefundedTicket
+            ? (float) ($lit->latestRefundedTicket->net_fare ?? $lit->net_fare ?? 0)
+            : 0,
+        'was_refunded' => (bool) $lit->latestRefundedTicket,
         'has_pending_request' => $lit->pendingRequests->isNotEmpty(),
         'ticket_type' => $lit->ticketFare?->ticket_type?->value ?? '',
         'airline' => $lit->ticketFare?->airline?->name ?? '',
@@ -554,9 +558,10 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'refunded'  => $t->refundedTickets->sortByDesc('id')->first()?->remarks ?? null,
             default     => null,
         },
-        'refunded_net_fare' => $t->status === 'refunded'
-            ? (float) ($t->latestRefundedTicket?->net_fare ?? $t->net_fare ?? 0)
+        'refunded_net_fare' => $t->latestRefundedTicket
+            ? (float) ($t->latestRefundedTicket->net_fare ?? $t->net_fare ?? 0)
             : 0,
+        'was_refunded' => (bool) $t->latestRefundedTicket,
     ])->values(),
     'pending_outbound_issued_ticket' => ($poit = $p->allIssuedTickets
         ->first(fn($t) => $t->issue_type === 'pending_outbound')) ? (function() use ($poit) {
@@ -595,6 +600,21 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
             'is_exchangeable' => $src->is_exchangeable ?? $poit->is_exchangeable ?? false,
             'baggage_outbound' => $src->baggage_outbound ?? $poit->baggage_outbound ?? '',
             'status' => $poit->status,
+            'refunded_net_fare' => $poit->latestRefundedTicket
+                ? (float) ($poit->latestRefundedTicket->net_fare ?? $poit->net_fare ?? 0)
+                : 0,
+            'was_refunded' => (bool) $poit->latestRefundedTicket,
+            're_issue_details' => $poit->status === 're-issued' && $src !== $poit ? [
+                'reason_id' => $src->reason_id,
+                're_issue_charge' => (float)($src->re_issue_charge ?? 0),
+                'fare_difference' => (float)($src->fare_difference ?? 0),
+                'other_costs' => (float)($src->other_costs ?? 0),
+                'service_charge' => (float)($src->service_charge ?? 0),
+                'payment_by' => $src->payment_by,
+                'payment_option' => $src->payment_option?->value,
+                'refund_adjustment_amount' => (float)($src->refund_adjustment_amount ?? 0),
+                'remarks' => $src->remarks ?? '',
+            ] : null,
         ];
     })() : null,
     'inbound_ticket_fare' => ($inFare = $p->ticketFareInbound) ? (function() use ($inFare, $p) {
@@ -2511,6 +2531,178 @@ if ($passenger->ticket_fare_inbound_id) {
                     </label>
                 </div>
 
+                <div class="mb-4" x-show="isEditingReIssued" x-cloak>
+                    <h4 class="text-sm font-medium text-slate-600 mb-3 pb-2 border-b border-slate-200">Re-Issue Details</h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Reason</label>
+                            <select x-model="reIssueForm.reason_id"
+                                    @change="reIssueForm.errors.reason_id = ''; handleReIssueReasonChange()"
+                                    :class="reIssueForm.errors.reason_id ? 'border-red-500' : ''"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Reason</option>
+                                <template x-for="reason in reIssueReasons" :key="reason.id">
+                                    <option :value="reason.id" x-text="reason.name"></option>
+                                </template>
+                            </select>
+                            <p x-show="reIssueForm.errors.reason_id" x-text="reIssueForm.errors.reason_id" class="text-xs text-red-500 mt-1"></p>
+                        </div>
+                        <div>
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment By</label>
+                            <select x-model="reIssueForm.payment_by" @change="handleReIssuePaymentByChange()"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                                <option value="">Select Payment</option>
+                                <option value="customer">Customer</option>
+                                <option value="airline">Airline</option>
+                                <option value="employee">Employee</option>
+                                <option value="company">Company</option>
+                            </select>
+                        </div>
+                        <div x-show="reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
+                            <select x-model="reIssueForm.payment_option" @change="handleReIssuePaymentOptionChange()"
+                                    :disabled="reIssueForm.payment_by !== 'customer'"
+                                    class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed">
+                                <option value="customer_payment">Customer Payment</option>
+                                <option value="refund_adjustment">Refund Adjustment</option>
+                            </select>
+                        </div>
+                        <div x-show="reIssueForm.payment_option === 'refund_adjustment' && (reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket)">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (SAR)</label>
+                                <input type="number" x-model="reIssueForm.refund_adjustment_amount" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('refund_adjustment_amount'); reIssueForm.errors.refund_adjustment_amount = ''"
+                                       :class="reIssueForm.errors.refund_adjustment_amount ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.refund_adjustment_amount" x-text="reIssueForm.errors.refund_adjustment_amount" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refund Adjustment Amount (BDT)</label>
+                                <input type="number" x-model="reIssueForm.refund_adjustment_amount_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('refund_adjustment_amount'); reIssueForm.errors.refund_adjustment_amount = ''"
+                                       :class="reIssueForm.errors.refund_adjustment_amount ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.refund_adjustment_amount" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.refund_adjustment_amount" x-text="reIssueForm.errors.refund_adjustment_amount" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (SAR)</label>
+                                <input type="number" x-model="reIssueForm.re_issue_charge" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
+                                       :class="reIssueForm.errors.re_issue_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Re-Issue Charge (BDT)</label>
+                                <input type="number" x-model="reIssueForm.re_issue_charge_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('re_issue_charge'); reIssueForm.errors.re_issue_charge = ''"
+                                       :class="reIssueForm.errors.re_issue_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.re_issue_charge" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.re_issue_charge" x-text="reIssueForm.errors.re_issue_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (SAR)</label>
+                                <input type="number" x-model="reIssueForm.fare_difference" step="0.000001"
+                                       @input="handleReIssueSarInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
+                                       :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Fare Difference (BDT)</label>
+                                <input type="number" x-model="reIssueForm.fare_difference_bdt" step="0.000001"
+                                       @input="handleReIssueBdtInput('fare_difference'); reIssueForm.errors.fare_difference = ''"
+                                       :class="reIssueForm.errors.fare_difference ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.fare_difference" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.fare_difference" x-text="reIssueForm.errors.fare_difference" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (SAR)</label>
+                                <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('other_costs'); reIssueForm.errors.other_costs = ''"
+                                       :class="reIssueForm.errors.other_costs ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Other Costs (BDT)</label>
+                                <input type="number" x-model="reIssueForm.other_costs_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('other_costs'); reIssueForm.errors.other_costs = ''"
+                                       :class="reIssueForm.errors.other_costs ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.other_costs" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.other_costs" x-text="reIssueForm.errors.other_costs" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                        </div>
+                        <div x-show="reIssueForm.payment_by === 'customer'">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (SAR)</label>
+                                <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001"
+                                       @input="handleReIssueSarInput('service_charge'); reIssueForm.errors.service_charge = ''"
+                                       :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Service Charge (BDT)</label>
+                                <input type="number" x-model="reIssueForm.service_charge_bdt" min="0" step="0.000001"
+                                       @input="handleReIssueBdtInput('service_charge'); reIssueForm.errors.service_charge = ''"
+                                       :class="reIssueForm.errors.service_charge ? 'border-red-500' : ''"
+                                       class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none">
+                                <input type="number" x-model="reIssueForm.service_charge" min="0" step="0.000001" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                                <p x-show="reIssueForm.errors.service_charge" x-text="reIssueForm.errors.service_charge" class="text-xs text-red-500 mt-1"></p>
+                            </div>
+                        </div>
+                        <div x-show="reIssueForm.refunded_net_fare > 0">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (SAR)</label>
+                                <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Refunded Ticket Fare (BDT)</label>
+                                <input type="number" x-model="reIssueForm.refunded_net_fare_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.refunded_net_fare" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
+                        </div>
+                        <div>
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (SAR)</label>
+                                <input type="number" x-model="reIssueForm.total_cost" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Cost (BDT)</label>
+                                <input type="number" x-model="reIssueForm.total_cost_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.total_cost" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
+                        </div>
+                        <div x-show="reIssueForm.payment_by === 'customer'">
+                            <div x-show="$store.currency.mode === 'SAR' || $store.currency.mode === undefined" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (SAR)</label>
+                                <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                            </div>
+                            <div x-show="$store.currency.mode === 'BDT'" x-cloak>
+                                <label class="block text-sm font-medium text-slate-700 mb-1">Total Customer Payment (BDT)</label>
+                                <input type="number" x-model="reIssueForm.total_payment_bdt" readonly class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500">
+                                <input type="number" x-model="reIssueForm.total_payment" readonly class="w-full mt-1 px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 text-slate-500 text-sm">
+                            </div>
+                        </div>
+                        <div class="md:col-span-2">
+                            <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
+                            <textarea x-model="reIssueForm.remarks" rows="3"
+                                      class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none" placeholder="Enter remarks"></textarea>
+                        </div>
+                    </div>
+                </div>
+
                 <div class="flex gap-3 mt-6">
                     <button type="submit" :disabled="isSubmitting" class="flex-1 px-6 py-2 bg-slate-700 text-white rounded-lg hover:bg-slate-800 transition font-medium" :class="isSubmitting ? 'opacity-50 cursor-not-allowed' : ''" x-text="ticketFareModalTitle === 'Issue Ticket' ? 'Issue Ticket' : 'Save Changes'"></button>
                     <button type="button" @click="closeTicketFareModal()" class="flex-1 px-6 py-2 border border-slate-300 text-slate-700 rounded-lg hover:bg-slate-50 transition font-medium">Cancel</button>
@@ -2741,7 +2933,7 @@ if ($passenger->ticket_fare_inbound_id) {
                         <div x-show="reIssueForm.payment_by === 'customer' || reIssueForm.refunded_ticket">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Payment Option</label>
                             <select x-model="reIssueForm.payment_option" @change="handleReIssuePaymentOptionChange()"
-                                    :disabled="reIssueForm.payment_by !== 'customer' && !reIssueForm.refunded_ticket"
+                                    :disabled="reIssueForm.payment_by !== 'customer'"
                                     class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white disabled:bg-slate-100 disabled:cursor-not-allowed">
                                 <option value="customer_payment">Customer Payment</option>
                                 <option value="refund_adjustment">Refund Adjustment</option>
@@ -4426,6 +4618,8 @@ function bookingIndexApp() {
             },
         },
 
+        isEditingReIssued: false,
+
         reIssueForm: {
             issued_ticket_id: null,
             isOutboundMode: false,
@@ -5075,6 +5269,12 @@ function bookingIndexApp() {
 
             this.handleTicketOptionChange();
             this.handleTicketFareRouteTypeChange();
+            this.isEditingReIssued = !!(poit.status === 're-issued' && poit.re_issue_details);
+            if (this.isEditingReIssued) {
+                this.populateReIssueEditForm(poit.re_issue_details, poit.id, row, poit.was_refunded, poit.refunded_net_fare || 0);
+            } else {
+                this.resetReIssueEditFields();
+            }
             this.isTicketFareModalOpen = true;
         },
 
@@ -5087,6 +5287,14 @@ function bookingIndexApp() {
             const isAlreadyIssued = lit && (lit.status === 'issued' || lit.status === 're-issued');
             const src = (lit && lit.status === 're-issued' && lit.latest_re_issued_ticket) ? lit.latest_re_issued_ticket : lit;
             this.ticketFareModalTitle = isAlreadyIssued ? 'Edit Ticket' : 'Issue Ticket';
+
+            this.isEditingReIssued = !!(lit && lit.status === 're-issued');
+
+            if (this.isEditingReIssued) {
+                this.populateReIssueEditForm(lit.latest_re_issued_ticket || {}, lit.id || null, row, lit.was_refunded, lit.refunded_net_fare || 0);
+            } else {
+                this.resetReIssueEditFields();
+            }
 
             this.ticketFareForm.isOutboundMode = false;
             this.ticketFareForm.issued_ticket_id = ticket?.id || null;
@@ -5232,6 +5440,9 @@ function bookingIndexApp() {
 
             this._initLock = false;
             this.suggestBaggage();
+            if (this.isEditingReIssued) {
+                this.recalcReIssueTotals();
+            }
             this.isTicketFareModalOpen = true;
         },
 
@@ -5383,7 +5594,67 @@ function bookingIndexApp() {
 
         closeTicketFareModal() {
             this.isTicketFareModalOpen = false;
+            this.isEditingReIssued = false;
             this.editingPassengerIndex = null;
+        },
+
+        populateReIssueEditForm(re, issuedTicketId, row, wasRefunded, refundedNetFare) {
+            this.reIssueForm.issued_ticket_id = issuedTicketId || null;
+            this.reIssueForm.passenger_id = row.id;
+            this.reIssueForm.booking_id = row.booking_id;
+            this.reIssueForm.reason_id = re.reason_id || '';
+            this.reIssueForm.payment_by = re.payment_by || '';
+            this.reIssueForm.payment_option = re.payment_option || (!!wasRefunded && this.reIssueForm.payment_by !== 'customer' ? 'refund_adjustment' : 'customer_payment');
+            this.reIssueForm.refund_adjustment_amount = re.refund_adjustment_amount || 0;
+            this.reIssueForm.refund_adjustment_amount_bdt = '';
+            this.reIssueForm.re_issue_charge = re.re_issue_charge || 0;
+            this.reIssueForm.fare_difference = re.fare_difference || 0;
+            this.reIssueForm.other_costs = re.other_costs || 0;
+            this.reIssueForm.service_charge = re.service_charge || 0;
+            this.reIssueForm.remarks = re.remarks || '';
+            this.reIssueForm.refunded_ticket = !!wasRefunded;
+            this.reIssueForm.refunded_net_fare = !!wasRefunded ? (refundedNetFare || 0) : 0;
+
+            const rate = window.__currencyRate || 0;
+            this.reIssueForm.refunded_net_fare_bdt = this.reIssueForm.refunded_net_fare > 0 && rate > 0
+                ? Math.round(this.reIssueForm.refunded_net_fare * rate)
+                : '';
+            if (rate > 0) {
+                this.reIssueForm.refund_adjustment_amount_bdt = Math.round((parseFloat(this.reIssueForm.refund_adjustment_amount) || 0) * rate);
+                this.reIssueForm.re_issue_charge_bdt = Math.round((parseFloat(this.reIssueForm.re_issue_charge) || 0) * rate);
+                this.reIssueForm.fare_difference_bdt = Math.round((parseFloat(this.reIssueForm.fare_difference) || 0) * rate);
+                this.reIssueForm.other_costs_bdt = Math.round((parseFloat(this.reIssueForm.other_costs) || 0) * rate);
+                this.reIssueForm.service_charge_bdt = Math.round((parseFloat(this.reIssueForm.service_charge) || 0) * rate);
+            }
+
+            const consumedAdjustment = (re.payment_option === 'refund_adjustment') ? (parseFloat(re.refund_adjustment_amount) || 0) : 0;
+            this.reIssueForm.refund_payable = parseFloat(row.refund_payable || 0) + consumedAdjustment;
+            this.recalcReIssueTotals();
+        },
+
+        resetReIssueEditFields() {
+            this.reIssueForm.reason_id = '';
+            this.reIssueForm.payment_by = '';
+            this.reIssueForm.payment_option = 'customer_payment';
+            this.reIssueForm.refund_adjustment_amount = 0;
+            this.reIssueForm.refund_adjustment_amount_bdt = '';
+            this.reIssueForm.re_issue_charge = 0;
+            this.reIssueForm.re_issue_charge_bdt = '';
+            this.reIssueForm.fare_difference = 0;
+            this.reIssueForm.fare_difference_bdt = '';
+            this.reIssueForm.other_costs = 0;
+            this.reIssueForm.other_costs_bdt = '';
+            this.reIssueForm.service_charge = 0;
+            this.reIssueForm.service_charge_bdt = '';
+            this.reIssueForm.remarks = '';
+            this.reIssueForm.refunded_ticket = false;
+            this.reIssueForm.refunded_net_fare = 0;
+            this.reIssueForm.refunded_net_fare_bdt = '';
+            this.reIssueForm.refund_payable = 0;
+            this.reIssueForm.total_cost = 0;
+            this.reIssueForm.total_cost_bdt = '';
+            this.reIssueForm.total_payment = 0;
+            this.reIssueForm.total_payment_bdt = '';
         },
 
         openReIssueModal(rowIndex, ticket) {
@@ -5802,6 +6073,8 @@ function bookingIndexApp() {
                 this.reIssueForm.service_charge = 0;
                 this.reIssueForm.service_charge_bdt = '';
                 this.reIssueForm.payment_option = this.reIssueForm.refunded_ticket ? 'refund_adjustment' : 'customer_payment';
+                this.reIssueForm.total_payment = 0;
+                this.reIssueForm.total_payment_bdt = '';
             }
             this.recalcReIssueTotals();
         },
@@ -6079,6 +6352,18 @@ function bookingIndexApp() {
                 clear_double_ticket: this.ticketFareForm.clear_double_ticket || false,
                 ticket_fare_inbound_id: this.ticketFareForm.double_ticket_active ? row.ticket_fare_inbound_id : null,
                 ticket_fare_outbound_id: this.ticketFareForm.double_ticket_active ? row.ticket_fare_outbound_id : null,
+                ...(this.isEditingReIssued ? {
+                    reason_id: this.reIssueForm.reason_id || null,
+                    re_issue_charge: parseFloat(this.reIssueForm.re_issue_charge) || 0,
+                    fare_difference: parseFloat(this.reIssueForm.fare_difference) || 0,
+                    other_costs: parseFloat(this.reIssueForm.other_costs) || 0,
+                    service_charge: parseFloat(this.reIssueForm.service_charge) || 0,
+                    total_customer_payment: parseFloat(this.reIssueForm.total_payment) || 0,
+                    remarks: this.reIssueForm.remarks || '',
+                    payment_by: this.reIssueForm.payment_by || null,
+                    payment_option: this.reIssueForm.payment_option || null,
+                    refund_adjustment_amount: parseFloat(this.reIssueForm.refund_adjustment_amount) || 0,
+                } : {}),
             };
 
             this.isSubmitting = true;
