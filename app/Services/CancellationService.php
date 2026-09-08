@@ -77,6 +77,9 @@ class CancellationService
             $invoice->refresh();
             $invoiceService->updatePaymentStatus($invoice);
 
+            $cancelledBooking->update([
+                'reverted_by_id' => auth()->id(),
+            ]);
             $cancelledBooking->delete();
         });
     }
@@ -180,6 +183,7 @@ class CancellationService
                 'deduction_voucher_id' => $deductionVoucherId,
                 'refund_payment_id' => $refundPayment->id,
                 'refund_voucher_id' => $refundVoucher->id,
+                'confirmed_by_id' => auth()->id(),
                 'status' => CancelledBookingStatus::CANCELLED,
             ]);
 
