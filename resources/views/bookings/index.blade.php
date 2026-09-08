@@ -1012,6 +1012,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                             <option value="">All</option>
                             <option value="clear">Payment Clear</option>
                             <option value="due">Payment Due</option>
+                            <option value="due_below_1000">Due (Below BDT 1000)</option>
+                            <option value="due_above_1000">Due (Above BDT 1000)</option>
                         </select>
                     </div>
                     <div class="flex flex-col">
