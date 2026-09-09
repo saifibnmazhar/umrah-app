@@ -3218,6 +3218,14 @@ if ($passenger->ticket_fare_inbound_id) {
                 </div>
             </div>
 
+            <div class="mb-4 p-3 bg-amber-50 rounded-lg text-sm">
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-600">Total Passenger Refundable</span>
+                    <span class="font-bold text-amber-700" x-text="$currency(cancelTotalPassengerRefundable, 2)"></span>
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Sum of passenger ticket refund amounts owed back to customers</p>
+            </div>
+
             {{-- Cost Breakdown --}}
             <div class="mb-4">
                 <h4 class="text-sm font-medium text-slate-600 mb-2">Costs Incurred</h4>
@@ -3278,7 +3286,7 @@ if ($passenger->ticket_fare_inbound_id) {
                     <span class="text-sm font-medium text-slate-700">Refund Amount:</span>
                     <span class="text-lg font-bold text-blue-700" x-text="$currency(computedRefundAmount, 2)"></span>
                 </div>
-                <p class="text-xs text-slate-500 mt-1">Refund = Total Paid &minus; Total Cost &minus; Service Charge</p>
+                <p class="text-xs text-slate-500 mt-1">Refund = Total Paid &minus; Total Cost &minus; Service Charge + Total Passenger Refundable, capped at paid &minus; already refunded</p>
             </div>
 
             {{-- Actions --}}
@@ -3381,9 +3389,17 @@ if ($passenger->ticket_fare_inbound_id) {
                     <p class="text-xs font-medium text-slate-500 uppercase mb-1">Ticket Cost Breakdown</p>
                     <div class="space-y-1 text-xs">
                         <template x-for="(ticket, idx) in (cancelPassengerData.ticket_cost.tickets || [])" :key="idx">
-                            <div class="flex justify-between">
-                                <span class="text-slate-400" x-text="ticket.ticket_number || 'N/A'"></span>
-                                <span class="text-slate-600" x-text="$currency(ticket.net_fare || 0, 2)"></span>
+                            <div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400" x-text="ticket.ticket_number || 'N/A'"></span>
+                                    <span class="text-slate-600" x-text="$currency(ticket.net_fare || 0, 2)"></span>
+                                </div>
+                                <template x-if="(ticket.re_issue_cost || 0) > 0">
+                                    <div class="flex justify-between pl-3">
+                                        <span class="text-slate-400 text-[11px]">Re-Issue Cost</span>
+                                        <span class="text-slate-500 text-[11px]" x-text="$currency(ticket.re_issue_cost, 2)"></span>
+                                    </div>
+                                </template>
                             </div>
                         </template>
                     </div>
@@ -7185,7 +7201,9 @@ function bookingIndexApp() {
         cancelServiceCharge: null,
         cancelServiceChargeBdt: '',
         cancelTotalPaid: 0,
+        cancelTotalPassengerRefundable: 0,
         cancelCosts: { fingerprint_cost: 0, visa_cost: 0, ticket_cost: 0, total_cost: 0 },
+        cancelCapRemaining: null,
         cancelLoading: false,
 
         async openCancelModal(bookingId) {
@@ -7193,11 +7211,14 @@ function bookingIndexApp() {
             this.cancelModalVisible = true;
             this.cancelServiceCharge = null;
             this.cancelServiceChargeBdt = '';
+            this.cancelCapRemaining = null;
             try {
                 const res = await fetch(`/bookings/${bookingId}/cancellation/initiate`);
                 const data = await res.json();
                 this.cancelTotalPaid = data.total_paid;
                 this.cancelCosts = data.costs;
+                this.cancelTotalPassengerRefundable = data.total_passenger_refundable;
+                this.cancelCapRemaining = data.refund_cap_remaining ?? null;
                 if (data.booking_branch_id) this.cancelBranchId = data.booking_branch_id;
             } catch (e) {
                 alert('Failed to load cancellation data');
@@ -7211,10 +7232,14 @@ function bookingIndexApp() {
         },
 
         get computedRefundAmount() {
-            const paid = this.cancelTotalPaid;
-            const cost = this.cancelCosts.total_cost;
+            const paid = parseFloat(this.cancelTotalPaid) || 0;
+            const cost = parseFloat(this.cancelCosts.total_cost) || 0;
             const charge = parseFloat(this.cancelServiceCharge) || 0;
-            return (paid - cost - charge).toFixed(2);
+            const refundable = parseFloat(this.cancelTotalPassengerRefundable) || 0;
+            const raw = paid - cost - charge + refundable;
+            const remaining = parseFloat(this.cancelCapRemaining);
+            if (isNaN(remaining)) return Math.max(0, raw).toFixed(2);
+            return Math.min(raw, Math.max(0, remaining)).toFixed(2);
         },
 
         async handleCancelSubmit() {

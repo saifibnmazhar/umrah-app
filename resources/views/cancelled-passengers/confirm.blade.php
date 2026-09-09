@@ -6,6 +6,7 @@
     $invoice = $cancelledPassenger->invoice;
     $passenger = $cancelledPassenger->passenger;
     $maxAdjustable = min((float) $cancelledPassenger->refundable_amount, max(0, (float) ($invoice->balance ?? 0)));
+    $refundCap = $refundCap ?? ['paid' => 0, 'refunded' => 0, 'remaining' => 0];
 @endphp
 
 {{-- Cancellation timestamp ISO string for client-side local-time conversion --}}
@@ -16,9 +17,9 @@
 <div class="max-w-4xl mx-auto" x-data="{
     refundableAmount: {{ (float) $cancelledPassenger->refundable_amount }},
     adjustedAmount: {{ $maxAdjustable }},
-    adjustedAmountBdt: Math.round(parseFloat('{{ $maxAdjustable }}') * (window.__currencyRate || 1) * 100) / 100,
     paymentMethod: 'cash',
     remarks: '',
+    remainingRefundable: {{ (float) ($refundCap['remaining'] ?? 0) }},
 
     get maxAdjustment() {
         return Math.max(0, Math.min(parseFloat(this.refundableAmount), parseFloat('{{ $invoice->balance ?? 0 }}')));
@@ -26,17 +27,11 @@
     get customerRefund() {
         return Math.max(0, parseFloat(this.refundableAmount) - parseFloat(this.adjustedAmount || 0));
     },
-    init() {
-        window.addEventListener('currency-toggled', () => {
-            this.adjustedAmountBdt = Math.round(
-                (parseFloat(this.adjustedAmount) || 0) * ($store.currency.rate || 1) * 100
-            ) / 100;
-        });
-    },
-    clampAdjusted() {
-        this.adjustedAmount = Math.min(Math.max(parseFloat(this.adjustedAmount) || 0, 0), this.maxAdjustment);
-    },
     validate() {
+        if (this.customerRefund - parseFloat(this.remainingRefundable) > 0.000001) {
+            alert('Customer refund cannot exceed remaining refundable (paid minus already refunded).');
+            return false;
+        }
         if (this.customerRefund > 0 && this.paymentMethod === 'bank' && !this.remarks.trim()) {
             alert('Remarks are required when payment method is Bank.');
             return false;
@@ -87,6 +82,14 @@
                         <span class="text-slate-700 font-medium">Invoice Due</span>
                         <span class="font-semibold text-slate-800">@currency($invoice->balance ?? 0, 2)</span>
                     </div>
+                    <div class="flex justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-slate-700 font-medium">Already Refunded (this invoice)</span>
+                        <span class="font-semibold text-slate-800">@currency($refundCap['refunded'] ?? 0, 2)</span>
+                    </div>
+                    <div class="flex justify-between p-3 bg-slate-50 rounded-lg">
+                        <span class="text-slate-700 font-medium">Remaining Refundable</span>
+                        <span class="font-semibold text-slate-800">@currency($refundCap['remaining'] ?? 0, 2)</span>
+                    </div>
                 </div>
             </div>
 
@@ -119,27 +122,9 @@
 
                 <div class="space-y-4">
                     <div>
-                        <div x-show="$store.currency.mode === 'BDT'" x-cloak class="mb-2">
-                            <label class="block text-sm font-medium text-slate-700 mb-1">Adjust from Due (BDT)</label>
-                            <input type="number" x-model.number="adjustedAmountBdt"
-                                @input="adjustedAmount = parseFloat(((parseFloat(adjustedAmountBdt) || 0) / ($store.currency.rate || 1)).toFixed(6)); clampAdjusted();"
-                                min="0"
-                                :max="maxAdjustment * ($store.currency.rate || 1)"
-                                step="0.01"
-                                class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none font-medium"
-                                placeholder="0">
-                        </div>
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Adjust from Due (SAR)</label>
-                        <input type="number" x-model.number="adjustedAmount"
-                            @change="clampAdjusted(); if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { adjustedAmountBdt = Math.round((parseFloat(adjustedAmount) || 0) * $store.currency.rate * 100) / 100; }"
-                            @input="if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) { adjustedAmountBdt = Math.round((parseFloat($event.target.value) || 0) * $store.currency.rate * 100) / 100; }"
-                            :readonly="$store.currency.mode === 'BDT'"
-                            :class="{'bg-slate-100 cursor-not-allowed': $store.currency.mode === 'BDT'}"
-                            min="0" :max="maxAdjustment"
-                            step="0.000001"
-                            class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-blue-400 focus:border-blue-400 outline-none font-medium"
-                            placeholder="0">
-                        <p class="text-xs text-slate-400 mt-1">Credited against the invoice due. Max: @currency($maxAdjustable, 2) (lesser of refundable and balance)</p>
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Adjust from Due (auto-settled)</label>
+                        <div class="w-full px-4 py-2 border border-slate-200 rounded-lg bg-slate-50 font-medium text-slate-800" x-text="$currency(adjustedAmount || 0, 2)"></div>
+                        <p class="text-xs text-slate-400 mt-1">Automatically settled against the invoice due: @currency($maxAdjustable, 2) (lesser of refundable and balance). Not editable.</p>
                     </div>
 
                     <div class="p-3 bg-blue-50 rounded-lg space-y-2">
@@ -177,6 +162,7 @@
             <form method="POST" action="{{ route('cancelled-passengers.confirm.submit', $cancelledPassenger->id) }}" @submit.prevent="if(validate()) $el.submit()">
                 @csrf
                 <input type="hidden" name="balance_adjusted_amount" :value="adjustedAmount || 0">
+                <input type="hidden" name="currency" value="SAR">
                 <input type="hidden" name="payment_method" :value="paymentMethod">
                 <input type="hidden" name="remarks" :value="remarks">
 
