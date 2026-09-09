@@ -41,6 +41,7 @@ use App\Services\CostTrackingService;
 use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
 use App\Services\PaymentService;
+use App\Services\RefundCapService;
 use App\Support\DiagnosticLogger;
 use App\Traits\ConvertsDocumentsToPdf;
 use Illuminate\Database\QueryException;
@@ -1075,12 +1076,12 @@ class BookingController extends Controller
                         ? null
                         : (($passengerData['service_required'] ?? '') === 'visa_only'
                             ? null
-                            : ($passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id)),
+                            : $booking->package?->ticket_fare_id),
                     'ticket_fare_inbound_id' => $isDoubleTicket
-                        ? ($passengerData['ticket_fare_inbound_id'] ?? $booking->package?->ticket_fare_inbound_id)
+                        ? $booking->package?->ticket_fare_inbound_id
                         : null,
                     'ticket_fare_outbound_id' => $isDoubleTicket
-                        ? ($passengerData['ticket_fare_outbound_id'] ?? $booking->package?->ticket_fare_outbound_id)
+                        ? $booking->package?->ticket_fare_outbound_id
                         : null,
                     'package_value' => 0,
                 ]);
@@ -1764,12 +1765,12 @@ class BookingController extends Controller
             ? null
             : (($validated['service_required'] ?? '') === 'visa_only'
                 ? null
-                : ($validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id));
+                : $booking->package?->ticket_fare_id);
         $validated['ticket_fare_inbound_id'] = $isDoubleTicket
-            ? ($validated['ticket_fare_inbound_id'] ?? $booking->package?->ticket_fare_inbound_id)
+            ? $booking->package?->ticket_fare_inbound_id
             : null;
         $validated['ticket_fare_outbound_id'] = $isDoubleTicket
-            ? ($validated['ticket_fare_outbound_id'] ?? $booking->package?->ticket_fare_outbound_id)
+            ? $booking->package?->ticket_fare_outbound_id
             : null;
 
         return DB::transaction(function () use ($booking, $validated) {
@@ -2106,7 +2107,9 @@ class BookingController extends Controller
                 $costSummary = app(CostTrackingService::class)->getBookingCostSummary($booking);
                 $totalCost = $costSummary['total_cost'];
                 $serviceCharge = $booking->cancelledBooking->service_charge_deduction ?? 0;
-                $refundAmount = $invoice->paid_amount - $totalCost - $serviceCharge;
+                $rawRefund = max(0, $invoice->paid_amount - $totalCost - $serviceCharge);
+                $remaining = app(RefundCapService::class)->getCap($invoice)['remaining'];
+                $refundAmount = min($rawRefund, $remaining);
                 $booking->cancelledBooking->update([
                     'total_paid' => $invoice->paid_amount,
                     'refund_amount' => $refundAmount,

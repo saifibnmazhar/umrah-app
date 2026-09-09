@@ -26,6 +26,7 @@ $passengersVisaData = ($passengers ?? collect())->map(function($p) {
         'id' => $p->id,
         'booking_id' => $p->booking_id,
         'rate' => $rate,
+        'service_required' => $p->service_required?->value ?? 'all',
         'is_visa_held' => (bool)($p->is_visa_held ?? false),
         'visa' => $p->visaSubmission ? [
             'id' => $p->visaSubmission->id,
@@ -147,6 +148,7 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
 $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'id' => $p->id,
     'booking_id' => $p->booking_id,
+    'service_required' => $p->service_required?->value ?? 'all',
     'booking_date' => $p->booking?->created_at?->format('Y-m-d') ?? '',
     'invoice_no' => $p->booking?->invoice_id ?? '',
     'passenger_name' => trim($p->first_name . ' ' . $p->last_name),
@@ -424,6 +426,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     'all_issued_tickets' => $p->allIssuedTickets->map(fn($t) => [
         'id' => $t->id,
+        'passenger_id' => $t->passenger_id,
+        'outbound_pending' => $t->outbound_pending ?? false,
         'ticket_number' => $t->ticket_number ?? '',
         'issued_date' => $t->issued_date?->format('Y-m-d') ?? '',
         'inbound_date' => $t->inbound_date?->format('Y-m-d') ?? '',
@@ -1312,13 +1316,13 @@ if ($passenger->ticket_fare_inbound_id) {
     @if($canViewVisaColumns)
     <td class="px-3 py-2" x-init="$nextTick(() => console.log('P'+{{ $loop->index }}+': visa='+((passengersVisaData[{{ $loop->index }}]?.visa?.status)||'null')+' fp='+((passengersTicketData[{{ $loop->index }}]?.fingerprint_status)||'null')+' canc='+passengersTicketData[{{ $loop->index }}]?.is_cancelled))">
         <div class="flex items-center gap-1 flex-wrap">
-            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa">
+            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa && (passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) !== 'ticket_only'">
                 <span x-show="['submitted','issued'].includes(passengersVisaData[{{ $loop->index }}]?.visa?.status)" class="text-slate-800 font-medium text-xs mr-1" x-text="$currency(passengersVisaData[{{ $loop->index }}]?.visa?.net_visa_cost, 2, passengersVisaData[{{ $loop->index }}]?.rate)"></span>
             </template>
-            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa">
+            <template x-if="passengersVisaData[{{ $loop->index }}]?.visa && (passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) !== 'ticket_only'">
                 <span x-show="!['submitted','issued'].includes(passengersVisaData[{{ $loop->index }}]?.visa?.status)" class="text-slate-800 font-medium text-xs mr-1" x-text="$currency(passengersVisaData[{{ $loop->index }}]?.visa?.selling_price, 2, passengersVisaData[{{ $loop->index }}]?.rate)"></span>
             </template>
-            <template x-if="!passengersVisaData[{{ $loop->index }}]?.visa">
+            <template x-if="!passengersVisaData[{{ $loop->index }}]?.visa && (passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) !== 'ticket_only'">
                 <span class="text-slate-500 text-xs">N/A</span>
             </template>
 
@@ -1328,9 +1332,13 @@ if ($passenger->ticket_fare_inbound_id) {
                       x-text="passengersTicketData[{{ $loop->index }}]?.status"></span>
             </template>
 
+            <template x-if="(passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) === 'ticket_only' && !passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                <span class="text-xs font-bold text-slate-700">Ticket Only</span>
+            </template>
+
             @if($canEditVisa)
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !['Hold', 'Cancel', 'Delivered'].includes(passengersTicketData[{{ $loop->index }}]?.status)">
-                <button @click="toggleVisaHold({{ $loop->index }})"
+                <button x-show="(passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) !== 'ticket_only'" @click="toggleVisaHold({{ $loop->index }})"
                     :disabled="isTogglingVisaHold[{{ $loop->index }}]"
                     class="px-2 py-1 text-xs font-medium rounded transition"
                     :class="passengersVisaData[{{ $loop->index }}]?.is_visa_held ? 'text-yellow-600 bg-yellow-100 hover:bg-yellow-200' : 'text-orange-600 bg-orange-100 hover:bg-orange-200'"
@@ -1340,37 +1348,37 @@ if ($passenger->ticket_fare_inbound_id) {
             @endif
 
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
-                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
+                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'pending' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved' && (passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) !== 'ticket_only'"
                         @click="openVisaSubmitModal({{ $loop->index }})"
                         class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Submit</button>
             </template>
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
-                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
+                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved' && (passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) !== 'ticket_only'"
                         @click="openVisaIssueModal({{ $loop->index }})"
                         class="text-xs bg-green-100 hover:bg-green-200 text-green-600 px-2 py-1 rounded font-medium transition">Issue</button>
             </template>
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
-                <button x-show="(passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' || passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
+                <button x-show="(passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' || passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued') && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved' && (passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) !== 'ticket_only'"
                         @click="openVisaEditModal({{ $loop->index }})"
                         class="text-xs bg-slate-100 hover:bg-slate-200 text-slate-600 px-2 py-1 rounded font-medium transition">Edit</button>
             </template>
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
-                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted'"
+                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'submitted' && (passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) !== 'ticket_only'"
                         @click="openVisaCancelModal({{ $loop->index }})"
                         class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Cancel</button>
             </template>
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !passengersVisaData[{{ $loop->index }}]?.is_visa_held && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
-                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'"
+                <button x-show="passengersVisaData[{{ $loop->index }}]?.visa?.status === 'cancelled' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved' && (passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) !== 'ticket_only'"
                         @click="openVisaResubmitModal({{ $loop->index }})"
                         class="text-xs bg-orange-100 hover:bg-orange-200 text-orange-600 px-2 py-1 rounded font-medium transition">Re-Submit</button>
             </template>
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && !['Hold', 'Cancel', 'Delivered'].includes(passengersTicketData[{{ $loop->index }}]?.status)">
-                <button x-show="{{ $canRevertVisa ? 'true' : 'false' }} && passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued'"
+                <button x-show="{{ $canRevertVisa ? 'true' : 'false' }} && passengersVisaData[{{ $loop->index }}]?.visa?.status === 'issued' && (passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) !== 'ticket_only'"
                         @click="openVisaRevertModal({{ $loop->index }})"
                         class="text-xs bg-red-100 hover:bg-red-200 text-red-600 px-2 py-1 rounded font-medium transition">Revert</button>
             </template>
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved' && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
-                <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
+                <span x-show="(passengersVisaData[{{ $loop->index }}]?.service_required ?? passengersTicketData[{{ $loop->index }}]?.service_required) !== 'ticket_only'" class="text-xs text-slate-400 italic">Fingerprint not approved</span>
             </template>
             <template x-if="passengersTicketData[{{ $loop->index }}]?.is_cancelled">
                 <span class="text-xs text-slate-400 italic">Booking Cancelled</span>
@@ -1414,7 +1422,7 @@ if ($passenger->ticket_fare_inbound_id) {
     @if($canViewTicketFareColumn)
     <td class="px-3 py-2 text-slate-700">
         <div class="flex items-center gap-1 w-full">
-            <span class="font-medium text-sm shrink-0">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>
+            @if(($passenger->service_required?->value ?? 'all') !== 'visa_only')<span class="font-medium text-sm shrink-0">@if($fareAmount > 0)@currency($fareAmount, 2, $passBookingRate)@else—@endif</span>@endif
             <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && ['Hold', 'Cancel'].includes(passengersTicketData[{{ $loop->index }}]?.status)">
                 <span class="inline-flex items-center px-2 py-0.5 rounded text-xs font-medium"
                       :class="passengersTicketData[{{ $loop->index }}]?.status === 'Cancel' ? 'bg-red-100 text-red-700' : 'bg-purple-100 text-purple-700'"
@@ -1422,13 +1430,19 @@ if ($passenger->ticket_fare_inbound_id) {
             </template>
             <div class="flex items-center gap-1 flex-1"
                  :class="(rowHasPendingRegular({{ $loop->index }}) || rowHasPendingOutbound({{ $loop->index }})) ? 'justify-start' : 'justify-center'">
-                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
-                    <button x-show="rowHasPendingRegular({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
+                <template x-if="passengersTicketData[{{ $loop->index }}]?.service_required === 'visa_only' && !passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                    <span class="text-xs font-bold text-slate-700">Visa Only</span>
                 </template>
-                <template x-if="canShowInlineIssueOut({{ $loop->index }})">
+                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled">
+                    <button x-show="rowHasPendingRegular({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved' && passengersTicketData[{{ $loop->index }}]?.service_required !== 'visa_only'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
+                </template>
+                <template x-if="canShowInlineIssueOut({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.service_required !== 'visa_only'">
                     <button @click="handleIssueOutFromMenu({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
-                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved' && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+                <template x-if="canShowInlineIssueOutSingle({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.service_required !== 'visa_only'">
+                    <button @click="handleIssueOutFromMenu({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
+                </template>
+                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.service_required !== 'visa_only' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved' && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                     <div class="flex items-center gap-1">
                         <div class="relative" x-data="{ open: false }">
                             <button @click="open = !open" class="text-xs px-1.5 py-1 rounded font-medium transition bg-slate-100 hover:bg-slate-200 text-slate-500" title="More actions">
@@ -1468,7 +1482,7 @@ if ($passenger->ticket_fare_inbound_id) {
                 <template x-if="passengersTicketData[{{ $loop->index }}]?.is_cancelled">
                     <span class="text-xs text-slate-400 italic">Booking Cancelled</span>
                 </template>
-                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved' && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
+                <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.service_required !== 'visa_only' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status !== 'approved' && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                     <span class="text-xs text-slate-400 italic">Fingerprint not approved</span>
                 </template>
             </div>
@@ -2278,12 +2292,13 @@ if ($passenger->ticket_fare_inbound_id) {
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                            <select x-model="ticketFareForm.ticket_option" @change="handleTicketOptionChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="ticketFareForm.ticket_option" @change="ticketFareForm.errors.ticket_option = ''; handleTicketOptionChange()" :class="ticketFareForm.errors.ticket_option ? 'border-red-500' : ''" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Ticket</option>
                                 <template x-for="opt in filteredTicketOptions" :key="opt.value">
                                     <option :value="opt.value" :disabled="opt.is_active === false" x-text="opt.display"></option>
                                 </template>
                             </select>
+                            <p x-show="ticketFareForm.errors.ticket_option" x-text="ticketFareForm.errors.ticket_option" class="text-xs text-red-500 mt-1"></p>
                         </div>
                          <div x-show="ticketFareForm.showInboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
@@ -2590,7 +2605,7 @@ if ($passenger->ticket_fare_inbound_id) {
 
                 <div class="mb-4" x-show="ticketFareForm.route_type === 'One Way-Inbound' && !ticketFareForm.isOutboundMode">
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" x-model="ticketFareForm.outbound_pending" :disabled="ticketFareForm.double_ticket_active" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                        <input type="checkbox" x-model="ticketFareForm.outbound_pending" :disabled="ticketFareForm.double_ticket_active || ticketFareForm.outbound_pending_locked" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
                         <span class="text-sm text-slate-700">Outbound Ticket Pending</span>
                     </label>
                 </div>
@@ -3209,6 +3224,14 @@ if ($passenger->ticket_fare_inbound_id) {
                 </div>
             </div>
 
+            <div class="mb-4 p-3 bg-amber-50 rounded-lg text-sm">
+                <div class="flex justify-between items-center">
+                    <span class="text-slate-600">Total Passenger Refundable</span>
+                    <span class="font-bold text-amber-700" x-text="$currency(cancelTotalPassengerRefundable, 2)"></span>
+                </div>
+                <p class="text-xs text-slate-400 mt-1">Sum of passenger ticket refund amounts owed back to customers</p>
+            </div>
+
             {{-- Cost Breakdown --}}
             <div class="mb-4">
                 <h4 class="text-sm font-medium text-slate-600 mb-2">Costs Incurred</h4>
@@ -3269,7 +3292,7 @@ if ($passenger->ticket_fare_inbound_id) {
                     <span class="text-sm font-medium text-slate-700">Refund Amount:</span>
                     <span class="text-lg font-bold text-blue-700" x-text="$currency(computedRefundAmount, 2)"></span>
                 </div>
-                <p class="text-xs text-slate-500 mt-1">Refund = Total Paid &minus; Total Cost &minus; Service Charge</p>
+                <p class="text-xs text-slate-500 mt-1">Refund = Total Paid &minus; Total Cost &minus; Service Charge + Total Passenger Refundable, capped at paid &minus; already refunded</p>
             </div>
 
             {{-- Actions --}}
@@ -3372,9 +3395,17 @@ if ($passenger->ticket_fare_inbound_id) {
                     <p class="text-xs font-medium text-slate-500 uppercase mb-1">Ticket Cost Breakdown</p>
                     <div class="space-y-1 text-xs">
                         <template x-for="(ticket, idx) in (cancelPassengerData.ticket_cost.tickets || [])" :key="idx">
-                            <div class="flex justify-between">
-                                <span class="text-slate-400" x-text="ticket.ticket_number || 'N/A'"></span>
-                                <span class="text-slate-600" x-text="$currency(ticket.net_fare || 0, 2)"></span>
+                            <div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400" x-text="ticket.ticket_number || 'N/A'"></span>
+                                    <span class="text-slate-600" x-text="$currency(ticket.net_fare || 0, 2)"></span>
+                                </div>
+                                <template x-if="(ticket.re_issue_cost || 0) > 0">
+                                    <div class="flex justify-between pl-3">
+                                        <span class="text-slate-400 text-[11px]">Re-Issue Cost</span>
+                                        <span class="text-slate-500 text-[11px]" x-text="$currency(ticket.re_issue_cost, 2)"></span>
+                                    </div>
+                                </template>
                             </div>
                         </template>
                     </div>
@@ -4662,6 +4693,7 @@ function bookingIndexApp() {
             non_refundable: false,
             non_exchangeable: false,
             outbound_pending: false,
+            outbound_pending_locked: false,
             isOutboundMode: false,
             issued_ticket_id: null,
             clear_double_ticket: false,
@@ -4880,6 +4912,21 @@ function bookingIndexApp() {
             const hasIssuedOutbound = (row.all_issued_tickets || []).some(
                 t => t.issue_type === 'pending_outbound' && ['issued', 're-issued'].includes(t.status)
             );
+            if (hasIssuedOutbound) return false;
+            return true;
+        },
+
+        canShowInlineIssueOutSingle(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            if (row.package_is_double_ticket || row.is_double_ticket) return false;
+            if (row.fingerprint_status !== 'approved') return false;
+            const tickets = row.all_issued_tickets || [];
+            const regular = tickets.find(t => String(t.passenger_id ?? row.id) === String(row.id) && (!t.issue_type || t.issue_type === 'regular') && t.outbound_pending);
+            if (!regular) return false;
+            const outbound = tickets.find(t => String(t.passenger_id ?? row.id) === String(row.id) && t.issue_type === 'pending_outbound' && ['pending', 'awaiting-group'].includes(t.status));
+            if (!outbound) return false;
+            const hasIssuedOutbound = tickets.some(t => String(t.passenger_id ?? row.id) === String(row.id) && t.issue_type === 'pending_outbound' && ['issued', 're-issued'].includes(t.status));
             if (hasIssuedOutbound) return false;
             return true;
         },
@@ -5187,7 +5234,7 @@ function bookingIndexApp() {
                     const exists = row.all_issued_tickets.some(et => et.id === t.id);
                     if (!exists) {
                         row.all_issued_tickets.push({
-                            id: t.id, ticket_number: t.ticket_number || '',
+                            id: t.id, passenger_id: row.id, outbound_pending: t.outbound_pending ?? false, ticket_number: t.ticket_number || '',
                             issued_date: t.issued_date || '', status: t.status,
                             pnr: t.pnr || '', issue_type: 'pending_outbound',
                             selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0,
@@ -5241,6 +5288,7 @@ function bookingIndexApp() {
             this.ticketFareForm.baggage_inbound = '';
             this.ticketFareForm.baggage_outbound = '';
             this.ticketFareForm.outbound_pending = false;
+            this.ticketFareForm.outbound_pending_locked = false;
             this.ticketFareForm.clear_double_ticket = false;
             this.ticketFareForm.double_ticket_active = false;
             this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
@@ -5501,6 +5549,8 @@ function bookingIndexApp() {
             }
                 }
             }
+
+            this.ticketFareForm.outbound_pending_locked = !this.ticketFareForm.isOutboundMode && isAlreadyIssued && !!this.ticketFareForm.outbound_pending && !row.is_double_ticket && !row.package_is_double_ticket;
 
             this._initLock = false;
             this.suggestBaggage();
@@ -6308,6 +6358,9 @@ function bookingIndexApp() {
         },
 
         getSelectedFareId() {
+            if (this.ticketFareForm.isOutboundMode) {
+                return this.ticketFareForm.ticket_option || null;
+            }
             if (this.ticketFareForm.ticket_option) {
                 return this.ticketFareForm.ticket_option;
             }
@@ -6345,8 +6398,9 @@ function bookingIndexApp() {
             if (this.isSubmitting) return;
 
             const f = this.ticketFareForm;
-            f.errors = { pnr: '', ticket_number: '', date: '', ticket_agent: '', selling_fare: '', net_fare: '', offer_price: '', inbound_date: '', outbound_date: '' };
+            f.errors = { pnr: '', ticket_number: '', date: '', ticket_agent: '', selling_fare: '', net_fare: '', offer_price: '', inbound_date: '', outbound_date: '', ticket_option: '' };
 
+            if (f.isOutboundMode && !f.ticket_option) f.errors.ticket_option = 'Please select a ticket';
             if (!f.pnr || !f.pnr.trim()) f.errors.pnr = 'PNR is required';
             if (!f.ticket_number || !f.ticket_number.trim()) f.errors.ticket_number = 'Ticket number is required';
             if (!f.date || !f.date.trim()) f.errors.date = 'Issue date is required';
@@ -6486,7 +6540,7 @@ function bookingIndexApp() {
                             ? [t.ticket_fare.route.from_city?.code, t.ticket_fare.route.to_city?.code].filter(Boolean).join('-')
                             : '';
                         const ticketObj = {
-                            id: t.id, ticket_number: t.ticket_number || '',
+                            id: t.id, passenger_id: row.id, outbound_pending: t.outbound_pending ?? false, ticket_number: t.ticket_number || '',
                             issued_date: t.issued_date || '', status: t.status,
                             pnr: t.pnr || '', issue_type: t.issue_type,
                             selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0,
@@ -6546,7 +6600,7 @@ function bookingIndexApp() {
                         const exists = row.all_issued_tickets.some(t => t.id === po.id);
                         if (!exists) {
                             row.all_issued_tickets.push({
-                                id: po.id, ticket_number: po.ticket_number || '',
+                                id: po.id, passenger_id: row.id, outbound_pending: po.outbound_pending ?? false, ticket_number: po.ticket_number || '',
                                 issued_date: po.issued_date || '', status: po.status,
                                 pnr: po.pnr || '', issue_type: 'pending_outbound',
                                 selling_fare: po.selling_fare ?? 0, net_fare: po.net_fare ?? 0,
@@ -7176,7 +7230,9 @@ function bookingIndexApp() {
         cancelServiceCharge: null,
         cancelServiceChargeBdt: '',
         cancelTotalPaid: 0,
+        cancelTotalPassengerRefundable: 0,
         cancelCosts: { fingerprint_cost: 0, visa_cost: 0, ticket_cost: 0, total_cost: 0 },
+        cancelCapRemaining: null,
         cancelLoading: false,
 
         async openCancelModal(bookingId) {
@@ -7184,11 +7240,14 @@ function bookingIndexApp() {
             this.cancelModalVisible = true;
             this.cancelServiceCharge = null;
             this.cancelServiceChargeBdt = '';
+            this.cancelCapRemaining = null;
             try {
                 const res = await fetch(`/bookings/${bookingId}/cancellation/initiate`);
                 const data = await res.json();
                 this.cancelTotalPaid = data.total_paid;
                 this.cancelCosts = data.costs;
+                this.cancelTotalPassengerRefundable = data.total_passenger_refundable;
+                this.cancelCapRemaining = data.refund_cap_remaining ?? null;
                 if (data.booking_branch_id) this.cancelBranchId = data.booking_branch_id;
             } catch (e) {
                 alert('Failed to load cancellation data');
@@ -7202,10 +7261,14 @@ function bookingIndexApp() {
         },
 
         get computedRefundAmount() {
-            const paid = this.cancelTotalPaid;
-            const cost = this.cancelCosts.total_cost;
+            const paid = parseFloat(this.cancelTotalPaid) || 0;
+            const cost = parseFloat(this.cancelCosts.total_cost) || 0;
             const charge = parseFloat(this.cancelServiceCharge) || 0;
-            return (paid - cost - charge).toFixed(2);
+            const refundable = parseFloat(this.cancelTotalPassengerRefundable) || 0;
+            const raw = paid - cost - charge + refundable;
+            const remaining = parseFloat(this.cancelCapRemaining);
+            if (isNaN(remaining)) return Math.max(0, raw).toFixed(2);
+            return Math.min(raw, Math.max(0, remaining)).toFixed(2);
         },
 
         async handleCancelSubmit() {

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\PassengerType;
+use App\Enums\ServiceRequired;
 use App\Exceptions\DatabaseErrorHumanizer;
 use App\Models\CancelledPassenger;
 use App\Models\Document;
@@ -736,6 +737,13 @@ class PassengerController extends Controller
     {
         $this->ensureBranchAccess($passenger);
 
+        $service = $passenger->service_required instanceof ServiceRequired
+            ? $passenger->service_required->value
+            : $passenger->service_required;
+        if ($service === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
+        }
+
         if ($passenger->is_ticket_held) {
             $passenger->update([
                 'is_ticket_held' => false,
@@ -762,6 +770,13 @@ class PassengerController extends Controller
     public function toggleVisaHold(Passenger $passenger)
     {
         $this->ensureBranchAccess($passenger);
+
+        $service = $passenger->service_required instanceof ServiceRequired
+            ? $passenger->service_required->value
+            : $passenger->service_required;
+        if ($service === ServiceRequired::TICKET_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Visa service is not required for this passenger (Ticket Only)'], 403);
+        }
 
         if ($passenger->is_visa_held) {
             $passenger->update([

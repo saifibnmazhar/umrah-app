@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\ServiceRequired;
 use App\Models\Booking;
 use App\Models\CancelledSubmission;
 use App\Models\Passenger;
@@ -14,6 +15,10 @@ class VisaSubmissionController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
+        }
+
+        if ($this->serviceValue($passenger) === ServiceRequired::TICKET_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Visa service is not required for this passenger (Ticket Only)'], 403);
         }
 
         if ($passenger->isOnHold() || $passenger->isVisaOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
@@ -60,6 +65,10 @@ class VisaSubmissionController extends Controller
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
         }
 
+        if ($this->serviceValue($passenger) === ServiceRequired::TICKET_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Visa service is not required for this passenger (Ticket Only)'], 403);
+        }
+
         if ($passenger->isOnHold() || $passenger->isVisaOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
             return response()->json(['success' => false, 'message' => 'Cannot modify visa for a cancelled passenger'], 422);
         }
@@ -101,6 +110,10 @@ class VisaSubmissionController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
+        }
+
+        if ($this->serviceValue($passenger) === ServiceRequired::TICKET_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Visa service is not required for this passenger (Ticket Only)'], 403);
         }
 
         if ($passenger->isOnHold() || $passenger->isVisaOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
@@ -150,6 +163,10 @@ class VisaSubmissionController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
+        }
+
+        if ($this->serviceValue($passenger) === ServiceRequired::TICKET_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Visa service is not required for this passenger (Ticket Only)'], 403);
         }
 
         if ($passenger->isOnHold() || $passenger->isVisaOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
@@ -204,6 +221,10 @@ class VisaSubmissionController extends Controller
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
         }
 
+        if ($this->serviceValue($passenger) === ServiceRequired::TICKET_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Visa service is not required for this passenger (Ticket Only)'], 403);
+        }
+
         if ($passenger->isOnHold() || $passenger->isVisaOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
             return response()->json(['success' => false, 'message' => 'Cannot modify visa for a cancelled passenger'], 422);
         }
@@ -253,6 +274,10 @@ class VisaSubmissionController extends Controller
             return response()->json(['success' => false, 'message' => 'Passenger does not belong to this booking'], 403);
         }
 
+        if ($this->serviceValue($passenger) === ServiceRequired::TICKET_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Visa service is not required for this passenger (Ticket Only)'], 403);
+        }
+
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
             return response()->json(['success' => false, 'message' => 'Cannot modify visa for a cancelled passenger'], 422);
         }
@@ -283,5 +308,12 @@ class VisaSubmissionController extends Controller
             'message' => 'Visa reverted successfully',
             'visa_submission' => $visaSubmission->fresh()->load(['visaAgent', 'commissionAgent', 'visaSellingPrice']),
         ]);
+    }
+
+    private function serviceValue(Passenger $passenger): ?string
+    {
+        $service = $passenger->service_required;
+
+        return $service instanceof ServiceRequired ? $service->value : $service;
     }
 }
