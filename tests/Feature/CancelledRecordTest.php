@@ -858,4 +858,60 @@ class CancelledRecordTest extends TestCase
         $response->assertOk()->assertJsonPath('pagination.total', 1);
         $this->assertEquals('BM-SCOPE-1', $response->json('data.0.invoice_id'));
     }
+
+    public function test_refund_amount_update_clamps_to_passenger_refundable_floor(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $manager = $this->createUserWithRole('Branch Manager', $branch->id);
+        $canceller = $this->createUserWithRole('Super Admin');
+
+        ['booking' => $booking] = $this->createBookingWithInvoice($branch);
+        $cb = CancelledBooking::create([
+            'booking_id' => $booking->id,
+            'invoice_id' => $booking->invoice_id,
+            'user_id' => $canceller->id,
+            'total_paid' => 3000.00,
+            'refund_amount' => 2500.00,
+            'total_passenger_refundable' => 1000.00,
+            'cancellation_branch_id' => $branch->id,
+            'status' => CancelledBookingStatus::PROCESSING,
+        ]);
+
+        $response = $this->actingAs($manager)->putJson(
+            route('cancelled-bookings.refund-amount.update', $cb),
+            ['refund_amount' => 500]
+        );
+
+        $response->assertOk()->assertJsonPath('success', true);
+        $this->assertEquals(1000.00, (float) $cb->fresh()->refund_amount);
+    }
+
+    public function test_refund_amount_update_keeps_readonly_value_below_floor(): void
+    {
+        $this->createRoles();
+        $branch = Branch::create(['name' => 'Main Branch']);
+        $manager = $this->createUserWithRole('Branch Manager', $branch->id);
+        $canceller = $this->createUserWithRole('Super Admin');
+
+        ['booking' => $booking] = $this->createBookingWithInvoice($branch);
+        $cb = CancelledBooking::create([
+            'booking_id' => $booking->id,
+            'invoice_id' => $booking->invoice_id,
+            'user_id' => $canceller->id,
+            'total_paid' => 3000.00,
+            'refund_amount' => 800.00,
+            'total_passenger_refundable' => 1000.00,
+            'cancellation_branch_id' => $branch->id,
+            'status' => CancelledBookingStatus::PROCESSING,
+        ]);
+
+        $response = $this->actingAs($manager)->putJson(
+            route('cancelled-bookings.refund-amount.update', $cb),
+            ['refund_amount' => 500]
+        );
+
+        $response->assertOk()->assertJsonPath('success', true);
+        $this->assertEquals(800.00, (float) $cb->fresh()->refund_amount);
+    }
 }

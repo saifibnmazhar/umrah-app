@@ -69,6 +69,9 @@ class BookingCancellationActionController extends Controller
 
         $capService = app(RefundCapService::class);
         $requestedSar = $capService->normalizeToSar((float) $validated['refund_amount'], $validated['currency'] ?? null);
+        $floor = (float) ($cancelledBooking->total_passenger_refundable ?? 0);
+        $stored = (float) $cancelledBooking->refund_amount;
+        $requestedSar = max($requestedSar, min($stored, $floor));
         $validated['refund_amount'] = $requestedSar;
         $validated['currency'] = 'SAR';
         $invoice = $cancelledBooking->invoice ?? $cancelledBooking->booking?->invoice;
@@ -170,6 +173,9 @@ class BookingCancellationActionController extends Controller
 
         $capService = app(RefundCapService::class);
         $requestedSar = $capService->normalizeToSar((float) $validated['refund_amount'], $validated['currency'] ?? null);
+        $floor = (float) ($cancelledBooking->total_passenger_refundable ?? 0);
+        $stored = (float) $cancelledBooking->refund_amount;
+        $requestedSar = max($requestedSar, min($stored, $floor));
         $invoice = $cancelledBooking->invoice ?? $cancelledBooking->booking?->invoice;
         if ($invoice) {
             $capService->assertRefundAllowed($invoice, $requestedSar);

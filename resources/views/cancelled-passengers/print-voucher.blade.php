@@ -16,6 +16,11 @@
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 40px; margin-bottom: 16px; }
         .info-row { display: flex; align-items: baseline; }
         .info-row .label { font-weight: 700; min-width: 120px; font-size: 13px; color: #475569; }
+        .voucher-head .info-row { gap: 8px; }
+        .voucher-head .info-row .label { flex-shrink: 0; }
+        .voucher-head .vlist { display: flex; flex-direction: column; gap: 2px; }
+        .voucher-head .vline { display: flex; align-items: baseline; gap: 0; }
+        .voucher-head .vtag { min-width: 110px; flex-shrink: 0; font-weight: 600; color: #475569; }
         .cancel-info .info-row { gap: 8px; }
         .cancel-info .info-row .label { min-width: 170px; flex-shrink: 0; }
         .info-row .value { font-weight: 600; color: #0f172a; }
@@ -83,14 +88,24 @@
             <div class="title">REFUND VOUCHER (passenger cancellation)</div>
         </div>
 
-        <div class="info-grid">
+        <div class="info-grid voucher-head">
             <div class="info-row">
                 <span class="label">Voucher No:</span>
-                <span class="value">{{ $cp->refundVoucher?->voucher_id ?? 'N/A' }}</span>
+                <span class="value vlist">
+                    @if($cp->refundVoucher?->voucher_id)
+                        <span class="vline"><span class="vtag">Refund:</span><span>{{ $cp->refundVoucher->voucher_id }}</span></span>
+                    @endif
+                    @if($cp->adjustmentVoucher?->voucher_id)
+                        <span class="vline"><span class="vtag">Due Adjustment:</span><span>{{ $cp->adjustmentVoucher->voucher_id }}</span></span>
+                    @endif
+                    @if(! $cp->refundVoucher?->voucher_id && ! $cp->adjustmentVoucher?->voucher_id)
+                        N/A
+                    @endif
+                </span>
             </div>
             <div class="info-row">
                 <span class="label">Date:</span>
-                <span class="value">{{ ($cp->refundVoucher?->payment_date ?? $cp->created_at)?->format('d-M-Y') }}</span>
+                <span class="value">{{ ($cp->refundVoucher?->payment_date ?? $cp->adjustmentVoucher?->payment_date ?? $cp->created_at)?->format('d-M-Y') }}</span>
             </div>
             <div class="info-row">
                 <span class="label">Invoice No:</span>
