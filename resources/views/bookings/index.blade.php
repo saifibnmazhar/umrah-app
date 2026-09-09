@@ -426,6 +426,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     'all_issued_tickets' => $p->allIssuedTickets->map(fn($t) => [
         'id' => $t->id,
+        'passenger_id' => $t->passenger_id,
+        'outbound_pending' => $t->outbound_pending ?? false,
         'ticket_number' => $t->ticket_number ?? '',
         'issued_date' => $t->issued_date?->format('Y-m-d') ?? '',
         'inbound_date' => $t->inbound_date?->format('Y-m-d') ?? '',
@@ -1437,6 +1439,9 @@ if ($passenger->ticket_fare_inbound_id) {
                 <template x-if="canShowInlineIssueOut({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.service_required !== 'visa_only'">
                     <button @click="handleIssueOutFromMenu({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
+                <template x-if="canShowInlineIssueOutSingle({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.service_required !== 'visa_only'">
+                    <button @click="handleIssueOutFromMenu({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
+                </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.service_required !== 'visa_only' && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved' && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
                     <div class="flex items-center gap-1">
                         <div class="relative" x-data="{ open: false }">
@@ -2287,12 +2292,13 @@ if ($passenger->ticket_fare_inbound_id) {
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                            <select x-model="ticketFareForm.ticket_option" @change="handleTicketOptionChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="ticketFareForm.ticket_option" @change="ticketFareForm.errors.ticket_option = ''; handleTicketOptionChange()" :class="ticketFareForm.errors.ticket_option ? 'border-red-500' : ''" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Ticket</option>
                                 <template x-for="opt in filteredTicketOptions" :key="opt.value">
                                     <option :value="opt.value" :disabled="opt.is_active === false" x-text="opt.display"></option>
                                 </template>
                             </select>
+                            <p x-show="ticketFareForm.errors.ticket_option" x-text="ticketFareForm.errors.ticket_option" class="text-xs text-red-500 mt-1"></p>
                         </div>
                          <div x-show="ticketFareForm.showInboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
@@ -2599,7 +2605,7 @@ if ($passenger->ticket_fare_inbound_id) {
 
                 <div class="mb-4" x-show="ticketFareForm.route_type === 'One Way-Inbound' && !ticketFareForm.isOutboundMode">
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" x-model="ticketFareForm.outbound_pending" :disabled="ticketFareForm.double_ticket_active" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                        <input type="checkbox" x-model="ticketFareForm.outbound_pending" :disabled="ticketFareForm.double_ticket_active || ticketFareForm.outbound_pending_locked" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
                         <span class="text-sm text-slate-700">Outbound Ticket Pending</span>
                     </label>
                 </div>
@@ -4687,6 +4693,7 @@ function bookingIndexApp() {
             non_refundable: false,
             non_exchangeable: false,
             outbound_pending: false,
+            outbound_pending_locked: false,
             isOutboundMode: false,
             issued_ticket_id: null,
             clear_double_ticket: false,
@@ -4905,6 +4912,21 @@ function bookingIndexApp() {
             const hasIssuedOutbound = (row.all_issued_tickets || []).some(
                 t => t.issue_type === 'pending_outbound' && ['issued', 're-issued'].includes(t.status)
             );
+            if (hasIssuedOutbound) return false;
+            return true;
+        },
+
+        canShowInlineIssueOutSingle(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            if (row.package_is_double_ticket || row.is_double_ticket) return false;
+            if (row.fingerprint_status !== 'approved') return false;
+            const tickets = row.all_issued_tickets || [];
+            const regular = tickets.find(t => String(t.passenger_id ?? row.id) === String(row.id) && (!t.issue_type || t.issue_type === 'regular') && t.outbound_pending);
+            if (!regular) return false;
+            const outbound = tickets.find(t => String(t.passenger_id ?? row.id) === String(row.id) && t.issue_type === 'pending_outbound' && ['pending', 'awaiting-group'].includes(t.status));
+            if (!outbound) return false;
+            const hasIssuedOutbound = tickets.some(t => String(t.passenger_id ?? row.id) === String(row.id) && t.issue_type === 'pending_outbound' && ['issued', 're-issued'].includes(t.status));
             if (hasIssuedOutbound) return false;
             return true;
         },
@@ -5212,7 +5234,7 @@ function bookingIndexApp() {
                     const exists = row.all_issued_tickets.some(et => et.id === t.id);
                     if (!exists) {
                         row.all_issued_tickets.push({
-                            id: t.id, ticket_number: t.ticket_number || '',
+                            id: t.id, passenger_id: row.id, outbound_pending: t.outbound_pending ?? false, ticket_number: t.ticket_number || '',
                             issued_date: t.issued_date || '', status: t.status,
                             pnr: t.pnr || '', issue_type: 'pending_outbound',
                             selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0,
@@ -5266,6 +5288,7 @@ function bookingIndexApp() {
             this.ticketFareForm.baggage_inbound = '';
             this.ticketFareForm.baggage_outbound = '';
             this.ticketFareForm.outbound_pending = false;
+            this.ticketFareForm.outbound_pending_locked = false;
             this.ticketFareForm.clear_double_ticket = false;
             this.ticketFareForm.double_ticket_active = false;
             this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
@@ -5526,6 +5549,8 @@ function bookingIndexApp() {
             }
                 }
             }
+
+            this.ticketFareForm.outbound_pending_locked = !this.ticketFareForm.isOutboundMode && isAlreadyIssued && !!this.ticketFareForm.outbound_pending && !row.is_double_ticket && !row.package_is_double_ticket;
 
             this._initLock = false;
             this.suggestBaggage();
@@ -6333,6 +6358,9 @@ function bookingIndexApp() {
         },
 
         getSelectedFareId() {
+            if (this.ticketFareForm.isOutboundMode) {
+                return this.ticketFareForm.ticket_option || null;
+            }
             if (this.ticketFareForm.ticket_option) {
                 return this.ticketFareForm.ticket_option;
             }
@@ -6370,8 +6398,9 @@ function bookingIndexApp() {
             if (this.isSubmitting) return;
 
             const f = this.ticketFareForm;
-            f.errors = { pnr: '', ticket_number: '', date: '', ticket_agent: '', selling_fare: '', net_fare: '', offer_price: '', inbound_date: '', outbound_date: '' };
+            f.errors = { pnr: '', ticket_number: '', date: '', ticket_agent: '', selling_fare: '', net_fare: '', offer_price: '', inbound_date: '', outbound_date: '', ticket_option: '' };
 
+            if (f.isOutboundMode && !f.ticket_option) f.errors.ticket_option = 'Please select a ticket';
             if (!f.pnr || !f.pnr.trim()) f.errors.pnr = 'PNR is required';
             if (!f.ticket_number || !f.ticket_number.trim()) f.errors.ticket_number = 'Ticket number is required';
             if (!f.date || !f.date.trim()) f.errors.date = 'Issue date is required';
@@ -6511,7 +6540,7 @@ function bookingIndexApp() {
                             ? [t.ticket_fare.route.from_city?.code, t.ticket_fare.route.to_city?.code].filter(Boolean).join('-')
                             : '';
                         const ticketObj = {
-                            id: t.id, ticket_number: t.ticket_number || '',
+                            id: t.id, passenger_id: row.id, outbound_pending: t.outbound_pending ?? false, ticket_number: t.ticket_number || '',
                             issued_date: t.issued_date || '', status: t.status,
                             pnr: t.pnr || '', issue_type: t.issue_type,
                             selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0,
@@ -6571,7 +6600,7 @@ function bookingIndexApp() {
                         const exists = row.all_issued_tickets.some(t => t.id === po.id);
                         if (!exists) {
                             row.all_issued_tickets.push({
-                                id: po.id, ticket_number: po.ticket_number || '',
+                                id: po.id, passenger_id: row.id, outbound_pending: po.outbound_pending ?? false, ticket_number: po.ticket_number || '',
                                 issued_date: po.issued_date || '', status: po.status,
                                 pnr: po.pnr || '', issue_type: 'pending_outbound',
                                 selling_fare: po.selling_fare ?? 0, net_fare: po.net_fare ?? 0,
