@@ -52,6 +52,21 @@ class CostTrackingService
 
     private function getPassengerTicketCost($passenger): float
     {
-        return (float) $passenger->allIssuedTickets->sum('net_fare');
+        return (float) $passenger->allIssuedTickets
+            ->filter(fn ($t) => in_array($t->status, ['issued', 're-issued', 'refunded']))
+            ->sum(function ($ticket) {
+                $baseCost = match ($ticket->status) {
+                    'issued' => (float) $ticket->net_fare,
+                    're-issued' => (float) $ticket->latestReIssuedTicket?->net_fare ?? 0,
+                    'refunded' => (float) $ticket->latestRefundedTicket?->net_fare ?? 0,
+                    default => 0,
+                };
+
+                if ($ticket->status === 're-issued' && $ticket->latestReIssuedTicket?->payment_by?->value === 'company') {
+                    $baseCost += (float) $ticket->latestReIssuedTicket->total_cost;
+                }
+
+                return $baseCost;
+            });
     }
 }

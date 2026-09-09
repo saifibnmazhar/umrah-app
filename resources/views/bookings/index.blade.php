@@ -3114,9 +3114,17 @@ if ($passenger->ticket_fare_inbound_id) {
                     <p class="text-xs font-medium text-slate-500 uppercase mb-1">Ticket Cost Breakdown</p>
                     <div class="space-y-1 text-xs">
                         <template x-for="(ticket, idx) in (cancelPassengerData.ticket_cost.tickets || [])" :key="idx">
-                            <div class="flex justify-between">
-                                <span class="text-slate-400" x-text="ticket.ticket_number || 'N/A'"></span>
-                                <span class="text-slate-600" x-text="$currency(ticket.net_fare || 0, 2)"></span>
+                            <div>
+                                <div class="flex justify-between">
+                                    <span class="text-slate-400" x-text="ticket.ticket_number || 'N/A'"></span>
+                                    <span class="text-slate-600" x-text="$currency(ticket.net_fare || 0, 2)"></span>
+                                </div>
+                                <template x-if="(ticket.re_issue_cost || 0) > 0">
+                                    <div class="flex justify-between pl-3">
+                                        <span class="text-slate-400 text-[11px]">Re-Issue Cost</span>
+                                        <span class="text-slate-500 text-[11px]" x-text="$currency(ticket.re_issue_cost, 2)"></span>
+                                    </div>
+                                </template>
                             </div>
                         </template>
                     </div>

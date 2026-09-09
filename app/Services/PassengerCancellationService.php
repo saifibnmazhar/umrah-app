@@ -364,7 +364,10 @@ class PassengerCancellationService
             ->sum(function ($ticket) {
                 return match ($ticket->status) {
                     'issued' => (float) $ticket->net_fare,
-                    're-issued' => (float) $ticket->latestReIssuedTicket?->net_fare ?? 0,
+                    're-issued' => (float) ($ticket->latestReIssuedTicket?->net_fare ?? 0)
+                        + ($ticket->latestReIssuedTicket?->payment_by?->value === 'company'
+                            ? (float) $ticket->latestReIssuedTicket->total_cost
+                            : 0),
                     'refunded' => (float) $ticket->latestRefundedTicket?->net_fare ?? 0,
                 };
             });
@@ -401,20 +404,29 @@ class PassengerCancellationService
     {
         $tickets = $passenger->allIssuedTickets
             ->filter(fn ($t) => in_array($t->status, ['issued', 're-issued', 'refunded']))
-            ->map(fn ($ticket) => [
-                'ticket_number' => $ticket->ticket_number,
-                'status' => $ticket->status,
-                'net_fare' => match ($ticket->status) {
+            ->map(function ($ticket) {
+                $netFare = match ($ticket->status) {
                     'issued' => (float) $ticket->net_fare,
                     're-issued' => (float) $ticket->latestReIssuedTicket?->net_fare ?? 0,
                     'refunded' => (float) $ticket->latestRefundedTicket?->net_fare ?? 0,
                     default => 0,
-                },
-            ]);
+                };
+
+                $reIssueCost = ($ticket->status === 're-issued' && $ticket->latestReIssuedTicket?->payment_by?->value === 'company')
+                    ? (float) $ticket->latestReIssuedTicket->total_cost
+                    : 0;
+
+                return [
+                    'ticket_number' => $ticket->ticket_number,
+                    'status' => $ticket->status,
+                    'net_fare' => $netFare,
+                    're_issue_cost' => $reIssueCost,
+                ];
+            });
 
         return [
             'tickets' => $tickets->values()->all(),
-            'total' => $tickets->sum('net_fare'),
+            'total' => $tickets->sum('net_fare') + $tickets->sum('re_issue_cost'),
         ];
     }
 }
