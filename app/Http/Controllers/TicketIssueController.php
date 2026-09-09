@@ -75,9 +75,6 @@ class TicketIssueController extends Controller
 
             if ($issuedTicket->issue_type === 'pending_outbound') {
                 unset($updateData['issue_type']);
-                if (isset($validated['ticket_fare_id'])) {
-                    $passenger->update(['ticket_fare_outbound_id' => $validated['ticket_fare_id']]);
-                }
             } else {
                 $updateData['issue_type'] = 'regular';
             }

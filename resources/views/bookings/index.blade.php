@@ -2283,12 +2283,13 @@ if ($passenger->ticket_fare_inbound_id) {
                         </div>
                         <div class="md:col-span-2">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
-                            <select x-model="ticketFareForm.ticket_option" @change="handleTicketOptionChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                            <select x-model="ticketFareForm.ticket_option" @change="ticketFareForm.errors.ticket_option = ''; handleTicketOptionChange()" :class="ticketFareForm.errors.ticket_option ? 'border-red-500' : ''" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                                 <option value="">Select Ticket</option>
                                 <template x-for="opt in filteredTicketOptions" :key="opt.value">
                                     <option :value="opt.value" :disabled="opt.is_active === false" x-text="opt.display"></option>
                                 </template>
                             </select>
+                            <p x-show="ticketFareForm.errors.ticket_option" x-text="ticketFareForm.errors.ticket_option" class="text-xs text-red-500 mt-1"></p>
                         </div>
                          <div x-show="ticketFareForm.showInboundDate">
                             <label class="block text-sm font-medium text-slate-700 mb-1">Inbound Date *</label>
@@ -6332,6 +6333,9 @@ function bookingIndexApp() {
         },
 
         getSelectedFareId() {
+            if (this.ticketFareForm.isOutboundMode) {
+                return this.ticketFareForm.ticket_option || null;
+            }
             if (this.ticketFareForm.ticket_option) {
                 return this.ticketFareForm.ticket_option;
             }
@@ -6369,8 +6373,9 @@ function bookingIndexApp() {
             if (this.isSubmitting) return;
 
             const f = this.ticketFareForm;
-            f.errors = { pnr: '', ticket_number: '', date: '', ticket_agent: '', selling_fare: '', net_fare: '', offer_price: '', inbound_date: '', outbound_date: '' };
+            f.errors = { pnr: '', ticket_number: '', date: '', ticket_agent: '', selling_fare: '', net_fare: '', offer_price: '', inbound_date: '', outbound_date: '', ticket_option: '' };
 
+            if (f.isOutboundMode && !f.ticket_option) f.errors.ticket_option = 'Please select a ticket';
             if (!f.pnr || !f.pnr.trim()) f.errors.pnr = 'PNR is required';
             if (!f.ticket_number || !f.ticket_number.trim()) f.errors.ticket_number = 'Ticket number is required';
             if (!f.date || !f.date.trim()) f.errors.date = 'Issue date is required';

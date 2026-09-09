@@ -35,6 +35,17 @@ class SinglePackageIssueOutButtonTest extends TestCase
         $this->assertStringContainsString('double_ticket_active || ticketFareForm.outbound_pending_locked', $html);
     }
 
+    public function test_outbound_forms_require_ticket_selection_without_regular_fallback(): void
+    {
+        $index = file_get_contents(resource_path('views/bookings/index.blade.php'));
+        $report = file_get_contents(resource_path('views/reports/pending-outbound.blade.php'));
+        $controller = file_get_contents(app_path('Http/Controllers/TicketIssueController.php'));
+
+        $this->assertStringContainsString('Please select a ticket', $index);
+        $this->assertStringContainsString('Please select a ticket', $report);
+        $this->assertStringNotContainsString("ticket_fare_outbound_id' => \$validated['ticket_fare_id']", $controller);
+    }
+
     public function test_backfill_pending_outbound_command_exists(): void
     {
         $path = app_path('Console/Commands/BackfillPendingOutbound.php');
