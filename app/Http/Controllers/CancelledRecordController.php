@@ -6,6 +6,7 @@ use App\Enums\CancelledBookingStatus;
 use App\Models\Branch;
 use App\Models\CancelledBooking;
 use App\Models\CancelledPassenger;
+use App\Services\CurrencyRateService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
@@ -123,7 +124,9 @@ class CancelledRecordController extends Controller
             'deductionVoucher',
         ]);
 
-        return view('cancelled-bookings.print-voucher', compact('cancelledBooking'));
+        $currencyRate = (float) (app(CurrencyRateService::class)->getRateForDate(now())?->rate ?? 0);
+
+        return view('cancelled-bookings.print-voucher', compact('cancelledBooking', 'currencyRate'));
     }
 
     public function passengerIndex(Request $request)
@@ -183,7 +186,9 @@ class CancelledRecordController extends Controller
             'adjustmentVoucher',
         ]);
 
-        return view('cancelled-passengers.print-voucher', compact('cancelledPassenger'));
+        $currencyRate = (float) (app(CurrencyRateService::class)->getRateForDate(now())?->rate ?? 0);
+
+        return view('cancelled-passengers.print-voucher', compact('cancelledPassenger', 'currencyRate'));
     }
 
     private function applyBranchFilter($query, string $column): void
