@@ -1075,12 +1075,12 @@ class BookingController extends Controller
                         ? null
                         : (($passengerData['service_required'] ?? '') === 'visa_only'
                             ? null
-                            : ($passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id)),
+                            : $booking->package?->ticket_fare_id),
                     'ticket_fare_inbound_id' => $isDoubleTicket
-                        ? ($passengerData['ticket_fare_inbound_id'] ?? $booking->package?->ticket_fare_inbound_id)
+                        ? $booking->package?->ticket_fare_inbound_id
                         : null,
                     'ticket_fare_outbound_id' => $isDoubleTicket
-                        ? ($passengerData['ticket_fare_outbound_id'] ?? $booking->package?->ticket_fare_outbound_id)
+                        ? $booking->package?->ticket_fare_outbound_id
                         : null,
                     'package_value' => 0,
                 ]);
@@ -1764,12 +1764,12 @@ class BookingController extends Controller
             ? null
             : (($validated['service_required'] ?? '') === 'visa_only'
                 ? null
-                : ($validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id));
+                : $booking->package?->ticket_fare_id);
         $validated['ticket_fare_inbound_id'] = $isDoubleTicket
-            ? ($validated['ticket_fare_inbound_id'] ?? $booking->package?->ticket_fare_inbound_id)
+            ? $booking->package?->ticket_fare_inbound_id
             : null;
         $validated['ticket_fare_outbound_id'] = $isDoubleTicket
-            ? ($validated['ticket_fare_outbound_id'] ?? $booking->package?->ticket_fare_outbound_id)
+            ? $booking->package?->ticket_fare_outbound_id
             : null;
 
         return DB::transaction(function () use ($booking, $validated) {
