@@ -2595,7 +2595,7 @@ if ($passenger->ticket_fare_inbound_id) {
 
                 <div class="mb-4" x-show="ticketFareForm.route_type === 'One Way-Inbound' && !ticketFareForm.isOutboundMode">
                     <label class="flex items-center gap-2 cursor-pointer">
-                        <input type="checkbox" x-model="ticketFareForm.outbound_pending" :disabled="ticketFareForm.double_ticket_active" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
+                        <input type="checkbox" x-model="ticketFareForm.outbound_pending" :disabled="ticketFareForm.double_ticket_active || ticketFareForm.outbound_pending_locked" class="w-4 h-4 text-slate-600 border-slate-300 rounded focus:ring-slate-400">
                         <span class="text-sm text-slate-700">Outbound Ticket Pending</span>
                     </label>
                 </div>
@@ -4667,6 +4667,7 @@ function bookingIndexApp() {
             non_refundable: false,
             non_exchangeable: false,
             outbound_pending: false,
+            outbound_pending_locked: false,
             isOutboundMode: false,
             issued_ticket_id: null,
             clear_double_ticket: false,
@@ -5261,6 +5262,7 @@ function bookingIndexApp() {
             this.ticketFareForm.baggage_inbound = '';
             this.ticketFareForm.baggage_outbound = '';
             this.ticketFareForm.outbound_pending = false;
+            this.ticketFareForm.outbound_pending_locked = false;
             this.ticketFareForm.clear_double_ticket = false;
             this.ticketFareForm.double_ticket_active = false;
             this.ticketFareForm.errors = { inbound_date: '', outbound_date: '', date: '' };
@@ -5521,6 +5523,8 @@ function bookingIndexApp() {
             }
                 }
             }
+
+            this.ticketFareForm.outbound_pending_locked = !this.ticketFareForm.isOutboundMode && isAlreadyIssued && !!this.ticketFareForm.outbound_pending && !row.is_double_ticket && !row.package_is_double_ticket;
 
             this._initLock = false;
             this.suggestBaggage();
