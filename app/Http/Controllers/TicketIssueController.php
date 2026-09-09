@@ -86,20 +86,13 @@ class TicketIssueController extends Controller
 
             $passenger->update(['ticket_status' => 'issued']);
 
-            if ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
-                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
-            } elseif ($validated['clear_double_ticket'] ?? false) {
-                IssuedTicket::where('passenger_id', $passenger->id)
-                    ->where('issue_type', 'pending_outbound')
-                    ->where('status', 'pending')
-                    ->delete();
-            } elseif ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
+            if ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
                 $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
+                    ->whereIn('status', ['pending', 'awaiting-group'])
                     ->exists();
 
                 if (! $existingPendingOutbound) {
-                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -111,10 +104,14 @@ class TicketIssueController extends Controller
                         'outbound_pending' => false,
                         'ticket_fare_id' => null,
                     ]);
-                    if ($pendingOutboundFareId) {
-                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
-                    }
                 }
+            } elseif ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
+                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
+            } elseif ($validated['clear_double_ticket'] ?? false) {
+                IssuedTicket::where('passenger_id', $passenger->id)
+                    ->where('issue_type', 'pending_outbound')
+                    ->where('status', 'pending')
+                    ->delete();
             }
 
             $issuedTicket->logAction('issued', $oldData, $issuedTicket->toArray());
@@ -419,20 +416,13 @@ class TicketIssueController extends Controller
 
             $issuedTicket->logAction('edited', $oldData, $issuedTicket->toArray());
 
-            if ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
-                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
-            } elseif ($validated['clear_double_ticket'] ?? false) {
-                IssuedTicket::where('passenger_id', $passenger->id)
-                    ->where('issue_type', 'pending_outbound')
-                    ->where('status', 'pending')
-                    ->delete();
-            } elseif ($validated['outbound_pending'] ?? false) {
+            if ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
                 $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
+                    ->whereIn('status', ['pending', 'awaiting-group'])
                     ->exists();
 
                 if (! $existingPendingOutbound) {
-                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -444,10 +434,14 @@ class TicketIssueController extends Controller
                         'outbound_pending' => false,
                         'ticket_fare_id' => null,
                     ]);
-                    if ($pendingOutboundFareId) {
-                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
-                    }
                 }
+            } elseif ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
+                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
+            } elseif ($validated['clear_double_ticket'] ?? false) {
+                IssuedTicket::where('passenger_id', $passenger->id)
+                    ->where('issue_type', 'pending_outbound')
+                    ->where('status', 'pending')
+                    ->delete();
             }
 
             DB::commit();

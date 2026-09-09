@@ -424,6 +424,8 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
 
     'all_issued_tickets' => $p->allIssuedTickets->map(fn($t) => [
         'id' => $t->id,
+        'passenger_id' => $t->passenger_id,
+        'outbound_pending' => $t->outbound_pending ?? false,
         'ticket_number' => $t->ticket_number ?? '',
         'issued_date' => $t->issued_date?->format('Y-m-d') ?? '',
         'inbound_date' => $t->inbound_date?->format('Y-m-d') ?? '',
@@ -1426,6 +1428,9 @@ if ($passenger->ticket_fare_inbound_id) {
                     <button x-show="rowHasPendingRegular({{ $loop->index }}) && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved'" @click="openTicketFareModal({{ $loop->index }})" :disabled="passengersTicketData[{{ $loop->index }}]?.is_ticket_held" :class="passengersTicketData[{{ $loop->index }}]?.is_ticket_held ? 'opacity-40 cursor-not-allowed bg-green-100 text-green-600' : 'bg-green-100 hover:bg-green-200 text-green-600'" class="text-xs px-2 py-1 rounded font-medium transition">Issue</button>
                 </template>
                 <template x-if="canShowInlineIssueOut({{ $loop->index }})">
+                    <button @click="handleIssueOutFromMenu({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
+                </template>
+                <template x-if="canShowInlineIssueOutSingle({{ $loop->index }})">
                     <button @click="handleIssueOutFromMenu({{ $loop->index }})" class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium transition">Issue-Out</button>
                 </template>
                 <template x-if="!passengersTicketData[{{ $loop->index }}]?.is_cancelled && passengersTicketData[{{ $loop->index }}]?.fingerprint_status === 'approved' && passengersTicketData[{{ $loop->index }}]?.status !== 'Hold' && passengersTicketData[{{ $loop->index }}]?.status !== 'Cancel'">
@@ -4884,6 +4889,21 @@ function bookingIndexApp() {
             return true;
         },
 
+        canShowInlineIssueOutSingle(index) {
+            const row = this.passengersTicketData[index];
+            if (!row || row.is_cancelled) return false;
+            if (row.package_is_double_ticket || row.is_double_ticket) return false;
+            if (row.fingerprint_status !== 'approved') return false;
+            const tickets = row.all_issued_tickets || [];
+            const regular = tickets.find(t => String(t.passenger_id ?? row.id) === String(row.id) && (!t.issue_type || t.issue_type === 'regular') && t.outbound_pending);
+            if (!regular) return false;
+            const outbound = tickets.find(t => String(t.passenger_id ?? row.id) === String(row.id) && t.issue_type === 'pending_outbound' && ['pending', 'awaiting-group'].includes(t.status));
+            if (!outbound) return false;
+            const hasIssuedOutbound = tickets.some(t => String(t.passenger_id ?? row.id) === String(row.id) && t.issue_type === 'pending_outbound' && ['issued', 're-issued'].includes(t.status));
+            if (hasIssuedOutbound) return false;
+            return true;
+        },
+
         hasRegularIssued(index) {
             const row = this.passengersTicketData[index];
             if (!row) return false;
@@ -5187,7 +5207,7 @@ function bookingIndexApp() {
                     const exists = row.all_issued_tickets.some(et => et.id === t.id);
                     if (!exists) {
                         row.all_issued_tickets.push({
-                            id: t.id, ticket_number: t.ticket_number || '',
+                            id: t.id, passenger_id: row.id, outbound_pending: t.outbound_pending ?? false, ticket_number: t.ticket_number || '',
                             issued_date: t.issued_date || '', status: t.status,
                             pnr: t.pnr || '', issue_type: 'pending_outbound',
                             selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0,
@@ -6486,7 +6506,7 @@ function bookingIndexApp() {
                             ? [t.ticket_fare.route.from_city?.code, t.ticket_fare.route.to_city?.code].filter(Boolean).join('-')
                             : '';
                         const ticketObj = {
-                            id: t.id, ticket_number: t.ticket_number || '',
+                            id: t.id, passenger_id: row.id, outbound_pending: t.outbound_pending ?? false, ticket_number: t.ticket_number || '',
                             issued_date: t.issued_date || '', status: t.status,
                             pnr: t.pnr || '', issue_type: t.issue_type,
                             selling_fare: t.selling_fare ?? 0, net_fare: t.net_fare ?? 0,
@@ -6546,7 +6566,7 @@ function bookingIndexApp() {
                         const exists = row.all_issued_tickets.some(t => t.id === po.id);
                         if (!exists) {
                             row.all_issued_tickets.push({
-                                id: po.id, ticket_number: po.ticket_number || '',
+                                id: po.id, passenger_id: row.id, outbound_pending: po.outbound_pending ?? false, ticket_number: po.ticket_number || '',
                                 issued_date: po.issued_date || '', status: po.status,
                                 pnr: po.pnr || '', issue_type: 'pending_outbound',
                                 selling_fare: po.selling_fare ?? 0, net_fare: po.net_fare ?? 0,
