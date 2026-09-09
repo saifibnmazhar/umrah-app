@@ -16,6 +16,8 @@
         .info-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 6px 40px; margin-bottom: 16px; }
         .info-row { display: flex; align-items: baseline; }
         .info-row .label { font-weight: 700; min-width: 120px; font-size: 13px; color: #475569; }
+        .cancel-info .info-row { gap: 8px; }
+        .cancel-info .info-row .label { min-width: 170px; flex-shrink: 0; }
         .info-row .value { font-weight: 600; color: #0f172a; }
         .section-title { font-weight: 700; font-size: 13px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
         .table-wrap { border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
@@ -130,10 +132,10 @@
         </div>
 
         <div class="section-title">Cancellation Information</div>
-        <div class="info-grid" style="margin-bottom: 18px;">
+        <div class="info-grid cancel-info" style="margin-bottom: 18px;">
             <div class="info-row">
                 <span class="label">Cancellation Branch:</span>
-                <span class="value">{{ $cp->cancellationBranch?->name ?? '—' }}</span>
+                <span class="value">{{ trim($cp->cancellationBranch?->name ?? '—') }}</span>
             </div>
             <div class="info-row">
                 <span class="label">Cancel Date:</span>

@@ -17,6 +17,14 @@
         .info-row { display: flex; align-items: baseline; }
         .info-row .label { font-weight: 700; min-width: 140px; font-size: 13px; color: #475569; }
         .info-row .value { font-weight: 600; color: #0f172a; }
+        .cancel-info .info-row { gap: 6px; }
+        .cancel-info .info-row .label { flex-shrink: 0; }
+        .cancel-info .label-long { min-width: 170px; }
+        .cancel-info .info-row-wide { grid-column: 1 / -1; display: flex; align-items: baseline; gap: 24px; }
+        .cancel-info .info-pair { display: flex; align-items: baseline; gap: 6px; flex: 1; min-width: 0; }
+        .cancel-info .info-pair .value { white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+        .cancel-info .label-short { min-width: 95px; }
+        .cancel-info .label-mid { min-width: 115px; }
         .section-title { font-weight: 700; font-size: 13px; color: #475569; text-transform: uppercase; letter-spacing: 0.5px; margin-bottom: 8px; padding-bottom: 4px; border-bottom: 1px solid #e2e8f0; }
         .table-wrap { border: 1px solid #cbd5e1; border-radius: 6px; overflow: hidden; margin-bottom: 16px; }
         table { width: 100%; border-collapse: collapse; font-size: 14px; }
@@ -125,19 +133,23 @@
         </div>
 
         <div class="section-title">Cancellation Information</div>
-        <div class="info-grid" style="margin-bottom: 18px;">
+        <div class="info-grid cancel-info" style="margin-bottom: 18px;">
             <div class="info-row">
-                <span class="label">Cancellation Branch:</span>
+                <span class="label label-long">Cancellation Branch:</span>
                 <span class="value">{{ $cb->cancellationBranch?->name ?? '—' }}</span>
             </div>
-            <div class="info-row">
-                <span class="label">Cancel Date:</span>
-                <span class="value">{{ $cb->created_at?->format('d-M-Y') ?? '—' }}</span>
-                <span class="label" style="margin-left: 30px;">Booking Branch:</span>
-                <span class="value">{{ $cb->booking?->bookingBranch?->name ?? '—' }}</span>
+            <div class="info-row-wide">
+                <div class="info-pair">
+                    <span class="label label-long">Cancel Date:</span>
+                    <span class="value">{{ $cb->created_at?->format('d-M-Y') ?? '—' }}</span>
+                </div>
+                <div class="info-pair">
+                    <span class="label label-mid">Booking Branch:</span>
+                    <span class="value">{{ $cb->booking?->bookingBranch?->name ?? '—' }}</span>
+                </div>
             </div>
             <div class="info-row">
-                <span class="label">Confirmed By:</span>
+                <span class="label label-long">Confirmed By:</span>
                 <span class="value">{{ $cb->confirmedBy?->name ?? '—' }}</span>
             </div>
         </div>
