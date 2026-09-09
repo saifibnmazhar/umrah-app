@@ -150,9 +150,15 @@ class PassengerCancellationService
             $invoice = $cancelledPassenger->invoice;
             $passenger = $cancelledPassenger->passenger;
 
+            $invoice = $cancelledPassenger->invoice ?? $cancelledPassenger->booking?->invoice;
             $refundable = (float) $cancelledPassenger->refundable_amount;
-            $adjusted = (float) $data['balance_adjusted_amount'];
+            $balance = max(0, (float) ($invoice->balance ?? 0));
+            $adjusted = min($refundable, $balance);
             $refund = max(0, $refundable - $adjusted);
+            $capInvoice = $invoice ?? $booking->invoice;
+            if ($capInvoice) {
+                app(RefundCapService::class)->assertRefundAllowed($capInvoice, $refund, 'balance_adjusted_amount');
+            }
             $serviceCharge = (float) ($cancelledPassenger->service_charge_deduction ?? 0);
             $currencyRateId = $booking->currency_rate_id;
             $paymentMethod = $data['payment_method'];
@@ -358,7 +364,10 @@ class PassengerCancellationService
             ->sum(function ($ticket) {
                 return match ($ticket->status) {
                     'issued' => (float) $ticket->net_fare,
-                    're-issued' => (float) $ticket->latestReIssuedTicket?->net_fare ?? 0,
+                    're-issued' => (float) ($ticket->latestReIssuedTicket?->net_fare ?? 0)
+                        + ($ticket->latestReIssuedTicket?->payment_by?->value === 'company'
+                            ? (float) $ticket->latestReIssuedTicket->total_cost
+                            : 0),
                     'refunded' => (float) $ticket->latestRefundedTicket?->net_fare ?? 0,
                 };
             });
@@ -395,20 +404,29 @@ class PassengerCancellationService
     {
         $tickets = $passenger->allIssuedTickets
             ->filter(fn ($t) => in_array($t->status, ['issued', 're-issued', 'refunded']))
-            ->map(fn ($ticket) => [
-                'ticket_number' => $ticket->ticket_number,
-                'status' => $ticket->status,
-                'net_fare' => match ($ticket->status) {
+            ->map(function ($ticket) {
+                $netFare = match ($ticket->status) {
                     'issued' => (float) $ticket->net_fare,
                     're-issued' => (float) $ticket->latestReIssuedTicket?->net_fare ?? 0,
                     'refunded' => (float) $ticket->latestRefundedTicket?->net_fare ?? 0,
                     default => 0,
-                },
-            ]);
+                };
+
+                $reIssueCost = ($ticket->status === 're-issued' && $ticket->latestReIssuedTicket?->payment_by?->value === 'company')
+                    ? (float) $ticket->latestReIssuedTicket->total_cost
+                    : 0;
+
+                return [
+                    'ticket_number' => $ticket->ticket_number,
+                    'status' => $ticket->status,
+                    'net_fare' => $netFare,
+                    're_issue_cost' => $reIssueCost,
+                ];
+            });
 
         return [
             'tickets' => $tickets->values()->all(),
-            'total' => $tickets->sum('net_fare'),
+            'total' => $tickets->sum('net_fare') + $tickets->sum('re_issue_cost'),
         ];
     }
 }

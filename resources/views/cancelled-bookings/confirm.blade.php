@@ -5,10 +5,16 @@
     $booking = $cancelledBooking->booking;
     $invoice = $booking->invoice;
 @endphp
+@php
+    $refundCap = $refundCap ?? ['paid' => (float) ($invoice?->paid_amount ?? 0), 'refunded' => 0, 'remaining' => (float) ($invoice?->paid_amount ?? 0)];
+    $maxRefundable = min((float) $cancelledBooking->refund_amount, (float) $refundCap['remaining']);
+@endphp
 <div class="max-w-4xl mx-auto" x-data="{
     refundAmount: '{{ $cancelledBooking->refund_amount }}',
     refundAmountBdt: '',
     originalRefundAmount: '{{ $cancelledBooking->refund_amount }}',
+    maxRefundable: '{{ $maxRefundable }}',
+    remainingRefundable: '{{ (float) $refundCap['remaining'] }}',
     cancelledBookingId: '{{ $cancelledBooking->id }}',
     totalPaid: '{{ $invoice?->paid_amount ?? 0 }}',
     totalCost: '{{ $costSummary['total_cost'] ?? 0 }}',
@@ -129,6 +135,14 @@
                         <span class="font-medium text-green-600">@currency($invoice?->paid_amount ?? 0)</span>
                     </div>
                     <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Already Refunded</span>
+                        <span class="font-medium text-slate-800">@currency($refundCap['refunded'] ?? 0)</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
+                        <span class="text-slate-500">Remaining Refundable</span>
+                        <span class="font-medium text-slate-800">@currency($refundCap['remaining'] ?? 0)</span>
+                    </div>
+                    <div class="flex justify-between text-sm">
                         <span class="text-slate-500">Service Charge Deduction</span>
                         <span class="font-medium text-slate-800" x-text="$currency(effectiveServiceCharge, 2)"></span>
                     </div>
@@ -213,10 +227,9 @@
                                 @input="
                                     if (!isRefundEditable) return;
                                     const bdt = parseFloat($event.target.value) || 0;
-                                    const maxB = parseFloat(maxBdt) || 0;
-                                    const minB = parseFloat(minBdt) || 0;
-                                    if (bdt > maxB) { refundAmountBdt = maxB; showToast('Refund cannot exceed the original refund amount', 'warning'); return; }
-                                    if (bdt < minB) { refundAmountBdt = minB; showToast('Refund cannot be less than total passenger refundable', 'warning'); return; }
+                                    const capSar = Math.min(parseFloat(originalRefundAmount), parseFloat(maxRefundable));
+                                    const capBdt = Math.round(capSar * ($store.currency.rate || 1) * 100) / 100;
+                                    if (bdt > capBdt) { refundAmountBdt = capBdt; showToast('Refund cannot exceed remaining refundable (paid minus already refunded)', 'warning'); return; }
                                     refundAmountBdt = bdt;
                                     refundAmount = parseFloat((bdt / ($store.currency.rate || 1)).toFixed(6));
                                 "
@@ -225,20 +238,15 @@
                         </div>
                         <div>
                             <label class="block text-sm font-medium text-slate-700 mb-1">Refund Amount (SAR)</label>
-                            <input type="number" step="0.000001"
-                                :value="refundDisplay"
+                            <input type="number" x-model="refundAmount" step="0.000001" min="0"
+                                :max="Math.min(parseFloat(originalRefundAmount), parseFloat(maxRefundable))"
                                 :readonly="!isRefundEditable || $store.currency.mode === 'BDT'"
                                 :class="{'bg-slate-100 cursor-not-allowed': !isRefundEditable || $store.currency.mode === 'BDT'}"
-                                :min="totalPassengerRefundable"
-                                :max="isRefundEditable ? parseFloat(originalRefundAmount) : totalPassengerRefundable"
                                 @input="
                                     if (!isRefundEditable) return;
                                     const val = parseFloat($event.target.value) || 0;
-                                    const orig = parseFloat(originalRefundAmount);
-                                    const min = parseFloat(totalPassengerRefundable) || 0;
-                                    if (val > orig) { refundAmount = orig; showToast('Refund cannot exceed the original refund amount', 'warning'); return; }
-                                    if (val < min) { refundAmount = min; showToast('Refund cannot be less than total passenger refundable', 'warning'); return; }
-                                    refundAmount = val;
+                                    const cap = Math.min(parseFloat(originalRefundAmount), parseFloat(maxRefundable));
+                                    if (val > cap) { refundAmount = cap; showToast('Refund cannot exceed remaining refundable (paid minus already refunded)', 'warning'); }
                                     if ($store.currency.mode === 'BDT' && $store.currency.rate > 0) {
                                         refundAmountBdt = Math.round((refundDisplay || 0) * $store.currency.rate * 100) / 100;
                                     }
@@ -285,6 +293,7 @@
             <form method="POST" action="{{ route('cancelled-bookings.confirm.submit', $cancelledBooking->id) }}" onsubmit="return validateRefundForm()">
                 @csrf
                 <input type="hidden" name="refund_amount" :value="Math.max(0, parseFloat(refundAmount))">
+                <input type="hidden" name="currency" value="SAR">
                 <input type="hidden" name="payment_method" :value="paymentMethod">
                 <input type="hidden" name="remarks" :value="remarks">
                 <input type="hidden" name="service_charge_deduction" value="{{ $cancelledBooking->service_charge_deduction }}">
@@ -322,6 +331,15 @@ function validateRefundForm() {
     const remarks = document.querySelector('[name="remarks"]').value;
     if (method === 'bank' && !remarks.trim()) {
         alert('Remarks are required when payment method is Bank.');
+        return false;
+    }
+    const scope = document.querySelector('[x-data]');
+    const refund = parseFloat(scope?.__x?.$data?.refundAmount ?? document.querySelector('[name="refund_amount"]').value) || 0;
+    const cap = parseFloat(scope?.__x?.$data?.maxRefundable ?? Infinity);
+    const orig = parseFloat(scope?.__x?.$data?.originalRefundAmount ?? Infinity);
+    const max = Math.min(cap, orig);
+    if (refund - max > 0.000001) {
+        alert('Customer refund cannot exceed remaining refundable (paid minus already refunded).');
         return false;
     }
     return confirm('Process this refund? This action cannot be undone.');

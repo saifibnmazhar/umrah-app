@@ -32,7 +32,9 @@ class CancellationService
         $totalCost = $costSummary['total_cost'];
         $serviceCharge = isset($data['service_charge_deduction']) ? (float) $data['service_charge_deduction'] : null;
         $totalPassengerRefundable = $booking->getTotalPassengerRefundable();
-        $refundAmount = $totalPaid - $totalCost - ($serviceCharge ?? 0) + $totalPassengerRefundable;
+        $rawRefund = max(0, $totalPaid - $totalCost - ($serviceCharge ?? 0) + $totalPassengerRefundable);
+        $remaining = app(RefundCapService::class)->getCap($invoice)['remaining'];
+        $refundAmount = min($rawRefund, $remaining);
 
         return DB::transaction(function () use ($booking, $invoice, $data, $totalPaid, $serviceCharge, $refundAmount, $totalPassengerRefundable) {
             $cancelledBooking = CancelledBooking::create([
@@ -139,8 +141,12 @@ class CancellationService
                 $deductionVoucherId = $deductionVoucher->id;
             }
 
-            $refundAmount = (float) $data['refund_amount'];
+            $refundAmount = app(RefundCapService::class)->normalizeToSar((float) $data['refund_amount'], $data['currency'] ?? null);
             $refundPaymentAmount = max(0, $refundAmount);
+            $capInvoice = $invoice ?? $booking->invoice;
+            if ($capInvoice) {
+                app(RefundCapService::class)->assertRefundAllowed($capInvoice, $refundAmount);
+            }
             $refundType = TransactionType::where('name', 'Customer Refund')->first();
 
             $refundPayment = Payment::create([
@@ -183,6 +189,7 @@ class CancellationService
                 'deduction_voucher_id' => $deductionVoucherId,
                 'refund_payment_id' => $refundPayment->id,
                 'refund_voucher_id' => $refundVoucher->id,
+                'refund_amount' => $refundAmount,
                 'confirmed_by_id' => auth()->id(),
                 'status' => CancelledBookingStatus::CANCELLED,
             ]);
