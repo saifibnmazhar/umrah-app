@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\PaymentMethod;
+use App\Enums\ServiceRequired;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
@@ -21,6 +22,10 @@ class TicketIssueController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             abort(403, 'Passenger does not belong to this booking.');
+        }
+
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
         }
 
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
@@ -167,6 +172,10 @@ class TicketIssueController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             abort(403, 'Passenger does not belong to this booking.');
+        }
+
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
         }
 
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
@@ -478,6 +487,10 @@ class TicketIssueController extends Controller
 
     public function createPendingOutbound(Request $request, Passenger $passenger)
     {
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
+        }
+
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
             return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
@@ -553,6 +566,10 @@ class TicketIssueController extends Controller
 
     public function confirmGroup(Request $request, Passenger $passenger)
     {
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
+        }
+
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
             return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
@@ -649,6 +666,13 @@ class TicketIssueController extends Controller
 
             return response()->json(['message' => 'Failed to confirm tickets.'], 500);
         }
+    }
+
+    private function serviceValue(Passenger $passenger): ?string
+    {
+        $service = $passenger->service_required;
+
+        return $service instanceof ServiceRequired ? $service->value : $service;
     }
 
     private function clearPendingOutboundForRoundMulti(Passenger $passenger, int $ticketFareId, IssuedTicket $issuedTicket): void
