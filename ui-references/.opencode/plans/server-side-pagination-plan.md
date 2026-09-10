@@ -73,12 +73,79 @@ GET /api/fingerprints/staff?page=1&per_page=25&search=...  -> 25 passenger-grain
 
 Rules:
 
-- No `::get()` over full tables in controller or Blade.
+- No `::get()` over full tables in controller for the main data query.
 - Totals via SQL aggregates, never via hydration + PHP loop.
-- Dropdown / fare lists via lazy APIs (`limit(20)` search), never full dump.
+- Dropdown / fare lists stay loaded in PHP/Blade (small reference tables, <100 rows).
 - Paginate at passenger grain (`FingerprintDetail`), not booking grain.
 
-## 4. Implementation Steps (TDD-first per AGENTS.md)
+## 4. Search & Filter Behavior
+
+### Filter Dropdowns — No Change
+
+All dropdown data continues to load fully in the controller/Blade. These are
+small reference tables (<100 rows). The performance problem is the main query
+(1500+ passengers), not dropdown data.
+
+| Dropdown | Source | Loaded in |
+|----------|--------|-----------|
+| Branches | `Branch::get()` | Controller → Blade |
+| Packages | `Package::get()` | Controller → Blade |
+| Airlines + Travel Classes | `Airline::with('travelClasses')->get()` | Controller → Blade |
+| Ticket Fares | `TicketFare::with(8 relations)->get()` | Controller → Blade |
+| Visa Agents | `VisaAgent::get()` | Controller → Blade |
+| Ticket Agents | `TicketAgent::get()` | Controller → Blade |
+| Passenger Statuses | `PassengerStatus::all()` | Controller → Blade |
+| Status enums | Hardcoded in Blade | Static |
+
+### Booking/Passenger Index — Switch to AJAX
+
+Current: full page reload on every filter/search change.
+After: AJAX `fetch` to `/api/bookings/passengers`, no page reload.
+
+- Search debounce: 1500ms → 400ms
+- Any search/filter change resets to `page=1`
+- Dropdown data stays embedded in Blade HTML (no change)
+- Fingerprint pages already use AJAX — no behavioral change there
+
+### Search Fields
+
+**Booking tab** (`/api/bookings/passengers?search=term`) — `%term%` on:
+`invoice_id`, `customer.mobile_no`, `passengers.passport_no` (OR grouped)
+
+**Passenger tab** (`/api/bookings/passengers?search=term`) — `%term%` on:
+`first_name`, `last_name`, `mobile_no`, `passport_no`,
+`booking.invoice_id`, `issued_tickets.ticket_number`, `issued_tickets.pnr`
+(OR grouped)
+
+**Fingerprint Admin/Staff** — `%term%` on:
+`booking.invoice_id`, `booking.customer.name`,
+`fingerprint_details.passenger.first_name`,
+`fingerprint_details.passenger.last_name` (OR grouped)
+
+### CONCAT Cleanup
+
+Replace `orWhereRaw("CONCAT(first_name, ' ', last_name) LIKE ?", ...)` with:
+`->orWhere('first_name', 'like', "%{$search}%")
+  ->orWhere('last_name', 'like', "%{$search}%")`
+
+Same user experience, index-friendly, no raw SQL.
+
+### Response Shape (consistent across all APIs)
+
+```json
+{
+  "data": [ /* 15 or 25 row objects */ ],
+  "summary": { "total": 1523 },
+  "pagination": {
+    "current_page": 1,
+    "last_page": 61,
+    "per_page": 15,
+    "total": 1523
+  }
+}
+```
+
+## 5. Implementation Steps (TDD-first per AGENTS.md)
 
 ### Step 0 — Tests first
 
@@ -91,7 +158,7 @@ Assert:
 
 - `GET /api/bookings/passengers` returns 15 items, `pagination.total` matches full count, `summary.total` matches, no full-collection keys.
 - `GET /api/fingerprints/admin` and `/staff` return passenger-grain rows, 1 query per relation (use `DB::enableQueryLog` / `assertDatabaseCount` style already used in repo).
-- Shell `GET /bookings`, `/fingerprints/admin`, `/fingerprints/staff` return 200 without `TicketFare::get()` data.
+- Shell `GET /bookings`, `/fingerprints/admin`, `/fingerprints/staff` return 200.
 
 Run:
 
@@ -102,30 +169,32 @@ php artisan test --filter=FingerprintPaginationTest
 
 ### Step 1 — Indexes (migration, smallest risk, biggest read win)
 
+Migration: `database/migrations/2026_09_10_000001_add_indexes_for_server_side_pagination.php`
+
+Note: FK columns (`booking_id`, `passenger_status_id`, etc.) already have implicit
+indexes from InnoDB FK constraints. `invoice_id` on `bookings` already has a
+`unique()` constraint. `[fingerprint_id, passenger_id]` on `fingerprint_details`
+already has a `unique()` constraint. Only add indexes that don't already exist.
+
 ```php
 Schema::table('passengers', function ($t) {
-    $t->index('booking_id');
-    $t->index('passport_no');
-    $t->index('mobile_no');
-    $t->index('flight_date_from');
-    $t->index('passenger_status_id');
-    $t->index('ticket_fare_id');
+    $t->index('passport_no');         // search: LIKE '%term%'
+    $t->index('mobile_no');           // search: LIKE '%term%'
+    $t->index('flight_date_from');    // filter: date range
 });
 Schema::table('bookings', function ($t) {
-    $t->index('invoice_id');
-    $t->index('booking_branch_id');
-    $t->index('fingerprint_branch_id');
+    $t->index('booking_branch_id');     // filter: branch dropdown
+    $t->index('fingerprint_branch_id'); // filter: branch dropdown
 });
 Schema::table('fingerprints', function ($t) {
-    $t->index('assigned_staff_id');
-    $t->index('deadline');
+    $t->index('assigned_staff_id'); // filter: staff assignment
+    $t->index('deadline');          // filter: deadline range
 });
 Schema::table('fingerprint_details', function ($t) {
-    $t->index(['fingerprint_id', 'passenger_id']);
-    $t->index('status');
+    $t->index('status'); // filter: fingerprint status
 });
 Schema::table('issued_tickets', function ($t) {
-    $t->index(['passenger_id', 'status']);
+    $t->index(['passenger_id', 'status']); // composite: ticket status filter
 });
 ```
 
@@ -173,7 +242,12 @@ Route::get('/api/bookings/passengers', [BookingController::class, 'passengerData
 public function index(Request $request)
 {
     return view('bookings.index', [
-        // filter lists only, no Passenger query, no TicketFare::get()
+        'packages' => Package::get(),
+        'airlines' => Airline::with('travelClasses')->get(),
+        'travelClasses' => TravelClass::all(),
+        'ticketFares' => TicketFare::with([...])->get(),
+        // ... all existing filter dropdown data stays here
+        // NO Passenger query, NO 80-relation with(), NO count/pluck/whereId loop
     ]);
 }
 
@@ -211,21 +285,23 @@ protected function passengerSummary(Request $request): array
 }
 ```
 
-Delete from old `index()`: `count()`, `pluck(booking_id)`, `whereIn()->get()` loop,
-80-relation `with()`, full fare/agent lists.
+Delete from old `index()`: `(clone $passengers)->count()`, `pluck(booking_id)`,
+`whereIn()->get()` loop, 80-relation `with()`. Keep all dropdown queries.
 
-Blade (`bookings/index.blade.php`): delete PHP blocks at `:7-111`
+Blade (`bookings/index.blade.php`): keep all PHP blocks for dropdown data
 (`Package::get()`, `Airline::get()`, `TravelClass::all()`, `TicketFare::get()`).
-Replace with Alpine fetch:
+Replace page-reload filter logic with Alpine fetch:
 
 ```js
-const params = new URLSearchParams({ page, search, visa_status });
+// On search input (@input.debounce.400ms) or filter change (@change):
+const params = new URLSearchParams({ page, search, visa_status, ... });
 const res = await fetch(`/api/bookings/passengers?${params}`);
 const { data, summary, pagination } = await res.json();
+// Re-render table rows, update pagination controls
 ```
 
-Reuse `PassengerController@search` (`limit(20)`) for autocomplete instead of
-dumping all fares.
+- Search debounce: 1500ms → 400ms
+- Any search/filter change resets to `page=1`
 
 ### Step 4 — Fingerprint Admin/Staff fix
 
@@ -272,19 +348,7 @@ Set `per_page=25` to match `VisaReportController::PER_PAGE` and
 `fingerprints/admin.blade.php:354` and `staff.blade.php` only changes
 `per_page` handling; pagination meta stays `{current_page, last_page, per_page, total}`.
 
-### Step 5 — Shell views for fingerprints
-
-`routes/web.php:194,233` closures keep only:
-
-```php
-$canAssignStaff, $approvalOverrideAllowed, $fingerprintStatuses, $flightDateRanges
-```
-
-Move `District::distinct()->pluck()` / `District::get()` to filter API
-(same shape as `FingerprintController@staffList`). Compute `$flightDateRanges`
-once in a view composer or helper; it is currently duplicated in both closures.
-
-### Step 6 — Verify
+### Step 5 — Verify
 
 ```bash
 php artisan test --filter=BookingIndexPaginationTest
@@ -300,15 +364,14 @@ Manual: open `/bookings`, `/fingerprints/admin`, `/fingerprints/staff` with
 network tab — first HTML small, each filter/page triggers one
 `/api/...?page=` call returning 15/25 rows.
 
-## 5. Rollout Order
+## 6. Rollout Order
 
 1. Indexes migration.
 2. Fingerprint eager-load fix (smallest diff, no API shape change).
 3. Fingerprint detail-grain pagination.
 4. `BookingPassengerQuery` + `/api/bookings/passengers` + slim Blade.
-5. Lazy dropdowns.
 
-## 6. Risks / Notes
+## 7. Risks / Notes
 
 - Booking ticket-status filters use nested `whereHas('allIssuedTickets')`;
   keep logic identical when moving to query object, only change hydration size.
