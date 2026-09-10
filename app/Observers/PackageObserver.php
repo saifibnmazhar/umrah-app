@@ -2,6 +2,7 @@
 
 namespace App\Observers;
 
+use App\Enums\CancelledBookingStatus;
 use App\Models\Package;
 use App\Services\ProfitCalculationService;
 
@@ -22,7 +23,7 @@ class PackageObserver
         }
 
         $package->bookings()
-            ->where('is_cancelled', false)
+            ->whereDoesntHave('cancelledBooking', fn ($q) => $q->where('status', CancelledBookingStatus::CANCELLED->value))
             ->chunkById(100, function ($bookings): void {
                 $service = app(ProfitCalculationService::class);
                 foreach ($bookings as $booking) {

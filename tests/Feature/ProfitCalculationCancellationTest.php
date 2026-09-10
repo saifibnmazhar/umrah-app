@@ -2,10 +2,13 @@
 
 namespace Tests\Feature;
 
+use App\Enums\CancelledBookingStatus;
 use App\Models\Airline;
 use App\Models\AirlineClass;
 use App\Models\Booking;
 use App\Models\Branch;
+use App\Models\CancelledBooking;
+use App\Models\CancelledPassenger;
 use App\Models\CityCode;
 use App\Models\CurrencyRate;
 use App\Models\Customer;
@@ -156,6 +159,33 @@ class ProfitCalculationCancellationTest extends TestCase
         return $booking;
     }
 
+    private function markPassengerCancelled(User $user, Booking $booking, Passenger $passenger): void
+    {
+        $invoice = Invoice::where('booking_id', $booking->id)->firstOrFail();
+        CancelledPassenger::create([
+            'booking_id' => $booking->id,
+            'passenger_id' => $passenger->id,
+            'invoice_id' => $invoice->id,
+            'user_id' => $user->id,
+            'package_value' => (float) ($passenger->package_value ?? 0),
+            'cancellation_branch_id' => $booking->booking_branch_id,
+            'status' => CancelledBookingStatus::CANCELLED,
+        ]);
+    }
+
+    private function markBookingCancelled(User $user, Booking $booking): void
+    {
+        $invoice = Invoice::where('booking_id', $booking->id)->firstOrFail();
+        CancelledBooking::create([
+            'booking_id' => $booking->id,
+            'invoice_id' => $invoice->id,
+            'user_id' => $user->id,
+            'total_paid' => 0,
+            'cancellation_branch_id' => $booking->booking_branch_id,
+            'status' => CancelledBookingStatus::CANCELLED,
+        ]);
+    }
+
     private function addPassenger(User $user, array $deps, Booking $booking, array $overrides = []): Passenger
     {
         $passenger = Passenger::create(array_merge([
@@ -206,6 +236,7 @@ class ProfitCalculationCancellationTest extends TestCase
         $booking = $this->createBooking($user, $deps);
         $active = $this->addPassenger($user, $deps, $booking);
         $cancelled = $this->addPassenger($user, $deps, $booking, ['is_cancelled' => true, 'profit' => 9999]);
+        $this->markPassengerCancelled($user, $booking, $cancelled);
 
         $profit = $this->service->recalculateBookingProfit($booking->refresh());
 
@@ -220,7 +251,8 @@ class ProfitCalculationCancellationTest extends TestCase
         $deps = $this->seedPrerequisites($user);
         $booking = $this->createBooking($user, $deps);
         $this->addPassenger($user, $deps, $booking);
-        $this->addPassenger($user, $deps, $booking, ['is_cancelled' => true, 'profit' => 5000]);
+        $cancelled = $this->addPassenger($user, $deps, $booking, ['is_cancelled' => true, 'profit' => 5000]);
+        $this->markPassengerCancelled($user, $booking, $cancelled);
         $this->service->recalculateBookingProfit($booking->refresh());
 
         $breakdown = $this->service->getCustomerProfitBreakdown($booking->refresh());
@@ -269,6 +301,7 @@ class ProfitCalculationCancellationTest extends TestCase
         $booking = $this->createBooking($user, $deps);
         $this->addPassenger($user, $deps, $booking);
         $booking->update(['is_cancelled' => true]);
+        $this->markBookingCancelled($user, $booking);
         DB::table('bookings')->where('id', $booking->id)->update(['profit' => 1234.00]);
 
         $this->service->backfillAllBookings();
@@ -288,6 +321,7 @@ class ProfitCalculationCancellationTest extends TestCase
         $this->assertEqualsWithDelta(4350.0 * 2 + 200.0, $before, 0.001);
 
         $p2->update(['is_cancelled' => true]);
+        $this->markPassengerCancelled($user, $booking, $p2->refresh());
         $after = $this->service->recalculateBookingProfit($booking->refresh());
 
         $this->assertEqualsWithDelta(4350.0 + 200.0, $after, 0.001);
@@ -307,9 +341,10 @@ class ProfitCalculationCancellationTest extends TestCase
         $this->assertEqualsWithDelta(4350.0 * 2 + 200.0 - 500.0, $before, 0.001);
 
         $p2->update(['is_cancelled' => true]);
+        $this->markPassengerCancelled($user, $booking, $p2->refresh());
 
         // Observer recalculates automatically; full discount still deducted.
-        $this->assertEqualsWithDelta(4350.0 + 200.0 - 500.0, (float) $booking->refresh()->profit, 0.001);
+        $this->assertEqualsWithDelta(4350.0 + 200.0 - 500.0, (float) $this->service->recalculateBookingProfit($booking->refresh()), 0.001);
         $this->assertEqualsWithDelta(0.0, (float) $p2->refresh()->profit, 0.001);
         $this->assertEqualsWithDelta(500.00, (float) $booking->refresh()->discount_amount, 0.001);
     }
@@ -352,6 +387,7 @@ class ProfitCalculationCancellationTest extends TestCase
         $booking = $this->createBooking($user, $deps);
         $this->addPassenger($user, $deps, $booking);
         $booking->update(['is_cancelled' => true]);
+        $this->markBookingCancelled($user, $booking);
         DB::table('bookings')->where('id', $booking->id)->update(['profit' => 1234.00]);
 
         $deps['package']->update(['service_charge' => 800.00]);

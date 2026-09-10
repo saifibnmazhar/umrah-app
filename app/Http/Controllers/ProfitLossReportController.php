@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\CancelledBookingStatus;
 use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\IssuedTicket;
@@ -17,9 +18,11 @@ class ProfitLossReportController extends Controller
         'invoice',
         'fingerprint',
         'fingerprintCharge',
+        'cancelledBooking',
         'package.ticketFare',
         'package.ticketFareInbound',
         'package.ticketFareOutbound',
+        'passengers.cancelledPassengers',
         'passengers.visaSubmission.cancelledSubmissions',
         'passengers.visaSubmission.visaSellingPrice',
         'passengers.allIssuedTickets.ticketFare',
@@ -27,11 +30,33 @@ class ProfitLossReportController extends Controller
         'passengers.allIssuedTickets.refundedTickets',
     ];
 
+    private function excludeCancelledBookings($query, string $table = 'bookings')
+    {
+        return $query->whereNotExists(function ($q) use ($table) {
+            $q->select(DB::raw(1))
+                ->from('cancelled_bookings as cb')
+                ->whereColumn('cb.booking_id', $table.'.id')
+                ->where('cb.status', CancelledBookingStatus::CANCELLED->value)
+                ->whereNull('cb.deleted_at');
+        });
+    }
+
+    private function excludeCancelledPassengers($query, string $table = 'passengers')
+    {
+        return $query->whereNotExists(function ($q) use ($table) {
+            $q->select(DB::raw(1))
+                ->from('cancelled_passengers as cp')
+                ->whereColumn('cp.passenger_id', $table.'.id')
+                ->where('cp.status', CancelledBookingStatus::CANCELLED->value)
+                ->whereNull('cp.deleted_at');
+        });
+    }
+
     private function bookingsQuery(Request $request)
     {
         $query = Booking::with(self::BOOKING_WITHS)
-            ->where('is_cancelled', false)
             ->whereHas('invoice');
+        $this->excludeCancelledBookings($query, 'bookings');
 
         if ($request->booking_date_from) {
             $query->whereDate('created_at', '>=', $request->booking_date_from);
@@ -192,18 +217,20 @@ class ProfitLossReportController extends Controller
         $search = trim((string) $request->search);
         $filter = $request->profit_loss_filter;
 
+        $cancelled = CancelledBookingStatus::CANCELLED->value;
         $customer = Booking::query()
             ->leftJoin('customers', 'customers.id', '=', 'bookings.customer_id')
             ->leftJoin('fingerprints', 'fingerprints.booking_id', '=', 'bookings.id')
             ->leftJoin('invoices', 'invoices.booking_id', '=', 'bookings.id')
             ->leftJoin(
-                DB::raw('(SELECT p.booking_id, SUM(p.profit) as ptotal FROM passengers p WHERE p.is_cancelled = 0 GROUP BY p.booking_id) AS psum'),
+                DB::raw("(SELECT p.booking_id, SUM(p.profit) as ptotal FROM passengers p WHERE NOT EXISTS (SELECT 1 FROM cancelled_passengers cp WHERE cp.passenger_id = p.id AND cp.status = '{$cancelled}' AND cp.deleted_at IS NULL) GROUP BY p.booking_id) AS psum"),
                 'psum.booking_id',
                 '=',
                 'bookings.id'
             )
-            ->where('bookings.is_cancelled', false)
-            ->whereNotNull('bookings.invoice_id')
+            ->whereNotNull('bookings.invoice_id');
+        $this->excludeCancelledBookings($customer, 'bookings');
+        $customer
             ->when($search, fn ($q) => $this->applyCustomerSearch($q, $search))
             ->when($filter === 'profit', fn ($q) => $q->where('bookings.profit', '>=', 0))
             ->when($filter === 'loss', fn ($q) => $q->where('bookings.profit', '<', 0))
@@ -222,9 +249,10 @@ class ProfitLossReportController extends Controller
         $passenger = Passenger::query()
             ->join('bookings', 'passengers.booking_id', '=', 'bookings.id')
             ->leftJoin('customers', 'customers.id', '=', 'bookings.customer_id')
-            ->where('bookings.is_cancelled', false)
-            ->where('passengers.is_cancelled', false)
-            ->whereNotNull('bookings.invoice_id')
+            ->whereNotNull('bookings.invoice_id');
+        $this->excludeCancelledBookings($passenger, 'bookings');
+        $this->excludeCancelledPassengers($passenger, 'passengers');
+        $passenger
             ->when($search, fn ($q) => $this->applyPassengerSearch($q, $search))
             ->when($filter === 'profit', fn ($q) => $q->where('passengers.profit', '>=', 0))
             ->when($filter === 'loss', fn ($q) => $q->where('passengers.profit', '<', 0));
@@ -383,7 +411,7 @@ class ProfitLossReportController extends Controller
 
     private function mapCustomers($bookings, ProfitCalculationService $profitService): array
     {
-        return $bookings->map(fn (Booking $booking) => [
+        return $bookings->reject(fn (Booking $booking) => $profitService->isBookingCancelledForProfit($booking))->map(fn (Booking $booking) => [
             'invoice_id' => $booking->invoice_id,
             'customer_name' => $booking->customer->name ?? '',
             'customer_passport' => $booking->customer->passport_no ?? '',
@@ -392,7 +420,7 @@ class ProfitLossReportController extends Controller
             'pax_qty' => $booking->pax_qty,
             'package_value' => (float) ($booking->invoice->total_amount ?? 0),
             'fingerprint_profit' => (float) ($booking->fingerprint?->profit ?? 0),
-            'passenger_profit_total' => (float) $booking->passengers->where('is_cancelled', false)->sum('profit'),
+            'passenger_profit_total' => (float) $booking->passengers->reject(fn ($p) => $profitService->isPassengerCancelledForProfit($p))->sum('profit'),
             'discount' => (float) ($booking->discount_amount ?? 0),
             'total_profit' => (float) ($booking->profit ?? 0),
             'breakdown' => $profitService->getCustomerProfitBreakdown($booking),
@@ -401,7 +429,7 @@ class ProfitLossReportController extends Controller
 
     private function mapPassengers($bookings, ProfitCalculationService $profitService): array
     {
-        return $bookings->flatMap(fn (Booking $booking) => $booking->passengers->where('is_cancelled', false)->map(
+        return $bookings->reject(fn (Booking $booking) => $profitService->isBookingCancelledForProfit($booking))->flatMap(fn (Booking $booking) => $booking->passengers->reject(fn ($p) => $profitService->isPassengerCancelledForProfit($p))->map(
             fn ($passenger) => $this->mapPassenger($passenger, $profitService)
         ))->values()->toArray();
     }
@@ -440,9 +468,9 @@ class ProfitLossReportController extends Controller
             $query = Passenger::query()
                 ->join('bookings', 'passengers.booking_id', '=', 'bookings.id')
                 ->leftJoin('customers', 'customers.id', '=', 'bookings.customer_id')
-                ->where('bookings.is_cancelled', false)
-                ->where('passengers.is_cancelled', false)
                 ->whereNotNull('bookings.invoice_id');
+            $this->excludeCancelledBookings($query, 'bookings');
+            $this->excludeCancelledPassengers($query, 'passengers');
 
             if ($isEffectiveMode) {
                 $this->applyEffectiveDateFilter($query, $request);
@@ -496,6 +524,7 @@ class ProfitLossReportController extends Controller
                     $row['re_issue_profit'] = $breakdown['re_issue_profit'];
                     $row['refund_profit'] = $breakdown['refund_profit'];
                     $row['re_issue_cost'] = $breakdown['re_issue_cost'];
+                    $row['breakdown'] = $profitService->getPassengerProfitBreakdownDetailedEffective($passenger, $from, $to);
                 }
 
                 return $row;
@@ -512,8 +541,8 @@ class ProfitLossReportController extends Controller
         // customer tab
         $query = Booking::query()
             ->leftJoin('customers', 'customers.id', '=', 'bookings.customer_id')
-            ->where('bookings.is_cancelled', false)
             ->whereNotNull('bookings.invoice_id');
+        $this->excludeCancelledBookings($query, 'bookings');
         $this->applyDateFilters($query, $request);
 
         if ($search) {
@@ -555,8 +584,8 @@ class ProfitLossReportController extends Controller
         $query = Booking::with(array_merge(self::BOOKING_WITHS, [
             'passengers.allIssuedTickets.logs',
         ]))
-            ->where('is_cancelled', false)
             ->whereHas('invoice');
+        $this->excludeCancelledBookings($query, 'bookings');
 
         if ($request->booking_date_from) {
             $query->whereDate('created_at', '>=', $request->booking_date_from);
@@ -584,7 +613,7 @@ class ProfitLossReportController extends Controller
                 }
             }
 
-            $passengers = $passengers->map(function ($row) use ($passengerById, $dateFrom, $dateTo) {
+            $passengers = $passengers->map(function ($row) use ($passengerById, $profitService, $dateFrom, $dateTo) {
                 $passenger = $passengerById->get($row['id'] ?? null);
                 if (! $passenger || ! $this->passengerHasEffectiveComponentInRange($passenger, $dateFrom, $dateTo)) {
                     return null;
@@ -598,6 +627,7 @@ class ProfitLossReportController extends Controller
                 $row['re_issue_profit'] = $breakdown['re_issue_profit'];
                 $row['refund_profit'] = $breakdown['refund_profit'];
                 $row['re_issue_cost'] = $breakdown['re_issue_cost'];
+                $row['breakdown'] = $profitService->getPassengerProfitBreakdownDetailedEffective($passenger, $dateFrom, $dateTo);
 
                 return $row;
             })->filter(fn ($row) => $row !== null)->values();
