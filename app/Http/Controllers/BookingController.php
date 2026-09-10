@@ -624,6 +624,7 @@ class BookingController extends Controller
 
         $passengers = (clone $passengers)
             ->with([
+                'latestRefundPaymentRequest',
                 'booking',
                 'booking.customer',
                 'booking.customer.documents',

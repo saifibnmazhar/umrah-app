@@ -2,13 +2,14 @@
 
 namespace Tests\Feature;
 
-use App\Enums\RefundPaymentStatus;
+use App\Enums\RefundPaymentRequestStatus;
 use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\Customer;
 use App\Models\Invoice;
 use App\Models\Passenger;
 use App\Models\Payment;
+use App\Models\RefundPaymentRequest;
 use App\Models\Role;
 use App\Models\TransactionType;
 use App\Models\User;
@@ -46,7 +47,7 @@ class RefundPaymentTest extends TestCase
         parent::setUp();
 
         Schema::disableForeignKeyConstraints();
-        foreach (['vouchers', 'payments', 'transaction_types', 'passengers', 'invoices', 'bookings', 'currency_rates', 'customers', 'branches', 'user_roles', 'roles'] as $t) {
+        foreach (['refund_payment_requests', 'vouchers', 'payments', 'transaction_types', 'passengers', 'invoices', 'bookings', 'currency_rates', 'customers', 'branches', 'user_roles', 'roles'] as $t) {
             Schema::dropIfExists($t);
         }
 
@@ -97,8 +98,6 @@ class RefundPaymentTest extends TestCase
             $table->string('first_name');
             $table->string('last_name')->nullable();
             $table->decimal('refund_payable', 14, 6)->default(0);
-            $table->foreignId('refund_payment_branch_id')->nullable()->constrained('branches')->nullOnDelete();
-            $table->string('refund_payment_status')->nullable();
             $table->timestamps();
         });
 
@@ -156,6 +155,24 @@ class RefundPaymentTest extends TestCase
             $table->timestamps();
         });
 
+        Schema::create('refund_payment_requests', function ($table) {
+            $table->id();
+            $table->foreignId('passenger_id')->constrained('passengers')->restrictOnDelete();
+            $table->foreignId('booking_id')->constrained('bookings')->restrictOnDelete();
+            $table->foreignId('branch_id')->nullable()->constrained('branches')->nullOnDelete();
+            $table->string('status');
+            $table->decimal('refund_payable_snapshot', 14, 6)->default(0);
+            $table->foreignId('assigned_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('confirmed_by')->nullable()->constrained('users')->nullOnDelete();
+            $table->foreignId('payment_id')->nullable()->constrained('payments')->nullOnDelete();
+            $table->foreignId('voucher_id')->nullable()->constrained('vouchers')->nullOnDelete();
+            $table->text('remarks')->nullable();
+            $table->timestamp('assigned_at')->nullable();
+            $table->timestamp('confirmed_at')->nullable();
+            $table->timestamp('reverted_at')->nullable();
+            $table->timestamps();
+        });
+
         Schema::enableForeignKeyConstraints();
 
         foreach (['Super Admin', 'Co Admin', 'Ticket Admin', 'Branch Manager', 'Fingerprint Admin'] as $name) {
@@ -205,9 +222,11 @@ class RefundPaymentTest extends TestCase
 
         $response->assertOk()->assertJson(['success' => true]);
 
-        $this->passenger->refresh();
-        $this->assertEquals(RefundPaymentStatus::PROCESSING, $this->passenger->refund_payment_status);
-        $this->assertEquals($this->branch->id, $this->passenger->refund_payment_branch_id);
+        $request = RefundPaymentRequest::where('passenger_id', $this->passenger->id)->latest()->first();
+        $this->assertNotNull($request);
+        $this->assertEquals(RefundPaymentRequestStatus::PROCESSING, $request->status);
+        $this->assertEquals($this->branch->id, $request->branch_id);
+        $this->assertEquals(500, (float) $request->refund_payable_snapshot);
     }
 
     public function test_cannot_assign_branch_with_zero_refund_payable(): void
@@ -224,9 +243,14 @@ class RefundPaymentTest extends TestCase
 
     public function test_can_confirm_payment(): void
     {
-        $this->passenger->update([
-            'refund_payment_status' => RefundPaymentStatus::PROCESSING,
-            'refund_payment_branch_id' => $this->branch->id,
+        $refundRequest = RefundPaymentRequest::create([
+            'passenger_id' => $this->passenger->id,
+            'booking_id' => $this->booking->id,
+            'branch_id' => $this->branch->id,
+            'status' => RefundPaymentRequestStatus::PROCESSING,
+            'refund_payable_snapshot' => 500,
+            'assigned_by' => $this->admin->id,
+            'assigned_at' => now(),
         ]);
 
         $response = $this->actingAs($this->admin)
@@ -238,15 +262,24 @@ class RefundPaymentTest extends TestCase
         $response->assertOk()->assertJson(['success' => true]);
 
         $this->passenger->refresh();
-        $this->assertEquals(RefundPaymentStatus::PAID, $this->passenger->refund_payment_status);
         $this->assertEquals(0, (float) $this->passenger->refund_payable);
+
+        $refundRequest->refresh();
+        $this->assertEquals(RefundPaymentRequestStatus::PAID, $refundRequest->status);
+        $this->assertNotNull($refundRequest->payment_id);
+        $this->assertNotNull($refundRequest->voucher_id);
     }
 
     public function test_can_revert(): void
     {
-        $this->passenger->update([
-            'refund_payment_status' => RefundPaymentStatus::PROCESSING,
-            'refund_payment_branch_id' => $this->branch->id,
+        $refundRequest = RefundPaymentRequest::create([
+            'passenger_id' => $this->passenger->id,
+            'booking_id' => $this->booking->id,
+            'branch_id' => $this->branch->id,
+            'status' => RefundPaymentRequestStatus::PROCESSING,
+            'refund_payable_snapshot' => 500,
+            'assigned_by' => $this->admin->id,
+            'assigned_at' => now(),
         ]);
 
         $response = $this->actingAs($this->admin)
@@ -254,9 +287,9 @@ class RefundPaymentTest extends TestCase
 
         $response->assertOk()->assertJson(['success' => true]);
 
-        $this->passenger->refresh();
-        $this->assertEquals(RefundPaymentStatus::PENDING, $this->passenger->refund_payment_status);
-        $this->assertNull($this->passenger->refund_payment_branch_id);
+        $refundRequest->refresh();
+        $this->assertEquals(RefundPaymentRequestStatus::REVERTED, $refundRequest->status);
+        $this->assertNotNull($refundRequest->reverted_at);
     }
 
     public function test_unauthorized_user_gets_403_on_assign(): void
@@ -273,9 +306,14 @@ class RefundPaymentTest extends TestCase
 
     public function test_voucher_uses_correct_transaction_type(): void
     {
-        $this->passenger->update([
-            'refund_payment_status' => RefundPaymentStatus::PROCESSING,
-            'refund_payment_branch_id' => $this->branch->id,
+        RefundPaymentRequest::create([
+            'passenger_id' => $this->passenger->id,
+            'booking_id' => $this->booking->id,
+            'branch_id' => $this->branch->id,
+            'status' => RefundPaymentRequestStatus::PROCESSING,
+            'refund_payable_snapshot' => 500,
+            'assigned_by' => $this->admin->id,
+            'assigned_at' => now(),
         ]);
 
         $this->actingAs($this->admin)
@@ -293,9 +331,14 @@ class RefundPaymentTest extends TestCase
 
     public function test_paid_amount_not_affected_by_refund_payment(): void
     {
-        $this->passenger->update([
-            'refund_payment_status' => RefundPaymentStatus::PROCESSING,
-            'refund_payment_branch_id' => $this->branch->id,
+        RefundPaymentRequest::create([
+            'passenger_id' => $this->passenger->id,
+            'booking_id' => $this->booking->id,
+            'branch_id' => $this->branch->id,
+            'status' => RefundPaymentRequestStatus::PROCESSING,
+            'refund_payable_snapshot' => 500,
+            'assigned_by' => $this->admin->id,
+            'assigned_at' => now(),
         ]);
 
         $this->actingAs($this->admin)

@@ -210,21 +210,21 @@
                 <tbody class="divide-y divide-slate-200">
                     @forelse($ticketRefunds as $tp)
                     <tr>
-                        <td class="px-3 py-2 text-slate-700">{{ $tp->booking?->invoice_id ?? '—' }}</td>
-                        <td class="px-3 py-2 text-slate-700">{{ $tp->booking?->customer?->name ?? 'N/A' }}</td>
-                        <td class="px-3 py-2 text-slate-700">{{ trim(($tp->first_name ?? '') . ' ' . ($tp->last_name ?? '')) ?: '—' }}</td>
-                        <td class="px-3 py-2 text-slate-700">{{ $tp->booking?->bookingBranch?->name ?? '—' }}</td>
-                        <td class="px-3 py-2 text-slate-700">{{ $tp->refundPaymentBranch?->name ?? '—' }}</td>
-                        <td class="px-3 py-2 text-slate-800 font-medium text-right">@currency($tp->refund_payable, 2)</td>
+                        <td class="px-3 py-2 text-slate-700">{{ $tp->passenger?->booking?->invoice_id ?? '—' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ $tp->passenger?->booking?->customer?->name ?? 'N/A' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ trim(($tp->passenger?->first_name ?? '') . ' ' . ($tp->passenger?->last_name ?? '')) ?: '—' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ $tp->passenger?->booking?->bookingBranch?->name ?? '—' }}</td>
+                        <td class="px-3 py-2 text-slate-700">{{ $tp->branch?->name ?? '—' }}</td>
+                        <td class="px-3 py-2 text-slate-800 font-medium text-right">@currency($tp->passenger?->refund_payable, 2)</td>
                         <td class="px-3 py-2 text-center whitespace-nowrap">
-                            <form method="POST" action="{{ route('passengers.refund-pay-revert', $tp->id) }}"
-                                  onsubmit="return confirm('Revert this refund payment? Status will return to pending.')" class="inline">
+                            <form method="POST" action="{{ route('passengers.refund-pay-revert', $tp->passenger?->id) }}"
+                                  onsubmit="return confirm('Revert this refund payment? This action cannot be undone.')" class="inline">
                                 @csrf
                                 <button type="submit" class="text-xs bg-amber-100 hover:bg-amber-200 text-amber-600 px-2 py-1 rounded font-medium">
                                     Revert
                                 </button>
                             </form>
-                            <button onclick="openConfirmRefundModal({{ $tp->id }}, '{{ addslashes(trim(($tp->first_name ?? '') . ' ' . ($tp->last_name ?? ''))) }}', {{ $tp->refund_payable }})"
+                            <button onclick="openConfirmRefundModal({{ $tp->passenger?->id }}, '{{ addslashes(trim(($tp->passenger?->first_name ?? '') . ' ' . ($tp->passenger?->last_name ?? ''))) }}', {{ $tp->passenger?->refund_payable }})"
                                 class="text-xs bg-blue-100 hover:bg-blue-200 text-blue-600 px-2 py-1 rounded font-medium ml-1">
                                 Confirm
                             </button>

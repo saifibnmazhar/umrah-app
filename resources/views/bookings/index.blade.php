@@ -168,7 +168,7 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
     'ticket_remarks' => $p->ticket_remarks ?? '',
     'due' => $p->booking?->invoice?->balance ?? 0,
     'refund_payable' => (float) ($p->refund_payable ?? 0),
-    'refund_payment_status' => $p->refund_payment_status?->value ?? null,
+    'refund_payment_request_status' => $p->latestRefundPaymentRequest?->status?->value ?? null,
     'profit' => (float) ($p->profit ?? 0),
     'profit_breakdown' => app(\App\Services\ProfitCalculationService::class)->getPassengerProfitBreakdown($p),
     'required_flight_date' => $p->flight_date_from?->format('Y-m-d') ?? '',
@@ -1587,7 +1587,7 @@ if ($passenger->ticket_fare_inbound_id) {
                 <a href="{{ route('passengers.show', $passenger->id) }}?return_url={{ urlencode(request()->fullUrl()) }}" @click="open = false" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition">View Passenger</a>
                 <button x-show="hasViewableTickets({{ $loop->index }})" @click="open = false; openTicketInfoModal({{ $loop->index }})" class="px-3 py-1.5 text-xs font-medium text-slate-600 hover:bg-slate-50 transition text-left">View Tickets</button>
                 @if($canPayRefundPayable)
-                    <template x-if="passengersTicketData[{{ $loop->index }}]?.refund_payable > 0 && (!passengersTicketData[{{ $loop->index }}]?.refund_payment_status || passengersTicketData[{{ $loop->index }}]?.refund_payment_status === 'pending')">
+                    <template x-if="passengersTicketData[{{ $loop->index }}]?.refund_payable > 0 && (!passengersTicketData[{{ $loop->index }}]?.refund_payment_request_status || passengersTicketData[{{ $loop->index }}]?.refund_payment_request_status === 'paid' || passengersTicketData[{{ $loop->index }}]?.refund_payment_request_status === 'reverted')">
                         <button @click="open = false; openPayRefundModal({{ $loop->index }})"
                             class="px-3 py-1.5 text-xs font-medium text-blue-600 hover:bg-slate-50 transition text-left">
                             Pay Refund
@@ -7466,7 +7466,7 @@ function bookingIndexApp() {
                 if (result.success) {
                     const idx = this.payRefundPassengerIndex;
                     if (idx !== null && this.passengersTicketData[idx]) {
-                        this.passengersTicketData[idx].refund_payment_status = 'processing';
+                        this.passengersTicketData[idx].refund_payment_request_status = 'processing';
                     }
                     this.payRefundModalVisible = false;
                     this.showToast('Refund payment branch assigned successfully.');

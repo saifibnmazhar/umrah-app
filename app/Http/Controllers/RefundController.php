@@ -2,13 +2,14 @@
 
 namespace App\Http\Controllers;
 
-use App\Enums\RefundPaymentStatus;
+use App\Enums\RefundPaymentRequestStatus;
 use App\Enums\ServiceRequired;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
 use App\Models\Payment;
 use App\Models\RefundedTicket;
+use App\Models\RefundPaymentRequest;
 use App\Models\TransactionType;
 use App\Services\VoucherService;
 use Illuminate\Http\Request;
@@ -156,17 +157,22 @@ class RefundController extends Controller
             ], 422);
         }
 
-        if ($passenger->refund_payment_status !== null
-            && $passenger->refund_payment_status !== RefundPaymentStatus::PENDING) {
+        if (RefundPaymentRequest::where('passenger_id', $passenger->id)
+            ->where('status', RefundPaymentRequestStatus::PROCESSING)->exists()) {
             return response()->json([
                 'success' => false,
                 'message' => 'Refund payment is already in progress or completed.',
             ], 422);
         }
 
-        $passenger->update([
-            'refund_payment_status' => RefundPaymentStatus::PROCESSING,
-            'refund_payment_branch_id' => $validated['branch_id'],
+        RefundPaymentRequest::create([
+            'passenger_id' => $passenger->id,
+            'booking_id' => $passenger->booking_id,
+            'branch_id' => $validated['branch_id'],
+            'status' => RefundPaymentRequestStatus::PROCESSING,
+            'refund_payable_snapshot' => $passenger->refund_payable,
+            'assigned_by' => auth()->id(),
+            'assigned_at' => now(),
         ]);
 
         return response()->json([
@@ -182,7 +188,12 @@ class RefundController extends Controller
             'remarks' => 'nullable|string|max:500',
         ]);
 
-        if ($passenger->refund_payment_status !== RefundPaymentStatus::PROCESSING) {
+        $refundRequest = RefundPaymentRequest::where('passenger_id', $passenger->id)
+            ->where('status', RefundPaymentRequestStatus::PROCESSING)
+            ->latest()
+            ->first();
+
+        if (! $refundRequest) {
             return response()->json([
                 'success' => false,
                 'message' => 'Passenger is not in processing status.',
@@ -207,7 +218,7 @@ class RefundController extends Controller
             ], 422);
         }
 
-        return DB::transaction(function () use ($passenger, $booking, $invoice, $amount, $validated) {
+        return DB::transaction(function () use ($passenger, $booking, $invoice, $amount, $validated, $refundRequest) {
             $passenger = Passenger::lockForUpdate()->find($passenger->id);
 
             $transactionType = TransactionType::where('name', 'Ticket Refund - Payment')->first();
@@ -219,7 +230,7 @@ class RefundController extends Controller
             $payment = Payment::create([
                 'invoice_id' => $invoice->id,
                 'booking_id' => $booking->id,
-                'branch_id' => $passenger->refund_payment_branch_id,
+                'branch_id' => $refundRequest->branch_id,
                 'user_id' => auth()->id(),
                 'currency_rate_id' => $booking->currency_rate_id,
                 'payment_date' => now(),
@@ -234,7 +245,7 @@ class RefundController extends Controller
                 'invoice_id' => $invoice->id,
                 'booking_id' => $booking->id,
                 'payment_id' => $payment->id,
-                'branch_id' => $passenger->refund_payment_branch_id,
+                'branch_id' => $refundRequest->branch_id,
                 'user_id' => auth()->id(),
                 'currency_rate_id' => $booking->currency_rate_id,
                 'transaction_type_id' => $transactionType->id,
@@ -247,8 +258,12 @@ class RefundController extends Controller
 
             $passenger->decreaseRefundPayable($amount);
 
-            $passenger->update([
-                'refund_payment_status' => RefundPaymentStatus::PAID,
+            $refundRequest->update([
+                'status' => RefundPaymentRequestStatus::PAID,
+                'payment_id' => $payment->id,
+                'voucher_id' => $voucher->id,
+                'confirmed_by' => auth()->id(),
+                'confirmed_at' => now(),
             ]);
 
             return response()->json([
@@ -265,21 +280,26 @@ class RefundController extends Controller
 
     public function revert(Passenger $passenger)
     {
-        if ($passenger->refund_payment_status !== RefundPaymentStatus::PROCESSING) {
+        $refundRequest = RefundPaymentRequest::where('passenger_id', $passenger->id)
+            ->where('status', RefundPaymentRequestStatus::PROCESSING)
+            ->latest()
+            ->first();
+
+        if (! $refundRequest) {
             return response()->json([
                 'success' => false,
                 'message' => 'Passenger is not in processing status.',
             ], 422);
         }
 
-        $passenger->update([
-            'refund_payment_status' => RefundPaymentStatus::PENDING,
-            'refund_payment_branch_id' => null,
+        $refundRequest->update([
+            'status' => RefundPaymentRequestStatus::REVERTED,
+            'reverted_at' => now(),
         ]);
 
         return response()->json([
             'success' => true,
-            'message' => 'Refund payment reverted to pending.',
+            'message' => 'Refund payment reverted.',
         ]);
     }
 }

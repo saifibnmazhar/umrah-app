@@ -2,9 +2,9 @@
 
 namespace App\Enums;
 
-enum RefundPaymentStatus: string
+enum RefundPaymentRequestStatus: string
 {
-    case PENDING = 'pending';
     case PROCESSING = 'processing';
     case PAID = 'paid';
+    case REVERTED = 'reverted';
 }

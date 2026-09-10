@@ -3,12 +3,12 @@
 namespace App\Http\Controllers;
 
 use App\Enums\CancelledBookingStatus;
-use App\Enums\RefundPaymentStatus;
+use App\Enums\RefundPaymentRequestStatus;
 use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\CancelledBooking;
 use App\Models\CancelledPassenger;
-use App\Models\Passenger as PassengerModel;
+use App\Models\RefundPaymentRequest;
 use App\Services\CostTrackingService;
 use App\Services\RefundCapService;
 use Illuminate\Http\Request;
@@ -108,19 +108,19 @@ class BookingCancellationViewController extends Controller
 
         $cancelledPassengers = $passengerQuery->latest()->paginate(20)->withQueryString();
 
-        $ticketRefundQuery = PassengerModel::with([
-            'booking.customer',
-            'booking.bookingBranch',
-            'refundPaymentBranch',
-        ])->where('refund_payment_status', RefundPaymentStatus::PROCESSING)
-            ->where('refund_payable', '>', 0);
+        $ticketRefundQuery = RefundPaymentRequest::with([
+            'passenger.booking.customer',
+            'passenger.booking.invoice',
+            'branch',
+            'assignedBy',
+        ])
+            ->where('status', RefundPaymentRequestStatus::PROCESSING)
+            ->whereHas('passenger', fn ($q) => $q->where('refund_payable', '>', 0));
 
         if (auth()->user()->branch_id) {
-            $ticketRefundQuery->where('refund_payment_branch_id', auth()->user()->branch_id);
-        }
-
-        if ($request->filled('branch_id')) {
-            $ticketRefundQuery->where('refund_payment_branch_id', $request->branch_id);
+            $ticketRefundQuery->where('branch_id', auth()->user()->branch_id);
+        } elseif ($request->filled('branch_id')) {
+            $ticketRefundQuery->where('branch_id', $request->branch_id);
         }
 
         $ticketRefunds = $ticketRefundQuery->latest()->paginate(20)->withQueryString();
