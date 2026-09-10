@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\CancelledBookingStatus;
 use App\Enums\FingerprintLocation;
 use App\Enums\PassengerType;
 use App\Enums\PaymentBy;
@@ -17,6 +18,24 @@ use App\Models\VisaUpdateLog;
 
 class ProfitCalculationService
 {
+    public function isBookingCancelledForProfit(Booking $booking): bool
+    {
+        if ($booking->relationLoaded('cancelledBooking')) {
+            return $booking->cancelledBooking?->status === CancelledBookingStatus::CANCELLED;
+        }
+
+        return $booking->cancelledBooking()->where('status', CancelledBookingStatus::CANCELLED->value)->exists();
+    }
+
+    public function isPassengerCancelledForProfit(Passenger $passenger): bool
+    {
+        if ($passenger->relationLoaded('cancelledPassengers')) {
+            return $passenger->cancelledPassengers->contains(fn ($row) => $row->status === CancelledBookingStatus::CANCELLED);
+        }
+
+        return $passenger->cancelledPassengers()->where('status', CancelledBookingStatus::CANCELLED->value)->exists();
+    }
+
     public function recalculatePassengerProfit(Passenger $passenger): float
     {
         $passenger->unsetRelation('allIssuedTickets');
@@ -45,10 +64,10 @@ class ProfitCalculationService
 
     public function recalculateBookingProfit(Booking $booking): float
     {
-        $booking->loadMissing('passengers', 'fingerprint', 'fingerprintCharge');
+        $booking->loadMissing('passengers.cancelledPassengers', 'passengers.visaSubmission', 'passengers.allIssuedTickets', 'fingerprint', 'fingerprintCharge');
 
         foreach ($booking->passengers as $passenger) {
-            if ($passenger->is_cancelled) {
+            if ($this->isPassengerCancelledForProfit($passenger)) {
                 $passenger->profit = 0;
                 $passenger->saveQuietly();
 
@@ -67,7 +86,7 @@ class ProfitCalculationService
         }
 
         $effectivePassengerProfit = 0;
-        $activePassengers = $booking->passengers->where('is_cancelled', false);
+        $activePassengers = $booking->passengers->reject(fn ($p) => $this->isPassengerCancelledForProfit($p));
         $allPassengersEffective = $activePassengers->isNotEmpty();
 
         foreach ($activePassengers as $passenger) {
@@ -145,13 +164,13 @@ class ProfitCalculationService
 
     public function getCustomerProfitBreakdown(Booking $booking): array
     {
-        $booking->loadMissing('passengers', 'fingerprint', 'fingerprintCharge');
+        $booking->loadMissing('passengers.cancelledPassengers', 'fingerprint', 'fingerprintCharge');
 
         $passengers = [];
-        $allPassengersEffective = $booking->passengers->where('is_cancelled', false)->isNotEmpty();
+        $allPassengersEffective = $booking->passengers->reject(fn ($p) => $this->isPassengerCancelledForProfit($p))->isNotEmpty();
 
         foreach ($booking->passengers as $passenger) {
-            if ($passenger->is_cancelled) {
+            if ($this->isPassengerCancelledForProfit($passenger)) {
                 continue;
             }
 
@@ -223,12 +242,88 @@ class ProfitCalculationService
         return $breakdown;
     }
 
+    public function effectiveDateInRange($value, string $from, string $to): bool
+    {
+        if (! $value) {
+            return false;
+        }
+
+        $date = $value instanceof \DateTimeInterface
+            ? $value->format('Y-m-d H:i:s')
+            : (string) $value;
+
+        return $this->dateInRange($date, $from, $to);
+    }
+
+    public function getPassengerProfitBreakdownDetailedEffective(Passenger $passenger, string $from, string $to): array
+    {
+        $effective = $this->calculateEffectiveDateProfitDetailed($passenger, $from, $to);
+
+        $breakdown = [
+            'visa_profit' => $effective['visa_profit'],
+            'ticket_profit' => $effective['ticket_profit'],
+            'additional_ticket_profit' => $effective['additional_ticket_profit'],
+            're_issue_profit' => $effective['re_issue_profit'],
+            'refund_profit' => $effective['refund_profit'],
+            're_issue_cost' => $effective['re_issue_cost'],
+            'service_charge' => $effective['service_charge'],
+            'total' => $effective['total'],
+        ];
+
+        if ($this->effectiveDateInRange($passenger->visa_profit_effective_at, $from, $to)) {
+            $visa = $this->visaBreakdown($passenger);
+            if ($visa) {
+                $breakdown['visa'] = $visa;
+            }
+        }
+
+        if ($this->effectiveDateInRange($passenger->ticket_profit_effective_at, $from, $to)) {
+            $ticket = $this->ticketBreakdown($passenger);
+            if ($ticket) {
+                $breakdown['ticket'] = $ticket;
+            }
+        }
+
+        $breakdown['additional_tickets'] = $this->additionalTicketsBreakdownEffective($passenger, $from, $to);
+
+        return $breakdown;
+    }
+
+    private function additionalTicketsBreakdownEffective(Passenger $passenger, string $from, string $to): array
+    {
+        $tickets = $passenger->allIssuedTickets
+            ->filter(fn ($t) => $t->issue_type === 'additional'
+                && in_array($t->status, ['issued', 're-issued', 'refunded'], true))
+            ->filter(fn ($t) => $this->dateInRange($this->additionalTicketEffectiveDate($t), $from, $to));
+
+        $items = [];
+        $profit = 0.0;
+
+        foreach ($tickets as $ticket) {
+            $sellingFare = $this->fareSellingPrice($ticket->ticketFare, $passenger);
+            $netFare = (float) ($ticket->net_fare ?? 0);
+            $itemProfit = $sellingFare - $netFare;
+            $profit += $itemProfit;
+
+            $items[] = [
+                'selling_fare' => round($sellingFare, 6),
+                'net_fare' => round($netFare, 6),
+                'profit' => round($itemProfit, 6),
+            ];
+        }
+
+        return [
+            'items' => $items,
+            'profit' => round($profit, 6),
+        ];
+    }
+
     private function getPassengerProfitBreakdownForPassengers(Booking $booking): array
     {
         $total = 0.0;
 
         foreach ($booking->passengers as $passenger) {
-            if ($passenger->is_cancelled) {
+            if ($this->isPassengerCancelledForProfit($passenger)) {
                 continue;
             }
             if ($this->isPassengerProfitEffective($passenger)) {
@@ -242,7 +337,7 @@ class ProfitCalculationService
             ? (float) ($booking->fingerprint?->profit ?? 0)
             : 0.0;
 
-        $activePassengers = $booking->passengers->where('is_cancelled', false);
+        $activePassengers = $booking->passengers->reject(fn ($p) => $this->isPassengerCancelledForProfit($p));
         $allPassengersEffective = $activePassengers->isNotEmpty();
         foreach ($activePassengers as $passenger) {
             if (! $this->isPassengerProfitEffective($passenger)) {
@@ -261,8 +356,9 @@ class ProfitCalculationService
     public function backfillAllBookings(): void
     {
         Booking::query()
-            ->where('is_cancelled', false)
+            ->whereDoesntHave('cancelledBooking', fn ($q) => $q->where('status', CancelledBookingStatus::CANCELLED->value))
             ->with([
+                'passengers.cancelledPassengers',
                 'passengers.visaSubmission.cancelledSubmissions',
                 'passengers.allIssuedTickets.ticketFare',
                 'passengers.allIssuedTickets.reIssuedTickets',

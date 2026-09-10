@@ -110,8 +110,9 @@ class PassengerCancellationService
                 'passenger_status_id' => $holdStatus->id,
                 'is_cancelled' => true,
                 'cancelled_at' => now(),
-                'profit' => 0,
             ]);
+
+            app(ProfitCalculationService::class)->recalculateBookingProfit($passenger->booking->refresh());
 
             return $cancelledPassenger;
         });
@@ -137,6 +138,8 @@ class PassengerCancellationService
                 'passenger_status_id' => null,
             ]);
             $passenger->syncComputedStatus();
+
+            app(ProfitCalculationService::class)->recalculateBookingProfit($passenger->booking->refresh());
         });
     }
 
@@ -318,6 +321,10 @@ class PassengerCancellationService
                 : 'passenger_cancellation_refund';
             $invoiceService = app(InvoiceService::class);
             $invoiceService->updatePaymentStatus($invoice);
+
+            // 10. Recompute stored booking profit so the customer tab total
+            // matches the live breakdown (cancelled pax excluded).
+            app(ProfitCalculationService::class)->recalculateBookingProfit($booking->refresh());
 
             return $cancelledPassenger->fresh();
         });

@@ -13,6 +13,7 @@ use App\Models\District;
 use App\Models\FingerprintCharge;
 use App\Models\FlightDateGap;
 use App\Models\Invoice;
+use App\Models\IssuedTicket;
 use App\Models\Package;
 use App\Models\Passenger;
 use App\Models\Role;
@@ -22,6 +23,7 @@ use App\Models\TicketFare;
 use App\Models\TravelClass;
 use App\Models\User;
 use App\Models\VisaSellingPrice;
+use App\Models\VisaSubmission;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Tests\TestCase;
@@ -467,6 +469,69 @@ class ProfitLossEffectiveDateFilterTest extends TestCase
         $this->assertStringContainsString('ensureEffectiveDates()', $html);
         $this->assertStringContainsString("this.activeDateFilter = 'effective'", $html);
         $this->assertStringContainsString('setDate(today.getDate() - 30)', $html);
+    }
+
+    /** @test */
+    public function data_passenger_tab_breakdown_reflects_effective_date_filter(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedPrerequisites($user);
+        $branch = $this->createBranch('Branch');
+
+        // Lifetime profit 250: visa 200 effective in range, ticket 50 effective out of range.
+        // NOTE: relations first — their observers recalculate profit columns,
+        // so seed effective columns quietly afterwards.
+        [$booking, $passenger] = $this->createBookingWithPassenger($user, $deps, $branch, 'INV-K');
+
+        $visaPrice = VisaSellingPrice::create(['user_id' => $user->id, 'selling_price' => 2000.00]);
+        VisaSubmission::create([
+            'passenger_id' => $passenger->id,
+            'visa_selling_price_id' => $visaPrice->id,
+            'agent_commission' => 100.00,
+            'net_visa_cost' => 1000.00,
+            'additional_cost' => 50.00,
+            'status' => 'issued',
+            'is_cancelled' => false,
+        ]);
+        IssuedTicket::create([
+            'passenger_id' => $passenger->id,
+            'booking_id' => $booking->id,
+            'user_id' => $user->id,
+            'ticket_fare_id' => $deps['fare']->id,
+            'selling_fare' => 28000.00,
+            'net_fare' => 27000.00,
+            'issue_type' => 'regular',
+            'status' => 'issued',
+            'issued_date' => now(),
+        ]);
+
+        $passenger->updateQuietly([
+            'visa_profit' => 200.00,
+            'visa_profit_effective_at' => '2024-04-10 10:00:00',
+            'ticket_profit' => 50.00,
+            'ticket_profit_effective_at' => '2024-09-01 10:00:00',
+            'service_charge' => 0.00,
+            'service_charge_effective_at' => null,
+            'profit' => 250.00,
+        ]);
+
+        Auth::login($user);
+
+        $response = $this->get(route('api.reports.profit-loss', [
+            'tab' => 'passenger',
+            'effective_date_from' => '2024-03-01',
+            'effective_date_to' => '2024-06-30',
+        ]));
+
+        $response->assertOk();
+        $rows = $response->json('data');
+        $this->assertCount(1, $rows);
+
+        // Breakdown modal must match the filtered total column, not lifetime profit.
+        $this->assertEquals(200.0, (float) $rows[0]['total_profit']);
+        $this->assertEquals(200.0, (float) $rows[0]['breakdown']['total']);
+        $this->assertArrayHasKey('visa', $rows[0]['breakdown']);
+        $this->assertArrayNotHasKey('ticket', $rows[0]['breakdown']);
     }
 
     /** @test */
