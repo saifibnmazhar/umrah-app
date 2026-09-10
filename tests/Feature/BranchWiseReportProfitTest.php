@@ -15,6 +15,7 @@ use App\Models\FingerprintCharge;
 use App\Models\FlightDateGap;
 use App\Models\Invoice;
 use App\Models\Package;
+use App\Models\Passenger;
 use App\Models\Role;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
@@ -22,7 +23,6 @@ use App\Models\TicketFare;
 use App\Models\TravelClass;
 use App\Models\User;
 use App\Models\VisaSellingPrice;
-use App\Services\ProfitCalculationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Tests\TestCase;
 
@@ -170,7 +170,33 @@ class BranchWiseReportProfitTest extends TestCase
 
     private function applyProfit(Booking $booking, float $profit): void
     {
-        app(ProfitCalculationService::class)->recalculateBookingProfit($booking);
+        Passenger::create([
+            'booking_id' => $booking->id,
+            'passenger_status_id' => null,
+            'first_name' => 'Passenger',
+            'last_name' => 'Test',
+            'passport_no' => 'PSP'.uniqid(),
+            'mobile_no' => '0500000000',
+            'date_of_birth' => '1990-01-01',
+            'passenger_type' => 'adult',
+            'passport_expiry' => '2030-12-31',
+            'stay_duration' => 14,
+            'service_required' => 'all',
+            'flight_date_from' => now()->toDateString(),
+            'flight_date_to' => now()->addDays(14)->toDateString(),
+            'ticket_status' => 'pending',
+            'visa_status' => 'pending',
+            'address' => 'Test Address',
+            'package_value' => $booking->total_value,
+            'visa_profit' => $profit,
+            'visa_profit_effective_at' => now(),
+            'ticket_profit' => 0,
+            'ticket_profit_effective_at' => now(),
+            'service_charge' => 0,
+            'service_charge_effective_at' => now(),
+            'profit' => $profit,
+        ]);
+
         $booking->update(['profit' => $profit]);
     }
 

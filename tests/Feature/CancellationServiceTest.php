@@ -69,6 +69,7 @@ class CancellationServiceTest extends TestCase
             $table->foreignId('booking_branch_id')->constrained('branches')->restrictOnDelete();
             $table->integer('pax_qty')->default(1);
             $table->decimal('total_value', 14, 6)->default(0);
+            $table->decimal('profit', 14, 6)->default(0);
             $table->boolean('is_cancelled')->default(false);
             $table->timestamps();
         });
