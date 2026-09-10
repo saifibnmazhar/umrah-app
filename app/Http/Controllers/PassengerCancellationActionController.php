@@ -57,15 +57,9 @@ class PassengerCancellationActionController extends Controller
     {
         $this->ensureBranchAccess($cancelledPassenger);
 
-        $refundable = (float) $cancelledPassenger->refundable_amount;
-        $balance = max(0, (float) ($cancelledPassenger->invoice?->balance ?? 0));
-        $maxAdjustable = min($refundable, $balance);
-
-        // Partial settlements allowed: any amount up to the lesser of
-        // refundable and balance is credited to the due, the rest is paid out.
         $validated = $request->validate([
-            'balance_adjusted_amount' => 'required|numeric|min:0|max:'.$maxAdjustable,
             'payment_method' => 'required|in:'.implode(',', array_column(PaymentMethod::cases(), 'value')),
+            'currency' => 'nullable|in:SAR,BDT',
             'remarks' => 'nullable|string|max:500',
         ]);
 
@@ -73,10 +67,10 @@ class PassengerCancellationActionController extends Controller
             $service = app(PassengerCancellationService::class);
             $service->confirmCancellation($cancelledPassenger, $validated);
 
-            return redirect()->route('pending-refunds.index', ['tab' => 'passengers'])
+            return redirect()->route('cancelled-passengers.print', $cancelledPassenger)
                 ->with('success', 'Passenger cancellation confirmed successfully.');
         } catch (\Exception $e) {
-            return redirect()->route('pending-refunds.index', ['tab' => 'passengers'])
+            return redirect()->route('cancelled-passengers.print', $cancelledPassenger)
                 ->with('error', $e->getMessage());
         }
     }

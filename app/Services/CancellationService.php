@@ -31,9 +31,12 @@ class CancellationService
         $totalPaid = (float) $invoice->paid_amount;
         $totalCost = $costSummary['total_cost'];
         $serviceCharge = isset($data['service_charge_deduction']) ? (float) $data['service_charge_deduction'] : null;
-        $refundAmount = $totalPaid - $totalCost - ($serviceCharge ?? 0);
+        $totalPassengerRefundable = $booking->getTotalPassengerRefundable();
+        $rawRefund = max(0, $totalPaid - $totalCost - ($serviceCharge ?? 0) + $totalPassengerRefundable);
+        $remaining = app(RefundCapService::class)->getCap($invoice)['remaining'];
+        $refundAmount = min($rawRefund, $remaining);
 
-        return DB::transaction(function () use ($booking, $invoice, $data, $totalPaid, $serviceCharge, $refundAmount) {
+        return DB::transaction(function () use ($booking, $invoice, $data, $totalPaid, $serviceCharge, $refundAmount, $totalPassengerRefundable) {
             $cancelledBooking = CancelledBooking::create([
                 'booking_id' => $booking->id,
                 'invoice_id' => $invoice->id,
@@ -41,6 +44,7 @@ class CancellationService
                 'total_paid' => $totalPaid,
                 'service_charge_deduction' => $serviceCharge,
                 'refund_amount' => $refundAmount,
+                'total_passenger_refundable' => $totalPassengerRefundable,
                 'cancellation_branch_id' => $data['cancellation_branch_id'],
                 'status' => CancelledBookingStatus::PROCESSING,
             ]);
@@ -63,12 +67,21 @@ class CancellationService
             $booking = $cancelledBooking->booking;
             $invoice = $cancelledBooking->invoice;
 
+            $booking->passengers()
+                ->where('is_cancelled', false)
+                ->each(fn ($passenger) => $passenger->update([
+                    'refund_payable' => $passenger->verifyRefundPayable(),
+                ]));
+
             $booking->update(['is_cancelled' => false]);
 
             $invoiceService = app(InvoiceService::class);
             $invoice->refresh();
             $invoiceService->updatePaymentStatus($invoice);
 
+            $cancelledBooking->update([
+                'reverted_by_id' => auth()->id(),
+            ]);
             $cancelledBooking->delete();
         });
     }
@@ -128,7 +141,12 @@ class CancellationService
                 $deductionVoucherId = $deductionVoucher->id;
             }
 
-            $refundAmount = (float) $data['refund_amount'];
+            $refundAmount = app(RefundCapService::class)->normalizeToSar((float) $data['refund_amount'], $data['currency'] ?? null);
+            $refundPaymentAmount = max(0, $refundAmount);
+            $capInvoice = $invoice ?? $booking->invoice;
+            if ($capInvoice) {
+                app(RefundCapService::class)->assertRefundAllowed($capInvoice, $refundAmount);
+            }
             $refundType = TransactionType::where('name', 'Customer Refund')->first();
 
             $refundPayment = Payment::create([
@@ -139,7 +157,7 @@ class CancellationService
                 'currency_rate_id' => $currencyRateId,
                 'payment_date' => now(),
                 'payment_method' => $paymentMethod,
-                'amount' => $refundAmount,
+                'amount' => $refundPaymentAmount,
                 'bdt_amount' => 0,
                 'cancelled_booking_id' => $cancelledBooking->id,
                 'remarks' => $remarks,
@@ -155,11 +173,16 @@ class CancellationService
                 'transaction_type_id' => $refundType->id,
                 'payment_date' => now(),
                 'payment_method' => $paymentMethod,
-                'amount' => $refundAmount,
+                'amount' => $refundPaymentAmount,
                 'bdt_amount' => 0,
                 'cancelled_booking_id' => $cancelledBooking->id,
                 'notes' => $remarks,
             ]);
+
+            $booking->passengers()
+                ->where('is_cancelled', false)
+                ->where('refund_payable', '>', 0)
+                ->update(['refund_payable' => 0]);
 
             $cancelledBooking->update([
                 'deduction_payment_id' => $deductionPaymentId,
@@ -167,6 +190,7 @@ class CancellationService
                 'refund_payment_id' => $refundPayment->id,
                 'refund_voucher_id' => $refundVoucher->id,
                 'refund_amount' => $refundAmount,
+                'confirmed_by_id' => auth()->id(),
                 'status' => CancelledBookingStatus::CANCELLED,
             ]);
 
@@ -197,7 +221,8 @@ class CancellationService
             ],
             'passenger_costs' => $costSummary['passengers'],
             'service_charge' => 0,
-            'potential_refund' => $invoice->paid_amount - $costSummary['total_cost'],
+            'total_passenger_refundable' => $booking->getTotalPassengerRefundable(),
+            'potential_refund' => $invoice->paid_amount - $costSummary['total_cost'] + $booking->getTotalPassengerRefundable(),
             'currency_rate_id' => $booking->currency_rate_id,
             'booking_branch_id' => $booking->booking_branch_id,
             'booking_branch_name' => $booking->bookingBranch?->name,

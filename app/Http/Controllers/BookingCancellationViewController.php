@@ -10,6 +10,7 @@ use App\Models\CancelledBooking;
 use App\Models\CancelledPassenger;
 use App\Models\Passenger as PassengerModel;
 use App\Services\CostTrackingService;
+use App\Services\RefundCapService;
 use Illuminate\Http\Request;
 
 class BookingCancellationViewController extends Controller
@@ -18,11 +19,16 @@ class BookingCancellationViewController extends Controller
     {
         $costSummary = app(CostTrackingService::class)->getBookingCostSummary($booking);
         $invoice = $booking->invoice;
+        $totalPassengerRefundable = (float) $booking->getTotalPassengerRefundable();
+        $refundCapRemaining = $invoice
+            ? (float) app(RefundCapService::class)->getCap($invoice)['remaining']
+            : 0.0;
 
         return response()->json([
             'total_amount' => (float) ($invoice?->total_amount ?? 0),
             'total_paid' => (float) ($invoice?->paid_amount ?? 0),
             'balance' => (float) ($invoice?->balance ?? 0),
+            'refund_cap_remaining' => $refundCapRemaining,
             'costs' => [
                 'fingerprint_cost' => $costSummary['fingerprint_cost'],
                 'visa_cost' => $costSummary['visa_cost'],
@@ -31,7 +37,8 @@ class BookingCancellationViewController extends Controller
             ],
             'passenger_costs' => $costSummary['passengers'],
             'service_charge' => 0,
-            'potential_refund' => (float) (($invoice?->paid_amount ?? 0) - $costSummary['total_cost']),
+            'total_passenger_refundable' => $totalPassengerRefundable,
+            'potential_refund' => (float) (($invoice?->paid_amount ?? 0) - $costSummary['total_cost']) + $totalPassengerRefundable,
             'currency_rate_id' => $booking->currency_rate_id,
             'booking_branch_id' => $booking->booking_branch_id,
             'booking_branch_name' => $booking->bookingBranch?->name,
@@ -57,8 +64,10 @@ class BookingCancellationViewController extends Controller
 
         $costSummary = app(CostTrackingService::class)->getBookingCostSummary($cancelledBooking->booking);
         $branches = Branch::select('id', 'name', 'location')->orderBy('name')->get();
+        $capInvoice = $cancelledBooking->booking->invoice ?? $cancelledBooking->invoice;
+        $refundCap = $capInvoice ? app(RefundCapService::class)->getCap($capInvoice) : ['paid' => 0, 'refunded' => 0, 'remaining' => 0];
 
-        return view('cancelled-bookings.confirm', compact('cancelledBooking', 'costSummary', 'branches'));
+        return view('cancelled-bookings.confirm', compact('cancelledBooking', 'costSummary', 'branches', 'refundCap'));
     }
 
     public function pendingRefunds(Request $request)

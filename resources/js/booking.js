@@ -1366,6 +1366,65 @@ Alpine.data('createBookingApp', () => ({
     },
 
     onPackageChange() {
+        const pkg = this.bookingData.package_id
+            ? this.allPackages.find(p => String(p.id) === String(this.bookingData.package_id))
+            : null;
+        if (pkg) {
+            const routeTypeMap = {
+                'oneway_inbound': 'One Way-Inbound',
+                'oneway_outbound': 'One Way-Outbound',
+                'round': 'Round',
+                'multi_city': 'Multi City',
+            };
+            const flightTypeMap = {
+                'transit': 'Transit',
+                'direct': 'Direct',
+            };
+            if (pkg.is_double_ticket) {
+                const inboundTicket = pkg.ticket_fare_inbound_id
+                    ? this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_inbound_id))
+                    : null;
+                const outboundTicket = pkg.ticket_fare_outbound_id
+                    ? this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_outbound_id))
+                    : null;
+                this.passengers.forEach(p => {
+                    if ((p.service_required || '') === 'visa_only') return;
+                    p.ticket_fare_id = null;
+                    p.ticket_fare_inbound_id = pkg.ticket_fare_inbound_id ? String(pkg.ticket_fare_inbound_id) : '';
+                    p.ticket_fare_outbound_id = pkg.ticket_fare_outbound_id ? String(pkg.ticket_fare_outbound_id) : '';
+                    if (inboundTicket) {
+                        p.inbound_route_type = routeTypeMap[inboundTicket.route_type] || '';
+                        p.inbound_flight_type = flightTypeMap[inboundTicket.flight_type] || '';
+                        p.inbound_route = inboundTicket.route;
+                        p.inbound_airline = inboundTicket.airline || '';
+                        p.inbound_class = inboundTicket.airline_class || '';
+                    }
+                    if (outboundTicket) {
+                        p.outbound_route_type = routeTypeMap[outboundTicket.route_type] || '';
+                        p.outbound_flight_type = flightTypeMap[outboundTicket.flight_type] || '';
+                        p.outbound_route = outboundTicket.route;
+                        p.outbound_airline = outboundTicket.airline || '';
+                        p.outbound_class = outboundTicket.airline_class || '';
+                    }
+                });
+            } else if (pkg.ticket_fare_id) {
+                const ticket = this.allTickets.find(t => String(t.id) === String(pkg.ticket_fare_id));
+                this.passengers.forEach(p => {
+                    if ((p.service_required || '') === 'visa_only') return;
+                    p.ticket_fare_id = String(pkg.ticket_fare_id);
+                    p.ticket_fare_inbound_id = '';
+                    p.ticket_fare_outbound_id = '';
+                    if (ticket) {
+                        p.ticket_fare = null;
+                        p.route_type = routeTypeMap[ticket.route_type] || '';
+                        p.flight_type = flightTypeMap[ticket.flight_type] || '';
+                        p.route = ticket.route;
+                        p.airline = ticket.airline || '';
+                        p.class = ticket.airline_class || '';
+                    }
+                });
+            }
+        }
         this.recalculateAllPassengerValues();
     },
 
@@ -1876,12 +1935,16 @@ Alpine.data('createBookingApp', () => ({
             return;
         }
 
-        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass);
+        const ticketFareId = this.passengerData.ticket_fare_id || this.passengerData.ticket_fare_inbound_id;
+        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId);
     },
 
-    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass) {
+    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId) {
         try {
             const params = new URLSearchParams({ route, airline, travel_class: travelClass });
+            if (ticketFareId) {
+                params.set('ticket_fare_id', String(ticketFareId));
+            }
             console.log('[DateRange] Calling API:', `/api/ticket-fares/flight-date-gap?${params}`);
             const response = await fetch(`/api/ticket-fares/flight-date-gap?${params}`);
             const data = await response.json();
@@ -3250,12 +3313,16 @@ Alpine.data('editBookingApp', () => ({
             return;
         }
 
-        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass);
+        const ticketFareId = this.passengerData.ticket_fare_id || this.passengerData.ticket_fare_inbound_id;
+        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId);
     },
 
-    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass) {
+    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId) {
         try {
             const params = new URLSearchParams({ route, airline, travel_class: travelClass });
+            if (ticketFareId) {
+                params.set('ticket_fare_id', String(ticketFareId));
+            }
             const response = await fetch(`/api/ticket-fares/flight-date-gap?${params}`);
             const data = await response.json();
 
@@ -4562,12 +4629,16 @@ Alpine.data('showBookingApp', () => ({
             return;
         }
 
-        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass);
+        const ticketFareId = this.passengerData.ticket_fare_id || this.passengerData.ticket_fare_inbound_id;
+        this.fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId);
     },
 
-    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass) {
+    async fetchFlightDateGapAndGenerateRange(route, airline, travelClass, ticketFareId) {
         try {
             const params = new URLSearchParams({ route, airline, travel_class: travelClass });
+            if (ticketFareId) {
+                params.set('ticket_fare_id', String(ticketFareId));
+            }
             const response = await fetch(`/api/ticket-fares/flight-date-gap?${params}`);
             const data = await response.json();
 
