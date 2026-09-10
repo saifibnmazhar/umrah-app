@@ -299,8 +299,8 @@ select {
                         </select>
                     </div>
                     <div class="mb-4">
-                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket</label>
-                        <select x-model="form.ticket_option" @change="handleTicketOptionChange()" class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
+                        <label class="block text-sm font-medium text-slate-700 mb-1">Ticket *</label>
+                        <select x-model="form.ticket_option" @change="handleTicketOptionChange()" required class="w-full px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none bg-white">
                             <option value="">Select Ticket</option>
                             <template x-for="opt in filteredTicketOptions" :key="opt.value">
                                 <option :value="opt.value" x-text="opt.display"></option>
@@ -761,6 +761,11 @@ function pendingOutboundReport(options = {}) {
             this.isSubmitting = true;
 
             const f = this.form;
+            if (!f.ticket_option || !f.ticket_fare_id) {
+                this.isSubmitting = false;
+                this.showToast('Please select a ticket.', 'error');
+                return;
+            }
             if (!f.ticket_number) {
                 this.isSubmitting = false;
                 this.showToast('Ticket number is required.', 'error');

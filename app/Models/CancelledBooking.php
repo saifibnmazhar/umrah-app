@@ -18,6 +18,7 @@ class CancelledBooking extends Model
         'total_paid',
         'service_charge_deduction',
         'refund_amount',
+        'total_passenger_refundable',
         'cancellation_branch_id',
         'status',
         'deduction_payment_id',
@@ -32,6 +33,7 @@ class CancelledBooking extends Model
         'total_paid' => 'decimal:6',
         'service_charge_deduction' => 'decimal:6',
         'refund_amount' => 'decimal:6',
+        'total_passenger_refundable' => 'decimal:6',
         'status' => CancelledBookingStatus::class,
     ];
 

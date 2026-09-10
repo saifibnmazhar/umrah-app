@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\PaymentMethod;
+use App\Enums\ServiceRequired;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
@@ -21,6 +22,10 @@ class TicketIssueController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             abort(403, 'Passenger does not belong to this booking.');
+        }
+
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
         }
 
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
@@ -75,9 +80,6 @@ class TicketIssueController extends Controller
 
             if ($issuedTicket->issue_type === 'pending_outbound') {
                 unset($updateData['issue_type']);
-                if (isset($validated['ticket_fare_id'])) {
-                    $passenger->update(['ticket_fare_outbound_id' => $validated['ticket_fare_id']]);
-                }
             } else {
                 $updateData['issue_type'] = 'regular';
             }
@@ -86,20 +88,13 @@ class TicketIssueController extends Controller
 
             $passenger->update(['ticket_status' => 'issued']);
 
-            if ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
-                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
-            } elseif ($validated['clear_double_ticket'] ?? false) {
-                IssuedTicket::where('passenger_id', $passenger->id)
-                    ->where('issue_type', 'pending_outbound')
-                    ->where('status', 'pending')
-                    ->delete();
-            } elseif ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
+            if ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
                 $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
+                    ->whereIn('status', ['pending', 'awaiting-group'])
                     ->exists();
 
                 if (! $existingPendingOutbound) {
-                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -111,10 +106,14 @@ class TicketIssueController extends Controller
                         'outbound_pending' => false,
                         'ticket_fare_id' => null,
                     ]);
-                    if ($pendingOutboundFareId) {
-                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
-                    }
                 }
+            } elseif ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
+                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
+            } elseif ($validated['clear_double_ticket'] ?? false) {
+                IssuedTicket::where('passenger_id', $passenger->id)
+                    ->where('issue_type', 'pending_outbound')
+                    ->where('status', 'pending')
+                    ->delete();
             }
 
             $issuedTicket->logAction('issued', $oldData, $issuedTicket->toArray());
@@ -167,6 +166,10 @@ class TicketIssueController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             abort(403, 'Passenger does not belong to this booking.');
+        }
+
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
         }
 
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
@@ -419,20 +422,13 @@ class TicketIssueController extends Controller
 
             $issuedTicket->logAction('edited', $oldData, $issuedTicket->toArray());
 
-            if ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
-                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
-            } elseif ($validated['clear_double_ticket'] ?? false) {
-                IssuedTicket::where('passenger_id', $passenger->id)
-                    ->where('issue_type', 'pending_outbound')
-                    ->where('status', 'pending')
-                    ->delete();
-            } elseif ($validated['outbound_pending'] ?? false) {
+            if ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
                 $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
+                    ->whereIn('status', ['pending', 'awaiting-group'])
                     ->exists();
 
                 if (! $existingPendingOutbound) {
-                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -444,10 +440,14 @@ class TicketIssueController extends Controller
                         'outbound_pending' => false,
                         'ticket_fare_id' => null,
                     ]);
-                    if ($pendingOutboundFareId) {
-                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
-                    }
                 }
+            } elseif ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
+                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
+            } elseif ($validated['clear_double_ticket'] ?? false) {
+                IssuedTicket::where('passenger_id', $passenger->id)
+                    ->where('issue_type', 'pending_outbound')
+                    ->where('status', 'pending')
+                    ->delete();
             }
 
             DB::commit();
@@ -478,6 +478,10 @@ class TicketIssueController extends Controller
 
     public function createPendingOutbound(Request $request, Passenger $passenger)
     {
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
+        }
+
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
             return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
@@ -553,6 +557,10 @@ class TicketIssueController extends Controller
 
     public function confirmGroup(Request $request, Passenger $passenger)
     {
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
+        }
+
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
             return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
@@ -649,6 +657,13 @@ class TicketIssueController extends Controller
 
             return response()->json(['message' => 'Failed to confirm tickets.'], 500);
         }
+    }
+
+    private function serviceValue(Passenger $passenger): ?string
+    {
+        $service = $passenger->service_required;
+
+        return $service instanceof ServiceRequired ? $service->value : $service;
     }
 
     private function clearPendingOutboundForRoundMulti(Passenger $passenger, int $ticketFareId, IssuedTicket $issuedTicket): void

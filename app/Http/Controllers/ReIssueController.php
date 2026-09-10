@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\PaymentMethod;
+use App\Enums\ServiceRequired;
 use App\Enums\TicketStatus;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
@@ -22,6 +23,13 @@ class ReIssueController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             abort(403, 'Passenger does not belong to this booking.');
+        }
+
+        $service = $passenger->service_required instanceof ServiceRequired
+            ? $passenger->service_required->value
+            : $passenger->service_required;
+        if ($service === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['message' => 'Ticket service is not required for this passenger (Visa Only).'], 403);
         }
 
         if ($passenger->isOnHold() || $passenger->isOnCancel()) {
