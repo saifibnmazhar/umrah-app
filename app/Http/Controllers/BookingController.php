@@ -36,6 +36,7 @@ use App\Models\VisaAgent;
 use App\Models\VisaSellingPrice;
 use App\Models\VisaSubmission;
 use App\Models\Voucher;
+use App\Queries\BookingPassengerQuery;
 use App\Services\BookingService;
 use App\Services\CostTrackingService;
 use App\Services\CurrencyRateService;
@@ -280,349 +281,32 @@ class BookingController extends Controller
         $canFilterByTicketAgent = auth()->user()->roles->pluck('name')
             ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
 
-        $passengers = Passenger::query()
-            ->when(auth()->user()->branch_id, fn ($q) => $q->whereHas('booking', fn ($q) => $q->where(function ($q) {
-                $q->where('booking_branch_id', auth()->user()->branch_id)
-                    ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
-            })
-            )
-            )
-            ->when($selectedBookingStatus && $selectedBookingStatus !== 'all', function ($q) use ($selectedBookingStatus) {
-                if ($selectedBookingStatus === 'active') {
-                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', false));
-                } elseif ($selectedBookingStatus === 'cancellation_processing') {
-                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', true)
-                        ->whereHas('cancelledBooking', fn ($cq) => $cq->where('status', 'cancellation processing')));
-                } elseif ($selectedBookingStatus === 'cancelled') {
-                    $q->whereHas('booking', fn ($bq) => $bq->where('is_cancelled', true)
-                        ->where(fn ($bw) => $bw->whereDoesntHave('cancelledBooking')
-                            ->orWhereHas('cancelledBooking', fn ($cq) => $cq->where('status', 'cancelled'))));
-                }
-            })
-            ->when($request->filled('fingerprint_status'), fn ($q) => $q->whereHas('fingerprintDetail', fn ($q) => $q->where('status', $request->input('fingerprint_status')))
-            )
-            ->when($request->filled('visa_status'), fn ($q) => $q->whereHas('visaSubmission', fn ($q) => $q->where('status', $request->input('visa_status')))
-            )
-            ->when($request->filled('ticket_status'), function ($q) use ($request) {
-                $val = $request->input('ticket_status');
+        $passengerQuery = new BookingPassengerQuery($request);
+        $passengersBase = $passengerQuery->getQuery();
 
-                if (in_array($val, ['partial-re-issued', 'partial-refunded', 're-issued', 'refunded'])) {
-                    $targetStatus = str_contains($val, 're-issued') ? 're-issued' : 'refunded';
-                    $isPartial = str_starts_with($val, 'partial-');
-
-                    $q->where(function ($wq) use ($targetStatus, $isPartial) {
-                        if ($isPartial) {
-                            $wq->where(function ($wq2) use ($targetStatus) {
-                                $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $targetStatus)
-                                    ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                        ->where('status', '!=', $targetStatus));
-                            })->orWhere(function ($wq2) use ($targetStatus) {
-                                $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                    ->where('status', $targetStatus))
-                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $targetStatus)
-                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                            });
-                        } else {
-                            $wq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $targetStatus)
-                                ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                ->where(function ($wq2) use ($targetStatus) {
-                                    $wq2->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                        ->where('status', $targetStatus))
-                                        ->orWhereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'));
-                                });
-                        }
-                    });
-                } elseif (str_starts_with($val, 'issued-') || str_starts_with($val, 'awaiting-group')) {
-                    $isIssued = str_starts_with($val, 'issued-');
-                    $status = $isIssued ? 'issued' : 'awaiting-group';
-                    $routeFilter = $isIssued ? substr($val, 7) : substr($val, 15);
-
-                    if ($routeFilter === 'inbound' || $routeFilter === 'outbound' || $routeFilter === 'both') {
-                        $q->where(function ($wq) use ($status, $routeFilter, $isIssued) {
-                            $wq->where(function ($nq) use ($status, $routeFilter) {
-                                $nq->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'))
-                                    ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular'))
-                                        ->whereHas('ticketFare.route', fn ($rq) => match ($routeFilter) {
-                                            'inbound' => $rq->where('route_type', 'oneway_inbound'),
-                                            'outbound' => $rq->where('route_type', 'oneway_outbound'),
-                                            'both' => $rq->whereIn('route_type', ['round', 'multi_city']),
-                                        }));
-                            });
-                            if ($routeFilter === 'inbound') {
-                                $wq->orWhere(function ($oq) use ($status, $isIssued) {
-                                    $poStatus = $isIssued ? 'pending' : 'awaiting-group';
-                                    $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                                    if ($isIssued) {
-                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', $poStatus));
-                                    } else {
-                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', '!=', $poStatus));
-                                    }
-                                });
-                                $wq->orWhere(function ($oq) use ($status) {
-                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                        ->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', $status));
-                                });
-                            } elseif ($routeFilter === 'outbound') {
-                                $wq->orWhere(function ($oq) use ($status, $isIssued) {
-                                    if ($isIssued) {
-                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', 'pending')
-                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                                ->where('status', 'issued'));
-                                    } else {
-                                        $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $status)
-                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                                ->where('status', $status));
-                                    }
-                                });
-                                $wq->orWhere(function ($oq) use ($status) {
-                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', $status))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', '!=', $status)
-                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                                });
-                            } elseif ($routeFilter === 'both') {
-                                $wq->orWhere(function ($oq) use ($status) {
-                                    $oq->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                        ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', $status));
-                                });
-                                $wq->orWhere(function ($oq) use ($status) {
-                                    $oq->whereHas('booking.package', fn ($pq) => $pq->where('is_double_ticket', true))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound')
-                                            ->where('status', $status))
-                                        ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                            ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                                });
-                            }
-                        });
-                    } elseif ($routeFilter === '') {
-                        $q->whereDoesntHave('allIssuedTickets', fn ($iq) => $iq->where('issue_type', 'pending_outbound'))
-                            ->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $status)
-                                ->where(fn ($iq) => $iq->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                    }
-                } else {
-                    $q->whereHas('allIssuedTickets', fn ($iq) => $iq->where('status', $val)
-                        ->where(fn ($q) => $q->whereNull('issue_type')->orWhere('issue_type', 'regular')));
-                }
-            })
-            ->when($request->filled('visa_agent_id') && $canFilterByVisaAgent, fn ($q) => $q->whereHas('visaSubmission.visaAgent', fn ($q) => $q->where('id', $request->input('visa_agent_id')))
-            )
-            ->when($request->filled('booking_branch_id'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->where('booking_branch_id', $request->input('booking_branch_id')))
-            )
-            ->when($request->filled('booking_date_from'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from')))
-            )
-            ->when($request->filled('booking_date_to'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to')))
-            )
-            ->when($request->filled('flight_date_from'), fn ($q) => $q->whereDate('flight_date_from', '>=', $request->input('flight_date_from'))
-            )
-            ->when($request->filled('flight_date_to'), fn ($q) => $q->whereDate('flight_date_from', '<=', $request->input('flight_date_to'))
-            )
-            ->when($request->filled('actual_flight_from'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '>=', $request->input('actual_flight_from')))
-            )
-            ->when($request->filled('actual_flight_to'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('inbound_date', '<=', $request->input('actual_flight_to')))
-            )
-            ->when($request->filled('return_date_from'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '>=', $request->input('return_date_from')))
-            )
-            ->when($request->filled('return_date_to'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '<=', $request->input('return_date_to')))
-            )
-            ->when($request->filled('passenger_status'), fn ($q) => $q->where('passenger_status_id', $request->input('passenger_status'))
-            )
-            ->when($request->filled('status_change_action'), function ($q) use ($request) {
-                $action = $request->input('status_change_action');
-                $dateFrom = $request->input('status_change_from');
-                $dateTo = $request->input('status_change_to');
-
-                if (in_array($action, ['visa_submitted', 'visa_issued', 'ticket_issued'])) {
-                    // New filters: exclude passengers whose current status is Cancel/Delivered/Hold
-                    $excludeIds = PassengerStatus::whereIn('name', ['Cancel', 'Delivered', 'Hold'])
-                        ->pluck('id')
-                        ->toArray();
-
-                    $q->where(function ($sub) use ($excludeIds) {
-                        $sub->whereNull('passenger_status_id')
-                            ->orWhereNotIn('passenger_status_id', $excludeIds);
-                    });
-
-                    match ($action) {
-                        'visa_submitted' => $q->whereHas(
-                            'visaSubmission',
-                            fn ($vs) => $vs->whereHas('logs', function ($log) use ($dateFrom, $dateTo) {
-                                $log->where(function ($log) {
-                                    $log->where('action', 'submitted')
-                                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'submitted'");
-                                });
-                                if ($dateFrom) {
-                                    $log->whereDate('created_at', '>=', $dateFrom);
-                                }
-                                if ($dateTo) {
-                                    $log->whereDate('created_at', '<=', $dateTo);
-                                }
-                            })
-                        ),
-                        'visa_issued' => $q->whereHas(
-                            'visaSubmission',
-                            fn ($vs) => $vs->whereHas('logs', function ($log) use ($dateFrom, $dateTo) {
-                                $log->where(function ($log) {
-                                    $log->where('action', 'issued')
-                                        ->orWhereRaw("JSON_UNQUOTE(JSON_EXTRACT(new_values, '$.status')) = 'issued'");
-                                });
-                                if ($dateFrom) {
-                                    $log->whereDate('created_at', '>=', $dateFrom);
-                                }
-                                if ($dateTo) {
-                                    $log->whereDate('created_at', '<=', $dateTo);
-                                }
-                            })
-                        ),
-                        'ticket_issued' => $q->whereHas(
-                            'issuedTickets',
-                            fn ($it) => $it->whereHas('logs', function ($log) use ($dateFrom, $dateTo) {
-                                $log->where(function ($log) {
-                                    $log->where('action', 'issued')
-                                        ->orWhere('new_data->status', 'issued');
-                                });
-                                if ($dateFrom) {
-                                    $log->whereDate('created_at', '>=', $dateFrom);
-                                }
-                                if ($dateTo) {
-                                    $log->whereDate('created_at', '<=', $dateTo);
-                                }
-                            })
-                        ),
-                    };
-                } else {
-                    // Existing Cancel/Delivered/Hold logic — unchanged
-                    $q->where('passenger_status_id', $action);
-
-                    if ($dateFrom || $dateTo) {
-                        $q->where(function ($query) use ($action, $dateFrom, $dateTo) {
-                            $query->where(function ($q) use ($action, $dateFrom, $dateTo) {
-                                $q->whereHas('updateLogs', function ($logQ) use ($action, $dateFrom, $dateTo) {
-                                    $logQ->where('action', 'updated')
-                                        ->where('new_values->passenger_status_id', $action);
-                                    if ($dateFrom) {
-                                        $logQ->whereDate('created_at', '>=', $dateFrom);
-                                    }
-                                    if ($dateTo) {
-                                        $logQ->whereDate('created_at', '<=', $dateTo);
-                                    }
-                                });
-                            })->orWhere(function ($q) use ($action, $dateFrom, $dateTo) {
-                                $q->whereDoesntHave('updateLogs', function ($logQ) use ($action) {
-                                    $logQ->where('action', 'updated')
-                                        ->where('new_values->passenger_status_id', $action);
-                                });
-                                if ($dateFrom) {
-                                    $q->whereDate('updated_at', '>=', $dateFrom);
-                                }
-                                if ($dateTo) {
-                                    $q->whereDate('updated_at', '<=', $dateTo);
-                                }
-                            });
-                        });
-                    }
-                }
-            })
-            ->when($selectedRouteDisplay, function ($q) use ($routeDisplayMap, $selectedRouteDisplay) {
-                $routeIds = $routeDisplayMap[$selectedRouteDisplay] ?? [];
-                if (! empty($routeIds)) {
-                    $q->where(function ($q) use ($routeIds) {
-                        $q->whereHas('ticketFare', fn ($q) => $q->whereIn('route_id', $routeIds))
-                            ->orWhereHas('ticketFareInbound', fn ($q) => $q->whereIn('route_id', $routeIds))
-                            ->orWhereHas('ticketFareOutbound', fn ($q) => $q->whereIn('route_id', $routeIds));
-                    });
-                }
-            })
-            ->when($request->filled('package_id'), fn ($q) => $q->whereHas('booking', fn ($q) => $q->where('package_id', $request->input('package_id')))
-            )
-            ->when($request->filled('ticket_agent_id') && $canFilterByTicketAgent, fn ($q) => $q->whereHas('latestIssuedTicket.ticketAgent', fn ($q) => $q->where('id', $request->input('ticket_agent_id'))
-            )
-            )
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $search = $request->input('search');
-                $q->where(function ($query) use ($search) {
-                    $query->where('mobile_no', 'like', "%{$search}%")
-                        ->orWhere('passport_no', 'like', "%{$search}%")
-                        ->orWhere('first_name', 'like', "%{$search}%")
-                        ->orWhere('last_name', 'like', "%{$search}%")
-                        ->orWhereHas('booking', fn ($q) => $q->where('invoice_id', 'like', "%{$search}%"))
-                        ->orWhereHas('issuedTickets', fn ($q) => $q->where('ticket_number', 'like', "%{$search}%")
-                            ->orWhere('pnr', 'like', "%{$search}%")
-                        );
-                });
-            })
-            ->when($request->filled('payment_wise'), function ($q) use ($request) {
-                $paymentWise = $request->input('payment_wise');
-                $rate = (float) (app(CurrencyRateService::class)->getCurrentRateValue() ?? 0);
-                $q->whereHas('booking.invoice', function ($iq) use ($paymentWise, $rate) {
-                    if ($paymentWise === 'clear') {
-                        $iq->where('balance', '<=', 0);
-                    } elseif ($paymentWise === 'due') {
-                        $iq->where('balance', '>', 0);
-                    } elseif ($paymentWise === 'due_below_1000') {
-                        $iq->where('balance', '>', 0);
-                        if ($rate > 0) {
-                            $iq->whereRaw('balance * ? < 1000', [$rate]);
-                        } else {
-                            $iq->where('balance', '<', 1000);
-                        }
-                    } elseif ($paymentWise === 'due_above_1000') {
-                        if ($rate > 0) {
-                            $iq->whereRaw('balance * ? >= 1000', [$rate]);
-                        } else {
-                            $iq->where('balance', '>=', 1000);
-                        }
-                    }
-                });
-            });
-
-        $totalPassengerCount = (clone $passengers)->count();
+        $totalPassengerCount = (clone $passengersBase)->count();
 
         $currencyRateService = app(CurrencyRateService::class);
-
-        $bookingIds = (clone $passengers)->pluck('booking_id')->unique();
-
-        $invoiceBookings = Booking::with('invoice', 'currencyRate')
-            ->whereIn('id', $bookingIds)
-            ->get();
-
         $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
 
-        $totalPackageValue = 0;
-        $totalDue = 0;
-        $totalPackageBdt = 0;
-        $totalDueBdt = 0;
+        $bookingIdsSub = (clone $passengersBase)->select('passengers.booking_id')->distinct();
+        $bookingIdsSub->getQuery()->orders = [];
 
-        foreach ($invoiceBookings as $booking) {
-            $invoice = $booking->invoice;
-            if (! $invoice) {
-                continue;
-            }
+        $invoiceTotals = Invoice::whereIn('booking_id', $bookingIdsSub)
+            ->selectRaw('COALESCE(SUM(total_amount), 0) as package, COALESCE(SUM(balance), 0) as due')
+            ->first();
+        $totalPackageValue = (float) ($invoiceTotals->package ?? 0);
+        $totalDue = (float) ($invoiceTotals->due ?? 0);
 
-            $totalPackageValue += $invoice->total_amount;
-            $totalDue += $invoice->balance;
+        $bdtTotals = Invoice::whereIn('invoices.booking_id', $bookingIdsSub)
+            ->leftJoin('bookings', 'bookings.id', '=', 'invoices.booking_id')
+            ->leftJoin('currency_rates', 'currency_rates.id', '=', 'bookings.currency_rate_id')
+            ->selectRaw('COALESCE(SUM(invoices.total_amount * COALESCE(currency_rates.rate, ?)), 0) as package_bdt, COALESCE(SUM(invoices.balance * COALESCE(currency_rates.rate, ?)), 0) as due_bdt', [$firstRate, $firstRate])
+            ->first();
+        $totalPackageBdt = (float) ($bdtTotals->package_bdt ?? 0);
+        $totalDueBdt = (float) ($bdtTotals->due_bdt ?? 0);
 
-            $rate = $booking->currencyRate?->rate ?? $firstRate;
-
-            if ($rate > 0) {
-                $totalPackageBdt += $invoice->total_amount * $rate;
-                $totalDueBdt += $invoice->balance * $rate;
-            }
-        }
-
-        $passengers = (clone $passengers)
+        $passengers = (clone $passengersBase)
             ->with([
                 'booking',
                 'booking.customer',
@@ -714,11 +398,9 @@ class BookingController extends Controller
                 'ticketFareOutbound.baggageAllowances',
             ])
             ->withCount('documents')
-            ->orderBy('created_at', 'desc')
             ->paginate(15)
             ->appends(['tab' => $tab])
             ->withQueryString();
-
         $passengerStatuses = PassengerStatus::all();
         $statusChangeOptions = $passengerStatuses->filter(fn ($s) => in_array($s->name, ['Cancel', 'Delivered', 'Hold'])
         )->values();
@@ -789,6 +471,38 @@ class BookingController extends Controller
             'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt',
             'reIssueReasons'
         ));
+    }
+
+    public function passengerData(Request $request)
+    {
+        $query = (new BookingPassengerQuery($request))->getQuery();
+        $page = $query->with([
+            'booking:id,invoice_id,customer_id',
+            'booking.customer:id,name',
+            'ticketFare:id,airline_id',
+            'status:id,name',
+            'visaSubmission',
+        ])->paginate(15)->withQueryString();
+
+        return response()->json([
+            'data' => $page->items(),
+            'summary' => $this->passengerSummary($request),
+            'pagination' => [
+                'current_page' => $page->currentPage(),
+                'last_page' => $page->lastPage(),
+                'per_page' => $page->perPage(),
+                'total' => $page->total(),
+            ],
+        ]);
+    }
+
+    protected function passengerSummary(Request $request): array
+    {
+        $base = (new BookingPassengerQuery($request))->getBaseQueryForAggregates();
+        $base->getQuery()->orders = [];
+        $row = (clone $base)->selectRaw('COUNT(*) as total')->first();
+
+        return ['total' => (int) $row->total];
     }
 
     public function create(Request $request)
