@@ -7,7 +7,6 @@ use App\Enums\PaymentMethod;
 use App\Enums\TicketStatus;
 use App\Enums\VisaStatus;
 use App\Models\Bank;
-use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\CurrencyRate;
 use App\Models\FingerprintDetailLog;
@@ -21,6 +20,7 @@ use App\Models\VisaUpdateLog;
 use App\Models\Voucher;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\View\View;
 
 class BranchWiseReportController extends Controller
@@ -206,21 +206,94 @@ class BranchWiseReportController extends Controller
         $initialPaymentBank = $initialPaymentRow->bank_sar ?? 0;
         $initialPaymentBankBdt = $initialPaymentRow->bank_bdt ?? 0;
 
-        $profitBookings = Booking::with(['currencyRate'])
-            ->where('is_cancelled', false)
-            ->whereHas('invoice')
-            ->whereDate('created_at', '>=', $dateFrom)
-            ->whereDate('created_at', '<=', $dateTo)
-            ->pipe(fn ($q) => $branchFilter($q, 'booking_branch_id'))
-            ->get();
-        $totalProfit = 0;
-        $totalProfitBdt = 0;
-        foreach ($profitBookings as $booking) {
-            $profit = (float) ($booking->profit ?? 0);
-            $totalProfit += $profit;
-            $rate = (float) ($booking->currencyRate?->rate ?? $firstRate);
-            $totalProfitBdt += $profit * $rate;
-        }
+        $profitRow = DB::table('passengers as p')
+            ->join('bookings as b', 'b.id', '=', 'p.booking_id')
+            ->leftJoin('currency_rates as cr', 'cr.id', '=', 'b.currency_rate_id')
+            ->where('b.is_cancelled', false)
+            ->where('p.is_cancelled', false)
+            ->whereNotNull('b.invoice_id')
+            ->pipe(fn ($q) => $branchFilter($q, 'b.booking_branch_id'))
+            ->where(function ($q) use ($dateFrom, $dateTo) {
+                $q->whereBetween('p.visa_profit_effective_at', [$dateFrom, $dateTo])
+                    ->orWhereBetween('p.ticket_profit_effective_at', [$dateFrom, $dateTo])
+                    ->orWhereBetween('p.service_charge_effective_at', [$dateFrom, $dateTo]);
+            })
+            ->selectRaw('
+                COALESCE(SUM(
+                    CASE WHEN p.visa_profit_effective_at BETWEEN ? AND ? THEN p.visa_profit ELSE 0 END
+                    + CASE WHEN p.ticket_profit_effective_at BETWEEN ? AND ? THEN p.ticket_profit ELSE 0 END
+                    + CASE WHEN p.service_charge_effective_at BETWEEN ? AND ? THEN p.service_charge ELSE 0 END
+                ), 0) as sar_total,
+                COALESCE(SUM(
+                    CASE WHEN p.visa_profit_effective_at BETWEEN ? AND ? THEN p.visa_profit * COALESCE(cr.rate, ?) ELSE 0 END
+                    + CASE WHEN p.ticket_profit_effective_at BETWEEN ? AND ? THEN p.ticket_profit * COALESCE(cr.rate, ?) ELSE 0 END
+                    + CASE WHEN p.service_charge_effective_at BETWEEN ? AND ? THEN p.service_charge * COALESCE(cr.rate, ?) ELSE 0 END
+                ), 0) as bdt_total
+            ', [
+                $dateFrom, $dateTo,
+                $dateFrom, $dateTo,
+                $dateFrom, $dateTo,
+                $dateFrom, $dateTo, $firstRate,
+                $dateFrom, $dateTo, $firstRate,
+                $dateFrom, $dateTo, $firstRate,
+            ])
+            ->first();
+
+        $reIssueProfitRow = DB::table('re_issued_tickets as rit')
+            ->join('issued_tickets as it', 'it.id', '=', 'rit.issued_ticket_id')
+            ->join('passengers as p', 'p.id', '=', 'it.passenger_id')
+            ->join('bookings as b', 'b.id', '=', 'p.booking_id')
+            ->leftJoin('currency_rates as cr', 'cr.id', '=', 'b.currency_rate_id')
+            ->where('b.is_cancelled', false)
+            ->where('p.is_cancelled', false)
+            ->whereNotNull('b.invoice_id')
+            ->whereNull('it.deleted_at')
+            ->whereNull('rit.deleted_at')
+            ->where('rit.payment_by', 'customer')
+            ->whereBetween('rit.created_at', [$dateFrom, $dateTo])
+            ->pipe(fn ($q) => $branchFilter($q, 'b.booking_branch_id'))
+            ->selectRaw('COALESCE(SUM(rit.service_charge), 0) as sar, COALESCE(SUM(rit.service_charge * COALESCE(cr.rate, ?)), 0) as bdt', [$firstRate])
+            ->first();
+
+        $reIssueCostRow = DB::table('re_issued_tickets as rit')
+            ->join('issued_tickets as it', 'it.id', '=', 'rit.issued_ticket_id')
+            ->join('passengers as p', 'p.id', '=', 'it.passenger_id')
+            ->join('bookings as b', 'b.id', '=', 'p.booking_id')
+            ->leftJoin('currency_rates as cr', 'cr.id', '=', 'b.currency_rate_id')
+            ->where('b.is_cancelled', false)
+            ->where('p.is_cancelled', false)
+            ->whereNotNull('b.invoice_id')
+            ->whereNull('it.deleted_at')
+            ->whereNull('rit.deleted_at')
+            ->where('rit.payment_by', 'company')
+            ->whereBetween('rit.created_at', [$dateFrom, $dateTo])
+            ->pipe(fn ($q) => $branchFilter($q, 'b.booking_branch_id'))
+            ->selectRaw('COALESCE(SUM(rit.total_cost), 0) as sar, COALESCE(SUM(rit.total_cost * COALESCE(cr.rate, ?)), 0) as bdt', [$firstRate])
+            ->first();
+
+        $refundProfitRow = DB::table('refunded_tickets as rft')
+            ->join('issued_tickets as it', 'it.id', '=', 'rft.issued_ticket_id')
+            ->join('passengers as p', 'p.id', '=', 'it.passenger_id')
+            ->join('bookings as b', 'b.id', '=', 'p.booking_id')
+            ->leftJoin('currency_rates as cr', 'cr.id', '=', 'b.currency_rate_id')
+            ->where('b.is_cancelled', false)
+            ->where('p.is_cancelled', false)
+            ->whereNotNull('b.invoice_id')
+            ->whereNull('it.deleted_at')
+            ->whereNull('rft.deleted_at')
+            ->whereBetween('rft.created_at', [$dateFrom, $dateTo])
+            ->pipe(fn ($q) => $branchFilter($q, 'b.booking_branch_id'))
+            ->selectRaw('COALESCE(SUM(rft.service_charge), 0) as sar, COALESCE(SUM(rft.service_charge * COALESCE(cr.rate, ?)), 0) as bdt', [$firstRate])
+            ->first();
+
+        $totalProfit = (float) ($profitRow->sar_total ?? 0)
+            + (float) ($reIssueProfitRow->sar ?? 0)
+            + (float) ($refundProfitRow->sar ?? 0)
+            - (float) ($reIssueCostRow->sar ?? 0);
+        $totalProfitBdt = (float) ($profitRow->bdt_total ?? 0)
+            + (float) ($reIssueProfitRow->bdt ?? 0)
+            + (float) ($refundProfitRow->bdt ?? 0)
+            - (float) ($reIssueCostRow->bdt ?? 0);
 
         $totalPassengers = Passenger::whereDate('created_at', '>=', $dateFrom)
             ->whereDate('created_at', '<=', $dateTo)
