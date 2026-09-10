@@ -43,29 +43,27 @@ class VisaSubmissionObserver
             array_flip($this->trackedFields)
         );
 
+        $user = Auth::user();
+        if ($user && ! empty($changedTracked)) {
+            $original = $visaSubmission->getOriginal();
+            $oldValues = array_intersect_key($original, $changedTracked);
+
+            $action = $this->determineAction($oldValues, $changedTracked);
+
+            VisaUpdateLog::create([
+                'visa_submission_id' => $visaSubmission->id,
+                'user_id' => $user->id,
+                'action' => $action,
+                'old_values' => $oldValues,
+                'new_values' => $changedTracked,
+            ]);
+        }
+
         if ($visaSubmission->wasChanged($this->profitFields)) {
             $this->recalculateProfit($visaSubmission);
         }
 
         $visaSubmission->passenger->syncComputedStatus();
-
-        $user = Auth::user();
-        if (! $user || empty($changedTracked)) {
-            return;
-        }
-
-        $original = $visaSubmission->getOriginal();
-        $oldValues = array_intersect_key($original, $changedTracked);
-
-        $action = $this->determineAction($oldValues, $changedTracked);
-
-        VisaUpdateLog::create([
-            'visa_submission_id' => $visaSubmission->id,
-            'user_id' => $user->id,
-            'action' => $action,
-            'old_values' => $oldValues,
-            'new_values' => $changedTracked,
-        ]);
     }
 
     protected function determineAction(array $oldValues, array $newValues): string

@@ -111,6 +111,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->decimal('discount_value', 14, 6)->default(0);
             $table->string('fingerprint_location')->default('');
             $table->unsignedBigInteger('currency_rate_id')->nullable();
+            $table->decimal('profit', 14, 6)->default(0);
             $table->boolean('is_cancelled')->default(false);
             $table->timestamps();
         });
@@ -135,6 +136,13 @@ class PassengerAdditionalTicketValueTest extends TestCase
             $table->decimal('package_value', 14, 6)->default(0);
             $table->decimal('refund_payable', 14, 6)->default(0);
             $table->unsignedBigInteger('passenger_status_id')->nullable();
+            $table->decimal('profit', 14, 6)->default(0);
+            $table->decimal('visa_profit', 14, 6)->default(0);
+            $table->timestamp('visa_profit_effective_at')->nullable();
+            $table->decimal('ticket_profit', 14, 6)->default(0);
+            $table->timestamp('ticket_profit_effective_at')->nullable();
+            $table->decimal('service_charge', 14, 6)->default(0);
+            $table->timestamp('service_charge_effective_at')->nullable();
             $table->boolean('is_cancelled')->default(false);
             $table->timestamp('cancelled_at')->nullable();
             $table->timestamps();
