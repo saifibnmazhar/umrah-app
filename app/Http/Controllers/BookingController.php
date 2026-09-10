@@ -41,6 +41,7 @@ use App\Services\CostTrackingService;
 use App\Services\CurrencyRateService;
 use App\Services\InvoiceService;
 use App\Services\PaymentService;
+use App\Services\RefundCapService;
 use App\Support\DiagnosticLogger;
 use App\Traits\ConvertsDocumentsToPdf;
 use Illuminate\Database\QueryException;
@@ -240,6 +241,30 @@ class BookingController extends Controller
                                 ->orWhereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancelled'));
                         });
                 }
+            })
+            ->when($request->filled('payment_wise'), function ($q) use ($request) {
+                $paymentWise = $request->input('payment_wise');
+                $rate = (float) (app(CurrencyRateService::class)->getCurrentRateValue() ?? 0);
+                $q->whereHas('invoice', function ($iq) use ($paymentWise, $rate) {
+                    if ($paymentWise === 'clear') {
+                        $iq->where('balance', '<=', 0);
+                    } elseif ($paymentWise === 'due') {
+                        $iq->where('balance', '>', 0);
+                    } elseif ($paymentWise === 'due_below_1000') {
+                        $iq->where('balance', '>', 0);
+                        if ($rate > 0) {
+                            $iq->whereRaw('balance * ? < 1000', [$rate]);
+                        } else {
+                            $iq->where('balance', '<', 1000);
+                        }
+                    } elseif ($paymentWise === 'due_above_1000') {
+                        if ($rate > 0) {
+                            $iq->whereRaw('balance * ? >= 1000', [$rate]);
+                        } else {
+                            $iq->where('balance', '>=', 1000);
+                        }
+                    }
+                });
             })
             ->orderBy('created_at', 'desc');
 
@@ -540,11 +565,25 @@ class BookingController extends Controller
             })
             ->when($request->filled('payment_wise'), function ($q) use ($request) {
                 $paymentWise = $request->input('payment_wise');
-                $q->whereHas('booking.invoice', function ($iq) use ($paymentWise) {
+                $rate = (float) (app(CurrencyRateService::class)->getCurrentRateValue() ?? 0);
+                $q->whereHas('booking.invoice', function ($iq) use ($paymentWise, $rate) {
                     if ($paymentWise === 'clear') {
                         $iq->where('balance', '<=', 0);
                     } elseif ($paymentWise === 'due') {
                         $iq->where('balance', '>', 0);
+                    } elseif ($paymentWise === 'due_below_1000') {
+                        $iq->where('balance', '>', 0);
+                        if ($rate > 0) {
+                            $iq->whereRaw('balance * ? < 1000', [$rate]);
+                        } else {
+                            $iq->where('balance', '<', 1000);
+                        }
+                    } elseif ($paymentWise === 'due_above_1000') {
+                        if ($rate > 0) {
+                            $iq->whereRaw('balance * ? >= 1000', [$rate]);
+                        } else {
+                            $iq->where('balance', '>=', 1000);
+                        }
                     }
                 });
             });
@@ -1037,12 +1076,12 @@ class BookingController extends Controller
                         ? null
                         : (($passengerData['service_required'] ?? '') === 'visa_only'
                             ? null
-                            : ($passengerData['ticket_fare_id'] ?? $booking->package?->ticket_fare_id)),
+                            : $booking->package?->ticket_fare_id),
                     'ticket_fare_inbound_id' => $isDoubleTicket
-                        ? ($passengerData['ticket_fare_inbound_id'] ?? $booking->package?->ticket_fare_inbound_id)
+                        ? $booking->package?->ticket_fare_inbound_id
                         : null,
                     'ticket_fare_outbound_id' => $isDoubleTicket
-                        ? ($passengerData['ticket_fare_outbound_id'] ?? $booking->package?->ticket_fare_outbound_id)
+                        ? $booking->package?->ticket_fare_outbound_id
                         : null,
                     'package_value' => 0,
                 ]);
@@ -1726,12 +1765,12 @@ class BookingController extends Controller
             ? null
             : (($validated['service_required'] ?? '') === 'visa_only'
                 ? null
-                : ($validated['ticket_fare_id'] ?? $booking->package?->ticket_fare_id));
+                : $booking->package?->ticket_fare_id);
         $validated['ticket_fare_inbound_id'] = $isDoubleTicket
-            ? ($validated['ticket_fare_inbound_id'] ?? $booking->package?->ticket_fare_inbound_id)
+            ? $booking->package?->ticket_fare_inbound_id
             : null;
         $validated['ticket_fare_outbound_id'] = $isDoubleTicket
-            ? ($validated['ticket_fare_outbound_id'] ?? $booking->package?->ticket_fare_outbound_id)
+            ? $booking->package?->ticket_fare_outbound_id
             : null;
 
         return DB::transaction(function () use ($booking, $validated) {
@@ -2068,7 +2107,9 @@ class BookingController extends Controller
                 $costSummary = app(CostTrackingService::class)->getBookingCostSummary($booking);
                 $totalCost = $costSummary['total_cost'];
                 $serviceCharge = $booking->cancelledBooking->service_charge_deduction ?? 0;
-                $refundAmount = $invoice->paid_amount - $totalCost - $serviceCharge;
+                $rawRefund = max(0, $invoice->paid_amount - $totalCost - $serviceCharge);
+                $remaining = app(RefundCapService::class)->getCap($invoice)['remaining'];
+                $refundAmount = min($rawRefund, $remaining);
                 $booking->cancelledBooking->update([
                     'total_paid' => $invoice->paid_amount,
                     'refund_amount' => $refundAmount,

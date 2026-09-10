@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Enums\PaymentBy;
 use App\Models\Airline;
 use App\Models\AirlineClass;
 use App\Models\Booking;
@@ -18,6 +19,8 @@ use App\Models\IssuedTicket;
 use App\Models\Package;
 use App\Models\Passenger;
 use App\Models\PassengerStatus;
+use App\Models\RefundedTicket;
+use App\Models\ReIssuedTicket;
 use App\Models\Role;
 use App\Models\Route;
 use App\Models\StayDurationLimit;
@@ -268,6 +271,27 @@ class CostTrackingServiceTest extends TestCase
     }
 
     /** @test */
+    public function test_cost_summary_excludes_cancelled_passengers(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        $booking = $this->createBookingWithPassengers($user, $deps, 9, 2);
+        $booking->passengers->first()->update(['is_cancelled' => true]);
+        $booking->refresh();
+
+        $service = new CostTrackingService;
+
+        $summary = $service->getBookingCostSummary($booking->load('passengers'));
+
+        $expectedTotal = 100.0 + (1000.0 + 28000.0) * 1;
+
+        $this->assertCount(1, $summary['passengers']);
+        $this->assertEqualsWithDelta($expectedTotal, (float) $summary['total_cost'], 0.01);
+        $this->assertEqualsWithDelta(100.0, (float) $summary['passengers']->first()['fingerprint_cost'], 0.01);
+    }
+
+    /** @test */
     public function test_cost_tracking_does_not_nplus_one_with_eager_loaded_relations(): void
     {
         $user = $this->setupUser();
@@ -295,5 +319,127 @@ class CostTrackingServiceTest extends TestCase
 
         $this->assertLessThan(15, $queryCount,
             'CostTrackingService should not fire N+1 queries when relations are eager-loaded across 3 bookings. Actual: '.$queryCount);
+    }
+
+    /** @test */
+    public function test_cost_tracking_uses_latest_reissued_ticket_net_fare(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        $booking = $this->createBookingWithPassengers($user, $deps, 20, 1);
+        $passenger = $booking->passengers->first();
+        $issuedTicket = $passenger->allIssuedTickets->first();
+
+        $issuedTicket->update(['status' => 're-issued']);
+
+        ReIssuedTicket::create([
+            'user_id' => $user->id,
+            'ticket_fare_id' => $deps['ticketFare']->id,
+            'issued_ticket_id' => $issuedTicket->id,
+            'ticket_number' => 'RE-001',
+            'pnr' => 'REPNR001',
+            're_issue_date' => now(),
+            'inbound_date' => now()->addDays(5),
+            'outbound_date' => now()->addDays(15),
+            'net_fare' => 30000.00,
+            're_issue_charge' => 500.00,
+            'fare_difference' => 200.00,
+            'other_costs' => 0,
+            'service_charge' => 0,
+            'total_cost' => 700.00,
+            'payment_by' => PaymentBy::COMPANY,
+        ]);
+
+        $booking->load('passengers.allIssuedTickets.latestReIssuedTicket');
+        $service = new CostTrackingService;
+        $summary = $service->getBookingCostSummary($booking);
+
+        // ticket cost should use re-issued net_fare (30000) + total_cost (700) = 30700
+        // visa cost = 1000, fingerprint = 100
+        $expectedTicketCost = 30000.00 + 700.00;
+        $expectedTotal = 100.0 + 1000.0 + $expectedTicketCost;
+
+        $this->assertEqualsWithDelta($expectedTicketCost, (float) $summary['passengers']->first()['ticket_cost'], 0.01);
+        $this->assertEqualsWithDelta($expectedTotal, (float) $summary['total_cost'], 0.01);
+    }
+
+    /** @test */
+    public function test_cost_tracking_ignores_customer_paid_reissue_charges(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        $booking = $this->createBookingWithPassengers($user, $deps, 21, 1);
+        $passenger = $booking->passengers->first();
+        $issuedTicket = $passenger->allIssuedTickets->first();
+
+        $issuedTicket->update(['status' => 're-issued']);
+
+        ReIssuedTicket::create([
+            'user_id' => $user->id,
+            'ticket_fare_id' => $deps['ticketFare']->id,
+            'issued_ticket_id' => $issuedTicket->id,
+            'ticket_number' => 'RE-002',
+            'pnr' => 'REPNR002',
+            're_issue_date' => now(),
+            'inbound_date' => now()->addDays(5),
+            'outbound_date' => now()->addDays(15),
+            'net_fare' => 30000.00,
+            're_issue_charge' => 500.00,
+            'fare_difference' => 200.00,
+            'other_costs' => 0,
+            'service_charge' => 0,
+            'total_cost' => 700.00,
+            'payment_by' => PaymentBy::CUSTOMER,
+        ]);
+
+        $booking->load('passengers.allIssuedTickets.latestReIssuedTicket');
+        $service = new CostTrackingService;
+        $summary = $service->getBookingCostSummary($booking);
+
+        // ticket cost should use re-issued net_fare (30000) only, NOT total_cost
+        $expectedTicketCost = 30000.00;
+        $expectedTotal = 100.0 + 1000.0 + $expectedTicketCost;
+
+        $this->assertEqualsWithDelta($expectedTicketCost, (float) $summary['passengers']->first()['ticket_cost'], 0.01);
+        $this->assertEqualsWithDelta($expectedTotal, (float) $summary['total_cost'], 0.01);
+    }
+
+    /** @test */
+    public function test_cost_tracking_uses_refunded_ticket_net_fare(): void
+    {
+        $user = $this->setupUser();
+        $deps = $this->seedAllPrerequisites($user);
+
+        $booking = $this->createBookingWithPassengers($user, $deps, 22, 1);
+        $passenger = $booking->passengers->first();
+        $issuedTicket = $passenger->allIssuedTickets->first();
+
+        $issuedTicket->update(['status' => 'refunded']);
+
+        RefundedTicket::create([
+            'user_id' => $user->id,
+            'ticket_fare_id' => $deps['ticketFare']->id,
+            'issued_ticket_id' => $issuedTicket->id,
+            'ticket_number' => 'RF-001',
+            'pnr' => 'RFPNR001',
+            'refund_date' => now(),
+            'net_fare' => 26000.00,
+            'refund_charge' => 300.00,
+            'total_refund' => 25700.00,
+            'payment_by' => PaymentBy::AIRLINE,
+        ]);
+
+        $booking->load('passengers.allIssuedTickets.latestRefundedTicket');
+        $service = new CostTrackingService;
+        $summary = $service->getBookingCostSummary($booking);
+
+        // ticket cost should use refunded net_fare (26000)
+        $expectedTicketCost = 26000.00;
+        $expectedTotal = 100.0 + 1000.0 + $expectedTicketCost;
+
+        $this->assertEqualsWithDelta($expectedTicketCost, (float) $summary['passengers']->first()['ticket_cost'], 0.01);
+        $this->assertEqualsWithDelta($expectedTotal, (float) $summary['total_cost'], 0.01);
     }
 }

@@ -3,12 +3,15 @@
 namespace Tests\Feature;
 
 use App\Enums\CancelledBookingStatus;
+use App\Enums\PaymentBy;
 use App\Models\Booking;
 use App\Models\Branch;
 use App\Models\CancelledPassenger;
 use App\Models\Customer;
 use App\Models\Invoice;
+use App\Models\IssuedTicket;
 use App\Models\Passenger;
+use App\Models\ReIssuedTicket;
 use App\Models\TransactionType;
 use App\Models\User;
 use App\Services\PassengerCancellationService;
@@ -53,6 +56,8 @@ class PassengerCancellationServiceTest extends TestCase
         Schema::dropIfExists('cancelled_passengers');
         Schema::dropIfExists('payments');
         Schema::dropIfExists('vouchers');
+        Schema::dropIfExists('re_issued_tickets');
+        Schema::dropIfExists('issued_tickets');
         Schema::dropIfExists('invoices');
         Schema::dropIfExists('bookings');
         Schema::dropIfExists('passengers');
@@ -61,6 +66,8 @@ class PassengerCancellationServiceTest extends TestCase
         Schema::dropIfExists('currency_rates');
         Schema::dropIfExists('customers');
         Schema::dropIfExists('branches');
+        Schema::dropIfExists('ticket_agents');
+        Schema::dropIfExists('ticket_fares');
 
         Schema::create('branches', function ($table) {
             $table->id();
@@ -219,6 +226,63 @@ class PassengerCancellationServiceTest extends TestCase
             $table->softDeletes();
         });
 
+        Schema::create('ticket_agents', function ($table) {
+            $table->id();
+            $table->string('name');
+            $table->timestamps();
+        });
+
+        Schema::create('ticket_fares', function ($table) {
+            $table->id();
+            $table->timestamps();
+        });
+
+        Schema::create('issued_tickets', function ($table) {
+            $table->id();
+            $table->foreignId('passenger_id')->constrained()->restrictOnDelete();
+            $table->foreignId('booking_id')->constrained()->restrictOnDelete();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
+            $table->foreignId('ticket_agent_id')->nullable()->constrained('ticket_agents')->nullOnDelete();
+            $table->foreignId('ticket_fare_id')->nullable()->constrained('ticket_fares')->nullOnDelete();
+            $table->string('ticket_number', 100)->nullable();
+            $table->string('pnr', 50)->nullable();
+            $table->date('issued_date')->nullable();
+            $table->date('inbound_date')->nullable();
+            $table->date('outbound_date')->nullable();
+            $table->decimal('selling_fare', 14, 6)->default(0);
+            $table->decimal('net_fare', 14, 6)->default(0);
+            $table->boolean('is_refundable')->default(false);
+            $table->boolean('is_exchangeable')->default(false);
+            $table->boolean('outbound_pending')->default(false);
+            $table->enum('issue_type', ['regular', 'additional', 'pending_outbound'])->nullable();
+            $table->enum('status', ['pending', 'issued', 're-issued', 'refunded'])->default('pending');
+            $table->softDeletes();
+            $table->timestamps();
+        });
+
+        Schema::create('re_issued_tickets', function ($table) {
+            $table->id();
+            $table->foreignId('user_id')->constrained()->restrictOnDelete();
+            $table->foreignId('ticket_agent_id')->nullable()->constrained('ticket_agents')->nullOnDelete();
+            $table->foreignId('ticket_fare_id')->nullable()->constrained('ticket_fares')->nullOnDelete();
+            $table->foreignId('issued_ticket_id')->nullable()->constrained('issued_tickets')->nullOnDelete();
+            $table->string('ticket_number', 100)->nullable();
+            $table->string('pnr', 50)->nullable();
+            $table->date('re_issue_date')->nullable();
+            $table->date('inbound_date')->nullable();
+            $table->date('outbound_date')->nullable();
+            $table->decimal('net_fare', 14, 6)->default(0);
+            $table->decimal('re_issue_charge', 14, 6)->default(0);
+            $table->decimal('fare_difference', 14, 6)->default(0);
+            $table->decimal('other_costs', 14, 6)->default(0);
+            $table->decimal('service_charge', 14, 6)->default(0);
+            $table->decimal('total_cost', 14, 6)->default(0);
+            $table->enum('payment_by', ['customer', 'airline', 'employee', 'company'])->nullable();
+            $table->text('remarks')->nullable();
+            $table->softDeletes();
+            $table->timestamps();
+        });
+
         Schema::enableForeignKeyConstraints();
     }
 
@@ -361,16 +425,17 @@ class PassengerCancellationServiceTest extends TestCase
         TransactionType::create(['name' => 'Due Adjustment', 'type' => 'credit']);
         ['passengers' => $passengers, 'invoice' => $invoice, 'branch' => $branch] = $this->createBookingWithPassengers();
         $passenger = $passengers->first();
+        $invoice->update(['balance' => 3000]);
 
         $cancelled = $this->service->initiateCancellation($passenger, [
             'cancellation_branch_id' => $branch->id,
         ]);
 
         $this->service->confirmCancellation($cancelled, [
-            'balance_adjusted_amount' => 2500,
             'payment_method' => 'cash',
         ]);
 
+        $this->assertEquals(2500.00, (float) $cancelled->fresh()->balance_adjusted_amount);
         $this->assertEquals(0.00, (float) $cancelled->fresh()->refund_amount);
         $this->assertNull($cancelled->fresh()->refund_payment_id);
     }
@@ -387,13 +452,54 @@ class PassengerCancellationServiceTest extends TestCase
         ]);
 
         $this->service->confirmCancellation($cancelled, [
-            'balance_adjusted_amount' => 1000,
             'payment_method' => 'cash',
         ]);
 
-        $this->assertEquals(1500.00, (float) $cancelled->fresh()->refund_amount);
+        $this->assertEquals(2000.00, (float) $cancelled->fresh()->balance_adjusted_amount);
+        $this->assertEquals(500.00, (float) $cancelled->fresh()->refund_amount);
         $this->assertNotNull($cancelled->fresh()->refund_payment_id);
         $this->assertNotNull($cancelled->fresh()->refund_voucher_id);
+    }
+
+    public function test_confirm_ignores_smaller_adjustment_enforces_full_settlement(): void
+    {
+        TransactionType::create(['name' => 'Due Adjustment', 'type' => 'credit']);
+        TransactionType::create(['name' => 'Customer Refund', 'type' => 'debit']);
+        ['passengers' => $passengers, 'branch' => $branch] = $this->createBookingWithPassengers();
+        $passenger = $passengers->first();
+
+        $cancelled = $this->service->initiateCancellation($passenger, [
+            'cancellation_branch_id' => $branch->id,
+        ]);
+
+        $this->service->confirmCancellation($cancelled, [
+            'balance_adjusted_amount' => 100,
+            'payment_method' => 'cash',
+        ]);
+
+        $this->assertEquals(2000.00, (float) $cancelled->fresh()->balance_adjusted_amount);
+        $this->assertEquals(500.00, (float) $cancelled->fresh()->refund_amount);
+    }
+
+    public function test_confirm_zero_balance_full_refund(): void
+    {
+        TransactionType::create(['name' => 'Customer Refund', 'type' => 'debit']);
+        ['passengers' => $passengers, 'invoice' => $invoice, 'branch' => $branch] = $this->createBookingWithPassengers();
+        $passenger = $passengers->first();
+        $invoice->update(['balance' => 0]);
+
+        $cancelled = $this->service->initiateCancellation($passenger, [
+            'cancellation_branch_id' => $branch->id,
+        ]);
+
+        $this->service->confirmCancellation($cancelled, [
+            'payment_method' => 'cash',
+        ]);
+
+        $this->assertEquals(0.00, (float) $cancelled->fresh()->balance_adjusted_amount);
+        $this->assertEquals(2500.00, (float) $cancelled->fresh()->refund_amount);
+        $this->assertNull($cancelled->fresh()->adjustment_payment_id);
+        $this->assertNotNull($cancelled->fresh()->refund_payment_id);
     }
 
     public function test_confirm_creates_deduction_when_service_charge(): void
@@ -421,6 +527,7 @@ class PassengerCancellationServiceTest extends TestCase
 
     public function test_confirm_sets_permanent_status(): void
     {
+        TransactionType::create(['name' => 'Due Adjustment', 'type' => 'credit']);
         TransactionType::create(['name' => 'Customer Refund', 'type' => 'debit']);
         ['passengers' => $passengers, 'branch' => $branch] = $this->createBookingWithPassengers();
         $passenger = $passengers->first();
@@ -436,5 +543,91 @@ class PassengerCancellationServiceTest extends TestCase
 
         $this->assertEquals('Cancel', $passenger->fresh()->status?->name);
         $this->assertEquals(CancelledBookingStatus::CANCELLED, $cancelled->fresh()->status);
+    }
+
+    public function test_initiate_deducts_company_paid_reissue_cost(): void
+    {
+        TransactionType::create(['name' => 'Due Adjustment', 'type' => 'credit']);
+        TransactionType::create(['name' => 'Customer Refund', 'type' => 'debit']);
+        ['passengers' => $passengers, 'branch' => $branch] = $this->createBookingWithPassengers();
+        $passenger = $passengers->first();
+
+        $issuedTicket = IssuedTicket::create([
+            'passenger_id' => $passenger->id,
+            'booking_id' => $passenger->booking_id,
+            'user_id' => $passenger->booking->user_id,
+            'ticket_number' => 'TKT-001',
+            'pnr' => 'PNR001',
+            'net_fare' => 28000.00,
+            'selling_fare' => 28000.00,
+            'issue_type' => 'regular',
+            'status' => 're-issued',
+            'issued_date' => now(),
+        ]);
+
+        ReIssuedTicket::create([
+            'user_id' => $passenger->booking->user_id,
+            'issued_ticket_id' => $issuedTicket->id,
+            'ticket_number' => 'RE-001',
+            'pnr' => 'REPNR001',
+            're_issue_date' => now(),
+            'net_fare' => 30000.00,
+            're_issue_charge' => 500.00,
+            'fare_difference' => 200.00,
+            'other_costs' => 0,
+            'service_charge' => 0,
+            'total_cost' => 700.00,
+            'payment_by' => PaymentBy::COMPANY,
+        ]);
+
+        $cancelled = $this->service->initiateCancellation($passenger, [
+            'cancellation_branch_id' => $branch->id,
+        ]);
+
+        // ticket_cost = net_fare (30000) + total_cost (700) = 30700
+        $this->assertEqualsWithDelta(30700.00, (float) $cancelled->ticket_cost, 0.01);
+    }
+
+    public function test_initiate_ignores_customer_paid_reissue_charges(): void
+    {
+        TransactionType::create(['name' => 'Due Adjustment', 'type' => 'credit']);
+        TransactionType::create(['name' => 'Customer Refund', 'type' => 'debit']);
+        ['passengers' => $passengers, 'branch' => $branch] = $this->createBookingWithPassengers();
+        $passenger = $passengers->first();
+
+        $issuedTicket = IssuedTicket::create([
+            'passenger_id' => $passenger->id,
+            'booking_id' => $passenger->booking_id,
+            'user_id' => $passenger->booking->user_id,
+            'ticket_number' => 'TKT-002',
+            'pnr' => 'PNR002',
+            'net_fare' => 28000.00,
+            'selling_fare' => 28000.00,
+            'issue_type' => 'regular',
+            'status' => 're-issued',
+            'issued_date' => now(),
+        ]);
+
+        ReIssuedTicket::create([
+            'user_id' => $passenger->booking->user_id,
+            'issued_ticket_id' => $issuedTicket->id,
+            'ticket_number' => 'RE-002',
+            'pnr' => 'REPNR002',
+            're_issue_date' => now(),
+            'net_fare' => 30000.00,
+            're_issue_charge' => 500.00,
+            'fare_difference' => 200.00,
+            'other_costs' => 0,
+            'service_charge' => 0,
+            'total_cost' => 700.00,
+            'payment_by' => PaymentBy::CUSTOMER,
+        ]);
+
+        $cancelled = $this->service->initiateCancellation($passenger, [
+            'cancellation_branch_id' => $branch->id,
+        ]);
+
+        // ticket_cost = net_fare (30000) only, no total_cost added
+        $this->assertEqualsWithDelta(30000.00, (float) $cancelled->ticket_cost, 0.01);
     }
 }

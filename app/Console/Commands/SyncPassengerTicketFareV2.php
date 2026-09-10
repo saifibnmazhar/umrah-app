@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Enums\ServiceRequired;
+use App\Models\IssuedTicket;
 use App\Models\Passenger;
 use App\Services\BookingService;
 use Illuminate\Console\Command;
@@ -62,7 +63,7 @@ class SyncPassengerTicketFareV2 extends Command
                         }
 
                         $packageFareId = $package->ticket_fare_id;
-                        if ($packageFareId !== null && $passenger->ticket_fare_id !== $packageFareId) {
+                        if ($passenger->ticket_fare_id !== $packageFareId) {
                             $passenger->update(['ticket_fare_id' => $packageFareId]);
                             $passenger->refresh();
                             $changed = true;
@@ -70,6 +71,11 @@ class SyncPassengerTicketFareV2 extends Command
                     }
 
                     if ($changed) {
+                        IssuedTicket::where('passenger_id', $passenger->id)
+                            ->whereNull('issue_type')
+                            ->where('status', 'pending')
+                            ->update(['ticket_fare_id' => $passenger->ticket_fare_id]);
+
                         $newPackageValue = $bookingService->calculatePackageValue($passenger);
 
                         if ((float) ($passenger->package_value ?? 0) !== $newPackageValue) {

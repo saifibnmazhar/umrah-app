@@ -433,4 +433,59 @@ class PassengerCancellationControllerTest extends TestCase
             ->postJson(route('passengers.cancellation.initiate', $passenger->id), [])
             ->assertJsonValidationErrors(['cancellation_branch_id']);
     }
+
+    public function test_confirm_ignores_user_supplied_small_adjustment(): void
+    {
+        $this->createRoles();
+        $admin = $this->createUserWithRole('Super Admin');
+        $manager = $this->createUserWithRole('Branch Manager');
+
+        ['passengers' => $passengers, 'branch' => $branch] = $this->createBookingWithPassengers();
+        $passenger = $passengers->first();
+
+        $this->actingAs($admin)
+            ->postJson(route('passengers.cancellation.initiate', $passenger->id), [
+                'cancellation_branch_id' => $branch->id,
+            ])
+            ->assertOk();
+
+        $cp = CancelledPassenger::where('passenger_id', $passenger->id)->first();
+
+        $response = $this->actingAs($manager)->post(
+            route('cancelled-passengers.confirm.submit', $cp->id),
+            [
+                'balance_adjusted_amount' => 1,
+                'payment_method' => 'cash',
+            ]
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+    }
+
+    public function test_confirm_does_not_require_balance_adjusted_amount(): void
+    {
+        $this->createRoles();
+        $admin = $this->createUserWithRole('Super Admin');
+        $manager = $this->createUserWithRole('Branch Manager');
+
+        ['passengers' => $passengers, 'branch' => $branch] = $this->createBookingWithPassengers();
+        $passenger = $passengers->first();
+
+        $this->actingAs($admin)
+            ->postJson(route('passengers.cancellation.initiate', $passenger->id), [
+                'cancellation_branch_id' => $branch->id,
+            ])
+            ->assertOk();
+
+        $cp = CancelledPassenger::where('passenger_id', $passenger->id)->first();
+
+        $response = $this->actingAs($manager)->post(
+            route('cancelled-passengers.confirm.submit', $cp->id),
+            ['payment_method' => 'cash']
+        );
+
+        $response->assertRedirect();
+        $response->assertSessionHasNoErrors();
+    }
 }

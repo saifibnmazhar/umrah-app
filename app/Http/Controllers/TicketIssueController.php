@@ -2,10 +2,17 @@
 
 namespace App\Http\Controllers;
 
+use App\Enums\PaymentMethod;
+use App\Enums\ServiceRequired;
 use App\Models\Booking;
 use App\Models\IssuedTicket;
 use App\Models\Passenger;
+use App\Models\Payment;
 use App\Models\TicketFare;
+use App\Models\TransactionType;
+use App\Models\Voucher;
+use App\Services\InvoiceService;
+use App\Services\VoucherService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -15,6 +22,10 @@ class TicketIssueController extends Controller
     {
         if ($passenger->booking_id !== $booking->id) {
             abort(403, 'Passenger does not belong to this booking.');
+        }
+
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
         }
 
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
@@ -69,9 +80,6 @@ class TicketIssueController extends Controller
 
             if ($issuedTicket->issue_type === 'pending_outbound') {
                 unset($updateData['issue_type']);
-                if (isset($validated['ticket_fare_id'])) {
-                    $passenger->update(['ticket_fare_outbound_id' => $validated['ticket_fare_id']]);
-                }
             } else {
                 $updateData['issue_type'] = 'regular';
             }
@@ -80,20 +88,13 @@ class TicketIssueController extends Controller
 
             $passenger->update(['ticket_status' => 'issued']);
 
-            if ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
-                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
-            } elseif ($validated['clear_double_ticket'] ?? false) {
-                IssuedTicket::where('passenger_id', $passenger->id)
-                    ->where('issue_type', 'pending_outbound')
-                    ->where('status', 'pending')
-                    ->delete();
-            } elseif ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
+            if ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
                 $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
+                    ->whereIn('status', ['pending', 'awaiting-group'])
                     ->exists();
 
                 if (! $existingPendingOutbound) {
-                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -105,10 +106,14 @@ class TicketIssueController extends Controller
                         'outbound_pending' => false,
                         'ticket_fare_id' => null,
                     ]);
-                    if ($pendingOutboundFareId) {
-                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
-                    }
                 }
+            } elseif ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
+                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
+            } elseif ($validated['clear_double_ticket'] ?? false) {
+                IssuedTicket::where('passenger_id', $passenger->id)
+                    ->where('issue_type', 'pending_outbound')
+                    ->where('status', 'pending')
+                    ->delete();
             }
 
             $issuedTicket->logAction('issued', $oldData, $issuedTicket->toArray());
@@ -163,6 +168,10 @@ class TicketIssueController extends Controller
             abort(403, 'Passenger does not belong to this booking.');
         }
 
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
+        }
+
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
             return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
@@ -188,6 +197,16 @@ class TicketIssueController extends Controller
             'clear_double_ticket' => 'boolean',
             'ticket_fare_inbound_id' => 'nullable|exists:ticket_fares,id',
             'ticket_fare_outbound_id' => 'nullable|exists:ticket_fares,id',
+            'reason_id' => 'nullable|exists:re_issue_refund_reasons,id',
+            're_issue_charge' => 'nullable|numeric|min:0',
+            'fare_difference' => 'nullable|numeric',
+            'other_costs' => 'nullable|numeric|min:0',
+            'service_charge' => 'nullable|numeric|min:0',
+            'total_customer_payment' => 'nullable|numeric|min:0',
+            'remarks' => 'nullable|string',
+            'payment_by' => 'nullable|in:customer,airline,employee,company',
+            'payment_option' => 'nullable|in:customer_payment,refund_adjustment',
+            'refund_adjustment_amount' => 'nullable|numeric|min:0',
         ]);
 
         $issuedTicket = IssuedTicket::where('id', $validated['issued_ticket_id'])
@@ -214,6 +233,17 @@ class TicketIssueController extends Controller
                 $oldData['log_source'] = 're_issued_tickets';
                 $oldData['re_issued_ticket_id'] = $latestRe->id;
 
+                // Capture OLD financial state (before update)
+                $oldPaymentBy = $latestRe->payment_by?->value;
+                $oldPaymentOption = $latestRe->payment_option?->value;
+                $oldTotalCustomerPayment = (float) $latestRe->total_customer_payment;
+                $oldRefundAdjustmentAmount = (float) $latestRe->refund_adjustment_amount;
+                if ($oldPaymentBy !== 'customer') {
+                    $oldTotalCustomerPayment = 0;
+                }
+
+                $wasRefunded = (bool) $issuedTicket->latestRefundedTicket;
+
                 $latestRe->update([
                     'ticket_number' => $validated['ticket_number'] ?? $latestRe->ticket_number,
                     'pnr' => $validated['pnr'] ?? $latestRe->pnr,
@@ -231,6 +261,133 @@ class TicketIssueController extends Controller
                     'baggage_inbound' => $validated['baggage_inbound'] ?? $latestRe->baggage_inbound,
                     'baggage_outbound' => $validated['baggage_outbound'] ?? $latestRe->baggage_outbound,
                 ]);
+
+                $reIssueCharge = $validated['re_issue_charge'] ?? (float) $latestRe->re_issue_charge;
+                $fareDifference = $validated['fare_difference'] ?? (float) $latestRe->fare_difference;
+                $otherCosts = $validated['other_costs'] ?? (float) $latestRe->other_costs;
+                $refundAdjustment = $validated['refund_adjustment_amount'] ?? (float) $latestRe->refund_adjustment_amount;
+                $refundedNetFare = $issuedTicket->latestRefundedTicket
+                    ? (float) ($issuedTicket->latestRefundedTicket->net_fare ?? $issuedTicket->net_fare ?? 0)
+                    : 0;
+                $totalCost = (float) $reIssueCharge + (float) $fareDifference + (float) $otherCosts + $refundedNetFare - (float) $refundAdjustment;
+
+                $effectivePaymentBy = array_key_exists('payment_by', $validated) ? $validated['payment_by'] : $oldPaymentBy;
+
+                if ($effectivePaymentBy === 'customer') {
+                    $resolvedPaymentOption = array_key_exists('payment_option', $validated)
+                        ? $validated['payment_option']
+                        : $latestRe->payment_option?->value;
+                } elseif ($wasRefunded) {
+                    $resolvedPaymentOption = 'refund_adjustment';
+                } elseif (array_key_exists('payment_by', $validated) && $validated['payment_by'] !== 'customer') {
+                    $resolvedPaymentOption = null;
+                } else {
+                    $resolvedPaymentOption = $latestRe->payment_option?->value;
+                }
+
+                $latestRe->update([
+                    'reason_id' => array_key_exists('reason_id', $validated) ? $validated['reason_id'] : $latestRe->reason_id,
+                    're_issue_charge' => $reIssueCharge,
+                    'fare_difference' => $fareDifference,
+                    'other_costs' => $otherCosts,
+                    'service_charge' => array_key_exists('service_charge', $validated) ? (float) $validated['service_charge'] : $latestRe->service_charge,
+                    'total_customer_payment' => ($validated['payment_by'] ?? $latestRe->payment_by) === 'customer'
+                        ? (array_key_exists('total_customer_payment', $validated) ? (float) $validated['total_customer_payment'] : $latestRe->total_customer_payment)
+                        : 0,
+                    'remarks' => array_key_exists('remarks', $validated) ? $validated['remarks'] : $latestRe->remarks,
+                    'payment_by' => array_key_exists('payment_by', $validated) ? $validated['payment_by'] : $latestRe->payment_by,
+                    'payment_option' => $resolvedPaymentOption,
+                    'refund_adjustment_amount' => $refundAdjustment,
+                    'total_cost' => round($totalCost, 6),
+                ]);
+
+                // Determine NEW financial state
+                $newPaymentBy = $effectivePaymentBy;
+                $newPaymentOption = $resolvedPaymentOption;
+                $newTotalCustomerPayment = ($newPaymentBy === 'customer' && array_key_exists('total_customer_payment', $validated))
+                    ? (float) $validated['total_customer_payment']
+                    : (($newPaymentBy === 'customer') ? (float) $latestRe->total_customer_payment : 0);
+                $newRefundAdjustmentAmount = (float) $refundAdjustment;
+
+                // --- Calculate invoice impact ---
+                $oldImpact = $oldTotalCustomerPayment;
+                $newImpact = $newTotalCustomerPayment;
+                $impactDelta = $newImpact - $oldImpact;
+
+                // --- Handle refund_adjustment Payment/Voucher lifecycle changes ---
+                $passenger = $issuedTicket->passenger;
+                $bookingResolved = $passenger->booking;
+
+                // Reverse OLD refund_adjustment if it was present, and is being removed/changed.
+                // Mirrors creation (ReIssueController/TicketRequestController): balance moves
+                // whenever payment_by was 'customer' OR the ticket was refunded. The restore is
+                // driven by old state so a missing Payment row never blocks it.
+                if ($oldPaymentOption === 'refund_adjustment' && $oldRefundAdjustmentAmount > 0 && ($oldPaymentBy === 'customer' || $wasRefunded)) {
+                    $passenger->increaseRefundPayable($oldRefundAdjustmentAmount);
+                    $oldPayment = Payment::where('re_issued_ticket_id', $latestRe->id)->first();
+                    if ($oldPayment) {
+                        $oldVoucher = Voucher::where('payment_id', $oldPayment->id)->first();
+                        if ($oldVoucher) {
+                            $oldVoucher->delete();
+                        }
+                        $oldPayment->delete();
+                    }
+                }
+
+                // Create NEW refund_adjustment if applicable (mirrors creation conditions)
+                if (($newPaymentBy === 'customer' || $wasRefunded) && $newPaymentOption === 'refund_adjustment' && $newRefundAdjustmentAmount > 0) {
+                    if ($newRefundAdjustmentAmount > (float) $passenger->refund_payable) {
+                        DB::rollBack();
+
+                        return response()->json(['message' => 'Refund adjustment amount exceeds the available refund payable.'], 422);
+                    }
+
+                    $passenger->decreaseRefundPayable($newRefundAdjustmentAmount);
+
+                    $transactionType = TransactionType::where('name', 'Ticket Refund - Re-issue')->first();
+
+                    $payment = Payment::create([
+                        'invoice_id' => $bookingResolved->invoice?->id,
+                        'booking_id' => $bookingResolved->id,
+                        'branch_id' => $bookingResolved->booking_branch_id,
+                        'user_id' => auth()->id(),
+                        'currency_rate_id' => $bookingResolved->currency_rate_id,
+                        'payment_date' => now(),
+                        'payment_method' => PaymentMethod::CASH,
+                        'amount' => $newRefundAdjustmentAmount,
+                        'bdt_amount' => 0,
+                        'passenger_id' => $passenger->id,
+                        're_issued_ticket_id' => $latestRe->id,
+                        'remarks' => $validated['remarks'] ?? null,
+                    ]);
+
+                    app(VoucherService::class)->createVoucher([
+                        'invoice_id' => $bookingResolved->invoice?->id,
+                        'booking_id' => $bookingResolved->id,
+                        'payment_id' => $payment->id,
+                        'branch_id' => $bookingResolved->booking_branch_id,
+                        'user_id' => auth()->id(),
+                        'currency_rate_id' => $bookingResolved->currency_rate_id,
+                        'transaction_type_id' => $transactionType?->id,
+                        'payment_date' => now(),
+                        'payment_method' => PaymentMethod::CASH,
+                        'amount' => $newRefundAdjustmentAmount,
+                        'bdt_amount' => 0,
+                        'notes' => $validated['remarks'] ?? null,
+                    ]);
+                }
+
+                // --- Update invoice by the impact delta ---
+                if ($impactDelta != 0) {
+                    $invoice = $bookingResolved->invoice;
+                    if ($invoice) {
+                        app(InvoiceService::class)->updateTotals(
+                            $invoice,
+                            (float) $invoice->total_amount + $impactDelta,
+                            're_issue_edited'
+                        );
+                    }
+                }
 
                 $newData = $latestRe->toArray();
                 $newData['log_source'] = 're_issued_tickets';
@@ -265,20 +422,13 @@ class TicketIssueController extends Controller
 
             $issuedTicket->logAction('edited', $oldData, $issuedTicket->toArray());
 
-            if ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
-                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
-            } elseif ($validated['clear_double_ticket'] ?? false) {
-                IssuedTicket::where('passenger_id', $passenger->id)
-                    ->where('issue_type', 'pending_outbound')
-                    ->where('status', 'pending')
-                    ->delete();
-            } elseif ($validated['outbound_pending'] ?? false) {
+            if ($issuedTicket->issue_type !== 'pending_outbound' && ($validated['outbound_pending'] ?? false)) {
                 $existingPendingOutbound = IssuedTicket::where('passenger_id', $passenger->id)
                     ->where('issue_type', 'pending_outbound')
+                    ->whereIn('status', ['pending', 'awaiting-group'])
                     ->exists();
 
                 if (! $existingPendingOutbound) {
-                    $pendingOutboundFareId = $validated['ticket_fare_outbound_id'] ?? $validated['ticket_fare_id'] ?? null;
                     IssuedTicket::create([
                         'passenger_id' => $issuedTicket->passenger_id,
                         'booking_id' => $issuedTicket->booking_id,
@@ -290,10 +440,14 @@ class TicketIssueController extends Controller
                         'outbound_pending' => false,
                         'ticket_fare_id' => null,
                     ]);
-                    if ($pendingOutboundFareId) {
-                        $passenger->update(['ticket_fare_outbound_id' => $pendingOutboundFareId]);
-                    }
                 }
+            } elseif ($issuedTicket->issue_type !== 'pending_outbound' && ! empty($validated['ticket_fare_id'])) {
+                $this->clearPendingOutboundForRoundMulti($passenger, $validated['ticket_fare_id'], $issuedTicket);
+            } elseif ($validated['clear_double_ticket'] ?? false) {
+                IssuedTicket::where('passenger_id', $passenger->id)
+                    ->where('issue_type', 'pending_outbound')
+                    ->where('status', 'pending')
+                    ->delete();
             }
 
             DB::commit();
@@ -324,6 +478,10 @@ class TicketIssueController extends Controller
 
     public function createPendingOutbound(Request $request, Passenger $passenger)
     {
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
+        }
+
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
             return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
@@ -399,6 +557,10 @@ class TicketIssueController extends Controller
 
     public function confirmGroup(Request $request, Passenger $passenger)
     {
+        if ($this->serviceValue($passenger) === ServiceRequired::VISA_ONLY->value) {
+            return response()->json(['success' => false, 'message' => 'Ticket service is not required for this passenger (Visa Only)'], 403);
+        }
+
         if ($passenger->isOnHold() || $passenger->isOnCancel() || $passenger->is_cancelled) {
             return response()->json(['success' => false, 'message' => 'Cannot modify ticket for a cancelled passenger'], 422);
         }
@@ -495,6 +657,13 @@ class TicketIssueController extends Controller
 
             return response()->json(['message' => 'Failed to confirm tickets.'], 500);
         }
+    }
+
+    private function serviceValue(Passenger $passenger): ?string
+    {
+        $service = $passenger->service_required;
+
+        return $service instanceof ServiceRequired ? $service->value : $service;
     }
 
     private function clearPendingOutboundForRoundMulti(Passenger $passenger, int $ticketFareId, IssuedTicket $issuedTicket): void

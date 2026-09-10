@@ -802,6 +802,11 @@ class PassengerAdditionalTicketValueTest extends TestCase
         $user = $this->signIn();
         $cancelledId = $this->seedConfirmScenario($user);
 
+        // Fully-paid invoice: no due to settle against, so the whole
+        // refundable amount is paid out as cash.
+        DB::table('payments')->where('invoice_id', 301)->update(['amount' => 10000]);
+        DB::table('invoices')->where('id', 301)->update(['paid_amount' => 10000, 'balance' => 0, 'status' => 'paid']);
+
         app(PassengerCancellationService::class)
             ->confirmCancellation(CancelledPassenger::findOrFail($cancelledId), [
                 'balance_adjusted_amount' => '0',
@@ -820,12 +825,12 @@ class PassengerAdditionalTicketValueTest extends TestCase
         $typeName = DB::table('transaction_types')->where('id', $voucher->transaction_type_id)->value('name');
         $this->assertSame('Customer Refund', $typeName);
 
-        // No adjustment happened: balance keeps its paid-vs-total delta.
+        // No adjustment happened: invoice stays fully paid with zero balance.
         $invoice = Invoice::findOrFail(301);
         $this->assertEqualsWithDelta(10000, (float) $invoice->total_amount, 0.000001);
-        $this->assertEqualsWithDelta(9900, (float) $invoice->paid_amount, 0.000001);
-        $this->assertEqualsWithDelta(100, (float) $invoice->balance, 0.000001);
-        $this->assertSame(InvoiceStatus::PARTIAL, $invoice->status);
+        $this->assertEqualsWithDelta(10000, (float) $invoice->paid_amount, 0.000001);
+        $this->assertEqualsWithDelta(0, (float) $invoice->balance, 0.000001);
+        $this->assertSame(InvoiceStatus::PAID, $invoice->status);
 
         // Refund links populated, adjustment links untouched.
         $cancelled = CancelledPassenger::findOrFail($cancelledId);
@@ -847,9 +852,14 @@ class PassengerAdditionalTicketValueTest extends TestCase
         $user = $this->signIn();
         $cancelledId = $this->seedConfirmScenario($user);
 
+        // Due (40) only partly covers the refundable (100). The passed
+        // adjustment is deliberately smaller than the due to prove the
+        // service enforces full auto-settlement (40, not 10).
+        DB::table('invoices')->where('id', 301)->update(['balance' => 40]);
+
         app(PassengerCancellationService::class)
             ->confirmCancellation(CancelledPassenger::findOrFail($cancelledId), [
-                'balance_adjusted_amount' => '40',
+                'balance_adjusted_amount' => '10',
                 'payment_method' => 'cash',
             ]);
 
@@ -891,7 +901,7 @@ class PassengerAdditionalTicketValueTest extends TestCase
         $this->assertSame('passenger_cancellation_due_adjustment', $log->reason);
         $old = json_decode($log->old_values, true);
         $new = json_decode($log->new_values, true);
-        $this->assertEqualsWithDelta(100, (float) $old['balance'], 0.000001);
+        $this->assertEqualsWithDelta(40, (float) $old['balance'], 0.000001);
         $this->assertEqualsWithDelta(60, (float) $new['balance'], 0.000001);
     }
 }
