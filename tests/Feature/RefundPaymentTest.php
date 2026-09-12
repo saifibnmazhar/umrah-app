@@ -329,6 +329,102 @@ class RefundPaymentTest extends TestCase
         $this->assertEquals('Ticket Refund - Payment', $voucher->transactionType->name);
     }
 
+    public function test_bank_confirm_requires_remarks(): void
+    {
+        RefundPaymentRequest::create([
+            'passenger_id' => $this->passenger->id,
+            'booking_id' => $this->booking->id,
+            'branch_id' => $this->branch->id,
+            'status' => RefundPaymentRequestStatus::PROCESSING,
+            'refund_payable_snapshot' => 500,
+            'assigned_by' => $this->admin->id,
+            'assigned_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->postJson(route('passengers.refund-pay-confirm', $this->passenger->id), [
+                'payment_method' => 'bank',
+            ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_bank_confirm_rejects_whitespace_only_remarks(): void
+    {
+        RefundPaymentRequest::create([
+            'passenger_id' => $this->passenger->id,
+            'booking_id' => $this->booking->id,
+            'branch_id' => $this->branch->id,
+            'status' => RefundPaymentRequestStatus::PROCESSING,
+            'refund_payable_snapshot' => 500,
+            'assigned_by' => $this->admin->id,
+            'assigned_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->postJson(route('passengers.refund-pay-confirm', $this->passenger->id), [
+                'payment_method' => 'bank',
+                'remarks' => '   ',
+            ]);
+
+        $response->assertStatus(422);
+    }
+
+    public function test_bank_confirm_with_remarks_succeeds_and_stores_remarks(): void
+    {
+        RefundPaymentRequest::create([
+            'passenger_id' => $this->passenger->id,
+            'booking_id' => $this->booking->id,
+            'branch_id' => $this->branch->id,
+            'status' => RefundPaymentRequestStatus::PROCESSING,
+            'refund_payable_snapshot' => 500,
+            'assigned_by' => $this->admin->id,
+            'assigned_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->postJson(route('passengers.refund-pay-confirm', $this->passenger->id), [
+                'payment_method' => 'bank',
+                'remarks' => 'Bank transfer ref 123',
+            ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+
+        $payment = Payment::where('passenger_id', $this->passenger->id)->first();
+        $this->assertNotNull($payment);
+        $this->assertSame('Bank transfer ref 123', $payment->remarks);
+        $this->assertSame('Bank transfer ref 123', $payment->voucher->notes);
+        $this->assertEquals($payment->id, $response->json('data.payment_id'));
+    }
+
+    public function test_cash_confirm_without_remarks_succeeds(): void
+    {
+        RefundPaymentRequest::create([
+            'passenger_id' => $this->passenger->id,
+            'booking_id' => $this->booking->id,
+            'branch_id' => $this->branch->id,
+            'status' => RefundPaymentRequestStatus::PROCESSING,
+            'refund_payable_snapshot' => 500,
+            'assigned_by' => $this->admin->id,
+            'assigned_at' => now(),
+        ]);
+
+        $response = $this->actingAs($this->admin)
+            ->postJson(route('passengers.refund-pay-confirm', $this->passenger->id), [
+                'payment_method' => 'cash',
+            ]);
+
+        $response->assertOk()->assertJson(['success' => true]);
+    }
+
+    public function test_confirm_refund_modal_redirects_to_print_voucher(): void
+    {
+        $src = file_get_contents(resource_path('views/pending-refunds/index.blade.php'));
+        $this->assertStringContainsString('result.data?.payment_id', $src);
+        $this->assertStringContainsString('/ticket-refund-payments', $src);
+        $this->assertStringContainsString('/print', $src);
+    }
+
     public function test_paid_amount_not_affected_by_refund_payment(): void
     {
         RefundPaymentRequest::create([

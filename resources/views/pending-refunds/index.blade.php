@@ -261,14 +261,15 @@
             <input type="hidden" name="passenger_id" id="confirmRefundPassengerId">
             <div>
                 <label class="block text-sm font-medium text-slate-700 mb-1">Payment Method *</label>
-                <select name="payment_method" required class="w-full px-4 py-2 border border-slate-300 rounded-lg">
+                <select name="payment_method" id="confirmRefundPaymentMethod" required onchange="toggleConfirmRefundRemarksRequired()" class="w-full px-4 py-2 border border-slate-300 rounded-lg">
                     <option value="cash">Cash</option>
                     <option value="bank">Bank</option>
                 </select>
             </div>
             <div>
-                <label class="block text-sm font-medium text-slate-700 mb-1">Remarks</label>
-                <textarea name="remarks" rows="2" class="w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="Enter remarks"></textarea>
+                <label class="block text-sm font-medium text-slate-700 mb-1" id="confirmRefundRemarksLabel">Remarks</label>
+                <textarea name="remarks" id="confirmRefundRemarks" rows="2" class="w-full px-4 py-2 border border-slate-300 rounded-lg" placeholder="Enter remarks"></textarea>
+                <p id="confirmRefundRemarksError" class="hidden text-sm text-red-600 mt-1">Remarks is required when payment method is Bank.</p>
             </div>
             <div class="flex gap-3 pt-2">
                 <button type="submit" class="flex-1 px-6 py-2 bg-blue-600 text-white rounded-lg hover:bg-blue-700 font-medium">Confirm Payment</button>
@@ -278,16 +279,30 @@
     </div>
 </div>
 <script>
+function toggleConfirmRefundRemarksRequired() {
+    const isBank = document.getElementById('confirmRefundPaymentMethod').value === 'bank';
+    document.getElementById('confirmRefundRemarks').required = isBank;
+    document.getElementById('confirmRefundRemarksLabel').textContent = isBank ? 'Remarks *' : 'Remarks';
+    if (!isBank) document.getElementById('confirmRefundRemarksError').classList.add('hidden');
+}
 function openConfirmRefundModal(passengerId, name, amount) {
     document.getElementById('confirmRefundPassengerId').value = passengerId;
     document.getElementById('confirmRefundPassengerName').textContent = name;
     document.getElementById('confirmRefundAmount').textContent = new Intl.NumberFormat('en-SA', { minimumFractionDigits: 2 }).format(amount);
+    document.getElementById('confirmRefundRemarksError').classList.add('hidden');
+    toggleConfirmRefundRemarksRequired();
     document.getElementById('confirmRefundModal').classList.remove('hidden');
 }
 async function submitConfirmRefund(e) {
     e.preventDefault();
     const form = e.target;
     const passengerId = form.passenger_id.value;
+    if (form.payment_method.value === 'bank' && !(form.remarks.value || '').trim()) {
+        document.getElementById('confirmRefundRemarksError').classList.remove('hidden');
+        form.remarks.focus();
+        return;
+    }
+    document.getElementById('confirmRefundRemarksError').classList.add('hidden');
     if (!confirm('Confirm this refund payment?')) return;
     const res = await fetch(`/passengers/${passengerId}/refund-pay-confirm`, {
         method: 'POST',
@@ -303,7 +318,12 @@ async function submitConfirmRefund(e) {
     });
     const result = await res.json();
     if (result.success) {
-        window.location.reload();
+        const paymentId = result.data?.payment_id;
+        if (paymentId) {
+            window.location.href = "{{ url('/ticket-refund-payments') }}/" + paymentId + "/print";
+        } else {
+            window.location.reload();
+        }
     } else {
         alert(result.message || 'Failed to confirm refund payment.');
     }

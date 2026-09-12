@@ -33,7 +33,7 @@
         .form-label { font-weight: 700; font-size: 13px; color: #475569; margin-bottom: 6px; text-transform: uppercase; letter-spacing: 0.5px; }
         .form-field { display: flex; align-items: baseline; margin-bottom: 4px; }
         .form-field .label { font-weight: 600; min-width: 150px; font-size: 13px; color: #475569; }
-        .form-field .blank { border-bottom: 1px dashed #94a3b8; flex: 1; min-height: 20px; display: inline-block; }
+        .form-field .blank, .info-row .blank { border-bottom: 1px dashed #94a3b8; flex: 1; min-height: 20px; display: inline-block; }
         .footer { border-top: 2px solid #e2e8f0; padding-top: 20px; margin-top: 8px; }
         .signatures { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
         .sig-block { text-align: center; }
@@ -61,7 +61,7 @@
             .table-wrap { margin-bottom: 8px; }
             .received-section { margin-bottom: 4px; }
             .form-field { margin-bottom: 4px; }
-            .form-field .blank { min-height: 12px; }
+            .form-field .blank, .info-row .blank { min-height: 12px; }
             .form-block { gap: 6px 16px; }
             .footer { padding-top: 4px; margin-top: 0; }
             .sig-line { margin-top: 10px; }
@@ -165,7 +165,11 @@
             </div>
             <div class="info-row">
                 <span class="label">Transaction ID:</span>
-                <span class="value">{{ $payment->transaction_id ?? '—' }}</span>
+                @if(!empty($payment->transaction_id))
+                <span class="value">{{ $payment->transaction_id }}</span>
+                @else
+                <span class="blank" style="min-width: 180px;"></span>
+                @endif
             </div>
         </div>
 

@@ -185,7 +185,7 @@ class RefundController extends Controller
     {
         $validated = $request->validate([
             'payment_method' => 'required|in:cash,bank',
-            'remarks' => 'nullable|string|max:500',
+            'remarks' => ['nullable', 'string', 'max:500', 'required_if:payment_method,bank', 'regex:/\S/'],
         ]);
 
         $refundRequest = RefundPaymentRequest::where('passenger_id', $passenger->id)
