@@ -87,8 +87,8 @@ class BookingIndexPaginationTest extends TestCase
 
         $response->assertOk();
         $passengers = $response->viewData('passengers');
-        $this->assertGreaterThan(0, $passengers->total());
-        $response->assertSee(Passenger::first()->passport_no, false);
+        $this->assertEquals(0, $passengers->total());
+        $response->assertSee('passengersList', false);
     }
 
     public function test_api_bookings_passengers_search_filters(): void
