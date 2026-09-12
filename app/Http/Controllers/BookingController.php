@@ -200,113 +200,102 @@ class BookingController extends Controller
             $selectedRouteDisplay = $oldRoute['display'] ?? null;
         }
 
-        $branchCounts = ! $userBranchId
-            ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
-                ->whereNotNull('booking_branch_id')
-                ->groupBy('booking_branch_id')
-                ->pluck('total', 'booking_branch_id')
-                ->toArray()
-            : [];
-        $allBookingCount = ! $userBranchId ? Booking::count() : 0;
+        if ($tab === 'booking') {
+            $branchCounts = ! $userBranchId
+                ? Booking::selectRaw('booking_branch_id, COUNT(*) as total')
+                    ->whereNotNull('booking_branch_id')
+                    ->groupBy('booking_branch_id')
+                    ->pluck('total', 'booking_branch_id')
+                    ->toArray()
+                : [];
+            $allBookingCount = ! $userBranchId ? Booking::count() : 0;
 
-        $bookingQuery = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'bookingBranch', 'invoice', 'district', 'package'])
-            ->when($userBranchId, fn ($q) => $q->where(function ($q) {
-                $q->where('booking_branch_id', auth()->user()->branch_id)
-                    ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
-            })
-            )
-            ->when($selectedBranchId, fn ($q) => $q->where('booking_branch_id', $selectedBranchId)
-            )
-            ->when($request->filled('search'), function ($q) use ($request) {
-                $search = $request->input('search');
-                $q->where(function ($query) use ($search) {
-                    $query->where('invoice_id', 'like', "%{$search}%")
-                        ->orWhereHas('customer', fn ($q) => $q->where('mobile_no', 'like', "%{$search}%"))
-                        ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
-                });
-            })
-            ->when($request->filled('booking_date_from'), fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from'))
-            )
-            ->when($request->filled('booking_date_to'), fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to'))
-            )
-            ->when($request->filled('fingerprint_location'), fn ($q) => $q->where('fingerprint_location', $request->input('fingerprint_location'))
-            )
-            ->when($selectedBookingStatus && $selectedBookingStatus !== 'all', function ($q) use ($selectedBookingStatus) {
-                if ($selectedBookingStatus === 'active') {
-                    $q->where('is_cancelled', false);
-                } elseif ($selectedBookingStatus === 'cancellation_processing') {
-                    $q->where('is_cancelled', true)
-                        ->whereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancellation processing'));
-                } elseif ($selectedBookingStatus === 'cancelled') {
-                    $q->where('is_cancelled', true)
-                        ->where(function ($q) {
-                            $q->whereDoesntHave('cancelledBooking')
-                                ->orWhereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancelled'));
-                        });
-                }
-            })
-            ->when($request->filled('payment_wise'), function ($q) use ($request) {
-                $paymentWise = $request->input('payment_wise');
-                $rate = (float) (app(CurrencyRateService::class)->getCurrentRateValue() ?? 0);
-                $q->whereHas('invoice', function ($iq) use ($paymentWise, $rate) {
-                    if ($paymentWise === 'clear') {
-                        $iq->where('balance', '<=', 0);
-                    } elseif ($paymentWise === 'due') {
-                        $iq->where('balance', '>', 0);
-                    } elseif ($paymentWise === 'due_below_1000') {
-                        $iq->where('balance', '>', 0);
-                        if ($rate > 0) {
-                            $iq->whereRaw('balance * ? < 1000', [$rate]);
-                        } else {
-                            $iq->where('balance', '<', 1000);
-                        }
-                    } elseif ($paymentWise === 'due_above_1000') {
-                        if ($rate > 0) {
-                            $iq->whereRaw('balance * ? >= 1000', [$rate]);
-                        } else {
-                            $iq->where('balance', '>=', 1000);
-                        }
+            $bookingQuery = Booking::with(['customer', 'passengers', 'fingerprintBranch', 'bookingBranch', 'invoice', 'district', 'package'])
+                ->when($userBranchId, fn ($q) => $q->where(function ($q) {
+                    $q->where('booking_branch_id', auth()->user()->branch_id)
+                        ->orWhere('fingerprint_branch_id', auth()->user()->branch_id);
+                })
+                )
+                ->when($selectedBranchId, fn ($q) => $q->where('booking_branch_id', $selectedBranchId)
+                )
+                ->when($request->filled('search'), function ($q) use ($request) {
+                    $search = $request->input('search');
+                    $q->where(function ($query) use ($search) {
+                        $query->where('invoice_id', 'like', "%{$search}%")
+                            ->orWhereHas('customer', fn ($q) => $q->where('mobile_no', 'like', "%{$search}%"))
+                            ->orWhereHas('passengers', fn ($q) => $q->where('passport_no', 'like', "%{$search}%"));
+                    });
+                })
+                ->when($request->filled('booking_date_from'), fn ($q) => $q->whereDate('created_at', '>=', $request->input('booking_date_from'))
+                )
+                ->when($request->filled('booking_date_to'), fn ($q) => $q->whereDate('created_at', '<=', $request->input('booking_date_to'))
+                )
+                ->when($request->filled('fingerprint_location'), fn ($q) => $q->where('fingerprint_location', $request->input('fingerprint_location'))
+                )
+                ->when($selectedBookingStatus && $selectedBookingStatus !== 'all', function ($q) use ($selectedBookingStatus) {
+                    if ($selectedBookingStatus === 'active') {
+                        $q->where('is_cancelled', false);
+                    } elseif ($selectedBookingStatus === 'cancellation_processing') {
+                        $q->where('is_cancelled', true)
+                            ->whereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancellation processing'));
+                    } elseif ($selectedBookingStatus === 'cancelled') {
+                        $q->where('is_cancelled', true)
+                            ->where(function ($q) {
+                                $q->whereDoesntHave('cancelledBooking')
+                                    ->orWhereHas('cancelledBooking', fn ($q) => $q->where('status', 'cancelled'));
+                            });
                     }
-                });
-            })
-            ->orderBy('created_at', 'desc');
+                })
+                ->when($request->filled('payment_wise'), function ($q) use ($request) {
+                    $paymentWise = $request->input('payment_wise');
+                    $rate = (float) (app(CurrencyRateService::class)->getCurrentRateValue() ?? 0);
+                    $q->whereHas('invoice', function ($iq) use ($paymentWise, $rate) {
+                        if ($paymentWise === 'clear') {
+                            $iq->where('balance', '<=', 0);
+                        } elseif ($paymentWise === 'due') {
+                            $iq->where('balance', '>', 0);
+                        } elseif ($paymentWise === 'due_below_1000') {
+                            $iq->where('balance', '>', 0);
+                            if ($rate > 0) {
+                                $iq->whereRaw('balance * ? < 1000', [$rate]);
+                            } else {
+                                $iq->where('balance', '<', 1000);
+                            }
+                        } elseif ($paymentWise === 'due_above_1000') {
+                            if ($rate > 0) {
+                                $iq->whereRaw('balance * ? >= 1000', [$rate]);
+                            } else {
+                                $iq->where('balance', '>=', 1000);
+                            }
+                        }
+                    });
+                })
+                ->orderBy('created_at', 'desc');
 
-        $totalBookingCount = (clone $bookingQuery)->count();
-        $totalBookingPassengerCount = (clone $bookingQuery)->sum('pax_qty');
+            $totalBookingCount = (clone $bookingQuery)->count();
+            $totalBookingPassengerCount = (clone $bookingQuery)->sum('pax_qty');
 
-        $bookings = $bookingQuery->paginate(10)
-            ->appends(['tab' => $tab])
-            ->withQueryString();
+            $bookings = $bookingQuery->paginate(10)
+                ->appends(['tab' => $tab])
+                ->withQueryString();
+        } else {
+            $branchCounts = [];
+            $allBookingCount = 0;
+            $totalBookingCount = 0;
+            $totalBookingPassengerCount = 0;
+            $bookings = new LengthAwarePaginator(collect(), 0, 10, 1);
+        }
 
         $canFilterByVisaAgent = auth()->user()->roles->pluck('name')
             ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
         $canFilterByTicketAgent = auth()->user()->roles->pluck('name')
             ->intersect(['Super Admin', 'Co Admin', 'Visa Admin', 'Ticket Admin'])->isNotEmpty();
 
-        $passengerQuery = new BookingPassengerQuery($request);
-        $passengersBase = $passengerQuery->getQuery();
-
-        $totalPassengerCount = (clone $passengersBase)->count();
-
-        $currencyRateService = app(CurrencyRateService::class);
-        $firstRate = (float) ($currencyRateService->getFirstRate()?->rate ?? 0);
-
-        $bookingIdsSub = (clone $passengersBase)->select('passengers.booking_id')->distinct();
-        $bookingIdsSub->getQuery()->orders = [];
-
-        $invoiceTotals = Invoice::whereIn('booking_id', $bookingIdsSub)
-            ->selectRaw('COALESCE(SUM(total_amount), 0) as package, COALESCE(SUM(balance), 0) as due')
-            ->first();
-        $totalPackageValue = (float) ($invoiceTotals->package ?? 0);
-        $totalDue = (float) ($invoiceTotals->due ?? 0);
-
-        $bdtTotals = Invoice::whereIn('invoices.booking_id', $bookingIdsSub)
-            ->leftJoin('bookings', 'bookings.id', '=', 'invoices.booking_id')
-            ->leftJoin('currency_rates', 'currency_rates.id', '=', 'bookings.currency_rate_id')
-            ->selectRaw('COALESCE(SUM(invoices.total_amount * COALESCE(currency_rates.rate, ?)), 0) as package_bdt, COALESCE(SUM(invoices.balance * COALESCE(currency_rates.rate, ?)), 0) as due_bdt', [$firstRate, $firstRate])
-            ->first();
-        $totalPackageBdt = (float) ($bdtTotals->package_bdt ?? 0);
-        $totalDueBdt = (float) ($bdtTotals->due_bdt ?? 0);
+        $totalPassengerCount = 0;
+        $totalPackageValue = 0;
+        $totalDue = 0;
+        $totalPackageBdt = 0;
+        $totalDueBdt = 0;
 
         $passengers = new LengthAwarePaginator(collect(), 0, 15, 1);
         $passengerStatuses = PassengerStatus::all();
@@ -364,7 +353,7 @@ class BookingController extends Controller
         return view('bookings.index', compact(
             'tab', 'bookings', 'passengers', 'passengerStatuses', 'visaAgents', 'ticketAgents', 'canEditVisa',
             'canFilterByVisaAgent', 'canFilterByTicketAgent',
-            'currencyRateService', 'bookingBranches', 'selectedBranchId', 'totalBookingCount',
+            'bookingBranches', 'selectedBranchId', 'totalBookingCount',
             'totalBookingPassengerCount', 'branchCounts', 'allBookingCount',
             'selectedFingerprintStatus', 'selectedVisaStatus', 'selectedTicketStatus', 'selectedVisaAgentId',
             'selectedBookingDateFrom', 'selectedBookingDateTo', 'selectedFingerprintLocation',
@@ -428,6 +417,7 @@ class BookingController extends Controller
                 'reIssuedTickets.reason',
                 'refundedTickets.reason',
                 'pendingRequests',
+                'issuer',
             ]),
             'cancelledPassengers',
             'documents',
