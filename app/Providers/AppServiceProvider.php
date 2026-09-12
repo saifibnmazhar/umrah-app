@@ -7,6 +7,7 @@ use App\Models\Fingerprint;
 use App\Models\FingerprintDetail;
 use App\Models\Invoice;
 use App\Models\IssuedTicket;
+use App\Models\Package;
 use App\Models\Passenger;
 use App\Models\RefundedTicket;
 use App\Models\ReIssuedTicket;
@@ -16,6 +17,7 @@ use App\Observers\FingerprintDetailObserver;
 use App\Observers\FingerprintObserver;
 use App\Observers\InvoiceObserver;
 use App\Observers\IssuedTicketObserver;
+use App\Observers\PackageObserver;
 use App\Observers\PassengerObserver;
 use App\Observers\RefundedTicketObserver;
 use App\Observers\ReIssuedTicketObserver;
@@ -55,6 +57,7 @@ class AppServiceProvider extends ServiceProvider
         ReIssuedTicket::observe(ReIssuedTicketObserver::class);
         RefundedTicket::observe(RefundedTicketObserver::class);
         Fingerprint::observe(FingerprintObserver::class);
+        Package::observe(PackageObserver::class);
 
         Blade::directive('currency', function ($expression) {
             $parts = explode(',', $expression);

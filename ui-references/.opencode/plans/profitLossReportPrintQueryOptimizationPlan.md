@@ -1,5 +1,7 @@
 # Profit/Loss Report Print — Query & Performance Optimization Plan
 
+> **Status:** Implemented (conflicts resolved, merge completed)
+
 ## Problem
 
 The `print()` method in `ProfitLossReportController.php:575-672` is slow because it:
@@ -9,7 +11,11 @@ The `print()` method in `ProfitLossReportController.php:575-672` is slow because
 3. Calls `summary()` redundantly (3+ extra SQL queries)
 4. In effective-date mode, computes per-passenger breakdowns **twice** (once in `passengerHasEffectiveComponentInRange`, again in `map()`)
 5. `effectiveAdditionalTotal()` re-loads passengers/tickets already available
-6. Has **no row limit** — renders everything into one HTML page
+
+Additionally, the print method had two critical bugs:
+
+- **`$profitService` undefined** in the effective-date closure — would throw runtime error
+- **No SQL-level effective date filtering** — loaded ALL bookings when effective date mode was active, then filtered in PHP (extremely slow for large datasets)
 
 ## Root Cause
 
@@ -217,29 +223,20 @@ $summary = [
 
 This eliminates 2-6 DB queries from the print request.
 
-### 7. Add a row limit with warning
+### 7. Updated `print()` method with proper effective date handling
 
 **File:** `app/Http/Controllers/ProfitLossReportController.php`
 
-Add a limit constant:
+The print method now branches on date mode:
 
-```php
-private const PRINT_MAX_ROWS = 2000;
-```
+- **Effective date mode (passenger tab):** Uses a `Passenger` query with `applyEffectiveDateFilter()` at the SQL level (matching `data()` behavior), then loads only matching bookings with `PRINT_BOOKING_WITHS`. Recomputes effective-date-scoped profits in PHP.
+- **Booking date mode (both tabs):** Uses a `Booking` query with `PRINT_BOOKING_WITHS` and booking date filters on `created_at`.
 
-In the print method, after computing `$customers` or `$passengers`:
-
-```php
-$truncated = false;
-if (count($customers) > self::PRINT_MAX_ROWS) {
-    $customers = array_slice($customers, 0, self::PRINT_MAX_ROWS);
-    $truncated = true;
-}
-if (count($passengers) > self::PRINT_MAX_ROWS) {
-    $passengers = array_slice($passengers, 0, self::PRINT_MAX_ROWS);
-    $truncated = true;
-}
-```
+Also fixes:
+- `$profitService` is now declared before the if-block
+- Summary includes `total_visa_profit` and `total_ticket_profit` for the passenger tab
+- No row limit — all filtered rows are included
+- Removed `$truncated` from view data
 
 Pass `$truncated` to the Blade view.
 
@@ -402,19 +399,18 @@ public function print(Request $request)
 
 | Metric | Before | After |
 |--------|--------|-------|
-| Eager-loaded relations | 18 | 6 |
+| Eager-loaded relations | 18 | 6 (PRINT_BOOKING_WITHS) |
 | PHP breakdown computations per passenger | ~10 methods (`getPassengerProfitBreakdownDetailed`) | 0 (read stored columns) |
 | `summary()` DB queries | 2-6 | 0 (inlined from loaded data) |
-| Effective-date per-passenger PHP passes | 2 | 1 |
-| Memory (no. of loaded objects) | 18 × N bookings | 6 × N bookings |
-| Row limit | unlimited | 2000 |
+| Effective-date SQL filtering | None (loads all, filters in PHP) | `applyEffectiveDateFilter()` at SQL level |
+| Memory (no. of loaded objects) | 18 × N bookings | 6 × N bookings (or filtered passenger set) |
 
 ---
 
-## Files to Modify
+## Files Modified
 
-1. `app/Http/Controllers/ProfitLossReportController.php` — new print-specific methods, trimmed eager loads, inlined summary, effective-date dedup
-2. `resources/views/reports/profit-loss-print.blade.php` — truncation warning banner
+1. `app/Http/Controllers/ProfitLossReportController.php` — new print-specific methods (`mapPassengerForPrint`, `mapCustomersForPrint`, `mapPassengersForPrint`), `PRINT_BOOKING_WITHS` constant, branching effective/booking date logic in `print()`, inlined summary
+2. `resources/views/reports/profit-loss-print.blade.php` — removed truncation warning
 
 ---
 
@@ -425,38 +421,3 @@ public function print(Request $request)
   - `test_profit_loss_passenger_print_matches_index_tab_columns` (line 531)
 - `tests/Feature/ProfitLossReportBranchFilterTest.php` — print tests
 - `tests/Feature/ProfitLossEffectiveDateFilterTest.php` — print with effective dates
-
----
-
-## New Test to Add
-
-A query-count test for the print endpoint:
-
-```php
-/** @test */
-public function test_profit_loss_print_stays_bounded_query_count(): void
-{
-    $user = $this->setupUser();
-    $deps = $this->seedAllPrerequisites($user);
-
-    for ($i = 0; $i < 10; $i++) {
-        $this->createBookingWithPassengers($user, $deps, $i, 2);
-    }
-
-    Auth::login($user);
-
-    DB::enableQueryLog();
-    $response = $this->get(route('report.profit-loss.print', [
-        'date_from' => now()->subDays(60)->toDateString(),
-        'date_to' => now()->addDays(1)->toDateString(),
-        'type' => 'customer',
-    ]));
-    DB::disableQueryLog();
-
-    $queryCount = count(DB::getQueryLog());
-
-    $response->assertOk();
-    $this->assertLessThan(20, $queryCount,
-        'Profit/Loss print should execute fewer than 20 queries for 10 bookings. Actual: '.$queryCount);
-}
-```

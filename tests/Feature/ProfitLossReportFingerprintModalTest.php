@@ -62,13 +62,12 @@ class ProfitLossReportFingerprintModalTest extends TestCase
     {
         $html = view('reports.profit-loss')->render();
 
-        foreach (['type=customer', 'type=passenger'] as $type) {
-            $this->assertStringContainsString($type, $html);
-            $this->assertStringContainsString(
-                "&search=' + encodeURIComponent(search) + '&profit_loss_filter=' + profitLossFilter",
-                $html
-            );
-        }
+        $this->assertStringContainsString("printUrl('customer')", $html);
+        $this->assertStringContainsString("printUrl('passenger')", $html);
+        $this->assertStringContainsString("params.set('type', type)", $html);
+        $this->assertStringContainsString("params.set('search', this.search)", $html);
+        $this->assertStringContainsString("params.set('profit_loss_filter', this.profitLossFilter)", $html);
+        $this->assertStringContainsString('this.branchId', $html);
     }
 
     public function test_summary_cards_show_total_customer_and_passenger_counts(): void

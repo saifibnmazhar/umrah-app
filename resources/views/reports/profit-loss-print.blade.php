@@ -73,13 +73,6 @@
     </div>
     @endif
 
-    @if($truncated ?? false)
-    <div style="padding: 8px; background: #fef3c7; border: 1px solid #f59e0b; margin-bottom: 10px; font-size: 12px;">
-        <strong>Warning:</strong> Results truncated to {{ number_format(\App\Http\Controllers\ProfitLossReportController::PRINT_MAX_ROWS) }} rows.
-        Please refine your filters to see all results.
-    </div>
-    @endif
-
     @if($type === 'customer')
     <table>
         <thead>
@@ -138,6 +131,8 @@
                 <th>Mobile</th>
                 <th>Passenger Name</th>
                 <th>Package Value ({{ $__currency }})</th>
+                <th>Visa Profit ({{ $__currency }})</th>
+                <th>Ticket Profit ({{ $__currency }})</th>
                 <th>Total Profit ({{ $__currency }})</th>
             </tr>
         </thead>
@@ -149,11 +144,13 @@
                 <td class="text-center">{{ $row['mobile'] }}</td>
                 <td class="text-left">{{ $row['passenger_name'] }}</td>
                 <td class="text-right">{{ $fmtCurrency($row['package_value']) }}</td>
+                <td class="text-right {{ ($row['visa_profit'] ?? $row['breakdown']['visa_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($row['visa_profit'] ?? $row['breakdown']['visa_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($row['visa_profit'] ?? $row['breakdown']['visa_profit'] ?? 0) }}</td>
+                <td class="text-right {{ ($row['ticket_profit'] ?? $row['breakdown']['ticket_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($row['ticket_profit'] ?? $row['breakdown']['ticket_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($row['ticket_profit'] ?? $row['breakdown']['ticket_profit'] ?? 0) }}</td>
                 <td class="text-right {{ $row['total_profit'] >= 0 ? 'text-green' : 'text-red' }}">{{ ($row['total_profit'] >= 0 ? '+' : '') . $fmtCurrency($row['total_profit']) }}</td>
             </tr>
             @empty
             <tr>
-                <td colspan="6" class="text-center" style="padding: 20px;">No records found.</td>
+                <td colspan="8" class="text-center" style="padding: 20px;">No records found.</td>
             </tr>
             @endforelse
             @if(count($passengers) > 0)
@@ -164,6 +161,8 @@
             <tr class="grand-total">
                 <td class="text-left" colspan="4">Grand Total ({{ $gtCount }} {{ $gtCount == 1 ? 'Passenger' : 'Passengers' }})</td>
                 <td class="text-right">{{ $fmtCurrency($gt['package_value'] ?? 0) }}</td>
+                <td class="text-right {{ ($gt['total_visa_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($gt['total_visa_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($gt['total_visa_profit'] ?? 0) }}</td>
+                <td class="text-right {{ ($gt['total_ticket_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($gt['total_ticket_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($gt['total_ticket_profit'] ?? 0) }}</td>
                 <td class="text-right {{ ($gt['total_profit'] ?? 0) >= 0 ? 'text-green' : 'text-red' }}">{{ (($gt['total_profit'] ?? 0) >= 0 ? '+' : '') . $fmtCurrency($gt['total_profit'] ?? 0) }}</td>
             </tr>
             @endif
