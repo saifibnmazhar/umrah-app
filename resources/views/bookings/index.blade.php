@@ -1031,6 +1031,14 @@ $passengersTicketData = ($passengers ?? collect())->map(fn($p) => [
                     </div>
                     @endif
                     <div class="flex flex-col">
+                        <label class="text-xs font-semibold text-slate-400 mb-1">Service Required</label>
+                        <select x-model="selectedServiceRequired" @change="onServiceRequiredChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
+                            <option value="all" {{ ($selectedServiceRequired ?? 'all') === 'all' ? 'selected' : '' }}>All</option>
+                            <option value="visa_only" {{ ($selectedServiceRequired ?? '') === 'visa_only' ? 'selected' : '' }}>Visa</option>
+                            <option value="ticket_only" {{ ($selectedServiceRequired ?? '') === 'ticket_only' ? 'selected' : '' }}>Ticket</option>
+                        </select>
+                    </div>
+                    <div class="flex flex-col">
                         <label class="text-xs font-semibold text-slate-400 mb-1">Current Status</label>
                         <select x-model="selectedPassengerStatus" @change="onPassengerStatusChange" class="px-4 py-2 border border-slate-300 rounded-lg focus:ring-2 focus:ring-slate-400 focus:border-slate-400 outline-none transition bg-white text-slate-700">
                             <option value="">All</option>
@@ -3524,6 +3532,7 @@ function bookingIndexApp() {
         selectedStatusChangeTo: '{{ $selectedStatusChangeTo ?? '' }}',
         selectedFlightDateRange: '',
         selectedPaymentWise: '{{ $selectedPaymentWise ?? '' }}',
+        selectedServiceRequired: '{{ $selectedServiceRequired ?? 'all' }}',
         flightDateRanges: @json($flightDateRanges),
         totalPassengerCount: {{ $totalPassengerCount }},
 
@@ -3753,6 +3762,17 @@ function bookingIndexApp() {
             window.location.href = url.toString();
         },
 
+        onServiceRequiredChange() {
+            const url = new URL(window.location.href);
+            if (this.selectedServiceRequired && this.selectedServiceRequired !== 'all') {
+                url.searchParams.set('service_required', this.selectedServiceRequired);
+            } else {
+                url.searchParams.set('service_required', 'all');
+            }
+            url.searchParams.delete('page');
+            window.location.href = url.toString();
+        },
+
         onRouteChange() {
             const url = new URL(window.location.href);
             if (this.selectedRouteDisplay) {
@@ -3890,7 +3910,7 @@ function bookingIndexApp() {
         clearPassengerFilters() {
             const url = new URL(window.location);
             ['fingerprint_status', 'visa_status', 'ticket_status',
-             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_display', 'package_id',
+             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'service_required', 'route_display', 'package_id',
              'booking_branch_id', 'booking_date_from', 'booking_date_to',
              'actual_flight_from', 'actual_flight_to',
              'return_date_from', 'return_date_to',

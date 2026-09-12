@@ -173,6 +173,12 @@ class BookingController extends Controller
         $selectedStatusChangeFrom = $request->get('status_change_from');
         $selectedStatusChangeTo = $request->get('status_change_to');
         $selectedPaymentWise = $request->get('payment_wise');
+        $requestedServiceRequired = $request->get('service_required');
+        $selectedServiceRequired = in_array($requestedServiceRequired, ['all', 'visa_only', 'ticket_only'], true)
+            ? $requestedServiceRequired
+            : ($user->hasRole('Visa Admin') || $user->hasRole('Visa Staff')
+                ? 'visa_only'
+                : ($user->hasRole('Ticket Admin') || $user->hasRole('Ticket Staff') ? 'ticket_only' : 'all'));
 
         $allRouteMaps = Route::with(['fromCity', 'toCity', 'returnCity', 'multiSegments.fromCity', 'multiSegments.toCity'])
             ->get()
@@ -438,6 +444,8 @@ class BookingController extends Controller
             ->when($request->filled('return_date_to'), fn ($q) => $q->whereHas('issuedTickets', fn ($q) => $q->whereIn('status', ['issued', 're-issued'])->whereDate('outbound_date', '<=', $request->input('return_date_to')))
             )
             ->when($request->filled('passenger_status'), fn ($q) => $q->where('passenger_status_id', $request->input('passenger_status'))
+            )
+            ->when($selectedServiceRequired !== 'all', fn ($q) => $q->where('service_required', $selectedServiceRequired)
             )
             ->when($request->filled('status_change_action'), function ($q) use ($request) {
                 $action = $request->input('status_change_action');
@@ -783,7 +791,7 @@ class BookingController extends Controller
             'selectedActualFlightFrom', 'selectedActualFlightTo',
             'selectedReturnDateFrom', 'selectedReturnDateTo',
             'selectedStatusChangeAction', 'selectedStatusChangeFrom', 'selectedStatusChangeTo',
-            'selectedPaymentWise',
+            'selectedPaymentWise', 'selectedServiceRequired',
             'statusChangeOptions',
             'fingerprintStatuses', 'visaStatuses', 'ticketStatuses', 'fingerprintLocations',
             'totalPassengerCount', 'totalPackageValue', 'totalDue', 'totalPackageBdt', 'totalDueBdt',
