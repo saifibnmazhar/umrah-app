@@ -519,8 +519,8 @@ $ticketFaresList = $activeFares->merge($inactiveFares)->map(fn($fare) => [
                 </div>
                 <div class="flex flex-col gap-1 flex-shrink-0">
                     <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm" x-text="'Total Passenger - ' + totalPassengerCount">Total Passenger - {{ $totalPassengerCount }}</span>
-                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Package - @currency($totalPackageValue, 2, null, $totalPackageBdt)</span>
-                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm">Total Due - @currency($totalDue, 2, null, $totalDueBdt)</span>
+                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm" x-text="'Total Package - ' + $currency(totalPackageValue, 2)">Total Package - @currency($totalPackageValue, 2, null, $totalPackageBdt)</span>
+                    <span class="px-3 py-1 bg-slate-700 text-white text-xs font-semibold rounded whitespace-nowrap shadow-sm" x-text="'Total Due - ' + $currency(totalDue, 2)">Total Due - @currency($totalDue, 2, null, $totalDueBdt)</span>
                 </div>
             </div>
             <div class="overflow-auto flex-1 min-h-0">
@@ -2864,6 +2864,10 @@ function bookingIndexApp() {
         selectedPaymentWise: '{{ $selectedPaymentWise ?? '' }}',
         flightDateRanges: @json($flightDateRanges),
         totalPassengerCount: {{ $totalPassengerCount }},
+        totalPackageValue: {{ $totalPackageValue }},
+        totalPackageBdt: {{ $totalPackageBdt }},
+        totalDue: {{ $totalDue }},
+        totalDueBdt: {{ $totalDueBdt }},
 
         init() {
             const raw = sessionStorage.getItem('searchInputBuffer');
@@ -2950,7 +2954,13 @@ function bookingIndexApp() {
                         }));
                     }
 
-                    window.location.href = url.toString();
+                    if (this.activeTab === 'passenger') {
+                        history.pushState({}, '', url.toString());
+                        this.passengerPage = 1;
+                        this.loadPassengerData();
+                    } else {
+                        window.location.href = url.toString();
+                    }
                 }, 1500);
             });
 
@@ -2985,7 +2995,13 @@ function bookingIndexApp() {
             } else {
                 url.searchParams.delete('booking_branch_id');
             }
-            window.location.href = url.toString();
+            if (this.activeTab === 'passenger') {
+                history.pushState({}, '', url.toString());
+                this.passengerPage = 1;
+                this.loadPassengerData();
+            } else {
+                window.location.href = url.toString();
+            }
         },
 
         onFingerprintStatusChange() {
@@ -2996,7 +3012,13 @@ function bookingIndexApp() {
                 url.searchParams.delete('fingerprint_status');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            if (this.activeTab === 'passenger') {
+                history.pushState({}, '', url.toString());
+                this.passengerPage = 1;
+                this.loadPassengerData();
+            } else {
+                window.location.href = url.toString();
+            }
         },
 
         onVisaStatusChange() {
@@ -3007,7 +3029,13 @@ function bookingIndexApp() {
                 url.searchParams.delete('visa_status');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            if (this.activeTab === 'passenger') {
+                history.pushState({}, '', url.toString());
+                this.passengerPage = 1;
+                this.loadPassengerData();
+            } else {
+                window.location.href = url.toString();
+            }
         },
 
         onTicketStatusChange() {
@@ -3018,7 +3046,13 @@ function bookingIndexApp() {
                 url.searchParams.delete('ticket_status');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            if (this.activeTab === 'passenger') {
+                history.pushState({}, '', url.toString());
+                this.passengerPage = 1;
+                this.loadPassengerData();
+            } else {
+                window.location.href = url.toString();
+            }
         },
 
         onVisaAgentChange() {
@@ -3029,7 +3063,13 @@ function bookingIndexApp() {
                 url.searchParams.delete('visa_agent_id');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            if (this.activeTab === 'passenger') {
+                history.pushState({}, '', url.toString());
+                this.passengerPage = 1;
+                this.loadPassengerData();
+            } else {
+                window.location.href = url.toString();
+            }
         },
 
         onBookingDateFromChange() {
@@ -3040,7 +3080,13 @@ function bookingIndexApp() {
                 url.searchParams.delete('booking_date_from');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            if (this.activeTab === 'passenger') {
+                history.pushState({}, '', url.toString());
+                this.passengerPage = 1;
+                this.loadPassengerData();
+            } else {
+                window.location.href = url.toString();
+            }
         },
 
         onBookingDateToChange() {
@@ -3051,7 +3097,13 @@ function bookingIndexApp() {
                 url.searchParams.delete('booking_date_to');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            if (this.activeTab === 'passenger') {
+                history.pushState({}, '', url.toString());
+                this.passengerPage = 1;
+                this.loadPassengerData();
+            } else {
+                window.location.href = url.toString();
+            }
         },
 
         onFingerprintLocationChange() {
@@ -3073,7 +3125,13 @@ function bookingIndexApp() {
                 url.searchParams.delete('booking_status');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            if (this.activeTab === 'passenger') {
+                history.pushState({}, '', url.toString());
+                this.passengerPage = 1;
+                this.loadPassengerData();
+            } else {
+                window.location.href = url.toString();
+            }
         },
 
         clearBookingFilters() {
@@ -3092,7 +3150,9 @@ function bookingIndexApp() {
                 url.searchParams.delete('passenger_status');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onRouteChange() {
@@ -3104,7 +3164,9 @@ function bookingIndexApp() {
             }
             url.searchParams.delete('route_id');
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onTicketAgentChange() {
@@ -3115,7 +3177,9 @@ function bookingIndexApp() {
                 url.searchParams.delete('ticket_agent_id');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onActualFlightFromChange() {
@@ -3126,7 +3190,9 @@ function bookingIndexApp() {
                 url.searchParams.delete('actual_flight_from');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onActualFlightToChange() {
@@ -3137,7 +3203,9 @@ function bookingIndexApp() {
                 url.searchParams.delete('actual_flight_to');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onReturnDateFromChange() {
@@ -3148,7 +3216,9 @@ function bookingIndexApp() {
                 url.searchParams.delete('return_date_from');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onReturnDateToChange() {
@@ -3159,7 +3229,9 @@ function bookingIndexApp() {
                 url.searchParams.delete('return_date_to');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onFlightDateRangeChange() {
@@ -3175,7 +3247,9 @@ function bookingIndexApp() {
                 url.searchParams.delete('flight_date_to');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onPackageChange() {
@@ -3186,7 +3260,9 @@ function bookingIndexApp() {
                 url.searchParams.delete('package_id');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onStatusChangeActionChange() {
@@ -3199,7 +3275,9 @@ function bookingIndexApp() {
                 url.searchParams.delete('status_change_to');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onStatusChangeDateChange() {
@@ -3215,7 +3293,9 @@ function bookingIndexApp() {
                 url.searchParams.delete('status_change_to');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            history.pushState({}, '', url.toString());
+            this.passengerPage = 1;
+            this.loadPassengerData();
         },
 
         onPaymentWiseChange() {
@@ -3226,24 +3306,52 @@ function bookingIndexApp() {
                 url.searchParams.delete('payment_wise');
             }
             url.searchParams.delete('page');
-            window.location.href = url.toString();
+            if (this.activeTab === 'passenger') {
+                history.pushState({}, '', url.toString());
+                this.passengerPage = 1;
+                this.loadPassengerData();
+            } else {
+                window.location.href = url.toString();
+            }
         },
 
         clearPassengerFilters() {
+            this.selectedFingerprintStatus = '';
+            this.selectedVisaStatus = '';
+            this.selectedTicketStatus = '';
+            this.selectedVisaAgentId = '';
+            this.selectedTicketAgentId = '';
+            this.selectedPassengerStatus = '';
+            this.selectedRouteDisplay = '';
+            this.selectedPackageId = '';
+            this.selectedBranchId = '';
+            this.selectedBookingDateFrom = '';
+            this.selectedBookingDateTo = '';
+            this.selectedActualFlightFrom = '';
+            this.selectedActualFlightTo = '';
+            this.selectedReturnDateFrom = '';
+            this.selectedReturnDateTo = '';
+            this.selectedFlightDateRange = '';
+            this.selectedStatusChangeAction = '';
+            this.selectedStatusChangeFrom = '';
+            this.selectedStatusChangeTo = '';
+            this.selectedPaymentWise = '';
+            this.selectedBookingStatus = 'active';
+            this.searchTerm = '';
+            this.passengerPage = 1;
             const url = new URL(window.location);
-            ['fingerprint_status', 'visa_status', 'ticket_status',
-             'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_display', 'package_id',
-             'booking_branch_id', 'booking_date_from', 'booking_date_to',
-             'actual_flight_from', 'actual_flight_to',
-             'return_date_from', 'return_date_to',
-             'flight_date_from', 'flight_date_to',
-             'status_change_action', 'status_change_from', 'status_change_to',
-             'payment_wise',
-             'booking_status',
-             'search', 'page'
-            ].forEach(p => url.searchParams.delete(p));
             url.searchParams.set('tab', 'passenger');
-            window.location.href = url.toString();
+            ['fingerprint_status', 'visa_status', 'ticket_status',
+                'visa_agent_id', 'ticket_agent_id', 'passenger_status', 'route_display', 'package_id',
+                'booking_branch_id', 'booking_date_from', 'booking_date_to',
+                'actual_flight_from', 'actual_flight_to',
+                'return_date_from', 'return_date_to',
+                'flight_date_from', 'flight_date_to',
+                'status_change_action', 'status_change_from', 'status_change_to',
+                'payment_wise', 'booking_status', 'search', 'page'
+            ].forEach(p => url.searchParams.delete(p));
+            history.pushState({}, '', url.toString());
+            this.loadPassengerData();
         },
 
         isFirstRowFor(idx) {
@@ -3275,6 +3383,16 @@ function bookingIndexApp() {
                 if (this.selectedReturnDateFrom) params.set('return_date_from', this.selectedReturnDateFrom);
                 if (this.selectedReturnDateTo) params.set('return_date_to', this.selectedReturnDateTo);
                 if (this.selectedPaymentWise) params.set('payment_wise', this.selectedPaymentWise);
+                if (this.selectedFlightDateRange) {
+                    const range = this.flightDateRanges.find(r => r.id == this.selectedFlightDateRange);
+                    if (range) {
+                        params.set('flight_date_from', range.start);
+                        params.set('flight_date_to', range.end);
+                    }
+                }
+                if (this.selectedStatusChangeAction) params.set('status_change_action', this.selectedStatusChangeAction);
+                if (this.selectedStatusChangeFrom) params.set('status_change_from', this.selectedStatusChangeFrom);
+                if (this.selectedStatusChangeTo) params.set('status_change_to', this.selectedStatusChangeTo);
 
                 const resp = await fetch(`/api/bookings/passengers?${params.toString()}`);
                 const json = await resp.json();
@@ -3282,6 +3400,10 @@ function bookingIndexApp() {
                 this.passengersVisaData = json.data.map(p => p.visa_data);
                 this.passengersTicketData = json.data.map(p => p.ticket_data);
                 this.totalPassengerCount = json.summary.total;
+                this.totalPackageValue = json.summary.total_package_value;
+                this.totalPackageBdt = json.summary.total_package_bdt;
+                this.totalDue = json.summary.total_due;
+                this.totalDueBdt = json.summary.total_due_bdt;
                 this.passengerLastPage = json.pagination.last_page;
                 this.passengerPage = json.pagination.current_page;
             } catch (e) {

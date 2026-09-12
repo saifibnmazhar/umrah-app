@@ -524,7 +524,28 @@ class BookingController extends Controller
         $base->getQuery()->orders = [];
         $row = (clone $base)->selectRaw('COUNT(*) as total')->first();
 
-        return ['total' => (int) $row->total];
+        $bookingIdsSub = (clone $base)->select('passengers.booking_id')->distinct();
+        $bookingIdsSub->getQuery()->orders = [];
+
+        $firstRate = (float) (app(CurrencyRateService::class)->getFirstRate()?->rate ?? 0);
+
+        $invoiceTotals = Invoice::whereIn('booking_id', $bookingIdsSub)
+            ->selectRaw('COALESCE(SUM(total_amount), 0) as package, COALESCE(SUM(balance), 0) as due')
+            ->first();
+
+        $bdtTotals = Invoice::whereIn('invoices.booking_id', $bookingIdsSub)
+            ->leftJoin('bookings', 'bookings.id', '=', 'invoices.booking_id')
+            ->leftJoin('currency_rates', 'currency_rates.id', '=', 'bookings.currency_rate_id')
+            ->selectRaw('COALESCE(SUM(invoices.total_amount * COALESCE(currency_rates.rate, ?)), 0) as package_bdt, COALESCE(SUM(invoices.balance * COALESCE(currency_rates.rate, ?)), 0) as due_bdt', [$firstRate, $firstRate])
+            ->first();
+
+        return [
+            'total' => (int) $row->total,
+            'total_package_value' => (float) ($invoiceTotals->package ?? 0),
+            'total_due' => (float) ($invoiceTotals->due ?? 0),
+            'total_package_bdt' => (float) ($bdtTotals->package_bdt ?? 0),
+            'total_due_bdt' => (float) ($bdtTotals->due_bdt ?? 0),
+        ];
     }
 
     private function computeFareAmount(Passenger $p): float
